@@ -11,11 +11,13 @@ import {
 } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatCurrency } from '../../../lib/api';
 import { usePropertyBudget } from '../../../lib/hooks';
+import { useTenantCurrencyFormatter } from '../../../hooks/useTenantCurrency';
 
 export default function PropertyBudgetPage() {
   const t = useTranslations('propertyBudgetPage');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { propertyId } = useParams<{ propertyId: string }>();
   const { data: budget = null, isLoading, error, refetch } = usePropertyBudget(propertyId || '');
 

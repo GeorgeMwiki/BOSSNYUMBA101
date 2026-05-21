@@ -29,21 +29,16 @@ import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
 import { asApprovalRequestId } from '@bossnyumba/domain-services/approvals';
+import { e400, e404, e503, errorResponse } from '../utils/error-response';
 
 const app = new Hono();
 app.use('*', authMiddleware);
 
 function notConfigured(c: any) {
-  return c.json(
-    {
-      success: false,
-      error: {
-        code: 'APPROVAL_SERVICE_UNAVAILABLE',
-        message:
-          'ApprovalWorkflowService not configured — DATABASE_URL unset.',
-      },
-    },
-    503,
+  return e503(
+    c,
+    'APPROVAL_SERVICE_UNAVAILABLE',
+    'ApprovalWorkflowService not configured — DATABASE_URL unset.',
   );
 }
 
@@ -135,7 +130,7 @@ app.post('/', zValidator('json', CreateRequestSchema), async (c: any) => {
       userId,
     );
     if (!result.success) {
-      return c.json({ success: false, error: result.error }, 400);
+      return e400(c, result.error.code, result.error.message);
     }
     return c.json({ success: true, data: result.data }, 201);
   } catch (err) {
@@ -158,7 +153,7 @@ app.get('/', async (c: any) => {
   try {
     const result = await service.getPendingApprovals(userId, tenantId);
     if (!result.success) {
-      return c.json({ success: false, error: result.error }, 400);
+      return e400(c, result.error.code, result.error.message);
     }
     return c.json({ success: true, data: result.data });
   } catch (err) {
@@ -204,7 +199,7 @@ app.get(
         { page: q.page, pageSize: q.pageSize },
       );
       if (!result.success) {
-        return c.json({ success: false, error: result.error }, 400);
+        return e400(c, result.error.code, result.error.message);
       }
       return c.json({ success: true, ...result.data });
     } catch (err) {
@@ -232,13 +227,7 @@ app.get('/:id', async (c: any) => {
     if (!repo?.findById) return notConfigured(c);
     const row = await repo.findById(id, tenantId);
     if (!row) {
-      return c.json(
-        {
-          success: false,
-          error: { code: 'REQUEST_NOT_FOUND', message: 'Approval request not found' },
-        },
-        404,
-      );
+      return e404(c, 'REQUEST_NOT_FOUND', 'Approval request not found');
     }
     return c.json({ success: true, data: row });
   } catch (err) {
@@ -286,7 +275,7 @@ app.post(
             : result.error.code === 'UNAUTHORIZED_APPROVER'
               ? 403
               : 409;
-        return c.json({ success: false, error: result.error }, status);
+        return errorResponse(c, status, result.error.code, result.error.message);
       }
       return c.json({ success: true, data: result.data });
     } catch (err) {
@@ -335,7 +324,7 @@ app.post(
             : result.error.code === 'UNAUTHORIZED_APPROVER'
               ? 403
               : 409;
-        return c.json({ success: false, error: result.error }, status);
+        return errorResponse(c, status, result.error.code, result.error.message);
       }
       return c.json({ success: true, data: result.data });
     } catch (err) {
@@ -384,7 +373,7 @@ app.post(
             : result.error.code === 'UNAUTHORIZED_APPROVER'
               ? 403
               : 409;
-        return c.json({ success: false, error: result.error }, status);
+        return errorResponse(c, status, result.error.code, result.error.message);
       }
       return c.json({ success: true, data: result.data });
     } catch (err) {
@@ -408,7 +397,7 @@ app.get('/policies/:type', async (c: any) => {
   try {
     const result = await service.getApprovalPolicy(tenantId, type as any);
     if (!result.success) {
-      return c.json({ success: false, error: result.error }, 400);
+      return e400(c, result.error.code, result.error.message);
     }
     return c.json({ success: true, data: result.data });
   } catch (err) {
@@ -442,7 +431,7 @@ app.put(
         userId,
       );
       if (!result.success) {
-        return c.json({ success: false, error: result.error }, 400);
+        return e400(c, result.error.code, result.error.message);
       }
       return c.json({ success: true, data: result.data });
     } catch (err) {

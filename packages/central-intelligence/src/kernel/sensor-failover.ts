@@ -75,6 +75,30 @@ export interface SensorFailoverDeps {
   readonly clock?: () => number;
 }
 
+/**
+ * Public shape of the router's degraded-mode state. Surfaced to the
+ * kernel so it can stamp a `DegradedDecisionMarker` on every decision
+ * produced while ANY sensor breaker is open, and to the gateway's
+ * `/healthz/dependencies` endpoint so ops sees which provider is
+ * serving traffic.
+ */
+export interface DegradedState {
+  /** `true` whenever at least one sensor breaker is open. */
+  readonly degraded: boolean;
+  /** Sensor ids whose breaker is currently open. */
+  readonly openSensors: ReadonlyArray<string>;
+  /**
+   * The sensor that would serve a request right now — i.e. the first
+   * eligible sensor by priority + success-rate. Null only when no
+   * sensors at all are registered (composition-root misconfig).
+   */
+  readonly currentProvider: string | null;
+  /** Wall-clock ms when the FIRST breaker opened in this degraded run. */
+  readonly degradedAt: number | null;
+  /** Wall-clock ms of the most recent failure observed across all sensors. */
+  readonly lastFailedAt: number | null;
+}
+
 export interface SensorRouter {
   /**
    * Call the next-ready sensor that satisfies the required capabilities.
@@ -93,6 +117,12 @@ export interface SensorRouter {
    * never returns stale data.
    */
   snapshotHealth(): ReadonlyArray<SensorHealthSnapshot>;
+  /**
+   * Snapshot of degraded-mode state — used by the kernel to stamp a
+   * `DegradedDecisionMarker` on outgoing `BrainDecision`s and by the
+   * gateway healthz endpoint for ops visibility.
+   */
+  getDegradedState(): DegradedState;
   /**
    * Backwards-compatible thin health summary (id / healthy / lastFailureAt).
    * `healthy` is `false` only when the breaker is `open`.
@@ -300,6 +330,57 @@ export function createSensorRouter(deps: SensorFailoverDeps): SensorRouter {
     snapshotHealth() {
       const now = clock();
       return deps.sensors.map((s) => buildSnapshot(s.id, now));
+    },
+
+    getDegradedState() {
+      const now = clock();
+      // Walk every registered sensor, advancing the breaker FSM so the
+      // returned `openSensors` reflects "open RIGHT NOW" (not "open
+      // when last polled").
+      for (const s of deps.sensors) {
+        const h = state.get(s.id);
+        if (h) adjustBreaker(h, now);
+      }
+      const openSensors: string[] = [];
+      let degradedAt: number | null = null;
+      let lastFailedAt: number | null = null;
+      for (const s of deps.sensors) {
+        const h = state.get(s.id);
+        if (!h) continue;
+        if (h.breakerState === 'open') {
+          openSensors.push(s.id);
+          // First-open wins so `degradedAt` is the start of the run.
+          if (degradedAt === null || h.openedAt < degradedAt) {
+            degradedAt = h.openedAt;
+          }
+        }
+        if (h.lastFailureAt !== null) {
+          if (lastFailedAt === null || h.lastFailureAt > lastFailedAt) {
+            lastFailedAt = h.lastFailureAt;
+          }
+        }
+      }
+      // currentProvider: the first sensor that would serve right now.
+      // Includes last-resort routing so even an all-open state surfaces
+      // the sensor we'd burn a probe on.
+      let currentProvider: string | null = null;
+      if (deps.sensors.length > 0) {
+        const capable = [...deps.sensors];
+        const ready = capable.filter((s) => {
+          const h = state.get(s.id);
+          return !h || h.breakerState !== 'open';
+        });
+        const pool = ready.length > 0 ? ready : capable;
+        const sorted = [...pool].sort((a, b) => a.priority - b.priority);
+        currentProvider = sorted[0]?.id ?? null;
+      }
+      return {
+        degraded: openSensors.length > 0,
+        openSensors,
+        currentProvider,
+        degradedAt,
+        lastFailedAt,
+      };
     },
 
     health() {

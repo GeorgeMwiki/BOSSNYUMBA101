@@ -589,7 +589,14 @@ export class OCRExtractionService {
         employer: employerField.value,
         jobTitle: jobTitleField?.value ?? null,
         employmentType: null,
-        monthlyIncome: salaryField?.value ? parseFloat(salaryField.value.replace(/[^0-9.]/g, '')) : null,
+        // Bug fix A-BUG-DEEP #6: locale-aware money parser. The previous
+        // `parseFloat(x.replace(/[^0-9.]/g, ''))` silently corrupted any
+        // European/African format that uses `,` as decimal separator
+        // (e.g. "1.234,56" → "1.23456" → 1.23456). Use a robust parser
+        // that detects which separator is the decimal mark (always the
+        // last non-digit before the cents) and returns null on NaN /
+        // implausible-range inputs.
+        monthlyIncome: parseMonthlyIncome(salaryField?.value),
         // Currency is unknown from the OCR text alone. The caller
         // resolves it from the tenant's region-config after extraction
         // and overwrites this field. No hardcoded TZS default.
@@ -736,4 +743,63 @@ export class MockOCRProvider implements IOCRProvider {
       pageCount: 1,
     };
   }
+}
+
+// ============================================================================
+// Locale-aware money parser (A-BUG-DEEP #6)
+// ============================================================================
+
+const MIN_PLAUSIBLE_MONTHLY_INCOME = 100;
+const MAX_PLAUSIBLE_MONTHLY_INCOME = 10_000_000;
+
+/**
+ * Parse a raw OCR salary string ("KES 1,234,567.50", "TZS 1.234.567,50",
+ * "$ 5 000.00") into a Number in major units. Returns `null` if the
+ * input is empty, fails to parse, or is outside a plausible monthly-
+ * income range.
+ *
+ * Detection rule: when both `.` and `,` appear, whichever comes LAST in
+ * the string is the decimal mark — the other is the thousands separator.
+ * When only one separator appears, treat trailing-2-digit groups as
+ * decimal (e.g. "1234,56" → 1234.56) and longer groups as thousands
+ * ("1,234" → 1234).
+ */
+export function parseMonthlyIncome(raw: string | null | undefined): number | null {
+  if (!raw || typeof raw !== 'string') return null;
+  // Strip currency markers and whitespace, keep digits + . , and minus.
+  const cleaned = raw.replace(/[^0-9.,-]/g, '').trim();
+  if (!cleaned) return null;
+
+  const lastDot = cleaned.lastIndexOf('.');
+  const lastComma = cleaned.lastIndexOf(',');
+
+  let normalised: string;
+  if (lastDot === -1 && lastComma === -1) {
+    normalised = cleaned;
+  } else if (lastDot !== -1 && lastComma !== -1) {
+    // Both present — the later one is the decimal mark.
+    const decimalMark = lastDot > lastComma ? '.' : ',';
+    const thousandsMark = decimalMark === '.' ? ',' : '.';
+    normalised = cleaned
+      .split(thousandsMark).join('')
+      .replace(decimalMark, '.');
+  } else {
+    // Only one separator. Decide thousands vs decimal by group length.
+    const sep = lastDot !== -1 ? '.' : ',';
+    const tail = cleaned.slice(cleaned.lastIndexOf(sep) + 1);
+    if (tail.length === 3 && cleaned.split(sep).every((g, i) => i === 0 ? g.length > 0 : g.length === 3)) {
+      // Thousands separator (e.g. "1,234,567").
+      normalised = cleaned.split(sep).join('');
+    } else {
+      // Decimal separator.
+      normalised = cleaned.replace(sep, '.');
+    }
+  }
+
+  const value = Number(normalised);
+  if (!Number.isFinite(value)) return null;
+  if (value < MIN_PLAUSIBLE_MONTHLY_INCOME || value > MAX_PLAUSIBLE_MONTHLY_INCOME) {
+    return null;
+  }
+  return value;
 }

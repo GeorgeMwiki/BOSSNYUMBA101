@@ -48,14 +48,44 @@ export function useSwipeNav(args: UseSwipeNavArgs): UseSwipeNavResult {
   useEffect(() => {
     if (!enabled || !target) return;
 
+    // Capture the pointerId so we can release exactly the pointer we
+    // captured on pointerdown — necessary because the up/cancel events
+    // can arrive with a different id under multitouch.
     const onDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       startRef.current = { x: e.clientX, y: e.clientY };
+      // setPointerCapture is best-effort. Some browsers throw
+      // InvalidStateError if a capture is already active — we
+      // silence it because the gesture still resolves without it.
+      if (typeof target.setPointerCapture === 'function') {
+        try {
+          target.setPointerCapture(e.pointerId);
+        } catch {
+          // capture is a nice-to-have; the gesture still resolves
+        }
+      }
     };
     const onUp = (e: PointerEvent) => {
       const start = startRef.current;
       startRef.current = null;
+      // Release capture ONLY when the target is still attached to the
+      // document — calling releasePointerCapture on a detached node
+      // throws InvalidStateError in some browsers. Mirrors the 2026-
+      // 05-21 audit fix.
+      if (
+        target.isConnected &&
+        typeof target.releasePointerCapture === 'function'
+      ) {
+        try {
+          target.releasePointerCapture(e.pointerId);
+        } catch {
+          // best-effort
+        }
+      }
       if (!start) return;
+      // Short-circuit when the target detached mid-gesture — there is
+      // no panel left to navigate.
+      if (!target.isConnected) return;
       const dx = e.clientX - start.x;
       const dy = e.clientY - start.y;
       if (Math.abs(dx) < threshold) return;
@@ -63,8 +93,18 @@ export function useSwipeNav(args: UseSwipeNavArgs): UseSwipeNavResult {
       if (dx < 0) handlers.current.onSwipeLeft();
       else handlers.current.onSwipeRight();
     };
-    const onCancel = () => {
+    const onCancel = (e: PointerEvent) => {
       startRef.current = null;
+      if (
+        target.isConnected &&
+        typeof target.releasePointerCapture === 'function'
+      ) {
+        try {
+          target.releasePointerCapture(e.pointerId);
+        } catch {
+          // best-effort
+        }
+      }
     };
 
     target.addEventListener('pointerdown', onDown);

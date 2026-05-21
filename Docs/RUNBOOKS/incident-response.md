@@ -86,7 +86,10 @@ NEVER `DROP`) is in
 ## After the page clears
 
 - Open a blameless post-mortem within 48 h for any incident lasting >1 h
-  (`Docs/OPERATIONS.md:42-44`).
+  (`Docs/OPERATIONS.md:42-44`). Start from the template at
+  [`../POSTMORTEMS/TEMPLATE.md`](../POSTMORTEMS/TEMPLATE.md) and follow the
+  naming + SLA convention in [`../POSTMORTEMS/README.md`](../POSTMORTEMS/README.md)
+  (file as `YYYY-MM-DD-<short-title>.md`, append a row to the index).
 - If a new failure mode surfaced, append a row to
   `Docs/OPERATIONS.md:109-121` ("Known-Issue Catalog").
 - If the pager fired on something not in the table above, add the

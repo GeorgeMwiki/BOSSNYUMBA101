@@ -3,7 +3,7 @@
  *
  * Periodic supervisor that deletes session-replay chunk metadata rows
  * older than `retentionDays` days, and (best-effort) the corresponding
- * cold-store blobs. Closes B5's Phase-C TODO.
+ * cold-store blobs. Implements B5's Phase-C retention requirement.
  *
  * Why a side-channel supervisor: the recorder uploads chunks
  * continuously; without a purge worker `session_replay_chunks` grows
@@ -11,7 +11,7 @@
  * keep cohorts for post-mortem replay, narrow enough to bound storage
  * cost.
  *
- * Storage purge limitation (KNOWN GAP — see TODO in the storage code
+ * Storage purge limitation (KNOWN GAP — tracked in Docs/TODO_BACKLOG.md and the storage code
  * path below): the `SessionReplayStoragePort` in
  * `services/api-gateway/src/storage/session-replay-storage.ts` does NOT
  * currently expose a `delete()` method (out-of-scope for this agent).
@@ -209,7 +209,7 @@ export function createSessionReplayRetention(
           }
         }
       } else if (!storageWarnedThisProcess && deps.logger?.warn) {
-        // TODO(central-command-phase-c): the production
+        // Follow-up central-command-phase-c (Docs/TODO_BACKLOG.md): the production
         // `SessionReplayStoragePort` does not yet expose a `delete()`
         // method. Until that port grows the method, the retention
         // worker purges DB rows only. A follow-up agent must:
@@ -312,7 +312,7 @@ export function createSessionReplayRetention(
 // ─────────────────────────────────────────────────────────────────────
 // Default Drizzle-backed `SessionReplayPurgeDb` — operates on
 // `session_replay_chunks` (migration 0142). Out-of-scope to extend
-// the chunks service with a `deleteOlderThan` method (see TODO at top
+// the chunks service with a `deleteOlderThan` method (see retention notes at top
 // of file), so we issue raw parameterised SQL here. Returns `[]` /
 // `0` on any DB error so the supervisor degrades cleanly.
 // ─────────────────────────────────────────────────────────────────────

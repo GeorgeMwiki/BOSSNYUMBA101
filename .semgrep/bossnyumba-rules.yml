@@ -1,0 +1,302 @@
+# =============================================================================
+# BOSSNYUMBA — custom Semgrep rules
+# =============================================================================
+# Domain-specific patterns that catch regressions our generic linters miss.
+# Every rule MUST have:  id, message, severity, languages, pattern(s).
+#
+# Severity convention:
+#   ERROR   = must fix before merge (CI blocking)
+#   WARNING = review required; legitimate exceptions allowed via inline
+#             `// nosemgrep: <rule-id> reason: ...`
+#   INFO    = signal only
+#
+# Run locally:
+#   semgrep --config=.semgrep/bossnyumba-rules.yml packages/ services/ apps/
+#
+# Test fixtures with synthetic positives live in:
+#   .semgrep/tests/fixtures/  (each file has matching positive + negative cases)
+# =============================================================================
+
+rules:
+  # ---------------------------------------------------------------------------
+  # 1. missing-tenant-id-arg
+  # ---------------------------------------------------------------------------
+  # Repository lookups MUST be tenant-scoped. Wave 2-4 audits found multiple
+  # `findById(id)` / `findMany(filter)` calls that omitted tenantId, allowing
+  # cross-tenant data leakage. This rule flags repo-style method calls where
+  # `tenantId` is not present in any argument position; reviewer confirms.
+  # ---------------------------------------------------------------------------
+  - id: missing-tenant-id-arg
+    message: >-
+      Repository call without `tenantId` argument. Cross-tenant lookups are a
+      data-isolation vulnerability — every repo method must scope by tenant.
+      If this is intentional (e.g. platform-admin search), add
+      `// nosemgrep: missing-tenant-id-arg reason: <justification>`.
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      category: security
+      owasp: 'A01:2021-Broken Access Control'
+      cwe: 'CWE-639: Authorization Bypass Through User-Controlled Key'
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: $REPO.findById($ID)
+          - pattern: $REPO.findMany($FILTER)
+          - pattern: $REPO.findByCustomer($X)
+          - pattern: $REPO.findByExternalId($X)
+      - pattern-not: '$REPO.findById($ID, $TENANT, ...)'
+      - pattern-not: '$REPO.findMany($FILTER, $TENANT, ...)'
+      - pattern-not: '$REPO.findByCustomer($X, $TENANT, ...)'
+      - pattern-not: '$REPO.findByExternalId($X, $TENANT, ...)'
+      - pattern-not: '$REPO.findById({..., tenantId: $T, ...})'
+      - pattern-not: '$REPO.findMany({..., tenantId: $T, ...})'
+      - pattern-not: '$REPO.findByCustomer({..., tenantId: $T, ...})'
+      - pattern-not: '$REPO.findByExternalId({..., tenantId: $T, ...})'
+
+  # ---------------------------------------------------------------------------
+  # 2. raw-error-response
+  # ---------------------------------------------------------------------------
+  # Mirrors the ESLint rule `no-raw-error-response.js`. The canonical envelope
+  # is owned by `services/api-gateway/src/utils/error-response.ts`; every other
+  # call site must go through `errorResponse()` / `e4xx()` / `e5xx()`.
+  # ---------------------------------------------------------------------------
+  - id: raw-error-response
+    message: >-
+      Raw `c.json({ error: ... }, <status>)` outside `error-response.ts`.
+      Use `errorResponse(c, code, message, status)` (or `e4xx`/`e5xx`) so all
+      callers see the canonical `{ success: false, error: { code, message } }`
+      envelope. See services/api-gateway/src/utils/error-response.ts.
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      category: maintainability
+      confidence: HIGH
+    paths:
+      exclude:
+        - '**/error-response.ts'
+        - '**/error-response.test.ts'
+        - '**/*.test.ts'
+        - '**/*.spec.ts'
+    pattern-either:
+      - pattern: '$C.json({ error: $E }, $STATUS)'
+      - pattern: '$C.json({ error: $E, ... }, $STATUS)'
+
+  # ---------------------------------------------------------------------------
+  # 3. prototype-pollution-spread
+  # ---------------------------------------------------------------------------
+  # Spreading untrusted JSON into a fresh object inherits prototype-polluting
+  # keys (`__proto__`, `constructor`). Use `Object.create(null)` or an
+  # explicit allow-list of keys.
+  # ---------------------------------------------------------------------------
+  - id: prototype-pollution-spread
+    message: >-
+      Spreading request-body JSON into an object literal is a prototype-pollution
+      vector. Use `Object.create(null)` as the base, or copy keys with an
+      explicit allow-list. See OWASP "Prototype Pollution".
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      category: security
+      cwe: 'CWE-1321: Prototype Pollution'
+      confidence: MEDIUM
+    pattern-either:
+      - patterns:
+          - pattern: '{ ...$REQ.body }'
+      - patterns:
+          - pattern: '{ ...$REQ.body, ... }'
+      - patterns:
+          - pattern: |
+              const $BODY = await $C.req.json();
+              ...
+              { ...$BODY }
+      - patterns:
+          - pattern: |
+              const $BODY = await $C.req.json();
+              ...
+              { ...$BODY, ... }
+
+  # ---------------------------------------------------------------------------
+  # 4. unbounded-find-many
+  # ---------------------------------------------------------------------------
+  # Wave 5 closed several BFF endpoints that loaded 1k–5k rows into memory
+  # then filtered in JS. Any `findMany(_, 1000+)` is suspect — paginate or
+  # filter in SQL.
+  # ---------------------------------------------------------------------------
+  - id: unbounded-find-many
+    message: >-
+      `findMany(.., 1000+)` is the Wave-5 BFF anti-pattern. Paginate, scope by
+      tenant + relation, or push the filter into SQL. Loading thousands of
+      rows then `.filter(set.has)`-ing in JS will OOM under load.
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      category: performance
+      confidence: HIGH
+    pattern-either:
+      - pattern: $REPO.findMany($A, 1000)
+      - pattern: $REPO.findMany($A, 2000)
+      - pattern: $REPO.findMany($A, 5000)
+      - pattern: $REPO.findMany($A, 10000)
+      - pattern: $REPO.findMany($A, $B, 1000)
+      - pattern: $REPO.findMany($A, $B, 5000)
+      - pattern: '$REPO.findMany({ ..., limit: 1000, ... })'
+      - pattern: '$REPO.findMany({ ..., limit: 5000, ... })'
+      - pattern: '$REPO.findMany({ ..., take: 1000, ... })'
+      - pattern: '$REPO.findMany({ ..., take: 5000, ... })'
+
+  # ---------------------------------------------------------------------------
+  # 5. console-statement-in-production-path
+  # ---------------------------------------------------------------------------
+  # `console.*` calls in production code escape structured logging (no
+  # correlation IDs, no PII redaction, no log-level routing). Use the
+  # `@bossnyumba/logger` package or a request-scoped pino instance.
+  # ---------------------------------------------------------------------------
+  - id: console-statement-in-production-path
+    message: >-
+      `console.log/warn/error` in a production-path file. Use the structured
+      logger (`@bossnyumba/logger` or `c.var.logger`) — it adds requestId,
+      tenantId, and PII redaction automatically.
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      category: best-practice
+      confidence: HIGH
+    paths:
+      exclude:
+        - '**/*.test.ts'
+        - '**/*.test.tsx'
+        - '**/*.spec.ts'
+        - '**/*.spec.tsx'
+        - '**/tests/**'
+        - '**/__tests__/**'
+        - '**/scripts/**'
+        - '**/dev/**'
+        - '**/dev-server.ts'
+        - '**/build.ts'
+        - '**/eslint-rules/**'
+        - '**/*.config.{ts,js,mjs,cjs}'
+        - '**/playwright.config.*'
+        - '**/vitest.config.*'
+        - '**/jest.config.*'
+        - '**/migrations/**'
+        - '**/seeds/**'
+    pattern-either:
+      - pattern: console.log(...)
+      - pattern: console.warn(...)
+      - pattern: console.error(...)
+      - pattern: console.info(...)
+      - pattern: console.debug(...)
+
+  # ---------------------------------------------------------------------------
+  # 6. as-any-cast
+  # ---------------------------------------------------------------------------
+  # `as any` defeats TypeScript and hides bugs. Existing instances are
+  # whitelisted via baseline; the rule flags *new* additions only when CI runs
+  # `semgrep ci` against the diff.
+  # ---------------------------------------------------------------------------
+  - id: as-any-cast
+    message: >-
+      `as any` cast. Prefer `as unknown as <T>` for genuinely unknown shapes
+      and add a runtime validator (zod). Existing casts are baselined; this
+      rule fires on NEW additions only (CI runs `semgrep ci` against the diff).
+    severity: WARNING
+    languages: [typescript]
+    metadata:
+      category: best-practice
+      confidence: HIGH
+    paths:
+      exclude:
+        - '**/*.test.ts'
+        - '**/*.test.tsx'
+        - '**/*.spec.ts'
+        - '**/*.spec.tsx'
+        - '**/tests/**'
+        - '**/__tests__/**'
+        - '**/__mocks__/**'
+    pattern: $X as any
+
+  # ---------------------------------------------------------------------------
+  # 7. missing-await-on-promise
+  # ---------------------------------------------------------------------------
+  # An async-function result that is neither awaited, returned, assigned, nor
+  # `.catch()`-handled is almost always a bug — the promise rejects silently
+  # and breaks request handlers in non-obvious ways.
+  # ---------------------------------------------------------------------------
+  - id: missing-await-on-promise
+    message: >-
+      Async function called without `await`, return, assignment, or `.catch()`.
+      A rejected promise here will be swallowed (silent failure) or trigger
+      `unhandledRejection` (process crash in strict mode).
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      category: correctness
+      confidence: MEDIUM
+    patterns:
+      - pattern: |
+          async function $FN(...) { ... }
+          ...
+          $FN(...);
+      - pattern-not: |
+          async function $FN(...) { ... }
+          ...
+          await $FN(...);
+      - pattern-not: |
+          async function $FN(...) { ... }
+          ...
+          return $FN(...);
+      - pattern-not: |
+          async function $FN(...) { ... }
+          ...
+          $X = $FN(...);
+      - pattern-not: |
+          async function $FN(...) { ... }
+          ...
+          $FN(...).catch(...);
+      - pattern-not: |
+          async function $FN(...) { ... }
+          ...
+          $FN(...).then(...);
+      - pattern-not: |
+          async function $FN(...) { ... }
+          ...
+          void $FN(...);
+
+  # ---------------------------------------------------------------------------
+  # 8. pii-in-log
+  # ---------------------------------------------------------------------------
+  # PII keys appearing inside a logger call argument list, without going
+  # through `redact()` first. Catches `logger.info({ user, password })` etc.
+  # ---------------------------------------------------------------------------
+  - id: pii-in-log
+    message: >-
+      Possible PII / secret keys (password|secret|token|email|phone|ssn|nida)
+      passed directly to logger. Apply `redact()` from
+      `@bossnyumba/logger/redact` first, or use the structured logger which
+      auto-redacts via Pino's `redact` option.
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      category: security
+      cwe: 'CWE-532: Insertion of Sensitive Information into Log File'
+      confidence: MEDIUM
+    pattern-either:
+      - pattern-regex: |
+          \blogger\.(?:debug|info|warn|error|fatal|trace)\([^)]*(?:password|secret|token|ssn|nida)[^)]*\)
+      - pattern-regex: |
+          \blog\.(?:debug|info|warn|error|fatal|trace)\([^)]*(?:password|secret|token|ssn|nida)[^)]*\)
+      - patterns:
+          - pattern-either:
+              - pattern: $LOGGER.info($OBJ, ...)
+              - pattern: $LOGGER.warn($OBJ, ...)
+              - pattern: $LOGGER.error($OBJ, ...)
+              - pattern: $LOGGER.debug($OBJ, ...)
+          - metavariable-pattern:
+              metavariable: $OBJ
+              pattern-either:
+                - pattern: '{ ..., password: $V, ... }'
+                - pattern: '{ ..., secret: $V, ... }'
+                - pattern: '{ ..., token: $V, ... }'
+                - pattern: '{ ..., ssn: $V, ... }'
+                - pattern: '{ ..., nida: $V, ... }'

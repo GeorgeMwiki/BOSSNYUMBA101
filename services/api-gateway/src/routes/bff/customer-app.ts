@@ -71,23 +71,20 @@ app.get('/me/dashboard', async (c) => {
 
   const customerId = auth.customerId ?? auth.userId;
   try {
+    // P0 SECURITY FIX: previously this handler fetched whole-tenant leases /
+    // invoices / payments and JS-filtered by customerId, leaking other
+    // customers' rows over the wire if filtering was bypassed. The repos
+    // already expose customer-scoped queries — use them directly so the DB
+    // does the tenant + customer filtering in a single WHERE clause.
     const [leasesResult, invoicesResult, paymentsResult] = await Promise.all([
-      repos.leases.findMany(auth.tenantId, { limit: 50, offset: 0 }),
-      repos.invoices.findMany(auth.tenantId, 50, 0),
-      repos.payments.findMany(auth.tenantId, 10, 0),
+      repos.leases.findByCustomer(customerId, auth.tenantId, { limit: 50, offset: 0 }),
+      repos.invoices.findByCustomer(customerId, auth.tenantId, 50, 0),
+      repos.payments.findByCustomer(customerId, auth.tenantId, 10, 0),
     ]);
 
-    const myLeases = (leasesResult.items ?? []).filter(
-      (l) => l.customerId === customerId,
-    );
-    const myLeaseIds = new Set(myLeases.map((l) => l.id));
-
-    const myInvoices = (invoicesResult.items ?? []).filter(
-      (inv) => myLeaseIds.has(inv.leaseId) || inv.customerId === customerId,
-    );
-    const myPayments = (paymentsResult.items ?? []).filter(
-      (p) => myLeaseIds.has(p.leaseId) || p.customerId === customerId,
-    );
+    const myLeases = leasesResult.items ?? [];
+    const myInvoices = invoicesResult.items ?? [];
+    const myPayments = paymentsResult.items ?? [];
 
     const openBalance = myInvoices
       .filter((i) => i.status !== 'paid')

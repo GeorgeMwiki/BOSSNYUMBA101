@@ -11,8 +11,8 @@
  *   1. HTTP header constants asking an upstream API for a mock response
  *      (e.g. `X-MOCK-MARKET-DATA` sent to Airbnb / Zillow sandbox).
  *   2. Empty-array sentinels exported as bootstrap defaults (e.g.
- *      `MOCK_PAYMENTS: Payment[] = []`). TODO: rename these to drop the
- *      misleading `MOCK_` prefix.
+ *      `MOCK_PAYMENTS: Payment[] = []`). Pending rename to drop the
+ *      misleading `MOCK_` prefix (Docs/TODO_BACKLOG.md).
  *
  * Adding a new mock fixture to production code → register here with a
  * justification ≥ 8 characters explaining why production needs it.
@@ -38,6 +38,6 @@ export const MOCK_DATA_ALLOWLIST = new Map([
   // ─── Empty-array bootstrap sentinels ───────────────────────────────
   [
     'apps/customer-app/src/lib/payments-data.ts',
-    'MOCK_PAYMENTS export is an empty Payment[] sentinel; TODO rename to PAYMENTS_BOOTSTRAP.',
+    'MOCK_PAYMENTS export is an empty Payment[] sentinel; pending rename to PAYMENTS_BOOTSTRAP.',
   ],
 ]);

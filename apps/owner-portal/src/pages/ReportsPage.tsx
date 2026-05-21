@@ -10,7 +10,8 @@ import {
 } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { api, formatCurrency, formatPercentage } from '../lib/api';
+import { api, formatPercentage } from '../lib/api';
+import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
 
 interface FinancialReport {
   summary: {
@@ -67,6 +68,8 @@ interface MaintenanceReport {
 
 export function ReportsPage() {
   const t = useTranslations('reportsPage');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const [activeReport, setActiveReport] = useState<'financial' | 'occupancy' | 'maintenance'>('financial');
   const [financial, setFinancial] = useState<FinancialReport | null>(null);
   const [occupancy, setOccupancy] = useState<OccupancyReport | null>(null);

@@ -8,6 +8,35 @@ import { UserRole } from '../types/user-role';
 import { mapCustomerRow, mapUnitRow, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
 
+/**
+ * Bug fix A-BUG-DEEP #12: concurrency-limited Promise.all.
+ *
+ * The previous `Promise.all(rows.map(enrichCustomer))` opened one
+ * database round-trip per row simultaneously. For a 50-row page that
+ * means 50 parallel queries — enough to exhaust the postgres connection
+ * pool on a busy gateway and cause cascading 5xx. Cap concurrency at 16
+ * so each list call uses at most 16 connections concurrently regardless
+ * of page size. Inlined to avoid adding a new dependency to
+ * package.json + pnpm-lock.yaml in this audit pass.
+ */
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+  async function pump(): Promise<void> {
+    while (nextIndex < items.length) {
+      const current = nextIndex++;
+      results[current] = await worker(items[current], current);
+    }
+  }
+  const lanes = Array.from({ length: Math.min(concurrency, items.length) }, () => pump());
+  await Promise.all(lanes);
+  return results;
+}
+
 // Wave 19 Agent H+I: customer CRUD on arbitrary customers is a landlord
 // operation. Self-service endpoints (`/me`, `/me/PUT`) use JWT `userId`
 // and remain open for residents to edit their own profile.
@@ -143,10 +172,10 @@ app.get('/', staffOnly, async (c) => {
     { limit: p.limit, offset: p.offset },
     { search, status: status?.toLowerCase() }
   );
-  const enriched = await Promise.all(
-    (result.items as Array<CustomerRowLike & Parameters<typeof mapCustomerRow>[0]>).map(
-      (row) => enrichCustomer(repos, auth.tenantId, row)
-    )
+  const enriched = await mapWithConcurrency(
+    result.items as Array<CustomerRowLike & Parameters<typeof mapCustomerRow>[0]>,
+    16,
+    (row) => enrichCustomer(repos, auth.tenantId, row),
   );
   return c.json({ success: true, ...buildListResponse(enriched, result.total ?? enriched.length, p) });
 });

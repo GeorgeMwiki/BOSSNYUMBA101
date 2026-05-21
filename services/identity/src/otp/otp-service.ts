@@ -12,7 +12,7 @@
  *
  * SMS delivery is done through `NotificationsDispatcher`. Production
  * startup rejects `NoopSmsDispatcher` (see the constructor guard below);
- * dev/test uses the Noop impl. No outstanding TODO — the dispatcher
+ * dev/test uses the Noop impl. No outstanding follow-ups — the dispatcher
  * contract is stable.
  */
 

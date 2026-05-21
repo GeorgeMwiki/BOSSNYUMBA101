@@ -4,9 +4,11 @@ import {
   buildProvenance,
   computeProvenanceHash,
   hashFileBytes,
+  PROVENANCE_HASH_VERSION,
 } from '../provenance/hash.js';
 
 const baseSeed = {
+  tenant_id: 'tenant-prov-test',
   file_hash: 'abc123',
   conversation_id: 'conv-1',
   message_id: 'msg-1',
@@ -34,6 +36,15 @@ describe('provenance hash', () => {
     expect(a).not.toEqual(b);
   });
 
+  it('differs when tenant_id changes (no cross-tenant replay)', () => {
+    // Two tenants ingesting the same file must produce different
+    // provenance hashes. Otherwise tenant B could replay tenant A's
+    // hashes and skip writes that should have landed.
+    const a = computeProvenanceHash(baseSeed);
+    const b = computeProvenanceHash({ ...baseSeed, tenant_id: 'tenant-other' });
+    expect(a).not.toEqual(b);
+  });
+
   it('differs when file_hash changes', () => {
     const a = computeProvenanceHash(baseSeed);
     const b = computeProvenanceHash({ ...baseSeed, file_hash: 'different' });
@@ -55,17 +66,50 @@ describe('provenance hash', () => {
     expect(a).not.toEqual(b);
   });
 
-  it('IGNORES message_id and timestamp (not identity-bearing)', () => {
-    // The hash recipe explicitly excludes message_id and timestamp so the
-    // same row from the same plan, re-sent in a different chat message,
-    // is still idempotent.
+  it('differs when message_id changes (prov-v3: per-message re-upload lands)', () => {
+    // DA1 MEDIUM (prov-v3): message_id is now identity-bearing. The
+    // prior recipe collapsed re-uploads under a new chat message to the
+    // same hash, silently dropping the user's intent to "replace" the
+    // earlier upload. New contract:
+    //   - same message_id → SAME hash (retry-safe idempotency)
+    //   - new message_id  → NEW hash  (re-upload lands)
+    const a = computeProvenanceHash(baseSeed);
+    const b = computeProvenanceHash({ ...baseSeed, message_id: 'msg-2' });
+    expect(a).not.toEqual(b);
+  });
+
+  it('IGNORES timestamp (not identity-bearing)', () => {
+    // Timestamp is purely a record field — re-emitting the SAME write a
+    // moment later must still be idempotent.
     const a = computeProvenanceHash(baseSeed);
     const b = computeProvenanceHash({
       ...baseSeed,
-      message_id: 'msg-2',
       timestamp: '2030-01-01T00:00:00.000Z',
     });
     expect(a).toEqual(b);
+  });
+
+  it('same (tenant, file, message) re-upload → SAME hash (idempotent retry)', () => {
+    // DA1 MEDIUM v3: retry of an identical upload (same message)
+    // collapses to one hash, so a network blip never duplicates writes.
+    const a = computeProvenanceHash(baseSeed);
+    const b = computeProvenanceHash({ ...baseSeed, timestamp: '2099-01-01T00:00:00.000Z' });
+    expect(a).toEqual(b);
+  });
+
+  it('two messages re-uploading the same file → DIFFERENT hashes', () => {
+    // DA1 MEDIUM v3: the load-bearing property of the new recipe.
+    const seedFirst = baseSeed;
+    const seedSecond = { ...baseSeed, message_id: 'msg-2' };
+    expect(computeProvenanceHash(seedFirst)).not.toEqual(
+      computeProvenanceHash(seedSecond),
+    );
+  });
+
+  it('records prov-v3 as the active recipe version', () => {
+    // The version is part of the public contract (downstream comparators
+    // gate on it); bumping the recipe requires bumping the version.
+    expect(PROVENANCE_HASH_VERSION).toBe('prov-v3');
   });
 
   it('buildProvenance returns a frozen record with all fields', () => {

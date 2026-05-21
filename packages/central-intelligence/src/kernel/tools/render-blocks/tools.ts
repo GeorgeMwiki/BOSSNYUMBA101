@@ -880,7 +880,7 @@ export const renderSignaturePadTool: Tool<unknown, AgUiUiPartByKind<'signature-p
   });
 
 // ═════════════════════════════════════════════════════════════════════
-// Phase E.7 — 13 new tools (formerly ProdFix-8 TODO)
+// Phase E.7 — 13 new tools (landed in ProdFix-8)
 // ═════════════════════════════════════════════════════════════════════
 
 // ── 23. pdf-viewer ────────────────────────────────────────────────────

@@ -104,6 +104,7 @@ export class AfricasTalkingSms {
           status === 429 ||
           (status >= 500 && status < 600);
         if (!retryable || attempt === maxAttempts - 1) throw err;
+        // eslint-disable-next-line no-restricted-syntax -- Math.random for jitter is fine (no security boundary; bounded by baseMs).
         const backoff = baseMs * 2 ** attempt + Math.floor(Math.random() * baseMs);
         await new Promise((resolve) => setTimeout(resolve, backoff));
       }
@@ -337,7 +338,7 @@ export class AfricasTalkingSms {
       phoneNumber: body.phoneNumber ?? '',
       networkCode: body.networkCode ?? '',
       failureReason: body.failureReason,
-      retryCount: body.retryCount ? parseInt(body.retryCount) : undefined,
+      retryCount: body.retryCount ? parseInt(body.retryCount, 10) : undefined,
     };
   }
 
@@ -349,12 +350,19 @@ export class AfricasTalkingSms {
   }
 
   /**
-   * Get total cost from response
+   * Get total cost from response in integer minor units.
+   *
+   * Bug fix A-BUG-DEEP #5: previously summed `parseFloat` costs which
+   * accumulated IEEE-754 drift across many recipients (e.g.
+   * 0.1 + 0.2 != 0.3). Convert each cost to integer cents
+   * (`Math.round(x * 100)`) and sum in integer space so the ledger sees
+   * an exact integer.
    */
   getTotalCost(response: SmsResponse): number {
     return response.SMSMessageData.Recipients.reduce((total, r) => {
-      const cost = parseFloat(r.cost.replace(/[^0-9.]/g, ''));
-      return total + (isNaN(cost) ? 0 : cost);
+      const decimal = Number(r.cost.replace(/[^0-9.]/g, ''));
+      if (!Number.isFinite(decimal)) return total;
+      return total + Math.round(decimal * 100);
     }, 0);
   }
 }

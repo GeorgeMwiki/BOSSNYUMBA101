@@ -60,10 +60,34 @@ export interface BuildPlanInput {
 
 /**
  * Distinct approval states the owner can drive a plan through. The 4-eye
- * rule says the same identity that BUILDS the plan cannot APPROVE it —
- * see ApprovalLedger.recordApproval.
+ * rule says the same identity that BUILDS the plan cannot APPROVE it nor
+ * EXECUTE it — see ApprovalLedger.markExecuted.
+ *
+ * `partial_failure` is a terminal state recorded when an executor throws
+ * mid-batch. The plan cannot be retried; an operator must build a NEW
+ * plan id covering only the rows that did NOT land (see
+ * {@link PartialFailureMetadata.completed_batches}).
  */
-export type ApprovalState = 'proposed' | 'approved' | 'rejected' | 'executed';
+export type ApprovalState =
+  | 'proposed'
+  | 'approved'
+  | 'rejected'
+  | 'executed'
+  | 'partial_failure';
+
+/**
+ * Recorded on the ledger entry alongside a `partial_failure` transition.
+ * Captures enough context for an operator to manually replay the unlanded
+ * rows.
+ */
+export interface PartialFailureMetadata {
+  /** Batch indices that DID land before the executor threw. */
+  readonly completed_batches: ReadonlyArray<number>;
+  /** Index of the batch on which the executor threw. */
+  readonly failed_batch_idx: number;
+  /** Stringified Error.message from the failing batch. */
+  readonly failure_reason: string;
+}
 
 export interface ApprovalRecord {
   readonly ingest_plan_id: string;

@@ -29,6 +29,7 @@
     "db:seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
+    "@bossnyumba/database": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",
     "@prisma/client": "^5.7.0",
     "bullmq": "^5.1.0",

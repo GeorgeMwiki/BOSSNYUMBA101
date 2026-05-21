@@ -12,6 +12,7 @@ import { buildProvenance } from '../provenance/hash.js';
 const TENANT = 'tenant-store-test';
 
 const baseProvenanceSeed = {
+  tenant_id: TENANT,
   file_hash: 'fh',
   conversation_id: 'cv',
   message_id: 'msg',

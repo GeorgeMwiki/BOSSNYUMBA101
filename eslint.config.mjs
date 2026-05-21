@@ -143,6 +143,25 @@ export default [
       'no-new-func': 'error',
       'no-script-url': 'error',
 
+      // ---- Numeric-parsing discipline (A-BUG-DEEP #10) ----
+      // `parseInt` without radix is a recurring source of bugs (e.g.
+      // octal interpretation of leading-zero strings on Node <22). Force
+      // an explicit radix everywhere.
+      radix: ['error', 'always'],
+
+      // ---- Insecure randomness (A-BUG-DEEP #11) ----
+      // Math.random() is fast but not unguessable; ID-generation paths
+      // must use crypto.randomUUID() or nanoid. Surface every call site
+      // as a warning — legitimate uses (jitter sleeps, mock fixtures)
+      // can suppress per-line; the security review picks up the rest.
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: "CallExpression[callee.object.name='Math'][callee.property.name='random']",
+          message: 'Math.random() is not unguessable. Use crypto.randomUUID() or nanoid for IDs.',
+        },
+      ],
+
       // ---- Console discipline ----
       // Allow warn/error (operational signals) but flag info/log/debug so they
       // get routed through @bossnyumba/observability instead.

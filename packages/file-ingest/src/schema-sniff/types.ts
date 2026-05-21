@@ -60,9 +60,15 @@ export interface InferredSchema {
 /**
  * Internal representation of a tabular dataset shared by all source
  * adapters. Not exported as part of the public API.
+ *
+ * `ingest_warnings` carries non-fatal advisories raised during parsing
+ * (e.g. papaparse `result.errors`, redaction notes from the PDF
+ * adapter). Adapters that produce no warnings still emit an empty array
+ * for callers' uniform-shape convenience.
  */
 export interface ParsedTable {
   readonly headers: ReadonlyArray<string>;
   readonly rows: ReadonlyArray<ReadonlyArray<string>>;
   readonly source_format: InferredSchema['source_format'];
+  readonly ingest_warnings: ReadonlyArray<string>;
 }

@@ -8,17 +8,20 @@
  * No fakes. Missing or invalid token → throws `SupabaseAuthError`.
  *
  * Token claims convention:
- *   sub                 → user id
- *   email               → optional
- *   user_metadata.tenant_id (or app_metadata.tenant_id)
- *   user_metadata.tenant_name
- *   user_metadata.roles  (or app_metadata.roles): string[]
- *   user_metadata.team_ids: string[]
- *   user_metadata.employee_id: string
+ *   sub                       → user id
+ *   email                     → optional
+ *   app_metadata.tenant_id    → REQUIRED — server-set, immutable to client
+ *   app_metadata.roles        → string[] (server-set; preferred over user_metadata.roles)
+ *   user_metadata.tenant_name → optional display label
+ *   user_metadata.team_ids    → string[]
+ *   user_metadata.employee_id → string
  *
- * In Supabase, tenant assignment is typically managed via `app_metadata`
- * (set server-side; immutable from client). We honor both metadata maps but
- * prefer `app_metadata` when both are present.
+ * SECURITY (F6, BOSSNYUMBA101 Supabase audit):
+ * `tenant_id` MUST come from `app_metadata` ONLY. `user_metadata` is
+ * client-mutable — a malicious user could self-promote into another tenant
+ * by editing their own Supabase profile. If `user_metadata.tenant_id` is
+ * present and disagrees with `app_metadata.tenant_id`, the token is rejected
+ * with a security-level error.
  */
 
 import { jwtVerify, type JWTPayload } from 'jose';
@@ -71,6 +74,11 @@ export interface VerifyOptions {
 /**
  * Verify and project a Supabase access token. Throws SupabaseAuthError on
  * any signature, expiry, or claim-shape failure.
+ *
+ * SECURITY: `tenant_id` is resolved EXCLUSIVELY from `app_metadata`
+ * (server-set, immutable to client). If `user_metadata.tenant_id` is
+ * present and differs from `app_metadata.tenant_id`, this is treated as an
+ * attempted self-promotion and rejected with a SECURITY-level error.
  */
 export async function verifySupabaseJwt(
   token: string,
@@ -87,44 +95,107 @@ export async function verifySupabaseJwt(
     });
     payload = verified.payload;
   } catch (err) {
-    throw new SupabaseAuthError(
-      `invalid_token: ${err instanceof Error ? err.message : String(err)}`,
-      401
-    );
+    // F9 (BOSSNYUMBA101 Supabase audit): jose surfaces granular failure
+    // reasons (`signature verification failed`, `"exp" claim timestamp
+    // check failed`, `unsupported "alg" header value`, etc.). Returning
+    // those verbatim creates an oracle for attackers — they can probe to
+    // learn whether the secret rotated, the token expired, or the alg
+    // is mismatched. In production we collapse to a single opaque code
+    // and emit the full detail to the server logger so an operator can
+    // still triage from logs. Dev/test keep the verbose path so test
+    // assertions can introspect the failure reason without booting a
+    // logger.
+    const isProduction = process.env.NODE_ENV === 'production';
+    const detail = err instanceof Error ? err.message : String(err);
+    if (isProduction) {
+      // eslint-disable-next-line no-console
+      console.error('supabase-auth.verifySupabaseJwt: token rejected', {
+        reason: detail,
+        name: err instanceof Error ? err.name : 'unknown',
+      });
+      throw new SupabaseAuthError('invalid_token', 401);
+    }
+    throw new SupabaseAuthError(`invalid_token: ${detail}`, 401);
   }
 
   const userId = String(payload.sub ?? '');
   if (!userId) throw new SupabaseAuthError('missing_subject', 401);
 
-  // Supabase puts the metadata in either `app_metadata` (server-managed) or
-  // `user_metadata` (client-modifiable). app_metadata wins.
+  // Supabase puts metadata in `app_metadata` (server-managed, immutable to
+  // client) and `user_metadata` (client-modifiable).
+  //
+  // SECURITY (F6): tenant_id MUST come from app_metadata ONLY. Merging the
+  // two maps would allow a malicious user to self-promote into another
+  // tenant by editing their own Supabase profile when app_metadata is empty
+  // (e.g., trigger failed to populate it).
   const appMd = MetadataSchema.safeParse(
     (payload as Record<string, unknown>).app_metadata ?? {}
   );
   const userMd = MetadataSchema.safeParse(
     (payload as Record<string, unknown>).user_metadata ?? {}
   );
-  const app = appMd.success ? appMd.data : {};
-  const user = userMd.success ? userMd.data : {};
-  const md = { ...user, ...app }; // app overrides user
+  const appMetadata = appMd.success ? appMd.data : {};
+  const userMetadata = userMd.success ? userMd.data : {};
 
-  const tenantId = md.tenant_id;
-  if (!tenantId) {
+  // (1) tenant_id is server-side only.
+  const tenantId = appMetadata.tenant_id;
+  if (!tenantId || typeof tenantId !== 'string') {
     throw new SupabaseAuthError(
-      'missing_tenant: user has no tenant_id in app_metadata or user_metadata',
+      'missing_tenant: app_metadata.tenant_id is required (user_metadata.tenant_id is no longer accepted)',
       403
     );
   }
+
+  // (2) Defense in depth: detect self-promotion attempts.
+  // If user_metadata.tenant_id is present AND disagrees with the
+  // server-set app_metadata.tenant_id, this is a strong signal that the
+  // user tried to move themselves to another tenant via the client-mutable
+  // metadata map.
+  const userTenantId = userMetadata.tenant_id;
+  if (
+    typeof userTenantId === 'string' &&
+    userTenantId.length > 0 &&
+    userTenantId !== tenantId
+  ) {
+    // SECURITY-level alert. Use console.error so it surfaces in any
+    // structured-log pipeline (Sentry, Datadog, CloudWatch, etc.).
+    // We intentionally include both values so a security responder can
+    // identify the attempted target tenant.
+    console.error('[SECURITY] supabase-auth: tenant_id self-promotion attempt blocked', {
+      severity: 'SECURITY',
+      event: 'tenant_id_self_promotion_attempt',
+      userId,
+      appTenantId: tenantId,
+      userMetadataTenantId: userTenantId,
+    });
+    throw new SupabaseAuthError(
+      'tenant_mismatch: user_metadata.tenant_id disagrees with app_metadata.tenant_id (self-promotion blocked)',
+      403
+    );
+  }
+
+  // (3) Other fields: roles prefer app_metadata (server-set) over
+  // user_metadata. Non-security fields (tenant_name, team_ids,
+  // employee_id, environment) may fall through to user_metadata.
+  const roles = appMetadata.roles ?? userMetadata.roles ?? [];
+  const tenantName = appMetadata.tenant_name ?? userMetadata.tenant_name;
+  const teamIds = appMetadata.team_ids ?? userMetadata.team_ids ?? [];
+  const employeeId = appMetadata.employee_id ?? userMetadata.employee_id;
+  const environment =
+    appMetadata.environment ??
+    userMetadata.environment ??
+    opts.defaultEnvironment ??
+    'production';
 
   return {
     userId,
     email: typeof payload.email === 'string' ? payload.email : undefined,
     tenantId,
-    tenantName: md.tenant_name,
-    environment: md.environment ?? opts.defaultEnvironment ?? 'production',
-    roles: md.roles ?? [],
-    teamIds: md.team_ids ?? [],
-    employeeId: md.employee_id,
+    tenantName,
+    environment,
+    roles,
+    teamIds,
+    employeeId,
     raw: payload,
   };
 }
@@ -141,6 +212,10 @@ export function extractBearer(headerValue: string | null | undefined): string | 
 /**
  * Project a verified principal into the Brain's `AITenantContext` /
  * `AIActor` / `VisibilityViewer` triple.
+ *
+ * The principal's `tenantId` is already guaranteed by `verifySupabaseJwt`
+ * to come from `app_metadata.tenant_id` (server-set, immutable to client);
+ * never from `user_metadata.tenant_id`. See F6 security note in this file.
  */
 export function principalToBrainContexts(p: BrainAuthPrincipal): {
   tenant: {

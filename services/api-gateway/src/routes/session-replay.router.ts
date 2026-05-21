@@ -50,6 +50,7 @@ import {
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 import type { SessionReplayStoragePort } from '../storage/session-replay-storage';
+import { e400, e401, e404, e429, e500, e503, errorResponse } from '../utils/error-response';
 
 // ─────────────────────────────────────────────────────────────────────
 // Validation
@@ -136,16 +137,10 @@ function getServiceOrNull(c: any): SessionReplayChunksService | null {
 }
 
 function unavailable(c: any) {
-  return c.json(
-    {
-      success: false,
-      error: {
-        code: 'SESSION_REPLAY_UNAVAILABLE',
-        message:
-          'Session replay requires a live database and cold-storage backend.',
-      },
-    },
-    503,
+  return e503(
+    c,
+    'SESSION_REPLAY_UNAVAILABLE',
+    'Session replay requires a live database and cold-storage backend.',
   );
 }
 
@@ -194,13 +189,7 @@ app.post(
       | { tenantId: string; userId: string }
       | undefined;
     if (!auth?.tenantId || !auth?.userId) {
-      return c.json(
-        {
-          success: false,
-          error: { code: 'UNAUTHORIZED', message: 'auth context missing' },
-        },
-        401,
-      );
+      return e401(c, 'UNAUTHORIZED', 'auth context missing');
     }
     const body = c.req.valid('json') as z.infer<typeof PostChunkBodySchema>;
     const surface = body.surface ?? 'admin-platform-portal';
@@ -209,15 +198,10 @@ app.post(
     const limit = checkRateLimit(auth.tenantId, body.sessionId, now);
     if (!limit.allowed) {
       c.header('Retry-After', String(limit.retryAfterSec ?? 60));
-      return c.json(
-        {
-          success: false,
-          error: {
-            code: 'SESSION_REPLAY_RATE_LIMITED',
-            message: `Rate limit exceeded: ${MAX_BATCHES_PER_WINDOW} chunks per ${RATE_LIMIT_WINDOW_MS / 60_000} minutes.`,
-          },
-        },
-        429,
+      return e429(
+        c,
+        'SESSION_REPLAY_RATE_LIMITED',
+        `Rate limit exceeded: ${MAX_BATCHES_PER_WINDOW} chunks per ${RATE_LIMIT_WINDOW_MS / 60_000} minutes.`,
       );
     }
 
@@ -227,27 +211,18 @@ app.post(
 
     const gzipBytes = decodeBase64(body.eventsGzipBase64);
     if (!gzipBytes) {
-      return c.json(
-        {
-          success: false,
-          error: {
-            code: 'SESSION_REPLAY_INVALID_PAYLOAD',
-            message: 'eventsGzipBase64 is not valid base64.',
-          },
-        },
-        400,
+      return e400(
+        c,
+        'SESSION_REPLAY_INVALID_PAYLOAD',
+        'eventsGzipBase64 is not valid base64.',
       );
     }
     if (gzipBytes.byteLength > MAX_GZIP_BYTES) {
-      return c.json(
-        {
-          success: false,
-          error: {
-            code: 'SESSION_REPLAY_PAYLOAD_TOO_LARGE',
-            message: `Chunk exceeds the ${MAX_GZIP_BYTES} byte limit.`,
-          },
-        },
+      return errorResponse(
+        c,
         413,
+        'SESSION_REPLAY_PAYLOAD_TOO_LARGE',
+        `Chunk exceeds the ${MAX_GZIP_BYTES} byte limit.`,
       );
     }
 
@@ -265,16 +240,7 @@ app.post(
         'session-replay.error': message,
         'session-replay.stage': 'storage',
       } as Attributes);
-      return c.json(
-        {
-          success: false,
-          error: {
-            code: 'SESSION_REPLAY_STORAGE_FAILED',
-            message,
-          },
-        },
-        500,
-      );
+      return e500(c, 'SESSION_REPLAY_STORAGE_FAILED', message);
     }
 
     const svc = buildService(c, db);
@@ -309,19 +275,12 @@ app.post(
       });
     }
     if (!append.ok) {
-      return c.json(
-        {
-          success: false,
-          error: {
-            code:
-              append.reason === 'invalid'
-                ? 'SESSION_REPLAY_INVALID'
-                : 'SESSION_REPLAY_DB_FAILED',
-            message: `appendChunk failed: ${append.reason}`,
-          },
-        },
-        append.reason === 'invalid' ? 400 : 500,
-      );
+      const code =
+        append.reason === 'invalid'
+          ? 'SESSION_REPLAY_INVALID'
+          : 'SESSION_REPLAY_DB_FAILED';
+      const msg = `appendChunk failed: ${append.reason}`;
+      return append.reason === 'invalid' ? e400(c, code, msg) : e500(c, code, msg);
     }
     return c.json({
       success: true,
@@ -343,23 +302,11 @@ app.get(
       | { tenantId: string; userId: string }
       | undefined;
     if (!auth?.tenantId) {
-      return c.json(
-        {
-          success: false,
-          error: { code: 'UNAUTHORIZED', message: 'auth context missing' },
-        },
-        401,
-      );
+      return e401(c, 'UNAUTHORIZED', 'auth context missing');
     }
     const sessionId = c.req.param('sessionId');
     if (!sessionId) {
-      return c.json(
-        {
-          success: false,
-          error: { code: 'INVALID_INPUT', message: 'sessionId is required' },
-        },
-        400,
-      );
+      return e400(c, 'INVALID_INPUT', 'sessionId is required');
     }
     const db = getDbOrNull(c);
     if (!db) return unavailable(c);
@@ -387,13 +334,7 @@ app.get(
       | { tenantId: string; userId: string }
       | undefined;
     if (!auth?.tenantId) {
-      return c.json(
-        {
-          success: false,
-          error: { code: 'UNAUTHORIZED', message: 'auth context missing' },
-        },
-        401,
-      );
+      return e401(c, 'UNAUTHORIZED', 'auth context missing');
     }
     const db = getDbOrNull(c);
     if (!db) return unavailable(c);
@@ -419,24 +360,12 @@ app.get(
       | { tenantId: string; userId: string }
       | undefined;
     if (!auth?.tenantId) {
-      return c.json(
-        {
-          success: false,
-          error: { code: 'UNAUTHORIZED', message: 'auth context missing' },
-        },
-        401,
-      );
+      return e401(c, 'UNAUTHORIZED', 'auth context missing');
     }
     const sessionId = c.req.param('sessionId');
     const chunkId = c.req.param('chunkId');
     if (!sessionId || !chunkId) {
-      return c.json(
-        {
-          success: false,
-          error: { code: 'INVALID_INPUT', message: 'sessionId and chunkId are required' },
-        },
-        400,
-      );
+      return e400(c, 'INVALID_INPUT', 'sessionId and chunkId are required');
     }
     const db = getDbOrNull(c);
     const storage = getStorageOrNull(c);
@@ -448,13 +377,7 @@ app.get(
     });
     const row = rows.find((r) => r.id === chunkId);
     if (!row) {
-      return c.json(
-        {
-          success: false,
-          error: { code: 'NOT_FOUND', message: 'chunk not found' },
-        },
-        404,
-      );
+      return e404(c, 'NOT_FOUND', 'chunk not found');
     }
     try {
       const bytes = await storage.download(row.storageUri);
@@ -466,16 +389,7 @@ app.get(
       return c.body(bytes);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown';
-      return c.json(
-        {
-          success: false,
-          error: {
-            code: 'SESSION_REPLAY_STORAGE_DOWNLOAD_FAILED',
-            message,
-          },
-        },
-        500,
-      );
+      return e500(c, 'SESSION_REPLAY_STORAGE_DOWNLOAD_FAILED', message);
     }
   },
 );

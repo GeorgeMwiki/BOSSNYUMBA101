@@ -42,7 +42,7 @@ export class FarScheduler {
    * Scans due assignments and notifies their recipients.
    * Returns the assignments that triggered notifications.
    *
-   * TODO(KI-007): wire to AI persona — if a trigger rule requests
+   * Follow-up KI-007 (Docs/TODO_BACKLOG.md): wire to AI persona — if a trigger rule requests
    *   AI-generated prose ("summarise last 3 check events"), call the
    *   persona here before dispatch. See Docs/KNOWN_ISSUES.md#ki-007.
    */

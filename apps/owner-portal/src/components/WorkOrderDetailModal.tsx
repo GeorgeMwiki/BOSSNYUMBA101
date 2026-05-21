@@ -20,7 +20,8 @@ import {
 } from 'lucide-react';
 import { Spinner } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatCurrency, formatDate, formatDateTime } from '../lib/api';
+import { formatDate, formatDateTime } from '../lib/api';
+import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface WorkOrderEvent {
@@ -75,6 +76,9 @@ export function WorkOrderDetailModal({
   isPendingApproval,
 }: WorkOrderDetailModalProps) {
   const t = useTranslations('workOrderModal');
+  // Tenant-bound formatter — see `useTenantCurrency`. Renders `'—'` when
+  // the resolution chain is empty rather than crashing the modal.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const [activeTab, setActiveTab] = useState<'details' | 'timeline' | 'evidence' | 'costs'>('details');
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);

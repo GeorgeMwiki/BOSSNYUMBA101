@@ -13,3 +13,11 @@ export { parsePdfText } from './pdf-adapter.js';
 export type { PdfTextParseOptions } from './pdf-adapter.js';
 export { noopOcrProvider, staticOcrProvider, ocrToTable } from './ocr-shim.js';
 export type { OcrProvider } from './ocr-shim.js';
+export {
+  DosGuardError,
+  MAX_COLUMNS,
+  MAX_FILE_BYTES,
+  MAX_ROWS,
+  type DosGuardDimension,
+} from './dos-guards.js';
+export { redactPiiFromString } from './pii-redactor.js';

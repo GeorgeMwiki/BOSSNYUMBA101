@@ -407,7 +407,8 @@ export class ConversationOrchestrator {
       direction: 'inbound',
       type: message.type as MessageHistoryItem['type'],
       content: this.extractTextContent(message) || `[${message.type}]`,
-      timestamp: new Date(parseInt(message.timestamp) * 1000),
+      // Bug fix A-BUG-DEEP #10: parseInt requires radix.
+      timestamp: new Date(parseInt(message.timestamp, 10) * 1000),
       status: 'delivered',
     };
     // Round-3 audit M5 fix: immutable replace + truncation sentinel.
@@ -630,10 +631,11 @@ export class ConversationOrchestrator {
       occupants = 1;
     } else if (replyId === 'occupants_2' || text === '2') {
       occupants = 2;
-    } else if (replyId === 'occupants_3_plus' || (text && parseInt(text) >= 3)) {
-      occupants = text ? parseInt(text) || 3 : 3;
+    // Bug fix A-BUG-DEEP #10: parseInt requires explicit radix.
+    } else if (replyId === 'occupants_3_plus' || (text && parseInt(text, 10) >= 3)) {
+      occupants = text ? parseInt(text, 10) || 3 : 3;
     } else if (text) {
-      const num = parseInt(text);
+      const num = parseInt(text, 10);
       if (!isNaN(num) && num > 0) {
         occupants = num;
       }
@@ -718,7 +720,8 @@ export class ConversationOrchestrator {
     const rawName = text
       .replace(phone, '')
       // eslint-disable-next-line no-control-regex -- intentional: strip control chars from tenant-supplied name before template substitution.
-      .replace(/[ -​‌‍﻿]/g, '')
+      .replace(/[\x00-\x1f\x7f]/g, '')
+      .replace(/\u200b/g, '').replace(/\u200c/g, '').replace(/\u200d/g, '').replace(/\ufeff/g, '')
       .replace(/[,\-]/g, '')
       .trim();
     // Allow letters (any Unicode script), digits, spaces, dot and apostrophe only.

@@ -21,7 +21,8 @@
  *      admin-only authentication applied at the composition root.
  *
  * Adding an entry is a security decision. Reviewers MUST verify the
- * reason describes a real architectural exemption — never a TODO.
+ * reason describes a real architectural exemption — never a deferred
+ * task. Deferred tasks belong in Docs/TODO_BACKLOG.md.
  *
  * Keys are paths RELATIVE to the repo root.
  */

@@ -45,6 +45,8 @@ interface ChatIngestRequest {
   readonly fileFormat: 'csv';
   readonly proposer_actor_id: string;
   readonly approver_actor_id: string;
+  /** 4-eye: executor must differ from BOTH proposer and approver. */
+  readonly executor_actor_id: string;
 }
 
 interface ChatIngestResponse {
@@ -96,7 +98,7 @@ async function runIngestFlow(req: ChatIngestRequest): Promise<ChatIngestResponse
   const executor = new IngestExecutor(store, ledger);
   const report = await executor.execute(plan, {
     tenant_id: req.tenant_id,
-    executor_actor_id: req.approver_actor_id,
+    executor_actor_id: req.executor_actor_id,
   });
 
   return {
@@ -122,6 +124,7 @@ describe('IngestToolStub — end-to-end API surface', () => {
       fileFormat: 'csv',
       proposer_actor_id: 'mr-mwikila',
       approver_actor_id: 'owner-alice',
+      executor_actor_id: 'system-executor',
     });
     expect(res.route).toEqual('auto-map');
     expect(res.entities_created).toEqual(8);
@@ -139,6 +142,7 @@ describe('IngestToolStub — end-to-end API surface', () => {
       fileFormat: 'csv',
       proposer_actor_id: 'mr-mwikila',
       approver_actor_id: 'owner-alice',
+      executor_actor_id: 'system-executor',
     });
     expect(res.entities_created).toEqual(8);
     expect(res.tab_link).toEqual('app://entities/property');
@@ -160,6 +164,7 @@ describe('IngestToolStub — end-to-end API surface', () => {
       fileFormat: 'csv',
       proposer_actor_id: 'mr-mwikila',
       approver_actor_id: 'owner-alice',
+      executor_actor_id: 'system-executor',
     });
     expect(['llm-proposal', 'manual-review']).toContain(res.route);
   });

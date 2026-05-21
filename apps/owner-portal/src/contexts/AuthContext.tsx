@@ -15,6 +15,14 @@ interface Tenant {
   id: string;
   name: string;
   slug: string;
+  /**
+   * ISO-4217 default display currency for the tenant. Wave 4 made
+   * `formatCurrency` require an explicit currency so every callsite
+   * pulls this through `useTenantCurrency`. Optional because legacy
+   * tenants seeded before the migration may not have it set — callers
+   * are expected to fall back to a platform default in that case.
+   */
+  defaultCurrency?: string;
 }
 
 interface Property {
@@ -54,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState<number>(
-    parseInt(localStorage.getItem('sessionTimeout') || String(DEFAULT_SESSION_TIMEOUT))
+    parseInt(localStorage.getItem('sessionTimeout') || String(DEFAULT_SESSION_TIMEOUT), 10)
   );
   const [lastActivity, setLastActivity] = useState<Date | null>(null);
 

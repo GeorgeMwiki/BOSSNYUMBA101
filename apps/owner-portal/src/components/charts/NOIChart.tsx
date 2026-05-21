@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useTranslations } from 'next-intl';
-import { formatCurrency } from '../../lib/api';
+import { useTenantCurrencyFormatter } from '../../hooks/useTenantCurrency';
 
 export interface NOIData {
   month: string;
@@ -27,6 +27,8 @@ interface NOIChartProps {
 
 export function NOIChart({ data, className }: NOIChartProps) {
   const t = useTranslations('noiChart');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const latestNOI = data[data.length - 1]?.noi || 0;
   const previousNOI = data[data.length - 2]?.noi || 0;
   const noiChange = previousNOI > 0 ? ((latestNOI - previousNOI) / previousNOI) * 100 : 0;

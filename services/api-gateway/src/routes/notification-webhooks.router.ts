@@ -16,6 +16,41 @@
 
 import { Hono } from 'hono';
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import {
+  createWebhookIdempotencyMiddleware,
+  extractKeyFromHeaders,
+  type RedisLike,
+} from '../middleware/webhook-idempotency.middleware';
+// DA1 MEDIUM: webhook signature rejects must emit the canonical
+// `{ success: false, error: {...} }` envelope so SDK clients can use a
+// single parser. `e401` builds the 401 form; `e400` for malformed
+// bodies. Locked-down envelope contract lives at
+// `services/api-gateway/src/utils/error-response.ts`.
+import { e400, e401 } from '../utils/error-response';
+
+/**
+ * Resolves a tenant id from a provider-specific selector.
+ *
+ * The composition root supplies a resolver backed by the channel-config
+ * registry (database or environment-driven map). Each provider passes
+ * its own selector key:
+ *
+ *   - twilio          → the inbound `To` or `From` phone number (E.164)
+ *   - meta            → the WhatsApp Business Account ID from `entry[0].id`
+ *   - africastalking  → the AT username/account id from the body
+ *
+ * Returns `null` when no mapping exists — the router uses this to REJECT
+ * the request (`401`) so a forged-but-signed payload can never land in
+ * the anonymous tenant bucket and poison cross-tenant idempotency keys.
+ *
+ * Closes CRITICAL audit finding: `extractTenantId` was never wired,
+ * so every webhook landed under `webhook:<scope>:anon:<key>` regardless
+ * of which tenant it belonged to.
+ */
+export type TenantResolver = (
+  provider: 'twilio' | 'meta' | 'africastalking',
+  selector: string
+) => string | null | Promise<string | null>;
 
 export interface WebhookHandlerDeps {
   /** Handler invoked with the parsed status update. Kept abstract so the
@@ -25,8 +60,35 @@ export interface WebhookHandlerDeps {
     providerMessageId?: string;
     status: string;
     occurredAt: Date;
+    tenantId: string;
     raw: Record<string, unknown>;
   }): Promise<void> | void;
+  /**
+   * Redis client for cross-replica webhook idempotency (audit P3 from
+   * `.audit/deep-audit-2026-05-20.md`). Passing `null` causes every
+   * webhook POST to 503 — explicit fail-loud so duplicate deliveries
+   * never silently re-execute. Callers in dev that want best-effort
+   * behaviour should inject an in-memory fake that implements the
+   * `RedisLike` surface.
+   */
+  readonly idempotencyRedis?: RedisLike | null;
+  /**
+   * Tenant resolver (CRITICAL audit fix). When omitted, the router
+   * falls back to env-driven maps:
+   *
+   *   - TWILIO_PHONE_TENANT_MAP        ("+254700000001=tnt_a,+254700000002=tnt_b")
+   *   - META_WABA_TENANT_MAP           ("1234567890=tnt_a,9876543210=tnt_b")
+   *   - AFRICASTALKING_USERNAME_TENANT_MAP ("bossnyumba=tnt_a")
+   *
+   * If no mapping resolves, the webhook is REJECTED with 401 — never
+   * silently bucketed as `'anon'`.
+   */
+  readonly tenantResolver?: TenantResolver;
+  /** Optional logger surfaced to the idempotency middleware. */
+  readonly logger?: {
+    readonly error: (meta: unknown, msg: string) => void;
+    readonly warn?: (meta: unknown, msg: string) => void;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -169,6 +231,79 @@ function safeEqualB64(expectedB64: string, providedB64: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Tenant resolution (CRITICAL audit fix)
+// ---------------------------------------------------------------------------
+//
+// Each webhook MUST be routed to a known tenant. If we cannot derive the
+// tenant we reject with 401 — never bucket as `'anon'`, which would let a
+// forged-but-signed webhook poison another tenant's idempotency cache.
+//
+// Environment maps are the default resolver — small ops surface, no DB
+// dependency at boot, and easy to audit. Composition root may pass a
+// richer `tenantResolver` (e.g. backed by the channel-config table)
+// without touching this file.
+
+/** Parse `"k1=v1,k2=v2"` → Map(k1→v1, k2→v2). Empty → empty Map. */
+function parseEnvMap(envValue: string | undefined): ReadonlyMap<string, string> {
+  if (!envValue || envValue.trim().length === 0) return new Map();
+  const m = new Map<string, string>();
+  for (const pair of envValue.split(',')) {
+    const eq = pair.indexOf('=');
+    if (eq <= 0) continue;
+    const k = pair.slice(0, eq).trim();
+    const v = pair.slice(eq + 1).trim();
+    if (k.length > 0 && v.length > 0) m.set(k, v);
+  }
+  return m;
+}
+
+function envResolver(
+  provider: 'twilio' | 'meta' | 'africastalking',
+  selector: string
+): string | null {
+  const map =
+    provider === 'twilio'
+      ? parseEnvMap(process.env.TWILIO_PHONE_TENANT_MAP)
+      : provider === 'meta'
+        ? parseEnvMap(process.env.META_WABA_TENANT_MAP)
+        : parseEnvMap(process.env.AFRICASTALKING_USERNAME_TENANT_MAP);
+  return map.get(selector) ?? null;
+}
+
+/** Extract Twilio tenant selector — prefer the inbound `To` (our number;
+ *  stable per channel-config) and fall back to `From` (caller's number;
+ *  only used by some delivery-status callbacks). */
+function extractTwilioSelector(payload: Record<string, unknown>): string | null {
+  const to = typeof payload['To'] === 'string' ? (payload['To'] as string).trim() : '';
+  if (to.length > 0) return to;
+  const from = typeof payload['From'] === 'string' ? (payload['From'] as string).trim() : '';
+  return from.length > 0 ? from : null;
+}
+
+/** Extract Meta WhatsApp Business Account ID from the standard webhook
+ *  envelope: `entry[0].id`. */
+function extractMetaSelector(payload: Record<string, unknown>): string | null {
+  const entry = (payload as { entry?: Array<Record<string, unknown>> }).entry;
+  if (!Array.isArray(entry) || entry.length === 0) return null;
+  const id = entry[0]?.id;
+  return typeof id === 'string' && id.length > 0 ? id : null;
+}
+
+/** Extract Africa's Talking account selector — they POST a `username`
+ *  field that maps 1:1 to an AT account. */
+function extractAfricasTalkingSelector(
+  payload: Record<string, unknown>
+): string | null {
+  const candidate =
+    typeof payload['username'] === 'string'
+      ? (payload['username'] as string)
+      : typeof payload['accountId'] === 'string'
+        ? (payload['accountId'] as string)
+        : '';
+  return candidate.trim().length > 0 ? candidate.trim() : null;
+}
+
+// ---------------------------------------------------------------------------
 // Status normalization
 // ---------------------------------------------------------------------------
 
@@ -219,25 +354,137 @@ function normalizeMetaStatus(raw: Record<string, unknown>): {
 
 export function createNotificationWebhookRouter(deps: WebhookHandlerDeps): Hono {
   const app = new Hono();
+  const resolveTenant: TenantResolver = deps.tenantResolver ?? envResolver;
+
+  /**
+   * Body-derived tenant extractor for the idempotency middleware.
+   * Clones the raw request before reading so the route handler still
+   * sees the unconsumed stream. Returns `null` when no tenant maps
+   * (the middleware falls back to `'anon'` scoping for the KEY — but
+   * the route handler does the actual REJECT decision, so the
+   * middleware fallback is harmless if the route rejects below).
+   *
+   * Why we still scope the middleware: a forged signed payload would
+   * fail signature verification IN the route, so it never reaches the
+   * cache write path. But correctly-signed duplicates from tenant A
+   * must not collide with tenant B's keys; the middleware-level
+   * tenant scoping is the defence-in-depth that achieves that.
+   */
+  const tenantExtractor = (
+    provider: 'twilio' | 'meta' | 'africastalking',
+    extractSelector: (payload: Record<string, unknown>) => string | null
+  ) => {
+    return async (c: import('hono').Context): Promise<string | null> => {
+      let text: string;
+      try {
+        text = await c.req.raw.clone().text();
+      } catch {
+        return null;
+      }
+      if (text.length === 0) return null;
+      let payload: Record<string, unknown>;
+      try {
+        payload = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        // Twilio sends form-encoded bodies — try that next.
+        try {
+          payload = Object.fromEntries(new URLSearchParams(text).entries());
+        } catch {
+          return null;
+        }
+      }
+      const selector = extractSelector(payload);
+      if (!selector) return null;
+      try {
+        const resolved = await resolveTenant(provider, selector);
+        return resolved ?? null;
+      } catch {
+        return null;
+      }
+    };
+  };
+
+  // -------------------------------------------------------------------------
+  // Idempotency middleware — keyed by provider-specific header so each
+  // provider scopes its own cache namespace. Audit P3 fix.
+  //
+  // Header priority list per provider:
+  //   - Africa's Talking: only emits an `id` inside the JSON body and
+  //     does NOT use a token header. We accept the standard
+  //     `Idempotency-Key` for callers proxying via our own dispatcher,
+  //     and fall through (no cache) for direct AT deliveries — the
+  //     downstream onDeliveryStatus subscriber MUST be idempotent at
+  //     the providerMessageId layer.
+  //   - Twilio: `X-Twilio-Idempotency-Token` (per Twilio docs) or
+  //     fall back to `Idempotency-Key`.
+  //   - Meta: no documented dedupe header; same fallback to
+  //     `Idempotency-Key` for proxied callers.
+  //
+  // Scope is the provider name — cross-provider collision is
+  // mathematically possible (different providers minting matching
+  // ULIDs) but vanishingly unlikely; the namespace makes it impossible.
+  //
+  // CRITICAL audit fix: pass `extractTenantId` so the cache key
+  // incorporates the resolved tenant (cross-tenant cache-poisoning
+  // defence). Falls back to env-driven maps when no resolver is
+  // injected; route handlers REJECT with 401 if no tenant can be
+  // resolved, so the middleware's null-tenant scoping is moot.
+  // -------------------------------------------------------------------------
+  const idempotency = (
+    scope: 'twilio' | 'meta' | 'africastalking',
+    selectorFn: (payload: Record<string, unknown>) => string | null,
+    ...headers: string[]
+  ) =>
+    createWebhookIdempotencyMiddleware({
+      redis: deps.idempotencyRedis ?? null,
+      scope,
+      extractKey: extractKeyFromHeaders(...headers),
+      extractTenantId: tenantExtractor(scope, selectorFn),
+      logger: deps.logger,
+    });
+
+  app.use(
+    '/africastalking',
+    idempotency('africastalking', extractAfricasTalkingSelector, 'idempotency-key')
+  );
+  app.use(
+    '/twilio',
+    idempotency(
+      'twilio',
+      extractTwilioSelector,
+      'x-twilio-idempotency-token',
+      'idempotency-key'
+    )
+  );
+  app.use('/meta', idempotency('meta', extractMetaSelector, 'idempotency-key'));
 
   app.post('/africastalking', async (c) => {
     const raw = await c.req.raw.text();
     const sig = c.req.header('x-at-signature');
     const ts = c.req.header(TIMESTAMP_HEADER);
     if (!verifyAfricasTalking(raw, sig, ts)) {
-      return c.json({ error: { code: 'INVALID_SIGNATURE', message: 'Invalid signature' } }, 401);
+      return e401(c, 'INVALID_SIGNATURE', 'Invalid signature');
     }
     let payload: Record<string, unknown> = {};
     try {
       payload = JSON.parse(raw);
     } catch {
-      return c.json({ error: { code: 'INVALID_BODY', message: 'Malformed JSON' } }, 400);
+      return e400(c, 'INVALID_BODY', 'Malformed JSON');
+    }
+    const selector = extractAfricasTalkingSelector(payload);
+    if (!selector) {
+      return e401(c, 'TENANT_UNRESOLVED', 'No account id in body');
+    }
+    const tenantId = await resolveTenant('africastalking', selector);
+    if (!tenantId) {
+      return e401(c, 'TENANT_UNRESOLVED', 'Unknown account');
     }
     await deps.onDeliveryStatus({
       provider: 'africastalking',
       providerMessageId: (payload as { id?: string }).id,
       status: normalizeAfricasTalkingStatus(payload),
       occurredAt: new Date(),
+      tenantId,
       raw: payload,
     });
     return c.json({ received: true });
@@ -252,7 +499,7 @@ export function createNotificationWebhookRouter(deps: WebhookHandlerDeps): Hono 
     const requestUrl =
       process.env.TWILIO_WEBHOOK_URL ?? (process.env.NODE_ENV !== 'production' ? c.req.url : undefined);
     if (!verifyTwilio(raw, sig, requestUrl)) {
-      return c.json({ error: { code: 'INVALID_SIGNATURE', message: 'Invalid signature' } }, 401);
+      return e401(c, 'INVALID_SIGNATURE', 'Invalid signature');
     }
     // Twilio uses form-encoded bodies by default; JSON webhooks are opt-in.
     let payload: Record<string, unknown> = {};
@@ -263,11 +510,20 @@ export function createNotificationWebhookRouter(deps: WebhookHandlerDeps): Hono 
       const params = new URLSearchParams(raw);
       payload = Object.fromEntries(params.entries());
     }
+    const selector = extractTwilioSelector(payload);
+    if (!selector) {
+      return e401(c, 'TENANT_UNRESOLVED', 'No To/From in body');
+    }
+    const tenantId = await resolveTenant('twilio', selector);
+    if (!tenantId) {
+      return e401(c, 'TENANT_UNRESOLVED', 'Unknown phone number');
+    }
     await deps.onDeliveryStatus({
       provider: 'twilio',
       providerMessageId: (payload as { MessageSid?: string }).MessageSid,
       status: normalizeTwilioStatus(payload),
       occurredAt: new Date(),
+      tenantId,
       raw: payload,
     });
     return c.json({ received: true });
@@ -278,13 +534,21 @@ export function createNotificationWebhookRouter(deps: WebhookHandlerDeps): Hono 
     const sig = c.req.header('x-hub-signature-256');
     const ts = c.req.header(TIMESTAMP_HEADER);
     if (!verifyMeta(raw, sig, ts)) {
-      return c.json({ error: { code: 'INVALID_SIGNATURE', message: 'Invalid signature' } }, 401);
+      return e401(c, 'INVALID_SIGNATURE', 'Invalid signature');
     }
     let payload: Record<string, unknown> = {};
     try {
       payload = JSON.parse(raw);
     } catch {
-      return c.json({ error: { code: 'INVALID_BODY', message: 'Malformed JSON' } }, 400);
+      return e400(c, 'INVALID_BODY', 'Malformed JSON');
+    }
+    const selector = extractMetaSelector(payload);
+    if (!selector) {
+      return e401(c, 'TENANT_UNRESOLVED', 'No entry[0].id in body');
+    }
+    const tenantId = await resolveTenant('meta', selector);
+    if (!tenantId) {
+      return e401(c, 'TENANT_UNRESOLVED', 'Unknown WhatsApp Business Account');
     }
     const { status, providerMessageId } = normalizeMetaStatus(payload);
     await deps.onDeliveryStatus({
@@ -292,6 +556,7 @@ export function createNotificationWebhookRouter(deps: WebhookHandlerDeps): Hono 
       providerMessageId,
       status,
       occurredAt: new Date(),
+      tenantId,
       raw: payload,
     });
     return c.json({ received: true });
@@ -308,4 +573,9 @@ export const __internal = {
   normalizeAfricasTalkingStatus,
   normalizeTwilioStatus,
   normalizeMetaStatus,
+  parseEnvMap,
+  envResolver,
+  extractTwilioSelector,
+  extractMetaSelector,
+  extractAfricasTalkingSelector,
 };

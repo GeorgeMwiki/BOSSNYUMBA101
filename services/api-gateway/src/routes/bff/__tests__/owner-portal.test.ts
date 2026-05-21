@@ -74,13 +74,25 @@ function mountWithContext(
  */
 function emptyRepos() {
   const empty = { items: [], total: 0 };
+  // After the BFF aggregation refactor, getOwnerScope calls
+  // `findByPropertyIds` on units / leases / customers / invoices /
+  // payments instead of `findMany + JS .filter`. The stub keeps both
+  // shapes so older tests that still poke `findMany` directly continue
+  // to pass.
   return {
     properties: { findMany: async () => empty },
-    units: { findMany: async () => empty },
-    leases: { findMany: async () => empty },
-    customers: { findMany: async () => empty },
-    invoices: { findMany: async () => empty },
-    payments: { findMany: async () => empty },
+    units: { findMany: async () => empty, findByPropertyIds: async () => empty },
+    leases: { findMany: async () => empty, findByPropertyIds: async () => empty },
+    customers: { findMany: async () => empty, findByPropertyIds: async () => empty },
+    invoices: {
+      findMany: async () => empty,
+      findByPropertyIds: async () => ({ ...empty, limit: 1000, offset: 0, hasMore: false }),
+      sumBalanceByCustomer: async () => 0,
+    },
+    payments: {
+      findMany: async () => empty,
+      findByPropertyIds: async () => ({ ...empty, limit: 1000, offset: 0, hasMore: false }),
+    },
     workOrders: { findMany: async () => empty },
     vendors: { findByIds: async () => [] },
     documents: { findMany: async () => empty },
@@ -342,17 +354,23 @@ describe('GET /owner/tenants/communications', () => {
 
   it('reshapes messaging conversations into a flat communications list', async () => {
     // Build a fully-linked owner scope so getOwnerScope keeps the customer
-    // in-scope (customer → lease → property must all be present).
+    // in-scope (customer → lease → property must all be present). After
+    // the BFF aggregation refactor, getOwnerScope calls findByPropertyIds
+    // on units / leases / customers / invoices / payments — we populate
+    // BOTH legacy `findMany` and the new `findByPropertyIds` so this
+    // test exercises the new code path cleanly.
     const repos = emptyRepos();
     repos.properties.findMany = async () => ({
       items: [{ id: 'prop-1', name: 'Sunrise' }],
       total: 1,
     });
-    repos.units.findMany = async () => ({
+    const unitsRows = {
       items: [{ id: 'unit-1', propertyId: 'prop-1', unitCode: 'U1' }],
       total: 1,
-    });
-    repos.leases.findMany = async () => ({
+    };
+    repos.units.findMany = async () => unitsRows;
+    repos.units.findByPropertyIds = async () => unitsRows;
+    const leasesRows = {
       items: [
         {
           id: 'lease-1',
@@ -362,13 +380,17 @@ describe('GET /owner/tenants/communications', () => {
         },
       ],
       total: 1,
-    });
-    repos.customers.findMany = async () => ({
+    };
+    repos.leases.findMany = async () => leasesRows;
+    repos.leases.findByPropertyIds = async () => leasesRows;
+    const customersRows = {
       items: [
         { id: 'cust-1', firstName: 'Alice', lastName: 'Resident' },
       ],
       total: 1,
-    });
+    };
+    repos.customers.findMany = async () => customersRows;
+    repos.customers.findByPropertyIds = async () => customersRows;
     repos.messaging.getMessages = async () => [
       {
         id: 'msg-1',
@@ -456,7 +478,11 @@ describe('POST /owner/invitations/co-owner', () => {
     const body = await res.json();
     expect(body.success).toBe(false);
     expect(body.error.code).toBe('NOT_IMPLEMENTED');
-    expect(body.error.flagKey).toBe('flag.bff.owner_portal.invitations_create');
+    // Post-refactor: structured extras live under `error.details` per
+    // the canonical errorResponse envelope (see utils/error-response.ts).
+    // The field is named `featureFlag` so the redactDetails scrubber
+    // (which strips /key/i) does NOT eat the value.
+    expect(body.error.details?.featureFlag).toBe('flag.bff.owner_portal.invitations_create');
   });
 
   it('returns the signed token + invitationId when the dev-flag is on', async () => {

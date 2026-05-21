@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Shield, Building2, Calendar } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatCurrency, formatDate } from '../../../lib/api';
+import { formatDate } from '../../../lib/api';
 import { useInsurancePolicies } from '../../../lib/hooks';
+import { useTenantCurrencyFormatter } from '../../../hooks/useTenantCurrency';
 
 export default function InsurancePage() {
   const t = useTranslations('insurancePage');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { data: policies = [], isLoading, error, refetch } = useInsurancePolicies();
 
   // No fixture fallback — show real data or an empty state.

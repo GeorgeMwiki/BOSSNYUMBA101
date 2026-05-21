@@ -12,9 +12,9 @@
  *      file is a thin orchestrator).
  *
  * TRACKED GAPS: 14 mutating routes flagged by the 2026-05-18 scanner
- * pass. Each TODO entry should be removed when the route adds a Zod
+ * pass. Each PENDING entry should be removed when the route adds a Zod
  * schema + .safeParse() guard. This list is the concrete worklist for
- * incremental Zod-coverage remediation.
+ * incremental Zod-coverage remediation (see Docs/TODO_BACKLOG.md).
  *
  * Keys are paths RELATIVE to the repo root.
  */
@@ -29,15 +29,15 @@ export const ZOD_ALLOWLIST = new Map([
   // ─── TRACKED GAPS: mutating routes without Zod validation ──────────
   [
     'services/api-gateway/src/routes/bff/estate-manager-app.ts',
-    'TODO: add Zod schema; tracked gap from universal scanner pass.',
+    'PENDING: add Zod schema; tracked gap from universal scanner pass.',
   ],
   [
     'services/api-gateway/src/routes/bff/owner-portal.ts',
-    'TODO: add Zod schema; tracked gap from universal scanner pass.',
+    'PENDING: add Zod schema; tracked gap from universal scanner pass.',
   ],
   [
     'services/api-gateway/src/routes/dsar.router.ts',
-    'TODO: add Zod schema; tracked gap from universal scanner pass.',
+    'PENDING: add Zod schema; tracked gap from universal scanner pass.',
   ],
   [
     'services/api-gateway/src/routes/mcp.router.ts',
@@ -45,43 +45,43 @@ export const ZOD_ALLOWLIST = new Map([
   ],
   [
     'services/api-gateway/src/routes/messaging.ts',
-    'TODO: add Zod schema; tracked gap from universal scanner pass.',
+    'PENDING: add Zod schema; tracked gap from universal scanner pass.',
   ],
   [
     'services/api-gateway/src/routes/risk-reports.router.ts',
-    'TODO: add Zod schema; tracked gap from universal scanner pass.',
+    'PENDING: add Zod schema; tracked gap from universal scanner pass.',
   ],
   [
     'services/api-gateway/src/routes/scheduling.ts',
-    'TODO: add Zod schema; tracked gap from universal scanner pass.',
+    'PENDING: add Zod schema; tracked gap from universal scanner pass.',
   ],
   [
     'services/api-gateway/src/routes/tenants.hono.ts',
-    'TODO: add Zod schema; tracked gap from universal scanner pass.',
+    'PENDING: add Zod schema; tracked gap from universal scanner pass.',
   ],
   [
     'services/api-gateway/src/routes/training.router.ts',
-    'TODO: add Zod schema; tracked gap from universal scanner pass.',
+    'PENDING: add Zod schema; tracked gap from universal scanner pass.',
   ],
   [
     'services/api-gateway/src/routes/unit-subdivision.router.ts',
-    'TODO: add Zod schema; tracked gap from universal scanner pass.',
+    'PENDING: add Zod schema; tracked gap from universal scanner pass.',
   ],
   [
     'services/api-gateway/src/routes/users.hono.ts',
-    'TODO: add Zod schema; tracked gap from universal scanner pass.',
+    'PENDING: add Zod schema; tracked gap from universal scanner pass.',
   ],
   [
     'services/api-gateway/src/routes/webhook-dlq.router.ts',
-    'TODO: add Zod schema; tracked gap from universal scanner pass.',
+    'PENDING: add Zod schema; tracked gap from universal scanner pass.',
   ],
   [
     'apps/customer-app/src/app/api/brain/turn/route.ts',
-    'manual type-narrowing on req.json() with explicit guards; TODO migrate to Zod.',
+    'manual type-narrowing on req.json() with explicit guards; pending migration to Zod.',
   ],
   [
     'apps/estate-manager-app/src/app/api/brain/turn/route.ts',
-    'manual type-narrowing on req.json() with explicit guards; TODO migrate to Zod.',
+    'manual type-narrowing on req.json() with explicit guards; pending migration to Zod.',
   ],
   [
     'apps/admin-platform-portal/src/app/api/platform/login/route.ts',

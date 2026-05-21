@@ -31,7 +31,8 @@ import {
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button, Spinner } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { api, formatCurrency, formatDate, formatDateTime } from '../../lib/api';
+import { api, formatDate, formatDateTime } from '../../lib/api';
+import { useTenantCurrencyFormatter } from '../../hooks/useTenantCurrency';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface DisbursementBreakdown {
@@ -71,6 +72,9 @@ interface DisbursementStats {
 export function DisbursementsPage() {
   const t = useTranslations('disbursementsPage');
   const navigate = useNavigate();
+  // Tenant-bound formatter — see `useTenantCurrency` for the resolution
+  // chain. Renders `'—'` when the chain is empty rather than crashing.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const [disbursements, setDisbursements] = useState<Disbursement[]>([]);
   const [stats, setStats] = useState<DisbursementStats | null>(null);
   const [loading, setLoading] = useState(true);

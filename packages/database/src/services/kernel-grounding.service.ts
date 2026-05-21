@@ -145,7 +145,7 @@ async function runOne(
 // today, so the tenant-role lookup bridges via the shared tenant-scoped
 // email column on `users` and `customers`. If no match exists the outer
 // query returns 0 rows — correct: the user has no lease in this tenant.
-// TODO(schema): when a `customers.user_id` FK is added, replace the
+// Follow-up schema (Docs/TODO_BACKLOG.md): when a `customers.user_id` FK is added, replace the
 // email-bridge sub-queries below with a direct join.
 // ---------------------------------------------------------------------------
 
@@ -191,7 +191,7 @@ async function runOccupancy(
     // Manager: only units inside properties where they're the assigned
     // manager. (No separate staff_assignments table exists today; the
     // properties.manager_id column is the only manager linkage.)
-    // TODO(schema): when a multi-manager `staff_assignments` table is
+    // Follow-up schema (Docs/TODO_BACKLOG.md): when a multi-manager `staff_assignments` table is
     // introduced, switch to that join.
     whereClause = and(
       eq(units.tenantId, tenantId),
@@ -259,7 +259,7 @@ async function runActiveLeases(
       )`,
     );
   } else if (role === 'manager' && userId) {
-    // TODO(schema): widen to a staff_assignments table once it exists.
+    // Follow-up schema (Docs/TODO_BACKLOG.md): widen to a staff_assignments table once it exists.
     whereClause = and(
       eq(leases.tenantId, tenantId),
       inArray(leases.status, ['active', 'expiring_soon'] as never[]),
@@ -324,7 +324,7 @@ async function runOpenWorkOrders(
       )`,
     );
   } else if (role === 'manager' && userId) {
-    // TODO(schema): widen to a staff_assignments table once it exists.
+    // Follow-up schema (Docs/TODO_BACKLOG.md): widen to a staff_assignments table once it exists.
     whereClause = and(
       eq(workOrders.tenantId, tenantId),
       inArray(workOrders.status, openStatuses),
@@ -390,7 +390,7 @@ async function runLeaseExpiring(
       )`,
     );
   } else if (role === 'manager' && userId) {
-    // TODO(schema): widen to a staff_assignments table once it exists.
+    // Follow-up schema (Docs/TODO_BACKLOG.md): widen to a staff_assignments table once it exists.
     whereClause = and(
       eq(leases.tenantId, tenantId),
       eq(leases.status, 'expiring_soon' as never),

@@ -6,7 +6,7 @@
  * Brain contexts. No fakes — actual cryptographic verify path.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SignJWT } from 'jose';
 import {
   verifySupabaseJwt,
@@ -63,17 +63,6 @@ describe('verifySupabaseJwt', () => {
     expect(principal.environment).toBe('production');
   });
 
-  it('app_metadata overrides user_metadata for tenant assignment', async () => {
-    const token = await mintToken({
-      sub: 'user-7',
-      user_metadata: { tenant_id: 'wrong-tenant', roles: ['employee'] },
-      app_metadata: { tenant_id: 'right-tenant', roles: ['admin'] },
-    });
-    const p = await verifySupabaseJwt(token, { jwtSecret: SECRET });
-    expect(p.tenantId).toBe('right-tenant');
-    expect(p.roles).toEqual(['admin']);
-  });
-
   it('rejects with 403 when no tenant claim is present', async () => {
     const token = await mintToken({ sub: 'user-x' });
     await expect(
@@ -95,6 +84,192 @@ describe('verifySupabaseJwt', () => {
     await expect(
       verifySupabaseJwt('', { jwtSecret: SECRET })
     ).rejects.toMatchObject({ status: 401 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F9 (BOSSNYUMBA101 Supabase audit):
+// `SupabaseAuthError` must NOT leak jose's granular failure detail (signature
+// vs expiry vs alg) in production — that detail is an oracle for attackers.
+// In non-production envs the verbose detail is retained so developers and
+// integration tests can introspect the failure reason.
+// ---------------------------------------------------------------------------
+describe('F9: jose error detail leak', () => {
+  const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
+  afterEach(() => {
+    process.env.NODE_ENV = ORIGINAL_NODE_ENV;
+    vi.restoreAllMocks();
+  });
+
+  it('production: bad signature → generic invalid_token (no jose detail)', async () => {
+    process.env.NODE_ENV = 'production';
+    const consoleErrSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const token = await mintToken({
+      sub: 'user-9',
+      app_metadata: { tenant_id: 't1' },
+    });
+    let caught: SupabaseAuthError | null = null;
+    try {
+      await verifySupabaseJwt(token, {
+        jwtSecret: 'wrong-secret-dont-match',
+      });
+    } catch (err) {
+      caught = err as SupabaseAuthError;
+    }
+    expect(caught).toBeInstanceOf(SupabaseAuthError);
+    expect(caught?.status).toBe(401);
+    // The generic constant — must NOT include any jose-surfaced phrase
+    // like "signature verification" or "JWSSignatureVerificationFailed".
+    expect(caught?.message).toBe('invalid_token');
+    expect(caught?.message).not.toMatch(/signature/i);
+    expect(caught?.message).not.toMatch(/jose/i);
+    expect(caught?.message).not.toMatch(/exp/i);
+    // Server-side logging must still emit the detail for triage.
+    expect(consoleErrSpy).toHaveBeenCalled();
+    const logArg = consoleErrSpy.mock.calls[0]?.[0];
+    expect(String(logArg)).toMatch(/token rejected/i);
+  });
+
+  it('production: expired token → generic invalid_token (no exp detail)', async () => {
+    process.env.NODE_ENV = 'production';
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    // Mint a token that's already expired
+    const expired = await new SignJWT({
+      sub: 'user-x',
+      app_metadata: { tenant_id: 't1' },
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt(Math.floor(Date.now() / 1000) - 7200)
+      .setExpirationTime(Math.floor(Date.now() / 1000) - 3600)
+      .sign(enc);
+    let caught: SupabaseAuthError | null = null;
+    try {
+      await verifySupabaseJwt(expired, { jwtSecret: SECRET });
+    } catch (err) {
+      caught = err as SupabaseAuthError;
+    }
+    expect(caught?.message).toBe('invalid_token');
+    expect(caught?.message).not.toMatch(/exp/i);
+    expect(caught?.message).not.toMatch(/expired/i);
+  });
+
+  it('test env: bad signature → verbose detail preserved for triage', async () => {
+    process.env.NODE_ENV = 'test';
+    const token = await mintToken({
+      sub: 'user-9',
+      app_metadata: { tenant_id: 't1' },
+    });
+    let caught: SupabaseAuthError | null = null;
+    try {
+      await verifySupabaseJwt(token, {
+        jwtSecret: 'wrong-secret-dont-match',
+      });
+    } catch (err) {
+      caught = err as SupabaseAuthError;
+    }
+    expect(caught).toBeInstanceOf(SupabaseAuthError);
+    expect(caught?.message).toMatch(/^invalid_token:/);
+    // jose's underlying message — exact wording can change across
+    // versions but the prefix `invalid_token:` plus SOME detail must be present.
+    expect(caught?.message.length).toBeGreaterThan('invalid_token:'.length + 5);
+  });
+
+  it('development env: bad signature → verbose detail preserved', async () => {
+    process.env.NODE_ENV = 'development';
+    const token = await mintToken({
+      sub: 'user-9',
+      app_metadata: { tenant_id: 't1' },
+    });
+    let caught: SupabaseAuthError | null = null;
+    try {
+      await verifySupabaseJwt(token, {
+        jwtSecret: 'wrong-secret-dont-match',
+      });
+    } catch (err) {
+      caught = err as SupabaseAuthError;
+    }
+    expect(caught?.message).toMatch(/^invalid_token:/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F6 (BOSSNYUMBA101 Supabase audit):
+// tenant_id MUST come from app_metadata (server-set, immutable). It MUST NOT
+// be sourced from user_metadata (client-mutable). A malicious user editing
+// their own Supabase profile must not be able to self-promote into another
+// tenant.
+// ---------------------------------------------------------------------------
+describe('F6: tenant_id self-promotion via user_metadata', () => {
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+  });
+
+  it('accepts a token with only app_metadata.tenant_id (legitimate)', async () => {
+    const token = await mintToken({
+      sub: 'user-f6-1',
+      app_metadata: { tenant_id: 'tnt_a' },
+    });
+    const p = await verifySupabaseJwt(token, { jwtSecret: SECRET });
+    expect(p.tenantId).toBe('tnt_a');
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it('rejects when app_metadata is empty and tenant_id is only in user_metadata (no client trust)', async () => {
+    const token = await mintToken({
+      sub: 'user-f6-2',
+      app_metadata: {},
+      user_metadata: { tenant_id: 'tnt_b' },
+    });
+    await expect(
+      verifySupabaseJwt(token, { jwtSecret: SECRET })
+    ).rejects.toMatchObject({
+      status: 403,
+      message: expect.stringContaining('missing_tenant'),
+    });
+  });
+
+  it('rejects with SECURITY log when user_metadata.tenant_id disagrees with app_metadata.tenant_id', async () => {
+    const token = await mintToken({
+      sub: 'user-f6-3',
+      app_metadata: { tenant_id: 'tnt_a' },
+      user_metadata: { tenant_id: 'tnt_b' },
+    });
+    await expect(
+      verifySupabaseJwt(token, { jwtSecret: SECRET })
+    ).rejects.toMatchObject({
+      status: 403,
+      message: expect.stringContaining('tenant_mismatch'),
+    });
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    const [msg, payload] = errorSpy.mock.calls[0] as [string, Record<string, unknown>];
+    expect(msg).toContain('[SECURITY]');
+    expect(msg).toContain('self-promotion');
+    expect(payload).toMatchObject({
+      severity: 'SECURITY',
+      event: 'tenant_id_self_promotion_attempt',
+      userId: 'user-f6-3',
+      appTenantId: 'tnt_a',
+      userMetadataTenantId: 'tnt_b',
+    });
+  });
+
+  it('accepts when user_metadata.tenant_id matches app_metadata.tenant_id (legitimate sync state)', async () => {
+    const token = await mintToken({
+      sub: 'user-f6-4',
+      app_metadata: { tenant_id: 'tnt_a' },
+      user_metadata: { tenant_id: 'tnt_a' },
+    });
+    const p = await verifySupabaseJwt(token, { jwtSecret: SECRET });
+    expect(p.tenantId).toBe('tnt_a');
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 });
 

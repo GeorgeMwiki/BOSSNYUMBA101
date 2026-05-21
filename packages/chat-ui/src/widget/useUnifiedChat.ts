@@ -36,8 +36,25 @@ export interface UseUnifiedChatOptions {
   readonly onReceive?: (msg: ChatMessage) => void;
 }
 
+/**
+ * Bug fix A-BUG-DEEP #11: `Math.random()` is not unguessable; clients
+ * observing the message-ID stream could correlate predictable IDs across
+ * sessions. `crypto.randomUUID()` is available in every modern browser
+ * (and Node ≥19) — fall back to a Math.random shim only in the rare
+ * environments where `crypto.randomUUID` is missing.
+ */
 function randId(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const cryptoApi =
+    (typeof globalThis !== 'undefined' &&
+      (globalThis as { crypto?: { randomUUID?: () => string } }).crypto) ||
+    undefined;
+  if (cryptoApi?.randomUUID) {
+    return `${prefix}-${cryptoApi.randomUUID()}`;
+  }
+  // Fallback for unsupported runtimes; collision-safe enough for transient UI IDs.
+  // eslint-disable-next-line no-restricted-syntax
+  const fallback = Math.random().toString(36).slice(2, 10);
+  return `${prefix}-${Date.now().toString(36)}-${fallback}`;
 }
 
 export function useUnifiedChat(options: UseUnifiedChatOptions): UnifiedChat {

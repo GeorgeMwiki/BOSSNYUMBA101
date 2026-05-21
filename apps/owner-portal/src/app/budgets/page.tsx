@@ -19,11 +19,13 @@ import {
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatCurrency } from '../../lib/api';
 import { useBudgetSummary, useProperties } from '../../lib/hooks';
+import { useTenantCurrencyFormatter } from '../../hooks/useTenantCurrency';
 
 export default function BudgetsPage() {
   const t = useTranslations('budgetsPage');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const budgetQuery = useBudgetSummary();
   const propertiesQuery = useProperties();
 

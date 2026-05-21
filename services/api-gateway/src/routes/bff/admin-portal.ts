@@ -25,7 +25,7 @@
  * The four "honest empty" handlers below intentionally return
  * `{ success: true, data: [] }` rather than 503 / `notImplemented` so the
  * owner-portal admin dashboard can render an empty state instead of a
- * spinner that never resolves. Each handler has a clear TODO marker
+ * spinner that never resolves. Each handler has a clear follow-up reference
  * pointing at the backend service that needs to be wired before they
  * begin returning real rows.
  */

@@ -74,10 +74,15 @@ describe('MpesaCallbackHandler', () => {
 
       const result = handler.parseC2BConfirmation(body);
       expect(result.transactionId).toBe('TXN123');
-      expect(result.amount).toBe(5000);
+      // Bug fix A-BUG-DEEP #5: amount is now integer minor units (cents).
+      expect(result.amountMinor).toBe(500_000);
+      expect(result.orgBalanceMinor).toBe(10_000_000);
       expect(result.phoneNumber).toBe('254712345678');
       expect(result.customerName).toBe('John Kamau');
       expect(result.accountReference).toBe('INV-001');
+      // Bug fix A-BUG-DEEP #4: '20240301120000' is EAT (UTC+3), so the
+      // UTC instant is 09:00:00.
+      expect(result.transactionTime.toISOString()).toBe('2024-03-01T09:00:00.000Z');
     });
   });
 

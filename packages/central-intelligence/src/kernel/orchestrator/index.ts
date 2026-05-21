@@ -107,6 +107,7 @@ export {
 export {
   createContextBudget,
   createInMemoryToolSearch,
+  createEmbeddingToolSearch,
   DEFAULT_WINDOW_TOKENS,
   DEFAULT_COMPACT_RATIO,
   DEFAULT_KEEP_RECENT_TURNS,
@@ -116,6 +117,7 @@ export {
   type TokenCounter,
   type ToolSearch,
   type ToolDescriptor,
+  type EmbeddingToolSearchDeps,
 } from './context-budget.js';
 
 // Memory tool — Anthropic /memories wrapper (memory_20250818).

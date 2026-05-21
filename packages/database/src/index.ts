@@ -3,7 +3,11 @@
  * Database client, schemas, and repositories
  */
 
-export { createDatabaseClient, type DatabaseClient } from './client.js';
+export {
+  createDatabaseClient,
+  createReadonlyDatabaseClient,
+  type DatabaseClient,
+} from './client.js';
 export * from './schemas/index.js';
 export * from './repositories/index.js';
 export * from './services/index.js';
@@ -13,14 +17,18 @@ export * from './security/data-classification.js';
 // pass the returned port into every repository constructor.
 export {
   selectEncryptionPort,
+  selectEncryptionPortForTenant,
   encryptRow,
   decryptRow,
   decryptRows,
+  getTenantRegion,
   ENCRYPTED_BLOB_PREFIX,
   EncryptionAuthenticationError,
   EncryptionKeyUnavailableError,
   type EncryptionPort,
   type FieldEncryptionAuditSink,
+  type GetTenantRegionDb,
+  type TenantRegionResolver,
 } from './security/encryption/index.js';
 export {
   createFieldEncryptionAuditService,
