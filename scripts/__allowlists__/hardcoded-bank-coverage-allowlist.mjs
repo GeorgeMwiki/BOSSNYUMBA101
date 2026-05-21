@@ -151,4 +151,12 @@ export const HARDCODED_BANK_ALLOWLIST = new Map([
     'apps/owner-portal/src/components/SlashCommandPalette.tsx',
     'Owner-portal slash-command palette references mpesa as a quick-action keyword for owner shortcuts.',
   ],
+  [
+    'packages/file-ingest/src/proposal/heuristic-map.ts',
+    'Heuristic mapping of CSV column headers to entity attributes; "nida" is the KE national-ID schema-attribute label, not a routing decision.',
+  ],
+  [
+    'apps/customer-app/src/components/documents/MoveOutNoticeForm.tsx',
+    'Move-out notice form distinguishes refund-method preference (mpesa vs bank_transfer); UI dispatch, not provider routing.',
+  ],
 ]);
