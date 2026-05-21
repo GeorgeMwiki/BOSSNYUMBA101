@@ -3,13 +3,13 @@
 # Multi-stage build for @bossnyumba/mcp-server-nggis (Nigeria land
 # registry federal aggregator). Pure Node, no AGPL deps.
 
-FROM node:20-bookworm-slim AS node-build
+FROM node:26-bookworm-slim AS node-build
 WORKDIR /build
 COPY package.json tsconfig.json ./
 COPY src/ ./src/
 RUN npm install --no-audit --no-fund && npx tsc
 
-FROM node:20-bookworm-slim AS runtime
+FROM node:26-bookworm-slim AS runtime
 WORKDIR /app
 COPY --from=node-build /build/dist /app/dist
 COPY --from=node-build /build/node_modules /app/node_modules
