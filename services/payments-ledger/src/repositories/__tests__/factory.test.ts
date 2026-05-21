@@ -28,7 +28,12 @@ function makeLogger(): { logger: { warn: (o: object, m: string) => void; info: (
   };
 }
 
-describe('createRepositories', () => {
+// Each test does `await import('../factory')`, which cold-loads the
+// payments-ledger entry-point. Under CI parallel-test pressure this dynamic
+// ESM import can exceed vitest's default 5s test timeout (observed
+// consistently in the "Code Quality" job which runs `pnpm -r test` across
+// ~50 packages concurrently). Bump to 15s for this suite only.
+describe('createRepositories', { timeout: 15_000 }, () => {
   const originalEnv = { ...process.env };
   // Patch require so the lazy `require('@bossnyumba/database')` inside
   // factory.ts hits our stub instead of the real package.
