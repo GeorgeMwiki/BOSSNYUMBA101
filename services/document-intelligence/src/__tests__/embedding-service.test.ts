@@ -30,7 +30,7 @@ describe('EmbeddingService', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Concurrency + batching guarantees (implements Category-A TODO fix in
+  // Concurrency + batching guarantees (implements Category-A fix from
   // embedChunks — batches are sent in parallel capped at maxConcurrency and
   // each call is bounded by batchSize).
   // ---------------------------------------------------------------------------

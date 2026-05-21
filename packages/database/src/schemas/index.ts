@@ -70,6 +70,23 @@ export {
   paymentIntentsRelations,
 } from './ledger.schema.js';
 export * as Ledger from './ledger.schema.js';
+// Row-shape type aliases (Prisma-parity names) used by
+// services/payments-ledger/src/repositories/drizzle-*.repository.ts. The
+// tables themselves are already exported above from ledger.schema.js;
+// here we re-export only the inferred Row/Insert types to avoid
+// duplicate runtime exports.
+export type {
+  PaymentIntentRow,
+  PaymentIntentInsert,
+  AccountRow,
+  AccountInsert,
+  LedgerEntryRow,
+  LedgerEntryInsert,
+  StatementRow,
+  StatementInsert,
+  DisbursementRow,
+  DisbursementInsert,
+} from './payments-ledger.schema.js';
 export * from './documents.schema.js';
 export * from './occupancy.schema.js';
 export * from './cases.schema.js';
@@ -398,3 +415,15 @@ export * from './mdr-plan.schema.js';
 // Owner skills marketplace (migration 0162, Phase E.7) — owner-installable
 // Skills (cron / event / manual triggered workflows).
 export * from './owner-skills.schema.js';
+
+// Persistent memory layer (migration 0181) — three tables backing the
+// kernel's A-Mem / Letta-style memory:
+//   - memory_blocks    : per-(tenant, session) Letta blocks injected
+//                        at the top of every system prompt.
+//   - episodic_notes   : A-Mem note ledger with importance score,
+//                        embedding, parents links, FadeMem access
+//                        counters.
+//   - anchor_summaries : auto-condensed transcripts when the prompt
+//                        window approaches ~70% context budget.
+// Tenant-scoped, RLS-protected via `app.current_tenant_id` GUC.
+export * from './memory.schema.js';

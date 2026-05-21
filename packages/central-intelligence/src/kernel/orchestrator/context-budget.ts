@@ -71,11 +71,44 @@ export interface ToolDescriptor {
   readonly name: string;
   readonly description: string;
   readonly keywords: ReadonlyArray<string>;
+  /**
+   * Optional sample-args blob, concatenated into the embedding corpus
+   * so semantically related tools whose names differ are still
+   * retrievable (e.g. `sendSms({to})` vs `notifyTenant({phone})`).
+   */
+  readonly sampleArgs?: ReadonlyArray<string>;
 }
 
 export interface ToolSearch {
   /** Top-k tools by overlap between the goal text and each tool's keywords. */
   searchRelevant(goal: string, k: number): Promise<ReadonlyArray<ToolDescriptor>>;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Embedding-indexed ToolSearch — Anthropic deferred-tool pattern.
+//
+// Pre-computes embeddings of `(name + description + sample-args)` for
+// every registered tool at boot. At query time it embeds the goal and
+// returns top-k by cosine. Embeddings are cached in a Map keyed by the
+// concatenated corpus text so re-initialisations with the same tool
+// set are free.
+//
+// Falls back to the keyword overlap ranker when the embedder is null
+// or rejects the goal — the kernel must not block on the embedder.
+// ─────────────────────────────────────────────────────────────────────
+
+export interface EmbeddingToolSearchDeps {
+  readonly embedder: import('../kernel-types.js').TextEmbedder | null;
+  /**
+   * Optional shared cache across instances (e.g. a Map injected by the
+   * composition root). Tests pass a fresh Map per assertion.
+   */
+  readonly cache?: Map<string, ReadonlyArray<number>>;
+  /**
+   * Optional fallback search used when the embedder is missing or
+   * throws. Defaults to the keyword ranker.
+   */
+  readonly fallback?: ToolSearch;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -159,6 +192,140 @@ export function createInMemoryToolSearch(
       return ranked;
     },
   };
+}
+
+/**
+ * Embedding-indexed ToolSearch. Pre-computes the corpus embedding for
+ * every tool at construction time (lazily on first query if the cache
+ * is cold) and returns top-k by cosine similarity to the goal.
+ *
+ * Two failure modes degrade to the keyword fallback:
+ *   1. The embedder is `null` (no API key configured).
+ *   2. The embedder rejects when embedding the goal text.
+ *
+ * Per-tool corpus failures during pre-compute are tolerated: the tool
+ * is excluded from the embedding pool but remains visible via the
+ * keyword fallback if the embedder later fails for the goal.
+ */
+export function createEmbeddingToolSearch(
+  tools: ReadonlyArray<ToolDescriptor>,
+  deps: EmbeddingToolSearchDeps,
+): ToolSearch {
+  const embedder = deps.embedder;
+  const cache = deps.cache ?? new Map<string, ReadonlyArray<number>>();
+  const fallback = deps.fallback ?? createInMemoryToolSearch(tools);
+  let warmed: ReadonlyArray<{
+    readonly tool: ToolDescriptor;
+    readonly corpus: string;
+    embedding: ReadonlyArray<number> | null;
+  }> | null = null;
+
+  function warm(): ReadonlyArray<{
+    readonly tool: ToolDescriptor;
+    readonly corpus: string;
+    embedding: ReadonlyArray<number> | null;
+  }> {
+    if (warmed !== null) return warmed;
+    warmed = tools.map((tool) => {
+      const corpus = buildCorpus(tool);
+      const cached = cache.get(corpus);
+      return {
+        tool,
+        corpus,
+        embedding: cached ?? null,
+      };
+    });
+    return warmed;
+  }
+
+  async function ensureEmbeddings(): Promise<void> {
+    if (embedder === null) return;
+    const slots = warm();
+    await Promise.all(
+      slots.map(async (slot) => {
+        if (slot.embedding !== null) return;
+        try {
+          const vec = await embedder.embed(slot.corpus);
+          if (Array.isArray(vec) && vec.length > 0) {
+            slot.embedding = vec;
+            cache.set(slot.corpus, vec);
+          }
+        } catch {
+          // tool drops out of the embedding pool until next warm cycle
+        }
+      }),
+    );
+  }
+
+  return {
+    async searchRelevant(
+      goal: string,
+      k: number,
+    ): Promise<ReadonlyArray<ToolDescriptor>> {
+      if (typeof goal !== 'string' || !goal.trim()) return [];
+      const limit = Math.max(1, k);
+      if (embedder === null) {
+        return fallback.searchRelevant(goal, limit);
+      }
+      let goalVec: ReadonlyArray<number>;
+      try {
+        goalVec = await embedder.embed(goal);
+      } catch {
+        return fallback.searchRelevant(goal, limit);
+      }
+      if (!Array.isArray(goalVec) || goalVec.length === 0) {
+        return fallback.searchRelevant(goal, limit);
+      }
+      await ensureEmbeddings();
+      const slots = warm();
+      const ranked = slots
+        .map((slot) => {
+          if (slot.embedding === null) return { tool: slot.tool, score: -1 };
+          if (slot.embedding.length !== goalVec.length) {
+            return { tool: slot.tool, score: -1 };
+          }
+          return {
+            tool: slot.tool,
+            score: cosineForTools(goalVec, slot.embedding),
+          };
+        })
+        .filter((r) => r.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit)
+        .map((r) => r.tool);
+      if (ranked.length === 0) {
+        return fallback.searchRelevant(goal, limit);
+      }
+      return ranked;
+    },
+  };
+}
+
+function buildCorpus(tool: ToolDescriptor): string {
+  const parts = [tool.name, tool.description, ...(tool.keywords ?? [])];
+  if (Array.isArray(tool.sampleArgs)) {
+    parts.push(...tool.sampleArgs);
+  }
+  return parts.filter((p) => typeof p === 'string' && p.length > 0).join(' ');
+}
+
+function cosineForTools(
+  a: ReadonlyArray<number>,
+  b: ReadonlyArray<number>,
+): number {
+  if (a.length === 0 || b.length === 0 || a.length !== b.length) return 0;
+  let dot = 0;
+  let magA = 0;
+  let magB = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    const ai = a[i] as number;
+    const bi = b[i] as number;
+    dot += ai * bi;
+    magA += ai * ai;
+    magB += bi * bi;
+  }
+  if (magA === 0 || magB === 0) return 0;
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
 }
 
 // ─────────────────────────────────────────────────────────────────────

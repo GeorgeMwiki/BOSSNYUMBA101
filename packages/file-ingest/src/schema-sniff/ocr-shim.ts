@@ -65,5 +65,6 @@ export async function ocrToTable(
     headers: tab.headers,
     rows: tab.rows,
     source_format: 'image_ocr',
+    ingest_warnings: tab.ingest_warnings,
   });
 }

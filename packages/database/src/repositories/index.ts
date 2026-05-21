@@ -76,3 +76,24 @@ export {
   type PgApprovalStoreScope,
   type ProposedAction as PgProposedAction,
 } from './sovereign-approvals.repository.js';
+
+// Enum guards — bug fix A-BUG-DEEP #9.
+export {
+  assertLeaseStatus,
+  assertLeaseStatuses,
+  assertCustomerStatus,
+  assertCustomerStatuses,
+  assertUserStatus,
+  assertDocumentStatus,
+  assertDocumentType,
+  LEASE_STATUS_VALUES,
+  CUSTOMER_STATUS_VALUES,
+  USER_STATUS_VALUES,
+  DOCUMENT_STATUS_VALUES,
+  DOCUMENT_TYPE_VALUES,
+  type LeaseStatus,
+  type CustomerStatus,
+  type UserStatus,
+  type DocumentStatus,
+  type DocumentType,
+} from './enum-guards.js';

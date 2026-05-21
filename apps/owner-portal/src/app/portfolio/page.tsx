@@ -11,11 +11,14 @@ import {
 } from 'lucide-react';
 import { Skeleton, EmptyState } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatCurrency, formatPercentage } from '../../lib/api';
+import { formatPercentage } from '../../lib/api';
 import { usePortfolioSummary, useProperties } from '../../lib/hooks';
+import { useTenantCurrencyFormatter } from '../../hooks/useTenantCurrency';
 
 export default function PortfolioPage() {
   const t = useTranslations('portfolioPage');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { data: portfolio = null, isLoading: loadingSummary } = usePortfolioSummary();
   const { data: properties = [], isLoading: loadingProperties } = useProperties();
   const loading = loadingSummary || loadingProperties;

@@ -51,7 +51,10 @@ export { checkInviolable, type InviolableVerdict } from './inviolable.js';
 export {
   NOT_YET_WIRED_REASON,
   NotYetWiredError,
+  isNotYetWired,
   type NotYetWiredReason,
+  type NotYetWiredErrorOptions,
+  type NotYetWiredRefusalPayload,
 } from './not-yet-wired.js';
 export {
   checkPublicInviolable,
@@ -163,6 +166,7 @@ export {
   type SensorHealthSnapshot,
   type BreakerState,
   type SensorOutcome,
+  type DegradedState,
 } from './sensor-failover.js';
 export {
   createCotReservoir,

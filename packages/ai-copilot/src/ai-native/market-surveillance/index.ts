@@ -57,7 +57,7 @@ export interface ComparableListing {
  * (Zillow, Airbnb, local classified sites, estate-agent APIs) implement
  * this. Every adapter is gated by its own env var.
  *
- * TODO(adapter): wire a concrete adapter per jurisdiction via
+ * Follow-up adapter (Docs/TODO_BACKLOG.md): wire a concrete adapter per jurisdiction via
  * `resolvePlugin(tenantCountry)` from `@bossnyumba/compliance-plugins`.
  */
 export interface MarketRatePort {

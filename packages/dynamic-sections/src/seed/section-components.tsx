@@ -5,7 +5,7 @@
  *   1. Renders a placeholder ag-ui-shaped surface (so the visual
  *      regression baseline for the host portals is already accurate).
  *   2. Declares the data slice it would fetch in production —
- *      annotated as TODO so CL-B1's portal wiring follow-up has a
+ *      annotated for the backlog so CL-B1's portal wiring follow-up has a
  *      clear hook point.
  *
  * Why stubs: this package ships the FRAMEWORK. The portal-side

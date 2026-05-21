@@ -53,6 +53,11 @@ export {
 } from './kms-adapter.js';
 
 export {
+  getTenantRegion,
+  type GetTenantRegionDb,
+} from './get-tenant-region.js';
+
+export {
   __resetTableCacheForTests,
   decryptRow,
   decryptRows,
@@ -178,4 +183,96 @@ export function resolveRegionAndKey(
     { tenantRegion, defaultRegion, expectedEnvVar: envKey },
   );
   return { region: tenantRegion, kmsKeyId: defaultKey };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// selectEncryptionPortForTenant — request-scoped composition (W1.5)
+//
+// `selectEncryptionPort` (above) is the boot-time entry point: it picks
+// a single KMS key for `env.AWS_REGION`. That singleton is fine for
+// single-region deployments but does NOT honour per-tenant data
+// residency — every encrypt() call lands in the same region regardless
+// of `tenants.region`.
+//
+// This helper wires `getTenantRegion(db, tenantId)` -> `tenantRegion`
+// -> `selectEncryptionPort`. Callers use it per-request when they need
+// region-routed KMS calls (TZ PDPA + KE DPA + ZA POPIA + NG NDPR data-
+// residency). Returning a fresh adapter per call costs an SDK
+// construction; production wiring should cache per (region, kmsKeyId)
+// pair if hot-path latency matters.
+//
+// Returns the same adapter shape as `selectEncryptionPort` so consumers
+// don't need to branch.
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Hook so the encryption module doesn't structurally depend on the
+ * platform tenants service. Composition root passes a closure that
+ * calls `getTenantRegion(db, tenantId)` from this same package.
+ */
+export type TenantRegionResolver = (
+  tenantId: string,
+) => Promise<string | null>;
+
+export interface SelectEncryptionPortForTenantOptions extends SelectEncryptionPortOptions {
+  /**
+   * Closure that resolves `tenants.region` for `tenantId`. When
+   * supplied AND it returns a non-null region, the adapter routes its
+   * KMS calls to that region (per the `resolveRegionAndKey` rules).
+   * When the resolver returns null, falls back to `env.AWS_REGION`.
+   */
+  readonly regionResolver: TenantRegionResolver;
+  /**
+   * Tenant id being processed. The resolver is only called when this
+   * is a non-empty string; platform-scoped calls (tenantId === null)
+   * use `env.AWS_REGION` directly.
+   */
+  readonly tenantId: string | null;
+}
+
+/**
+ * Request-scoped composition of an EncryptionPort. Reads the tenant's
+ * data-residency region via `regionResolver` and threads it through
+ * `selectEncryptionPort` so the KMS adapter binds to the tenant's home
+ * region.
+ *
+ * Usage at composition root:
+ *
+ *   const port = await selectEncryptionPortForTenant(process.env, {
+ *     tenantId: auth.tenantId,
+ *     regionResolver: (tenantId) => getTenantRegion(db, tenantId),
+ *     logger,
+ *   });
+ *
+ * Resolution order (matches `kms-adapter.ts` JSDoc contract):
+ *   1. `regionResolver(tenantId)` from `tenants.region` (when non-null)
+ *   2. `env.AWS_REGION` fallback
+ *   3. KMS-adapter boot fails loud when neither resolves
+ */
+export async function selectEncryptionPortForTenant(
+  env: SelectEncryptionPortEnv,
+  options: SelectEncryptionPortForTenantOptions,
+): Promise<EncryptionPort> {
+  const { tenantId, regionResolver, ...rest } = options;
+  let tenantRegion: string | undefined;
+  if (tenantId && tenantId.length > 0) {
+    try {
+      const resolved = await regionResolver(tenantId);
+      if (resolved && resolved.length > 0) {
+        tenantRegion = resolved;
+      }
+    } catch (error) {
+      rest.logger?.warn?.(
+        'selectEncryptionPortForTenant: regionResolver threw; falling back to env.AWS_REGION',
+        {
+          tenantId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
+    }
+  }
+  return selectEncryptionPort(env, {
+    ...rest,
+    ...(tenantRegion ? { tenantRegion } : {}),
+  });
 }

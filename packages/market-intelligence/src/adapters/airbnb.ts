@@ -10,7 +10,7 @@
  * Production wiring is gated behind `config.apiKey`. When absent every
  * call resolves to `{ kind: 'unconfigured' }`.
  *
- * The actual upstream HTTP call is left as a TODO. Tests inject a
+ * The actual upstream HTTP call is tracked in Docs/TODO_BACKLOG.md. Tests inject a
  * custom `fetch` impl; production callers without a real Airbnb
  * partner integration get `{ kind: 'unconfigured' }`.
  */
@@ -31,7 +31,7 @@ const DEFAULT_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const MOCK_HEADER = 'X-MOCK-MARKET-DATA';
 
 // ─────────────────────────────────────────────────────────────────────
-// Shape we expect from the (TODO) Airbnb partner endpoint. This mirrors
+// Shape we expect from the (pending) Airbnb partner endpoint. This mirrors
 // the Airbnb Public API "market insights" beta surface; trimmed to the
 // fields we map.
 // ─────────────────────────────────────────────────────────────────────
@@ -178,8 +178,8 @@ export function createAirbnbMarketDataAdapter(
 // ─────────────────────────────────────────────────────────────────────
 // URL builders — placeholders.
 //
-// TODO(airbnb): map airbnb/market-insights/listings endpoint
-// TODO(airbnb): map airbnb/market-insights/occupancy endpoint
+// Follow-up airbnb (Docs/TODO_BACKLOG.md): map airbnb/market-insights/listings endpoint
+// Follow-up airbnb (Docs/TODO_BACKLOG.md): map airbnb/market-insights/occupancy endpoint
 // ─────────────────────────────────────────────────────────────────────
 
 function buildComparableUrl(args: ComparableRentsArgs): string {

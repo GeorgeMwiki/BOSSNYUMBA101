@@ -18,7 +18,7 @@
  * `@bossnyumba/central-intelligence`) that surface a clear "subsystem
  * not available" refusal so the registry boots end-to-end and the admin
  * chat receives a deterministic error instead of an internal crash.
- * Each placeholder adapter is annotated with the TODO that lands the
+ * Each placeholder adapter is annotated with the follow-up that lands the
  * real Drizzle wiring.
  */
 

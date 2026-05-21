@@ -152,6 +152,81 @@ router starts returning real data automatically. No feature-flag toggle.
 
 ---
 
+## Semgrep + CodeQL custom rules
+
+Two static-analysis layers run on every PR and every Monday:
+
+- **Semgrep** (`.github/workflows/semgrep.yml`) — runs the curated `auto`
+  ruleset plus our 8 BOSSNYUMBA-specific rules in
+  `.semgrep/bossnyumba-rules.yml`.
+- **CodeQL** (`.github/workflows/codeql.yml`) — runs GitHub's
+  `security-extended` suite plus custom queries under
+  `.github/codeql/queries/` (registered via `qlpack.yml`).
+
+### Custom Semgrep rules (8)
+
+| ID | Severity | Category | What it catches |
+| --- | --- | --- | --- |
+| `missing-tenant-id-arg` | WARNING | security | Repo lookups omitting `tenantId` (cross-tenant leak) |
+| `raw-error-response` | ERROR | maintainability | `c.json({ error })` outside `error-response.ts` |
+| `prototype-pollution-spread` | WARNING | security | `{ ...req.body }` without `Object.create(null)` base |
+| `unbounded-find-many` | WARNING | performance | `findMany(_, 1000+)` Wave-5 BFF anti-pattern |
+| `console-statement-in-production-path` | WARNING | best-practice | `console.*` outside dev/test/scripts |
+| `as-any-cast` | WARNING | best-practice | New `as any` casts (existing ones baselined) |
+| `missing-await-on-promise` | WARNING | correctness | Unawaited async-fn call with no `.catch`/return |
+| `pii-in-log` | ERROR | security | `logger.*({password\|secret\|token\|...})` without redact |
+
+### Running locally
+
+```bash
+# Semgrep — full repo
+pip install semgrep
+semgrep --config=.semgrep/bossnyumba-rules.yml packages/ services/ apps/
+
+# Semgrep — verify rules fire on the synthetic positives
+semgrep --config=.semgrep/bossnyumba-rules.yml .semgrep/tests/fixtures/positive-examples.ts
+# Expected: 8 findings, one per rule.
+
+# Semgrep — verify NO false positives on negatives
+semgrep --config=.semgrep/bossnyumba-rules.yml .semgrep/tests/fixtures/negative-examples.ts
+# Expected: 0 findings.
+
+# CodeQL custom queries — requires the `codeql` CLI
+codeql database create cql-db --language=javascript --source-root=.
+codeql database analyze cql-db .github/codeql/queries \
+  --format=sarifv2.1.0 --output=codeql-results.sarif
+```
+
+### Triaging a finding
+
+1. Open the GitHub Security tab → Code scanning. Each Semgrep/CodeQL alert
+   links to the offending line.
+2. If it's a true positive — fix and push. Re-run is automatic on PR.
+3. If it's a legitimate exception (e.g. platform-admin search bypassing
+   `tenantId` on purpose), suppress with an inline comment that includes
+   a reason:
+
+   ```ts
+   // nosemgrep: missing-tenant-id-arg reason: platform-admin global view
+   const all = await customerRepo.findMany(filters);
+   ```
+
+   For CodeQL, add the path/file to `paths-ignore` in
+   `.github/codeql/queries/missing-tenant-id.ql` or annotate via the
+   "Dismiss" flow in the Security tab.
+
+### Adding a new rule
+
+1. Edit `.semgrep/bossnyumba-rules.yml` — every rule needs `id`, `message`,
+   `severity`, `languages`, and at least one `pattern`.
+2. Add a synthetic positive case to
+   `.semgrep/tests/fixtures/positive-examples.ts` and a negative case to
+   `negative-examples.ts`.
+3. Verify locally with the commands above.
+4. PR the rule. CI's Semgrep job will run it against the whole monorepo.
+
+---
+
 ## On-call expectations
 
 - Primary on-call carries pager 24/7 on a 1-week rotation.
@@ -387,3 +462,97 @@ database without a backup verified in the last hour.
 - **Tanzania month-end (25th–1st)**: payments-related changes gated on
   SRE approval — rent cycle is sensitive.
 - **EOY / EOF**: no deploys between 22 Dec and 2 Jan without exec sign-off.
+
+---
+
+## Quarterly Backup Restore Drill Schedule
+
+We exercise the full backup-restore path once per calendar quarter. A
+drill is the only credible test of the disaster-recovery posture; a
+quarter with no successful drill is treated as a P1 operational gap.
+
+Detailed mechanics live in [`./RUNBOOKS/backup-restore.md`](./RUNBOOKS/backup-restore.md).
+The schedule below is the calendar; deviation requires written exec
+sign-off, recorded in the drill log.
+
+### 2026 schedule
+
+| Quarter | Planned date | Owner | Region exercised | Expected output |
+|---|---|---|---|---|
+| Q1 2026 | 2026-02-18 (Wed) | DB Ops | eu-west-1 (primary) | `restore.sh` writes to `bossnyumba-restore-test` DB, `scripts/uat-walkthrough.sh` passes against it, RTO < 60 min recorded, RPO < 15 min recorded. |
+| Q2 2026 | 2026-05-20 (Wed) | DB Ops | af-south-1 (secondary) | Same outputs as Q1, plus cross-region restore proves DR-region failover assumptions in [`./RUNBOOKS/dr-region-failover.md`](./RUNBOOKS/dr-region-failover.md). |
+| Q3 2026 | 2026-08-19 (Wed) | DB Ops | eu-west-1 (primary) | Same as Q1, plus randomly-selected tenant `audit_events` row count matches pre-restore by SHA-256 of canonical export. |
+| Q4 2026 | 2026-11-18 (Wed) | DB Ops | af-south-1 (secondary) | Same as Q2; this drill must succeed before EOY change freeze (22 Dec). |
+
+### Drill log
+
+Update the row below after every drill. If a drill is missed or fails,
+file a P1 incident and run a remediation drill within 14 days.
+
+| Quarter | Status | Actual date | Recorded RTO | Recorded RPO | Lessons / linked post-mortem |
+|---|---|---|---|---|---|
+| Q1 2026 | TBD | TBD | TBD | TBD | TBD |
+| Q2 2026 | TBD | TBD | TBD | TBD | TBD |
+| Q3 2026 | TBD | TBD | TBD | TBD | TBD |
+| Q4 2026 | TBD | TBD | TBD | TBD | TBD |
+
+**Last successful drill**: TBD — no drill yet recorded against the new schedule.
+
+### Pre-drill checklist
+
+Owner runs through this 24 h before the planned date:
+
+1. Confirm latest encrypted snapshot exists in `s3://bossnyumba-backups`
+   (yesterday's date, size > 0, decryption key in 1Password).
+2. Spin up the `bossnyumba-restore-test` namespace / cluster (cost ~$5 for
+   the drill window).
+3. Notify `#status-ops` 24 h ahead so anyone reading metrics knows the
+   spike of restore-side load is expected.
+4. Page primary on-call passively (shadow ack); do NOT page them as a
+   real incident — the drill must not trigger SLO error-budget burn.
+
+### Post-drill obligations
+
+1. Record actual RTO / RPO in the table above.
+2. If RTO > 60 min or RPO > 15 min, open an action item against the
+   responsible service in JIRA (label `dr-drill`).
+3. If anything new surfaced, copy the lessons block into
+   `Docs/POSTMORTEMS/` even if there was no customer impact — drills are
+   one of our cheapest sources of learning.
+
+---
+
+## pgvector — mandatory in production
+
+The platform depends on `pgvector` for AI semantic memory, knowledge-base
+retrieval, skill_registry similarity, and document embeddings. Production
+deployments MUST have the extension enabled at the server level BEFORE
+applying migrations — bare `CREATE EXTENSION vector` in 0125 / 0133 will
+fail with "extension control file not found" if the server lacks the
+shared library, and the migration chain will abort.
+
+Per-provider enablement procedure:
+
+| Provider     | Procedure                                                                            |
+| ------------ | ------------------------------------------------------------------------------------ |
+| Supabase     | Built-in. Enable via Dashboard → Database → Extensions → `vector` (or run `CREATE EXTENSION vector;` once). |
+| AWS RDS      | Postgres 15.2+. Add `vector` to `rds.allowed_extensions` in the parameter group; reboot; then `CREATE EXTENSION vector;`. |
+| Neon         | One-click in the Extensions panel of the Neon Console.                               |
+| Render       | Use the `postgres:15-pgvector` image variant when provisioning.                      |
+| Self-host    | `apt-get install postgresql-15-pgvector` (Debian/Ubuntu) OR build from https://github.com/pgvector/pgvector. |
+| CI (GitHub)  | The `.github/workflows/migration-apply-fresh.yml` workflow uses the official `pgvector/pgvector:pg16` Docker image. |
+
+Migration 0178 (`pgvector_guard`) wraps the extension install in a
+fault-tolerant DO/EXCEPTION block so DEVELOPMENT and CI environments
+without pgvector can still run the migration chain — but the affected AI
+features will fall back to TEXT-stored embeddings with no vector ANN
+search. The fail-soft is a development convenience ONLY; production must
+have pgvector enabled.
+
+Verify after deploy:
+
+```sql
+SELECT extname, extversion FROM pg_extension WHERE extname='vector';
+-- expected: vector | 0.7.x (or later)
+```
+

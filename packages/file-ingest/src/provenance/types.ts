@@ -3,16 +3,23 @@
  * narrow — anything that affects deterministic identity goes into the hash;
  * anything purely human-readable goes into the record.
  *
- * `hash` is computed from:
+ * `hash` is computed from (prov-v3):
  *   sha256(
- *     file_hash || ':' || conversation_id || ':' || ingest_plan_id ||
- *     ':' || row_idx || ':' || llm_inferred_schema_version
+ *     tenant_id || ':' || file_hash || ':' || conversation_id || ':' ||
+ *     message_id || ':' || ingest_plan_id || ':' || row_idx || ':' ||
+ *     llm_inferred_schema_version
  *   )
  *
- * The same row, ingested from the same file, by the same plan version, will
- * always produce the same provenance hash → idempotency.
+ * The same row, ingested for the same tenant, from the same file, in the
+ * same message, by the same plan version, will always produce the same
+ * provenance hash → idempotency on retries. Different tenants produce
+ * different hashes (cross-tenant replay defence). Different messages
+ * produce different hashes — DA1 MEDIUM fix: a re-upload via a NEW chat
+ * message now lands cleanly (previously dedup blocked it).
  */
 export interface Provenance {
+  /** Tenant under which this attribute write is being committed. */
+  readonly tenant_id: string;
   /** sha256 of the raw file bytes (lower-case hex). */
   readonly file_hash: string;
   /** Conversation in which the owner uploaded the file. */
@@ -32,6 +39,7 @@ export interface Provenance {
 }
 
 export interface ProvenanceSeed {
+  readonly tenant_id: string;
   readonly file_hash: string;
   readonly conversation_id: string;
   readonly message_id: string;

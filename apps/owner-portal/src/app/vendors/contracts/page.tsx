@@ -10,11 +10,14 @@ import {
 } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatCurrency, formatDate } from '../../../lib/api';
+import { formatDate } from '../../../lib/api';
 import { useVendorContracts } from '../../../lib/hooks';
+import { useTenantCurrencyFormatter } from '../../../hooks/useTenantCurrency';
 
 export default function VendorContractsPage() {
   const t = useTranslations('vendorContractsPage');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { data: contracts = [], isLoading, error, refetch } = useVendorContracts();
 
   // No fixture fallback — show real data or an empty state.

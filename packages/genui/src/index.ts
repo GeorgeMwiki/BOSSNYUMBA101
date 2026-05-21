@@ -48,7 +48,7 @@ export { Gauge, type GaugeProps } from './components/Gauge';
 export { MetricSparkline, type MetricSparklineProps } from './components/MetricSparkline';
 export { ImageAnnotation, type ImageAnnotationProps } from './components/ImageAnnotation';
 export { SignaturePad, type SignaturePadProps } from './components/SignaturePad';
-// Phase E.7 — 13 new primitives (formerly TODO: ProdFix-8)
+// Phase E.7 — 13 new primitives (landed in ProdFix-8)
 export { PdfViewer, type PdfViewerProps } from './components/PdfViewer';
 export { SliderInput, type SliderInputProps } from './components/SliderInput';
 export { MultistepWizard, type MultistepWizardProps } from './components/MultistepWizard';

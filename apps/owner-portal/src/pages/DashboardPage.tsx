@@ -34,8 +34,9 @@ import {
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatCurrency, formatDate, formatPercentage } from '../lib/api';
+import { formatDate, formatPercentage } from '../lib/api';
 import { useProperties, useOwnerDashboard, type DashboardRange } from '../lib/hooks';
+import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
 import { ArrearsAgingChart } from '../components/charts/ArrearsAgingChart';
 import { QuickActions } from '../components/QuickActions';
 import { PortfolioAtAGlance } from '../components/PortfolioAtAGlance';
@@ -47,6 +48,8 @@ type DateRange = DashboardRange;
 
 export function DashboardPage() {
   const t = useTranslations('dashboard');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const [selectedProperty, setSelectedProperty] = useState('all');
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const navigate = useNavigate();

@@ -11,7 +11,7 @@
  * `analytics_growth` materialised view + read-model land, this returns
  * an empty series with `X-Backend-Status: degraded`.
  *
- * TODO(api-gateway, ANL-GROWTH-001): wire the growth aggregator.
+ * Follow-up api-gateway, ANL-GROWTH-001 (Docs/TODO_BACKLOG.md): wire the growth aggregator.
  *   Concrete next-step:
  *     1. Add Drizzle view `analytics_growth_monthly` joining
  *        properties → units → leases → invoices → payments grouped by

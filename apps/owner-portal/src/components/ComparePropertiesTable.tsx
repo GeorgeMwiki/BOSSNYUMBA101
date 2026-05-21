@@ -19,13 +19,16 @@ import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-sy
 import { AlertCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useProperties, usePortfolioPerformance } from '../lib/hooks';
-import { formatCurrency, formatPercentage } from '../lib/api';
+import { formatPercentage } from '../lib/api';
+import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
 
 const MIN_SELECTION = 2;
 const MAX_SELECTION = 5;
 
 export function ComparePropertiesTable(): JSX.Element {
   const t = useTranslations('comparePropertiesTable');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const properties = useProperties();
   const performance = usePortfolioPerformance();
   const [selected, setSelected] = useState<readonly string[]>([]);

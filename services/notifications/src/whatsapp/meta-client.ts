@@ -895,7 +895,7 @@ export class MetaWhatsAppClient {
       if (response.status === 429) {
         throw new WhatsAppRateLimitError(
           errorObj?.message as string || 'Rate limit exceeded',
-          response.headers['retry-after'] ? parseInt(response.headers['retry-after'] as string) : undefined
+          response.headers['retry-after'] ? parseInt(response.headers['retry-after'] as string, 10) : undefined
         );
       }
 

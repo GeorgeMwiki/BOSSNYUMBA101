@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useTranslations } from 'next-intl';
-import { formatCurrency } from '../../lib/api';
+import { useTenantCurrencyFormatter } from '../../hooks/useTenantCurrency';
 
 export interface MaintenanceCostData {
   month: string;
@@ -37,6 +37,8 @@ const CATEGORY_COLORS = {
 
 export function MaintenanceCostTrends({ data, className }: MaintenanceCostTrendsProps) {
   const t = useTranslations('maintenanceCostTrends');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const totalCost = data.reduce((sum, item) => sum + item.total, 0);
   const avgMonthlyCost = totalCost / data.length;
 

@@ -439,7 +439,7 @@ export function scrubPii(message: string): PiiScrubResult {
       }
       // Skip if decoded text is mostly non-printable — likely binary,
       // not a payload an attacker is hoping the LLM reads.
-      const printable = decoded.replace(/[^\x20-\x7E -￿\s]/g, '');
+      const printable = decoded.replace(/[^\x20-\x7E\u00a0-\uffff\s]/g, '');
       if (printable.length < decoded.length * 0.6) continue;
       if (printable.trim().length < 4) continue;
 

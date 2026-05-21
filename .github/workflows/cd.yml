@@ -320,12 +320,29 @@ jobs:
           kubectl apply -k infra/k8s/overlays/prod
           kubectl -n bossnyumba-prod rollout status deploy/api-gateway --timeout=10m
 
-      - name: Smoke + SLO check
-        id: slo
+      - name: Smoke test
+        id: smoke
         run: |
           curl -sf https://api.bossnyumba.com/healthz
-          # Sentry / Prometheus SLO gate would slot in here. Treat hard failure
-          # of healthz as an automatic rollback trigger.
+
+      # ----------------------------------------------------------------------
+      # Prometheus SLO gate — hard fail-closed check before we let the canary
+      # absorb more traffic. Script queries p99 latency, 5xx rate, payments
+      # success rate over the last 5 minutes. Any breach exits non-zero, which
+      # cascades to the "Rollback on failure" step below.
+      # ----------------------------------------------------------------------
+      - name: Check SLO compliance (Prometheus)
+        id: slo
+        env:
+          PROMETHEUS_URL: ${{ secrets.PROMETHEUS_URL }}
+          PROMETHEUS_BEARER_TOKEN: ${{ secrets.PROMETHEUS_BEARER_TOKEN }}
+          SLO_WINDOW: 5m
+          SLO_P99_LATENCY_MS_THRESHOLD: "1500"
+          SLO_ERROR_RATE_5XX_THRESHOLD: "0.01"
+          SLO_PAYMENTS_SUCCESS_THRESHOLD: "0.99"
+        run: |
+          chmod +x scripts/check-prometheus-slo.sh
+          scripts/check-prometheus-slo.sh
 
       - name: Rollback on failure
         if: failure()

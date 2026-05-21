@@ -31,13 +31,14 @@ import {
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState, Spinner, toast } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatDate, formatCurrency, formatDateTime } from '../lib/api';
+import { formatDate, formatDateTime } from '../lib/api';
 import {
   useOwnerWorkOrders,
   useApproveWorkOrder,
   useRejectWorkOrder,
   type OwnerWorkOrder as WorkOrder,
 } from '../lib/hooks';
+import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
 import { WorkOrderDetailModal, WorkOrderDetail } from '../components/WorkOrderDetailModal';
 
 interface CostTrendData {
@@ -53,6 +54,8 @@ interface CostTrendData {
 // ─── Main Page ───────────────────────────────────────────────────
 export function MaintenancePage() {
   const t = useTranslations('maintenancePage');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const {
     data: workOrders = [],
     isLoading: loading,

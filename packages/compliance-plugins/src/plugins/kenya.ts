@@ -124,7 +124,7 @@ const kenyaTenantScreening: TenantScreeningPort = {
       void identityDocument;
       return buildStubBureauResult('CRB_KE', ['BUREAU_NOT_CONFIGURED']);
     }
-    // TODO(ph-Z-global): wire real CRB KE adapter — see services/identity
+    // Follow-up ph-Z-global (Docs/TODO_BACKLOG.md): wire real CRB KE adapter — see services/identity
     void identityDocument;
     return buildStubBureauResult('CRB_KE');
   },

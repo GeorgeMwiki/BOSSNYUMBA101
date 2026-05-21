@@ -51,6 +51,7 @@ import { generateToken } from '../middleware/auth';
 import { getDatabaseClient } from '../middleware/database';
 import { users } from '@bossnyumba/database';
 import { UserRole } from '../types/user-role';
+import { e400, e401, e403 } from '../utils/error-response';
 
 const app = new Hono();
 
@@ -201,13 +202,7 @@ async function persistMfaSecret(
 app.post('/challenge', authMiddleware, async (c) => {
   const auth = c.get('auth');
   if (!auth?.userId || !auth?.tenantId) {
-    return c.json(
-      {
-        success: false,
-        error: { code: 'AUTH_REQUIRED', message: 'Authenticated session required' },
-      },
-      401
-    );
+    return e401(c, 'AUTH_REQUIRED', 'Authenticated session required');
   }
   const challengeId = randomUUID();
   challenges.set(challengeId, {
@@ -237,63 +232,34 @@ const VerifySchema = z.object({
 app.post('/verify', authMiddleware, zValidator('json', VerifySchema), async (c) => {
   const auth = c.get('auth');
   if (!auth?.userId || !auth?.tenantId) {
-    return c.json(
-      {
-        success: false,
-        error: { code: 'AUTH_REQUIRED', message: 'Authenticated session required' },
-      },
-      401
-    );
+    return e401(c, 'AUTH_REQUIRED', 'Authenticated session required');
   }
   const { challengeId, code } = c.req.valid('json');
   const entry = challenges.get(challengeId);
   if (!entry || entry.consumedAt) {
-    return c.json(
-      { success: false, error: { code: 'INVALID_CHALLENGE', message: 'Challenge expired or already used' } },
-      401
-    );
+    return e401(c, 'INVALID_CHALLENGE', 'Challenge expired or already used');
   }
   if (entry.createdAt + CHALLENGE_TTL_MS < Date.now()) {
     challenges.delete(challengeId);
-    return c.json(
-      { success: false, error: { code: 'CHALLENGE_EXPIRED', message: 'Challenge expired' } },
-      401
-    );
+    return e401(c, 'CHALLENGE_EXPIRED', 'Challenge expired');
   }
   // Defence in depth: even though /challenge writes the principal's
   // identity into the challenge entry, we still cross-check that the
   // verifying caller is the same identity. This stops a stolen
   // challengeId from being used by a different authed session.
   if (entry.userId !== auth.userId || entry.tenantId !== auth.tenantId) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'CHALLENGE_PRINCIPAL_MISMATCH',
-          message: 'Challenge does not belong to the authenticated session',
-        },
-      },
-      403
+    return e403(
+      c,
+      'CHALLENGE_PRINCIPAL_MISMATCH',
+      'Challenge does not belong to the authenticated session',
     );
   }
   const storedSecret = await resolveStoredMfaSecret(entry.userId, entry.tenantId);
   if (!storedSecret) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'MFA_NOT_ENROLLED',
-          message: 'MFA is not enrolled for this account',
-        },
-      },
-      400
-    );
+    return e400(c, 'MFA_NOT_ENROLLED', 'MFA is not enrolled for this account');
   }
   if (!verifyTotp(storedSecret, code)) {
-    return c.json(
-      { success: false, error: { code: 'INVALID_CODE', message: 'Invalid TOTP code' } },
-      401
-    );
+    return e401(c, 'INVALID_CODE', 'Invalid TOTP code');
   }
   // Single-use: mark consumed so a replay in a race condition fails.
   entry.consumedAt = Date.now();
@@ -349,19 +315,10 @@ app.post('/confirm', authMiddleware, zValidator('json', ConfirmSchema), async (c
   const auth = c.get('auth');
   const { secret, code } = c.req.valid('json');
   if (!auth?.userId || !auth?.tenantId) {
-    return c.json(
-      {
-        success: false,
-        error: { code: 'AUTH_REQUIRED', message: 'Authenticated session required' },
-      },
-      401
-    );
+    return e401(c, 'AUTH_REQUIRED', 'Authenticated session required');
   }
   if (!verifyTotp(secret, code)) {
-    return c.json(
-      { success: false, error: { code: 'INVALID_CODE', message: 'Invalid TOTP code' } },
-      401
-    );
+    return e401(c, 'INVALID_CODE', 'Invalid TOTP code');
   }
   // Persist server-side so /verify can resolve it without trusting
   // the client. Production should encrypt at rest via the

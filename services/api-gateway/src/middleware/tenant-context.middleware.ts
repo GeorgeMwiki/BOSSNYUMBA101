@@ -15,8 +15,49 @@ import type { AuthContext } from './auth.middleware';
 import {
   getCountryPlugin,
   DEFAULT_COUNTRY_ID,
+  UnknownJurisdictionError,
   type CountryPlugin,
 } from '@bossnyumba/compliance-plugins';
+
+/**
+ * Resolve a country plugin with a SAFE fallback to the platform-default
+ * jurisdiction. `getCountryPlugin` throws `UnknownJurisdictionError` for
+ * null / unknown country codes (Round-3 audit C6 — fail-closed at the
+ * library level). The middleware needs the OPPOSITE behaviour: a
+ * pre-migration tenant row with a null countryCode should boot under
+ * the platform default rather than 500-ing the request.
+ *
+ * We log a one-shot warning per process so operators can catch tenants
+ * still on the legacy null-countryCode row without spamming logs on
+ * every request.
+ */
+let defaultFallbackWarned = false;
+/**
+ * Test-only — reset the one-shot warning gate so a test asserting the
+ * unknown-country fallback path runs deterministically across cases.
+ */
+export function __resetDefaultFallbackWarning(): void {
+  defaultFallbackWarned = false;
+}
+function resolveCountryPluginWithDefault(rawCode: string | null): CountryPlugin {
+  try {
+    return getCountryPlugin(rawCode);
+  } catch (error) {
+    if (error instanceof UnknownJurisdictionError) {
+      if (!defaultFallbackWarned) {
+        defaultFallbackWarned = true;
+        // eslint-disable-next-line no-console -- one-shot operator visibility
+        console.warn(
+          `[tenant-context] unknown / missing countryCode (${JSON.stringify(rawCode)}); ` +
+            `falling back to DEFAULT_COUNTRY_ID=${DEFAULT_COUNTRY_ID}. ` +
+            `Update tenants.countryCode to silence this warning.`,
+        );
+      }
+      return getCountryPlugin(DEFAULT_COUNTRY_ID);
+    }
+    throw error;
+  }
+}
 
 // ============================================================================
 // Types
@@ -197,15 +238,49 @@ const DEFAULT_TENANT_LIMITS: TenantLimits = {
 // Tenant Loader (Mock - Replace with Database in Production)
 // ============================================================================
 
+// Why: SSRF via X-Tenant-ID — header value flows into a backend fetch URL.
+// Without a strict allowlist, an attacker can submit values like
+// `../../admin/keys` or URL-encoded `..%2f..%2fadmin` to pivot the internal
+// request to other cluster endpoints. Allow only the character set that
+// real tenant IDs use (UUIDs, slugs) and cap the length.
+const TENANT_ID_REGEX = /^[a-zA-Z0-9_-]{1,64}$/;
+
+export class InvalidTenantIdError extends Error {
+  readonly code = 'INVALID_TENANT_ID';
+  constructor(message = 'Invalid tenant ID format') {
+    super(message);
+    this.name = 'InvalidTenantIdError';
+  }
+}
+
+export function isValidTenantId(tenantId: unknown): tenantId is string {
+  return typeof tenantId === 'string' && TENANT_ID_REGEX.test(tenantId);
+}
+
 async function loadTenantFromDatabase(tenantId: string): Promise<TenantConfig | null> {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return null;
+
+  // Why: SSRF defense-in-depth — even though callers should have validated
+  // earlier, re-check at the network boundary before any string
+  // interpolation reaches `fetch`.
+  if (!isValidTenantId(tenantId)) {
+    throw new InvalidTenantIdError();
+  }
 
   try {
     const apiBase = process.env.TENANT_SERVICE_URL || process.env.API_URL || '';
     if (!apiBase) return null;
 
-    const res = await fetch(`${apiBase}/internal/tenants/${tenantId}`, {
+    // Why: build URL via `new URL` and `encodeURIComponent` so path segments
+    // can never be reinterpreted as additional path components by `fetch`.
+    const base = apiBase.endsWith('/') ? apiBase : `${apiBase}/`;
+    const tenantUrl = new URL(
+      `internal/tenants/${encodeURIComponent(tenantId)}`,
+      base
+    );
+
+    const res = await fetch(tenantUrl, {
       headers: {
         'X-API-Key': process.env.INTERNAL_API_KEY || '',
         'Content-Type': 'application/json',
@@ -272,19 +347,29 @@ async function loadTenantConfig(tenantId: string): Promise<TenantConfig | null> 
 // ============================================================================
 
 /**
- * Extract tenant ID from request
+ * Extract tenant ID from request.
+ *
+ * DA1 MEDIUM finding: previously the subdomain branch returned
+ * `parts[0]` without running `isValidTenantId`, so a direct caller of
+ * `extractTenantId` (e.g. a future middleware or a test scaffold) could
+ * receive an unvalidated value derived from the `Host` header — a
+ * classic SSRF surface where an attacker controls the subdomain.
+ * The downstream `tenantContextMiddleware` re-validates the result, but
+ * any other consumer of this function (it is exported from this module)
+ * had no such guarantee. Move the regex check inside `extractTenantId`
+ * so every code path returns either a valid tenantId or `null`.
  */
 function extractTenantId(c: Context): string | null {
   // Priority order:
   // 1. Auth context (from JWT)
   const auth = c.get('auth') as AuthContext | undefined;
-  if (auth?.tenantId) {
+  if (auth?.tenantId && isValidTenantId(auth.tenantId)) {
     return auth.tenantId;
   }
 
   // 2. X-Tenant-ID header
   const headerTenantId = c.req.header('X-Tenant-ID');
-  if (headerTenantId) {
+  if (headerTenantId && isValidTenantId(headerTenantId)) {
     return headerTenantId;
   }
 
@@ -293,15 +378,21 @@ function extractTenantId(c: Context): string | null {
   if (host) {
     const parts = host.split('.');
     if (parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'api') {
-      // This would need to be looked up by slug
-      return parts[0];
+      const subdomain = parts[0];
+      // DA1 MEDIUM: validate the subdomain before returning. The Host
+      // header is fully attacker-controlled at the L7 boundary; an
+      // un-validated value here would let traversal sequences (`..`),
+      // URL-encoded escapes, or oversized strings flow downstream.
+      if (subdomain && isValidTenantId(subdomain)) {
+        return subdomain;
+      }
     }
   }
 
   // 4. Query parameter (for testing/debug only)
   if (process.env.NODE_ENV === 'development') {
     const queryTenantId = c.req.query('tenantId');
-    if (queryTenantId) {
+    if (queryTenantId && isValidTenantId(queryTenantId)) {
       return queryTenantId;
     }
   }
@@ -359,6 +450,22 @@ export const tenantContextMiddleware = createMiddleware(async (c, next) => {
     );
   }
 
+  // Why: SSRF via X-Tenant-ID — reject malformed IDs (path traversal,
+  // URL-encoded escapes, oversized values) before they flow into the
+  // downstream tenant-service fetch URL.
+  if (!isValidTenantId(tenantId)) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'INVALID_TENANT_ID',
+          message: 'Tenant ID format is invalid.',
+        },
+      },
+      400
+    );
+  }
+
   const config = await loadTenantConfig(tenantId);
 
   if (!config) {
@@ -388,11 +495,11 @@ export const tenantContextMiddleware = createMiddleware(async (c, next) => {
   }
 
   // Resolve the country plugin from the tenant's country code. Falls back
-  // to DEFAULT_COUNTRY_ID inside `getCountryPlugin` when the tenant row
+  // to DEFAULT_COUNTRY_ID via the safe-resolve helper when the tenant row
   // has not migrated to countryCode yet — a one-shot warning is logged
-  // by the plugin registry so operators can catch the drift.
+  // so operators can catch the drift.
   const resolvedCountry = (config.countryCode ?? '').trim().toUpperCase();
-  const countryPlugin = getCountryPlugin(resolvedCountry || null);
+  const countryPlugin = resolveCountryPluginWithDefault(resolvedCountry || null);
 
   // Set tenant context
   const tenantContext: TenantContext = {
@@ -423,12 +530,16 @@ export const tenantContextMiddleware = createMiddleware(async (c, next) => {
 export const optionalTenantContextMiddleware = createMiddleware(async (c, next) => {
   const tenantId = extractTenantId(c);
 
-  if (tenantId) {
+  // Why: SSRF via X-Tenant-ID — silently ignore invalid IDs in the optional
+  // path so untrusted header values never reach the tenant-service fetch.
+  if (tenantId && isValidTenantId(tenantId)) {
     const config = await loadTenantConfig(tenantId);
 
     if (config && isTenantActive(config)) {
       const resolvedCountry = (config.countryCode ?? '').trim().toUpperCase();
-      const countryPlugin = getCountryPlugin(resolvedCountry || null);
+      const countryPlugin = resolveCountryPluginWithDefault(
+        resolvedCountry || null,
+      );
 
       c.set('tenant', {
         id: config.id,

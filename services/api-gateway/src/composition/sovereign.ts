@@ -579,9 +579,9 @@ function maybeBuildDpAggregator(
 // composition root for the agent-loop is not yet wired into the api-
 // gateway; until it is, this factory is exposed via
 // `getMarketDataKernelTools()` for the future agent-loop wiring to
-// pick up. See the inline TODO below.
+// pick up. See the inline follow-up note below.
 //
-// TODO(agent-loop): when the api-gateway grows an agent-loop
+// Follow-up agent-loop (Docs/TODO_BACKLOG.md): when the api-gateway grows an agent-loop
 // composition root (parallel to this sovereign one), thread the bundle
 // returned by `getMarketDataKernelTools()` into its `createToolRegistry`
 // input. The registry surface is documented in

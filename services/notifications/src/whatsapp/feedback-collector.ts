@@ -245,7 +245,7 @@ export class FeedbackCollector {
       const numMatch = text.match(/\d/);
       
       if (numMatch) {
-        rating = Math.min(5, Math.max(1, parseInt(numMatch[0])));
+        rating = Math.min(5, Math.max(1, parseInt(numMatch[0], 10)));
       } else if (text.includes('great') || text.includes('excellent') || text.includes('nzuri sana')) {
         rating = 5;
       } else if (text.includes('good') || text.includes('okay') || text.includes('sawa')) {

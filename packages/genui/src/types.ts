@@ -132,7 +132,7 @@ export interface SignatureAction {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Phase E.7 — 13 new kinds (deferred from ProdFix-7's TODO: ProdFix-8)
+// Phase E.7 — 13 new kinds (landed in ProdFix-8)
 // ─────────────────────────────────────────────────────────────────────
 
 export interface WizardStep {

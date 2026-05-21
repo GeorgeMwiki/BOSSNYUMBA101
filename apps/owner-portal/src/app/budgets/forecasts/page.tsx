@@ -14,11 +14,13 @@ import {
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatCurrency } from '../../../lib/api';
 import { useBudgetForecasts } from '../../../lib/hooks';
+import { useTenantCurrencyFormatter } from '../../../hooks/useTenantCurrency';
 
 export default function BudgetForecastsPage() {
   const t = useTranslations('budgetForecastsPage');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { data = [], isLoading, error, refetch } = useBudgetForecasts();
 
   const forecastData = data.length

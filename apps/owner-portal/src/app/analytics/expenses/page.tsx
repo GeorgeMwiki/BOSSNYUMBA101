@@ -15,13 +15,15 @@ import {
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatCurrency } from '../../../lib/api';
 import { useExpensesAnalytics } from '../../../lib/hooks';
+import { useTenantCurrencyFormatter } from '../../../hooks/useTenantCurrency';
 
 const COLORS = ['#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6', '#10B981'];
 
 export default function ExpensesPage() {
   const t = useTranslations('expensesAnalyticsPage');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { data = [], isLoading, error, refetch } = useExpensesAnalytics();
 
   const chartData = data.length

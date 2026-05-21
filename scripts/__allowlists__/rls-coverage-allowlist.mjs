@@ -8,8 +8,9 @@
  * Most entries below are TRACKED GAPS: pre-existing tenant tables that
  * landed before the Phase-D11 RLS sweep (migrations 0155 +
  * 0156_supabase_rls_phase2.sql, which together cover 40 tables). Each
- * tracked gap is a TODO to add a RLS migration; remove the entry once
- * the migration lands so the scanner ratchets forward.
+ * tracked gap is a pending RLS-migration task (Docs/TODO_BACKLOG.md);
+ * remove the entry once the migration lands so the scanner ratchets
+ * forward.
  *
  * Architectural exemptions (NON-tracked-gap categories):
  *   1. Platform-global registries (jurisdictions, countries, currencies).

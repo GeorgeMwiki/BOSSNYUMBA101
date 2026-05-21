@@ -120,7 +120,7 @@ app.post('/', zValidator('json', submitFeedbackSchema), async (c) => {
       // without a new table. The original turn/thread identifiers + raw
       // signal + optional correction text are captured in `context` so
       // the downstream rejudge/eval workflow can replay them.
-      // TODO(tier-2): split into a dedicated `turn_feedback` table with a
+      // Follow-up tier-2 (Docs/TODO_BACKLOG.md): split into a dedicated `turn_feedback` table with a
       // foreign key to the kernel provenance row when the kernel-eval
       // pipeline lands. For now we share the storage but keep the rows
       // queryable via the `type` index.

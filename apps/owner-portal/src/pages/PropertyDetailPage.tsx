@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import { Skeleton, EmptyState } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { api, formatCurrency, formatPercentage } from '../lib/api';
+import { api, formatPercentage } from '../lib/api';
+import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
 
 interface Property {
   id: string;
@@ -52,6 +53,8 @@ interface Unit {
 
 export function PropertyDetailPage() {
   const t = useTranslations('propertyDetailPage');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { id } = useParams<{ id: string }>();
   const [property, setProperty] = useState<Property | null>(null);
   const [units, setUnits] = useState<Unit[]>([]);

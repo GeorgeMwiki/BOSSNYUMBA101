@@ -1056,6 +1056,10 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
             groundingFacts,
           ),
           judge: deps.selfRagJudge,
+          // EP-3 CRITICAL #3 — fail-closed when judge unavailable for
+          // high/critical stakes (prod only). Self-rag.ts decides the
+          // env gating; we just propagate the stakes signal.
+          stakes: req.stakes,
         });
         traceStep(
           'self-rag',

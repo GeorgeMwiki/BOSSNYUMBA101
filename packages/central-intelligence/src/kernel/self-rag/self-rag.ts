@@ -53,13 +53,67 @@ export interface SelfRagJudge {
   }>;
 }
 
+/**
+ * Hybrid-retrieval fallback config. When `retrievedContext` is empty
+ * AND a `hybridRetrieval` bundle is wired, `runSelfRag` will call
+ * `buildRetrievedContext` to materialise the context just-in-time
+ * from the persistent memory layer (migration 0181). The bundle is
+ * fully optional; omitting it keeps the legacy behaviour.
+ */
+export interface SelfRagHybridRetrieval {
+  readonly tenantId: string;
+  readonly sessionId: string;
+  readonly embedder: (text: string) => Promise<ReadonlyArray<number>>;
+  /** Duck-typed `HybridRetrievalRepo` — kept loose to avoid an import cycle. */
+  readonly repo: {
+    searchBm25(args: {
+      readonly tenantId: string;
+      readonly sessionId: string;
+      readonly query: string;
+      readonly limit: number;
+    }): Promise<ReadonlyArray<{ readonly id: string; readonly text: string }>>;
+    searchVector(args: {
+      readonly tenantId: string;
+      readonly sessionId: string;
+      readonly embedding: ReadonlyArray<number>;
+      readonly limit: number;
+    }): Promise<ReadonlyArray<{ readonly id: string; readonly text: string }>>;
+  };
+  /** Override the top-N returned by the fusion. Default 8. */
+  readonly topN?: number;
+}
+
 export interface SelfRagInput {
   readonly userMessage: string;
   readonly responseText: string;
   /** Optional context bundle the kernel retrieved + injected. */
   readonly retrievedContext?: ReadonlyArray<string>;
+  /**
+   * Optional hybrid-retrieval bundle. When supplied AND
+   * `retrievedContext` is missing or empty, the critic materialises
+   * the context from the persistent memory layer (migration 0181) so
+   * the judge always has something concrete to score against.
+   */
+  readonly hybridRetrieval?: SelfRagHybridRetrieval;
   /** Haiku-backed judge wrapping the LLM critic. Required. */
   readonly judge: SelfRagJudge;
+  /**
+   * Optional stakes — EP-3 CRITICAL #3 fail-closed policy. When the
+   * judge throws AND stakes ∈ {high, critical} AND env is NOT
+   * dev/test, the verdict returns blocked=true with reason
+   * 'judge_unavailable' so a flaky Haiku session does NOT silently
+   * let a high-stakes turn through ungraded. Dev/test keeps the
+   * previous fail-open behaviour so flaky local runs don't blank
+   * the product.
+   */
+  readonly stakes?: 'low' | 'medium' | 'high' | 'critical';
+  /**
+   * Optional env override — defaults to `process.env.NODE_ENV`. Tests
+   * inject 'test' to keep the fail-open branch even when stakes are
+   * high; the production composition root leaves it undefined so the
+   * real NODE_ENV is read.
+   */
+  readonly nodeEnv?: string;
   /** Optional clock for tests. */
   readonly now?: () => number;
 }
@@ -118,20 +172,59 @@ export async function runSelfRag(
     };
   }
 
-  const probe = buildJudgeProbe(input);
+  // Hybrid-retrieval fallback. When the caller did not pre-populate
+  // `retrievedContext` (or supplied an empty array) AND a
+  // `hybridRetrieval` bundle is wired, materialise the context from
+  // the persistent memory layer (migration 0181). Fail-soft: any
+  // throw inside the fallback is swallowed so the judge still runs
+  // (with no retrieved context) — exactly the legacy behaviour.
+  const ctxFromInput = input.retrievedContext ?? [];
+  let resolvedContext: ReadonlyArray<string> = ctxFromInput;
+  if (ctxFromInput.length === 0 && input.hybridRetrieval) {
+    resolvedContext = await materialiseHybridContext(input);
+  }
+  const probeInput: SelfRagInput =
+    resolvedContext === ctxFromInput
+      ? input
+      : { ...input, retrievedContext: resolvedContext };
+
+  const probe = buildJudgeProbe(probeInput);
   let judgeOut: { score: number; reasonText?: string; suggestedFix?: string };
   try {
     judgeOut = await input.judge(probe);
   } catch (err) {
-    // Failure of the side-channel must not break the turn — return
-    // 'unknown' tokens and let the policy gate make the call. We do
-    // NOT block on judge failure: that would mean a flaky Haiku
-    // session blanks the whole product.
+    // EP-3 CRITICAL #3 — fail-closed policy. In production, when the
+    // judge throws AND stakes ∈ {high, critical}, the Self-RAG critic
+    // is the LAST line of defence against ungrounded financial /
+    // contractual claims. Letting the turn through ungraded would
+    // mean a flaky Haiku session bypasses the grounding gate for the
+    // turns that need it most. So:
+    //
+    //   - prod   + stakes∈{high,critical}  → blocked=true (fail closed)
+    //   - prod   + stakes∈{low,medium}     → fail open (legacy)
+    //   - dev/test                          → fail open (don't blank
+    //                                         the product on flaky
+    //                                         local runs)
+    const nodeEnv = (input.nodeEnv ?? process.env.NODE_ENV ?? '').toLowerCase();
+    const isDevOrTest = nodeEnv === 'development' || nodeEnv === 'dev' ||
+      nodeEnv === 'test' || nodeEnv === 'testing' || nodeEnv === '';
+    const isHighStakes = input.stakes === 'high' || input.stakes === 'critical';
+    const errMsg = err instanceof Error ? err.message : String(err);
+    if (!isDevOrTest && isHighStakes) {
+      return {
+        isRel: 'unknown',
+        isSup: 'unknown',
+        isUse: 'unknown',
+        rationale: `judge-error: ${errMsg}`,
+        blocked: true,
+        blockedReason: 'judge_unavailable',
+      };
+    }
     return {
       isRel: 'unknown',
       isSup: 'unknown',
       isUse: 'unknown',
-      rationale: `judge-error: ${err instanceof Error ? err.message : String(err)}`,
+      rationale: `judge-error: ${errMsg}`,
       blocked: false,
     };
   }
@@ -229,4 +322,39 @@ function truncate(s: string, max: number): string {
   if (!s) return '';
   if (s.length <= max) return s;
   return `${s.slice(0, max)}…`;
+}
+
+/**
+ * Materialise retrieved context via the persistent memory layer's
+ * hybrid retrieval (BM25 + vector with Reciprocal Rank Fusion).
+ * Imported lazily so callers that never wire `hybridRetrieval` don't
+ * pull the dependency into their bundle.
+ *
+ * Fail-soft: any throw collapses to an empty context — the judge then
+ * sees "(no retrieval supplied)" and the rest of the pipeline behaves
+ * exactly like the legacy path.
+ */
+async function materialiseHybridContext(
+  input: SelfRagInput,
+): Promise<ReadonlyArray<string>> {
+  const bundle = input.hybridRetrieval;
+  if (!bundle) return [];
+  try {
+    const { buildRetrievedContext } = await import(
+      '../memory/hybrid-retrieval.js'
+    );
+    return await buildRetrievedContext(
+      bundle.tenantId,
+      bundle.sessionId,
+      input.userMessage ?? '',
+      bundle.embedder,
+      // The bundle.repo shape is a duck-typed subset of HybridRetrievalRepo —
+      // cast at the boundary so we don't force callers to import the
+      // memory port types just to construct the input.
+      bundle.repo as unknown as Parameters<typeof buildRetrievedContext>[4],
+      bundle.topN ? { topN: bundle.topN } : undefined,
+    );
+  } catch {
+    return [];
+  }
 }

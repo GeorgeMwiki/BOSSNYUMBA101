@@ -58,7 +58,7 @@ describe('idempotency', () => {
 
     const first = await executor.execute(plan, {
       tenant_id: TENANT,
-      executor_actor_id: 'bob',
+      executor_actor_id: 'carol',
     });
     expect(first.entities_created).toEqual(8);
     expect(first.attributes_skipped).toEqual(0);
@@ -75,7 +75,7 @@ describe('idempotency', () => {
     const executor2 = new IngestExecutor(store, ledger2);
     const second = await executor2.execute(plan2, {
       tenant_id: TENANT,
-      executor_actor_id: 'bob',
+      executor_actor_id: 'carol',
     });
 
     expect(second.entities_created).toEqual(0);
@@ -126,14 +126,14 @@ describe('idempotency', () => {
     const executor = new IngestExecutor(store, ledger1);
     const first = await executor.execute(plan1, {
       tenant_id: TENANT,
-      executor_actor_id: 'bob',
+      executor_actor_id: 'carol',
     });
     expect(first.entities_created).toEqual(8);
 
     const executor2 = new IngestExecutor(store, ledger2);
     const second = await executor2.execute(plan2, {
       tenant_id: TENANT,
-      executor_actor_id: 'bob',
+      executor_actor_id: 'carol',
     });
 
     expect(second.entities_created).toEqual(0); // entities already exist
@@ -162,7 +162,7 @@ describe('idempotency', () => {
     const executor = new IngestExecutor(store, ledger);
     await executor.execute(plan, {
       tenant_id: TENANT,
-      executor_actor_id: 'bob',
+      executor_actor_id: 'carol',
     });
 
     const fakeHashSeen = await store.hasProvenanceHash(TENANT, 'definitely-not-real');

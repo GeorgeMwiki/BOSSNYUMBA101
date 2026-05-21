@@ -4,7 +4,7 @@ Canonical reference for every `process.env.XXX` read by the monorepo. Maintained
 
 Status legend: **REQ-PROD** = app refuses to boot without it in production. **REQ-FEAT** = a specific feature is disabled without it. **OPT** = graceful default. **BUILD** = set by CI / build pipeline, not operator.
 
-Last scrubbed: 2026-04-20.
+Last scrubbed: 2026-05-21.
 
 ## A. Core infrastructure
 
@@ -48,8 +48,11 @@ Last scrubbed: 2026-04-20.
 | `JWT_EXPIRES_IN` | OPT | schema-default | `@bossnyumba/config` | |
 | `JWT_AUDIENCE` | OPT | `bossnyumba-api` | auth middleware | |
 | `JWT_ISSUER` | OPT | `bossnyumba` | auth middleware | |
-| `SUPABASE_JWT_SECRET` | REQ-PROD | — | payments-ledger auth middleware | throws on first request if missing or < 10 chars |
-| `CLERK_SECRET_KEY` | OPT | — | `@bossnyumba/config` | optional Clerk pairing |
+| `NEXT_PUBLIC_SUPABASE_URL` | REQ-PROD | — | customer-app, estate-manager-app, owner-portal, admin-portal Supabase client | browser-safe project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | REQ-PROD | — | all Next.js apps Supabase client | browser-safe anon key; RLS-gated |
+| `SUPABASE_SERVICE_ROLE_KEY` | REQ-PROD | — | api-gateway admin operations, services/identity, scripts/seed | **SERVER ONLY** — bypasses RLS; never expose to client |
+| `SUPABASE_JWT_SECRET` | REQ-PROD | — | api-gateway `brain.hono.ts`, `ai-chat.router.ts`; customer-app `/api/brain/turn`; estate-manager-app brain-server; payments-ledger `auth-middleware` | throws on first request if missing or < 10 chars |
+| `CLERK_SECRET_KEY` | REMOVED | — | — | Clerk removed in favor of Supabase Auth — ADR-0004 |
 | `INTERNAL_API_KEY` | REQ-FEAT | dev-cli fallback in openapi cli | api-gateway (notifications dispatch, tenant-context fetch), payments-ledger statement dispatch | no guard — empty string silently passes as empty header |
 | `API_KEY_REGISTRY` | REQ-PROD | — | api-key-registry middleware | prod: `assertApiKeyConfig()` throws if neither this nor legacy is set |
 | `API_KEYS` | DEPRECATED | — | api-key-registry middleware | legacy exact-match; emits CRITICAL warning in prod |

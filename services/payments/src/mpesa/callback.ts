@@ -1,5 +1,18 @@
 import { EventEmitter } from 'events';
 
+/**
+ * Convert a decimal-string money amount (e.g. "5000.00") into integer
+ * minor units (cents) so the ledger never holds a float.
+ *
+ * Bug fix A-BUG-DEEP #5: replaces `parseFloat(...)` to avoid IEEE-754
+ * drift accumulating across high-volume reconciliation.
+ */
+function toIntegerMinor(value: string | number | undefined | null): number {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 0;
+  return Math.round(num * 100);
+}
+
 export interface StkCallbackMetadataItem {
   Name: string;
   Value: string | number;
@@ -49,11 +62,19 @@ export interface ParsedC2BPayment {
   transactionId: string;
   transactionType: string;
   transactionTime: Date;
-  amount: number;
+  /**
+   * Payment amount in integer minor units (e.g. KES cents).
+   * Bug fix A-BUG-DEEP #5: previously `parseFloat(TransAmount)` returned a
+   * potentially-lossy decimal (5000.01 → 5000.009999... in some cases).
+   * Now stored as `Math.round(amountMajor * 100)` so all downstream
+   * ledger math stays in integer space.
+   */
+  amountMinor: number;
   shortcode: string;
   accountReference: string;
   invoiceNumber: string;
-  orgBalance: number;
+  /** Org balance in integer minor units (same convention as `amountMinor`). */
+  orgBalanceMinor: number;
   phoneNumber: string;
   customerName: string;
 }
@@ -109,34 +130,48 @@ export class MpesaCallbackHandler extends EventEmitter {
 
   /**
    * Parse C2B confirmation callback
+   *
+   * Bug fix A-BUG-DEEP #5: `TransAmount` is now converted to integer
+   * minor units (cents) via `Math.round(Number(x) * 100)` so the rest of
+   * the ledger pipeline never sees a float.
    */
   parseC2BConfirmation(body: C2BConfirmation): ParsedC2BPayment {
     return {
       transactionId: body.TransID,
       transactionType: body.TransactionType,
       transactionTime: this.parseTransactionDate(body.TransTime),
-      amount: parseFloat(body.TransAmount),
+      amountMinor: toIntegerMinor(body.TransAmount),
       shortcode: body.BusinessShortCode,
       accountReference: body.BillRefNumber,
       invoiceNumber: body.InvoiceNumber,
-      orgBalance: parseFloat(body.OrgAccountBalance),
+      orgBalanceMinor: toIntegerMinor(body.OrgAccountBalance),
       phoneNumber: body.MSISDN,
       customerName: [body.FirstName, body.MiddleName, body.LastName].filter(Boolean).join(' '),
     };
   }
 
   /**
-   * Parse M-Pesa transaction date format (YYYYMMDDHHmmss)
+   * Parse M-Pesa transaction date format (YYYYMMDDHHmmss).
+   *
+   * Bug fix A-BUG-DEEP #4: the prior implementation used the
+   * `new Date(y, m, d, h, m, s)` constructor which interprets the args
+   * in the *runtime's local timezone*. M-Pesa always emits times in
+   * East-Africa-Time (UTC+3, no DST), so on a UTC server every callback
+   * was being recorded 3 hours late. Build the UTC instant explicitly,
+   * then subtract the +3h EAT offset to land on the real wall clock.
    */
   private parseTransactionDate(dateStr: string): Date {
-    const year = parseInt(dateStr.slice(0, 4));
-    const month = parseInt(dateStr.slice(4, 6)) - 1;
-    const day = parseInt(dateStr.slice(6, 8));
-    const hour = parseInt(dateStr.slice(8, 10));
-    const minute = parseInt(dateStr.slice(10, 12));
-    const second = parseInt(dateStr.slice(12, 14));
+    const year = parseInt(dateStr.slice(0, 4), 10);
+    const month = parseInt(dateStr.slice(4, 6), 10);
+    const day = parseInt(dateStr.slice(6, 8), 10);
+    const hour = parseInt(dateStr.slice(8, 10), 10);
+    const minute = parseInt(dateStr.slice(10, 12), 10);
+    const second = parseInt(dateStr.slice(12, 14), 10);
 
-    return new Date(year, month, day, hour, minute, second);
+    // Build the timestamp as if the parsed parts were in UTC, then
+    // shift back by the EAT offset (+3h) to get the true UTC instant.
+    const utcMs = Date.UTC(year, month - 1, day, hour, minute, second);
+    return new Date(utcMs - 3 * 3600 * 1000);
   }
 
   /**

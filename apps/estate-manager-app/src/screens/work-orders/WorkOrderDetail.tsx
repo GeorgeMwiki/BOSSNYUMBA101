@@ -745,7 +745,7 @@ export default function WorkOrderDetail() {
                 </div>
                 <div className="grid grid-cols-4 gap-2 mt-2">
                   <input type="text" aria-label={t('materialName')} className="input col-span-2" placeholder={t('materialName')} value={newMaterial.name} onChange={(e) => setNewMaterial({ ...newMaterial, name: e.target.value })} />
-                  <input type="number" aria-label={t('qty')} className="input" placeholder={t('qty')} min="1" value={newMaterial.quantity} onChange={(e) => setNewMaterial({ ...newMaterial, quantity: parseInt(e.target.value) || 1 })} />
+                  <input type="number" aria-label={t('qty')} className="input" placeholder={t('qty')} min="1" value={newMaterial.quantity} onChange={(e) => setNewMaterial({ ...newMaterial, quantity: parseInt(e.target.value, 10) || 1 })} />
                   <input type="number" aria-label={t('cost')} className="input" placeholder={t('cost')} min="0" value={newMaterial.cost || ''} onChange={(e) => setNewMaterial({ ...newMaterial, cost: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <button onClick={addMaterial} disabled={!newMaterial.name.trim()} className="btn-secondary w-full mt-2 text-sm disabled:opacity-50"><Plus className="w-4 h-4 mr-1" /> {t('addMaterial')}</button>
@@ -760,11 +760,11 @@ export default function WorkOrderDetail() {
                 <label className="label flex items-center gap-2"><Clock className="w-4 h-4" /> {t('laborTime')}</label>
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <input type="number" aria-label={t('hours')} className="input" placeholder={t('hours')} min="0" value={laborHours || ''} onChange={(e) => setLaborHours(parseInt(e.target.value) || 0)} />
+                    <input type="number" aria-label={t('hours')} className="input" placeholder={t('hours')} min="0" value={laborHours || ''} onChange={(e) => setLaborHours(parseInt(e.target.value, 10) || 0)} />
                     <span className="text-xs text-gray-500 mt-1">{t('hours')}</span>
                   </div>
                   <div className="flex-1">
-                    <input type="number" aria-label={t('minutes')} className="input" placeholder={t('minutes')} min="0" max="59" value={laborMinutes || ''} onChange={(e) => setLaborMinutes(parseInt(e.target.value) || 0)} />
+                    <input type="number" aria-label={t('minutes')} className="input" placeholder={t('minutes')} min="0" max="59" value={laborMinutes || ''} onChange={(e) => setLaborMinutes(parseInt(e.target.value, 10) || 0)} />
                     <span className="text-xs text-gray-500 mt-1">{t('minutes')}</span>
                   </div>
                 </div>

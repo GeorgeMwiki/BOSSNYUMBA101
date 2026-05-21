@@ -135,6 +135,28 @@ export const api = {
     async getPaymentPlan(id: string) {
       return requireLiveData(() => ensureClient().get(`/payments/plans/${id}`));
     },
+
+    /**
+     * Fetch the signed receipt URL for a completed payment intent. Used by
+     * `ReceiptDownloadButton` after Stripe/M-Pesa report SUCCEEDED — the
+     * gateway returns a short-lived URL pointing at storage.
+     */
+    async getReceiptUrl(intentId: string): Promise<{ url: string }> {
+      return requireLiveData(() =>
+        ensureClient().get(`/payments/${intentId}/receipt`),
+      );
+    },
+
+    /**
+     * Poll a payment intent's status while the user is waiting for an
+     * STK Push to resolve. Returns the canonical `PENDING | PROCESSING |
+     * REQUIRES_ACTION | SUCCEEDED | FAILED | CANCELLED` string.
+     */
+    async getIntentStatus(intentId: string): Promise<{ status: string }> {
+      return requireLiveData(() =>
+        ensureClient().get(`/payments/${intentId}/status`),
+      );
+    },
   },
 
   lease: {

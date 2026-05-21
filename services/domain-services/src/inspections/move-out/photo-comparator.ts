@@ -2,7 +2,7 @@
  * Move-in ↔ Move-out photo comparator (NEW 19)
  *
  * Stub implementation: groups photos by (room, item) keys and emits a
- * side-by-side comparison manifest. The actual visual diff is a TODO
+ * side-by-side comparison manifest. The actual visual diff is a follow-up
  * for the AI persona.
  */
 
@@ -36,7 +36,7 @@ export interface PhotoComparisonManifest {
 /**
  * Build a comparison manifest from two item lists.
  *
- * TODO(KI-007): wire to AI persona — feed each `PhotoPair`'s URL set
+ * Follow-up KI-007 (Docs/TODO_BACKLOG.md): wire to AI persona — feed each `PhotoPair`'s URL set
  *   through a vision model to compute `similarity` and `aiNarrative`.
  *   See Docs/KNOWN_ISSUES.md#ki-007.
  */

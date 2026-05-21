@@ -401,20 +401,32 @@ export class PaymentOrchestrationService {
   }
 
   /**
-   * Handle webhook from payment provider
+   * Handle webhook from payment provider.
+   *
+   * W4-A: `tenantId` is REQUIRED. The router (`server.ts`) resolves it from
+   * the verified provider payload (Stripe `metadata.tenantId`, M-Pesa
+   * shortcode map) BEFORE calling this method, so the tenant-scoped
+   * `findByExternalId` can guarantee cross-tenant isolation per
+   * migration 0169.
    */
   async handleWebhook(
     providerName: string,
     externalId: string,
     status: PaymentStatus,
+    tenantId: TenantId,
     receiptUrl?: string,
     failureReason?: string
   ): Promise<void> {
-    const paymentIntent = await this.repository.findByExternalId(externalId, providerName);
+    const paymentIntent = await this.repository.findByExternalId(
+      externalId,
+      providerName,
+      tenantId
+    );
     if (!paymentIntent) {
       this.logger.warn('Payment intent not found for webhook', {
         externalId,
-        providerName
+        providerName,
+        tenantId
       });
       return;
     }

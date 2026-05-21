@@ -21,6 +21,9 @@ export {
 // Types
 export * from './types';
 
+// Currency helpers (ISO-4217-aware formatting shared across apps)
+export * from './currency';
+
 // React Hooks
 export {
   // Query hooks

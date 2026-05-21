@@ -32,6 +32,7 @@ import {
   BrainThreadRepository,
   MigrationWriterService,
 } from '@bossnyumba/database';
+import { sql } from 'drizzle-orm';
 import {
   createNeo4jClient,
   createGraphQueryService,
@@ -39,6 +40,7 @@ import {
 } from '@bossnyumba/graph-sync';
 import { getBrainExtraSkills } from '../composition/brain-extensions';
 import { scrubMessage } from '../utils/safe-error';
+import { rateLimiter as sharedRateLimiter } from '../middleware/rate-limiter';
 
 // ---------------------------------------------------------------------------
 // Lazy boot — fail fast on missing env, but defer until first request so the
@@ -136,6 +138,46 @@ async function authenticate(c) {
   };
 }
 
+/**
+ * F8 (BOSSNYUMBA101 Supabase audit) — bind the RLS GUC for the current
+ * tenant on the Brain's Postgres client BEFORE any repository read.
+ *
+ * Brain routes do not flow through the gateway's `databaseMiddleware`
+ * (which is where the rest of the API sets `app.current_tenant_id`), so
+ * Brain's `BrainThreadRepository` reads would run with an unbound GUC
+ * and the RLS policies on `brain_threads` + `brain_thread_events` would
+ * evaluate `tenant_id = current_setting('app.tenant_id', true)` against
+ * NULL — silently zero rows if RLS is honoured, full bypass if the row
+ * happens to also satisfy a different role's policy. Either outcome is
+ * a defense-in-depth failure: the WHERE-clause tenant filter in the
+ * repo is the primary defence, but RLS must back it up.
+ *
+ * The historical Postgres GUC name in this codebase is split across two
+ * migrations:
+ *   - 0005..0093 use `app.current_tenant_id` (legacy).
+ *   - 0146 / 0156 / 0155 helper use `app.tenant_id` (canonical, what
+ *     newer policies and `public.current_app_tenant_id()` read).
+ *
+ * Z-SUPA-F2 will unify these. Until that lands, we bind BOTH names in
+ * the same statement so Brain is correct under either policy phase.
+ * The third arg `false` (NOT `SET LOCAL`) matches the existing pattern
+ * in `services/api-gateway/src/middleware/database.ts`: postgres.js
+ * checks out a connection per request, so the setting persists for the
+ * duration of the request only — every authenticated request re-binds
+ * before any read, so no cross-tenant leak through pool reuse.
+ */
+async function bindTenantGuc(
+  database: ReturnType<typeof createDatabaseClient>,
+  tenantId: string
+): Promise<void> {
+  if (!tenantId || typeof tenantId !== 'string') {
+    throw new SupabaseAuthError('missing_tenant_for_guc_bind', 403);
+  }
+  await database.execute(
+    sql`SELECT set_config('app.tenant_id', ${tenantId}, false), set_config('app.current_tenant_id', ${tenantId}, false)`
+  );
+}
+
 function handleError(c, err) {
   if (err instanceof SupabaseAuthError) {
     return c.json({ error: err.message, code: 'AUTH' }, err.status);
@@ -153,26 +195,23 @@ function handleError(c, err) {
 }
 
 // ---------------------------------------------------------------------------
-// Per-tenant + per-actor in-memory rate limiter
+// Per-tenant + per-actor rate limiter
+//
+// Bug fix (A-BUG-DEEP #2): replaces a stale module-local `RATE_BUCKETS` Map
+// with the shared `rateLimiter`/`rateLimitStore` used by
+// `perUserRateLimit` (which `memory-declare.router.ts` mounts as middleware).
+// The shared store is process-wide today and is the same primitive a Redis
+// adapter will plug into in the follow-up; replacing the per-route Map
+// removes the inconsistency where every router managed its own bucket.
 // ---------------------------------------------------------------------------
 
-const RATE_BUCKETS = new Map<string, { tokens: number; updatedAt: number }>();
-const RATE_REFILL_PER_SEC = 1; // 60 turns/min steady state
-const RATE_BURST = 30;
+const BRAIN_RATE_CONFIG = {
+  maxRequests: 30,
+  windowSizeSeconds: 60,
+} as const;
 
 function checkRate(key: string): boolean {
-  const now = Date.now();
-  const bucket = RATE_BUCKETS.get(key) ?? { tokens: RATE_BURST, updatedAt: now };
-  const elapsed = (now - bucket.updatedAt) / 1000;
-  bucket.tokens = Math.min(RATE_BURST, bucket.tokens + elapsed * RATE_REFILL_PER_SEC);
-  bucket.updatedAt = now;
-  if (bucket.tokens < 1) {
-    RATE_BUCKETS.set(key, bucket);
-    return false;
-  }
-  bucket.tokens -= 1;
-  RATE_BUCKETS.set(key, bucket);
-  return true;
+  return sharedRateLimiter.check(`perUser:brain:${key}`, BRAIN_RATE_CONFIG).allowed;
 }
 
 const brainRouter = new Hono();
@@ -187,6 +226,7 @@ brainRouter.get('/health', async (c) => {
     return handleError(c, err);
   }
   try {
+    await bindTenantGuc(db(), ctx.tenant.tenantId);
     const brain = registry().for(ctx.tenant.tenantId);
     const health = await checkBrainHealth(brain);
     return c.json(health);
@@ -266,6 +306,8 @@ brainRouter.post('/turn', async (c) => {
   const brain = registry().for(ctx.tenant.tenantId);
 
   try {
+    // F8: bind RLS GUC before the orchestrator triggers any thread repo read/write.
+    await bindTenantGuc(db(), ctx.tenant.tenantId);
     if (!body.threadId) {
       const result = await brain.orchestrator.startThread({
         tenant: ctx.tenant,
@@ -324,6 +366,12 @@ brainRouter.get('/threads', async (c) => {
   } catch (err) {
     return handleError(c, err);
   }
+  try {
+    // F8: bind RLS GUC before any thread repo read.
+    await bindTenantGuc(db(), ctx.tenant.tenantId);
+  } catch (err) {
+    return handleError(c, err);
+  }
   const brain = registry().for(ctx.tenant.tenantId);
   const limit = Number(c.req.query('limit') ?? 50);
   const list = await brain.threads.listThreads(ctx.tenant.tenantId, {
@@ -337,6 +385,12 @@ brainRouter.get('/threads/:id', async (c) => {
   let ctx;
   try {
     ctx = await authenticate(c);
+  } catch (err) {
+    return handleError(c, err);
+  }
+  try {
+    // F8: bind RLS GUC before any thread repo read.
+    await bindTenantGuc(db(), ctx.tenant.tenantId);
   } catch (err) {
     return handleError(c, err);
   }
@@ -395,6 +449,9 @@ brainRouter.post('/migrate/commit', async (c) => {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return c.json({ error: parsed.error.message }, 400);
   try {
+    // F8: bind RLS GUC before the migration writer touches any
+    // tenant-scoped tables.
+    await bindTenantGuc(db(), ctx.tenant.tenantId);
     const writer = new MigrationWriterService(db());
     // Resolve tenant region settings from DB rather than hardcoding —
     // helper falls back to env defaults when unavailable.

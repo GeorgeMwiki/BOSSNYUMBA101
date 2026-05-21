@@ -7,7 +7,7 @@
  * Implementation status:
  *   - 2.x stable path: presence + broadcastEvent (works today)
  *   - 3.x stable path: native `room.agent({...})` once that surface
- *     stabilises (TODO at the bottom of this file)
+ *     stabilises (see the follow-up note at the bottom of this file)
  *
  * Generative-UI parts are emitted as room `customEvent`s with a
  * `kind: 'gen-ui-part'` discriminator; the chat surface listens for
@@ -220,7 +220,7 @@ export function createBrainPeer(opts: CreateBrainPeerOptions): BrainPeer {
   };
 }
 
-// TODO(B6 follow-up): When @liveblocks/client publishes a stable 3.x
+// Follow-up B6 follow-up (Docs/TODO_BACKLOG.md): When @liveblocks/client publishes a stable 3.x
 // agent-peer surface (currently in preview as `room.agent({...})`),
 // switch `broadcastEvent`/`leave` for the native attach so the brain
 // shows up with its own cursor in the Liveblocks-managed presence

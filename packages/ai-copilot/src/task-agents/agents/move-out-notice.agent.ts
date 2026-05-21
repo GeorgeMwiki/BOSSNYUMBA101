@@ -5,7 +5,7 @@
  *
  * NOTE: MoveOutChecklistService is being wired by Z3; when the bag doesn't
  * carry `moveOutChecklistService` the agent falls back to the inspection
- * schedule path only, with a TODO surfaced in the data envelope.
+ * schedule path only, with a follow-up flag surfaced in the data envelope.
  */
 import { z } from 'zod';
 import type { TaskAgent, AgentRunResult } from '../types.js';
@@ -94,7 +94,7 @@ export const moveOutNoticeAgent: TaskAgent<typeof PayloadSchema> = {
         notes.push(`checklist_error:${(err as Error).message}`);
       }
     } else {
-      // TODO: Z3 MoveOutChecklistService wiring — fall back to notes-only.
+      // Follow-up (Docs/TODO_BACKLOG.md): Z3 MoveOutChecklistService wiring — fall back to notes-only.
       notes.push('move_out_checklist_service_pending_z3_wiring');
     }
 

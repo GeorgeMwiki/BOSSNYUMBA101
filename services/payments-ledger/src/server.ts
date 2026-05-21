@@ -35,6 +35,7 @@ import { TenantAggregate } from './domain-extensions';
 
 import { StripePaymentProvider } from './providers/stripe-provider';
 import { MpesaPaymentProvider } from './providers/mpesa-provider';
+import { resolvePlatformFeeBps } from './lib/platform-fee';
 import { PaymentOrchestrationService, CreatePaymentRequest } from './services/payment-orchestration.service';
 import { LedgerService } from './services/ledger.service';
 import { ReconciliationService } from './services/reconciliation.service';
@@ -150,18 +151,139 @@ function getTenantId(req: Request): TenantId {
 }
 
 /**
- * Resolve tenant aggregate - uses env-configured defaults (PLATFORM_FEE_PERCENT, etc.).
+ * Resolve tenant aggregate - uses env-configured defaults (PLATFORM_FEE_BPS, etc.).
  * Production: replace with HTTP call to tenant service when available. See Docs/PRODUCTION_READINESS.md.
+ *
+ * Bug fix A-BUG-DEEP #3 + #8:
+ *   - PLATFORM_FEE_PERCENT was being read directly via `parseFloat` which
+ *     bypassed the bps lib's validation and deprecation log. Route through
+ *     `resolvePlatformFeeBps` so both env vars stay in lockstep and the
+ *     deprecation warning fires once.
+ *   - The previous `as unknown as TenantAggregate` cast hid the fact that
+ *     `paymentSettings` may be missing `mpesaShortCode`. Build the object
+ *     with explicit defaults so consumers see a stable shape and a missing
+ *     required field surfaces as a real type error.
  */
 function getTenantAggregate(tenantId: TenantId): TenantAggregate {
-  const platformFee = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5.0');
-  return {
+  // resolvePlatformFeeBps returns basis points (e.g. 500 = 5.0%).
+  const platformFeeBps = resolvePlatformFeeBps(process.env);
+  const platformFeePercent = platformFeeBps / 100;
+  const aggregate: TenantAggregate = {
     id: tenantId,
-    getPlatformFeePercent: () => platformFee,
+    getPlatformFeePercent: () => platformFeePercent,
     paymentSettings: {
-      stripeAccountId: process.env.STRIPE_CONNECTED_ACCOUNT_ID || undefined
+      stripeAccountId: process.env.STRIPE_CONNECTED_ACCOUNT_ID || undefined,
+      mpesaShortCode: process.env.MPESA_SHORTCODE || undefined,
+    },
+  };
+  return aggregate;
+}
+
+// =============================================================================
+// W4-A: Webhook tenant resolution
+// -----------------------------------------------------------------------------
+// The tenant-scoped `findByExternalId` (migration 0169) requires the webhook
+// router to surface a tenantId BEFORE forwarding to the orchestration service.
+// We extract from provider payloads (Stripe metadata, M-Pesa shortcode map)
+// and short-circuit with MISSING_TENANT_CONTEXT when the claim is absent.
+// =============================================================================
+
+/**
+ * Error code surfaced by webhook routes when the provider payload does not
+ * carry a derivable tenant context. Routers translate this to HTTP 400 with
+ * a stable `MISSING_TENANT_CONTEXT` body code.
+ */
+export class MissingTenantContextError extends Error {
+  public readonly code = 'MISSING_TENANT_CONTEXT' as const;
+
+  constructor(provider: string, detail: string) {
+    super(`Missing tenant context from ${provider} webhook: ${detail}`);
+    this.name = 'MissingTenantContextError';
+  }
+}
+
+/**
+ * Stripe webhook payloads encode tenant context in `metadata`. Accept both
+ * `tenantId` (camelCase, our convention) and `tenant_id` (snake_case, the
+ * Stripe SDK's default for custom keys). Return null when the claim is
+ * absent or malformed — the caller short-circuits with MISSING_TENANT_CONTEXT.
+ *
+ * SECURITY: This function only surfaces what the payload claims. The
+ * tenant-scoped repository's `findByExternalId` is the actual cross-tenant
+ * guard — a spoofed claim resolves to a non-match against the DB row and
+ * the orchestrator logs a non-mutating miss.
+ */
+export function resolveStripeTenantId(
+  payload: { metadata?: Record<string, unknown> | null } | null | undefined
+): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const metadata = payload.metadata;
+  if (!metadata || typeof metadata !== 'object') return null;
+  const claim = (metadata as Record<string, unknown>).tenantId
+    ?? (metadata as Record<string, unknown>).tenant_id;
+  return typeof claim === 'string' && claim.length > 0 ? claim : null;
+}
+
+/**
+ * Parses MPESA_SHORTCODE_TENANT_MAP env into a shortcode -> tenantId map.
+ * Fails closed on malformed JSON (empty map, no throw) so a misconfigured
+ * environment can never silently allow cross-tenant credit. Cached on
+ * first call; tests call `__resetMpesaShortCodeMapCache()` between cases.
+ */
+let mpesaShortCodeMapCache: Map<string, string> | null = null;
+
+export function loadMpesaShortCodeMap(): Map<string, string> {
+  if (mpesaShortCodeMapCache) return mpesaShortCodeMapCache;
+  const raw = process.env.MPESA_SHORTCODE_TENANT_MAP;
+  const map = new Map<string, string>();
+  if (!raw) {
+    mpesaShortCodeMapCache = map;
+    return map;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      for (const [shortcode, tenantId] of Object.entries(parsed)) {
+        if (typeof tenantId === 'string' && tenantId.length > 0) {
+          map.set(shortcode, tenantId);
+        }
+      }
     }
-  } as unknown as TenantAggregate;
+  } catch {
+    // Fail closed — malformed JSON yields an empty map so no shortcode
+    // resolves and the router emits MISSING_TENANT_CONTEXT.
+  }
+  mpesaShortCodeMapCache = map;
+  return map;
+}
+
+/**
+ * Test-only hook to reset the cached shortcode map between cases. Exported
+ * with the `__` prefix to flag it as internal/test-only.
+ */
+export function __resetMpesaShortCodeMapCache(): void {
+  mpesaShortCodeMapCache = null;
+}
+
+/**
+ * Resolves a tenantId for an inbound M-Pesa C2B callback by looking up the
+ * paybill/till shortcode in the configured map. Returns null when the
+ * shortcode is unknown or the map is empty.
+ */
+export function resolveMpesaTenantByShortCode(shortcode: string): string | null {
+  const map = loadMpesaShortCodeMap();
+  return map.get(shortcode) ?? null;
+}
+
+/**
+ * Resolves a tenantId for STK Push callbacks. STK is initiated against the
+ * platform's configured business shortcode (`MPESA_BUSINESS_SHORT_CODE`),
+ * so we look that up in the shortcode -> tenant map.
+ */
+export function resolveMpesaStkTenantId(): string | null {
+  const shortcode = process.env.MPESA_BUSINESS_SHORT_CODE;
+  if (!shortcode) return null;
+  return resolveMpesaTenantByShortCode(shortcode);
 }
 
 // =============================================================================
@@ -584,8 +706,8 @@ app.get('/api/v1/accounts/:id/entries', async (req: Request, res: Response, next
   try {
     const tenantId = getTenantId(req);
     const accountId = asAccountId(req.params.id);
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 50;
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize as string, 10) || 50;
 
     const result = await ledgerService.getAccountEntries(
       accountId,
@@ -805,8 +927,8 @@ app.get('/api/v1/statements', async (req: Request, res: Response, next: NextFunc
     const tenantId = getTenantId(req);
     const ownerId = req.query.ownerId as string | undefined;
     const customerId = req.query.customerId as string | undefined;
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 20;
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize as string, 10) || 20;
 
     if (ownerId) {
       const result = await statementGenerationService.getOwnerStatements(
@@ -1229,6 +1351,16 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
 
     logger.info({ eventType: event.type, eventId: event.id }, 'Stripe webhook received');
 
+    // W4-A: resolve tenantId from Stripe metadata BEFORE forwarding. Short-
+    // circuit with 400/MISSING_TENANT_CONTEXT when absent so the orchestrator
+    // can rely on tenant-scoped repository lookups.
+    const stripeTenantId = resolveStripeTenantId(event.data as Record<string, unknown>);
+    if (!stripeTenantId) {
+      logger.warn({ eventType: event.type, eventId: event.id }, 'Stripe webhook missing tenant context');
+      return res.status(400).json({ error: { code: 'MISSING_TENANT_CONTEXT', message: 'stripe metadata.tenantId required' } });
+    }
+    const stripeTenant = asTenantId(stripeTenantId);
+
     // Handle the event
     switch (event.type) {
       case 'payment_intent.succeeded': {
@@ -1237,6 +1369,7 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
           'stripe',
           paymentIntent.id,
           'SUCCEEDED',
+          stripeTenant,
           paymentIntent.receipt_url
         );
         break;
@@ -1247,6 +1380,7 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
           'stripe',
           paymentIntent.id,
           'FAILED',
+          stripeTenant,
           undefined,
           paymentIntent.last_payment_error?.message || 'Payment failed'
         );
@@ -1258,6 +1392,7 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
           'stripe',
           paymentIntent.id,
           'CANCELLED',
+          stripeTenant,
           undefined,
           paymentIntent.cancellation_reason || 'Payment cancelled'
         );
@@ -1302,6 +1437,17 @@ app.post('/webhooks/mpesa/stk', async (req: Request, res: Response, next: NextFu
       return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
 
+    // W4-A: resolve tenantId from STK config BEFORE forwarding. STK is
+    // initiated against `MPESA_BUSINESS_SHORT_CODE`, which is keyed in the
+    // shortcode -> tenant map. Without a tenant we cannot scope the
+    // payment-intent lookup safely; log and ack to stop retries.
+    const stkTenantId = resolveMpesaStkTenantId();
+    if (!stkTenantId) {
+      logger.warn({ checkoutRequestId: callback.CheckoutRequestID }, 'M-PESA STK callback missing tenant context — ack without processing');
+      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    }
+    const stkTenant = asTenantId(stkTenantId);
+
     // ResultCode 0 means success
     const isSuccess = callback.ResultCode === 0;
 
@@ -1326,6 +1472,7 @@ app.post('/webhooks/mpesa/stk', async (req: Request, res: Response, next: NextFu
         'mpesa',
         callback.CheckoutRequestID,
         'SUCCEEDED',
+        stkTenant,
         mpesaReceiptNumber?.toString()
       );
     } else {
@@ -1335,6 +1482,7 @@ app.post('/webhooks/mpesa/stk', async (req: Request, res: Response, next: NextFu
         'mpesa',
         callback.CheckoutRequestID,
         status,
+        stkTenant,
         undefined,
         callback.ResultDesc
       );
@@ -1487,6 +1635,16 @@ app.post('/webhooks/mpesa/c2b/confirm', async (req: Request, res: Response) => {
       'M-PESA C2B confirmation received'
     );
 
+    // W4-A: resolve tenantId from the C2B BusinessShortCode -> tenant map.
+    // Without a tenant we cannot scope the orchestrator lookup safely; we
+    // log and ack so Daraja stops retrying — operators reconcile manually.
+    const c2bTenantId = resolveMpesaTenantByShortCode(c2b.BusinessShortCode);
+    if (!c2bTenantId) {
+      logger.warn({ transId: c2b.TransID, shortCode: c2b.BusinessShortCode }, 'M-PESA C2B confirmation missing tenant context — ack without processing');
+      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    }
+    const c2bTenant = asTenantId(c2bTenantId);
+
     // Best-effort attribution. If we can't match the invoice here the
     // payment lands in an "unallocated" bucket for operators to assign
     // manually. The orchestrator handles both paths.
@@ -1494,6 +1652,7 @@ app.post('/webhooks/mpesa/c2b/confirm', async (req: Request, res: Response) => {
       'mpesa_c2b',
       c2b.TransID,
       'SUCCEEDED',
+      c2bTenant,
       c2b.TransID,
       undefined
     ).catch((err) => {
@@ -1619,6 +1778,14 @@ app.post('/api/v1/payments/webhook/mpesa', async (req: Request, res: Response, n
       return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
 
+    // W4-A: resolve tenantId from STK config (same as /webhooks/mpesa/stk).
+    const apiStkTenantId = resolveMpesaStkTenantId();
+    if (!apiStkTenantId) {
+      logger.warn({ checkoutRequestId: callback.CheckoutRequestID }, 'M-PESA STK callback (API path) missing tenant context — ack without processing');
+      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    }
+    const apiStkTenant = asTenantId(apiStkTenantId);
+
     const isSuccess = callback.ResultCode === 0;
 
     if (isSuccess) {
@@ -1629,6 +1796,7 @@ app.post('/api/v1/payments/webhook/mpesa', async (req: Request, res: Response, n
         'mpesa',
         callback.CheckoutRequestID,
         'SUCCEEDED',
+        apiStkTenant,
         mpesaReceiptNumber?.toString()
       );
     } else {
@@ -1637,6 +1805,7 @@ app.post('/api/v1/payments/webhook/mpesa', async (req: Request, res: Response, n
         'mpesa',
         callback.CheckoutRequestID,
         status,
+        apiStkTenant,
         undefined,
         callback.ResultDesc
       );
@@ -1669,8 +1838,8 @@ app.get('/api/v1/statements/:tenantId', async (req: Request, res: Response, next
     const tenantId = principalTenantId;
     const ownerId = req.query.ownerId as string | undefined;
     const customerId = req.query.customerId as string | undefined;
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 20;
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize as string, 10) || 20;
 
     if (ownerId) {
       const result = await statementGenerationService.getOwnerStatements(
@@ -1792,8 +1961,8 @@ app.get('/api/v1/disbursements', async (req: Request, res: Response, next: NextF
     const status = req.query.status as string | undefined;
     const fromDate = req.query.fromDate ? new Date(req.query.fromDate as string) : undefined;
     const toDate = req.query.toDate ? new Date(req.query.toDate as string) : undefined;
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 20;
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize as string, 10) || 20;
 
     const result = await disbursementService.listDisbursements(
       tenantId,

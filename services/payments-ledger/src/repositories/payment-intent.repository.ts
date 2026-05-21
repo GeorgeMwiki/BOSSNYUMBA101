@@ -44,9 +44,19 @@ export interface IPaymentIntentRepository {
   findById(id: PaymentIntentId, tenantId: TenantId): Promise<PaymentIntent | null>;
 
   /**
-   * Get payment intent by external ID (provider's ID)
+   * Get payment intent by external ID (provider's ID).
+   *
+   * W4-A: tenantId is REQUIRED. The DB unique index is
+   * (tenant_id, provider_name, external_id) per migration 0169, so a
+   * provider-issued external_id is not globally unique — two tenants may
+   * legitimately share the same id. Without the tenantId predicate a
+   * leaked external_id would let tenant A read tenant B's payment row.
    */
-  findByExternalId(externalId: string, providerName: string): Promise<PaymentIntent | null>;
+  findByExternalId(
+    externalId: string,
+    providerName: string,
+    tenantId: TenantId
+  ): Promise<PaymentIntent | null>;
 
   /**
    * Get payment intent by idempotency key
@@ -123,9 +133,17 @@ export class InMemoryPaymentIntentRepository implements IPaymentIntentRepository
     return null;
   }
 
-  async findByExternalId(externalId: string, providerName: string): Promise<PaymentIntent | null> {
+  async findByExternalId(
+    externalId: string,
+    providerName: string,
+    tenantId: TenantId
+  ): Promise<PaymentIntent | null> {
     for (const pi of this.paymentIntents.values()) {
-      if (pi.externalId === externalId && pi.providerName === providerName) {
+      if (
+        pi.externalId === externalId
+        && pi.providerName === providerName
+        && pi.tenantId === tenantId
+      ) {
         return { ...pi };
       }
     }

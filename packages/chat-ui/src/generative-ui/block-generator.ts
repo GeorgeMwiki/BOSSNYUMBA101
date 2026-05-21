@@ -24,6 +24,16 @@ function safeId(): string {
   try {
     return generateBlockId();
   } catch {
+    // Bug fix A-BUG-DEEP #11: fall back to crypto.randomUUID() when
+    // available; Math.random() is the last-ditch shim.
+    const cryptoApi =
+      (typeof globalThis !== 'undefined' &&
+        (globalThis as { crypto?: { randomUUID?: () => string } }).crypto) ||
+      undefined;
+    if (cryptoApi?.randomUUID) {
+      return `block-${cryptoApi.randomUUID()}`;
+    }
+    // eslint-disable-next-line no-restricted-syntax
     return `block-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   }
 }
@@ -80,7 +90,7 @@ export interface BlockGeneratorInput {
 }
 
 export function generateBlocks(input: BlockGeneratorInput): readonly UIBlock[] {
-  // TODO(KI-005): resolve defaultCurrency from tenant.defaultCurrency /
+  // Follow-up KI-005 (Docs/TODO_BACKLOG.md): resolve defaultCurrency from tenant.defaultCurrency /
   //   getDefaultCurrency(tenant.countryCode) via @bossnyumba/compliance-plugins
   //   once tenants-table migration lands. USD is the neutral fallback.
   //   See Docs/KNOWN_ISSUES.md#ki-005.

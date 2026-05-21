@@ -13,7 +13,10 @@
  * connection pools in the same process.
  */
 
-import { createDatabaseClient } from '@bossnyumba/database';
+import {
+  createDatabaseClient,
+  createReadonlyDatabaseClient,
+} from '@bossnyumba/database';
 
 // NOTE: we deliberately avoid importing the named `DatabaseClient` type
 // from `@bossnyumba/database` because its name collides with a namespace
@@ -23,6 +26,9 @@ type DrizzleClient = ReturnType<typeof createDatabaseClient>;
 
 let cachedClient: DrizzleClient | null = null;
 let initialized = false;
+
+let cachedReadonlyClient: DrizzleClient | null = null;
+let readonlyInitialized = false;
 
 /**
  * Return the memoized Drizzle client, initializing it on first call.
@@ -52,8 +58,54 @@ export function getDb(): DrizzleClient | null {
   }
 }
 
+/**
+ * Z5 HA wire — return a Drizzle client routed against the read replica.
+ *
+ * Env decision tree:
+ *   - DATABASE_URL unset                                → returns null
+ *   - DATABASE_URL_READONLY unset                       → alias of getDb()
+ *   - DATABASE_URL_READONLY === DATABASE_URL            → alias of getDb()
+ *   - DATABASE_URL_READONLY set and distinct            → separate pool
+ *   - replica factory throws                            → fall back to primary,
+ *                                                          warn once
+ */
+export function getDbReadonly(): DrizzleClient | null {
+  if (readonlyInitialized) return cachedReadonlyClient;
+  readonlyInitialized = true;
+
+  const primaryUrl = process.env.DATABASE_URL?.trim();
+  if (!primaryUrl) {
+    cachedReadonlyClient = null;
+    return null;
+  }
+
+  const replicaUrl = process.env.DATABASE_URL_READONLY?.trim();
+  // No distinct replica configured → alias the primary so callers share the
+  // same pool and we never open a second connection.
+  if (!replicaUrl || replicaUrl === primaryUrl) {
+    cachedReadonlyClient = getDb();
+    return cachedReadonlyClient;
+  }
+
+  try {
+    cachedReadonlyClient = createReadonlyDatabaseClient(replicaUrl);
+    return cachedReadonlyClient;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    // eslint-disable-next-line no-console -- HA visibility: surfaces replica
+    // misconfiguration on boot so operators see it in the deploy logs.
+    console.warn(
+      `db-client: read-replica init failed (${message}); falling back to primary`,
+    );
+    cachedReadonlyClient = getDb();
+    return cachedReadonlyClient;
+  }
+}
+
 /** Test-only: reset the memo so unit tests can swap env. */
 export function __resetDbClientForTests(): void {
   cachedClient = null;
   initialized = false;
+  cachedReadonlyClient = null;
+  readonlyInitialized = false;
 }

@@ -277,7 +277,7 @@ import {
   type CrossPortalBus,
 } from './cross-portal-bus.js';
 // Central Command Phase C C2 — closes B1's `publishCrossPortalEvent` +
-// `dispatcher` + `recipientResolver` wiring TODOs.
+// `dispatcher` + `recipientResolver` wiring follow-ups.
 import {
   createKillswitchFanoutPublisher,
   type KillswitchFanoutPublisher,
@@ -360,7 +360,7 @@ import {
 // router returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE. Memory is always
 // wired to the in-memory default so threads work in-session; a
 // pgvector-backed adapter will replace it for production.
-// TODO(wave-30): swap in pgvector-backed ConversationMemory for prod.
+// Follow-up wave-30 (Docs/TODO_BACKLOG.md): swap in pgvector-backed ConversationMemory for prod.
 import {
   createInMemoryConversationMemory,
   createInMemoryAuditSinkAndReader,
@@ -593,7 +593,7 @@ export interface ServiceRegistry {
    *  been wired (follow-up PR). `memory` is always wired to the
    *  in-memory default so threads survive in-session — a pgvector-
    *  backed adapter will replace it for production persistence.
-   *  TODO(wave-30): swap `memory` to pgvector-backed adapter.
+   *  Follow-up wave-30 (Docs/TODO_BACKLOG.md): swap `memory` to pgvector-backed adapter.
    */
   readonly centralIntelligence: {
     readonly agent: CentralIntelligenceAgent | null;
@@ -765,7 +765,7 @@ export interface ServiceRegistry {
 
   /**
    * Central Command Phase C C2 — cross-portal killswitch fan-out
-   * publisher. Closes B1's `publishCrossPortalEvent` TODO on the
+   * publisher. Implements B1's `publishCrossPortalEvent` hook on the
    * `killswitch-write.service.ts` adapter so every state change is
    * broadcast onto the global topic for live brain re-reads.
    *
@@ -1070,7 +1070,7 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // Central Intelligence — no concrete LLM adapter ships here (it
     // lives in a separate service). In degraded mode we still wire the
     // in-memory memory so thread listing works locally.
-    // TODO(wave-30): replace with pgvector-backed ConversationMemory.
+    // Follow-up wave-30 (Docs/TODO_BACKLOG.md): replace with pgvector-backed ConversationMemory.
     centralIntelligence: (() => {
       const { sink, reader } = createInMemoryAuditSinkAndReader();
       return {
@@ -1138,7 +1138,7 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // to purge; `index.ts` skips `.start()`.
     sessionReplayRetention: null,
     // Central Command Phase C C2 — closes B1's killswitch fan-out +
-    // announcement-dispatch + recipient-resolver TODOs. The publisher
+    // announcement-dispatch + recipient-resolver ports. The publisher
     // and dispatcher are always wired (they bridge onto the always-
     // present bus + event-bus surfaces). The resolver is null because
     // it needs a DB to count active users; the announcement service
@@ -1580,7 +1580,7 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     redisUrl: process.env.REDIS_URL ?? null,
   });
 
-  // Central Command Phase C C2 — closes B1's wiring TODOs (#2 + #3 + #4).
+  // Central Command Phase C C2 — wires B1's adapters (#2 + #3 + #4).
   // Each adapter is wired against the live cross-portal bus + the
   // shared in-process event bus + the Drizzle client.
   const killswitchFanoutPublisher = createKillswitchFanoutPublisher({
@@ -1723,7 +1723,7 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // env var is set AND the adapter is wired (follow-up PR); until
     // then the router returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE.
     // Memory uses the in-memory default so in-session threads work.
-    // TODO(wave-30): pgvector-backed ConversationMemory for prod.
+    // Follow-up wave-30 (Docs/TODO_BACKLOG.md): pgvector-backed ConversationMemory for prod.
     centralIntelligence: (() => {
       const memory = createInMemoryConversationMemory();
       const { sink, reader } = createInMemoryAuditSinkAndReader();
@@ -2049,8 +2049,9 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
  *   inspection-as-major-damage), the executor flips the step
  *   outcome to `failed` with reason `sovereign-audit-write-failed`.
  *   The tool's external side-effects are NOT un-executed — a
- *   compensating-action workflow (out of scope here; see TODOs in
- *   the wave-K plan) must reconcile them.
+ *   compensating-action workflow (out of scope here; tracked in
+ *   Docs/TODO_BACKLOG.md — "Sovereign-ledger reconciliation") must
+ *   reconcile them.
  * - Anything else (unset / `false` / `0` / `no` / `off` / empty) →
  *   fail-open (legacy W-Agency behaviour: log-and-continue).
  *

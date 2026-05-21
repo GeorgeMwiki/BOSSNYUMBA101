@@ -15,13 +15,14 @@
 
 import { eq, and, desc, isNull, sql, like, or, inArray } from 'drizzle-orm';
 import type { DatabaseClient } from '../client.js';
-import { customers } from '../schemas/index.js';
+import { customers, leases } from '../schemas/index.js';
 import type {
   TenantId,
   UserId,
   PaginationParams,
   PaginatedResult,
   CustomerId,
+  PropertyId,
 } from '@bossnyumba/domain-models';
 import { buildPaginatedResult, DEFAULT_PAGINATION } from './base.repository.js';
 import {
@@ -31,6 +32,7 @@ import {
   type EncryptionPort,
   type FieldEncryptionAuditSink,
 } from '../security/encryption/index.js';
+import { assertCustomerStatuses } from './enum-guards.js';
 
 type CustomerRow = typeof customers.$inferSelect;
 
@@ -178,7 +180,11 @@ export class CustomerRepository {
     ];
 
     if (filters?.status) {
-      const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
+      // Bug fix A-BUG-DEEP #9: validate against the literal union so a bad
+      // status surfaces an explicit ENUM_VALUE_INVALID error rather than a
+      // silently empty result set.
+      const rawStatuses = Array.isArray(filters.status) ? filters.status : [filters.status];
+      const statuses = assertCustomerStatuses(rawStatuses);
       conditions.push(inArray(customers.status, statuses as unknown as typeof customers.status.$inferType[]));
     }
 
@@ -196,6 +202,60 @@ export class CustomerRepository {
     }
 
     const whereClause = and(...conditions);
+
+    const [items, countResult] = await Promise.all([
+      this.db
+        .select()
+        .from(customers)
+        .where(whereClause)
+        .orderBy(desc(customers.createdAt))
+        .limit(limit)
+        .offset(offset),
+      this.db.select({ count: sql<number>`count(*)::int` }).from(customers).where(whereClause),
+    ]);
+
+    const total = countResult[0]?.count ?? 0;
+    const decrypted = await this.decryptMany(items, tenantId);
+    return buildPaginatedResult(decrypted, total, { limit, offset });
+  }
+
+  /**
+   * BFF aggregation hot-path: fetch all customers who hold at least one
+   * lease against the given properties. Customers themselves are tenant-
+   * scoped (no direct `property_id`), so we resolve the link via the
+   * `leases` table in a single subquery — replacing the previous
+   * `findMany(1000) + JS .filter(customerIds.has)` pattern in
+   * `getOwnerScope`.
+   */
+  async findByPropertyIds(
+    propertyIds: PropertyId[],
+    tenantId: TenantId,
+    pagination?: PaginationParams
+  ): Promise<PaginatedResult<CustomerRow>> {
+    if (propertyIds.length === 0) {
+      return buildPaginatedResult([], 0, pagination ?? DEFAULT_PAGINATION);
+    }
+    const { limit, offset } = pagination ?? DEFAULT_PAGINATION;
+    const unique = Array.from(new Set(propertyIds));
+
+    // Subquery: distinct customer ids that have an active-or-historical
+    // lease pointing at one of the requested properties.
+    const customerIdsSubquery = this.db
+      .selectDistinct({ customerId: leases.customerId })
+      .from(leases)
+      .where(
+        and(
+          inArray(leases.propertyId, unique),
+          eq(leases.tenantId, tenantId),
+          isNull(leases.deletedAt)
+        )
+      );
+
+    const whereClause = and(
+      eq(customers.tenantId, tenantId),
+      isNull(customers.deletedAt),
+      inArray(customers.id, customerIdsSubquery)
+    );
 
     const [items, countResult] = await Promise.all([
       this.db

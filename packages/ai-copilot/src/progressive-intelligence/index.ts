@@ -107,3 +107,18 @@ export {
   type TeachingHintId,
   type TeachingEvaluator,
 } from './teaching/index.js';
+
+// Persistent memory layer (migration 0181) — Drizzle-backed adapter
+// for the `MemoryBlockStore` port. Wired by the api-gateway composition
+// root and shared by every progressive-intelligence surface that needs
+// to read or write Letta-style per-session blocks.
+export {
+  PostgresMemoryBlockStore,
+  type IdGenerator,
+  type MemoryBlockDbPort,
+} from './postgres-memory-block-store.js';
+export type {
+  MemoryBlock,
+  MemoryBlockStore,
+  MemoryBlockUpsert,
+} from './memory-block-port.js';

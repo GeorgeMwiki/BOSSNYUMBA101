@@ -28,7 +28,8 @@ import {
   useOwnerDashboard,
   usePortfolioPerformance,
 } from '../lib/hooks';
-import { formatCurrency, formatPercentage } from '../lib/api';
+import { formatPercentage } from '../lib/api';
+import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
 
 interface Kpi {
   readonly label: string;
@@ -39,6 +40,8 @@ interface Kpi {
 
 export function PortfolioAtAGlance(): JSX.Element {
   const t = useTranslations('portfolioAtAGlance');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const dashboard = useOwnerDashboard({ propertyId: 'all', dateRange: '30d' });
   const performance = usePortfolioPerformance();
 

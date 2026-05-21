@@ -467,7 +467,7 @@ function makeOnceWarner(
         status: 'degraded',
         degraded_reason: degradedReason,
       },
-      `monthly-close: ${portName} running in degraded stub mode (${degradedReason}) — TODO replace with real adapter`,
+      `monthly-close: ${portName} running in degraded stub mode (${degradedReason}) — pending real adapter (Docs/TODO_BACKLOG.md)`,
     );
   };
 }

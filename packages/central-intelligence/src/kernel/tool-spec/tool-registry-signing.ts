@@ -252,6 +252,19 @@ export function enforceToolRegistrySignatureAtBoot(args: {
   const signatureHex = env.TOOL_REGISTRY_SIGNATURE_HEX?.trim();
   const publicKeyHex = env.TOOL_REGISTRY_PUBKEY_HEX?.trim();
   if (!signatureHex || !publicKeyHex) {
+    // EP-3 CRITICAL #4 — promote the warn-only branch to FATAL in
+    // production. Shipping without a tool-registry signature means
+    // any attacker who slips a spec into the registry (compromised
+    // npm tarball, malicious migration, race with a feature branch)
+    // gets it auto-invoked by the kernel. Refuse to boot.
+    const nodeEnv = (env.NODE_ENV ?? '').toLowerCase();
+    if (nodeEnv === 'production' || nodeEnv === 'prod') {
+      throw new Error(
+        'refusing to start in production: TOOL_REGISTRY_SIGNATURE_HEX and ' +
+          'TOOL_REGISTRY_PUBKEY_HEX must both be set. Tool registry would ' +
+          'be unverified, allowing supply-chain code paths into kernel dispatch.',
+      );
+    }
     const warn = args.logger?.warn ?? ((msg) => console.warn(msg));
     warn(
       'tool-registry-signing: TOOL_REGISTRY_SIGNATURE_HEX / TOOL_REGISTRY_PUBKEY_HEX not set — ' +

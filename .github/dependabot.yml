@@ -50,3 +50,88 @@ updates:
     labels:
       - dependencies
       - terraform
+
+  # Docker — base images for all Dockerfiles
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: docker
+    labels:
+      - dependencies
+      - docker
+
+  - package-ecosystem: docker
+    directory: /services/consolidation-worker
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: docker
+    labels:
+      - dependencies
+      - docker
+
+  - package-ecosystem: docker
+    directory: /services/mcp-server-firs
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: docker
+    labels:
+      - dependencies
+      - docker
+
+  - package-ecosystem: docker
+    directory: /services/mcp-server-nggis
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: docker
+    labels:
+      - dependencies
+      - docker
+
+  - package-ecosystem: docker
+    directory: /services/mcp-server-nin
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: docker
+    labels:
+      - dependencies
+      - docker
+
+  - package-ecosystem: docker
+    directory: /services/mcp-server-opay
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: docker
+    labels:
+      - dependencies
+      - docker
+
+  - package-ecosystem: docker
+    directory: /services/mcp-server-process-intel
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: docker
+    labels:
+      - dependencies
+      - docker

@@ -1,7 +1,7 @@
 /**
  * M-Pesa STK Push and B2C callback processing
  */
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { CallbackError } from '../../common/errors';
 import { logger } from '../../common/logger';
 import type { PaymentStatus } from '../../common/types';
@@ -153,5 +153,13 @@ export function verifyMpesaCallbackSignature(
   if (!secret) return true;
   if (!signature) return false;
   const expected = createHmac('sha256', secret).update(rawBody).digest('hex');
-  return signature === expected || signature === `sha256=${expected}`;
+  const candidates = [signature, signature.replace(/^sha256=/, '')];
+  const expBuf = Buffer.from(expected);
+  for (const candidate of candidates) {
+    const sigBuf = Buffer.from(candidate);
+    if (sigBuf.length === expBuf.length && timingSafeEqual(sigBuf, expBuf)) {
+      return true;
+    }
+  }
+  return false;
 }

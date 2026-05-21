@@ -11,10 +11,10 @@
  *      is bounded by the cron schedule itself, not per-request.
  *
  * TRACKED GAPS: 109 mutating routes flagged by the 2026-05-18 scanner
- * pass. Each TODO entry should be removed when the route adds
+ * pass. Each pending entry should be removed when the route adds
  * `perTenantRateBudget`, `withSecurityEvents`, or
  * `createRateLimitMiddleware`. This list is the concrete worklist for
- * incremental rate-limit-coverage remediation.
+ * incremental rate-limit-coverage remediation (Docs/TODO_BACKLOG.md).
  *
  * Keys are paths RELATIVE to the repo root.
  */

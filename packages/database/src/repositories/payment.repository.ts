@@ -13,10 +13,13 @@ import {
   notInArray,
   count,
   max,
+  inArray,
+  sql,
+  sum,
 } from 'drizzle-orm';
 import type { DatabaseClient } from '../client.js';
-import { invoices, payments, transactions } from '../schemas/index.js';
-import type { TenantId } from '@bossnyumba/domain-models';
+import { invoices, payments, transactions, leases } from '../schemas/index.js';
+import type { TenantId, PropertyId } from '@bossnyumba/domain-models';
 import {
   decryptRow,
   decryptRows,
@@ -136,6 +139,68 @@ export class InvoiceRepository {
         )
       );
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
+  }
+
+  /**
+   * BFF aggregation hot-path: fetch all invoices across a set of
+   * properties in one query — replaces the per-tenant `findMany(1000)`
+   * scan + JS filter used by `getOwnerScope`. `invoices.property_id` is
+   * a real FK column so this is a simple `IN (...)`.
+   */
+  async findByPropertyIds(
+    propertyIds: PropertyId[],
+    tenantId: TenantId,
+    limit = 50,
+    offset = 0
+  ) {
+    if (propertyIds.length === 0) {
+      return { items: [], total: 0, limit, offset, hasMore: false };
+    }
+    const unique = Array.from(new Set(propertyIds));
+    const whereClause = and(
+      inArray(invoices.propertyId, unique),
+      eq(invoices.tenantId, tenantId),
+      isNull(invoices.deletedAt)
+    );
+    const rows = await this.db
+      .select()
+      .from(invoices)
+      .where(whereClause)
+      .orderBy(desc(invoices.createdAt))
+      .limit(limit)
+      .offset(offset);
+    const [{ total }] = await this.db
+      .select({ total: count() })
+      .from(invoices)
+      .where(whereClause);
+    return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
+  }
+
+  /**
+   * Sum the unpaid balance (amount_due) for a customer in one query —
+   * the customer-balance endpoint previously fetched whole-tenant invoices
+   * and summed in JS. `paid` / `cancelled` / `void` are excluded.
+   */
+  async sumBalanceByCustomer(
+    customerId: string,
+    tenantId: TenantId
+  ): Promise<number> {
+    const rows = await this.db
+      .select({
+        total: sql<string>`COALESCE(SUM(${invoices.amountDue}), 0)::text`,
+      })
+      .from(invoices)
+      .where(
+        and(
+          eq(invoices.customerId, customerId),
+          eq(invoices.tenantId, tenantId),
+          isNull(invoices.deletedAt),
+          notInArray(invoices.status, [...NON_OVERDUE_INVOICE_STATUSES])
+        )
+      );
+    const raw = rows[0]?.total ?? '0';
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 
   async findByStatus(status: string, tenantId: TenantId, limit = 50, offset = 0) {
@@ -320,6 +385,56 @@ export class PaymentRepository {
       )
       .orderBy(desc(payments.createdAt));
     return this.decryptMany(rows, tenantId);
+  }
+
+  /**
+   * BFF aggregation hot-path: fetch payments associated with any lease
+   * that belongs to the given property scope. Payments do not carry a
+   * direct `property_id`, so we resolve the link via the `leases.id IN
+   * (lease ids for these properties)` subquery — replaces the per-tenant
+   * `findMany(1000) + JS .filter` pattern in `getOwnerScope`.
+   */
+  async findByPropertyIds(
+    propertyIds: PropertyId[],
+    tenantId: TenantId,
+    limit = 50,
+    offset = 0
+  ) {
+    if (propertyIds.length === 0) {
+      return { items: [], total: 0, limit, offset, hasMore: false };
+    }
+    const unique = Array.from(new Set(propertyIds));
+
+    // Subquery: lease ids whose property_id is in scope.
+    const leaseIdsSubquery = this.db
+      .select({ id: leases.id })
+      .from(leases)
+      .where(
+        and(
+          inArray(leases.propertyId, unique),
+          eq(leases.tenantId, tenantId),
+          isNull(leases.deletedAt)
+        )
+      );
+
+    const whereClause = and(
+      eq(payments.tenantId, tenantId),
+      inArray(payments.leaseId, leaseIdsSubquery)
+    );
+
+    const rows = await this.db
+      .select()
+      .from(payments)
+      .where(whereClause)
+      .orderBy(desc(payments.createdAt))
+      .limit(limit)
+      .offset(offset);
+    const [{ total }] = await this.db
+      .select({ total: count() })
+      .from(payments)
+      .where(whereClause);
+    const decrypted = await this.decryptMany(rows, tenantId);
+    return { items: decrypted, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
   async findByStatus(status: string, tenantId: TenantId, limit = 50, offset = 0) {

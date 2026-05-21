@@ -4,13 +4,23 @@
  *   1. PROPOSER builds the IngestPlan ("first pair of eyes").
  *   2. A DIFFERENT actor must record an approval ("second pair of eyes").
  *   3. Only an APPROVED plan can be executed.
+ *   4. The EXECUTOR must be a DIFFERENT actor from the proposer AND
+ *      different from the approver — the same identity cannot
+ *      simultaneously occupy any two of those three roles. Without this
+ *      third check, an approver could trivially self-execute and the
+ *      4-eye rule would only apply to the proposer/approver pair.
  *
  * The ledger keeps the audit trail. It is intentionally simple (in-memory)
  * but exposes a stable interface so production wiring can drop in a
  * persistent backend.
  */
 
-import type { ApprovalRecord, ApprovalState, IngestPlan } from './types.js';
+import type {
+  ApprovalRecord,
+  ApprovalState,
+  IngestPlan,
+  PartialFailureMetadata,
+} from './types.js';
 
 export class ApprovalRuleViolationError extends Error {
   constructor(message: string) {
@@ -22,8 +32,13 @@ export class ApprovalRuleViolationError extends Error {
 interface LedgerEntry {
   readonly plan: IngestPlan;
   readonly proposer_id: string;
+  /** Recorded the moment a 'proposed' plan is approved. */
+  readonly approver_id: string | null;
+  /** Recorded the moment a plan transitions to 'executed' or 'partial_failure'. */
+  readonly executor_id: string | null;
   readonly records: ReadonlyArray<ApprovalRecord>;
   readonly state: ApprovalState;
+  readonly partial_failure_metadata: PartialFailureMetadata | null;
 }
 
 export class ApprovalLedger {
@@ -50,8 +65,11 @@ export class ApprovalLedger {
     next.set(plan.ingest_plan_id, {
       plan,
       proposer_id: proposerId,
+      approver_id: null,
+      executor_id: null,
       records: [record],
       state: 'proposed',
+      partial_failure_metadata: null,
     });
     this.entries = next;
     return record;
@@ -88,6 +106,7 @@ export class ApprovalLedger {
     const next = new Map(this.entries);
     next.set(planId, {
       ...entry,
+      approver_id: actorId,
       records: [...entry.records, record],
       state: 'approved',
     });
@@ -128,7 +147,14 @@ export class ApprovalLedger {
     return record;
   }
 
-  /** Mark a plan executed. Called by the executor on successful completion. */
+  /**
+   * Mark a plan executed. Called by the executor on successful completion.
+   *
+   * Strict 4-eye contract: the executor must differ from BOTH the proposer
+   * AND the approver. Without the second check an approver could
+   * self-execute and silently collapse the second pair of eyes back into
+   * the first — exactly the bypass we are defending against.
+   */
   markExecuted(planId: string, actorId: string): ApprovalRecord {
     const entry = this.entries.get(planId);
     if (!entry) {
@@ -137,6 +163,16 @@ export class ApprovalLedger {
     if (entry.state !== 'approved') {
       throw new ApprovalRuleViolationError(
         `Plan ${planId} cannot be executed from state "${entry.state}"`
+      );
+    }
+    if (entry.proposer_id === actorId) {
+      throw new ApprovalRuleViolationError(
+        `4-eye violation: ${actorId} both proposed and tried to execute plan ${planId}`
+      );
+    }
+    if (entry.approver_id !== null && entry.approver_id === actorId) {
+      throw new ApprovalRuleViolationError(
+        `4-eye violation: ${actorId} both approved and tried to execute plan ${planId}`
       );
     }
     const record: ApprovalRecord = Object.freeze({
@@ -148,8 +184,65 @@ export class ApprovalLedger {
     const next = new Map(this.entries);
     next.set(planId, {
       ...entry,
+      executor_id: actorId,
       records: [...entry.records, record],
       state: 'executed',
+    });
+    this.entries = next;
+    return record;
+  }
+
+  /**
+   * Mark a plan as having partially failed mid-execution. Captures which
+   * batches did commit so the recovery path (operator-driven manual replay
+   * with a fresh plan id) has enough context to re-ingest only the rows
+   * that did NOT land.
+   *
+   * `isApproved()` returns false for plans in this state — a partial
+   * failure is terminal until a NEW plan is built for the remainder. The
+   * same 4-eye executor-vs-proposer/approver checks apply.
+   */
+  markPartialFailure(
+    planId: string,
+    actorId: string,
+    metadata: PartialFailureMetadata
+  ): ApprovalRecord {
+    const entry = this.entries.get(planId);
+    if (!entry) {
+      throw new ApprovalRuleViolationError(`Plan ${planId} not in ledger`);
+    }
+    if (entry.state !== 'approved') {
+      throw new ApprovalRuleViolationError(
+        `Plan ${planId} cannot transition to partial_failure from state "${entry.state}"`
+      );
+    }
+    if (entry.proposer_id === actorId) {
+      throw new ApprovalRuleViolationError(
+        `4-eye violation: ${actorId} both proposed and tried to execute plan ${planId}`
+      );
+    }
+    if (entry.approver_id !== null && entry.approver_id === actorId) {
+      throw new ApprovalRuleViolationError(
+        `4-eye violation: ${actorId} both approved and tried to execute plan ${planId}`
+      );
+    }
+    const record: ApprovalRecord = Object.freeze({
+      ingest_plan_id: planId,
+      state: 'partial_failure',
+      actor_id: actorId,
+      comment: metadata.failure_reason,
+      at: new Date().toISOString(),
+    });
+    const next = new Map(this.entries);
+    next.set(planId, {
+      ...entry,
+      executor_id: actorId,
+      records: [...entry.records, record],
+      state: 'partial_failure',
+      partial_failure_metadata: Object.freeze({
+        ...metadata,
+        completed_batches: Object.freeze([...metadata.completed_batches]),
+      }),
     });
     this.entries = next;
     return record;
@@ -163,7 +256,24 @@ export class ApprovalLedger {
     return this.entries.get(planId)?.records ?? [];
   }
 
-  /** True iff plan exists and is in 'approved' state (executor pre-check). */
+  /** Read-only accessors for the audit trail. Returns null if plan unknown. */
+  getProposerId(planId: string): string | null {
+    return this.entries.get(planId)?.proposer_id ?? null;
+  }
+
+  getApproverId(planId: string): string | null {
+    return this.entries.get(planId)?.approver_id ?? null;
+  }
+
+  getPartialFailureMetadata(planId: string): PartialFailureMetadata | null {
+    return this.entries.get(planId)?.partial_failure_metadata ?? null;
+  }
+
+  /**
+   * True iff plan exists and is in 'approved' state. Plans in
+   * 'partial_failure' are intentionally NOT approved — callers must build
+   * a fresh plan for any retry.
+   */
   isApproved(planId: string): boolean {
     return this.getState(planId) === 'approved';
   }

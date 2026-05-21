@@ -10,7 +10,7 @@ import {
   Cell,
 } from 'recharts';
 import { useTranslations } from 'next-intl';
-import { formatCurrency } from '../../lib/api';
+import { useTenantCurrencyFormatter } from '../../hooks/useTenantCurrency';
 
 export interface ArrearsAgingData {
   bucket: string;
@@ -33,6 +33,8 @@ const BUCKET_COLORS: Record<string, string> = {
 
 export function ArrearsAgingChart({ data, className }: ArrearsAgingChartProps) {
   const t = useTranslations('arrearsAgingChart');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const totalArrears = data.reduce((sum, item) => sum + item.amount, 0);
   const totalAccounts = data.reduce((sum, item) => sum + item.count, 0);
 

@@ -117,14 +117,23 @@ export function proposeMappingHeuristic(
     conflicts: ProposalConflict[];
   } | null = null;
 
+  // Null-prototype map keyed by source column → attribute key. Using
+  // Object.create(null) plus an explicit forbidden-key filter blocks
+  // prototype-pollution attempts via malicious column names like
+  // "__proto__" or "constructor" coming from a hostile file header.
+  const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
   for (const descriptor of availableEntityTypes) {
-    const fieldMap: Record<string, string> = {};
+    const fieldMap: Record<string, string> = Object.assign(
+      Object.create(null),
+      {}
+    ) as Record<string, string>;
     const usedAttrs = new Set<string>();
     let totalScore = 0;
     let scoredCols = 0;
     const conflicts: ProposalConflict[] = [];
 
     for (const col of schema.columns) {
+      if (FORBIDDEN_KEYS.has(col.name)) continue;
       const match = bestAttributeFor(col.name, descriptor.attribute_keys);
       if (match && !usedAttrs.has(match.key)) {
         fieldMap[col.name] = match.key;
