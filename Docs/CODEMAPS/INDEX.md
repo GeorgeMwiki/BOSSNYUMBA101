@@ -63,6 +63,7 @@ Codemaps are written from source. When source moves, update the codemap.
 | [webhooks-service.md](./webhooks-service.md) | `services/webhooks/` | Outbound webhook delivery |
 | [outbox-processor.md](./outbox-processor.md) | `services/outbox-processor/` | Standalone outbox drainer |
 | [document-intelligence.md](./document-intelligence.md) | `services/document-intelligence/` | OCR + fraud + evidence packs |
+| [document-analysis.md](./document-analysis.md) | `packages/document-analysis/` | Piece K pipeline: ingest → OCR → extract → resolve → route |
 | [file-ingest.md](./file-ingest.md) | `packages/file-ingest/` | Conversational ingest pipeline |
 | [enterprise-hardening.md](./enterprise-hardening.md) | `packages/enterprise-hardening/` | SOC2 + circuit breaker + DR + FinOps |
 | [connectors.md](./connectors.md) | `packages/connectors/` | External-system adapter framework |
