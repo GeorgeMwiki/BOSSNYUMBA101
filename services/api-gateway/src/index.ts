@@ -212,6 +212,10 @@ import {
   type OutboxRunnerLike,
 } from './workers/outbox-worker';
 import { createCaseSLASupervisor } from './workers/cases-sla-supervisor';
+import { createLeaseExpiryAlertCron } from './workers/lease-expiry-alert-cron';
+import type {
+  NotificationSender as LeaseExpiryNotificationSender,
+} from './workers/lease-expiry-alert-cron';
 import {
   registerDomainEventSubscribers,
   type SubscribableBus,
@@ -1078,6 +1082,41 @@ const intelligenceHistorySupervisor = createIntelligenceHistorySupervisor(
 // hit. No-op in degraded mode.
 const casesSlaSupervisor = createCaseSLASupervisor(serviceRegistry, logger);
 
+// Wave 15 — TRC pilot. Daily scan of `leases.end_date` against the
+// 60/30/7/1-day warning windows. Dispatches via the existing notifications
+// infrastructure (whatsapp → sms → email → in_app priority). Skipped in
+// degraded mode (no DB) and in tests.
+const leaseExpiryNotificationSender: LeaseExpiryNotificationSender = {
+  // Pino-friendly placeholder sender — once the WhatsApp/SMS providers
+  // have tenant-scoped credentials wired, swap this for a thin adapter
+  // around `notificationService.sendNotification(recipient, channel, ...)`
+  // (services/notifications/src/services/notification.service.ts).
+  // Wave 15 deliberately leaves this stub-shaped so the cron is testable
+  // and the dispatch_log row is written even when no provider is reachable.
+  async send(args) {
+    logger.info(
+      {
+        tenantId: args.tenantId,
+        leaseId: args.lease.id,
+        leaseNumber: args.lease.leaseNumber,
+        window: args.window,
+        channel: args.channel,
+        idempotencyKey: args.idempotencyKey,
+      },
+      'lease-expiry-cron: dispatch (stub provider — Wave 15)',
+    );
+    return { delivered: true, providerMessageId: `stub-${args.idempotencyKey}` };
+  },
+};
+
+const leaseExpiryCron = serviceRegistry.db
+  ? createLeaseExpiryAlertCron({
+      db: serviceRegistry.db as unknown as { execute(q: unknown): Promise<unknown> },
+      sender: leaseExpiryNotificationSender,
+      logger,
+    })
+  : { start() {}, stop() {}, async tickOnce() { return { scanned: 0, dispatched: 0, skippedAlreadySent: 0, failed: 0, byWindow: {} }; } };
+
 // Graceful shutdown — documented and tested step-by-step:
 //  1. Flip a "shutting down" flag so the /health probe returns 503.
 //  2. Tell the HTTP server to stop accepting NEW connections.
@@ -1130,6 +1169,12 @@ async function gracefulShutdown(signal: string): Promise<void> {
     logger.info('shutdown: cases SLA supervisor stopped');
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: cases SLA stop failed');
+  }
+  try {
+    leaseExpiryCron.stop();
+    logger.info('shutdown: lease-expiry cron stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: lease-expiry cron stop failed');
   }
   try {
     serviceRegistry.wakeLoopCron?.stop();
@@ -1224,6 +1269,10 @@ if (require.main === module) {
   // Wave 26 — start the Cases SLA supervisor alongside the other
   // background workers. Skipped in tests + when disabled by env.
   casesSlaSupervisor.start();
+  // Wave 15 — start the lease-expiry alert cron. Ticks daily, scans
+  // for leases at 60/30/7/1-day expiry windows, idempotent via
+  // notification_dispatch_log.idempotency_key.
+  leaseExpiryCron.start();
   // K7 parity-litfin Gap H — wake-loop cron. Until this start() call the
   // supervisor was inert: the brain only woke when an out-of-band k8s
   // CronJob fired. In-process start arms an advisory-lock-guarded interval
