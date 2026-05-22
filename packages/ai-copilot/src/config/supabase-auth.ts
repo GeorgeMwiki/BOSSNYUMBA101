@@ -1,9 +1,30 @@
 /**
  * Supabase JWT verification for Brain routes.
  *
- * Verifies access tokens issued by Supabase Auth (HS256, signed with
- * `SUPABASE_JWT_SECRET`) and projects them onto Brain's
- * `AITenantContext` + `AIActor` + `VisibilityViewer` shape.
+ * Verifies access tokens issued by Supabase Auth and projects them onto
+ * Brain's `AITenantContext` + `AIActor` + `VisibilityViewer` shape.
+ *
+ * Two signing-key modes are supported:
+ *
+ *  1. **HS256 + shared secret** — legacy/self-hosted Supabase projects
+ *     that still use `SUPABASE_JWT_SECRET` (symmetric HS256). Pass
+ *     `{ jwtSecret }` to `VerifyOptions`.
+ *
+ *  2. **ES256/RS256 via JWKS** — modern Supabase projects (May 2026+
+ *     default) that rotated to asymmetric signing. The public JWKS is
+ *     served at `<SUPABASE_URL>/auth/v1/.well-known/jwks.json` and the
+ *     legacy HS256 secret is no longer issued. Pass `{ jwksUrl }` to
+ *     `VerifyOptions`.
+ *
+ *     The BOSSNYUMBA primary Supabase project is on ES256 — its
+ *     `/config/auth/signing-keys` reports HS256 as `previously_used`
+ *     and ES256 as `in_use`. Any project with `previously_used` HS256
+ *     MUST use the JWKS path; the HS256 secret cannot verify newly-
+ *     issued user tokens.
+ *
+ *  When both `jwtSecret` and `jwksUrl` are provided, `jwksUrl` wins —
+ *  this lets callers configure a graceful migration without changing
+ *  call sites.
  *
  * No fakes. Missing or invalid token → throws `SupabaseAuthError`.
  *
@@ -24,7 +45,13 @@
  * with a security-level error.
  */
 
-import { jwtVerify, type JWTPayload } from 'jose';
+import {
+  jwtVerify,
+  createRemoteJWKSet,
+  type JWTPayload,
+  type JWTVerifyGetKey,
+} from 'jose';
+import type { JSONWebKeySet } from 'jose';
 import { z } from 'zod';
 
 export interface BrainAuthPrincipal {
@@ -65,10 +92,77 @@ const MetadataSchema = z
   .partial();
 
 export interface VerifyOptions {
-  /** HS256 secret. From `SUPABASE_JWT_SECRET`. */
-  jwtSecret: string;
+  /**
+   * HS256 secret. From `SUPABASE_JWT_SECRET`. Optional when `jwksUrl` is
+   * supplied — modern Supabase projects (May 2026+) sign user tokens with
+   * ES256 via the JWKS endpoint and do not expose an HS256 secret.
+   */
+  jwtSecret?: string;
+  /**
+   * Full URL to the Supabase Auth JWKS endpoint, e.g.
+   * `https://<ref>.supabase.co/auth/v1/.well-known/jwks.json`.
+   * When provided, the verifier uses asymmetric (ES256/RS256) verification
+   * via `createRemoteJWKSet` and ignores `jwtSecret`.
+   */
+  jwksUrl?: string | URL;
+  /**
+   * Algorithms accepted when JWKS verification is active. Defaults to the
+   * two algorithms Supabase currently emits (ES256 today, RS256 historical).
+   * Ignored on the HS256 path — that path is always pinned to HS256.
+   */
+  jwksAlgorithms?: ReadonlyArray<'ES256' | 'RS256' | 'EdDSA'>;
   /** Default environment if claim is absent. */
   defaultEnvironment?: 'production' | 'staging' | 'development';
+}
+
+// Module-level cache so we don't refetch the JWKS on every verify call.
+// `createRemoteJWKSet` already caches internally, but we also memoize the
+// JWKSet *function* itself per URL so a hot path avoids the allocation.
+const jwksCache = new Map<string, JWTVerifyGetKey>();
+
+function getJwksKey(url: string | URL): JWTVerifyGetKey {
+  const key = typeof url === 'string' ? url : url.toString();
+  let getter = jwksCache.get(key);
+  if (!getter) {
+    getter = createRemoteJWKSet(new URL(key));
+    jwksCache.set(key, getter);
+  }
+  return getter;
+}
+
+/**
+ * Test-only helper to evict cached JWKS getters. The remote-set helper
+ * holds a long-lived cache by URL; tests that mint tokens with a fresh
+ * keypair per case need to clear it so each run starts cold.
+ */
+export function _resetJwksCacheForTests(): void {
+  jwksCache.clear();
+}
+
+/**
+ * Test-only helper to inject a JWKS getter for a specific URL — bypasses
+ * the network entirely. Used by the vitest suite to verify the ES256 path
+ * without spinning up an HTTPS server. The injected entry is keyed by
+ * exact URL string so production calls (different URL) are unaffected.
+ */
+export function _seedJwksForTests(
+  url: string | URL,
+  getter: JWTVerifyGetKey
+): void {
+  const key = typeof url === 'string' ? url : url.toString();
+  jwksCache.set(key, getter);
+}
+
+/**
+ * Re-export of jose's createLocalJWKSet so tests can build a static
+ * `JWTVerifyGetKey` from an in-memory JWKS object. Not part of the
+ * public production API — kept as a `_test_` prefix to make that clear.
+ */
+export async function _createLocalJwksForTests(
+  jwks: JSONWebKeySet
+): Promise<JWTVerifyGetKey> {
+  const { createLocalJWKSet } = await import('jose');
+  return createLocalJWKSet(jwks) as unknown as JWTVerifyGetKey;
 }
 
 /**
@@ -87,13 +181,33 @@ export async function verifySupabaseJwt(
   if (!token || typeof token !== 'string') {
     throw new SupabaseAuthError('missing_token', 401);
   }
-  const secret = new TextEncoder().encode(opts.jwtSecret);
+  if (!opts.jwksUrl && !opts.jwtSecret) {
+    // Configuration error — surface as 401 because the caller cannot know
+    // (and shouldn't trust) why it's mis-configured. Server logs carry detail.
+    // eslint-disable-next-line no-console
+    console.error('supabase-auth.verifySupabaseJwt: misconfigured', {
+      reason: 'neither jwtSecret nor jwksUrl provided',
+    });
+    throw new SupabaseAuthError('invalid_token', 401);
+  }
   let payload: JWTPayload;
   try {
-    const verified = await jwtVerify(token, secret, {
-      algorithms: ['HS256'],
-    });
-    payload = verified.payload;
+    if (opts.jwksUrl) {
+      // Asymmetric path — modern Supabase ES256 (rotated default).
+      // Copy `algorithms` so the readonly default doesn't clash with the
+      // mutable string[] that jose's options interface demands.
+      const algorithms = [...(opts.jwksAlgorithms ?? ['ES256', 'RS256'])];
+      const getKey: JWTVerifyGetKey = getJwksKey(opts.jwksUrl);
+      const verified = await jwtVerify(token, getKey, { algorithms });
+      payload = verified.payload;
+    } else {
+      // Symmetric path — legacy/self-hosted HS256.
+      const secret = new TextEncoder().encode(opts.jwtSecret!);
+      const verified = await jwtVerify(token, secret, {
+        algorithms: ['HS256'],
+      });
+      payload = verified.payload;
+    }
   } catch (err) {
     // F9 (BOSSNYUMBA101 Supabase audit): jose surfaces granular failure
     // reasons (`signature verification failed`, `"exp" claim timestamp

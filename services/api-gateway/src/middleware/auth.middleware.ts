@@ -55,9 +55,29 @@ function getJwtAudience(): string {
  * Supabase JWT secret — read lazily so dev/test environments without the
  * variable still boot. When unset and a Supabase-issued token arrives, the
  * Supabase path returns INVALID_TOKEN rather than crashing the gateway.
+ *
+ * MAY-2026 NOTE: modern Supabase projects rotated to ES256 (asymmetric)
+ * and no longer expose an HS256 secret. The verifier now prefers the
+ * JWKS path when `SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_URL` is set; the
+ * HS256 secret is only used as a fallback for legacy/self-hosted projects.
  */
 function getSupabaseJwtSecret(): string | null {
   return process.env.SUPABASE_JWT_SECRET || null;
+}
+
+/**
+ * Derive the Supabase Auth JWKS URL from `SUPABASE_URL` (or its
+ * `NEXT_PUBLIC_` mirror). Returns `null` when no URL is configured.
+ */
+function getSupabaseJwksUrl(): string | null {
+  const base =
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    null;
+  if (!base) return null;
+  // Tolerate trailing slash — `new URL` would carry it through.
+  const trimmed = base.replace(/\/+$/, '');
+  return `${trimmed}/auth/v1/.well-known/jwks.json`;
 }
 
 // ============================================================================
@@ -245,11 +265,20 @@ async function verifyAndProjectSupabaseToken(token: string): Promise<{
   context?: AuthContext;
 }> {
   const secret = getSupabaseJwtSecret();
-  if (!secret) {
+  const jwksUrl = getSupabaseJwksUrl();
+  if (!secret && !jwksUrl) {
     return { valid: false, error: 'Supabase auth not configured' };
   }
   try {
-    const principal = await verifySupabaseJwt(token, { jwtSecret: secret });
+    // Prefer JWKS/ES256 when SUPABASE_URL is available (modern projects).
+    // Fall back to HS256 only when no JWKS URL is configured — legacy /
+    // self-hosted Supabase installations.
+    const principal = await verifySupabaseJwt(
+      token,
+      jwksUrl
+        ? { jwksUrl, jwtSecret: secret ?? undefined }
+        : { jwtSecret: secret! }
+    );
 
     // F6 protection: re-check the raw JWT to ensure tenant_id came from
     // `app_metadata`, NOT `user_metadata`. The ai-copilot helper merges

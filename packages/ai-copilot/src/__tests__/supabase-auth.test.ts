@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { SignJWT } from 'jose';
+import { SignJWT, generateKeyPair, exportJWK } from 'jose';
 import {
   verifySupabaseJwt,
   extractBearer,
@@ -17,6 +17,11 @@ import {
   tryLoadBrainEnv,
   BrainConfigError,
 } from '../config/index.js';
+import {
+  _resetJwksCacheForTests,
+  _seedJwksForTests,
+  _createLocalJwksForTests,
+} from '../config/supabase-auth.js';
 
 const SECRET = 'test-secret-for-jwt-verification-1234567890';
 const enc = new TextEncoder().encode(SECRET);
@@ -270,6 +275,106 @@ describe('F6: tenant_id self-promotion via user_metadata', () => {
     const p = await verifySupabaseJwt(token, { jwtSecret: SECRET });
     expect(p.tenantId).toBe('tnt_a');
     expect(errorSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MAY-2026: BOSSNYUMBA primary Supabase rotated to ES256 (asymmetric) signing
+// via JWKS. The HS256 path stays as a legacy fallback. These tests cover the
+// JWKS path with a real ES256 keypair + a mocked fetch returning the JWKS.
+// ---------------------------------------------------------------------------
+describe('verifySupabaseJwt — JWKS / ES256 path', () => {
+  const JWKS_URL = 'https://test-supabase.example.com/auth/v1/.well-known/jwks.json';
+
+  beforeEach(() => {
+    _resetJwksCacheForTests();
+  });
+
+  afterEach(() => {
+    _resetJwksCacheForTests();
+  });
+
+  async function mintEs256(
+    claims: Record<string, unknown>
+  ): Promise<{ token: string; jwks: { keys: unknown[] } }> {
+    const { publicKey, privateKey } = await generateKeyPair('ES256', {
+      extractable: true,
+    });
+    const pubJwk = await exportJWK(publicKey);
+    pubJwk.alg = 'ES256';
+    pubJwk.kid = 'test-key-1';
+    pubJwk.use = 'sig';
+    const token = await new SignJWT(claims)
+      .setProtectedHeader({ alg: 'ES256', kid: 'test-key-1' })
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .setSubject(String(claims.sub ?? 'user-1'))
+      .sign(privateKey);
+    return { token, jwks: { keys: [pubJwk] } };
+  }
+
+  it('verifies a well-formed ES256 token via JWKS', async () => {
+    const { token, jwks } = await mintEs256({
+      sub: 'user-jwks-1',
+      email: 'asha@kilimani.com',
+      app_metadata: {
+        tenant_id: 'tnt_jwks',
+        roles: ['admin'],
+      },
+    });
+    const getter = await _createLocalJwksForTests({
+      keys: jwks.keys as Parameters<typeof _createLocalJwksForTests>[0]['keys'],
+    });
+    _seedJwksForTests(JWKS_URL, getter);
+    const p = await verifySupabaseJwt(token, { jwksUrl: JWKS_URL });
+    expect(p.userId).toBe('user-jwks-1');
+    expect(p.tenantId).toBe('tnt_jwks');
+    expect(p.roles).toEqual(['admin']);
+  });
+
+  it('rejects an ES256 token signed by a different key', async () => {
+    // Mint a token with key A, but seed key B's JWKS — signature must fail.
+    const { token: tokenA } = await mintEs256({
+      sub: 'user-jwks-bad',
+      app_metadata: { tenant_id: 'tnt_x' },
+    });
+    const { jwks: jwksB } = await mintEs256({ sub: 'unrelated' });
+    const getter = await _createLocalJwksForTests({
+      keys: jwksB.keys as Parameters<typeof _createLocalJwksForTests>[0]['keys'],
+    });
+    _seedJwksForTests(JWKS_URL, getter);
+    await expect(
+      verifySupabaseJwt(tokenA, { jwksUrl: JWKS_URL })
+    ).rejects.toThrow(SupabaseAuthError);
+  });
+
+  it('rejects when neither jwtSecret nor jwksUrl is provided', async () => {
+    const { token } = await mintEs256({
+      sub: 'user-misconfig',
+      app_metadata: { tenant_id: 'tnt_z' },
+    });
+    await expect(
+      verifySupabaseJwt(token, {} as unknown as { jwtSecret: string })
+    ).rejects.toThrow(SupabaseAuthError);
+  });
+
+  it('JWKS path wins when both jwtSecret and jwksUrl are provided', async () => {
+    // The token is ES256-signed; HS256 secret would not verify it.
+    // If the verifier mistakenly took the HS256 path it would fail; instead
+    // jwksUrl should take precedence and succeed.
+    const { token, jwks } = await mintEs256({
+      sub: 'user-pref',
+      app_metadata: { tenant_id: 'tnt_pref' },
+    });
+    const getter = await _createLocalJwksForTests({
+      keys: jwks.keys as Parameters<typeof _createLocalJwksForTests>[0]['keys'],
+    });
+    _seedJwksForTests(JWKS_URL, getter);
+    const p = await verifySupabaseJwt(token, {
+      jwksUrl: JWKS_URL,
+      jwtSecret: 'ignored-because-jwks-wins',
+    });
+    expect(p.userId).toBe('user-pref');
   });
 });
 
