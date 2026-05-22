@@ -41,6 +41,10 @@
 import { sql } from 'drizzle-orm';
 
 import type { PayoutProvider } from './stub-payout-provider';
+// F10 DecisionTrace — record each payout dispatch as one decision trace
+// (amount, recipient, kill-switch state at decision time, approver
+// chain). Fire-and-forget; provider call never blocks on persistence.
+import { startDecisionTrace } from '@bossnyumba/observability';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -299,6 +303,52 @@ export function createPayoutsWorker(deps: PayoutsWorkerDeps): PayoutsWorker {
       return 'failed';
     }
 
+    // F10 DecisionTrace — bracket the dispatch decision. The brain
+    // already evaluated "should we dispatch this payout?" upstream and
+    // emitted a `MonthlyCloseDisbursementProposed` event; here we are
+    // recording the EXECUTION decision and its outcome. The single
+    // alternative is `defer` (kill-switch / retry on transient failure)
+    // so the replay UI shows both paths even when we never take the
+    // counterfactual.
+    const trace = startDecisionTrace('payments.disburse', {
+      inputs: {
+        outboxId: row.id,
+        ownerId: proposal.ownerId,
+        amountMinor: proposal.amountMinor,
+        currency: proposal.currency,
+        destinationKind: typeof proposal.destination === 'string'
+          ? proposal.destination.split(':')[0] ?? 'unknown'
+          : 'unknown',
+        idempotencyKey: proposal.idempotencyKey,
+        retryCount: row.retryCount,
+        // Approver chain comes from the outbox metadata (set upstream by
+        // monthly-close orchestrator after the approval gate clears).
+        approvers: ((): unknown => {
+          const md = parseJsonField<Record<string, unknown>>(row.metadata, {});
+          return md.approvers ?? null;
+        })(),
+        // Kill-switch state at decision time — captured from metadata
+        // (the orchestrator records it when it builds the proposal).
+        killSwitchState: ((): unknown => {
+          const md = parseJsonField<Record<string, unknown>>(row.metadata, {});
+          return md.kill_switch_state ?? md.killSwitchState ?? null;
+        })(),
+      },
+      context: {
+        tenantId: proposal.tenantId,
+        requestId: proposal.idempotencyKey,
+      },
+    });
+    trace.addBranch({
+      id: 'dispatch',
+      label: 'Dispatch payout to provider',
+      rationale: 'four-eye approval cleared upstream; outbox row pending',
+    });
+    trace.addBranch({
+      id: 'defer',
+      label: 'Defer / retry',
+      rationale: 'counterfactual when provider returns non-completed or throws',
+    });
     try {
       const result = await provider.send({
         tenantId: proposal.tenantId,
@@ -313,9 +363,22 @@ export function createPayoutsWorker(deps: PayoutsWorkerDeps): PayoutsWorker {
           row,
           new Error(result.failureReason ?? 'provider_returned_non_completed'),
         );
+        trace.choose('defer', result.failureReason ?? 'provider_non_completed');
+        trace.finalize({
+          outcome: 'failed',
+          output: {
+            status: result.status,
+            failureReason: result.failureReason ?? null,
+          },
+        });
         return 'failed';
       }
       await markPublished(row, result.providerRef);
+      trace.choose('dispatch', 'provider returned completed');
+      trace.finalize({
+        outcome: 'executed',
+        output: { providerRef: result.providerRef },
+      });
       return 'processed';
     } catch (err) {
       await markFailureRetry(row, err);
@@ -329,6 +392,13 @@ export function createPayoutsWorker(deps: PayoutsWorkerDeps): PayoutsWorker {
         },
         'payouts-worker: provider dispatch failed',
       );
+      if (!trace.isFinalised()) {
+        trace.choose('defer', 'provider threw');
+        trace.finalize({
+          outcome: 'failed',
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
       return 'failed';
     }
   }

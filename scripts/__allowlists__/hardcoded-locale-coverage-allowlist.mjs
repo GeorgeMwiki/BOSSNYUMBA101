@@ -188,4 +188,8 @@ export const HARDCODED_LOCALE_ALLOWLIST = new Map([
     'apps/owner-portal/src/pages/financial/Disbursements.tsx',
     'Owner-portal disbursements page formats dates en-US default; tracked-gap pending tenant-locale resolution.',
   ],
+  [
+    'packages/ai-copilot/src/security/canary-tokens.ts',
+    'canary-tokens uses toLocaleLowerCase("en-US") for DETERMINISTIC case-fold of canary token comparison; forcing en-US is the SAFE choice (omitting locale would use runtime locale and break token-leak detection in non-Latin-script locales).',
+  ],
 ]);

@@ -12,6 +12,7 @@ import { useTranslations } from 'next-intl';
 import { Camera, Send, X } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 interface PhotoItem {
   readonly id: string;
@@ -78,6 +79,7 @@ export default function NewMaintenancePage() {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...getCsrfHeaders(),
         },
         body: JSON.stringify({
           title,

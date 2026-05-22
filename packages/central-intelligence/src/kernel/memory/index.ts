@@ -82,8 +82,27 @@ export {
   RRF_K,
   buildRetrievedContext,
   reciprocalRankFusion,
+  type DriftObserver,
   type FusedEntry,
 } from './hybrid-retrieval.js';
+
+// ── MMR rerank (Maximal Marginal Relevance) ─────────────────────────
+export {
+  DEFAULT_MMR_LAMBDA,
+  DEFAULT_MMR_TOP_K,
+  mmrRerank,
+  type MmrCandidate,
+} from './mmr-rerank.js';
+
+// ── Per-tenant query-embedding drift detector ───────────────────────
+export {
+  DRIFT_SIGMA_THRESHOLD,
+  DriftDetector,
+  RING_BUFFER_SIZE,
+  type DriftPersistencePort,
+  type DriftSignal,
+  type DriftStateSnapshot,
+} from './drift-detector.js';
 
 // ── Anchored summarisation (70% budget threshold) ───────────────────
 export {

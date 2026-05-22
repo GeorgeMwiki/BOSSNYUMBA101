@@ -24,6 +24,7 @@ import { createBossnyumbaClient, createJarvisClient } from '@bossnyumba/api-sdk'
 import { useJarvisStream } from '@bossnyumba/chat-ui';
 import { AdaptiveRenderer, type AgUiUiPart } from '@bossnyumba/genui';
 import { FeedbackThumbs, type FeedbackVerdict } from './FeedbackThumbs';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 const DEFAULT_GATEWAY =
   (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -121,6 +122,7 @@ export function OwnerJarvisShell({
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${readBearer()}`,
+          ...getCsrfHeaders(),
         },
         body: JSON.stringify({
           turnId,

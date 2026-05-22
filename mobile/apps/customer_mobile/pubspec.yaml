@@ -1,0 +1,60 @@
+name: customer_mobile
+description: >
+  BOSSNYUMBA Customer Mobile App — tenant-facing rent payment
+  (M-Pesa STK push), lease access, maintenance ticket creation.
+version: 0.1.0+1
+publish_to: none
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Shared packages
+  bossnyumba_core:
+    path: ../../packages/bossnyumba_core
+  bossnyumba_ui:
+    path: ../../packages/bossnyumba_ui
+
+  # Navigation
+  go_router: ^14.6.0
+
+  # State management
+  flutter_riverpod: ^2.6.0
+
+  # Image picking (maintenance ticket photos)
+  image_picker: ^1.1.0
+
+  # Cached images
+  cached_network_image: ^3.4.0
+
+  # Push notifications (payment confirmation, maintenance updates)
+  firebase_messaging: ^15.1.0
+  firebase_core: ^3.6.0
+
+  # Markdown rendering (lease text, announcements)
+  flutter_markdown: ^0.7.0
+
+  # Shimmer loaders
+  shimmer: ^3.0.0
+
+  # PDF viewing (signed leases, receipts)
+  pdfx: ^2.8.0
+
+  # Currency / date formatting
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.0
+  mocktail: ^1.0.0
+
+flutter:
+  uses-material-design: true

@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 type Channel = 'email' | 'sms' | 'push' | 'whatsapp';
 type Category = 'payments' | 'maintenance' | 'messages' | 'marketing';
@@ -169,6 +170,7 @@ export function NotificationPreferencesForm(): JSX.Element {
         headers: {
           'Content-Type': 'application/json',
           ...authHeader(),
+          ...getCsrfHeaders(),
         },
         body: JSON.stringify(prefs),
       });

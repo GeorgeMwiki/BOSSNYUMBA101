@@ -21,6 +21,7 @@ import {
 } from 'react';
 import { Loader2, UploadCloud, CheckCircle2 } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 const ACCEPT_DEFAULT = 'image/*,application/pdf';
 const MAX_BYTES = 10 * 1024 * 1024; // 10MB
@@ -67,7 +68,10 @@ async function uploadFile(
   const auth = token();
   const res = await fetch(`${getApiBaseUrl()}/documents`, {
     method: 'POST',
-    headers: auth ? { Authorization: `Bearer ${auth}` } : {},
+    headers: {
+      ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
+      ...getCsrfHeaders(),
+    },
     body: formData,
   });
 

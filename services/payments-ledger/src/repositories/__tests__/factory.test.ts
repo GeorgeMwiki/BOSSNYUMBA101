@@ -12,7 +12,7 @@
  * the tenant-scoping predicate on `findByExternalId`.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import Module from 'node:module';
 
 type LogEntry = { level: 'warn' | 'info'; obj: object; msg: string };
@@ -28,8 +28,19 @@ function makeLogger(): { logger: { warn: (o: object, m: string) => void; info: (
   };
 }
 
+// Hoist the dynamic `import('../factory')` into `beforeAll` so the cold-load
+// cost is paid ONCE per suite, not per-test. Under CI parallel-test pressure
+// (`pnpm -r test` across ~50 packages concurrently) the cold ESM import was
+// exceeding even a 15-second per-test timeout. With the import hoisted, all
+// three tests share a single module-load and run well under default budget.
+let createRepositories: typeof import('../factory').createRepositories;
+
 describe('createRepositories', () => {
   const originalEnv = { ...process.env };
+
+  beforeAll(async () => {
+    ({ createRepositories } = await import('../factory'));
+  }, 60_000);
   // Patch require so the lazy `require('@bossnyumba/database')` inside
   // factory.ts hits our stub instead of the real package.
   const moduleProto = Module.prototype as unknown as {
@@ -60,12 +71,10 @@ describe('createRepositories', () => {
     moduleProto.require = originalRequire;
   });
 
-  it('returns in-memory repos when DATABASE_URL is unset (dev path)', async () => {
+  it('returns in-memory repos when DATABASE_URL is unset (dev path)', () => {
     delete process.env.DATABASE_URL;
     process.env.NODE_ENV = 'development';
     const { logger } = makeLogger();
-    const { createRepositories } = await import('../factory');
-
     const repos = createRepositories(logger);
 
     expect(repos.paymentIntentRepository.constructor.name).toBe(
@@ -73,14 +82,12 @@ describe('createRepositories', () => {
     );
   });
 
-  it('throws in production when DATABASE_URL is set but driver init fails', async () => {
+  it('throws in production when DATABASE_URL is set but driver init fails', () => {
     process.env.DATABASE_URL = 'postgres://does-not-exist:5432/none';
     process.env.NODE_ENV = 'production';
     throwOnDatabaseRequire = true;
 
     const { logger, captured } = makeLogger();
-    const { createRepositories } = await import('../factory');
-
     expect(() => createRepositories(logger)).toThrow(
       /Cannot start payments-ledger: DB unreachable/i,
     );
@@ -93,14 +100,12 @@ describe('createRepositories', () => {
     ).toBe(true);
   });
 
-  it('degrades to in-memory in dev/test when driver init fails', async () => {
+  it('degrades to in-memory in dev/test when driver init fails', () => {
     process.env.DATABASE_URL = 'postgres://does-not-exist:5432/none';
     process.env.NODE_ENV = 'test';
     throwOnDatabaseRequire = true;
 
     const { logger, captured } = makeLogger();
-    const { createRepositories } = await import('../factory');
-
     const repos = createRepositories(logger);
     expect(repos.paymentIntentRepository.constructor.name).toBe(
       'InMemoryPaymentIntentRepository',

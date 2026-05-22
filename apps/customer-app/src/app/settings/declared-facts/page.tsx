@@ -19,6 +19,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { Trash2, Plus, Save } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 interface DeclaredFact {
   readonly id: string;
@@ -57,7 +58,7 @@ async function postDeclared(
     const res = await fetch('/api/v1/memory/declare', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
       body: JSON.stringify({ key, value }),
     });
     return res.ok;
@@ -71,7 +72,7 @@ async function deleteDeclared(key: string): Promise<boolean> {
     const res = await fetch('/api/v1/memory/declare', {
       method: 'DELETE',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
       body: JSON.stringify({ key }),
     });
     return res.ok;

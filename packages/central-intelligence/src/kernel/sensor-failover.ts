@@ -400,3 +400,29 @@ export function createSensorRouter(deps: SensorFailoverDeps): SensorRouter {
     },
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Cascade routing — Haiku → Sonnet tier escalation.
+//
+// The cascade is a higher-level router that decides WHICH MODEL TIER to
+// call first based on stakes + judge confidence. It composes WITH the
+// failover above — provider-level health, breakers, and capability
+// filtering remain the `SensorRouter`'s job. The cascade lives in
+// `./sensor-failover-cascade.ts` (large enough to merit its own file)
+// and is re-exported here so callers continue to import from a single
+// `sensor-failover` barrel.
+// ─────────────────────────────────────────────────────────────────────
+
+export {
+  cascadeRoute,
+  type CascadeAttempt,
+  type CascadeEscalationReason,
+  type CascadeJudgeFn,
+  type CascadeJudgeOutcome,
+  type CascadeMetricsPort,
+  type CascadeModelTier,
+  type CascadeResult,
+  type CascadeRouteDeps,
+  type CascadeRouteOptions,
+  type CascadeStakesLevel,
+} from './sensor-failover-cascade.js';

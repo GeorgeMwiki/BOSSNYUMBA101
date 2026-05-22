@@ -268,3 +268,90 @@ export function createInMemoryDecisionTraceStore(opts?: {
     },
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Wave-13 F10 wiring — process-wide default DecisionTraceStore + a
+// Supabase stub adapter. The kernel composition root binds the real
+// Drizzle/Supabase adapter in Wave-14; until then `createSupabase-
+// DecisionTraceStore` writes to an injected delegate (typically the
+// in-memory store) so the wire-shape is exercisable end-to-end.
+// ─────────────────────────────────────────────────────────────────────
+
+/** Singleton holder — replaced by `setDefaultDecisionTraceStore`. */
+let defaultDecisionTraceStore: DecisionTraceStore | null = null;
+
+/**
+ * Install the process-wide default store. Returns the previous default
+ * (or null when none was set) so the caller can restore it in tests.
+ *
+ * Production wiring: `compose.ts` calls
+ *   `setDefaultDecisionTraceStore(createSupabaseDecisionTraceStore(...))`
+ * once at boot. Tests use `_resetDefaultDecisionTraceStoreForTests()`
+ * between assertions.
+ */
+export function setDefaultDecisionTraceStore(
+  store: DecisionTraceStore,
+): DecisionTraceStore | null {
+  const previous = defaultDecisionTraceStore;
+  defaultDecisionTraceStore = store;
+  return previous;
+}
+
+/**
+ * Read the currently-installed default store. Returns `null` when
+ * `setDefaultDecisionTraceStore` has never been called. Callers should
+ * fall back to a per-instance store (or skip persistence) when this
+ * is null — the kernel never throws over a missing global.
+ */
+export function getDefaultDecisionTraceStore(): DecisionTraceStore | null {
+  return defaultDecisionTraceStore;
+}
+
+/** Test helper — clears the global so suites stay isolated. */
+export function _resetDefaultDecisionTraceStoreForTests(): void {
+  defaultDecisionTraceStore = null;
+}
+
+/**
+ * Supabase stub. Until Wave-14 fills in the actual SQL writes (the
+ * `decision_traces` table + a tenant-scoped INSERT/SELECT pair), the
+ * stub delegates to whatever inner store the composition root hands
+ * it. The shape of the public API matches the real adapter we'll
+ * ship later — callers can wire this stub today and swap the inner
+ * for Drizzle later without touching call-sites.
+ */
+export interface SupabaseDecisionTraceStoreConfig {
+  /**
+   * Inner store the stub delegates to. `createInMemoryDecisionTraceStore`
+   * is a fine default for tests + early dev.
+   */
+  readonly inner?: DecisionTraceStore;
+  /**
+   * Optional logger fired on every record. Defaults to a no-op so the
+   * stub stays quiet by default — production wires this to the
+   * structured-logging port the rest of the kernel uses.
+   */
+  readonly onWrite?: (trace: DecisionTrace) => void;
+}
+
+export function createSupabaseDecisionTraceStore(
+  config?: SupabaseDecisionTraceStoreConfig,
+): DecisionTraceStore {
+  const inner = config?.inner ?? createInMemoryDecisionTraceStore();
+  const onWrite = config?.onWrite;
+  return {
+    async record(trace) {
+      try {
+        onWrite?.(trace);
+      } catch {
+        // Logger callbacks must never break the persistence call.
+      }
+      // Wave-14: this is where the Drizzle INSERT will land. Today the
+      // stub forwards to the injected inner so the wire is exercisable.
+      await inner.record(trace);
+    },
+    async recent(args) {
+      return inner.recent(args);
+    },
+  };
+}

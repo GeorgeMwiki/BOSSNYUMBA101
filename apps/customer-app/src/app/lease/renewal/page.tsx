@@ -12,6 +12,7 @@ import { useTranslations } from 'next-intl';
 import { FileSignature, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 interface RenewalOffer {
   readonly id: string;
@@ -88,6 +89,7 @@ export default function LeaseRenewalPage() {
           headers: {
             'Content-Type': 'application/json',
             ...(token() ? { Authorization: `Bearer ${token()}` } : {}),
+            ...getCsrfHeaders(),
           },
           body: JSON.stringify(payload),
         },

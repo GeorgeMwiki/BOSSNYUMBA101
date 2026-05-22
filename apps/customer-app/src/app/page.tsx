@@ -26,6 +26,7 @@ import { LiveArrearsDemo } from '@/components/marketing/LiveArrearsDemo';
 import { LiveAffordabilityDemo } from '@/components/marketing/LiveAffordabilityDemo';
 import { LiveConsultantDemo } from '@/components/marketing/LiveConsultantDemo';
 import { HandoffCard, type SignupPrefill } from '@/components/marketing/HandoffCard';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 interface ChatTurn {
   readonly id: string;
@@ -144,7 +145,7 @@ export default function HomePage() {
       if (sessionId) {
         void fetch('/api/v1/public/leads/handoff', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
           body: JSON.stringify({
             sessionId,
             transcript: turns.map((t) => ({ role: t.role, content: t.content })),

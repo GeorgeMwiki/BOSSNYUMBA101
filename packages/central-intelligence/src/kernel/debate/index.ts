@@ -20,6 +20,19 @@ export {
 } from './debate-types.js';
 
 export { runDebate } from './debate-runner.js';
+export {
+  runStakesAwareDebate,
+  type DispatchedDebateMode,
+  type RunStakesAwareDebateOptions,
+  type StakesAwareDebateResult,
+} from './debate-runner.js';
+export {
+  runThreeAgentDebate,
+  type ConstitutionRulePrompt,
+  type DebateResult,
+  type SensorLike,
+  type ThreeAgentDebateOptions,
+} from './three-agent-debate.js';
 export { DEFAULT_PROPERTY_DEBATE_VOICES } from './default-voices.js';
 export {
   buildCounterfactuals,

@@ -30,6 +30,10 @@ import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
 import { asApprovalRequestId } from '@bossnyumba/domain-services/approvals';
 import { e400, e404, e503, errorResponse } from '../utils/error-response';
+// F10 DecisionTrace — record the approve/reject decision (inputs,
+// rule that fired, outcome) so the admin replay UI can audit the
+// four-eye gate. Fire-and-forget persistence; never blocks the request.
+import { startDecisionTrace } from '@bossnyumba/observability';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -260,6 +264,29 @@ app.post(
     const userId = c.get('userId');
     const id = asApprovalRequestId(c.req.param('id'));
     const body = c.req.valid('json');
+    // F10 DecisionTrace — bracket the approval decision. We add two
+    // alternative branches (approve / reject) so the admin replay UI can
+    // surface counterfactuals; we then call `choose('approve')` because
+    // this is the approve handler.
+    const trace = startDecisionTrace('approvals.approve', {
+      inputs: { approvalId: id, comments: body.comments ?? null },
+      context: {
+        tenantId,
+        userId,
+        requestId: correlationIdOf(c),
+      },
+    });
+    trace.addBranch({
+      id: 'approve',
+      label: 'Approve the request',
+      rationale: 'four-eye approver explicitly chose approve',
+    });
+    trace.addBranch({
+      id: 'reject',
+      label: 'Reject the request',
+      rationale: 'counterfactual — not chosen on this path',
+    });
+    trace.choose('approve', 'approver clicked approve');
     try {
       const result = await service.approveRequest(
         id,
@@ -275,10 +302,21 @@ app.post(
             : result.error.code === 'UNAUTHORIZED_APPROVER'
               ? 403
               : 409;
+        trace.finalize({
+          outcome: 'rejected',
+          output: { code: result.error.code, status },
+        });
         return errorResponse(c, status, result.error.code, result.error.message);
       }
+      trace.finalize({ outcome: 'approved', output: result.data });
       return c.json({ success: true, data: result.data });
     } catch (err) {
+      if (!trace.isFinalised()) {
+        trace.finalize({
+          outcome: 'failed',
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
       return routeCatch(c, err, {
         code: 'APPROVAL_APPROVE_FAILED',
         status: 500,
@@ -309,6 +347,27 @@ app.post(
     const userId = c.get('userId');
     const id = asApprovalRequestId(c.req.param('id'));
     const body = c.req.valid('json');
+    // F10 DecisionTrace — same bracket as the approve handler but
+    // `choose('reject')`. Reason text is the rule-that-fired.
+    const trace = startDecisionTrace('approvals.reject', {
+      inputs: { approvalId: id, reason: body.reason },
+      context: {
+        tenantId,
+        userId,
+        requestId: correlationIdOf(c),
+      },
+    });
+    trace.addBranch({
+      id: 'approve',
+      label: 'Approve the request',
+      rationale: 'counterfactual — not chosen on this path',
+    });
+    trace.addBranch({
+      id: 'reject',
+      label: 'Reject the request',
+      rationale: body.reason,
+    });
+    trace.choose('reject', body.reason);
     try {
       const result = await service.rejectRequest(
         id,
@@ -324,10 +383,21 @@ app.post(
             : result.error.code === 'UNAUTHORIZED_APPROVER'
               ? 403
               : 409;
+        trace.finalize({
+          outcome: 'failed',
+          output: { code: result.error.code, status },
+        });
         return errorResponse(c, status, result.error.code, result.error.message);
       }
+      trace.finalize({ outcome: 'rejected', output: result.data });
       return c.json({ success: true, data: result.data });
     } catch (err) {
+      if (!trace.isFinalised()) {
+        trace.finalize({
+          outcome: 'failed',
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
       return routeCatch(c, err, {
         code: 'APPROVAL_REJECT_FAILED',
         status: 500,

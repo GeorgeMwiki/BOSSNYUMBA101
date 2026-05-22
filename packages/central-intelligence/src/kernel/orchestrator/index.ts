@@ -251,3 +251,38 @@ export {
   type SubMdProposal,
   type DeploymentReceipt,
 } from './self-extension.js';
+
+// LATS — Language Agent Tree Search planner (alternative to ToT in
+// search-planner.ts). UCB1 selection + value backprop with γ discount +
+// self-reflection on failed sub-trees. See `lats-search.ts`.
+export {
+  latsSearch,
+  ucb1Score,
+  pickByUcb,
+  backpropagate,
+  DEFAULT_MAX_ITERATIONS as LATS_DEFAULT_MAX_ITERATIONS,
+  DEFAULT_UCB_CONSTANT,
+  DEFAULT_DISCOUNT,
+  DEFAULT_REFLECTION_THRESHOLD,
+  HARD_MAX_EXPANSIONS as LATS_HARD_MAX_EXPANSIONS,
+  type LatsNode,
+  type LatsOptions,
+  type LatsResult,
+  type LatsReflection,
+  type LatsEvaluator,
+  type LatsExpander,
+} from './lats-search.js';
+
+// Wave-13 — stakes-aware planner dispatcher. Routes the planning call
+// to ToT for low/medium stakes (cheap, fast) and LATS for high/critical
+// stakes (more iterations, value-backpropagated MCTS). Both planners
+// share the `Evaluator` / `Expander` contracts so this is a thin shim.
+// See `planner-dispatcher.ts`.
+export {
+  dispatchPlanner,
+  pickPlannerForStakes,
+  type DispatchPlannerOptions,
+  type DispatchedPlanResult,
+  type DispatchedPlannerKind,
+  type PlannerStakes,
+} from './planner-dispatcher.js';

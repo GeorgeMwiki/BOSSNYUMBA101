@@ -7,6 +7,7 @@ import { Phone, ArrowRight, KeyRound, ShieldCheck } from 'lucide-react';
 import { getRegionConfig } from '@bossnyumba/domain-models';
 
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 /**
  * PhoneSignupForm — phone+OTP signup affordance.
@@ -53,7 +54,7 @@ async function postJson(
 ): Promise<{ ok: boolean; status: number; data: unknown }> {
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
     body: JSON.stringify(body),
     signal,
     credentials: 'include',

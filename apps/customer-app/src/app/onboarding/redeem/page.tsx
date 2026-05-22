@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 /**
  * `/onboarding/redeem?token=...` — bearer-token redemption flow.
@@ -61,7 +62,7 @@ async function redeemToken(
   try {
     const response = await fetch(`${baseUrl}/onboarding/redeem`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
       credentials: 'include',
       signal: controller.signal,
       body: JSON.stringify({ token }),

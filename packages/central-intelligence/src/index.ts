@@ -67,11 +67,21 @@ export {
 // without a namespace hop.
 export * from './kernel/index.js';
 
-// Namespace exports (`agency`, `counterModel`, `orchestrator`) must be
-// re-exported explicitly — `export * from` does NOT carry over
-// `export * as <ns>` declarations.
+// Namespace exports (`agency`, `counterModel`, `orchestrator`,
+// `powerTools`) must be re-exported explicitly — `export * from` does
+// NOT carry over `export * as <ns>` declarations.
 export {
   agency,
   counterModel,
   orchestrator,
+  powerTools,
 } from './kernel/index.js';
+
+// V8-isolate JS sandbox — primitive for safely evaluating arbitrary JS
+// snippets surfaced by tool calls. See kernel/sandbox/index.ts.
+export * from './kernel/sandbox/index.js';
+
+// Policy Gate — Constitution v2 reason-based tier-policy resolver for
+// the `md:*` action namespace. See policy-gate/index.ts for the full
+// surface (assertTierPolicy, assertApproved, HIGH_RISK_LITERAL_ONLY_PREFIXES).
+export * from './policy-gate/index.js';

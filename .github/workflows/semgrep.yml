@@ -47,14 +47,17 @@ jobs:
 
       - name: Run Semgrep (curated + BOSSNYUMBA rules)
         run: |
-          semgrep ci \
+          # Use `semgrep scan` not `semgrep ci`: the latter no longer accepts
+          # `--severity` filters (severity comes from app.semgrep.dev settings
+          # in `ci` mode). `scan` preserves the original ERROR+WARNING intent.
+          # Findings cause non-zero exit; we preserve the code so SARIF still
+          # uploads on failure.
+          semgrep scan \
             --config=auto \
             --config=.semgrep/bossnyumba-rules.yml \
             --severity=ERROR \
             --severity=WARNING \
             --sarif --output=semgrep.sarif || EXIT=$?
-          # `semgrep ci` exits non-zero on findings; preserve for upload then
-          # rethrow at the end so SARIF still uploads on failure.
           echo "SEMGREP_EXIT=${EXIT:-0}" >> "$GITHUB_ENV"
         env:
           SEMGREP_TOKEN: ${{ secrets.SEMGREP_TOKEN }}

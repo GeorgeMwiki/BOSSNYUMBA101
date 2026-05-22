@@ -15,6 +15,7 @@ import { Brain, Send, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@bossnyumba/design-system';
 import { authedHeaders } from '@/lib/supabase';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 interface Msg {
   id: string;
@@ -59,7 +60,7 @@ export default function TenantAssistantPage() {
       if (threadId) body.threadId = threadId;
       const res = await fetch('/api/brain/turn', {
         method: 'POST',
-        headers,
+        headers: { ...headers, ...getCsrfHeaders() },
         body: JSON.stringify(body),
       });
       if (!res.ok) {

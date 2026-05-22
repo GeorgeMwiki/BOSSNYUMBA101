@@ -63,7 +63,16 @@ function safeMetadata(value: unknown): Record<string, unknown> | undefined {
 }
 
 function rowToPaymentIntent(row: PaymentIntentRow): PaymentIntent {
-  const currency = (row.currency ?? 'KES') as CurrencyCode;
+  // payment_intents.currency is `text NOT NULL` (see payment.schema.ts).
+  // Fail loud if a row violates that invariant rather than silently defaulting
+  // to a tenant-foreign currency (the old `?? 'KES'` fallback assumed Kenya
+  // and was wrong for TZ / NG tenants).
+  if (!row.currency) {
+    throw new Error(
+      `payment_intents.currency invariant violated: row id=${String(row.id)} has empty currency`,
+    );
+  }
+  const currency = row.currency as CurrencyCode;
   const amount = Money.fromMinorUnits(row.amountMinorUnits ?? 0, currency);
 
   const platformFee =

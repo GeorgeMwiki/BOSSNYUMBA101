@@ -400,4 +400,15 @@ export const HARDCODED_CURRENCY_ALLOWLIST = new Map([
     'apps/owner-portal/src/pages/SettingsPage.tsx',
     'Owner-portal settings page currency-picker enumerates KES/TZS/USD as user-selectable options.',
   ],
+
+  // ─── Currency-registry / domain-data modules ───────────────────────
+  [
+    'packages/central-intelligence/src/kernel/tools/render-blocks/currency-codes.ts',
+    'render-blocks currency-codes.ts IS the ISO-4217 currency-code registry consumed by kernel UI render-block formatter; this module is the single source of truth for which codes the UI may format.',
+  ],
+  // NOTE: drizzle-ledger-entry.repository.ts and drizzle-payment-intent.repository.ts
+  // previously defaulted row.currency to 'KES' as an unreachable fallback (column
+  // is NOT NULL in schema). The fallback was replaced with a fail-loud invariant
+  // check in Wave 12 (no allowlist entry needed — those files now contain no
+  // literal 'KES').
 ]);

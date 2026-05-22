@@ -427,3 +427,22 @@ export * from './owner-skills.schema.js';
 //                        window approaches ~70% context budget.
 // Tenant-scoped, RLS-protected via `app.current_tenant_id` GUC.
 export * from './memory.schema.js';
+
+// Wave 12 — adaptive MD persistence:
+//   - section_layouts      : per-(tenant, user, route) saved layout
+//                            decisions for the adaptive layout engine
+//                            (UI-1).
+//   - user_action_tracker  : per-(tenant, user, action) frequency +
+//                            confirm-rate ledger powering mastery tiers
+//                            (UI-3) and learned shortcuts (UI-5).
+// Both tables are RLS-protected via `app.current_tenant_id` GUC; see
+// migrations 0182_section_layouts.sql and 0183_user_action_tracker.sql.
+export * from './section-layouts.schema.js';
+export * from './user-action-tracker.schema.js';
+
+// Decision traces (migration 0185) — F10 DecisionTrace persistence.
+// One row per finalised trace from `@bossnyumba/observability`. Tenant-
+// scoped via RLS; service-role bypass for the admin replay UI. See
+// migration `0185_decision_traces.sql` for the gold-standard ENABLE +
+// FORCE + REVOKE FROM anon + canonical helper + FOR ALL policy.
+export * from './decision-traces.schema.js';

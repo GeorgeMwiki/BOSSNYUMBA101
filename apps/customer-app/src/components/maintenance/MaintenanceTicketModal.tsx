@@ -28,6 +28,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, X } from 'lucide-react';
 import { Modal } from '@bossnyumba/design-system';
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 const SEVERITY_VALUES = ['low', 'medium', 'high', 'critical', 'emergency'] as const;
 type Severity = (typeof SEVERITY_VALUES)[number];
@@ -166,6 +167,7 @@ export function MaintenanceTicketModal({
           headers: {
             'Content-Type': 'application/json',
             ...authHeader(),
+            ...getCsrfHeaders(),
           },
           body: JSON.stringify({
             category,
