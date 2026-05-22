@@ -52,6 +52,11 @@ import { feedbackRouter } from './routes/feedback';
 import { complaintsRouter } from './routes/complaints';
 import { inspectionsRouter } from './routes/inspections';
 import { documentsHonoRouter } from './routes/documents.hono';
+// Piece C — MD Executive Brief routes (briefs + briefing subscriptions).
+import {
+  executiveBriefRouter,
+  briefingSubscriptionRouter,
+} from './routes/executive-brief.hono';
 import { schedulingRouter } from './routes/scheduling';
 import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
@@ -216,6 +221,7 @@ import { createLeaseExpiryAlertCron } from './workers/lease-expiry-alert-cron';
 import type {
   NotificationSender as LeaseExpiryNotificationSender,
 } from './workers/lease-expiry-alert-cron';
+import { createExecutiveBriefCron } from './workers/executive-brief-cron';
 import {
   registerDomainEventSubscribers,
   type SubscribableBus,
@@ -627,6 +633,9 @@ api.route('/feedback', feedbackRouter);
 api.route('/complaints', complaintsRouter);
 api.route('/inspections', inspectionsRouter);
 api.route('/documents', documentsHonoRouter);
+// Piece C — Executive briefs (T1-T3 only) + subscription cadence registry.
+api.route('/briefs', executiveBriefRouter);
+api.route('/briefing-subscriptions', briefingSubscriptionRouter);
 api.route('/scheduling', schedulingRouter);
 api.route('/messaging', messagingRouter);
 api.route('/cases', casesRouter);
@@ -1117,6 +1126,18 @@ const leaseExpiryCron = serviceRegistry.db
     })
   : { start() {}, stop() {}, async tickOnce() { return { scanned: 0, dispatched: 0, skippedAlreadySent: 0, failed: 0, byWindow: {} }; } };
 
+// Piece C — executive brief cron. Scans `briefing_subscriptions` every
+// EXECUTIVE_BRIEF_CRON_INTERVAL_MS (default 5 min) and generates briefs
+// for any DAILY / WEEKLY / MONTHLY subscription whose next_due_at has
+// passed. ON_DEMAND subscriptions are skipped — they fire via the
+// POST /briefs/generate route.
+const executiveBriefCron = serviceRegistry.db
+  ? createExecutiveBriefCron({
+      db: serviceRegistry.db as unknown as { execute(q: unknown): Promise<unknown> },
+      logger,
+    })
+  : { start() {}, stop() {}, async tickOnce() { return { scanned: 0, generated: 0, degraded: 0, refused: 0, failed: 0 }; } };
+
 // Graceful shutdown — documented and tested step-by-step:
 //  1. Flip a "shutting down" flag so the /health probe returns 503.
 //  2. Tell the HTTP server to stop accepting NEW connections.
@@ -1175,6 +1196,12 @@ async function gracefulShutdown(signal: string): Promise<void> {
     logger.info('shutdown: lease-expiry cron stopped');
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: lease-expiry cron stop failed');
+  }
+  try {
+    executiveBriefCron.stop();
+    logger.info('shutdown: executive-brief cron stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: executive-brief cron stop failed');
   }
   try {
     serviceRegistry.wakeLoopCron?.stop();
@@ -1273,6 +1300,10 @@ if (require.main === module) {
   // for leases at 60/30/7/1-day expiry windows, idempotent via
   // notification_dispatch_log.idempotency_key.
   leaseExpiryCron.start();
+  // Piece C — executive brief cron. Daily / weekly / monthly subscriptions
+  // get briefs generated at their local_time + cadence. ON_DEMAND
+  // subscriptions are never auto-fired.
+  executiveBriefCron.start();
   // K7 parity-litfin Gap H — wake-loop cron. Until this start() call the
   // supervisor was inert: the brain only woke when an out-of-band k8s
   // CronJob fired. In-process start arms an advisory-lock-guarded interval
