@@ -456,6 +456,27 @@ export * from './decision-traces.schema.js';
 // PostGIS + pgvector extension installs are guarded fail-soft in 0186.
 export * from './core-entity/index.js';
 
+// Piece B (migrations 0216-0221) — Dynamic module spawning.
+//   - modules                (0216): per-tenant module instances with
+//                             lifecycle DRAFT→PROPOSED→APPROVED→LIVE→...
+//   - module_specs           (0217): versioned DSL specs (the constrained
+//                             JSON grammar) with generated migration SQL
+//                             + Zod validators.
+//   - module_templates       (0218): platform built-ins (ESTATE / HR /
+//                             FLEET / PROCUREMENT / LEGAL / FINANCE /
+//                             STRATEGY / COMPLIANCE / CRM / INVENTORY) +
+//                             tenant forks. RLS: SELECT all auth; modify
+//                             service-role only.
+//   - routing_rules          (0219): (entity_type × intent) →
+//                             (module_template, action) dispatch matrix.
+//                             NULL tenant_id = platform default; tenant
+//                             overrides via priority DESC.
+//   - module_accept_handlers (0220): executor registry of accept_proposal
+//                             handlers per module template; payload Zod
+//                             schema, allowed tiers, risk tier, money flag.
+//   - routing_rules seed     (0221): 17 platform default rows.
+export * from './modules/index.js';
+
 // Piece H — AI-powered reports + presentations + Socratic tutor.
 //   - report_templates       (migration 0208): report-engine template
 //                             registry; tenant_id NULL = platform built-in.
