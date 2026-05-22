@@ -48,6 +48,7 @@ Codemaps are written from source. When source moves, update the codemap.
 |---------|--------|---------|
 | [api-gateway.md](./api-gateway.md) | `services/api-gateway/` | Hono BFF + composition root |
 | [database.md](./database.md) | `packages/database/` | Drizzle schemas, migrations, RLS, pgvector |
+| [core-entity.md](./core-entity.md) | `packages/database/src/schemas/core-entity/` | Piece A — universal asset & entity model (polymorphic root + thin per-type extensions + tenant custom fields) |
 | [payments-ledger.md](./payments-ledger.md) | `services/payments-ledger/` | Drizzle double-entry ledger |
 | [payments-service.md](./payments-service.md) | `services/payments/` | M-Pesa STK + reconciliation channel |
 | [agent-platform.md](./agent-platform.md) | `packages/agent-platform/` | Agent auth, idempotency, A2A errors |
