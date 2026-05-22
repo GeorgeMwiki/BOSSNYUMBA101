@@ -34,6 +34,7 @@
     "@bossnyumba/compliance-plugins": "workspace:*",
     "@bossnyumba/connectors": "workspace:*",
     "@bossnyumba/database": "workspace:*",
+    "@bossnyumba/dispatch-router": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",
     "@bossnyumba/domain-services": "workspace:*",
     "@bossnyumba/forecasting": "workspace:*",

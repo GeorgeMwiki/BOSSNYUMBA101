@@ -447,56 +447,15 @@ export * from './user-action-tracker.schema.js';
 // FORCE + REVOKE FROM anon + canonical helper + FOR ALL policy.
 export * from './decision-traces.schema.js';
 
-// Piece A (migrations 0186-0194) — Universal Asset & Entity Model.
-// Polymorphic root (core_entity) + type catalog + tenant custom-field
-// registry + thin per-type extensions (land / building / vehicle /
-// machinery / IT asset / person). Backward-compat union views
-// `properties_view` and `units_view` defined in migration 0194. All
-// tables FORCE RLS via the canonical `app.current_tenant_id` GUC; the
-// PostGIS + pgvector extension installs are guarded fail-soft in 0186.
-export * from './core-entity/index.js';
-
-// Piece B (migrations 0216-0221) — Dynamic module spawning.
-//   - modules                (0216): per-tenant module instances with
-//                             lifecycle DRAFT→PROPOSED→APPROVED→LIVE→...
-//   - module_specs           (0217): versioned DSL specs (the constrained
-//                             JSON grammar) with generated migration SQL
-//                             + Zod validators.
-//   - module_templates       (0218): platform built-ins (ESTATE / HR /
-//                             FLEET / PROCUREMENT / LEGAL / FINANCE /
-//                             STRATEGY / COMPLIANCE / CRM / INVENTORY) +
-//                             tenant forks. RLS: SELECT all auth; modify
-//                             service-role only.
-//   - routing_rules          (0219): (entity_type × intent) →
-//                             (module_template, action) dispatch matrix.
-//                             NULL tenant_id = platform default; tenant
-//                             overrides via priority DESC.
-//   - module_accept_handlers (0220): executor registry of accept_proposal
-//                             handlers per module template; payload Zod
-//                             schema, allowed tiers, risk tier, money flag.
-//   - routing_rules seed     (0221): 17 platform default rows.
-export * from './modules/index.js';
-
-// Piece H — AI-powered reports + presentations + Socratic tutor.
-//   - report_templates       (migration 0208): report-engine template
-//                             registry; tenant_id NULL = platform built-in.
-//   - presentation_themes    (migration 0209): slide-master themes used
-//                             by presentation-engine.
-//   - tutoring_skill_pack    (migration 0210): Socratic-tutor concept
-//                             registry with optional data-binding for
-//                             grounding worked examples in real tenant
-//                             data.
-// Partial unique indexes guarantee (NULL,slug) and (tenant_id,slug)
-// uniqueness. RLS allows read of NULL rows; writes are tenant-scoped.
-export * from './report-templates.schema.js';
-export * from './presentation-themes.schema.js';
-export * from './tutoring-skill-pack.schema.js';
-
-// Piece E — Action Runtime (migrations 0225-0228).
-//   - action_plans                        Plan root with budget + status machine
-//   - action_steps                        Per-step state for the saga
-//   - action_quotas                       Daily counters per (tenant, persona|NULL, date)
-//   - approval_matrix_dsl_compiled        Compiled DSL rules for K5 routing
-// All four tables FORCE RLS via the canonical `app.current_tenant_id` GUC.
-// The DSL table allows read of `tenant_id IS NULL` (platform default) rows.
-export * from './action-runtime.schema.js';
+// Piece L — brain↔tab loop (migrations 0229-0232):
+//   - conversation_capture     : per-exchange capture (entities + intent +
+//                                 confidence)
+//   - module_update_proposals  : dispatcher output, HITL-gated
+//   - tab_subscriptions        : persona × module → realtime channel
+//   - tab_event_log            : append-only state-transition audit
+// All tenant-scoped via RLS (`app.current_tenant_id` GUC); see migrations
+// 0229_conversation_capture.sql ... 0232_tab_event_log.sql.
+export * from './conversation-capture.schema.js';
+export * from './module-update-proposals.schema.js';
+export * from './tab-subscriptions.schema.js';
+export * from './tab-event-log.schema.js';
