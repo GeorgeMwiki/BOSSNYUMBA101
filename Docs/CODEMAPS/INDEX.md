@@ -73,6 +73,7 @@ Codemaps are written from source. When source moves, update the codemap.
 | Codemap | Module | Purpose |
 |---------|--------|---------|
 | [dynamic-sections.md](./dynamic-sections.md) | `packages/dynamic-sections/` | Adaptive layout engine (UI-1) |
+| [tab-need-detector.md](./tab-need-detector.md) | `packages/tab-need-detector/` | Piece O — need detection + tab spawning + per-user personalisation |
 | [chat-ui.md](./chat-ui.md) | `packages/chat-ui/` | ProactiveHint, MasteryGate, blackboard, voice |
 | [design-system.md](./design-system.md) | `packages/design-system/` | shadcn + Tailwind v4 + OKLCH primitives |
 | [api-client.md](./api-client.md) | `packages/api-client/` | Browser HTTP client + React Query hooks |
