@@ -446,3 +446,16 @@ export * from './user-action-tracker.schema.js';
 // migration `0185_decision_traces.sql` for the gold-standard ENABLE +
 // FORCE + REVOKE FROM anon + canonical helper + FOR ALL policy.
 export * from './decision-traces.schema.js';
+
+// Piece L — brain↔tab loop (migrations 0229-0232):
+//   - conversation_capture     : per-exchange capture (entities + intent +
+//                                 confidence)
+//   - module_update_proposals  : dispatcher output, HITL-gated
+//   - tab_subscriptions        : persona × module → realtime channel
+//   - tab_event_log            : append-only state-transition audit
+// All tenant-scoped via RLS (`app.current_tenant_id` GUC); see migrations
+// 0229_conversation_capture.sql ... 0232_tab_event_log.sql.
+export * from './conversation-capture.schema.js';
+export * from './module-update-proposals.schema.js';
+export * from './tab-subscriptions.schema.js';
+export * from './tab-event-log.schema.js';
