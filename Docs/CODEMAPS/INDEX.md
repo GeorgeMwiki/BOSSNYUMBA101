@@ -61,6 +61,7 @@ Codemaps are written from source. When source moves, update the codemap.
 | [outbox-processor.md](./outbox-processor.md) | `services/outbox-processor/` | Standalone outbox drainer |
 | [document-intelligence.md](./document-intelligence.md) | `services/document-intelligence/` | OCR + fraud + evidence packs |
 | [file-ingest.md](./file-ingest.md) | `packages/file-ingest/` | Conversational ingest pipeline |
+| [geo-parcels.md](./geo-parcels.md) | `packages/geo-parcels/` | Walk-and-capture land + map subdivide + cross-tenant marketplace (Piece N) |
 | [enterprise-hardening.md](./enterprise-hardening.md) | `packages/enterprise-hardening/` | SOC2 + circuit breaker + DR + FinOps |
 | [connectors.md](./connectors.md) | `packages/connectors/` | External-system adapter framework |
 | [lpms-connector.md](./lpms-connector.md) | `packages/lpms-connector/` | Legacy LPMS CSV/JSON/XML adapters |
