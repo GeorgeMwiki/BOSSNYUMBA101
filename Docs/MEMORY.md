@@ -45,6 +45,15 @@ owner backend skeletons, a11y, and security follow-ups (see
   corpus, multi-agent debate-default at stakes≥high (all under
   `packages/central-intelligence/src/kernel/`).
 - **Money path (CL-BUGS)** — 5 CRITICAL closed in payments-ledger.
+- **Piece H — Reports + Decks + Socratic tutor** —
+  `packages/report-engine/` (PDF/DOCX/PPTX, 7 built-in templates),
+  `packages/presentation-engine/` (5 built-in themes, Piece-G
+  artifact-compatible), `packages/tutoring-skill-pack/`
+  (data-grounded Socratic tutor, 10 built-in concepts). Migrations
+  `0208_report_templates.sql`, `0209_presentation_themes.sql`,
+  `0210_tutoring_skill_pack.sql`. All three tables: tenant_id NULL
+  = platform built-in (SELECT escape via NULL); writes are
+  tenant-scoped via RLS.
 
 ## Hard invariants (NEVER violate)
 
