@@ -16,6 +16,7 @@ import {
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CURRENT_BALANCE } from '@/lib/payments-data';
 import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
+import { ROUTES } from '@/lib/routes';
 
 type PaymentMethod = 'mpesa' | 'bank' | 'card';
 
@@ -82,9 +83,9 @@ function PayPageInner() {
     if (!selectedMethod) return;
 
     if (selectedMethod === 'mpesa') {
-      router.push(`/payments/mpesa?amount=${paymentAmount}`);
+      router.push(ROUTES.payments.mpesaWithAmount(paymentAmount));
     } else if (selectedMethod === 'bank') {
-      router.push(`/payments/bank-transfer?amount=${paymentAmount}`);
+      router.push(ROUTES.payments.bankTransferWithAmount(paymentAmount));
     }
     // Card is marked `disabled: true` in paymentOptions so it cannot be
     // selected from the UI. The type-level 'card' branch is unreachable

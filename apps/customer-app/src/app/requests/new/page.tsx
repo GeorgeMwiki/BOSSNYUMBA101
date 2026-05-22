@@ -12,24 +12,24 @@ import {
   PRIORITIES,
   type PhotoPreview,
 } from '@/components/requests';
+import { ROUTES } from '@/lib/routes';
 
-const LOCATIONS = [
-  { value: 'kitchen', label: 'Kitchen' },
-  { value: 'bathroom', label: 'Bathroom' },
-  { value: 'bedroom', label: 'Bedroom' },
-  { value: 'living_room', label: 'Living Room' },
-  { value: 'balcony', label: 'Balcony' },
-  { value: 'hallway', label: 'Hallway' },
-  { value: 'storeroom', label: 'Storeroom' },
-  { value: 'other', label: 'Other' },
-];
+/**
+ * Static value sets — labels are resolved at render time from the
+ * i18n catalogue (`newRequestPage.locations.*`, `.timeSlots.*`).
+ */
+const LOCATION_VALUES = [
+  'kitchen',
+  'bathroom',
+  'bedroom',
+  'living_room',
+  'balcony',
+  'hallway',
+  'storeroom',
+  'other',
+] as const;
 
-const TIME_SLOTS = [
-  { value: 'morning', label: 'Morning (9am - 12pm)' },
-  { value: 'afternoon', label: 'Afternoon (12pm - 5pm)' },
-  { value: 'evening', label: 'Evening (5pm - 8pm)' },
-  { value: 'any', label: 'Any time' },
-];
+const TIME_SLOT_VALUES = ['morning', 'afternoon', 'evening', 'any'] as const;
 
 const QUICK_DESCRIPTIONS: Record<string, string[]> = {
   plumbing: ['Leaking faucet', 'Clogged drain', 'No hot water', 'Pipe burst', 'Water pressure low'],
@@ -63,7 +63,7 @@ export default function NewRequestPage() {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    router.push('/requests?submitted=true');
+    router.push(ROUTES.requests.submitted);
   };
 
   const selectedPriority = PRIORITIES.find((p) => p.value === formData.priority);
@@ -128,20 +128,20 @@ export default function NewRequestPage() {
         <section>
           <label className="label">{t('whereInUnit')}</label>
           <div className="grid grid-cols-2 gap-2">
-            {LOCATIONS.map((loc) => {
-              const isSelected = formData.location === loc.value;
+            {LOCATION_VALUES.map((locValue) => {
+              const isSelected = formData.location === locValue;
               return (
                 <button
-                  key={loc.value}
+                  key={locValue}
                   type="button"
-                  onClick={() => setFormData({ ...formData, location: loc.value })}
+                  onClick={() => setFormData({ ...formData, location: locValue })}
                   className={`card p-3 text-left transition-all ${
                     isSelected
                       ? 'ring-2 ring-primary-500 bg-primary-50'
                       : 'hover:bg-gray-50'
                   }`}
                 >
-                  <span className="font-medium text-sm">{loc.label}</span>
+                  <span className="font-medium text-sm">{t(`locations.${locValue}`)}</span>
                 </button>
               );
             })}
@@ -185,14 +185,14 @@ export default function NewRequestPage() {
         <section>
           <label className="label">{t('preferredTime')}</label>
           <div className="space-y-2">
-            {TIME_SLOTS.map((slot) => {
-              const isSelected = formData.preferredSlot === slot.value;
+            {TIME_SLOT_VALUES.map((slotValue) => {
+              const isSelected = formData.preferredSlot === slotValue;
               return (
                 <button
-                  key={slot.value}
+                  key={slotValue}
                   type="button"
                   onClick={() =>
-                    setFormData({ ...formData, preferredSlot: slot.value })
+                    setFormData({ ...formData, preferredSlot: slotValue })
                   }
                   className={`card p-3 w-full text-left transition-all ${
                     isSelected
@@ -200,7 +200,7 @@ export default function NewRequestPage() {
                       : 'hover:bg-gray-50'
                   }`}
                 >
-                  <span className="text-sm">{slot.label}</span>
+                  <span className="text-sm">{t(`timeSlots.${slotValue}`)}</span>
                 </button>
               );
             })}

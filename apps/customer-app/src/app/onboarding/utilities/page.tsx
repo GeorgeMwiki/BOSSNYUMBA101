@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
+import { ROUTES } from '@/lib/routes';
 
 interface UtilitySetup {
   id: string;
@@ -209,7 +210,7 @@ export default function OnboardingUtilitiesPage() {
     localStorage.setItem('onboarding_progress', JSON.stringify(progress));
 
     setIsSubmitting(false);
-    router.push('/onboarding/orientation');
+    router.push(ROUTES.onboarding.orientation);
   };
 
   return (

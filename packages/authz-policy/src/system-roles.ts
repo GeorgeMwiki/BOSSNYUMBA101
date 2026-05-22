@@ -34,6 +34,36 @@ export const SystemRoles = {
 export type SystemRole = (typeof SystemRoles)[keyof typeof SystemRoles];
 
 // ============================================================================
+// Role Identity Helpers (Piece P)
+// ============================================================================
+
+/**
+ * Canonical set of admin-tier roles. A role name (any casing) is
+ * "admin" if it normalises to one of these.
+ *
+ * Use `isAdminRole(roleName)` instead of `role === 'admin'` everywhere
+ * in business logic — this is the one place the platform decides what
+ * counts as an admin role.
+ */
+const ADMIN_ROLE_NAMES: ReadonlySet<string> = new Set([
+  SystemRoles.SUPER_ADMIN,
+  SystemRoles.TENANT_ADMIN,
+  'admin',
+  'administrator',
+]);
+
+/**
+ * Test whether a role name represents an admin-tier role. Casing- and
+ * underscore-tolerant: `'ADMIN'`, `'Admin'`, `'TENANT_ADMIN'`,
+ * `'tenant_admin'`, `'super-admin'`, `'super admin'` all return true.
+ */
+export function isAdminRole(roleName: string | null | undefined): boolean {
+  if (!roleName) return false;
+  const normalised = roleName.trim().toLowerCase().replace(/[\s-]/g, '_');
+  return ADMIN_ROLE_NAMES.has(normalised);
+}
+
+// ============================================================================
 // Permission Helpers
 // ============================================================================
 

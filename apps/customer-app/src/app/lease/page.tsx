@@ -8,6 +8,7 @@ import { EmptyState } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
+import { ROUTES } from '@/lib/routes';
 
 export default function LeasePage() {
   const t = useTranslations('leaseIndex');
@@ -78,12 +79,12 @@ export default function LeasePage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <Link href="/lease/renewal" className="card p-4">
+              <Link href={ROUTES.lease.renewal} className="card p-4">
                 <Calendar className="mb-2 h-5 w-5 text-white" />
                 <div className="font-medium text-white">{t('renewal')}</div>
                 <div className="text-sm text-gray-400">{t('renewalDesc')}</div>
               </Link>
-              <Link href="/lease/move-out" className="card p-4">
+              <Link href={ROUTES.lease.moveOut} className="card p-4">
                 <FileText className="mb-2 h-5 w-5 text-white" />
                 <div className="font-medium text-white">{t('moveOut')}</div>
                 <div className="text-sm text-gray-400">{t('moveOutDesc')}</div>

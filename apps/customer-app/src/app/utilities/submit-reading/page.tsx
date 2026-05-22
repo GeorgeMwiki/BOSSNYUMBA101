@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Droplets, Zap, Camera } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 const meterTypes = [
   {
@@ -42,7 +43,7 @@ export default function SubmitReadingPage() {
 
     setIsSubmitting(true);
     await new Promise((resolve) => setTimeout(resolve, 1200));
-    router.push('/utilities?submitted=true');
+    router.push(ROUTES.utilities.submitted);
   };
 
   const handlePhotoUpload = () => {

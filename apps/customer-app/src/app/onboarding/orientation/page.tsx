@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
+import { ROUTES } from '@/lib/routes';
 
 interface HouseRule {
   id: string;
@@ -202,7 +203,7 @@ export default function OnboardingOrientationPage() {
     localStorage.setItem('onboarding_progress', JSON.stringify(progress));
 
     setIsSubmitting(false);
-    router.push('/onboarding/inspection');
+    router.push(ROUTES.onboarding.inspection);
   };
 
   return (

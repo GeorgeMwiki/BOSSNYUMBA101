@@ -806,7 +806,23 @@
     "expectedResponse": "Jibu Linalotarajiwa",
     "aimRespond": "Tunalenga kujibu ndani ya {sla}.",
     "submitting": "Inawasilisha...",
-    "submitRequest": "Wasilisha Ombi"
+    "submitRequest": "Wasilisha Ombi",
+    "locations": {
+      "kitchen": "Jikoni",
+      "bathroom": "Bafuni",
+      "bedroom": "Chumba cha Kulala",
+      "living_room": "Sebule",
+      "balcony": "Baraza",
+      "hallway": "Ukanda",
+      "storeroom": "Stoo",
+      "other": "Nyingine"
+    },
+    "timeSlots": {
+      "morning": "Asubuhi (9am - 12pm)",
+      "afternoon": "Mchana (12pm - 5pm)",
+      "evening": "Jioni (5pm - 8pm)",
+      "any": "Wakati Wowote"
+    }
   },
   "leaseRenewal": {
     "title": "Upyaji wa Mkataba",
@@ -1100,5 +1116,22 @@
     "sampleUnitTerm": "Kitengo A-204 • miezi 12",
     "sampleStartDate": "1 Juni 2024",
     "sampleEndDate": "31 Mei 2025"
+  },
+  "feedbackThumbs": {
+    "prompt": "Hii imesaidia?",
+    "thumbsUp": "Vidole gumba juu",
+    "thumbsDown": "Vidole gumba chini"
+  },
+  "chatComposer": {
+    "attachFiles": "Ambatisha faili",
+    "attachFile": "Ambatisha faili",
+    "attachImages": "Ambatisha picha"
+  },
+  "residentConcierge": {
+    "title": "Mhudumu wa Wakazi",
+    "subtitle": "Msaidizi wako binafsi wa AI kwa nyumba, mkataba, na malipo yako."
+  },
+  "eSignaturePrompt": {
+    "drawTitle": "Chora Sahihi Yako"
   }
 }
