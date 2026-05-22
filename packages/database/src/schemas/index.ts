@@ -491,3 +491,12 @@ export * from './modules/index.js';
 export * from './report-templates.schema.js';
 export * from './presentation-themes.schema.js';
 export * from './tutoring-skill-pack.schema.js';
+
+// Piece E — Action Runtime (migrations 0225-0228).
+//   - action_plans                        Plan root with budget + status machine
+//   - action_steps                        Per-step state for the saga
+//   - action_quotas                       Daily counters per (tenant, persona|NULL, date)
+//   - approval_matrix_dsl_compiled        Compiled DSL rules for K5 routing
+// All four tables FORCE RLS via the canonical `app.current_tenant_id` GUC.
+// The DSL table allows read of `tenant_id IS NULL` (platform default) rows.
+export * from './action-runtime.schema.js';
