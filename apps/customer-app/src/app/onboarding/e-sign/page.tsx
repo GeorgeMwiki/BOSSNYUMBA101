@@ -15,6 +15,7 @@ import {
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ESignature } from '@/components/ESignature';
 import { api } from '@/lib/api';
+import { ROUTES } from '@/lib/routes';
 
 interface Document {
   id: string;
@@ -171,7 +172,7 @@ export default function OnboardingESignPage() {
     savedProgress['e-sign'] = 'completed';
     localStorage.setItem('onboarding_progress', JSON.stringify(savedProgress));
 
-    router.push('/onboarding/complete');
+    router.push(ROUTES.onboarding.complete);
   };
 
   return (

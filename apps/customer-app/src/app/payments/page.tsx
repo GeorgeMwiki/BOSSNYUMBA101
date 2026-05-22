@@ -8,6 +8,7 @@ import { AlertCircle, ChevronRight, CreditCard, Receipt } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
+import { ROUTES } from '@/lib/routes';
 
 export default function PaymentsPage() {
   const t = useTranslations('paymentsIndex');
@@ -62,12 +63,12 @@ export default function PaymentsPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Link href="/payments/history" className="card p-4">
+          <Link href={ROUTES.payments.history} className="card p-4">
             <Receipt className="mb-2 h-5 w-5 text-white" />
             <div className="font-medium text-white">{t('paymentHistory')}</div>
             <div className="text-sm text-gray-400">{t('reviewLedger')}</div>
           </Link>
-          <Link href="/payments/mpesa" className="card p-4">
+          <Link href={ROUTES.payments.mpesa} className="card p-4">
             <CreditCard className="mb-2 h-5 w-5 text-white" />
             <div className="font-medium text-white">{t('payNow')}</div>
             <div className="text-sm text-gray-400">{t('mpesaAndMore')}</div>
@@ -101,7 +102,7 @@ export default function PaymentsPage() {
         <section className="card p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-medium text-white">{t('recentActivity')}</h2>
-            <Link href="/payments/history" className="text-sm text-primary-300">
+            <Link href={ROUTES.payments.history} className="text-sm text-primary-300">
               {t('seeAll')}
             </Link>
           </div>

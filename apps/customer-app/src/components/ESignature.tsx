@@ -41,11 +41,14 @@ export function ESignature({
   mode = 'inline',
   isOpen = false,
   onClose,
-  title = 'Draw Your Signature',
+  title,
   existingSignature = null,
   disabled = false,
 }: ESignatureProps) {
   const tA11y = useTranslations('a11y');
+  const tPrompt = useTranslations('eSignaturePrompt');
+  // i18n-resolved title fallback (no hardcoded English default).
+  const resolvedTitle = title ?? tPrompt('drawTitle');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
@@ -248,7 +251,7 @@ export function ESignature({
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <PenLine className="w-5 h-5 text-primary-600" />
-              {title}
+              {resolvedTitle}
             </h3>
             <button
               onClick={onClose}

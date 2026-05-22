@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Clock, ArrowRight } from 'lucide-react';
 import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
+import { ROUTES } from '@/lib/routes';
 
 const SAMPLE_TOTAL = 45000;
 const SAMPLE_RENT = 40000;
@@ -47,10 +48,10 @@ export function UpcomingPayment() {
         </div>
 
         <div className="flex gap-2">
-          <Link href="/payments/pay" className="btn-primary flex-1">
+          <Link href={ROUTES.payments.pay} className="btn-primary flex-1">
             {t('payNow')}
           </Link>
-          <Link href="/payments" className="btn-secondary">
+          <Link href={ROUTES.payments.root} className="btn-secondary">
             <ArrowRight className="w-5 h-5" />
           </Link>
         </div>

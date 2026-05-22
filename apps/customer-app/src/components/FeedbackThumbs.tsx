@@ -28,6 +28,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 export type FeedbackVerdict = 'up' | 'down';
 
@@ -48,6 +49,7 @@ export function FeedbackThumbs({
   onFeedback,
   disabled = false,
 }: FeedbackThumbsProps): JSX.Element {
+  const t = useTranslations('feedbackThumbs');
   const [submitting, setSubmitting] = useState(false);
   const [submittedVerdict, setSubmittedVerdict] = useState<FeedbackVerdict | null>(null);
   const [showReason, setShowReason] = useState(false);
@@ -105,10 +107,10 @@ export function FeedbackThumbs({
       data-testid={`feedback-thumbs-${turnId}`}
     >
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span>Was this helpful?</span>
+        <span>{t('prompt')}</span>
         <button
           type="button"
-          aria-label="Thumbs up"
+          aria-label={t('thumbsUp')}
           aria-pressed={upChosen}
           disabled={buttonsDisabled}
           onClick={() => void submit('up')}
@@ -122,7 +124,7 @@ export function FeedbackThumbs({
         </button>
         <button
           type="button"
-          aria-label="Thumbs down"
+          aria-label={t('thumbsDown')}
           aria-pressed={downChosen}
           disabled={buttonsDisabled}
           onClick={() => void submit('down')}

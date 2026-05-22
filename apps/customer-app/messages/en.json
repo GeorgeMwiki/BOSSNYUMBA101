@@ -806,7 +806,23 @@
     "expectedResponse": "Expected Response",
     "aimRespond": "We aim to respond within {sla}.",
     "submitting": "Submitting...",
-    "submitRequest": "Submit Request"
+    "submitRequest": "Submit Request",
+    "locations": {
+      "kitchen": "Kitchen",
+      "bathroom": "Bathroom",
+      "bedroom": "Bedroom",
+      "living_room": "Living Room",
+      "balcony": "Balcony",
+      "hallway": "Hallway",
+      "storeroom": "Storeroom",
+      "other": "Other"
+    },
+    "timeSlots": {
+      "morning": "Morning (9am - 12pm)",
+      "afternoon": "Afternoon (12pm - 5pm)",
+      "evening": "Evening (5pm - 8pm)",
+      "any": "Any time"
+    }
   },
   "leaseRenewal": {
     "title": "Lease Renewal",
@@ -1100,5 +1116,22 @@
     "sampleUnitTerm": "Unit A-204 • 12 months",
     "sampleStartDate": "June 1, 2024",
     "sampleEndDate": "May 31, 2025"
+  },
+  "feedbackThumbs": {
+    "prompt": "Was this helpful?",
+    "thumbsUp": "Thumbs up",
+    "thumbsDown": "Thumbs down"
+  },
+  "chatComposer": {
+    "attachFiles": "Attach files",
+    "attachFile": "Attach file",
+    "attachImages": "Attach images"
+  },
+  "residentConcierge": {
+    "title": "Resident Concierge",
+    "subtitle": "Your personal AI counterpart for your home, lease, and payments."
+  },
+  "eSignaturePrompt": {
+    "drawTitle": "Draw Your Signature"
   }
 }

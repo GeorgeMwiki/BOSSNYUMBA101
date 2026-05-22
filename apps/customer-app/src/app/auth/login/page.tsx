@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { LocaleSwitcher } from '@/components/LocaleSwitcher';
+import { ROUTES } from '@/lib/routes';
 
 const loginSchema = z.object({
   phone: z
@@ -40,7 +41,7 @@ export default function LoginPage() {
     try {
       const result = await loginWithPhone(phone);
       if (result.success) {
-        router.push(`/auth/otp?phone=${encodeURIComponent(phone)}`);
+        router.push(ROUTES.auth.otpWithPhone(phone));
       } else {
         setError('root', { message: result.message ?? t('somethingWentWrong') });
       }

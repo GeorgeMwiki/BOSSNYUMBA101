@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
+import { ROUTES } from '@/lib/routes';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -91,7 +92,7 @@ export default function OnboardingWelcomePage() {
     localStorage.setItem('onboarding_progress', JSON.stringify(progress));
 
     setIsSubmitting(false);
-    router.push('/onboarding/documents');
+    router.push(ROUTES.onboarding.documents);
   };
 
   return (

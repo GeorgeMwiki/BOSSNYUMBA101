@@ -16,6 +16,7 @@ import {
   Home,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { ROUTES } from '@/lib/routes';
 
 /**
  * Onboarding State Machine (A0-A6):
@@ -129,7 +130,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.replace('/auth/login');
+      router.replace(ROUTES.auth.login);
     }
   }, [isAuthenticated, loading, router]);
 

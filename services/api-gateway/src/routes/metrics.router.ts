@@ -17,6 +17,7 @@
  */
 
 import { Hono } from 'hono';
+import { isAdminRole } from '@bossnyumba/authz-policy';
 import { getMetricsRegistry } from '../observability/metrics-registry.js';
 
 type AuthedVars = { user?: { role?: string; id?: string } };
@@ -24,13 +25,10 @@ export const metricsRouter = new Hono<{ Variables: AuthedVars }>();
 
 metricsRouter.get('/', async (c) => {
   // Admin-only — auth middleware upstream will have validated the JWT
-  // and set c.get('user') with role. We double-check here defensively.
+  // and set c.get('user') with role. We double-check here defensively
+  // via the shared `isAdminRole` helper (no role-string-matching here).
   const user = c.get('user');
-  const isAdmin =
-    user?.role === 'admin' ||
-    user?.role === 'super_admin' ||
-    user?.role === 'SUPER_ADMIN' ||
-    user?.role === 'TENANT_ADMIN';
+  const isAdmin = isAdminRole(user?.role);
 
   if (!isAdmin) {
     return c.json(
