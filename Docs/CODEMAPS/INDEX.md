@@ -30,6 +30,8 @@ Codemaps are written from source. When source moves, update the codemap.
 |---------|--------|---------|
 | [central-intelligence.md](./central-intelligence.md) | `packages/central-intelligence/` | 12-agent embodied-agent kernel — sensors, persona, policy gate, theory-of-mind, debate, LATS, four-eye |
 | [ai-copilot.md](./ai-copilot.md) | `packages/ai-copilot/` | Personas, prompts, knowledge, security, copilot workflows |
+| [persona-runtime.md](./persona-runtime.md) | `packages/persona-runtime/` | Piece D — title→tier hierarchy, persona bindings, tool catalogue, scope predicates |
+| [conversation-threads.md](./conversation-threads.md) | `packages/conversation-threads/` | Piece F — MD-tier projects + threads with hash-chained messages and versioned artifacts |
 | [observability.md](./observability.md) | `packages/observability/` + `evals/` | OTel + audit + online-judge + decision-trace + red-team corpora |
 | [forecasting.md](./forecasting.md) | `packages/forecasting/` | Probabilistic forecasting + split conformal intervals |
 | [forecasting-engine.md](./forecasting-engine.md) | `packages/forecasting-engine/` | Orchestrator, scenarios, sandbox, world-model, feedback, scoring |

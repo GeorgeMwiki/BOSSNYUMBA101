@@ -45,6 +45,16 @@ owner backend skeletons, a11y, and security follow-ups (see
   corpus, multi-agent debate-default at stakes≥high (all under
   `packages/central-intelligence/src/kernel/`).
 - **Money path (CL-BUGS)** — 5 CRITICAL closed in payments-ledger.
+- **Piece D — persona runtime** (`packages/persona-runtime/`): five
+  power tiers (OWNER/ADMIN/MANAGER/EMPLOYEE/CUSTOMER), seven built-in
+  personas, tool-catalog filter pipeline, scope-predicate evaluator,
+  binding resolver. Migrations `0195..0199`. Tenants relabel via the
+  `titles` table; the brain routes on `power_tier`, never the label.
+- **Piece F — conversation threads** (`packages/conversation-threads/`):
+  MD-tier projects (gate `power_tier ≤ 3`), threads with SHA-256
+  hash-chained messages, versioned artifacts (branch supported),
+  cross-thread retrieval scoped to (tenant, persona, project), WhatsApp
+  24h-window session rotation. Migrations `0200..0204`.
 
 ## Hard invariants (NEVER violate)
 
@@ -78,7 +88,7 @@ owner backend skeletons, a11y, and security follow-ups (see
 - Brain kernel: `packages/central-intelligence/src/kernel/kernel.ts`
 - Money: `services/payments-ledger/src/services/ledger.service.ts`
 - Database client: `packages/database/src/client.ts`
-- Migrations: `packages/database/src/migrations/0001..0183_*.sql`
+- Migrations: `packages/database/src/migrations/0001..0204_*.sql`
 - Audit + OTel: `packages/observability/src/`
 - Adaptive layout: `packages/dynamic-sections/src/registry/`
 - Brain-aware UI primitives: `packages/chat-ui/src/components/`
