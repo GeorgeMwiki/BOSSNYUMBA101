@@ -17,8 +17,9 @@ audited paths.
 
 - `src/index.ts` — re-exports schemas + client + repositories.
 - `src/client.ts` — Drizzle pool (R/W split via Postgres HA).
-- `src/migrations/` — 183 numbered SQL files (`0001` .. `0183`).
-  Latest: `0183_user_action_tracker.sql` (UI-5 learned shortcuts).
+- `src/migrations/` — 194 numbered SQL files (`0001` .. `0194`).
+  Latest: `0194_entity_ext_person.sql` (Piece A universal asset model
+  + backward-compat `properties_view` / `units_view`).
 - `src/run-migrations.ts` + `src/reset-db.ts` + `pnpm migrate`.
 
 ## Internal structure

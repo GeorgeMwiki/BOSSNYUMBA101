@@ -446,3 +446,12 @@ export * from './user-action-tracker.schema.js';
 // migration `0185_decision_traces.sql` for the gold-standard ENABLE +
 // FORCE + REVOKE FROM anon + canonical helper + FOR ALL policy.
 export * from './decision-traces.schema.js';
+
+// Piece A (migrations 0186-0194) — Universal Asset & Entity Model.
+// Polymorphic root (core_entity) + type catalog + tenant custom-field
+// registry + thin per-type extensions (land / building / vehicle /
+// machinery / IT asset / person). Backward-compat union views
+// `properties_view` and `units_view` defined in migration 0194. All
+// tables FORCE RLS via the canonical `app.current_tenant_id` GUC; the
+// PostGIS + pgvector extension installs are guarded fail-soft in 0186.
+export * from './core-entity/index.js';

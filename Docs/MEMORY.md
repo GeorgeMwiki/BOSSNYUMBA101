@@ -29,6 +29,15 @@ owner backend skeletons, a11y, and security follow-ups (see
 
 ### Recent CL pointers
 
+- **Piece A — Universal Asset & Entity Model (Wave 16 master plan)** —
+  polymorphic `core_entity` + 6 thin per-type extensions
+  (land/building/vehicle/machinery/it_asset/person) + tenant-defined
+  custom fields registry + backward-compat `properties_view` /
+  `units_view`. Migrations
+  `packages/database/src/migrations/0186_core_entity.sql` ..
+  `0194_entity_ext_person.sql`. Repository:
+  `packages/database/src/repositories/core-entity.repository.ts`.
+  Codemap: [`Docs/CODEMAPS/core-entity.md`](./CODEMAPS/core-entity.md).
 - **Memory layer (CL-9)** — Drizzle schemas + MMR rerank + drift
   detection. Migration `packages/database/src/migrations/0181_memory_layer.sql`.
 - **BFF aggregation (CL-4)** — 7 routers rewritten under
@@ -78,7 +87,7 @@ owner backend skeletons, a11y, and security follow-ups (see
 - Brain kernel: `packages/central-intelligence/src/kernel/kernel.ts`
 - Money: `services/payments-ledger/src/services/ledger.service.ts`
 - Database client: `packages/database/src/client.ts`
-- Migrations: `packages/database/src/migrations/0001..0183_*.sql`
+- Migrations: `packages/database/src/migrations/0001..0194_*.sql`
 - Audit + OTel: `packages/observability/src/`
 - Adaptive layout: `packages/dynamic-sections/src/registry/`
 - Brain-aware UI primitives: `packages/chat-ui/src/components/`
