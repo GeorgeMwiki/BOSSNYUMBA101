@@ -251,3 +251,24 @@ export {
   type SubMdProposal,
   type DeploymentReceipt,
 } from './self-extension.js';
+
+// LATS — Language Agent Tree Search planner (alternative to ToT in
+// search-planner.ts). UCB1 selection + value backprop with γ discount +
+// self-reflection on failed sub-trees. See `lats-search.ts`.
+export {
+  latsSearch,
+  ucb1Score,
+  pickByUcb,
+  backpropagate,
+  DEFAULT_MAX_ITERATIONS as LATS_DEFAULT_MAX_ITERATIONS,
+  DEFAULT_UCB_CONSTANT,
+  DEFAULT_DISCOUNT,
+  DEFAULT_REFLECTION_THRESHOLD,
+  HARD_MAX_EXPANSIONS as LATS_HARD_MAX_EXPANSIONS,
+  type LatsNode,
+  type LatsOptions,
+  type LatsResult,
+  type LatsReflection,
+  type LatsEvaluator,
+  type LatsExpander,
+} from './lats-search.js';

@@ -1,0 +1,35 @@
+name: bossnyumba_ui
+description: >
+  Shared design system and widgets for BOSSNYUMBA mobile apps —
+  colour tokens, typography, and reusable components (property card,
+  payment button, etc.).
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  bossnyumba_core:
+    path: ../bossnyumba_core
+
+  # Icon library
+  lucide_icons: ^0.257.0
+
+  # Google Fonts (Inter / Plus Jakarta Sans bundled offline)
+  google_fonts: ^6.2.1
+
+  # Shimmer loading placeholders
+  shimmer: ^3.0.0
+
+  # Cached network images for property hero shots
+  cached_network_image: ^3.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0

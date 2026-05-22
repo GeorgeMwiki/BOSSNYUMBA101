@@ -1,0 +1,41 @@
+---
+# KEDA ScaledObject for admin-platform-portal.
+# Very low traffic — only platform admins. Aggressive scale-to-zero.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: admin-platform-portal
+  namespace: bossnyumba
+  labels:
+    app.kubernetes.io/name: bossnyumba
+    app.kubernetes.io/component: admin-platform-portal
+    app.kubernetes.io/managed-by: helm
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: admin-platform-portal
+  pollingInterval: 10
+  cooldownPeriod: 1800    # 30 min idle before scaling down
+  minReplicaCount: 0
+  maxReplicaCount: 5
+  fallback:
+    failureThreshold: 3
+    replicas: 1
+  triggers:
+    # TODO(scaffold): replace host with the real admin-platform domain.
+    - type: http-add-on
+      metadata:
+        hosts: admin.bossnyumba.example.com
+        pathPrefixes: /
+        scalingMetric: requestRate
+        targetValue: "5"
+        granularity: 1s
+        window: 1m
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090
+        metricName: admin_platform_portal_rps
+        threshold: "5"
+        query: |
+          sum(rate(http_requests_total{namespace="bossnyumba",app="admin-platform-portal"}[1m]))

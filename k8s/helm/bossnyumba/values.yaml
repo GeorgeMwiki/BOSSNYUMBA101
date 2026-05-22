@@ -1,0 +1,322 @@
+# BOSSNYUMBA Helm chart values. Override per-environment with -f
+# values-dev.yaml / values-staging.yaml / values-prod.yaml.
+#
+# This file is SCAFFOLDING. Every TODO(scaffold) marker gates a real
+# value that must be plumbed before deployment.
+
+# ── Image ─────────────────────────────────────────────────────────────
+# Each app/service has its own image. CI tags by git SHA; `latest` is
+# dev-only.
+image:
+  # TODO(scaffold): set registry (gcr.io / 123456.dkr.ecr.eu-central-1.amazonaws.com / ghcr.io).
+  registry: ghcr.io
+  project: georgemwiki
+  pullPolicy: Always
+  pullSecret: registry-pull
+  # TODO(scaffold): wire the global tag in CI (e.g. `helm upgrade --set image.tag=$GIT_SHA`).
+  tag: latest
+
+# ── Domain / TLS ──────────────────────────────────────────────────────
+# Each frontend portal gets its own public host. The 4 backend services
+# are NEVER exposed publicly — they sit behind api-gateway internally.
+domain: bossnyumba.example.com
+hosts:
+  # TODO(scaffold): replace with real tenant or SaaS domains.
+  customerApp: tenant.bossnyumba.example.com
+  estateManagerApp: manager.bossnyumba.example.com
+  ownerPortal: owner.bossnyumba.example.com
+  adminPlatformPortal: admin.bossnyumba.example.com
+tls:
+  enabled: true
+  issuer: letsencrypt-prod
+  # cert-manager will provision a secret per portal.
+  secretNamePrefix: bossnyumba-tls
+
+# ── Replica counts ────────────────────────────────────────────────────
+# Frontends: customer-app stays warm (tenant traffic 24/7), the other 3
+# scale to 0 on idle (KEDA HTTP add-on). Services: api-gateway always
+# warm, others can scale aggressively.
+replicaCount:
+  customerApp: 2
+  estateManagerApp: 1          # KEDA scales 0..20.
+  ownerPortal: 1               # KEDA scales 0..10.
+  adminPlatformPortal: 1       # KEDA scales 0..5.
+  apiGateway: 3
+  paymentsLedger: 2
+  reports: 1
+  notifications: 2
+
+# ── 4 Frontend apps ───────────────────────────────────────────────────
+apps:
+  customerApp:
+    enabled: true
+    name: customer-app
+    image:
+      # TODO(scaffold): per-app image repo if not using a monorepo bundle.
+      repository: bossnyumba/customer-app
+      tag: ""   # falls back to global image.tag
+    port: 3000
+    healthPath: /api/health
+    resources:
+      requests: { cpu: 200m, memory: 512Mi }
+      limits:   { cpu: "1", memory: 1Gi }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 30
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
+  estateManagerApp:
+    enabled: true
+    name: estate-manager-app
+    image:
+      repository: bossnyumba/estate-manager-app
+      tag: ""
+    port: 3000
+    healthPath: /api/health
+    resources:
+      requests: { cpu: 200m, memory: 512Mi }
+      limits:   { cpu: "1", memory: 1Gi }
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 20
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
+  ownerPortal:
+    enabled: true
+    name: owner-portal
+    image:
+      repository: bossnyumba/owner-portal
+      tag: ""
+    port: 3000
+    healthPath: /api/health
+    resources:
+      requests: { cpu: 150m, memory: 384Mi }
+      limits:   { cpu: 800m, memory: 768Mi }
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
+  adminPlatformPortal:
+    enabled: true
+    name: admin-platform-portal
+    image:
+      repository: bossnyumba/admin-platform-portal
+      tag: ""
+    port: 3000
+    healthPath: /api/health
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits:   { cpu: 500m, memory: 512Mi }
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
+
+# ── 4 Backend services ───────────────────────────────────────────────
+services:
+  apiGateway:
+    enabled: true
+    name: api-gateway
+    image:
+      repository: bossnyumba/api-gateway
+      tag: ""
+    port: 4000
+    healthPath: /healthz
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits:   { cpu: "1", memory: 1Gi }
+    autoscaling:
+      enabled: true
+      minReplicas: 3
+      maxReplicas: 50
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
+  paymentsLedger:
+    enabled: true
+    name: payments-ledger
+    image:
+      repository: bossnyumba/payments-ledger
+      tag: ""
+    port: 4010
+    healthPath: /healthz
+    resources:
+      requests: { cpu: 200m, memory: 384Mi }
+      limits:   { cpu: 800m, memory: 768Mi }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 15
+      targetCPUUtilizationPercentage: 60   # tighter — PCI workload, avoid head-of-line.
+      targetMemoryUtilizationPercentage: 75
+    # PCI-adjacent. Extra-strict NetworkPolicy applied separately.
+    strictNetworkPolicy: true
+  reports:
+    enabled: true
+    name: reports
+    image:
+      repository: bossnyumba/reports
+      tag: ""
+    port: 4020
+    healthPath: /healthz
+    resources:
+      # Reports run heavy queries — give them headroom.
+      requests: { cpu: 300m, memory: 768Mi }
+      limits:   { cpu: "2", memory: 2Gi }
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 80
+      targetMemoryUtilizationPercentage: 80
+  notifications:
+    enabled: true
+    name: notifications
+    image:
+      repository: bossnyumba/notifications
+      tag: ""
+    port: 4030
+    healthPath: /healthz
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits:   { cpu: 500m, memory: 512Mi }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 75
+
+# ── Postgres ──────────────────────────────────────────────────────────
+# Default: in-cluster StatefulSet with anti-affinity + PDB. Switch to
+# managed (Cloud SQL / RDS / Supabase) by setting `postgres.external.enabled`.
+postgres:
+  enabled: true
+  external:
+    enabled: false
+    # TODO(scaffold): if external, populate connection from external-secret.
+    # host: ""
+    # port: 5432
+    # database: bossnyumba
+  statefulSet:
+    replicas: 3
+    image:
+      repository: postgres
+      tag: "16-alpine"
+    storage:
+      # TODO(scaffold): pick a storageClass that matches your cluster.
+      storageClassName: ""
+      size: 100Gi
+    resources:
+      requests: { cpu: 500m, memory: 1Gi }
+      limits:   { cpu: "2", memory: 4Gi }
+    # Anti-affinity required: never co-locate two Postgres replicas on
+    # the same node.
+    antiAffinity: required
+    pdb:
+      enabled: true
+      minAvailable: 2
+
+# ── Redis ─────────────────────────────────────────────────────────────
+# Single-replica baseline. Full Sentinel cluster lives in `k8s/ha/`.
+redis:
+  enabled: true
+  external:
+    enabled: false
+    # TODO(scaffold): if external (Upstash), populate connection from external-secret.
+  image:
+    repository: redis
+    tag: "7-alpine"
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 1Gi }
+  persistence:
+    enabled: false   # In-memory only by default; flip on for persistent queues.
+
+# ── KEDA HTTP-driven scaling for 3 of the 4 portals ──────────────────
+keda:
+  enabled: true
+  # KEDA HTTP add-on must be installed on the cluster. Otherwise the
+  # Prometheus fallback trigger is used.
+  promServerAddress: http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090
+  scalers:
+    customerApp:
+      enabled: false   # customer-app stays warm — no scale-to-zero.
+      targetRps: 30
+    estateManagerApp:
+      enabled: true
+      targetRps: 20
+    ownerPortal:
+      enabled: true
+      targetRps: 15
+    adminPlatformPortal:
+      enabled: true
+      targetRps: 5
+
+# ── Secrets backend ──────────────────────────────────────────────────
+secrets:
+  # "gcp" -> GCP Secret Manager + Workload Identity
+  # "aws" -> AWS Secrets Manager + IRSA
+  # "vault" -> HashiCorp Vault
+  # "sealed" -> Bitnami Sealed Secrets (last resort, in-cluster)
+  provider: gcp
+  gcp:
+    # TODO(scaffold): set the GCP project that holds the secrets.
+    projectID: bossnyumba-prod
+    workloadIdentity:
+      clusterLocation: europe-west3
+      clusterName: bossnyumba-prod
+  aws:
+    region: eu-central-1
+    roleArn: ""
+
+# ── External Secrets ─────────────────────────────────────────────────
+externalSecrets:
+  enabled: true
+  refreshInterval: 1h
+
+# ── Ingress ──────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  proxyBodySize: 25m
+  proxyReadTimeout: 180
+  proxySendTimeout: 180
+
+# ── Cert Manager ─────────────────────────────────────────────────────
+certManager:
+  enabled: true
+  # TODO(scaffold): set the email Let's Encrypt should mail renewal alerts to.
+  acmeEmail: ops@bossnyumba.example.com
+
+# ── NetworkPolicy ────────────────────────────────────────────────────
+networkPolicy:
+  enabled: true
+  # Set to true on shared K8s clusters where other tenants may be
+  # present in sibling namespaces.
+  strictMultiTenant: true
+
+# ── Service mesh ─────────────────────────────────────────────────────
+linkerd:
+  enabled: false
+  # Flip on when Linkerd is installed on the cluster and you want mTLS
+  # + retries between frontend pods and api-gateway.
+  inject: enabled
+
+# ── Pod security ─────────────────────────────────────────────────────
+podSecurity:
+  runAsNonRoot: true
+  runAsUser: 65532
+  readOnlyRootFilesystem: true
+  seccompProfile: RuntimeDefault
+
+# ── Pod disruption ───────────────────────────────────────────────────
+pdb:
+  enabled: true
+  # Per-workload PDB minAvailable derived from replicaCount.
+  defaultMinAvailable: 1

@@ -99,31 +99,37 @@ describe('migration 0183 SQL', () => {
     expect(sql).toMatch(/FORCE ROW LEVEL SECURITY/);
   });
 
-  it('declares SELECT + INSERT + UPDATE tenant-isolation policies', () => {
-    expect(sql).toMatch(
-      /CREATE POLICY user_action_tracker_tenant_isolation\s+ON user_action_tracker/,
-    );
-    expect(sql).toMatch(
-      /CREATE POLICY user_action_tracker_tenant_isolation_insert/,
-    );
-    expect(sql).toMatch(
-      /CREATE POLICY user_action_tracker_tenant_isolation_update/,
-    );
+  it('declares canonical SELECT + ALL tenant-isolation policies (gold-standard 0182 pattern)', () => {
+    // Wave-12 HIGH-fix rewrote 0183 to match 0182's gold-standard pattern:
+    // canonical policy names `tenant_isolation_select` + `tenant_isolation_modify`
+    // (FOR ALL covers INSERT + UPDATE + DELETE in one policy, closing the
+    // implicit-DELETE gap).
+    expect(sql).toMatch(/CREATE POLICY tenant_isolation_select ON public\.%I/);
+    expect(sql).toMatch(/CREATE POLICY tenant_isolation_modify ON public\.%I/);
+    expect(sql).toMatch(/FOR SELECT/);
+    expect(sql).toMatch(/FOR ALL/);
   });
 
-  it('uses the app.current_tenant_id GUC in policy predicates', () => {
-    const occurrences = (sql.match(
-      /current_setting\(\s*'app\.current_tenant_id'\s*,\s*true\s*\)/g,
-    ) ?? []).length;
-    // One USING in SELECT policy, one WITH CHECK in INSERT, one USING +
-    // one WITH CHECK in UPDATE = 4 references at minimum.
-    expect(occurrences).toBeGreaterThanOrEqual(4);
+  it('uses the canonical public.current_app_tenant_id() helper in policy predicates', () => {
+    // Wave-12 HIGH-fix replaced raw `current_setting('app.current_tenant_id', true)`
+    // with the canonical helper that bridges new + legacy GUC names (mig 0172).
+    const occurrences = (sql.match(/public\.current_app_tenant_id\(\)/g) ?? []).length;
+    // USING in SELECT, USING + WITH CHECK in FOR ALL = 3+ refs in policy bodies.
+    // (Helper may also appear in `tenant_id = public.current_app_tenant_id()` comparisons.)
+    expect(occurrences).toBeGreaterThanOrEqual(3);
   });
 
-  it('wraps policy creation in an IF EXISTS guard so it stays idempotent', () => {
-    expect(sql).toMatch(
-      /DO \$\$\s*BEGIN[\s\S]*IF EXISTS \(SELECT 1 FROM pg_tables WHERE tablename = 'user_action_tracker'\)/,
-    );
+  it('revokes anon access (defence-in-depth)', () => {
+    expect(sql).toMatch(/REVOKE ALL ON public\.%I FROM anon/);
+  });
+
+  it('wraps policy creation in a FOREACH loop scoped to information_schema.tables (idempotent)', () => {
+    // Gold-standard pattern: loop over `tenant_tables` array, guard with
+    // `information_schema.tables` existence check.
+    expect(sql).toMatch(/DO \$\$/);
+    expect(sql).toMatch(/tenant_tables\s+text\[\]/);
+    expect(sql).toMatch(/FOREACH tbl IN ARRAY tenant_tables/);
+    expect(sql).toMatch(/information_schema\.tables/);
   });
 });
 

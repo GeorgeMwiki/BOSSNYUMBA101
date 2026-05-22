@@ -637,3 +637,27 @@ export * as orchestrator from './orchestrator/index.js';
  * tenant-facing persona exports above.
  */
 export * as vpPersonas from './vp-personas/index.js';
+
+/**
+ * Wave 12 — LITFIN reflexion port.
+ *
+ * Verbal RL self-critique (Shinn et al., NeurIPS 2023) plus the 4-pass
+ * nightly sleep consolidation that dedupes/clusters reflexions,
+ * extracts "when X happens, do Y" patterns, updates the persistent
+ * guidelines doc, and prunes stale rows. See
+ * `./reflexion/index.ts` for the full surface.
+ *
+ * Namespaced to avoid collision with the existing `recordReflection`
+ * + `createReflexionRetriever` exports the rest of the kernel reads
+ * directly from `./reflexion/*` siblings.
+ */
+export * as reflexion from './reflexion/index.js';
+
+/**
+ * Power Tools — agent meta-capabilities sitting BETWEEN regular HQ
+ * tools and sovereign-write actions. Includes `handoff`, `sandbox`,
+ * `schedule`, `cross_tenant`, `compose`, `self_modification`, and
+ * `blackboard_stream`, plus the `PowerToolRegistry` that the
+ * orchestrator routes `power_tool.<id>` calls through.
+ */
+export * as powerTools from './power-tools/index.js';

@@ -11,9 +11,11 @@
 'use strict';
 
 const noJurisdictionalLiteral = require('./no-jurisdictional-literal.js');
+const requireCsrfHeaders = require('./require-csrf-headers.cjs');
 
 module.exports = {
   rules: {
     'no-jurisdictional-literal': noJurisdictionalLiteral,
+    'require-csrf-headers': requireCsrfHeaders,
   },
 };
