@@ -4,7 +4,20 @@
 **Date:** 2026-05-22
 **Owner:** CCO
 **Jurisdiction:** Kenya
-**Source files:** `packages/audit-chain/`, `packages/database/src/schema/audit.ts`
+**Source files (canonical, path:line):**
+- `packages/database/src/schemas/audit-events.schema.ts` (120 lines)
+- `packages/database/src/schemas/sovereign-action-ledger.schema.ts` (98 lines)
+- `packages/database/src/schemas/cross-tenant-denials.schema.ts` (52 lines)
+- `packages/database/src/schemas/ai-audit-chain.schema.ts`
+- `packages/database/src/schemas/kernel-action-audit.schema.ts`
+- `packages/database/src/schemas/field-encryption-audit.schema.ts`
+- `packages/database/src/schemas/sovereign-approvals.schema.ts`
+- `packages/ai-copilot/src/security/audit-hash-chain.ts` (651 lines)
+- `services/api-gateway/src/composition/audit-sink-drizzle-adapter.ts`
+- `services/api-gateway/src/composition/audit-trail-repository.ts`
+- `services/api-gateway/src/composition/audit-verify-cron.ts`
+- `services/api-gateway/src/composition/sovereign-ledger-verify-cron.ts`
+- `services/api-gateway/src/routes/audit-trail.router.ts` + `admin-audit.router.ts` + `autonomous-actions-audit.router.ts`
 **Aligned to:** OCSF (Open Cybersecurity Schema Framework) 1.2; DPA 2019 s.31 (record-keeping for accountability); POCAMLA s.46 (AML record retention); CBK Cybersecurity Guideline 2017 (audit-trail completeness expectation); SR 11-7 §III (model governance auditability).
 
 ---
@@ -15,7 +28,7 @@ Same four properties as TZ pack: append-only, tamper-evident (HMAC chain), verif
 
 ## 2. Schema
 
-Same drizzle schema as TZ pack — single codebase, region-flagged events. See `packages/database/src/schema/audit.ts`.
+Same drizzle schema as TZ pack — single codebase, region-flagged events. See `packages/database/src/schemas/audit-events.schema.ts` (120 lines).
 
 ## 3. Event categories
 
@@ -89,3 +102,36 @@ BossNyumba's audit chain is structured so each of these can be answered with a s
 - Model decision logging → doc 05
 
 > TODO: insert sample chain-verification report; insert sample ODPC packet manifest.
+
+## 10. KE audit dashboards
+
+| Dashboard | URL placeholder |
+|---|---|
+| Grafana — KE audit-events volume | `https://grafana.bossnyumba.com/d/audit-events/audit-events-volume?var-region=KE` |
+| Grafana — KE chain-integrity cron | `https://grafana.bossnyumba.com/d/audit-chain/audit-chain-integrity` |
+| Grafana — KE s.35 challenge audit-trail | `https://grafana.bossnyumba.com/d/s35-challenges/s35-challenge-resolution` |
+| Grafana — KE RLS denials | `https://grafana.bossnyumba.com/d/rls-denials/rls-denial-rate?var-region=KE` |
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| CCO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cco/regulator-pack-ke-10-v1.0` |
+| CISO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ciso/regulator-pack-ke-10-v1.0` |
+| DPO (ODPC-registered) | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/regulator-pack-ke-10-v1.0` |
+| Board Audit Committee Chair | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/bac/regulator-pack-ke-10-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | CCO |
+| 1.1.0 | 2026-05-22 | KE schema + route + cron path:line refs + dashboards (Wave-12) | CCO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full review of retention table + access controls
+- **Quarterly** — CCO + CISO review chain-verification + KE-specific event-class extracts
+- **Out-of-cycle** — chain tamper detection, ODPC enforcement request, schema change

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Logomark } from '@bossnyumba/design-system';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 interface LoginState {
   readonly phase: 'idle' | 'submitting' | 'error';
@@ -22,7 +23,7 @@ export function LoginForm() {
     try {
       const res = await fetch('/api/platform/login', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({ email, password, next }),
       });
       if (res.ok) {

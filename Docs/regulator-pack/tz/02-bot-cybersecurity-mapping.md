@@ -72,34 +72,41 @@ BossNyumba's cybersecurity posture is built as five layers of defence-in-depth. 
 
 ### Layer 2 — Application
 
-| Control | Implementation |
+| Control | Implementation (path:line) |
 |---|---|
-| CSRF | Double-submit cookie pattern; see `services/api-gateway/src/middleware/csrf.ts` |
-| Security headers | CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy |
-| Rate limiting | Redis-backed per-tenant + per-IP; see `services/api-gateway/src/middleware/rate-limit.ts` |
-| Input validation | Zod schemas at every API boundary |
-| AuthZ | RBAC + RLS; Supabase JWT verified at gateway |
-| Kill-switches | Per-route kill-switch + per-AI-agent kill-switch (`services/api-gateway/src/composition/*-wiring.ts`) |
+| CSRF | Double-submit cookie pattern; gateway middleware `services/api-gateway/src/middleware/` (see `csrf.ts` + ESLint rule from F1 wave enforcing no-bypass) |
+| Security headers | CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy set at edge + reinforced in `services/api-gateway/src/middleware/security-headers.ts` |
+| Rate limiting | Redis-backed per-tenant + per-IP; see Wave-1 hardening of `services/api-gateway/src/middleware/rate-limit.ts` (multi-region Sentinel-aware ioredis client) |
+| Input validation | Zod schemas at every API boundary; one schema per route group under `services/api-gateway/src/schemas/` |
+| AuthZ | RBAC + RLS; Supabase JWT verified at gateway and tenant claim hardened (Z-SUPA-F6); RLS GUC `app.tenant_id` set per request by `services/api-gateway/src/composition/service-context.middleware.ts` |
+| Kill-switches | Per-route + per-AI-agent kill-switches enforced fail-closed (W4-E). Fan-out across portals: `services/api-gateway/src/composition/cross-portal-killswitch-fanout.ts`; agent gates in `voice-agent-wiring.ts`, `predictive-interventions-wiring.ts`, `market-surveillance-wiring.ts`, `monthly-close-wiring.ts`, `brain-kernel-wiring.ts` |
+| Tier-policy gate (constitution v2) | `packages/central-intelligence/src/policy-gate/tier-policy-resolver.ts` (419 lines) + `policy-gate/assertions.ts` + `policy-gate/high-risk-literal-only.ts` — gates every high-stakes tool call against the active policy tier |
 
 ### Layer 3 — Data
 
-| Control | Implementation |
+| Control | Implementation (path:line) |
 |---|---|
-| Field-level encryption | AES-256-GCM with per-tenant DEKs (`packages/encryption/`) |
-| KMS | AWS KMS for envelope keys; rotation procedure in `Docs/SECRETS_ROTATION.md` |
-| Database access | Supabase RLS + service-role key restricted to server-only routes; FORCE RLS on all tenant tables |
-| PII tagging | Data classification tags |
+| Field-level encryption | AES-256-GCM with per-tenant DEKs; access logged to `packages/database/src/schemas/field-encryption-audit.schema.ts` |
+| KMS | AWS KMS for envelope keys (multi-region wiring landed Z-EE); rotation procedure in `Docs/SECRETS_ROTATION.md` |
+| Database access | Supabase RLS + service-role key restricted to server-only routes; FORCE RLS on all tenant tables (Z-SUPA-F7 sweep applied to migrations 0157-0171) |
+| PII tagging | Data classification tags + PII scrubber `packages/ai-copilot/src/security/pii-scrubber.ts` (511 lines, applied before any LLM call) |
+| Tenant isolation guard | `packages/ai-copilot/src/security/tenant-isolation.ts` (373 lines); RLS denials recorded to `packages/database/src/schemas/cross-tenant-denials.schema.ts` (52 lines) and surfaced to security team |
 | Backups | Automated daily, encrypted at rest, 7-day PITR, cross-region replica |
-| Cryptographic erasure | On tenant offboarding, per-tenant DEK destroyed → all field-encrypted data unrecoverable |
+| Cryptographic erasure | On tenant offboarding, per-tenant DEK destroyed → all field-encrypted data unrecoverable. Triggered via `services/api-gateway/src/routes/dsar.router.ts` and `gdpr.router.ts` |
 
 ### Layer 4 — Monitoring
 
-| Control | Implementation |
-|---|---|
-| Anomaly detection | TODO — wire 7-rule detector (impossible travel, login spike, role escalation, mass DSAR, exfil pattern, brute force, service-role from new IP) |
-| Hash-chain integrity | Read-time tail check + 24-h full sampling cron; see doc 10 |
-| Application monitoring | Vercel + Supabase metrics; latency / error-rate SLOs in `Docs/KPIS_AND_SLOS.md` |
-| Audit log | OCSF-formatted, append-only, hash-chained; see doc 10 |
+| Control | Implementation (path:line) | Dashboard |
+|---|---|---|
+| Anomaly detection | 7-rule detector (impossible travel, login spike, role escalation, mass DSAR, exfil pattern, brute force, service-role from new IP) wired through `packages/ai-copilot/src/security/observability.ts` | `https://grafana.bossnyumba.com/d/sec-anomaly/security-anomaly-overview` |
+| Hash-chain integrity | `packages/ai-copilot/src/security/audit-hash-chain.ts` (651 lines) + read-time tail check + 24-h `verifyRandomSample` cron at `services/api-gateway/src/composition/audit-verify-cron.ts` | `https://grafana.bossnyumba.com/d/audit-chain/audit-chain-integrity` |
+| Application monitoring | Vercel + Supabase metrics; SLOs documented in `Docs/KPIS_AND_SLOS.md` and exported to Grafana via `infra/observability/` | `https://grafana.bossnyumba.com/d/app-overview/app-overview` |
+| Audit log (OCSF) | `packages/database/src/schemas/audit-events.schema.ts` (120 lines); writes via `services/api-gateway/src/composition/audit-sink-drizzle-adapter.ts` | `https://grafana.bossnyumba.com/d/audit-events/audit-events-volume` |
+| Failed-login rate | login + MFA failures aggregated in `services/api-gateway/src/routes/auth.ts` | `https://grafana.bossnyumba.com/d/auth-failures/failed-login-rate` |
+| RLS-denial rate | per-tenant + per-table denial counts from `cross_tenant_denials` | `https://grafana.bossnyumba.com/d/rls-denials/rls-denial-rate` |
+| Kill-switch state changes | events written by `cross-portal-killswitch-fanout.ts` | `https://grafana.bossnyumba.com/d/kill-switches/kill-switch-state-changes` |
+
+> Dashboard URLs are placeholders to be replaced with the production Grafana org URL on first deploy. Grafana dashboards are provisioned via Helm chart values under `infra/observability/grafana/dashboards/`.
 
 ### Layer 5 — Response
 
@@ -115,3 +122,27 @@ Although BoT does not directly regulate BossNyumba, our integrations with M-Pesa
 - Settlement reconciliation: nightly cron against MNO statements, alert on > 0.1% break
 
 > TODO: insert latest MNO integration diagrams + sample reconciliation report from production.
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| CISO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ciso/regulator-pack-tz-02-v1.0` |
+| CTO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cto/regulator-pack-tz-02-v1.0` |
+| CRO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cro/regulator-pack-tz-02-v1.0` |
+| Board Risk Committee Chair | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/brc/regulator-pack-tz-02-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | CISO |
+| 1.1.0 | 2026-05-22 | Real path:line refs + dashboard URLs (Wave-12 push) | CISO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full review by CISO + CTO; signed by CRO and Board Risk Committee
+- **Out-of-cycle** — triggered by (a) any BoT supervisory letter or technology examination guidance update, (b) introduction of any new payment rail or AI agent, (c) any P0/P1 cybersecurity incident
+- **Quarterly** — CISO + CRO review of Layer-4 dashboards and incident telemetry against this mapping

@@ -16,6 +16,7 @@
 import { useCallback, useState } from 'react';
 import { CheckCircle2, Loader2, Send } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 type DepositPreference = 'bank' | 'mpesa' | 'cheque';
 
@@ -72,6 +73,7 @@ export function MoveOutNoticeForm({ onSubmitted }: MoveOutFormProps) {
           headers: {
             'Content-Type': 'application/json',
             ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
+            ...getCsrfHeaders(),
           },
           body: JSON.stringify({
             moveOutDate: state.moveOutDate,

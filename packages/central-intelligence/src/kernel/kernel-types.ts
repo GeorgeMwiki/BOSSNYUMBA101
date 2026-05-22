@@ -138,6 +138,14 @@ export interface ThoughtRequest {
    * (`stakes: 'critical'`) actions outside EAT business hours.
    */
   readonly afterHoursOverride?: boolean;
+  /**
+   * Wave-13 F2 — optional intended action namespace string (e.g.
+   * `md:create-lease`, `md:adjust-invoice`, `md:read-tenant`). When
+   * the kernel is wired with `BrainKernelDeps.tierPolicy`, this
+   * field is fed to `assertTierPolicy(role, action)` BEFORE the
+   * sensor call. Absent action ⇒ tier-policy gate is a no-op.
+   */
+  readonly action?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────

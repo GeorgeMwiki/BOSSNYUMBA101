@@ -439,3 +439,10 @@ export * from './memory.schema.js';
 // migrations 0182_section_layouts.sql and 0183_user_action_tracker.sql.
 export * from './section-layouts.schema.js';
 export * from './user-action-tracker.schema.js';
+
+// Decision traces (migration 0185) — F10 DecisionTrace persistence.
+// One row per finalised trace from `@bossnyumba/observability`. Tenant-
+// scoped via RLS; service-role bypass for the admin replay UI. See
+// migration `0185_decision_traces.sql` for the gold-standard ENABLE +
+// FORCE + REVOKE FROM anon + canonical helper + FOR ALL policy.
+export * from './decision-traces.schema.js';

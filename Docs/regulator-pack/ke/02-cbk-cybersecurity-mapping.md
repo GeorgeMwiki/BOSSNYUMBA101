@@ -79,3 +79,44 @@ CBK does not directly regulate BossNyumba, but our integrations with Safaricom M
 CBK's Open Banking framework (in development as of 2026) will create new connector obligations. BossNyumba's `services/integrations/` is architected to add CBK-mandated Open Banking endpoints when published.
 
 > TODO: insert Daraja integration architecture diagram + sample reconciliation report from production.
+
+## G. Implementation references (KE)
+
+| Capability | Source-of-truth (path:line) |
+|---|---|
+| Daraja STK + callback handlers | `services/webhooks/src/` + `services/api-gateway/src/composition/anthropic-circuit-breaker.ts` (template for circuit-breaker pattern reused for KE rails) |
+| Pesalink / KCB Buni / Equity Eazzy connectors | `packages/connectors/src/adapters/` (per-vendor adapters) |
+| KE tax-reporter | `services/reports/src/compliance/ke-kra-formatter.ts` |
+| KE region routing | `packages/database/src/schemas/identity.schema.ts` (tenants.region) + `services/api-gateway/src/composition/service-context.middleware.ts` |
+
+## H. Monitoring dashboards (KE-specific overlays of TZ-02 §D L4 table)
+
+| Dashboard | URL placeholder |
+|---|---|
+| Grafana — Daraja STK success-rate | `https://grafana.bossnyumba.com/d/daraja/daraja-stk-success` |
+| Grafana — Pesalink + KCB Buni + Equity Eazzy availability | `https://grafana.bossnyumba.com/d/ke-banks/ke-bank-rail-availability` |
+| Grafana — KE region cross-tenant denial rate | `https://grafana.bossnyumba.com/d/rls-denials/rls-denial-rate?var-region=KE` |
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| CISO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ciso/regulator-pack-ke-02-v1.0` |
+| CTO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cto/regulator-pack-ke-02-v1.0` |
+| CRO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cro/regulator-pack-ke-02-v1.0` |
+| Board Risk Committee Chair | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/brc/regulator-pack-ke-02-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | CISO |
+| 1.1.0 | 2026-05-22 | KE-specific code refs + dashboards (Wave-12) | CISO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full review + Board sign-off
+- **Out-of-cycle** — CBK supervisory letter, Open Banking framework publication, new KE payment rail
+- **Quarterly** — CISO reviews KE-specific dashboards against incident telemetry

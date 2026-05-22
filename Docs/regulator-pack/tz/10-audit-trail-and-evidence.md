@@ -4,7 +4,20 @@
 **Date:** 2026-05-22
 **Owner:** CCO
 **Jurisdiction:** Tanzania
-**Source files:** `packages/audit-chain/`, `packages/database/src/schema/audit.ts`
+**Source files (canonical, path:line):**
+- `packages/database/src/schemas/audit-events.schema.ts` (120 lines) — unified audit event table
+- `packages/database/src/schemas/sovereign-action-ledger.schema.ts` (98 lines) — immutable record of consequential agent actions
+- `packages/database/src/schemas/cross-tenant-denials.schema.ts` (52 lines) — RLS denial telemetry
+- `packages/database/src/schemas/ai-audit-chain.schema.ts` — AI-specific chain entries
+- `packages/database/src/schemas/kernel-action-audit.schema.ts` — kernel tool-call audit
+- `packages/database/src/schemas/field-encryption-audit.schema.ts` — field-level decryption access log
+- `packages/database/src/schemas/sovereign-approvals.schema.ts` — four-eyes approval records
+- `packages/ai-copilot/src/security/audit-hash-chain.ts` (651 lines) — HMAC chain implementation
+- `services/api-gateway/src/composition/audit-sink-drizzle-adapter.ts` — write path
+- `services/api-gateway/src/composition/audit-trail-repository.ts` — read path
+- `services/api-gateway/src/composition/audit-verify-cron.ts` — `verifyRandomSample` 24-h cron
+- `services/api-gateway/src/composition/sovereign-ledger-verify-cron.ts` — sovereign-ledger verification cron
+- `services/api-gateway/src/routes/audit-trail.router.ts` + `admin-audit.router.ts` + `autonomous-actions-audit.router.ts` — read APIs
 **Aligned to:** OCSF (Open Cybersecurity Schema Framework) 1.2; PDPA s.31 (record-keeping); FIU AML record-keeping (5+ years); BoT supervisory expectation of complete, tamper-evident records.
 
 ---
@@ -20,7 +33,7 @@ The BossNyumba audit trail is built on four properties:
 
 ## 2. Schema
 
-The unified audit table records each event with the following structure (drizzle schema at `packages/database/src/schema/audit.ts`):
+The unified audit table records each event with the following structure (drizzle schema at `packages/database/src/schemas/audit-events.schema.ts`, 120 lines):
 
 ```typescript
 interface UnifiedAuditEvent {
@@ -66,11 +79,13 @@ interface UnifiedAuditEvent {
 
 ## 4. Hash-chain integrity
 
-The hash-chain implementation lives in `packages/audit-chain/`. Highlights:
+The hash-chain implementation lives in `packages/ai-copilot/src/security/audit-hash-chain.ts` (651 lines). Highlights:
 
-- **Read path:** `verifyTail` runs a 5-row HMAC re-computation on every read of an audit-relevant entity; if a break is detected, the read returns `tampered: true` and an audit event is emitted to page the security team.
-- **Cron path:** `verifyRandomSample` runs every 24 h, picks N random sessions / event chains, verifies each end-to-end. Slow tampering is therefore caught within a sampling cycle.
-- **API path:** `POST /api/audit/verify-chain` allows on-demand full verification of a specific chain by an authorised compliance user.
+- **Read path:** `verifyTail` runs a 5-row HMAC re-computation on every read of an audit-relevant entity; if a break is detected, the read returns `tampered: true` and an audit event is emitted to page the security team. Wired through `services/api-gateway/src/composition/audit-trail-repository.ts`.
+- **Cron path:** `verifyRandomSample` runs every 24 h via `services/api-gateway/src/composition/audit-verify-cron.ts`; picks N random sessions / event chains; verifies each end-to-end. Slow tampering is therefore caught within a sampling cycle.
+- **Sovereign-ledger path:** `services/api-gateway/src/composition/sovereign-ledger-verify-cron.ts` independently verifies the sovereign-action ledger (`packages/database/src/schemas/sovereign-action-ledger.schema.ts`) on the same cadence.
+- **API path:** `POST /api/audit-trail/verify-chain` (route `services/api-gateway/src/routes/audit-trail.router.ts`) allows on-demand full verification of a specific chain by an authorised compliance user. Admin variant at `admin-audit.router.ts`.
+- **Cross-tenant denials:** every RLS denial is recorded to `packages/database/src/schemas/cross-tenant-denials.schema.ts` (52 lines) and is itself part of the audit chain.
 
 ### 4.1 Threat model
 
@@ -119,3 +134,37 @@ If PDPC requests an audit packet for tenant T-12345 covering 2026:
 - Model decision logging → doc 05
 
 > TODO: insert sample chain-verification report screenshot; insert sample regulator-packet manifest.
+
+## 9. Audit dashboards
+
+| Dashboard | URL placeholder |
+|---|---|
+| Grafana — audit-events volume per module | `https://grafana.bossnyumba.com/d/audit-events/audit-events-volume` |
+| Grafana — chain-integrity verification cron success | `https://grafana.bossnyumba.com/d/audit-chain/audit-chain-integrity` |
+| Grafana — sovereign-ledger verification cron | `https://grafana.bossnyumba.com/d/sovereign-ledger/sovereign-ledger-integrity` |
+| Grafana — RLS denials | `https://grafana.bossnyumba.com/d/rls-denials/rls-denial-rate` |
+| Grafana — field-encryption-audit access | `https://grafana.bossnyumba.com/d/field-encryption/field-encryption-audit` |
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| CCO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cco/regulator-pack-tz-10-v1.0` |
+| CISO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ciso/regulator-pack-tz-10-v1.0` |
+| DPO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/regulator-pack-tz-10-v1.0` |
+| Board Audit Committee Chair | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/bac/regulator-pack-tz-10-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | CCO |
+| 1.1.0 | 2026-05-22 | Real schema + route + cron path:line refs + dashboards (Wave-12) | CCO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full review of retention table + access controls; board sign-off
+- **Quarterly** — CCO + CISO review chain-verification cron results + random-sample reports
+- **Out-of-cycle** — any chain tamper detection, regulator request for evidence, or material change to audit schema

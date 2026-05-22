@@ -41,6 +41,7 @@ export {
   type JsSandboxRunOutcome,
   type SandboxArgs,
   type SandboxOutput,
+  type SandboxPolicyRunner,
 } from './sandbox.js';
 export {
   createSchedulePowerTool,

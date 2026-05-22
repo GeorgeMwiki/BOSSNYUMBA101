@@ -79,10 +79,45 @@ Implementation: `packages/eval-online-judge/`. KE corpus at `tests/adversarial/p
 - Cannot modify production output; emits scores + flags only
 - Auto-actions (rollback / kill-switch) require co-trigger from drift-detection job
 
+## Implementation
+
+| Component | Source-of-truth (path:line) |
+|---|---|
+| Judge sampling + scoring | `packages/central-intelligence/src/__tests__/self-grading-judge.test.ts` (exemplar) + provider routing `packages/ai-copilot/src/providers/` |
+| Adversarial-corpus replay | nightly cron; sleep-pass-3 guideline updates `packages/central-intelligence/src/kernel/reflexion/sleep/pass-3-update-guidelines.ts` |
+| Auto-rollback orchestration | Mission-Eval webhook → model promotion API |
+| Cost-circuit-breaker | `packages/ai-copilot/src/security/cost-circuit-breaker.ts` |
+| KE adversarial corpus | `tests/adversarial/property-management-ke-v1/` |
+
+## Monitoring dashboards
+
+| Dashboard | URL placeholder |
+|---|---|
+| Mission-Eval — KE quality-score per component | `https://mission-eval.bossnyumba.com/project/bossnyumba/dashboards/quality-rollup-ke` |
+| Mission-Eval — KE adversarial pass-rate | `https://mission-eval.bossnyumba.com/project/bossnyumba/dashboards/adversarial-pass-rate-ke` |
+| Langfuse — KE judge traces | `https://langfuse.bossnyumba.com/project/bossnyumba-prod/traces?tag=judge&region=KE` |
+| Grafana — KE dialect-coverage detection | `https://grafana.bossnyumba.com/d/dialect/dialect-coverage?var-region=KE` |
+
 ## Version history
 
-| Version | Date | Change |
-|---|---|---|
-| 1.0 | 2026-05-22 | Initial release (P-9 wave) |
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial release (P-9 wave) | Eval Team Lead |
+| 1.0.1 | 2026-05-22 | KE implementation refs + dashboards (Wave-12) | Eval Team Lead |
+
+## Sign-off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| Model Risk Manager | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/mrm/model-card-ke-judge-v1.0` |
+| Eval Team Lead | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/eval/model-card-ke-judge-v1.0` |
+| DPO (ODPC-registered) | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/model-card-ke-judge-v1.0` |
+
+## Review cadence
+
+- **Weekly** — Eval team reviews failed-sample logs
+- **Monthly** — KE-region red-team contributes new adversarial examples
+- **Quarterly** — KE adversarial corpus refresh + offline eval re-run
+- **Out-of-cycle** — rubric change, judge model upgrade, or KE dialect-coverage gap incident
 
 > TODO: insert weekly KE adversarial-corpus pass-rate chart; insert KE-specific failure-mode report.

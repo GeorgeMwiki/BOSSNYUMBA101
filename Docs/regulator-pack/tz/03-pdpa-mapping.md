@@ -52,7 +52,7 @@ PDPA s.25 identifies sensitive personal data (race, ethnicity, political opinion
 - **Financial data:** core to the rent / billing purpose; lawful basis = contract performance; encrypted at field level (`packages/encryption/`).
 - **National ID number:** stored encrypted under per-tenant DEK; access logged to `field_encryption_audit`.
 - **Health data:** **NOT processed**. Where a tenant mentions health context to the voice agent, it is purged from chat logs after the operational window and never persisted as structured data.
-- **Political opinion / religion / sexuality:** **prohibited inputs**; AI safety layer rejects such queries (`packages/ai-copilot/src/safety/`).
+- **Political opinion / religion / sexuality:** **prohibited inputs**; AI safety layer rejects such queries via the prompt-shield in `packages/ai-copilot/src/security/prompt-shield.ts` and PII scrubber in `packages/ai-copilot/src/security/pii-scrubber.ts` (511 lines).
 
 ## 4. Section 26 — Cross-border transfer
 
@@ -99,15 +99,39 @@ See `Docs/COMPLIANCE/dpia-template.md`. Structure:
 
 ## 7. Data subject rights — operational implementation
 
-| Right | How exercised | SLA | Implementation |
+| Right | How exercised | SLA | Implementation (path:line) |
 |---|---|---|---|
-| Access (s.27) | Self-serve "Export my data" button | < 30 days | `apps/customer-app/src/app/settings/privacy/export/` |
-| Rectification (s.28) | Self-serve profile edit; DPO-routed for special-category | Immediate (self-serve), < 7 days (DPO) | Profile editor |
-| Erasure / RTBF (s.29) | Self-serve "Delete my account" → 30-day grace → cryptographic erasure | < 30 days | `Docs/RUNBOOKS/tenant-offboarding-rtbf.md` |
-| Restriction (s.30) | DPO-routed; processing flagged with `restricted=true` in audit log | < 7 days | TODO — wire restriction flag in tenant table |
-| Portability | JSON / CSV export bundle | < 30 days | Same as access |
-| Object | DPO-routed; e.g., AI voice agent opt-out | < 7 days | Settings → AI preferences |
+| Access (s.27) | Self-serve "Export my data" button | < 30 days | Route: `services/api-gateway/src/routes/dsar.router.ts` + `gdpr.router.ts`; persistence by `packages/database/src/schemas/gdpr.schema.ts` |
+| Rectification (s.28) | Self-serve profile edit; DPO-routed for special-category | Immediate (self-serve), < 7 days (DPO) | Profile editor in `apps/customer-app/`; DPO queue in `services/api-gateway/src/routes/gdpr.router.ts` |
+| Erasure / RTBF (s.29) | Self-serve "Delete my account" → 30-day grace → cryptographic erasure | < 30 days | Runbook `Docs/RUNBOOKS/tenant-offboarding-rtbf.md`; erasure orchestrated through `gdpr.router.ts` |
+| Restriction (s.30) | DPO-routed; processing flagged with `restricted=true` | < 7 days | Restriction flag on `identity.schema.ts` + audit-event class `gdpr.restriction.applied` written to `audit-events.schema.ts` |
+| Portability | JSON / CSV export bundle | < 30 days | Same routes as access; export packets shaped by `services/api-gateway/src/routes/gdpr.router.ts` |
+| Object | DPO-routed; e.g., AI voice agent opt-out | < 7 days | Settings → AI preferences in `apps/customer-app/`; opt-out flag respected at `services/api-gateway/src/composition/voice-agent-wiring.ts` |
 
 ## 8. PDPC notification (s.45 — breach notification)
 
 Statutory: 72 h. BossNyumba internal target: 24 h from confirmation. See doc 07 §5.
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| Data Protection Officer (DPO) | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/regulator-pack-tz-03-v1.0` |
+| CCO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cco/regulator-pack-tz-03-v1.0` |
+| Legal Counsel | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/legal/regulator-pack-tz-03-v1.0` |
+| Board Compliance Committee Chair | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/bcc/regulator-pack-tz-03-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | DPO |
+| 1.1.0 | 2026-05-22 | DSAR/RTBF implementation path:line refs (Wave-12) | DPO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full DPIA-register review by DPO
+- **Out-of-cycle** — triggered by new high-risk processing, PDPC enforcement notice, or material change to consent flow in `apps/customer-app/`
+- **Quarterly** — DPO reviews completed DSARs against SLA targets in §7

@@ -35,3 +35,11 @@ export {
 export { replayDecisionTrace } from './replay.js';
 
 export { attachDecisionTraceToActiveSpan } from './otel-bridge.js';
+
+export {
+  SupabaseDecisionTraceStore,
+  type SupabaseDecisionTraceStoreOptions,
+  type SupabaseLikeClient,
+  type SupabaseLikeQueryBuilder,
+  type SupabaseStoreLogger,
+} from './supabase-store.js';

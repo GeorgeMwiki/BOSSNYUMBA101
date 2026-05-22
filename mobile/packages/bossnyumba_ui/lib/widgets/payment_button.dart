@@ -2,49 +2,48 @@
 // widgets/payment_button.dart
 // ---------------------------------------------------------------------------
 // `PaymentButton` — primary CTA for rent / fee payments.
-//
-// What BELONGS in this file:
-//   * The `PaymentButton` widget — large, high-affordance CTA that
-//     wraps a payment-method icon (M-Pesa / Tigo Pesa / Airtel Money /
-//     bank card) and the amount.
-//   * The `PaymentMethod` enum used by the button to pick its icon
-//     and accent colour.
-//   * Loading + disabled states.
-//
-// What does NOT belong here:
-//   * Actual STK push / payment flow — that lives in the screen's
-//     view-model / repository.
-//   * Currency formatting beyond a simple `formatAmount` hook —
-//     consider lifting that to a shared util later.
-//
-// Used by:
-//   * `customer_mobile/screens/pay_rent_screen.dart`.
-//   * Future: estate manager "record cash payment" flow.
 // ---------------------------------------------------------------------------
 
 import 'package:flutter/material.dart';
 
+import '../theme.dart';
+
 /// Mobile-money / card method the button represents.
 enum PaymentMethod { mpesa, tigopesa, airtelmoney, bankCard, cash }
 
+/// Method-specific accent colour.
+Color _accentFor(PaymentMethod method) {
+  switch (method) {
+    case PaymentMethod.mpesa:
+      return const Color(0xFF00A859); // Safaricom green
+    case PaymentMethod.tigopesa:
+      return const Color(0xFF0066B3); // Tigo blue
+    case PaymentMethod.airtelmoney:
+      return const Color(0xFFE60028); // Airtel red
+    case PaymentMethod.bankCard:
+      return BossnyumbaColors.primary;
+    case PaymentMethod.cash:
+      return BossnyumbaColors.neutral600;
+  }
+}
+
+String _labelFor(PaymentMethod method) {
+  switch (method) {
+    case PaymentMethod.mpesa:
+      return 'Pay with M-Pesa';
+    case PaymentMethod.tigopesa:
+      return 'Pay with Tigo Pesa';
+    case PaymentMethod.airtelmoney:
+      return 'Pay with Airtel Money';
+    case PaymentMethod.bankCard:
+      return 'Pay with card';
+    case PaymentMethod.cash:
+      return 'Record cash payment';
+  }
+}
+
 /// Primary payment CTA.
 class PaymentButton extends StatelessWidget {
-  /// Method this button invokes.
-  final PaymentMethod method;
-
-  /// Amount in minor units (TZS has no minor unit, so plain integers).
-  final double amount;
-
-  /// ISO 4217 currency code (default TZS — but never hard-code in
-  /// business logic; pass the tenant's display currency through).
-  final String currency;
-
-  /// Tap handler — host screen orchestrates the STK push.
-  final VoidCallback? onPressed;
-
-  /// True while an outbound payment is in-flight.
-  final bool isLoading;
-
   const PaymentButton({
     super.key,
     required this.method,
@@ -54,11 +53,54 @@ class PaymentButton extends StatelessWidget {
     this.isLoading = false,
   });
 
+  final PaymentMethod method;
+  final double amount;
+  final String currency;
+  final VoidCallback? onPressed;
+  final bool isLoading;
+
   @override
   Widget build(BuildContext context) {
-    throw UnimplementedError(
-      'PaymentButton.build() — implementation pending. '
-      'Will render a method-coloured CTA with icon + amount per BossnyumbaTheme.',
+    final accent = _accentFor(method);
+    final label = _labelFor(method);
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: accent,
+          foregroundColor: BossnyumbaColors.neutral0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    BossnyumbaColors.neutral0,
+                  ),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text(label, style: const TextStyle(fontSize: 16)),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${amount.toStringAsFixed(0)} $currency',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }

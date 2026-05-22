@@ -19,6 +19,7 @@
 import { useCallback, useState } from 'react';
 import { Send, Star, ThumbsUp } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 const STARS: ReadonlyArray<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
 
@@ -61,6 +62,7 @@ export function TicketRatingWidget({
             headers: {
               'Content-Type': 'application/json',
               ...authHeader(),
+              ...getCsrfHeaders(),
             },
             body: JSON.stringify({ score, comment: comment.trim() || undefined }),
           },

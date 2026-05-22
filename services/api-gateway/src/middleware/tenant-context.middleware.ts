@@ -18,6 +18,11 @@ import {
   UnknownJurisdictionError,
   type CountryPlugin,
 } from '@bossnyumba/compliance-plugins';
+// F10 DecisionTrace — record the tenant-resolution decision (claims in,
+// resolved tenantId out, outcome). The trace's tenantId column is NULL
+// here because this is platform-tier — service-role admin replay UI
+// reads it. Fire-and-forget persistence.
+import { startDecisionTrace } from '@bossnyumba/observability';
 
 /**
  * Resolve a country plugin with a SAFE fallback to the platform-default
@@ -435,9 +440,45 @@ function isLimitExceeded(
  * Extracts and validates tenant, sets context
  */
 export const tenantContextMiddleware = createMiddleware(async (c, next) => {
+  // F10 DecisionTrace — record the tenant-resolution decision so an
+  // operator auditing "why did request X resolve to tenant Y?" gets a
+  // single replayable trace. Inputs: the claims/headers we inspected.
+  // Outcome: the resolved tenantId or the gate that fired.
+  const auth = c.get('auth') as AuthContext | undefined;
+  const trace = startDecisionTrace('tenant-context.resolve', {
+    inputs: {
+      authTenantClaim: auth?.tenantId ?? null,
+      authUserId: auth?.userId ?? null,
+      headerTenantPresent: typeof c.req.header('X-Tenant-ID') === 'string',
+      hostHeader: c.req.header('Host') ?? null,
+      method: c.req.method,
+      path: c.req.path,
+    },
+    context: {
+      // No tenantId yet — this trace is platform-tier, recorded with a
+      // NULL tenant_id column. The admin replay UI reads via service-role.
+      userId: auth?.userId,
+    },
+  });
+  trace.addBranch({
+    id: 'resolve',
+    label: 'Resolve tenant from claims / header / subdomain',
+    rationale: 'priority order: JWT > X-Tenant-ID > subdomain > dev query',
+  });
+  trace.addBranch({
+    id: 'reject',
+    label: 'Reject request (missing / invalid / inactive / not found)',
+    rationale: 'counterfactual — taken when any guard fires',
+  });
+
   const tenantId = extractTenantId(c);
 
   if (!tenantId) {
+    trace.choose('reject', 'no tenantId found in claims/header/subdomain');
+    trace.finalize({
+      outcome: 'refused',
+      output: { code: 'MISSING_TENANT', status: 400 },
+    });
     return c.json(
       {
         success: false,
@@ -454,6 +495,11 @@ export const tenantContextMiddleware = createMiddleware(async (c, next) => {
   // URL-encoded escapes, oversized values) before they flow into the
   // downstream tenant-service fetch URL.
   if (!isValidTenantId(tenantId)) {
+    trace.choose('reject', 'tenantId failed format regex');
+    trace.finalize({
+      outcome: 'refused',
+      output: { code: 'INVALID_TENANT_ID', status: 400 },
+    });
     return c.json(
       {
         success: false,
@@ -469,6 +515,11 @@ export const tenantContextMiddleware = createMiddleware(async (c, next) => {
   const config = await loadTenantConfig(tenantId);
 
   if (!config) {
+    trace.choose('reject', 'tenant row not found in DB');
+    trace.finalize({
+      outcome: 'refused',
+      output: { code: 'TENANT_NOT_FOUND', status: 404, resolvedTenantId: tenantId },
+    });
     return c.json(
       {
         success: false,
@@ -482,6 +533,16 @@ export const tenantContextMiddleware = createMiddleware(async (c, next) => {
   }
 
   if (!isTenantActive(config)) {
+    trace.choose('reject', `tenant status=${config.status}`);
+    trace.finalize({
+      outcome: 'refused',
+      output: {
+        code: 'TENANT_INACTIVE',
+        status: 403,
+        resolvedTenantId: tenantId,
+        tenantStatus: config.status,
+      },
+    });
     return c.json(
       {
         success: false,
@@ -519,6 +580,15 @@ export const tenantContextMiddleware = createMiddleware(async (c, next) => {
   // Set response header for debugging
   c.header('X-Tenant-ID', tenantId);
   c.header('X-Country-Code', countryPlugin.countryCode);
+
+  // F10 DecisionTrace — record the successful resolution. We do this
+  // BEFORE `next()` so the outcome reflects the resolution decision
+  // itself, not whatever happens downstream.
+  trace.choose('resolve', `tenantId=${tenantId} country=${countryPlugin.countryCode}`);
+  trace.finalize({
+    outcome: 'executed',
+    output: { resolvedTenantId: tenantId, countryCode: countryPlugin.countryCode },
+  });
 
   await next();
 });

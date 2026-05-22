@@ -41,7 +41,12 @@ BossNyumba's fairness programme covers the following attributes (super-set of Ta
 | Marital status | Bias against single / single-parent tenants | Conduct risk |
 | Income source (formal employment / self-employed / remittance / informal) | Bias against informal-economy tenants | Conduct risk; financial inclusion |
 
-Source-of-truth: TODO — `packages/fairness/src/protected-attributes.ts`.
+Source-of-truth for protected-attribute enforcement:
+
+- AI safety layer reject-list — `packages/ai-copilot/src/security/prompt-shield.ts`
+- PII scrubber categorisation — `packages/ai-copilot/src/security/pii-scrubber.ts` (511 lines)
+- Sovereign-action review of decisions affecting tenants — `packages/database/src/schemas/sovereign-action-ledger.schema.ts` + `sovereign-approvals.schema.ts`
+- Fairness slice telemetry — emitted to `audit-events.schema.ts` with event class `ai.fairness.slice_metric`
 
 ## 3. Fairness metrics
 
@@ -125,3 +130,36 @@ disability, region, religion, ethnicity, marital status, or language preference.
 - Property-manager human review within 7 days
 - Escalation to BossNyumba DPO if review not satisfactory
 - Escalation to PDPC (data protection) or LDPC (tenancy) where statutory
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| CRO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cro/regulator-pack-tz-06-v1.0` |
+| CCO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cco/regulator-pack-tz-06-v1.0` |
+| DPO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/regulator-pack-tz-06-v1.0` |
+| Head of Customer Experience | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/hcx/regulator-pack-tz-06-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | CRO + CCO |
+| 1.1.0 | 2026-05-22 | Fairness enforcement path:line refs (Wave-12) | CRO + CCO |
+
+## Appendix C — Review Cadence
+
+- **Quarterly** — Model Risk Committee + DPO review fairness slice metrics + violation log
+- **Out-of-cycle** — triggered by any `critical` fairness violation, regulator notice, or material feature change in `predictive-interventions-wiring.ts`
+- **Annual** — external fairness audit (from 2027); board ratification of protected-attribute list
+
+## Appendix D — Fairness Dashboards
+
+| Dashboard | URL placeholder |
+|---|---|
+| Grafana — disparate impact by model | `https://grafana.bossnyumba.com/d/fairness-di/disparate-impact-by-model` |
+| Grafana — equal-opportunity slice | `https://grafana.bossnyumba.com/d/fairness-eo/equal-opportunity-by-protected-group` |
+| Grafana — challenge-button click-through and resolution | `https://grafana.bossnyumba.com/d/fairness-challenge/challenge-resolution-time` |
+| Mission-Eval — counterfactual fairness sample | `https://mission-eval.bossnyumba.com/project/bossnyumba/dashboards/counterfactual-fairness` |

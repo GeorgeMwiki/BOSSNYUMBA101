@@ -107,3 +107,36 @@ ODPC has enforcement powers including penalty notices up to KES 5,000,000 or 1% 
 - 24-h SLA for ODPC enquiries
 
 > TODO: insert ODPC contact card + escalation matrix.
+
+## 10. DPA s.35 implementation refs
+
+| Capability | Source-of-truth (path:line) |
+|---|---|
+| Automated-decision detection (stakes ≥ medium triggers review-right) | `packages/central-intelligence/src/policy-gate/tier-policy-resolver.ts` (419 lines) |
+| Challenge button + human-review queue | `services/api-gateway/src/routes/gdpr.router.ts` + `services/api-gateway/src/routes/dsar.router.ts` |
+| Sovereign action ledger (recording of every automated decision) | `packages/database/src/schemas/sovereign-action-ledger.schema.ts` (98 lines) |
+| Reflexion audit of guideline updates | `packages/database/src/schemas/reflexion-buffer.schema.ts` |
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| DPO (ODPC-registered) | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/regulator-pack-ke-03-v1.0` |
+| CCO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cco/regulator-pack-ke-03-v1.0` |
+| Legal Counsel | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/legal/regulator-pack-ke-03-v1.0` |
+| Board Compliance Committee Chair | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/bcc/regulator-pack-ke-03-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | DPO |
+| 1.1.0 | 2026-05-22 | s.35 implementation refs (Wave-12) | DPO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full review by DPO + ODPC re-registration check
+- **Out-of-cycle** — ODPC directive, new high-risk processing, s.35 challenge-rate spike
+- **Quarterly** — DPO reviews DSAR + s.35 challenge SLAs

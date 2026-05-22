@@ -11,6 +11,7 @@ import {
 } from '@/components/onboarding/InspectionChecklist';
 import { SignaturePad } from '@/components/onboarding/SignaturePad';
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 /**
  * `/inspection` — lightweight move-in inspection at the top level so
@@ -64,7 +65,7 @@ async function patchProgress(
   try {
     const response = await fetch(`${baseUrl}/inspections/progress`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
       credentials: 'include',
       signal: controller.signal,
       body: JSON.stringify({
@@ -100,7 +101,7 @@ async function submitInspection(
   try {
     const response = await fetch(`${baseUrl}/inspections`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
       credentials: 'include',
       signal: controller.signal,
       body: JSON.stringify({

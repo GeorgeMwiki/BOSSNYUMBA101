@@ -85,10 +85,45 @@ Implementation: `packages/ai-copilot/src/debate/`. Triggered by kernel when `sta
 - Judge cannot invoke tools — output is decision only; downstream effector invokes tools after policy check
 - Kill-switch in `services/api-gateway/src/composition/debate-wiring.ts`
 
+## Implementation
+
+| Component | Source-of-truth (path:line) |
+|---|---|
+| Debate orchestration | `packages/central-intelligence/src/` (see `__tests__/debate.test.ts`) |
+| KE-specific s.35 challenge linkage | `services/api-gateway/src/routes/gdpr.router.ts` |
+| Kill-switch | `services/api-gateway/src/composition/brain-kernel-wiring.ts` + `voice-agent-wiring.ts` |
+| Decision logging | `packages/database/src/schemas/sovereign-action-ledger.schema.ts` |
+| Tier-gate (stakes ≥ high) | `packages/central-intelligence/src/policy-gate/tier-policy-resolver.ts` (419 lines) |
+
+## Monitoring dashboards
+
+| Dashboard | URL placeholder |
+|---|---|
+| Langfuse — KE debate traces | `https://langfuse.bossnyumba.com/project/bossnyumba-prod/traces?tag=debate&region=KE` |
+| Mission-Eval — KE debate catch-rate | `https://mission-eval.bossnyumba.com/project/bossnyumba/dashboards/debate-catch-rate?var-region=KE` |
+| Grafana — s.35 sustain-rate post-debate | `https://grafana.bossnyumba.com/d/s35-challenges/s35-sustain-rate?var-source=debate` |
+
 ## Version history
 
-| Version | Date | Change |
-|---|---|---|
-| 1.0 | 2026-05-22 | Initial release (P-10 wave) |
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial release (P-10 wave) | Brain Team Lead |
+| 1.0.1 | 2026-05-22 | KE implementation refs + dashboards (Wave-12) | Brain Team Lead |
+
+## Sign-off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| Model Risk Manager | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/mrm/model-card-ke-debate-v1.0` |
+| Brain Team Lead | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/brain/model-card-ke-debate-v1.0` |
+| DPO (ODPC-registered) | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/model-card-ke-debate-v1.0` |
+| KE Legal Counsel | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/legalke/model-card-ke-debate-v1.0` |
+
+## Review cadence
+
+- **Weekly** — Brain team reviews dissent-rate
+- **Monthly** — DPO reviews s.35 challenge log
+- **Quarterly** — Model Risk Committee reviews catch-rate against refreshed KE adversarial corpus
+- **Out-of-cycle** — prompt change, provider mix change, P0/P1 incident involving high-stakes action
 
 > TODO: insert weekly catch-rate report; insert sample dissent trace; insert s.35 challenge log summary.

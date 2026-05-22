@@ -179,14 +179,13 @@ export default [
       'bossnyumba/no-jurisdictional-literal': 'warn',
 
       // ---- CSRF protection on client-side mutating fetch() ----
-      // Warns when a file under apps/*/src/{app,components,contexts,
+      // Errors when a file under apps/*/src/{app,components,contexts,
       // screens,features,hooks} makes a `fetch(url, { method: POST|PUT|
       // PATCH|DELETE })` call without importing `getCsrfHeaders` from a
       // local `lib/csrf` helper (or using @bossnyumba/api-client, which
-      // threads CSRF via interceptor). Severity is `warn` initially so
-      // existing call-sites surface as a worklist without breaking the
-      // build — promote to `error` after the migration pass.
-      'bossnyumba/require-csrf-headers': 'warn',
+      // threads CSRF via interceptor). Severity was promoted from `warn`
+      // to `error` after the F1 migration pass closed all 32 call-sites.
+      'bossnyumba/require-csrf-headers': 'error',
 
       // ---- Security plugin tuning ----
       // Object-injection is noisy on TS with typed keys; keep as warn so CI

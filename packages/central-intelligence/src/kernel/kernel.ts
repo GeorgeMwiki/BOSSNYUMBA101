@@ -128,6 +128,26 @@ import {
   isExplicitSessionTerminator,
   recordReflection,
 } from './reflexion/reflexion-writer.js';
+// Wave-13 F11 — task-scoped reflexion loader. Distinct from the
+// session-scoped `reflexionRetriever` above: the loader pulls the
+// dedupe-clustered + guideline-augmented bundle written by the
+// 4-pass nightly sleep job. Prepended under a "Recent self-critiques"
+// section in the system prompt at step 6.
+import {
+  loadReflexions,
+  type ReflexionLoaderPort,
+} from './reflexion/reflexion-loader.js';
+// Wave-13 F2 — tier-policy gate that fires BEFORE the sensor call. The
+// resolver lives outside the kernel package (`../policy-gate`) so the
+// kernel imports only the assertion helper + role-policy type. When the
+// caller wires `deps.tierPolicy` and threads an `action` through the
+// `ThoughtRequest`, the kernel refuses with a structured
+// `tier_refusal` outcome — the rest of the pipeline is skipped.
+import {
+  assertTierPolicy,
+  type RolePolicy,
+  type TierAssertionResult,
+} from '../policy-gate/assertions.js';
 // A2b-2 wires #1 + #2 — pre-LLM PII scrub. The persist-boundary
 // scrubber covers the regional baseline (email, phone, NIDA, KRA,
 // M-Pesa till) AND the Phase-D extension (API keys, model URLs,
@@ -147,6 +167,69 @@ import {
   type OrchestratorRequest,
   type OrchestratorResponse,
 } from './orchestrator/main-loop.js';
+// F10 DecisionTrace — wrap each `brain.think()` invocation as one
+// structured outer trace so a downstream auditor sees ONE replayable
+// trace per turn instead of N unrelated span events. The kernel's
+// internal `DecisionTraceWriter` (per-step events for the orchestrator)
+// is preserved alongside this outer trace.
+//
+// IMPORTANT: central-intelligence MUST NOT depend on
+// `@bossnyumba/observability` at compile time — the kernel is a leaf
+// node in the dependency graph and pulling in observability creates a
+// cycle through the api-gateway. We resolve the recorder via a
+// best-effort dynamic require so the bracket is a no-op in pure-domain
+// tests and lights up only when the observability package is on the
+// runtime path (gateway, workers).
+type StartDecisionTraceFn = (
+  name: string,
+  options: {
+    inputs: Record<string, unknown>;
+    context?: {
+      tenantId?: string | undefined;
+      userId?: string | undefined;
+      requestId?: string | undefined;
+    };
+  },
+) => {
+  readonly traceId: string;
+  addBranch(branch: {
+    id: string;
+    label: string;
+    rationale: string;
+  }): void;
+  choose(branchId: string, rationale?: string): void;
+  finalize(args: {
+    outcome: 'approved' | 'rejected' | 'executed' | 'refused' | 'failed';
+    output?: unknown;
+    error?: string;
+  }): unknown;
+  isFinalised(): boolean;
+};
+let cachedStartDecisionTrace: StartDecisionTraceFn | null | 'unresolved' =
+  'unresolved';
+function resolveStartDecisionTrace(): StartDecisionTraceFn | null {
+  if (cachedStartDecisionTrace !== 'unresolved') {
+    return cachedStartDecisionTrace;
+  }
+  try {
+    // Use a dynamic import-via-Function so static analysis (and the
+    // TypeScript module resolver) never tries to resolve the module
+    // at compile time. When observability is on the runtime path the
+    // require resolves; otherwise we fall through to no-op.
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+    const req = new Function(
+      'm',
+      'return require ? require(m) : null',
+    ) as (m: string) => unknown;
+    const mod = req('@bossnyumba/observability') as
+      | { startDecisionTrace?: StartDecisionTraceFn }
+      | null;
+    cachedStartDecisionTrace = mod?.startDecisionTrace ?? null;
+  } catch {
+    cachedStartDecisionTrace = null;
+  }
+  return cachedStartDecisionTrace;
+}
 
 export interface BrainKernelDeps {
   readonly sensors: ReadonlyArray<Sensor>;
@@ -368,6 +451,29 @@ export interface BrainKernelDeps {
      */
     readonly useByDefault?: boolean;
   };
+  // ── Wave-13 — F2 + F11 wiring ─────────────────────────────────────
+  /**
+   * Wave-13 F2 — tier-policy gate. When wired AND the request carries
+   * an `action` (see `ThoughtRequest.action`), the kernel runs
+   * `assertTierPolicy(policy, action)` BEFORE the sensor call. A failed
+   * assertion short-circuits the pipeline with a structured refusal
+   * (`gate: 'policy'`, reason starts with `'tier_refusal:'`) so the
+   * caller can branch on the prefix.
+   *
+   * The role/action mapping is owned by the composition root — the
+   * kernel only consumes the resolver verdict.
+   */
+  readonly tierPolicy?: { readonly policy: RolePolicy };
+  /**
+   * Wave-13 F11 — task-scoped reflexion loader. Distinct from
+   * `reflexionRetriever` above (session-scoped, last-N reads). When
+   * wired, the kernel calls `loadReflexions({ tenantId, userId,
+   * limit: 5 })` at step 6 (system prompt composition) and prepends
+   * the rendered `promptFragment` to the system prompt under a
+   * "Recent self-critiques" section. Failures collapse to no-op so
+   * the side-channel never breaks the turn.
+   */
+  readonly reflexionLoader?: ReflexionLoaderPort;
 }
 
 export interface BrainKernel {
@@ -404,13 +510,85 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
 
   return {
     async think(req) {
+      // F10 DecisionTrace — outer per-turn trace. One trace per
+      // `brain.think()` call covering the full 14-step pipeline. Each
+      // step is recorded as one branch; the final outcome
+      // (answer / softened / refusal) is set in finalize. We open the
+      // trace BEFORE the orchestrator gate so both code paths share the
+      // same audit envelope.
+      //
+      // Resolved via best-effort dynamic require so central-intelligence
+      // doesn't compile-time-depend on @bossnyumba/observability.
+      const outerTenantId =
+        req.scope.kind === 'tenant' ? req.scope.tenantId : null;
+      const startDecisionTraceFn = resolveStartDecisionTrace();
+      const outerTrace: ReturnType<StartDecisionTraceFn> | null =
+        startDecisionTraceFn
+          ? startDecisionTraceFn('brain.think', {
+              inputs: {
+                threadId: req.threadId,
+                stakes: req.stakes ?? null,
+                tier: req.tier ?? null,
+                scopeKind: req.scope.kind,
+                surfaceId: (req as { surfaceId?: string }).surfaceId ?? null,
+                // Hash the user message rather than store it raw so a trace
+                // export is safe to share with a customer-support auditor
+                // without PII review.
+                userMessageHash: createHash('sha256')
+                  .update(String(req.userMessage ?? ''))
+                  .digest('hex'),
+                userMessageLength: String(req.userMessage ?? '').length,
+              },
+              context: {
+                tenantId: outerTenantId ?? undefined,
+                userId: (req as { userId?: string }).userId ?? undefined,
+                requestId: (req as { requestId?: string }).requestId ?? undefined,
+              },
+            })
+          : null;
+
       // Phase E.5.1 — primary code path. When the orchestrator is wired
       // and the feature flag is on, delegate the whole turn to the
       // main-loop. The legacy 13-step pipeline below remains the
       // fallback (flag off, or orchestrator not wired). Both paths
       // surface a `BrainDecision` so callers don't observe the swap.
       if (orchestratorRoutingEnabled && deps.orchestrator) {
-        return runViaOrchestrator(req, deps.orchestrator.deps, clock);
+        try {
+          const result = await runViaOrchestrator(
+            req,
+            deps.orchestrator.deps,
+            clock,
+          );
+          if (outerTrace) {
+            outerTrace.addBranch({
+              id: 'orchestrator',
+              label: 'Orchestrator main-loop',
+              rationale: 'KERNEL_USE_ORCHESTRATOR enabled',
+            });
+            outerTrace.choose(
+              'orchestrator',
+              'delegated to orchestrator main-loop',
+            );
+            outerTrace.finalize({
+              outcome:
+                result.kind === 'refusal'
+                  ? 'refused'
+                  : result.kind === 'softened'
+                    ? 'rejected'
+                    : 'executed',
+              output: { kind: result.kind },
+            });
+          }
+          return result;
+        } catch (err) {
+          if (outerTrace && !outerTrace.isFinalised()) {
+            outerTrace.finalize({
+              outcome: 'failed',
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+          throw err;
+        }
       }
       const startedAt = clock().getTime();
       const thoughtId = randomUUID();
@@ -457,6 +635,20 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
           ...(errMsg ? { error: errMsg } : {}),
         });
       };
+      // F10 DecisionTrace — track each step of the legacy 14-step
+      // pipeline as a branch on the outer trace. Branches are added
+      // lazily inside `traceStep` below; here we precompute the
+      // outcome-mapping used by `finaliseTrace` so all exit sites flow
+      // through a single decision-trace finalize call.
+      const legacyOutcomeFor = (
+        outcome: 'answer' | 'softened' | 'refusal',
+      ): 'approved' | 'rejected' | 'executed' | 'refused' | 'failed' => {
+        if (outcome === 'refusal') return 'refused';
+        if (outcome === 'softened') return 'rejected';
+        // 'answer' is the success path — the brain executed and returned
+        // an answer to the caller.
+        return 'executed';
+      };
       const finaliseTrace = (
         outcome: 'answer' | 'softened' | 'refusal',
         refusalGate?:
@@ -466,10 +658,33 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
           | 'killswitch'
           | 'uncertainty',
       ): void => {
-        if (!trace) return;
-        void trace
-          .finalize({ outcome, ...(refusalGate ? { refusalGate } : {}) })
-          .catch(() => undefined);
+        if (trace) {
+          void trace
+            .finalize({ outcome, ...(refusalGate ? { refusalGate } : {}) })
+            .catch(() => undefined);
+        }
+        // F10 — also finalise the OUTER per-turn DecisionTrace if the
+        // observability package is on the runtime path. Idempotent —
+        // guarded by `isFinalised()`. Pick a `choose(...)` that mirrors
+        // the path actually taken.
+        if (outerTrace && !outerTrace.isFinalised()) {
+          outerTrace.addBranch({
+            id: 'legacy-pipeline',
+            label: 'Legacy 14-step pipeline',
+            rationale:
+              refusalGate
+                ? `refused at ${refusalGate} gate`
+                : `exit outcome=${outcome}`,
+          });
+          outerTrace.choose(
+            'legacy-pipeline',
+            refusalGate ? `gate=${refusalGate}` : `outcome=${outcome}`,
+          );
+          outerTrace.finalize({
+            outcome: legacyOutcomeFor(outcome),
+            output: { outcome, refusalGate: refusalGate ?? null },
+          });
+        }
       };
 
       // 0) killswitch — administrative HALT short-circuit. Runs before
@@ -599,6 +814,50 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         return decision;
       }
       traceStep('tier-compat', tierStart, 'pass');
+
+      // 3b) Wave-13 F2 — tier-policy gate (Constitution v2 reason-based
+      // resolver). Fires AFTER the awareness-tier compatibility check
+      // and BEFORE any sensor budget is spent. The wiring is opt-in:
+      // - `deps.tierPolicy` carries the role + rule set;
+      // - `req.action` is the namespace string fed to the resolver.
+      // A refusal short-circuits the pipeline with a structured
+      // `tier_refusal:<reason>` so the calling surface can render a
+      // friendly "you can't do that with this role" reply instead of
+      // a generic 500.
+      if (deps.tierPolicy && req.action) {
+        const tpStart = clock().getTime();
+        const tpResult: TierAssertionResult = assertTierPolicy(
+          deps.tierPolicy.policy,
+          req.action,
+        );
+        if (!tpResult.ok) {
+          traceStep(
+            'tier-compat',
+            tpStart,
+            `tier-policy refuse role=${deps.tierPolicy.policy.role} action=${req.action}`,
+          );
+          const decision = makeRefusal({
+            thoughtId,
+            req,
+            reason: `tier_refusal: ${tpResult.reason}`,
+            gate: 'policy',
+            startedAt,
+            clockNow: clock(),
+          });
+          if (deps.provenanceSink) {
+            void deps.provenanceSink
+              .record(decision.provenance)
+              .catch(() => undefined);
+          }
+          finaliseTrace('refusal', 'policy');
+          return decision;
+        }
+        traceStep(
+          'tier-compat',
+          tpStart,
+          `tier-policy pass role=${deps.tierPolicy.policy.role} action=${req.action}${tpResult.reasonGeneralized ? ' generalised=1' : ''}`,
+        );
+      }
 
       // 4) memory recall
       const priorTurns = deps.priorTurnsLoader
@@ -761,8 +1020,28 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         ? deps.reflexionRetriever.renderPromptFragment(reflexionEntries)
         : '';
 
+      // Wave-13 F11 — task-scoped reflexion loader. Pulls the 4-pass
+      // nightly-sleep output (dedupe-clustered reflexions + crystallised
+      // guidelines) and prepends a "Recent self-critiques" block at the
+      // top of the system prompt. Distinct from the session-scoped
+      // `reflexionRetriever` above — that emits raw recent rows; the
+      // loader emits the consolidated bundle. Errors are swallowed; the
+      // loader returns an empty fragment on any failure.
+      const taskScopedReflexionFragment =
+        deps.reflexionLoader && memTenantId
+          ? await loadTaskScopedReflexions(deps.reflexionLoader, memTenantId, memUserId)
+          : '';
+
       const system = [
         personaPrelude,
+        '',
+        // Wave-13 F11 — "Recent self-critiques" sits at the top of the
+        // system prompt (just below the persona anchor) so the model
+        // reads the crystallised lessons BEFORE the rest of the
+        // context. Empty string is filtered out below.
+        taskScopedReflexionFragment
+          ? `**Recent self-critiques**\n${taskScopedReflexionFragment}`
+          : '',
         '',
         identity,
         '',
@@ -2179,6 +2458,33 @@ async function loadReflectiveDigest(
     return digests[0] ?? null;
   } catch {
     return null;
+  }
+}
+
+const TASK_SCOPED_REFLEXION_LIMIT = 5;
+
+/**
+ * Wave-13 F11 — fetch the 4-pass nightly-sleep reflexion bundle for the
+ * current tenant + (optional) user and return the pre-rendered prompt
+ * fragment. Errors collapse to an empty string so the side-channel
+ * never breaks the turn.
+ */
+async function loadTaskScopedReflexions(
+  loader: ReflexionLoaderPort,
+  tenantId: string | null,
+  userId: string,
+): Promise<string> {
+  if (!tenantId) return '';
+  try {
+    const args: { tenantId: string; userId?: string; limit: number } = {
+      tenantId,
+      limit: TASK_SCOPED_REFLEXION_LIMIT,
+    };
+    if (userId) args.userId = userId;
+    const result = await loadReflexions(loader, args);
+    return result.promptFragment ?? '';
+  } catch {
+    return '';
   }
 }
 

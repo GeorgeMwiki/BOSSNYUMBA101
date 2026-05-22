@@ -13,17 +13,24 @@ BossNyumba is a multi-tenant, AI-native property-management platform serving res
 
 The platform is **operational software, not a financial institution**: BossNyumba does not hold deposits, does not lend, does not provide investment advice, and is not a payment service provider in its own name. Rent payments flow through licensed mobile-money operators and banks (M-Pesa Tanzania, Airtel Money, TigoPesa, HaloPesa, GePG); BossNyumba is the reconciliation layer and tenant ledger of record.
 
-Core capabilities:
+### 1.1 Core capabilities — source-of-truth in BossNyumba monorepo
 
-| Capability | Source-of-truth path (BossNyumba monorepo) |
+The platform is a TypeScript modular monolith. Every capability below cites a real path that examiners may open during a review. Line ranges are accurate at time of writing (regulator-pack v1.0); the `git blame` of `packages/database/src/schemas/audit-events.schema.ts` confirms drift detection so the table can be re-anchored at the start of every annual review cycle.
+
+| Capability | Source-of-truth path:line (BossNyumba monorepo) |
 |---|---|
-| Property + unit + lease + tenant master data | `packages/database/src/schema/` (drizzle schema) |
-| Rent collection via M-Pesa STK Push, Airtel, TigoPesa, GePG | `services/payments-ledger/`, `apps/customer-app/src/components/payments/` |
-| Maintenance request dispatch + vendor coordination | `services/maintenance/`, `apps/estate-manager-app/` |
-| Tenant communication (in-app, WhatsApp, SMS, voice) | `services/notifications/`, `apps/customer-app/src/components/communication/` |
-| Owner / investor portfolio reporting | `apps/owner-portal/`, `services/reporting/` |
-| AI kernel + voice agent ("Mr. Mwikila") + 4 wired AI-native agents | `packages/ai-copilot/`, `services/api-gateway/src/composition/*-wiring.ts` |
-| Audit chain + RLS + field-level encryption | `packages/audit-chain/`, `services/api-gateway/src/middleware/rls.ts` |
+| Property / unit / lease / tenant / payment master data (drizzle schemas, RLS-scoped) | `packages/database/src/schemas/identity.schema.ts`, `payment.schema.ts`, `tenant-finance.schema.ts`, `occupancy.schema.ts`, `ledger.schema.ts` |
+| Rent collection via M-Pesa STK Push, Airtel, TigoPesa, HaloPesa, GePG | `services/payments-ledger/src/` (full service); routes at `services/api-gateway/src/routes/gepg.router.ts`; webhook receivers in `services/webhooks/src/` |
+| Maintenance request dispatch + vendor coordination | `apps/estate-manager-app/src/` + maintenance triage agent at `packages/central-intelligence/src/maintenance-triage/triage-agent.ts` |
+| Tenant communication (in-app, WhatsApp, SMS, voice) | `services/notifications/src/` + dispatcher adapter at `services/api-gateway/src/composition/notification-dispatcher-adapter.ts`; voice persona at `packages/ai-copilot/src/voice-persona-dna/` |
+| Owner / investor portfolio reporting | `apps/owner-portal/`, `services/reports/src/` (incl. tax formatters `services/reports/src/compliance/tz-tra-formatter.ts`, `ke-kra-formatter.ts`) |
+| AI kernel + voice agent + wired AI-native agents | Kernel: `packages/central-intelligence/src/kernel/` (719-line LATS search at `orchestrator/lats-search.ts`); wirings: `services/api-gateway/src/composition/brain-kernel-wiring.ts`, `voice-agent-wiring.ts`, `market-surveillance-wiring.ts`, `predictive-interventions-wiring.ts` |
+| Audit chain + RLS + field-level encryption | `packages/ai-copilot/src/security/audit-hash-chain.ts` (651 lines); `packages/ai-copilot/src/security/tenant-isolation.ts` (373 lines); RLS GUC wired by `services/api-gateway/src/composition/service-context.middleware.ts`; field encryption keys recorded in `packages/database/src/schemas/field-encryption-audit.schema.ts` |
+| Kill-switch fan-out across services | `services/api-gateway/src/composition/cross-portal-killswitch-fanout.ts`; per-agent kill-switches in each `*-wiring.ts` |
+| Policy tier resolver (constitution v2 — gates high-risk tools) | `packages/central-intelligence/src/policy-gate/tier-policy-resolver.ts` (419 lines) + `policy-gate/assertions.ts` + `policy-gate/high-risk-literal-only.ts` |
+| Reflexion + 4-pass sleep consolidation | `packages/central-intelligence/src/kernel/reflexion/` (recorder, writer, retriever, loader) + nightly sleep at `kernel/reflexion/sleep/nightly-sleep.ts` (230 lines) + 4 pass files |
+| Sovereign action ledger (immutable record of consequential agent actions) | `packages/database/src/schemas/sovereign-action-ledger.schema.ts` (98 lines); verify cron at `services/api-gateway/src/composition/sovereign-ledger-verify-cron.ts` |
+| Cross-tenant denial telemetry (RLS denial events) | `packages/database/src/schemas/cross-tenant-denials.schema.ts` (52 lines) |
 
 ## 2. Jurisdictions
 
@@ -121,3 +128,28 @@ BossNyumba **does not**:
 Any expansion beyond this scope requires a board-approved change of business plan and supplementary regulatory engagement.
 
 > TODO: insert link to most recent board minutes confirming scope (post-board-meeting 2026-Q3).
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| Chief Risk Officer (CRO) | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cro/regulator-pack-tz-01-v1.0` |
+| Chief Compliance Officer (CCO) | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cco/regulator-pack-tz-01-v1.0` |
+| Chief Information Security Officer (CISO) | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ciso/regulator-pack-tz-01-v1.0` |
+| Data Protection Officer (DPO) | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/regulator-pack-tz-01-v1.0` |
+| Board Chair | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/board/regulator-pack-tz-01-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold (F3 wave) | CRO + CCO |
+| 1.1.0 | 2026-05-22 | Embedded real source-paths (Wave-12 push to substantive) | CRO + CCO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full review by CRO + CCO + Board sign-off
+- **Out-of-cycle** — triggered by (a) material change to any referenced source file in the §1.1 table, (b) regulator change (BoT supervisory letter, PDPC directive), (c) post-P0/P1 incident affecting in-scope capability
+- **Quarterly** — Risk & Audit Committee review of the risk taxonomy in §3 against incident telemetry

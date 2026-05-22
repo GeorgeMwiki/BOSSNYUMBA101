@@ -75,3 +75,47 @@ Same as TZ pack (see `tz/07-incident-response.md` §8). Kenya-specific:
 - BCM / DR runbooks → doc 08
 - Audit-trail evidence preservation → doc 10
 - Existing post-mortem index → `Docs/POSTMORTEMS/`
+
+## 10. KE on-call + paging
+
+| Resource | URL placeholder |
+|---|---|
+| PagerDuty — KE primary on-call rotation | `https://bossnyumba.pagerduty.com/schedules/PR-KE-PRIMARY-001` |
+| PagerDuty — KE escalation policy | `https://bossnyumba.pagerduty.com/escalation_policies/EP-KE-CISO-001` |
+| Statuspage — KE public outage banner | `https://status.bossnyumba.com/admin/manage` |
+| Slack — `#incident-warroom-ke` channel | `https://bossnyumba.slack.com/archives/C-INCIDENT-WARROOM-KE` |
+
+## 11. KE-specific implementation refs
+
+| Capability | Source-of-truth (path:line) |
+|---|---|
+| Daraja STK failure detection | `services/webhooks/src/` + circuit-breaker pattern in `services/api-gateway/src/composition/anthropic-circuit-breaker.ts` |
+| Kill-switches | `services/api-gateway/src/composition/cross-portal-killswitch-fanout.ts` + per-agent gates |
+| Audit chain preservation | `packages/ai-copilot/src/security/audit-hash-chain.ts` (651 lines) |
+| s.35 challenge log | `services/api-gateway/src/routes/gdpr.router.ts` |
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| CISO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ciso/regulator-pack-ke-07-v1.0` |
+| CTO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cto/regulator-pack-ke-07-v1.0` |
+| CRO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cro/regulator-pack-ke-07-v1.0` |
+| Head of Comms | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/comms/regulator-pack-ke-07-v1.0` |
+| CEO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ceo/regulator-pack-ke-07-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | CISO |
+| 1.1.0 | 2026-05-22 | KE paging URLs + implementation refs (Wave-12) | CISO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full plan review + KE IRT tabletop
+- **Quarterly** — KE scenario drill
+- **Out-of-cycle** — every KE P0/P1 incident
+- **Monthly** — on-call rotation + call-tree test

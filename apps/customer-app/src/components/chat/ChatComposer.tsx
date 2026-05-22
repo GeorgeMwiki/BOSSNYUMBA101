@@ -23,6 +23,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { Paperclip, Send, X, Loader2 } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 export interface LocalMessage {
   readonly id: string;
@@ -157,6 +158,7 @@ export function ChatComposer({
             headers: {
               'Content-Type': 'application/json',
               ...authHeader(),
+              ...getCsrfHeaders(),
             },
             body: JSON.stringify({
               content: text,

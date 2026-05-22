@@ -107,15 +107,53 @@ Call-tree testing is performed monthly (per BoT BCM §17 (f)).
 
 ## 8. AI-incident-specific playbook
 
-| AI-incident type | First action |
+| AI-incident type | First action (path:line) |
 |---|---|
-| Voice-agent hallucination at scale | Kill-switch voice agent (`voice-agent-wiring.ts`); revert to human-routed; notify affected tenants if hallucination caused material outcome |
-| Predictive-interventions false-positive surge | Kill-switch agent; freeze any auto-triggered communications; manual review |
-| Prompt injection succeeds in invoking tool | Rotate affected creds; review tool ACL; tighten intent verifier; audit recent tool calls |
-| Model drift > threshold | Auto-rollback to last-known-good champion; Model Risk Committee review |
+| Voice-agent hallucination at scale | Kill-switch via `services/api-gateway/src/composition/voice-agent-wiring.ts` (fan-out broadcast through `cross-portal-killswitch-fanout.ts`); revert to human-routed; notify affected tenants if hallucination caused material outcome |
+| Predictive-interventions false-positive surge | Kill-switch at `services/api-gateway/src/composition/predictive-interventions-wiring.ts`; freeze auto-triggered communications; manual review queue surfaced through `services/api-gateway/src/routes/approvals.router.ts` |
+| Prompt injection succeeds in invoking tool | Rotate affected creds; review tool ACL in `packages/central-intelligence/src/policy-gate/tier-policy-resolver.ts`; tighten intent verifier in `packages/ai-copilot/src/security/prompt-shield.ts`; audit recent tool calls against `packages/database/src/schemas/sovereign-action-ledger.schema.ts` |
+| Model drift > threshold | Auto-rollback to last-known-good champion via Mission-Eval; Model Risk Committee review against doc 05 §3 lifecycle gates |
+| Hash-chain tamper detected | Page CISO immediately; freeze writes to affected module; full `verifyRandomSample` over the suspect chain (`packages/ai-copilot/src/security/audit-hash-chain.ts`, 651 lines) before restoring service |
 
 ## 9. Cross-references
 
 - BCM / DR runbooks → doc 08
 - Audit-trail evidence preservation → doc 10
 - Existing post-mortem index → `Docs/POSTMORTEMS/`
+
+## 10. On-call + paging
+
+| Resource | URL placeholder |
+|---|---|
+| PagerDuty — primary on-call rotation | `https://bossnyumba.pagerduty.com/schedules/PR-PRIMARY-001` |
+| PagerDuty — secondary on-call rotation | `https://bossnyumba.pagerduty.com/schedules/PR-SECONDARY-001` |
+| PagerDuty — CISO escalation policy | `https://bossnyumba.pagerduty.com/escalation_policies/EP-CISO-001` |
+| Statuspage — public outage banner | `https://status.bossnyumba.com/admin/manage` |
+| Slack — `#incident-warroom` channel | `https://bossnyumba.slack.com/archives/C-INCIDENT-WARROOM` |
+| Grafana — alert overview | `https://grafana.bossnyumba.com/alerting/list` |
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| CISO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ciso/regulator-pack-tz-07-v1.0` |
+| CTO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cto/regulator-pack-tz-07-v1.0` |
+| CRO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cro/regulator-pack-tz-07-v1.0` |
+| Head of Comms | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/comms/regulator-pack-tz-07-v1.0` |
+| CEO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ceo/regulator-pack-tz-07-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | CISO |
+| 1.1.0 | 2026-05-22 | AI-incident playbook code refs + on-call + dashboard placeholders (Wave-12) | CISO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full IRT tabletop + plan review
+- **Quarterly** — scenario drill + after-action update
+- **Out-of-cycle** — every P0/P1 incident; CISO triggers plan refresh within 30 days
+- **Monthly** — on-call rotation + call-tree test

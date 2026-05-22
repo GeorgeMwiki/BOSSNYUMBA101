@@ -71,10 +71,41 @@ Hybrid: rule-based scorer + light LLM rationale layer.
 - DPIA-KE-004 (low-medium risk, TODO sign-off)
 - Data residency: aggregate stats stay in Supabase `fra1` with EU SCC for Haiku call
 
+## Implementation
+
+| Component | Source-of-truth (path:line) |
+|---|---|
+| Layout engine | `packages/dynamic-sections/` + `packages/genui/` |
+| Persistence | `packages/database/src/schemas/section-layouts.schema.ts` + `blocks.schema.ts` |
+| Action-frequency rollup | `packages/database/src/schemas/implicit-feedback-signals.schema.ts` |
+| Progressive disclosure state | `packages/database/src/schemas/progressive-context.schema.ts` |
+| PII protection | `packages/ai-copilot/src/security/pii-scrubber.ts` (511 lines) |
+
+## Monitoring dashboards
+
+| Dashboard | URL placeholder |
+|---|---|
+| Mission-Eval — KE layout-override rate | `https://mission-eval.bossnyumba.com/project/bossnyumba/dashboards/ui-layout-override-rate?var-region=KE` |
+| Grafana — KE UI performance slice | `https://grafana.bossnyumba.com/d/ui-perf/ui-performance-by-layout?var-region=KE` |
+
 ## Version history
 
-| Version | Date | Change |
-|---|---|---|
-| 1.0 | 2026-05-22 | Initial release (UI-1 wave) |
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial release (UI-1 wave) | UX Team Lead |
+| 1.0.1 | 2026-05-22 | KE implementation refs (Wave-12) | UX Team Lead |
+
+## Sign-off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| Model Risk Manager | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/mrm/model-card-ke-adaptive-layout-v1.0` |
+| UX Team Lead | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ux/model-card-ke-adaptive-layout-v1.0` |
+| DPO (ODPC-registered) | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/model-card-ke-adaptive-layout-v1.0` |
+
+## Review cadence
+
+- **Quarterly** — UX team reviews override rate
+- **Out-of-cycle** — DPIA-KE-004 status change, accessibility regression, KE language coverage gap
 
 > TODO: collect 30 days of KE production metrics and update Performance section.

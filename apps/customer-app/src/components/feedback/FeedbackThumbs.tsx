@@ -19,6 +19,7 @@
 import { useEffect, useState } from 'react';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 export type FeedbackContextType =
   | 'brain'
@@ -68,6 +69,7 @@ export function FeedbackThumbs({
         headers: {
           'Content-Type': 'application/json',
           ...authHeader(),
+          ...getCsrfHeaders(),
         },
         body: JSON.stringify({
           contextId,

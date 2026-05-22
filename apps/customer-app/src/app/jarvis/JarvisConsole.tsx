@@ -26,6 +26,7 @@ import {
 } from '@bossnyumba/chat-ui';
 import { AdaptiveRenderer, type AgUiUiPart } from '@bossnyumba/genui';
 import { FeedbackThumbs, type FeedbackVerdict } from '@/components/FeedbackThumbs';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 // Build-time guard: production deployments MUST set
 // NEXT_PUBLIC_API_GATEWAY_URL. The localhost fallback exists only so a
@@ -183,7 +184,7 @@ export function JarvisConsole(): JSX.Element {
     async (turnId: string, verdict: FeedbackVerdict, reason?: string): Promise<void> => {
       const response = await fetch('/api/v1/feedback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({
           turnId,
           threadId,

@@ -122,3 +122,48 @@ See doc 09 for vendor-by-vendor breakdown.
 - SMS fallback if WhatsApp / app down
 - Email to institutional clients
 - Regulator notification per doc 07 §5
+
+## 9. Implementation references
+
+| Capability | Source-of-truth (path:line) |
+|---|---|
+| Payments-ledger durable outbox + idempotency | `services/payments-ledger/src/` (Drizzle migration after Z-FF); idempotency key store |
+| Webhook receivers (M-Pesa, Airtel, TigoPesa, HaloPesa, GePG) | `services/webhooks/src/` + `services/api-gateway/src/routes/gepg.router.ts` |
+| Audit hash-chain replication + verification | `packages/ai-copilot/src/security/audit-hash-chain.ts` (651 lines) + `services/api-gateway/src/composition/audit-verify-cron.ts` |
+| Sovereign-ledger verification cron | `services/api-gateway/src/composition/sovereign-ledger-verify-cron.ts` |
+| Postgres HA + Redis Sentinel wiring | `infra/postgres-ha/` + Sentinel config in production compose (Wave-3 Z5 + W4-L) |
+| Backup-restore CI check | `.github/workflows/` backup-restore job (Wave-2 N) |
+
+## 10. BCM dashboards
+
+| Dashboard | URL placeholder |
+|---|---|
+| Grafana — RTO / RPO tracker | `https://grafana.bossnyumba.com/d/bcm-rto-rpo/bcm-rto-rpo-overview` |
+| Grafana — payment-rail availability | `https://grafana.bossnyumba.com/d/payments-availability/payment-rail-availability` |
+| Grafana — DR drill last-run status | `https://grafana.bossnyumba.com/d/bcm-drills/dr-drill-status` |
+| Statuspage — public uptime | `https://status.bossnyumba.com/` |
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| CISO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ciso/regulator-pack-tz-08-v1.0` |
+| CTO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cto/regulator-pack-tz-08-v1.0` |
+| Head of SRE | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/sre/regulator-pack-tz-08-v1.0` |
+| Board Risk Committee Chair | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/brc/regulator-pack-tz-08-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | CISO + CTO |
+| 1.1.0 | 2026-05-22 | Implementation references + dashboards (Wave-12) | CISO + CTO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full DR exercise + plan refresh + board sign-off
+- **Quarterly** — partial drill of one §2 scenario; after-action report to Risk Committee
+- **Monthly** — backup-restore test in CI + call-tree test
+- **Out-of-cycle** — material vendor SLA change, new payment rail, or post-P0 incident

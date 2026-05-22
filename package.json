@@ -14,6 +14,9 @@
     "test:e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui",
     "test:e2e:headed": "playwright test --config=e2e/playwright.config.ts --headed",
     "test:e2e:report": "playwright show-report e2e-report",
+    "live-test": "playwright test --config=e2e/live-test/playwright.config.ts",
+    "live-test:headed": "playwright test --config=e2e/live-test/playwright.config.ts --headed",
+    "live-test:single": "playwright test --config=e2e/live-test/playwright.config.ts",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "eval": "pnpm --filter @bossnyumba/ai-copilot eval",
@@ -26,7 +29,9 @@
     "bench:forecast": "tsx evals/forecasting-bench/run.ts",
     "bench:forecast:test": "vitest run --root evals/forecasting-bench",
     "migrate": "pnpm -C packages/database db:migrate",
-    "refresh-fx-rates": "pnpm -s exec tsx scripts/refresh-fx-rates.ts"
+    "refresh-fx-rates": "pnpm -s exec tsx scripts/refresh-fx-rates.ts",
+    "setup-env": "node scripts/setup-bossnyumba-env.mjs",
+    "gen-secrets": "node scripts/generate-bossnyumba-secrets.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

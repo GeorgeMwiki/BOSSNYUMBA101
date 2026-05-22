@@ -103,3 +103,38 @@ Although not strictly AML, BossNyumba supports landlords' Monthly Rental Income 
 This intersects AML insofar as it provides transparency on rent flows that aids both tax compliance and laundering deterrence.
 
 > TODO: insert iTax connector design doc; insert FRC reporting-format template.
+
+## 10. Implementation references (KE)
+
+| Capability | Source-of-truth (path:line) |
+|---|---|
+| IPRS / NIDA-KE adapter | `packages/connectors/src/adapters/` (region-overlay pattern; see `nida-adapter.ts` / `nida-real.ts` for the parallel TZ structure) |
+| KRA iTax export formatter | `services/reports/src/compliance/ke-kra-formatter.ts` |
+| Smile Identity liveness | invoked from `services/document-intelligence/` |
+| Tier-policy gate at KYC | `packages/central-intelligence/src/policy-gate/tier-policy-resolver.ts` (419 lines) |
+| Sanctions / PEP screen | `packages/compliance-plugins/src/` + audit to `packages/database/src/schemas/compliance.schema.ts` |
+| Audit chain | `packages/ai-copilot/src/security/audit-hash-chain.ts` (651 lines) |
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| MLRO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/mlro/regulator-pack-ke-04-v1.0` |
+| CCO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cco/regulator-pack-ke-04-v1.0` |
+| Head of Engineering (KYC owner) | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/heng/regulator-pack-ke-04-v1.0` |
+| Board Compliance Committee Chair | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/bcc/regulator-pack-ke-04-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | MLRO |
+| 1.1.0 | 2026-05-22 | KE-specific code refs (Wave-12) | MLRO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full review by MLRO; independent KE AML audit
+- **Out-of-cycle** — FRC directive, new sanctions list, change to IPRS / KRA adapters
+- **Quarterly** — MLRO reviews alert queue + sanctions false-positive rate

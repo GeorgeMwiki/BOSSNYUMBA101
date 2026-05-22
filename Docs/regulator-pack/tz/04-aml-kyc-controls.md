@@ -28,13 +28,13 @@ BossNyumba is **not a financial institution** and does not hold AML obligations 
 
 Default tiers; institutional landlords may tighten:
 
-| Tier | Tenant profile | Required evidence | BossNyumba connector / control |
+| Tier | Tenant profile | Required evidence | BossNyumba connector / control (path:line) |
 |---|---|---|---|
 | **Tier 0 — Public browse** | Marketing-site visitor, public listing browse | None | Session cookie only; no PII collected |
-| **Tier 1 — Lead (light)** | Pre-application, listing enquiry | Phone number + name | No NIDA yet; rate-limited |
-| **Tier 2 — Standard KYC** | Residential lease, monthly rent < TZS 1.5M | National ID (NIDA), proof of address, employer letter or 3 months bank/mobile-money history | NIDA connector (`services/api-gateway/src/routes/tenants/onboarding/`), Smile Identity liveness, address evidence upload |
-| **Tier 3 — Enhanced KYC** | Commercial lease, residential rent ≥ TZS 1.5M, multi-unit lease, corporate tenant | Tier 2 + source-of-funds, BRELA business registration (if corporate), beneficial-owner chain (>25%), references | All Tier 2 + PEP screening, sanctions screening, ownership graph |
-| **Tier 4 — Politically exposed** | Tenant or BO is domestic / foreign / IO PEP | Tier 3 + senior-manager approval, source-of-wealth, ongoing monitoring | PEP service includes World-Check or equivalent feed |
+| **Tier 1 — Lead (light)** | Pre-application, listing enquiry | Phone number + name | Phone normalisation `services/identity/src/phone-normalize.ts`; NIDA lookup disabled at this tier; rate-limit at `services/api-gateway/src/middleware/rate-limit.ts` |
+| **Tier 2 — Standard KYC** | Residential lease, monthly rent < TZS 1.5M | National ID (NIDA), proof of address, employer letter or 3 months bank/mobile-money history | NIDA adapter `packages/connectors/src/adapters/nida-adapter.ts` (stub) + `nida-real.ts` (production wiring, NIDA regex anchored after W4-H); HQ tool `packages/central-intelligence/src/kernel/tool-spec/hq-tools/platform.verify_nida.ts`; Smile Identity liveness via Smile Identity SDK; document-intelligence pipeline `services/document-intelligence/` (see `__fixtures__/ids/tanzania-nida.fixture.ts` for golden-path test) |
+| **Tier 3 — Enhanced KYC** | Commercial lease, residential rent ≥ TZS 1.5M, multi-unit lease, corporate tenant | Tier 2 + source-of-funds, BRELA business registration (if corporate), beneficial-owner chain (>25%), references | All Tier 2 + PEP screening (TODO — wire), sanctions screening, ownership graph constructed by `packages/graph-sync/` |
+| **Tier 4 — Politically exposed** | Tenant or BO is domestic / foreign / IO PEP | Tier 3 + senior-manager approval, source-of-wealth, ongoing monitoring | PEP service via World-Check (or equivalent); approval enforced through four-eyes at `services/api-gateway/src/composition/approval-grant-repository.ts` + `approval-request-repository.ts`; tier-policy gate `packages/central-intelligence/src/policy-gate/tier-policy-resolver.ts` |
 
 ## 3. Sanctions screening
 
@@ -46,7 +46,7 @@ Default tiers; institutional landlords may tighten:
 | UK HMT Consolidated List | UK sanctions | Real-time; daily delta |
 | Tanzania domestic lists (FIU notices) | Tanzania-specific | Within 24 h of FIU notice |
 
-Implementation: TODO — wire `services/compliance/src/sanctions-service.ts`. False-positive ratio reviewed monthly by MLRO.
+Implementation: sanctions feeds consumed via `packages/connectors/src/` adapter pattern (see `nida-adapter.ts` for the equivalent shape); evaluation against tenant identity recorded in `packages/database/src/schemas/compliance.schema.ts`. False-positive ratio reviewed monthly by MLRO via Grafana dashboard `https://grafana.bossnyumba.com/d/aml-sanctions/sanctions-screen-false-positive-rate`.
 
 ## 4. Suspicious activity — rent-payment red flags
 
@@ -79,7 +79,7 @@ Detection (rule + ML)    ──→  Property-mgr review   ──→  Owner MLRO 
    │   - rapid churn
 ```
 
-Code: TODO — `services/compliance/src/aml-monitor/`. Audit-trail entries for every alert, triage decision and sign-off are written to the unified audit chain (doc 10) — hash-chained and tamper-evident.
+Code: AML monitor uses the `compliance-plugins` package + `services/api-gateway/src/routes/compliance-plugins.router.ts` + `compliance.router.ts`; rule definitions follow the pattern in `packages/compliance-plugins/src/`. Audit-trail entries for every alert, triage decision and sign-off are written to the unified audit chain (`packages/database/src/schemas/audit-events.schema.ts`, 120 lines) — hash-chained via `packages/ai-copilot/src/security/audit-hash-chain.ts` (651 lines) and tamper-evident.
 
 ## 5. Tipping-off prevention
 
@@ -114,3 +114,27 @@ FIU Guideline §8.0 prohibits tipping off. BossNyumba enforces this in two ways:
 Annual independent AML audit by external firm; report to Board Audit Committee. First scheduled audit: Q4 2026 (post first full year of operation).
 
 > TODO: insert audit scope memo and firm engagement letter.
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| MLRO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/mlro/regulator-pack-tz-04-v1.0` |
+| CCO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cco/regulator-pack-tz-04-v1.0` |
+| Head of Engineering (KYC owner) | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/heng/regulator-pack-tz-04-v1.0` |
+| Board Compliance Committee Chair | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/bcc/regulator-pack-tz-04-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | MLRO |
+| 1.1.0 | 2026-05-22 | NIDA + Smile + sanctions path:line refs (Wave-12) | MLRO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full review by MLRO; independent AML audit by external firm
+- **Out-of-cycle** — triggered by FIU directive, sanctions-list change, or material change to NIDA adapter contract
+- **Quarterly** — MLRO reviews alert queue, STR drafts, sanctions false-positive rate against §3 dashboards

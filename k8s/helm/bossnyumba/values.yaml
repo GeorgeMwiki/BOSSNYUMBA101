@@ -1,33 +1,36 @@
 # BOSSNYUMBA Helm chart values. Override per-environment with -f
 # values-dev.yaml / values-staging.yaml / values-prod.yaml.
 #
-# This file is SCAFFOLDING. Every TODO(scaffold) marker gates a real
-# value that must be plumbed before deployment.
+# Defaults target the staging environment on EKS (gp3 storage class).
+# Override storage.storageClassName per cluster: gp3 (AWS), pd-ssd (GCP),
+# longhorn (k3s), local-path (k3d / dev).
 
 # ── Image ─────────────────────────────────────────────────────────────
 # Each app/service has its own image. CI tags by git SHA; `latest` is
 # dev-only.
 image:
-  # TODO(scaffold): set registry (gcr.io / 123456.dkr.ecr.eu-central-1.amazonaws.com / ghcr.io).
+  # GitHub Container Registry — paired with `bossnyumba-pull` imagePullSecret.
+  # CI workflow `release.yml` pushes here on every merge to `main`.
   registry: ghcr.io
-  project: georgemwiki
-  pullPolicy: Always
-  pullSecret: registry-pull
-  # TODO(scaffold): wire the global tag in CI (e.g. `helm upgrade --set image.tag=$GIT_SHA`).
+  project: georgemwiki/bossnyumba
+  pullPolicy: IfNotPresent
+  pullSecret: bossnyumba-pull
+  # Global default. CI overrides with: --set image.tag=$GIT_SHA
   tag: latest
 
 # ── Domain / TLS ──────────────────────────────────────────────────────
 # Each frontend portal gets its own public host. The 4 backend services
 # are NEVER exposed publicly — they sit behind api-gateway internally.
-domain: bossnyumba.example.com
+domain: bossnyumba.dev
 hosts:
-  # TODO(scaffold): replace with real tenant or SaaS domains.
-  customerApp: tenant.bossnyumba.example.com
-  estateManagerApp: manager.bossnyumba.example.com
-  ownerPortal: owner.bossnyumba.example.com
-  adminPlatformPortal: admin.bossnyumba.example.com
+  # Staging defaults. Override in values-prod.yaml with bossnyumba.com.
+  customerApp: customer.bossnyumba.dev
+  estateManagerApp: manager.bossnyumba.dev
+  ownerPortal: owner.bossnyumba.dev
+  adminPlatformPortal: admin.bossnyumba.dev
 tls:
   enabled: true
+  # Use letsencrypt-staging in dev to dodge prod rate limits.
   issuer: letsencrypt-prod
   # cert-manager will provision a secret per portal.
   secretNamePrefix: bossnyumba-tls
@@ -52,8 +55,7 @@ apps:
     enabled: true
     name: customer-app
     image:
-      # TODO(scaffold): per-app image repo if not using a monorepo bundle.
-      repository: bossnyumba/customer-app
+      repository: customer-app
       tag: ""   # falls back to global image.tag
     port: 3000
     healthPath: /api/health
@@ -70,7 +72,7 @@ apps:
     enabled: true
     name: estate-manager-app
     image:
-      repository: bossnyumba/estate-manager-app
+      repository: estate-manager-app
       tag: ""
     port: 3000
     healthPath: /api/health
@@ -87,7 +89,7 @@ apps:
     enabled: true
     name: owner-portal
     image:
-      repository: bossnyumba/owner-portal
+      repository: owner-portal
       tag: ""
     port: 3000
     healthPath: /api/health
@@ -104,7 +106,7 @@ apps:
     enabled: true
     name: admin-platform-portal
     image:
-      repository: bossnyumba/admin-platform-portal
+      repository: admin-platform-portal
       tag: ""
     port: 3000
     healthPath: /api/health
@@ -124,13 +126,15 @@ services:
     enabled: true
     name: api-gateway
     image:
-      repository: bossnyumba/api-gateway
+      repository: api-gateway
       tag: ""
     port: 4000
     healthPath: /healthz
     resources:
-      requests: { cpu: 250m, memory: 512Mi }
-      limits:   { cpu: "1", memory: 1Gi }
+      # api-gateway fans out to 4 backend services + Postgres + Redis.
+      # Give it generous headroom; it is the choke-point.
+      requests: { cpu: 500m, memory: 1Gi }
+      limits:   { cpu: "2", memory: 4Gi }
     autoscaling:
       enabled: true
       minReplicas: 3
@@ -141,13 +145,13 @@ services:
     enabled: true
     name: payments-ledger
     image:
-      repository: bossnyumba/payments-ledger
+      repository: payments-ledger
       tag: ""
     port: 4010
     healthPath: /healthz
     resources:
-      requests: { cpu: 200m, memory: 384Mi }
-      limits:   { cpu: 800m, memory: 768Mi }
+      requests: { cpu: 250m, memory: 512Mi }
+      limits:   { cpu: "1", memory: 1Gi }
     autoscaling:
       enabled: true
       minReplicas: 2
@@ -160,7 +164,7 @@ services:
     enabled: true
     name: reports
     image:
-      repository: bossnyumba/reports
+      repository: reports
       tag: ""
     port: 4020
     healthPath: /healthz
@@ -178,7 +182,7 @@ services:
     enabled: true
     name: notifications
     image:
-      repository: bossnyumba/notifications
+      repository: notifications
       tag: ""
     port: 4030
     healthPath: /healthz
@@ -199,7 +203,8 @@ postgres:
   enabled: true
   external:
     enabled: false
-    # TODO(scaffold): if external, populate connection from external-secret.
+    # When external, DATABASE_URL comes from ExternalSecret. Optional
+    # discovery hints:
     # host: ""
     # port: 5432
     # database: bossnyumba
@@ -207,10 +212,13 @@ postgres:
     replicas: 3
     image:
       repository: postgres
-      tag: "16-alpine"
+      tag: "16.4-alpine"   # pinned minor for reproducibility
     storage:
-      # TODO(scaffold): pick a storageClass that matches your cluster.
-      storageClassName: ""
+      # gp3 on AWS (default). Override per-cluster:
+      #   GKE: pd-ssd
+      #   k3s: longhorn
+      #   k3d: local-path
+      storageClassName: gp3
       size: 100Gi
     resources:
       requests: { cpu: 500m, memory: 1Gi }
@@ -228,10 +236,10 @@ redis:
   enabled: true
   external:
     enabled: false
-    # TODO(scaffold): if external (Upstash), populate connection from external-secret.
+    # When external (Upstash), REDIS_URL comes from ExternalSecret.
   image:
     repository: redis
-    tag: "7-alpine"
+    tag: "7.4-alpine"
   resources:
     requests: { cpu: 100m, memory: 256Mi }
     limits:   { cpu: 500m, memory: 1Gi }
@@ -264,15 +272,16 @@ secrets:
   # "aws" -> AWS Secrets Manager + IRSA
   # "vault" -> HashiCorp Vault
   # "sealed" -> Bitnami Sealed Secrets (last resort, in-cluster)
-  provider: gcp
+  provider: aws
   gcp:
-    # TODO(scaffold): set the GCP project that holds the secrets.
-    projectID: bossnyumba-prod
+    projectID: bossnyumba-staging
     workloadIdentity:
       clusterLocation: europe-west3
-      clusterName: bossnyumba-prod
+      clusterName: bossnyumba-staging
   aws:
     region: eu-central-1
+    # IRSA role ARN — set per-environment in values-{env}.yaml.
+    # Example: arn:aws:iam::123456789012:role/bossnyumba-staging-external-secrets
     roleArn: ""
 
 # ── External Secrets ─────────────────────────────────────────────────
@@ -291,8 +300,8 @@ ingress:
 # ── Cert Manager ─────────────────────────────────────────────────────
 certManager:
   enabled: true
-  # TODO(scaffold): set the email Let's Encrypt should mail renewal alerts to.
-  acmeEmail: ops@bossnyumba.example.com
+  # Let's Encrypt will mail renewal alerts here.
+  acmeEmail: platform-engineering@bossnyumba.dev
 
 # ── NetworkPolicy ────────────────────────────────────────────────────
 networkPolicy:
@@ -320,3 +329,68 @@ pdb:
   enabled: true
   # Per-workload PDB minAvailable derived from replicaCount.
   defaultMinAvailable: 1
+
+# ── ServiceAccounts (per-service for IRSA / Workload Identity) ───────
+# Each workload gets its own SA so we can attach a narrowly-scoped IAM
+# role later (per-service S3 buckets, per-service Secrets Manager paths).
+serviceAccount:
+  create: true
+  # Common annotations applied to every SA. Per-service overrides below.
+  # commonAnnotations:
+  #   eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/bossnyumba-base
+  perService:
+    customerApp:
+      annotations: {}
+    estateManagerApp:
+      annotations: {}
+    ownerPortal:
+      annotations: {}
+    adminPlatformPortal:
+      annotations: {}
+    apiGateway:
+      annotations: {}
+    paymentsLedger:
+      # PCI-adjacent: scope this role to ONLY the payment-provider secrets.
+      # eks.amazonaws.com/role-arn: arn:aws:iam::...:role/bossnyumba-payments-ledger
+      annotations: {}
+    reports:
+      annotations: {}
+    notifications:
+      annotations: {}
+
+# ── App-level non-secret config ──────────────────────────────────────
+# Surfaces as `app-config` ConfigMap, mounted via envFrom on every pod.
+# Secrets live in External Secrets (see secrets-external.yaml).
+appConfig:
+  NODE_ENV: production
+  LOG_LEVEL: info
+  TZ: Africa/Dar_es_Salaam
+  DEFAULT_CURRENCY: TZS
+  DEFAULT_LOCALE: en-TZ
+  # Comma-separated list of locales the frontends ship translations for.
+  SUPPORTED_LOCALES: en-TZ,sw-TZ,en-KE,en-UG
+  # Feature flags (no secrets here).
+  FEATURE_ADAPTIVE_UI: "true"
+  FEATURE_BRAIN_AUTOPILOT: "false"
+  FEATURE_MOBILE_MONEY: "true"
+  # Observability sample rates.
+  OTEL_TRACES_SAMPLER_ARG: "0.1"
+  # Cost-cap defaults — services read these to short-circuit LLM calls.
+  LLM_DAILY_COST_CAP_USD: "50"
+
+# ── DB migration (Helm pre-upgrade hook) ─────────────────────────────
+# Runs `pnpm migrate` against the configured DATABASE_URL before each
+# helm upgrade. Hook timeout matches `--timeout 10m` from the runbook.
+migrate:
+  enabled: true
+  image:
+    # Reuses the api-gateway image which bundles `pnpm migrate` script.
+    repository: api-gateway
+    tag: ""   # falls back to image.tag
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 1Gi }
+  # Hook ordering — runs after secrets but before the app rollout.
+  hookWeight: "-5"
+  backoffLimit: 3
+  activeDeadlineSeconds: 600

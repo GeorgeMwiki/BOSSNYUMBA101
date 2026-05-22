@@ -78,10 +78,45 @@ Implementation in `packages/ai-copilot/src/debate/`. Triggered automatically by 
 - Judge cannot invoke tools — output is decision only; downstream effector invokes tools after policy check
 - Kill-switch in `services/api-gateway/src/composition/debate-wiring.ts`
 
+## Implementation
+
+| Component | Source-of-truth (path:line) |
+|---|---|
+| Debate orchestration | `packages/central-intelligence/src/` (see `__tests__/debate.test.ts` for exemplar) |
+| Provider routing (Claude + OpenAI mix) | `packages/ai-copilot/src/providers/` |
+| Voice-bridge handoff | `packages/central-intelligence/src/__tests__/voice-bridge.test.ts` |
+| Kill-switch wiring | `services/api-gateway/src/composition/brain-kernel-wiring.ts` + `voice-agent-wiring.ts` |
+| Decision logging | `packages/database/src/schemas/sovereign-action-ledger.schema.ts` |
+| Tier-gate enforcement (stakes ≥ high) | `packages/central-intelligence/src/policy-gate/tier-policy-resolver.ts` (419 lines) |
+
+## Monitoring dashboards
+
+| Dashboard | URL placeholder |
+|---|---|
+| Langfuse — debate traces | `https://langfuse.bossnyumba.com/project/bossnyumba-prod/traces?tag=debate` |
+| Mission-Eval — debate catch-rate vs adversarial corpus | `https://mission-eval.bossnyumba.com/project/bossnyumba/dashboards/debate-catch-rate` |
+| Grafana — debate latency and cost | `https://grafana.bossnyumba.com/d/debate-perf/debate-latency-cost` |
+| Grafana — dissent-rate | `https://grafana.bossnyumba.com/d/debate-dissent/debate-dissent-rate` |
+
 ## Version history
 
-| Version | Date | Change |
-|---|---|---|
-| 1.0 | 2026-05-22 | Initial release (P-10 wave) |
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial release (P-10 wave) | Brain Team Lead |
+| 1.0.1 | 2026-05-22 | Implementation refs + dashboards (Wave-12) | Brain Team Lead |
+
+## Sign-off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| Model Risk Manager | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/mrm/model-card-debate-v1.0` |
+| Brain Team Lead | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/brain/model-card-debate-v1.0` |
+| CRO | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cro/model-card-debate-v1.0` |
+
+## Review cadence
+
+- **Weekly** — Brain team reviews dissent-rate dashboard
+- **Quarterly** — Model Risk Committee reviews catch-rate against refreshed adversarial corpus
+- **Out-of-cycle** — any change to system prompts in `packages/central-intelligence/src/` debate path, provider mix change, or P0/P1 incident involving a high-stakes action
 
 > TODO: insert weekly catch-rate report; insert sample dissent trace.

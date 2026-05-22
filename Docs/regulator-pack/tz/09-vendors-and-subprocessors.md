@@ -93,3 +93,38 @@ Per BoT Outsourcing Guidelines 2021 §7, due diligence is required prior to enga
 
 - BCM coverage of vendor outages → doc 08 §2 + §7
 - Sub-processor change notification to tenants → privacy notice + in-app notification
+
+## 5. Sub-processor registry (source of truth)
+
+The canonical sub-processor list in §1 is mirrored as code so that engineering signals + privacy notice + this regulator-pack cannot drift:
+
+- Connector adapters: `packages/connectors/src/adapters/` (one file per vendor; `nida-adapter.ts`, `nida-real.ts`)
+- Notification dispatcher adapter: `services/api-gateway/src/composition/notification-dispatcher-adapter.ts`
+- MCP server bindings (per-vendor tools): `services/mcp-server-firs/`, `services/mcp-server-nggis/`, `services/mcp-server-nin/`, `services/mcp-server-opay/`, `services/mcp-server-process-intel/`
+- Tax-export formatters: `services/reports/src/compliance/tz-tra-formatter.ts`, `ke-kra-formatter.ts`
+- Connector documentation index: `Docs/connectors/`
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| DPO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/regulator-pack-tz-09-v1.0` |
+| CISO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ciso/regulator-pack-tz-09-v1.0` |
+| Procurement Lead | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/proc/regulator-pack-tz-09-v1.0` |
+| Vendor Manager | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/vendmgr/regulator-pack-tz-09-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | DPO + CISO |
+| 1.1.0 | 2026-05-22 | Registry-as-code refs (Wave-12) | DPO + CISO |
+
+## Appendix C — Review Cadence
+
+- **Quarterly** — vendor manager + DPO review the Tier-1 vendor table
+- **Bi-annual** — re-assessment of Tier-2 vendors (security questionnaire refresh)
+- **Annual** — Tier-3 vendor re-assessment + full sub-processor list ratification
+- **Out-of-cycle** — onboarding any new sub-processor (30-day prior notice to institutional clients) or vendor breach notification

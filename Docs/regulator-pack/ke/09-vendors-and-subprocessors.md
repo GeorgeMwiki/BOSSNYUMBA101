@@ -89,3 +89,37 @@ Same lifecycle as TZ pack (CBK/PG/15 + DPA Reg. 2021 require comparable due-dili
 - BCM coverage of vendor outages → doc 08 §2 + §7
 - Sub-processor change notification to tenants → privacy notice + in-app notification
 - ODPC notification on sub-processor change where required by DPA Reg. 2021 → DPO assessment
+
+## 5. Sub-processor registry (source of truth — KE)
+
+The §1 sub-processor list is mirrored in code:
+
+- KE connector adapters: `packages/connectors/src/adapters/` (Daraja, Pesalink, KCB Buni, Equity Eazzy adapter files; KE IPRS overlay)
+- KRA iTax formatter: `services/reports/src/compliance/ke-kra-formatter.ts`
+- Notification dispatcher adapter: `services/api-gateway/src/composition/notification-dispatcher-adapter.ts`
+- Connector documentation index: `Docs/connectors/` (incl. `kra-erits.md`)
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| DPO (ODPC-registered) | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/regulator-pack-ke-09-v1.0` |
+| CISO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ciso/regulator-pack-ke-09-v1.0` |
+| Procurement Lead | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/proc/regulator-pack-ke-09-v1.0` |
+| Vendor Manager | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/vendmgr/regulator-pack-ke-09-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | DPO + CISO |
+| 1.1.0 | 2026-05-22 | KE registry-as-code refs (Wave-12) | DPO + CISO |
+
+## Appendix C — Review Cadence
+
+- **Quarterly** — vendor manager + DPO Tier-1 review
+- **Bi-annual** — Tier-2 re-assessment
+- **Annual** — Tier-3 + full registry ratification
+- **Out-of-cycle** — new sub-processor (30-day prior notice) or vendor breach

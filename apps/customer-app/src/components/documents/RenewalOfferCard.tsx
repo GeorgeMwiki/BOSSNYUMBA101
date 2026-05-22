@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, FileSignature, Loader2 } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 interface RenewalOffer {
   readonly id: string;
@@ -87,6 +88,7 @@ export function RenewalOfferCard() {
           headers: {
             'Content-Type': 'application/json',
             ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
+            ...getCsrfHeaders(),
           },
           body: JSON.stringify({
             termMonths: offer.newTermMonths,

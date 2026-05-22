@@ -24,6 +24,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 // ─────────────────────────────────────────────────────────────────────
 // Local mirror of the triage tree (kept in sync with
@@ -318,6 +319,7 @@ export default function MaintenanceTriagePage() {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...getCsrfHeaders(),
         },
         body: JSON.stringify({
           title: `${node.problemCode} (triage)`,

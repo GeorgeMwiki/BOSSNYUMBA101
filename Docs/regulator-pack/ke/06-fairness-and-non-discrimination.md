@@ -47,7 +47,13 @@ BossNyumba commits to fair treatment in three areas where AI directly influences
 | Income source | Informal economy bias | Conduct risk; financial inclusion |
 | Language / dialect | Sheng / coastal Kiswahili coverage | Constitution; conduct risk |
 
-Source-of-truth: TODO — `packages/fairness/src/protected-attributes-ke.ts` (region overlay).
+Source-of-truth (KE):
+
+- AI safety reject-list (incl. HIV non-collection enforcement) — `packages/ai-copilot/src/security/prompt-shield.ts`
+- PII scrubber categorisation — `packages/ai-copilot/src/security/pii-scrubber.ts` (511 lines)
+- s.35 review-right enforcement — `packages/central-intelligence/src/policy-gate/tier-policy-resolver.ts` (419 lines) + `services/api-gateway/src/routes/gdpr.router.ts`
+- Sovereign action ledger — `packages/database/src/schemas/sovereign-action-ledger.schema.ts`
+- KE fairness slice telemetry — `audit-events.schema.ts` with `region = 'KE'`
 
 ## 3. Fairness metrics
 
@@ -124,4 +130,37 @@ Same cadence as TZ pack. KE-specific:
 - Escalation to BossNyumba DPO if review not satisfactory
 - Escalation to ODPC (data protection) or Rent Restriction Tribunal / Business Premises Rent Tribunal (tenancy)
 
+## 8. KE fairness dashboards
+
+| Dashboard | URL placeholder |
+|---|---|
+| Grafana — KE disparate-impact by model | `https://grafana.bossnyumba.com/d/fairness-di/disparate-impact-by-model?var-region=KE` |
+| Grafana — KE s.35 challenge throughput | `https://grafana.bossnyumba.com/d/s35-challenges/s35-challenge-resolution` |
+| Mission-Eval — counterfactual fairness sample (KE) | `https://mission-eval.bossnyumba.com/project/bossnyumba/dashboards/counterfactual-fairness-ke` |
+| Grafana — HIV-non-collection verification (must be zero) | `https://grafana.bossnyumba.com/d/hiv-zero/hiv-zero-collection-verify` |
+
 > TODO: insert KE quarterly fairness dashboard; insert sample s.35 challenge log.
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| CRO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cro/regulator-pack-ke-06-v1.0` |
+| CCO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cco/regulator-pack-ke-06-v1.0` |
+| DPO (ODPC-registered) | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/regulator-pack-ke-06-v1.0` |
+| Head of Customer Experience | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/hcx/regulator-pack-ke-06-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | CRO + CCO |
+| 1.1.0 | 2026-05-22 | KE fairness enforcement refs + dashboards (Wave-12) | CRO + CCO |
+
+## Appendix C — Review Cadence
+
+- **Quarterly** — KE-region fairness slice + s.35 challenge review
+- **Out-of-cycle** — ODPC notice, critical violation, new KE protected attribute case-law
+- **Annual** — external fairness audit (2027+); board ratification of protected-attribute list

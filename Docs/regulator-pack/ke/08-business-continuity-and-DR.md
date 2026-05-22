@@ -95,3 +95,46 @@ See doc 09 for full vendor table.
 - SMS fallback (Safaricom + Airtel KE SMS gateways)
 - Email to institutional clients
 - Regulator notification per doc 07 §5
+
+## 9. KE implementation references
+
+| Capability | Source-of-truth (path:line) |
+|---|---|
+| Daraja webhook receiver + idempotency | `services/webhooks/src/` (W4-B hardening) |
+| Pesalink + KCB Buni + Equity Eazzy adapters | `packages/connectors/src/adapters/` |
+| KE region routing (failover) | `packages/database/src/schemas/identity.schema.ts` + `services/api-gateway/src/composition/service-context.middleware.ts` |
+| Postgres HA + Redis Sentinel | `infra/postgres-ha/` (Z5 + W4-L) |
+| Backup-restore CI check | `.github/workflows/` (Wave-2 N) |
+
+## 10. KE BCM dashboards
+
+| Dashboard | URL placeholder |
+|---|---|
+| Grafana — KE RTO / RPO tracker | `https://grafana.bossnyumba.com/d/bcm-rto-rpo/bcm-rto-rpo-overview?var-region=KE` |
+| Grafana — KE payment-rail availability | `https://grafana.bossnyumba.com/d/ke-banks/ke-bank-rail-availability` |
+| Statuspage — KE public uptime | `https://status.bossnyumba.com/?region=KE` |
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| CISO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ciso/regulator-pack-ke-08-v1.0` |
+| CTO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cto/regulator-pack-ke-08-v1.0` |
+| Head of SRE | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/sre/regulator-pack-ke-08-v1.0` |
+| Board Risk Committee Chair | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/brc/regulator-pack-ke-08-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | CISO + CTO |
+| 1.1.0 | 2026-05-22 | KE implementation refs + dashboards (Wave-12) | CISO + CTO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full KE DR exercise + Board sign-off
+- **Quarterly** — partial drill of one §2 scenario
+- **Monthly** — backup-restore + call-tree test
+- **Out-of-cycle** — vendor SLA change, new KE rail, post-P0 incident

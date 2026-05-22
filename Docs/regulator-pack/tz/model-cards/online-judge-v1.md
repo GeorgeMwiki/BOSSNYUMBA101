@@ -79,10 +79,44 @@ Implementation in `packages/eval-online-judge/`.
 - Cannot modify production output; only emits scores and flags
 - Auto-actions (rollback / kill-switch) require co-trigger from drift-detection job (no single-point automation)
 
+## Implementation
+
+| Component | Source-of-truth (path:line) |
+|---|---|
+| Judge sampling + scoring path | `packages/central-intelligence/src/__tests__/self-grading-judge.test.ts` (exemplar) + judge invocation via `packages/ai-copilot/src/providers/` |
+| Adversarial corpus replay | nightly cron; sleep-pass-3 updates rules at `packages/central-intelligence/src/kernel/reflexion/sleep/pass-3-update-guidelines.ts` |
+| Auto-rollback orchestration | Mission-Eval webhook → model promotion API surface |
+| Reflexion loop integration | `packages/central-intelligence/src/kernel/reflexion/` (recorder, writer, retriever, loader) |
+| Cost-circuit-breaker | `packages/ai-copilot/src/security/cost-circuit-breaker.ts` |
+
+## Monitoring dashboards
+
+| Dashboard | URL placeholder |
+|---|---|
+| Mission-Eval — quality-score per production component | `https://mission-eval.bossnyumba.com/project/bossnyumba/dashboards/quality-rollup` |
+| Mission-Eval — adversarial corpus pass-rate trend | `https://mission-eval.bossnyumba.com/project/bossnyumba/dashboards/adversarial-pass-rate` |
+| Langfuse — judge traces | `https://langfuse.bossnyumba.com/project/bossnyumba-prod/traces?tag=judge` |
+| Grafana — judge-human agreement | `https://grafana.bossnyumba.com/d/judge-agreement/judge-human-agreement` |
+
 ## Version history
 
-| Version | Date | Change |
-|---|---|---|
-| 1.0 | 2026-05-22 | Initial release (P-9 wave) |
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial release (P-9 wave) | Eval Team Lead |
+| 1.0.1 | 2026-05-22 | Implementation refs + dashboards (Wave-12) | Eval Team Lead |
+
+## Sign-off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| Model Risk Manager | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/mrm/model-card-judge-v1.0` |
+| Eval Team Lead | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/eval/model-card-judge-v1.0` |
+| DPO | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/model-card-judge-v1.0` |
+
+## Review cadence
+
+- **Weekly** — Eval team reviews failed-sample logs + judge-human agreement
+- **Quarterly** — adversarial corpus refresh + offline eval re-run
+- **Out-of-cycle** — rubric change or judge model upgrade
 
 > TODO: insert weekly adversarial-corpus pass-rate chart; insert sample failure-mode report.

@@ -13,7 +13,7 @@ BossNyumba is a multi-tenant, AI-native property-management platform serving res
 
 The platform is **operational software, not a financial institution**: BossNyumba does not hold deposits, does not lend, does not provide investment advice, and is not a payment service provider in its own name. In Kenya, rent payments flow through licensed mobile-money operators and PSPs (Safaricom M-Pesa Kenya, Airtel Money Kenya, Pesalink, KCB Buni, Equity Eazzy); BossNyumba is the reconciliation layer and tenant ledger of record.
 
-Core capabilities — same monorepo paths as the TZ pack (see `tz/01-system-overview.md` §1 for table). The Kenya deployment shares the same codebase, with region selection at the tenant level controlling MNO routing, ID-verification adapter and tax-reporting adapter.
+Core capabilities — same monorepo paths as the TZ pack (see `tz/01-system-overview.md` §1.1 for the full path:line table). The Kenya deployment shares the same codebase, with region selection at the tenant level controlling MNO routing, ID-verification adapter and tax-reporting adapter. The region toggle is implemented through `packages/database/src/schemas/identity.schema.ts` (`tenants.region`) and wired through `services/api-gateway/src/composition/service-context.middleware.ts`; KE-specific reporters live at `services/reports/src/compliance/ke-kra-formatter.ts`.
 
 ## 2. Jurisdictions
 
@@ -74,3 +74,27 @@ BossNyumba **does not**:
 Any expansion beyond this scope requires a board-approved change of business plan and supplementary regulatory engagement.
 
 > TODO: insert link to most recent board minutes confirming scope for KE expansion.
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| CRO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cro/regulator-pack-ke-01-v1.0` |
+| CCO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cco/regulator-pack-ke-01-v1.0` |
+| DPO (KE — ODPC registered) | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/regulator-pack-ke-01-v1.0` |
+| Board Chair | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/board/regulator-pack-ke-01-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | CRO + CCO |
+| 1.1.0 | 2026-05-22 | KE region wiring path:line refs (Wave-12) | CRO + CCO |
+
+## Appendix C — Review Cadence
+
+- **Annual** — full review by CRO + CCO + ODPC-registered DPO
+- **Out-of-cycle** — CBK or ODPC supervisory letter, new KE payment rail, or scope-change board vote
+- **Quarterly** — Risk & Audit Committee review

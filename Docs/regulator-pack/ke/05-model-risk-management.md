@@ -66,6 +66,56 @@ Same risk inventory as TZ pack. Kenya-specific differences:
 
 ## 5. Cross-references
 
-Same model-card references as TZ pack: see `model-cards/adaptive-layout-engine-v1.md`, `three-agent-debate-v1.md`, `online-judge-v1.md`.
+Model cards in this KE pack:
+
+- UI-1 — `model-cards/adaptive-layout-engine-v1.md`
+- P-10 — `model-cards/three-agent-debate-v1.md`
+- P-9 — `model-cards/online-judge-v1.md`
+- F2 — `model-cards/tier-policy-resolver-v1.md`
+- F9 — `model-cards/lats-search-v1.md`
+- F11 — `model-cards/reflexion-sleep-v1.md`
+
+## 6. Source-of-truth (KE region overlay)
+
+KE-specific overlays of the TZ-05 §2 inventory:
+
+- Region gate via `packages/database/src/schemas/identity.schema.ts` (`tenants.region = 'KE'`)
+- Stakes upgrade (medium → high for `predictive-interventions-v1`) enforced by `packages/central-intelligence/src/policy-gate/tier-policy-resolver.ts`
+- s.35 "Challenge" CTA wiring through `services/api-gateway/src/routes/gdpr.router.ts`
+- KE-specific fairness slice metrics emitted to `packages/database/src/schemas/audit-events.schema.ts` with `region = 'KE'`
+
+## 7. Monitoring dashboards (KE)
+
+| Dashboard | URL placeholder |
+|---|---|
+| Langfuse — kernel traces filtered to KE | `https://langfuse.bossnyumba.com/project/bossnyumba-prod/traces?region=KE` |
+| Mission-Eval — quality scores per KE model | `https://mission-eval.bossnyumba.com/project/bossnyumba/dashboards/quality-rollup-ke` |
+| Grafana — s.35 challenge throughput | `https://grafana.bossnyumba.com/d/s35-challenges/s35-challenge-resolution` |
+| Grafana — KE fairness violations | `https://grafana.bossnyumba.com/d/fairness/fairness-violations-by-model?var-region=KE` |
 
 > TODO: insert most recent KE-region Model Risk Committee minutes; collect KE-specific eval results.
+
+---
+
+## Appendix A — Board Sign-Off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| Model Risk Manager | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/mrm/regulator-pack-ke-05-v1.0` |
+| CRO | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/cro/regulator-pack-ke-05-v1.0` |
+| DPO (ODPC-registered) | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/regulator-pack-ke-05-v1.0` |
+| Brain Team Lead | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/brain/regulator-pack-ke-05-v1.0` |
+| Board Risk Committee Chair | _TODO — appoint_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/brc/regulator-pack-ke-05-v1.0` |
+
+## Appendix B — Version History
+
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial scaffold | Model Risk Manager |
+| 1.1.0 | 2026-05-22 | 3 new model cards (F2 / F9 / F11) + KE overlays + dashboards (Wave-12) | Model Risk Manager |
+
+## Appendix C — Review Cadence
+
+- **Quarterly** — KE-region Model Risk Committee review
+- **Out-of-cycle** — new ODPC AI guidance, s.35 enforcement notice, P0/P1 model failure
+- **Annual** — board ratification

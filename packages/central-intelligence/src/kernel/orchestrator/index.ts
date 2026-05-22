@@ -272,3 +272,17 @@ export {
   type LatsEvaluator,
   type LatsExpander,
 } from './lats-search.js';
+
+// Wave-13 — stakes-aware planner dispatcher. Routes the planning call
+// to ToT for low/medium stakes (cheap, fast) and LATS for high/critical
+// stakes (more iterations, value-backpropagated MCTS). Both planners
+// share the `Evaluator` / `Expander` contracts so this is a thin shim.
+// See `planner-dispatcher.ts`.
+export {
+  dispatchPlanner,
+  pickPlannerForStakes,
+  type DispatchPlannerOptions,
+  type DispatchedPlanResult,
+  type DispatchedPlannerKind,
+  type PlannerStakes,
+} from './planner-dispatcher.js';

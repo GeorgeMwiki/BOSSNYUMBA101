@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Send, Sparkles, RotateCcw } from 'lucide-react';
 
 import { readSseStream, type SseEvent } from '@/lib/sse';
+import { getCsrfHeaders } from '@/lib/csrf';
 import {
   DEFAULT_SLICE,
   SliceSelector,
@@ -196,7 +197,7 @@ export function AskChat({
         const createRes = await fetch('/api/platform/intelligence/thread', {
           method: 'POST',
           credentials: 'same-origin',
-          headers: { 'content-type': 'application/json' },
+          headers: { 'content-type': 'application/json', ...getCsrfHeaders() },
           body: JSON.stringify({
             scope: 'platform',
             persona: 'industry-observer',
@@ -227,7 +228,7 @@ export function AskChat({
           method: 'POST',
           credentials: 'same-origin',
           signal: controller.signal,
-          headers: { 'content-type': 'application/json' },
+          headers: { 'content-type': 'application/json', ...getCsrfHeaders() },
           body: JSON.stringify({
             scope: 'platform',
             persona: 'industry-observer',

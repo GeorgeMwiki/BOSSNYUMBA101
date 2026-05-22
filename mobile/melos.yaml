@@ -4,6 +4,7 @@ repository: https://github.com/GeorgeMwiki/BOSSNYUMBA101
 packages:
   - packages/**
   - apps/**
+  - integration_test
 
 command:
   bootstrap:

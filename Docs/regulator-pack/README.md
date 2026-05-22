@@ -46,9 +46,13 @@ Docs/regulator-pack/
       adaptive-layout-engine-v1.md   (UI-1)
       three-agent-debate-v1.md       (P-10)
       online-judge-v1.md             (P-9)
+      tier-policy-resolver-v1.md     (F2)
+      lats-search-v1.md              (F9)
+      reflexion-sleep-v1.md          (F11)
   ke/                        ← Kenya pack (secondary jurisdiction)
     01..10 (parallel structure, KE regulators substituted)
-    model-cards/ (parallel)
+    11-cma-securities-considerations.md  (KE-only, capital markets annex)
+    model-cards/ (parallel — six cards mirroring tz/)
 ```
 
 ---
@@ -68,7 +72,9 @@ Docs/regulator-pack/
 | 09 | [Vendors & Sub-Processors](./tz/09-vendors-and-subprocessors.md) | [Vendors & Sub-Processors](./ke/09-vendors-and-subprocessors.md) | M-Pesa, Airtel, KCB, Pesalink, Twilio, Supabase, Anthropic, etc. |
 | 10 | [Audit Trail & Evidence](./tz/10-audit-trail-and-evidence.md) | [Audit Trail & Evidence](./ke/10-audit-trail-and-evidence.md) | Hash-chain immutability, retention, sample audit packet |
 
-Model cards in `tz/model-cards/` and `ke/model-cards/` cover the three AI components most likely to draw regulatory scrutiny: the adaptive UI layout engine, the multi-agent debate planner, and the eval-on-traffic online judge.
+Model cards in `tz/model-cards/` and `ke/model-cards/` cover the six AI components most likely to draw regulatory scrutiny: the adaptive UI layout engine (UI-1), the multi-agent debate planner (P-10), the eval-on-traffic online judge (P-9), the constitution-v2 tier-policy resolver (F2), the LATS tree-search planner (F9), and the reflexion + sleep consolidation memory layer (F11).
+
+Kenya-only annex `ke/11-cma-securities-considerations.md` documents the Capital Markets Authority (CMA) position for CMA-regulated institutional landlord clients (REIT managers, pension custodians) and the forward-looking perimeter if BossNyumba ever offers rent-roll-backed financial products.
 
 ---
 

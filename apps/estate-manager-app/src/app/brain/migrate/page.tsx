@@ -19,6 +19,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@bossnyumba/design-system';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 type Step = 'upload' | 'extracting' | 'review' | 'committing' | 'done' | 'error';
 
@@ -67,7 +68,7 @@ export default function MigrationWizardPage() {
       const sheets = parseFileToSheets(file.name, text);
       const res = await fetch('/api/brain/migrate/extract', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({ sheets }),
       });
       if (!res.ok) throw new Error(`extract failed (${res.status})`);
@@ -91,7 +92,7 @@ export default function MigrationWizardPage() {
     try {
       const res = await fetch('/api/brain/migrate/commit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({ bundle }),
       });
       if (!res.ok) throw new Error(`commit failed (${res.status})`);

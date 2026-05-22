@@ -2,21 +2,9 @@
 // customer_mobile / main.dart
 // ---------------------------------------------------------------------------
 // Entry point for the Customer (tenant) mobile app.
-//
-// What BELONGS in this file:
-//   * `main()` — boot sequence, error capture, Riverpod `ProviderScope`.
-//   * Phased startup matching `estate_manager_mobile`.
-//   * Root `MaterialApp` bound to `BossnyumbaTheme` + `go_router`.
-//
-// What does NOT belong here:
-//   * Screen widgets — those live under `lib/screens/`.
-//   * Deep-link handling — extract once the link set stabilises.
-//
-// Cold-start target: < 2s on a low-tier device — many tenants are on
-// budget Android handsets (Itel / Tecno Pop). Defer Firebase + sync
-// engine warmup until after first frame.
 // ---------------------------------------------------------------------------
 
+import 'package:bossnyumba_ui/bossnyumba_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -33,37 +21,48 @@ class CustomerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Implementation pending — will wire BossnyumbaTheme + go_router.
-    return const MaterialApp(
+    return MaterialApp(
       title: 'BOSSNYUMBA',
-      home: _PlaceholderHome(),
+      theme: BossnyumbaTheme.light(),
+      darkTheme: BossnyumbaTheme.dark(),
+      home: const _CustomerHome(),
     );
   }
 }
 
-class _PlaceholderHome extends StatelessWidget {
-  const _PlaceholderHome();
+class _CustomerHome extends StatelessWidget {
+  const _CustomerHome();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('BOSSNYUMBA (scaffold)')),
-      body: ListView(
-        children: const [
-          ListTile(
-            title: Text('PayRentScreen'),
-            subtitle: Text('Stub — pending implementation'),
-          ),
-        ],
+      appBar: AppBar(title: const Text('BOSSNYUMBA')),
+      body: const Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text('Welcome home.'),
+            SizedBox(height: 8),
+            Text(
+              'Pay rent, view your lease, raise a maintenance ticket.',
+            ),
+          ],
+        ),
       ),
       floatingActionButton: Builder(
         builder: (ctx) => FloatingActionButton.extended(
+          key: const Key('customer-pay-rent-fab'),
           onPressed: () => Navigator.of(ctx).push(
             MaterialPageRoute<void>(
-              builder: (_) => const PayRentScreen(),
+              builder: (_) => const PayRentScreen(
+                outstandingAmount: 250000,
+                currency: 'TZS',
+              ),
             ),
           ),
-          label: const Text('Open pay-rent stub'),
+          label: const Text('Pay rent'),
+          icon: const Icon(Icons.payments_outlined),
         ),
       ),
     );

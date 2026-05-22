@@ -327,6 +327,14 @@ export {
 export {
   createDecisionTraceRecorder,
   createInMemoryDecisionTraceStore,
+  // Wave-13 F10 — process-wide default + Supabase stub adapter.
+  // Composition root binds the real Drizzle/Supabase writer in
+  // Wave-14; the stub today delegates to an injected inner store so
+  // the wire-shape is exercisable end-to-end.
+  setDefaultDecisionTraceStore,
+  getDefaultDecisionTraceStore,
+  _resetDefaultDecisionTraceStoreForTests,
+  createSupabaseDecisionTraceStore,
   type CreateDecisionTraceRecorderArgs,
   type DecisionTrace,
   type DecisionTraceRecorder,
@@ -334,6 +342,7 @@ export {
   type DecisionTraceWriter,
   type KernelStepName,
   type KernelStepRecord,
+  type SupabaseDecisionTraceStoreConfig,
 } from './decision-trace.js';
 
 /**
@@ -652,6 +661,22 @@ export * as vpPersonas from './vp-personas/index.js';
  * directly from `./reflexion/*` siblings.
  */
 export * as reflexion from './reflexion/index.js';
+
+/**
+ * Wave-13 — task-scoped reflexion loader (F11). The kernel reads this
+ * port at step 6 to prepend a "Recent self-critiques" section to the
+ * system prompt. Distinct from the session-scoped `reflexionRetriever`
+ * above — the loader pulls the post-4-pass consolidated bundle.
+ */
+export {
+  loadReflexions as loadReflexionsForTask,
+  renderPromptFragment as renderReflexionPromptFragment,
+  type ReflexionLoaderPort,
+  type LoadReflexionsArgs,
+  type LoadReflexionsResult,
+  type LoadedReflexion,
+  type LoadedGuideline,
+} from './reflexion/reflexion-loader.js';
 
 /**
  * Power Tools — agent meta-capabilities sitting BETWEEN regular HQ

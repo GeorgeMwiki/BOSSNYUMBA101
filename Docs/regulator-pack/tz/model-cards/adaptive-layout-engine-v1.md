@@ -68,10 +68,41 @@ Hybrid: rule-based scorer + light LLM rationale layer.
 - Action stats are user-scoped; never aggregated across users for personalisation
 - DPIA-004 (low-medium risk, TODO sign-off)
 
+## Implementation
+
+| Component | Source-of-truth (path:line) |
+|---|---|
+| Layout engine + scoring | `packages/dynamic-sections/` + `packages/genui/` |
+| Layout persistence | `packages/database/src/schemas/section-layouts.schema.ts` + `blocks.schema.ts` |
+| Action-frequency rollup | `packages/database/src/schemas/implicit-feedback-signals.schema.ts` |
+| User progressive-disclosure state | `packages/database/src/schemas/progressive-context.schema.ts` |
+| Rationale-layer prompt | LLM provider routing in `packages/ai-copilot/src/providers/`; PII never leaves the scrubber `packages/ai-copilot/src/security/pii-scrubber.ts` |
+
+## Monitoring dashboards
+
+| Dashboard | URL placeholder |
+|---|---|
+| Mission-Eval — layout-override rate | `https://mission-eval.bossnyumba.com/project/bossnyumba/dashboards/ui-layout-override-rate` |
+| Grafana — TTFM and task-completion-time slice | `https://grafana.bossnyumba.com/d/ui-perf/ui-performance-by-layout` |
+
 ## Version history
 
-| Version | Date | Change |
-|---|---|---|
-| 1.0 | 2026-05-22 | Initial release (UI-1 wave) |
+| Version | Date | Change | Approver |
+|---|---|---|---|
+| 1.0.0 | 2026-05-22 | Initial release (UI-1 wave) | UX team lead |
+| 1.0.1 | 2026-05-22 | Implementation path:line refs + dashboards (Wave-12) | UX team lead |
+
+## Sign-off
+
+| Role | Name | Date | Signature URL |
+|---|---|---|---|
+| Model Risk Manager | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/mrm/model-card-adaptive-layout-v1.0` |
+| UX Team Lead | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/ux/model-card-adaptive-layout-v1.0` |
+| DPO | _TODO_ | _yyyy-mm-dd_ | `https://docs.bossnyumba.com/signoffs/dpo/model-card-adaptive-layout-v1.0` |
+
+## Review cadence
+
+- **Quarterly** — UX team reviews layout-override rate + task-completion-time
+- **Out-of-cycle** — any change to `dynamic-sections` engine, accessibility violation, or DPIA-004 status change
 
 > TODO: collect 30 days of production metrics and update Performance section before next quarterly review.
