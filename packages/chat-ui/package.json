@@ -28,7 +28,8 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@bossnyumba/api-sdk": "workspace:*"
+    "@bossnyumba/api-sdk": "workspace:*",
+    "@bossnyumba/genui": "workspace:*"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.2.0",

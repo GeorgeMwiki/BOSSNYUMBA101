@@ -838,6 +838,9 @@ importers:
       '@bossnyumba/api-sdk':
         specifier: workspace:*
         version: link:../api-sdk
+      '@bossnyumba/genui':
+        specifier: workspace:*
+        version: link:../genui
       react:
         specifier: ^18.0.0
         version: 18.3.1
@@ -1614,6 +1617,9 @@ importers:
       '@bossnyumba/forecasting':
         specifier: workspace:*
         version: link:../../packages/forecasting
+      '@bossnyumba/genui':
+        specifier: workspace:*
+        version: link:../../packages/genui
       '@bossnyumba/graph-privacy':
         specifier: workspace:*
         version: link:../../packages/graph-privacy
