@@ -79,6 +79,25 @@ owner backend skeletons, a11y, and security follow-ups (see
   `0210_tutoring_skill_pack.sql`. All three tables: tenant_id NULL
   = platform built-in (SELECT escape via NULL); writes are
   tenant-scoped via RLS.
+- **Piece K — Document analysis pipeline** (`packages/document-analysis/`):
+  ingest → OCR (Tesseract EN+SW) → layout → semantic extract → entity
+  resolve → tab routing → citation. 9-doc-type taxonomy maps to the
+  same routing matrix as Piece L's chat capture. Migrations
+  `0211_documents.sql`, `0212_document_extractions.sql`,
+  `0213_document_entities.sql`, `0214_document_routing.sql`.
+  `0215_document_entities_core_entity_fk.sql` adds the deferred FK to
+  `core_entity` (was a soft TEXT pointer in K's worktree pre-merge).
+- **Piece L — Brain↔Tab Loop architecture** —
+  `Docs/architecture/PIECE_L_BRAIN_TAB_LOOP.md` (design doc only;
+  implementation lands in Wave 22 with migrations `0228..0231`):
+  capture → dispatch → accept_proposal → tab update. Routing matrix is
+  data not code; HITL gating below 0.78 confidence; identical
+  proposal shape regardless of source (chat vs doc upload).
+- **Wave 15 — TRC EMU pilot** (`scripts/seed-trc-tenant.mjs`,
+  `services/api-gateway/src/workers/lease-expiry-alert-cron.ts`):
+  TRC tenant + 4 districts + 15 stations + 30 units + 5 leases + 8
+  users (DG @ T1, 2× EMU @ T3, 5× lessees @ T5), GePG round-trip
+  verifier, daily lease-expiry alert cron over 60/30/7/1-day windows.
 
 ## Hard invariants (NEVER violate)
 
@@ -112,7 +131,7 @@ owner backend skeletons, a11y, and security follow-ups (see
 - Brain kernel: `packages/central-intelligence/src/kernel/kernel.ts`
 - Money: `services/payments-ledger/src/services/ledger.service.ts`
 - Database client: `packages/database/src/client.ts`
-- Migrations: `packages/database/src/migrations/0001..0204_*.sql`
+- Migrations: `packages/database/src/migrations/0001..0215_*.sql`
 - Audit + OTel: `packages/observability/src/`
 - Adaptive layout: `packages/dynamic-sections/src/registry/`
 - Brain-aware UI primitives: `packages/chat-ui/src/components/`
