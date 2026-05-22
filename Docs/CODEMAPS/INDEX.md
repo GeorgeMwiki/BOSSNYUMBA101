@@ -41,6 +41,7 @@ Codemaps are written from source. When source moves, update the codemap.
 | [graph-privacy.md](./graph-privacy.md) | `packages/graph-privacy/` | Differential-privacy aggregator budget |
 | [aop-compiler.md](./aop-compiler.md) | `packages/aop-compiler/` | Agent-Oriented Programming DSL → kernel plan |
 | [consolidation-worker.md](./consolidation-worker.md) | `services/consolidation-worker/` | Four-pass sleep consolidation |
+| [workforce-orchestrator.md](./workforce-orchestrator.md) | `packages/workforce-orchestrator/` | Piece M — agentic workforce management (assign / follow-up / check-in / perf / advisory) |
 
 ### Platform spine
 
