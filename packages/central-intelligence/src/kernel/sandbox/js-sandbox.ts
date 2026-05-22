@@ -57,13 +57,54 @@ import {
   type SandboxResult,
 } from './types.js';
 
-// Type-only import: pulls the .d.ts but emits no runtime require, so
-// downstream bundlers don't try to bundle isolated-vm's native binding.
-// The runtime value is loaded by `loadIvm()` below, hidden from the
-// bundler's static analyzer.
-import type ivm from 'isolated-vm';
+// `isolated-vm` is an OPTIONAL dependency — it's a native module that may
+// not build on every platform (and may not even be present in CI runs
+// where the optional-dep install path is skipped). We therefore declare a
+// minimal structural type for the subset of the API we touch, rather than
+// `import type ivm from 'isolated-vm'` which fails TypeScript resolution
+// when the package directory is absent.
+//
+// The actual runtime module is loaded by `loadIvm()` via dynamic require;
+// if loading fails we fall back to node:vm (see `runInSandboxFallback`).
+declare namespace ivm {
+  // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+  class Isolate {
+    constructor(opts?: { memoryLimit?: number });
+    createContextSync(): Context;
+    getHeapStatisticsSync(): { used_heap_size: number };
+    dispose(): void;
+    isDisposed: boolean;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+  class Context {
+    global: Reference;
+    eval(code: string, opts?: { timeout?: number; copy?: boolean }): Promise<unknown>;
+    evalSync(code: string, opts?: { timeout?: number; copy?: boolean }): unknown;
+    release(): void;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+  class Reference<T = unknown> {
+    set(key: string, value: unknown, opts?: { copy?: boolean }): Promise<void>;
+    setSync(key: string, value: unknown, opts?: { copy?: boolean; release?: boolean }): void;
+    get(key: string, opts?: { copy?: boolean }): Promise<T>;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+  class ExternalCopy<T = unknown> {
+    constructor(value: T);
+    copyInto(opts?: { transferIn?: boolean; release?: boolean }): T;
+    release(): void;
+  }
+}
 
-type IvmModule = typeof ivm;
+// `IvmModule` is the shape `require('isolated-vm')` returns — i.e. the
+// namespace itself, callable via `new Module.Isolate(...)`. We match the
+// upstream API surface enough for the operations in this file.
+interface IvmModule {
+  Isolate: typeof ivm.Isolate;
+  Context: typeof ivm.Context;
+  Reference: typeof ivm.Reference;
+  ExternalCopy: typeof ivm.ExternalCopy;
+}
 
 let _ivmCache: IvmModule | null = null;
 let _ivmInitErrorMessage: string | null = null;

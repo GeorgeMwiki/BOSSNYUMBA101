@@ -92,7 +92,7 @@ let _syncRequire: (spec: string) => unknown = (spec: string) => {
   if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
     throw new Error('OpenTelemetry resolution is server-only');
   }
-  // eslint-disable-next-line @typescript-eslint/no-implied-eval
+  // eslint-disable-next-line no-eval, @typescript-eslint/no-implied-eval
   const dyn = eval('require') as (m: string) => unknown;
   return dyn(spec);
 };
@@ -251,7 +251,7 @@ export function _restoreSyncRequireForTests(): void {
     if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
       throw new Error('OpenTelemetry resolution is server-only');
     }
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    // eslint-disable-next-line no-eval, @typescript-eslint/no-implied-eval
     const dyn = eval('require') as (m: string) => unknown;
     return dyn(spec);
   };
