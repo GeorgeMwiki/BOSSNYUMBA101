@@ -44,6 +44,7 @@ Codemaps are written from source. When source moves, update the codemap.
 | [aop-compiler.md](./aop-compiler.md) | `packages/aop-compiler/` | Agent-Oriented Programming DSL → kernel plan |
 | [consolidation-worker.md](./consolidation-worker.md) | `services/consolidation-worker/` | Four-pass sleep consolidation |
 | [workforce-orchestrator.md](./workforce-orchestrator.md) | `packages/workforce-orchestrator/` | Piece M — agentic workforce management (assign / follow-up / check-in / perf / advisory) |
+| [long-horizon-agent.md](./long-horizon-agent.md) | `packages/long-horizon-agent/` | Piece Q — multi-day mission lifecycle (plan, dispatch, checkpoint, drift, replan, outcome) |
 
 ### Platform spine
 
