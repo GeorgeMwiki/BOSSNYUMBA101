@@ -37,6 +37,7 @@
     "@bossnyumba/domain-models": "workspace:*",
     "@bossnyumba/domain-services": "workspace:*",
     "@bossnyumba/forecasting": "workspace:*",
+    "@bossnyumba/genui": "workspace:*",
     "@bossnyumba/graph-privacy": "workspace:*",
     "@bossnyumba/graph-sync": "workspace:*",
     "@bossnyumba/lpms-connector": "workspace:*",

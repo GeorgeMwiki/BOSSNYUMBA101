@@ -183,3 +183,57 @@ export {
   formatCell,
   type Currency,
 } from './format';
+
+// Piece-G — inline UI artifact catalog + renderer.
+export {
+  ARTIFACT_CATALOG,
+  ARTIFACT_CATALOG_BY_KEY,
+  ARTIFACT_COMPONENT_TYPES,
+  listArtifactTypes,
+  type ArtifactComponentType,
+  type ArtifactCatalogEntry,
+  type ArtifactCatalogSummary,
+  KpiTileArtifactSchema,
+  BarChartArtifactSchema,
+  LineChartArtifactSchema,
+  PieChartArtifactSchema,
+  DataTableArtifactSchema,
+  FormArtifactSchema,
+  DeckSlideArtifactSchema,
+  DocSectionArtifactSchema,
+  MapViewArtifactSchema,
+  HeatmapArtifactSchema,
+  TimelineArtifactSchema,
+  KanbanArtifactSchema,
+  GanttArtifactSchema,
+  FunnelArtifactSchema,
+  MetricGridArtifactSchema,
+  ImageArtifactSchema,
+  VideoArtifactSchema,
+  CodeBlockArtifactSchema,
+  MarkdownArtifactSchema,
+  CalloutArtifactSchema,
+  ComparisonArtifactSchema,
+  PivotTableArtifactSchema,
+  SparklineArtifactSchema,
+  TreemapArtifactSchema,
+  SankeyArtifactSchema,
+  ScatterArtifactSchema,
+  GaugeArtifactSchema,
+  RadarArtifactSchema,
+  BoxPlotArtifactSchema,
+  HistogramArtifactSchema,
+  OrgChartArtifactSchema,
+  WorkflowArtifactSchema,
+} from './catalog';
+
+export {
+  UiArtifact,
+  validateAndRender,
+  type UiArtifactProps,
+  type UiArtifactRow,
+  type ArtifactValidationFailure,
+  type ValidateAndRenderResult,
+} from './UiArtifact';
+
+export { projectArtifactToUiPart } from './projector';
