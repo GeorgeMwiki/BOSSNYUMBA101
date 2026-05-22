@@ -614,6 +614,28 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@types/node@25.8.0)(jsdom@24.1.3)(vite@6.4.2)
 
+  packages/action-runtime:
+    dependencies:
+      '@bossnyumba/approval-matrix-dsl':
+        specifier: workspace:*
+        version: link:../approval-matrix-dsl
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      '@vitest/coverage-v8':
+        specifier: ^4.1.6
+        version: 4.1.6(vitest@4.1.6)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/agent-platform:
     dependencies:
       '@bossnyumba/enterprise-hardening':
@@ -744,6 +766,25 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
+  packages/approval-matrix-dsl:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      '@vitest/coverage-v8':
+        specifier: ^4.1.6
+        version: 4.1.6(vitest@4.1.6)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/authz-policy:
     dependencies:
       '@bossnyumba/domain-models':
@@ -838,6 +879,9 @@ importers:
       '@bossnyumba/api-sdk':
         specifier: workspace:*
         version: link:../api-sdk
+      '@bossnyumba/genui':
+        specifier: workspace:*
+        version: link:../genui
       react:
         specifier: ^18.0.0
         version: 18.3.1
@@ -923,6 +967,28 @@ importers:
         specifier: ^3.22.4
         version: 3.25.76
 
+  packages/conversation-threads:
+    dependencies:
+      '@bossnyumba/persona-runtime':
+        specifier: workspace:*
+        version: link:../persona-runtime
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      '@vitest/coverage-v8':
+        specifier: ^4.1.6
+        version: 4.1.6(vitest@4.1.6)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/database:
     dependencies:
       '@bossnyumba/domain-models':
@@ -937,6 +1003,9 @@ importers:
       postgres:
         specifier: ^3.4.3
         version: 3.4.9
+      zod:
+        specifier: ^3.22.0
+        version: 3.25.76
     devDependencies:
       '@aws-sdk/client-kms':
         specifier: ^3.0.0
@@ -1505,6 +1574,25 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
+  packages/persona-runtime:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      '@vitest/coverage-v8':
+        specifier: ^4.1.6
+        version: 4.1.6(vitest@4.1.6)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/presentation-engine:
     dependencies:
       '@bossnyumba/report-engine':
@@ -1650,6 +1738,9 @@ importers:
       '@bossnyumba/forecasting':
         specifier: workspace:*
         version: link:../../packages/forecasting
+      '@bossnyumba/genui':
+        specifier: workspace:*
+        version: link:../../packages/genui
       '@bossnyumba/graph-privacy':
         specifier: workspace:*
         version: link:../../packages/graph-privacy
