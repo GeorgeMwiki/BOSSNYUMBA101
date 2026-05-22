@@ -41,6 +41,7 @@ Codemaps are written from source. When source moves, update the codemap.
 | [graph-privacy.md](./graph-privacy.md) | `packages/graph-privacy/` | Differential-privacy aggregator budget |
 | [aop-compiler.md](./aop-compiler.md) | `packages/aop-compiler/` | Agent-Oriented Programming DSL → kernel plan |
 | [consolidation-worker.md](./consolidation-worker.md) | `services/consolidation-worker/` | Four-pass sleep consolidation |
+| [long-horizon-agent.md](./long-horizon-agent.md) | `packages/long-horizon-agent/` | Multi-day mission lifecycle — plan, dispatch, checkpoint, drift, replan, outcome |
 
 ### Platform spine
 
