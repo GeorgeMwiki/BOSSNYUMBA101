@@ -64,6 +64,21 @@ owner backend skeletons, a11y, and security follow-ups (see
   hash-chained messages, versioned artifacts (branch supported),
   cross-thread retrieval scoped to (tenant, persona, project), WhatsApp
   24h-window session rotation. Migrations `0200..0204`.
+- **Piece G — GenUI inline artifacts** (`packages/genui/`,
+  `services/api-gateway/src/routes/artifacts.hono.ts`): 32-type
+  catalog (kpi_tile, charts, table, form, deck_slide, doc_section,
+  …), `<UiArtifact>` typed-streaming renderer, server-side render
+  to PNG/PDF/SVG via Playwright. Migrations `0205..0207`. Brain
+  may only emit pre-registered catalog keys — no raw JSX/HTML.
+- **Piece H — Reports + Decks + Socratic tutor** —
+  `packages/report-engine/` (PDF/DOCX/PPTX, 7 built-in templates),
+  `packages/presentation-engine/` (5 built-in themes, Piece-G
+  artifact-compatible), `packages/tutoring-skill-pack/`
+  (data-grounded Socratic tutor, 10 built-in concepts). Migrations
+  `0208_report_templates.sql`, `0209_presentation_themes.sql`,
+  `0210_tutoring_skill_pack.sql`. All three tables: tenant_id NULL
+  = platform built-in (SELECT escape via NULL); writes are
+  tenant-scoped via RLS.
 
 ## Hard invariants (NEVER violate)
 

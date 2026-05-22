@@ -70,6 +70,9 @@ Codemaps are written from source. When source moves, update the codemap.
 | [mcp-server.md](./mcp-server.md) | `packages/mcp-server/` | MCP base server + tool registry |
 | [mcp-servers.md](./mcp-servers.md) | `services/mcp-server-*/` | Per-integration MCP servers |
 | [svc-reports.md](./svc-reports.md) | `services/reports/` | PDF / Excel / CSV + scheduler |
+| [report-engine.md](./report-engine.md) | `packages/report-engine/` | Piece H — templated PDF/DOCX/PPTX in tenant brand |
+| [presentation-engine.md](./presentation-engine.md) | `packages/presentation-engine/` | Piece H — themed slide decks (5 built-in themes) |
+| [tutoring-skill-pack.md](./tutoring-skill-pack.md) | `packages/tutoring-skill-pack/` | Piece H — Socratic tutor with data-grounded examples |
 
 ### User surface
 

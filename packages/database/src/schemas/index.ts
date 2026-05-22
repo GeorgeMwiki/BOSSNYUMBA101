@@ -455,3 +455,18 @@ export * from './decision-traces.schema.js';
 // tables FORCE RLS via the canonical `app.current_tenant_id` GUC; the
 // PostGIS + pgvector extension installs are guarded fail-soft in 0186.
 export * from './core-entity/index.js';
+
+// Piece H — AI-powered reports + presentations + Socratic tutor.
+//   - report_templates       (migration 0208): report-engine template
+//                             registry; tenant_id NULL = platform built-in.
+//   - presentation_themes    (migration 0209): slide-master themes used
+//                             by presentation-engine.
+//   - tutoring_skill_pack    (migration 0210): Socratic-tutor concept
+//                             registry with optional data-binding for
+//                             grounding worked examples in real tenant
+//                             data.
+// Partial unique indexes guarantee (NULL,slug) and (tenant_id,slug)
+// uniqueness. RLS allows read of NULL rows; writes are tenant-scoped.
+export * from './report-templates.schema.js';
+export * from './presentation-themes.schema.js';
+export * from './tutoring-skill-pack.schema.js';
