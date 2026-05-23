@@ -255,6 +255,12 @@ import {
   createIntelligenceHistorySupervisor,
 } from './composition/background-wiring';
 import { setBrainExtraSkills } from './composition/brain-extensions';
+// Wave-3-int2 — brain↔tab loop composition (Piece L → Piece B handlers).
+import {
+  createDispatchRouterWiring,
+  createStubEstateHandlerDeps,
+} from './composition/dispatch-router-wiring';
+import { installJarvisCaptureHook } from './routes/jarvis-router-factory';
 import { buildQueryOrganizationTool } from '@bossnyumba/ai-copilot';
 import { createAmbientBrainMiddleware } from './middleware/ambient-brain.middleware';
 import { createWebhookDlqRouter } from './routes/webhook-dlq.router';
@@ -479,6 +485,38 @@ const heartbeatSupervisor = createHeartbeatSupervisor(
   serviceRegistry,
   logger,
   30_000,
+);
+
+// ----------------------------------------------------------------------------
+// Wave-3-int2 — Brain↔Tab loop composition.
+//
+// Wires the dispatch-router (Piece L) + ESTATE 5-handler set (Piece B) +
+// tenant-override routing-rules loader. Returns a `postThinkCaptureHook`
+// we install on every Jarvis router so `/think` + `/stream` fire the
+// hook fire-and-forget after each turn.
+//
+// Stubbed ports today (createStubEstateHandlerDeps) — Wave-3-int3 will
+// swap in the Drizzle-backed CoreEntityRepository, LedgerService, and
+// Piece M work-assignments port.
+// ----------------------------------------------------------------------------
+const dispatchRouterWiring = createDispatchRouterWiring({
+  estate: createStubEstateHandlerDeps(),
+  logger: {
+    info: (meta, msg) => logger.info(meta, msg),
+    warn: (meta, msg) => logger.warn(meta, msg),
+    error: (meta, msg) => logger.error(meta, msg),
+  },
+});
+installJarvisCaptureHook(async (input) => {
+  await dispatchRouterWiring.postThinkCaptureHook(input);
+});
+logger.info(
+  {
+    handlerRegistry: (dispatchRouterWiring.handlerRegistry as {
+      listRegistered?: () => unknown;
+    }).listRegistered?.(),
+  },
+  'dispatch-router-wiring: live (brain↔tab loop wired)'
 );
 
 // Wave 26 Agent Z4 — boot-time observability for the three AI-brain
