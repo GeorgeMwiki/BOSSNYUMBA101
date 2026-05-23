@@ -7,6 +7,30 @@ export * from './voice';
 // Shared brain-degraded UI marker — consumed by customer-app/brain-degraded.ts.
 export { DegradedBanner } from './components/DegradedBanner';
 export type { DegradedBannerProps, DegradedMarker } from './components/DegradedBanner';
+// Wave-3 INT-4 — Proactive UX surfaces for the MD-vision packages.
+export { ProactiveHint } from './components/ProactiveHint';
+export type {
+  ProactiveHintProps,
+  HintCandidate,
+  HintTrigger,
+  HintAction,
+  HintStorage,
+} from './components/ProactiveHint';
+export { selectHint, matchesThreshold, readDismissed } from './components/ProactiveHint';
+// ChatArtifactStream + NeedSpawnBanner are surfaces consumed by the
+// three frontends to render kernel-emitted artifacts + Piece O spawn
+// proposals inline in the chat.
+export { ChatArtifactStream } from './components/ChatArtifactStream';
+export type {
+  ChatArtifactStreamProps,
+  ChatArtifact,
+  ArtifactRenderer,
+} from './components/ChatArtifactStream';
+export { NeedSpawnBanner, sortProposals } from './components/NeedSpawnBanner';
+export type {
+  NeedSpawnBannerProps,
+  TabSpawnProposal,
+} from './components/NeedSpawnBanner';
 // Progressive-disclosure mastery gate — UI shrinks for novices and
 // expands as the user accrues actions. See lib/user-mastery/.
 export { MasteryGate } from './components/MasteryGate';

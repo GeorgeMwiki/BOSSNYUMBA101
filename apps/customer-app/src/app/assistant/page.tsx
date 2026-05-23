@@ -9,13 +9,22 @@
  * cannot be coerced to act as a different persona.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Brain, Send, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@bossnyumba/design-system';
+import {
+  ProactiveHint,
+  NeedSpawnBanner,
+  ChatArtifactStream,
+  type ChatArtifact,
+  type HintCandidate,
+  type TabSpawnProposal,
+} from '@bossnyumba/chat-ui';
 import { authedHeaders } from '@/lib/supabase';
 import { getCsrfHeaders } from '@/lib/csrf';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 interface Msg {
   id: string;
@@ -43,6 +52,34 @@ export default function TenantAssistantPage() {
       behavior: 'smooth',
     });
   }, [messages, sending]);
+
+  // Wave-3 INT-4 — proactive UX. Hints + spawn proposals are gated by
+  // feature flags so they stay invisible in prod until ops flip them.
+  // The proposals list is empty until the tab-need-detector api-client
+  // port lands. The hint candidates list is sourced locally so the
+  // surface is testable without the affect-profile transport.
+  const proactiveHintsEnabled = isFeatureEnabled('chat_proactive_hint_enabled');
+  const spawnBannerEnabled = isFeatureEnabled('need_spawn_banner_enabled');
+  const hintCandidates = useMemo<HintCandidate[]>(
+    () => [
+      {
+        id: 'tenant-frustration-human-handoff',
+        trigger: 'frustration',
+        threshold: 0.5,
+        title: 'Want to talk to a person?',
+        body: 'We can route you to your estate manager.',
+        action: { label: 'Yes, please', emit: 'request-human-handoff' },
+      },
+    ],
+    [],
+  );
+  // TODO(wave3-int5): replace empty array with
+  //   `useTabSpawnProposals()` once the tab-need-detector API exists.
+  const spawnProposals: TabSpawnProposal[] = useMemo(() => [], []);
+  // TODO(wave3-int5): replace empty array with `useThreadArtifacts(threadId)`
+  // once the conversation-threads api-client port lands.
+  const artifactStreamEnabled = isFeatureEnabled('chat_artifact_stream_enabled');
+  const artifacts: ChatArtifact[] = useMemo(() => [], []);
 
   async function send() {
     const text = input.trim();
@@ -97,6 +134,26 @@ export default function TenantAssistantPage() {
         showBack
       />
       <div ref={scrollRef} className="px-4 py-3 pb-32 flex flex-col gap-3 max-h-[calc(100vh-200px)] overflow-y-auto">
+        {/* Proactive hints + tab-spawn proposals — Wave-3 INT-4 */}
+        {proactiveHintsEnabled ? (
+          <ProactiveHint
+            profile={null}
+            hints={hintCandidates}
+          />
+        ) : null}
+        {spawnBannerEnabled && spawnProposals.length > 0 ? (
+          <NeedSpawnBanner
+            proposals={spawnProposals}
+            onAccept={(p) => {
+              if (p.targetRoute) {
+                window.location.href = p.targetRoute;
+              }
+            }}
+          />
+        ) : null}
+        {artifactStreamEnabled && artifacts.length > 0 ? (
+          <ChatArtifactStream artifacts={artifacts} />
+        ) : null}
         {messages.length === 0 && <Empty />}
         {messages.map((m) => (
           <Bubble key={m.id} msg={m} />

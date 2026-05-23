@@ -1300,5 +1300,56 @@
     "askPlaceholder": "Ask anything about your portfolio…",
     "systemsOk": "All systems operational",
     "systemsDegraded": "Degraded — some sources offline"
+  },
+  "managerBriefs": {
+    "title": "District brief",
+    "subtitle": "Your daily MD-tier digest with citations.",
+    "emptyTitle": "Today's brief is brewing",
+    "emptyDescription": "When the executive-brief engine emits today's MD-tier digest, it lands here with deep links.",
+    "disabledTitle": "Brief preview",
+    "disabledDescription": "Gated by the executive_brief_enabled flag.",
+    "launchpad": {
+      "workforceCard": "Workforce",
+      "parcelsCard": "Parcels",
+      "proposalsCard": "Proposals",
+      "briefingCard": "Head briefing"
+    }
+  },
+  "managerParcels": {
+    "title": "District parcels",
+    "subtitle": "Parcels in your operating district.",
+    "filter": {
+      "all": "All",
+      "available": "Available",
+      "leased": "Leased",
+      "pending": "Pending"
+    },
+    "stat": {
+      "available": "Available",
+      "leased": "Leased",
+      "pending": "Pending"
+    },
+    "emptyTitle": "No parcels match this filter",
+    "emptyDescription": "Try a different status filter or sync your district data.",
+    "disabledTitle": "Parcels preview",
+    "disabledDescription": "Gated by the parcels_overview_enabled flag."
+  },
+  "managerWorkforce": {
+    "title": "Team assignments",
+    "subtitle": "Who is doing what — assigned + scheduled by Mwikila.",
+    "emptyTitle": "No assignments yet",
+    "emptyDescription": "Assignments land here when the orchestrator hands work to your team.",
+    "disabledTitle": "Workforce preview",
+    "disabledDescription": "Gated by the workforce_enabled flag."
+  },
+  "managerProposals": {
+    "title": "Module proposals",
+    "subtitle": "Pending module-update proposals for your review.",
+    "approve": "Approve",
+    "reject": "Reject",
+    "emptyTitle": "No pending proposals",
+    "emptyDescription": "When the orchestrator wants a sign-off, it shows up here.",
+    "disabledTitle": "Proposals preview",
+    "disabledDescription": "Gated by the module_proposals_enabled flag."
   }
 }

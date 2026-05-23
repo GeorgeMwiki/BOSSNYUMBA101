@@ -86,6 +86,12 @@ import CommunicationsCampaignsPage from './pages/CommunicationsCampaignsPage';
 import AnalyticsUsagePage from './pages/AnalyticsUsagePage';
 import AnalyticsGrowthPage from './pages/AnalyticsGrowthPage';
 import AnalyticsExportsPage from './pages/AnalyticsExportsPage';
+// Wave-3 INT-4 — MD-vision pages (feature-flagged; default OFF in prod).
+import ExecutiveBriefPage from './pages/executive-brief/ExecutiveBriefPage';
+import ParcelsMarketplacePage from './pages/parcels-marketplace/ParcelsMarketplacePage';
+import WorkforcePage from './pages/workforce/WorkforcePage';
+import MissionsPage from './pages/missions/MissionsPage';
+import ModulesPage from './pages/modules/ModulesPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
@@ -215,6 +221,12 @@ function App() {
                   <Route path="/analytics/usage" element={<AnalyticsUsagePage />} />
                   <Route path="/analytics/growth" element={<AnalyticsGrowthPage />} />
                   <Route path="/analytics/exports" element={<AnalyticsExportsPage />} />
+                  {/* Wave-3 INT-4 — MD-vision routes, feature-flagged in-component */}
+                  <Route path="/executive-brief" element={<ExecutiveBriefPage />} />
+                  <Route path="/parcels-marketplace" element={<ParcelsMarketplacePage />} />
+                  <Route path="/workforce" element={<WorkforcePage />} />
+                  <Route path="/missions" element={<MissionsPage />} />
+                  <Route path="/modules" element={<ModulesPage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </Layout>

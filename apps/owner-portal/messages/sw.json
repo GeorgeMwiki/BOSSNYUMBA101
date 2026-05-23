@@ -3062,5 +3062,91 @@
   },
   "invitePage": {
     "min8Characters": "Chini ya herufi 8"
+  },
+  "executiveBrief": {
+    "title": "Muhtasari wa utendaji",
+    "generatedAt": "Imetengenezwa {time}",
+    "emptyTitle": "Muhtasari wa leo unatayarishwa",
+    "emptyDescription": "Injini ya muhtasari ya MD itaweka muhtasari hapa pamoja na vyanzo.",
+    "disabledTitle": "Onyesho la muhtasari wa utendaji",
+    "disabledDescription": "Sehemu hii imefungwa na bendera. Muulize msimamizi awashe executive_brief_enabled."
+  },
+  "parcelsMarketplace": {
+    "title": "Soko la viwanja",
+    "subtitle": "Vinjari viwanja vya ardhi katika wilaya unazohudumia.",
+    "filter": {
+      "all": "Vyote",
+      "available": "Vinapatikana",
+      "leased": "Vimekodishwa",
+      "pending": "Vinasubiri"
+    },
+    "mapPlaceholder": "Ramani itapakia viwanja vinapokuwa tayari.",
+    "emptyTitle": "Hakuna viwanja vilivyolingana",
+    "emptyDescription": "Jaribu kichujio kingine au angalia baadaye baada ya data kuingizwa.",
+    "disabledTitle": "Onyesho la soko la viwanja",
+    "disabledDescription": "Sehemu hii imefungwa na bendera. Muulize msimamizi awashe parcels_marketplace_enabled."
+  },
+  "workforce": {
+    "title": "Wafanyakazi",
+    "subtitle": "Migawo, ufuatiliaji, na ishara za utendaji.",
+    "tablistLabel": "Sehemu za wafanyakazi",
+    "tabs": {
+      "assignments": "Migawo",
+      "followups": "Ufuatiliaji",
+      "performance": "Utendaji"
+    },
+    "assignments": {
+      "emptyTitle": "Hakuna migawo bado",
+      "emptyDescription": "Migawo itaonekana hapa pindi mratibu atakapogawa kazi."
+    },
+    "followups": {
+      "emptyTitle": "Hakuna ufuatiliaji leo",
+      "emptyDescription": "Marudio na simu za kuangalia hutua hapa kwa kipaumbele."
+    },
+    "performance": {
+      "emptyTitle": "Hakuna ishara za utendaji",
+      "emptyDescription": "Muhtasari wa kila jukumu utapatikana baada ya sambazo lijalo."
+    },
+    "disabledTitle": "Onyesho la wafanyakazi",
+    "disabledDescription": "Sehemu hii imefungwa na bendera. Muulize msimamizi awashe workforce_enabled."
+  },
+  "missions": {
+    "title": "Misheni",
+    "subtitle": "Misheni ya muda mrefu inayoendelea.",
+    "stepsLabel": "hatua",
+    "selectAMission": "Chagua misheni kuona maelezo yake.",
+    "detailPlaceholder": "Ratiba ya hatua na muhtasari wa kupotoka utaonekana hapa pindi long-horizon-agent itakapounganishwa.",
+    "emptyTitle": "Hakuna misheni bado",
+    "emptyDescription": "Anzisha misheni kupitia gumzo au API; itaonekana hapa.",
+    "status": {
+      "active": "Inaendelea",
+      "paused": "Imesimamishwa",
+      "complete": "Imekamilika",
+      "failed": "Imeshindwa"
+    },
+    "drift": {
+      "low": "Kupotoka chini",
+      "medium": "Kupotoka kati",
+      "high": "Kupotoka juu"
+    },
+    "disabledTitle": "Onyesho la misheni",
+    "disabledDescription": "Sehemu hii imefungwa na bendera. Muulize msimamizi awashe missions_enabled."
+  },
+  "modules": {
+    "title": "Moduli",
+    "subtitle": "Onyesho la usimamizi la kuanzisha + kukagua moduli.",
+    "spawnButton": "Anzisha moduli",
+    "spawnDialogTitle": "Pendekeza moduli mpya",
+    "spawnDialogPlaceholder": "Fomu ya kuanzisha hutengenezwa na module-spec-engine; itaonekana hapa pindi itakapounganishwa.",
+    "close": "Funga",
+    "emptyTitle": "Hakuna moduli bado",
+    "emptyDescription": "Bofya \"Anzisha moduli\" kupendekeza moja.",
+    "status": {
+      "proposed": "Imependekezwa",
+      "running": "Inaendesha",
+      "retired": "Imestaafu"
+    },
+    "disabledTitle": "Onyesho la usimamizi wa moduli",
+    "disabledDescription": "Sehemu hii imefungwa na bendera. Muulize msimamizi awashe modules_admin_enabled."
   }
 }
