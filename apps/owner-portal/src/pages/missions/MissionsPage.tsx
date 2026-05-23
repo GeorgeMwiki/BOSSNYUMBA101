@@ -1,0 +1,145 @@
+/**
+ * MissionsPage — owner-portal surface for Piece Q
+ * (`@bossnyumba/long-horizon-agent`).
+ *
+ * Long-horizon agency loop: missions break down to steps, steps emit
+ * checkpoints, checkpoints feed drift-detection. This page lists the
+ * missions and links into the detail.
+ *
+ * The "list + detail" pair lives in one Vite route file with a
+ * `selectedId` URL param state — keeps routing minimal and avoids
+ * one-off nested routes.
+ *
+ * TODO(wave3-int5):
+ *   - `useMissions({ status })` -> list
+ *   - `useMission(id)` -> detail with step timeline + drift summary
+ *   - Wire `applyCheckpoint` mutation for HQ-tier human-in-the-loop.
+ */
+
+import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { Target, Sparkles, ChevronRight } from 'lucide-react';
+import { Skeleton, EmptyState } from '@bossnyumba/design-system';
+import { useFeatureFlag } from '../../lib/useFeatureFlag';
+
+interface MissionSummary {
+  readonly id: string;
+  readonly title: string;
+  readonly status: 'active' | 'paused' | 'complete' | 'failed';
+  readonly stepCount: number;
+  readonly driftRisk: 'low' | 'medium' | 'high';
+}
+
+function useMissionsStub(): { data: ReadonlyArray<MissionSummary>; isLoading: boolean } {
+  return useMemo(() => ({ data: [], isLoading: false }), []);
+}
+
+const RISK_COLOR: Record<MissionSummary['driftRisk'], string> = {
+  low: 'bg-emerald-100 text-emerald-700',
+  medium: 'bg-amber-100 text-amber-700',
+  high: 'bg-rose-100 text-rose-700',
+};
+
+export function MissionsPage(): JSX.Element {
+  const t = useTranslations('missions');
+  const enabled = useFeatureFlag('missions_enabled');
+  const { data, isLoading } = useMissionsStub();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const selected = useMemo(
+    () => (selectedId ? data.find((m) => m.id === selectedId) ?? null : null),
+    [data, selectedId],
+  );
+
+  if (!enabled) {
+    return (
+      <div className="max-w-4xl mx-auto py-12">
+        <EmptyState
+          icon={<Sparkles className="h-10 w-10" />}
+          title={t('disabledTitle')}
+          description={t('disabledDescription')}
+        />
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-1/3" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
+      <section>
+        <header className="mb-3">
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm text-gray-500">{t('subtitle')}</p>
+        </header>
+        {data.length === 0 ? (
+          <EmptyState
+            icon={<Target className="h-10 w-10" />}
+            title={t('emptyTitle')}
+            description={t('emptyDescription')}
+          />
+        ) : (
+          <ul className="space-y-2">
+            {data.map((mission) => (
+              <li key={mission.id}>
+                <button
+                  type="button"
+                  data-testid="mission-card"
+                  data-mission-id={mission.id}
+                  onClick={() => setSelectedId(mission.id)}
+                  className={`w-full flex items-center justify-between rounded-xl border p-4 text-left shadow-sm ${
+                    selected?.id === mission.id
+                      ? 'border-indigo-600 bg-indigo-50'
+                      : 'border-gray-200 bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <div>
+                    <p className="font-semibold text-gray-900">{mission.title}</p>
+                    <p className="text-xs text-gray-500">
+                      {t(`status.${mission.status}`)} · {mission.stepCount} {t('stepsLabel')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${RISK_COLOR[mission.driftRisk]}`}
+                    >
+                      {t(`drift.${mission.driftRisk}`)}
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <aside
+        data-testid="mission-detail"
+        className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+      >
+        {selected ? (
+          <>
+            <h2 className="text-lg font-semibold text-gray-900">{selected.title}</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              {t(`status.${selected.status}`)}
+            </p>
+            <p className="mt-3 text-sm text-gray-700">{t('detailPlaceholder')}</p>
+          </>
+        ) : (
+          <p className="text-sm text-gray-500">{t('selectAMission')}</p>
+        )}
+      </aside>
+    </div>
+  );
+}
+
+export default MissionsPage;

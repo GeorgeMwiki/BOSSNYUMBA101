@@ -1300,5 +1300,56 @@
     "askPlaceholder": "Uliza chochote kuhusu jalada lako…",
     "systemsOk": "Mifumo yote inafanya kazi",
     "systemsDegraded": "Imepunguzwa — vyanzo vingine havipatikani"
+  },
+  "managerBriefs": {
+    "title": "Muhtasari wa wilaya",
+    "subtitle": "Muhtasari wako wa kila siku wa kiwango cha MD pamoja na vyanzo.",
+    "emptyTitle": "Muhtasari wa leo unatayarishwa",
+    "emptyDescription": "Injini ya muhtasari ya MD itaweka muhtasari hapa pamoja na viungo.",
+    "disabledTitle": "Onyesho la muhtasari",
+    "disabledDescription": "Imefungwa na bendera ya executive_brief_enabled.",
+    "launchpad": {
+      "workforceCard": "Wafanyakazi",
+      "parcelsCard": "Viwanja",
+      "proposalsCard": "Mapendekezo",
+      "briefingCard": "Mkutano wa Mkuu"
+    }
+  },
+  "managerParcels": {
+    "title": "Viwanja vya wilaya",
+    "subtitle": "Viwanja katika wilaya yako ya utendaji.",
+    "filter": {
+      "all": "Vyote",
+      "available": "Vinapatikana",
+      "leased": "Vimekodishwa",
+      "pending": "Vinasubiri"
+    },
+    "stat": {
+      "available": "Vinapatikana",
+      "leased": "Vimekodishwa",
+      "pending": "Vinasubiri"
+    },
+    "emptyTitle": "Hakuna viwanja vilivyolingana",
+    "emptyDescription": "Jaribu kichujio kingine au sasisha data ya wilaya yako.",
+    "disabledTitle": "Onyesho la viwanja",
+    "disabledDescription": "Imefungwa na bendera ya parcels_overview_enabled."
+  },
+  "managerWorkforce": {
+    "title": "Migawo ya timu",
+    "subtitle": "Nani anafanya nini — iliyogawiwa na kupangwa na Mwikila.",
+    "emptyTitle": "Hakuna migawo bado",
+    "emptyDescription": "Migawo huja hapa pindi mratibu atakapogawa kazi kwa timu yako.",
+    "disabledTitle": "Onyesho la wafanyakazi",
+    "disabledDescription": "Imefungwa na bendera ya workforce_enabled."
+  },
+  "managerProposals": {
+    "title": "Mapendekezo ya moduli",
+    "subtitle": "Mapendekezo yanayosubiri ya kusasisha moduli kwa ukaguzi wako.",
+    "approve": "Idhinisha",
+    "reject": "Kataa",
+    "emptyTitle": "Hakuna mapendekezo yanayosubiri",
+    "emptyDescription": "Pindi mratibu anapotaka idhini, huja hapa.",
+    "disabledTitle": "Onyesho la mapendekezo",
+    "disabledDescription": "Imefungwa na bendera ya module_proposals_enabled."
   }
 }

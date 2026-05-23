@@ -1100,5 +1100,15 @@
     "sampleUnitTerm": "Unit A-204 • 12 months",
     "sampleStartDate": "June 1, 2024",
     "sampleEndDate": "May 31, 2025"
+  },
+  "tenantLeaseDetail": {
+    "title": "Lease detail",
+    "subtitle": "KPIs and recent activity for your lease.",
+    "kpiTitle": "Unit health",
+    "kpiEmpty": "Your most recent condition survey will show KPI tiles here.",
+    "activityTitle": "Recent activity",
+    "activityEmpty": "Events on this parcel will appear here as they happen.",
+    "disabledTitle": "Lease KPIs preview",
+    "disabledDescription": "Gated by the lease_kpi_panel_enabled flag."
   }
 }

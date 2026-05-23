@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -21,16 +21,27 @@ import {
   Shield,
   Wallet,
   Briefcase,
+  Sparkles,
+  MapPin,
+  Target,
+  Boxes,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
 import { LocaleSwitcher } from './LocaleSwitcher';
+import { useFeatureFlag } from '../lib/useFeatureFlag';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const navigation = [
+interface NavItem {
+  readonly name: string;
+  readonly href: string;
+  readonly icon: React.ComponentType<{ className?: string }>;
+}
+
+const BASE_NAVIGATION: ReadonlyArray<NavItem> = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Portfolio', href: '/portfolio', icon: PieChart },
   { name: 'Properties', href: '/properties', icon: Building2 },
@@ -56,6 +67,37 @@ export function Layout({ children }: LayoutProps) {
   const tActions = useTranslations('actions');
   const tNav = useTranslations('nav');
   const tA11y = useTranslations('a11y');
+
+  // Wave-3 INT-4 — feature-flagged MD-vision navigation. Each flag
+  // defaults OFF so these entries are hidden in prod until an operator
+  // sets `VITE_FF_<FLAG>=true` or appends `?ff.<flag>=1` to the URL.
+  const briefEnabled = useFeatureFlag('executive_brief_enabled');
+  const parcelsEnabled = useFeatureFlag('parcels_marketplace_enabled');
+  const workforceEnabled = useFeatureFlag('workforce_enabled');
+  const missionsEnabled = useFeatureFlag('missions_enabled');
+  const modulesEnabled = useFeatureFlag('modules_admin_enabled');
+
+  const navigation = useMemo<ReadonlyArray<NavItem>>(() => {
+    // Immutable append — preserves the existing nav order; MD-vision
+    // items live at the bottom so muscle-memory is undisturbed.
+    const flagged: NavItem[] = [];
+    if (briefEnabled) {
+      flagged.push({ name: 'Executive Brief', href: '/executive-brief', icon: Sparkles });
+    }
+    if (parcelsEnabled) {
+      flagged.push({ name: 'Parcels', href: '/parcels-marketplace', icon: MapPin });
+    }
+    if (workforceEnabled) {
+      flagged.push({ name: 'Workforce', href: '/workforce', icon: Users });
+    }
+    if (missionsEnabled) {
+      flagged.push({ name: 'Missions', href: '/missions', icon: Target });
+    }
+    if (modulesEnabled) {
+      flagged.push({ name: 'Modules', href: '/modules', icon: Boxes });
+    }
+    return [...BASE_NAVIGATION, ...flagged];
+  }, [briefEnabled, parcelsEnabled, workforceEnabled, missionsEnabled, modulesEnabled]);
 
   const handleLogout = () => {
     logout();

@@ -1100,5 +1100,15 @@
     "sampleUnitTerm": "Kitengo A-204 • miezi 12",
     "sampleStartDate": "1 Juni 2024",
     "sampleEndDate": "31 Mei 2025"
+  },
+  "tenantLeaseDetail": {
+    "title": "Maelezo ya kodi",
+    "subtitle": "KPIs na shughuli za hivi karibuni za kodi yako.",
+    "kpiTitle": "Hali ya kitengo",
+    "kpiEmpty": "Ukaguzi wako wa hivi karibuni utaonyesha viwango hapa.",
+    "activityTitle": "Shughuli za hivi karibuni",
+    "activityEmpty": "Matukio kwenye kiwanja hiki yataonekana hapa yanapotokea.",
+    "disabledTitle": "Onyesho la KPI za kodi",
+    "disabledDescription": "Imefungwa na bendera ya lease_kpi_panel_enabled."
   }
 }

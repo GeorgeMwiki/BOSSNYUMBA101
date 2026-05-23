@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { notificationsService } from '@bossnyumba/api-client';
+import { isFeatureEnabled } from '@/lib/featureFlags';
+import { BrainTabStatus } from './BrainTabStatus';
 
 interface PageHeaderProps {
   title: string;
@@ -13,6 +15,12 @@ interface PageHeaderProps {
   showNotifications?: boolean;
   showProfile?: boolean;
   action?: React.ReactNode;
+  /**
+   * Wave-3 INT-4 — show the brain-capture + proposal-count badge in
+   * the right cluster. Defaults true so the indicator appears on every
+   * manager screen (the flag still gates whether anything renders).
+   */
+  showBrainTabStatus?: boolean;
 }
 
 export function PageHeader({
@@ -22,8 +30,13 @@ export function PageHeader({
   showNotifications = true,
   showProfile,
   action,
+  showBrainTabStatus = true,
 }: PageHeaderProps) {
   const router = useRouter();
+  // Flag gate — when off, the BrainTabStatus does not render even if
+  // `showBrainTabStatus` is true. Default OFF in prod.
+  const brainStatusEnabled =
+    showBrainTabStatus && isFeatureEnabled('brain_tab_status_enabled');
 
   const unreadQuery = useQuery({
     queryKey: ['notifications-unread-count'],
@@ -35,6 +48,12 @@ export function PageHeader({
   });
 
   const unread = unreadQuery.data?.data?.count ?? 0;
+  // Wave-3 INT-4 — these come from local placeholder state until the
+  // dispatch-router + module-orchestrator api-client ports land.
+  // The component is renderer-pure: real data flows in via this hook
+  // call once the SSE / polling sources exist.
+  const captureActive = false;
+  const pendingProposalCount = 0;
 
   return (
     <header className="sticky top-0 z-10 bg-white border-b border-gray-100">
@@ -56,6 +75,12 @@ export function PageHeader({
         </div>
         <div className="flex items-center gap-2">
           {action}
+          {brainStatusEnabled && (
+            <BrainTabStatus
+              captureActive={captureActive}
+              pendingProposalCount={pendingProposalCount}
+            />
+          )}
           {showNotifications && (
             <Link
               href="/notifications"
