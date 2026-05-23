@@ -17,6 +17,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { PriorityBadge } from '@/components/maintenance';
 import { workOrdersService, vendorsService } from '@bossnyumba/api-client';
 import { Spinner } from '@bossnyumba/design-system';
+import { ROUTES } from '@/lib/routes';
 
 const priorities = [
   { value: 'EMERGENCY', labelKey: 'priorityEmergency' as const },
@@ -123,7 +124,7 @@ export default function WorkOrderTriage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrder', workOrderId] });
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
-      router.push(`/work-orders/${workOrderId}`);
+      router.push(ROUTES.workOrders.detail(workOrderId));
     },
   });
 
@@ -243,7 +244,7 @@ export default function WorkOrderTriage() {
                 ) : vendors.length === 0 ? (
                   <div className="p-4 bg-gray-50 rounded-lg text-center">
                     <p className="text-sm text-gray-500">{t('noVendorsForCategory')}</p>
-                    <Link href="/vendors/new" className="text-sm text-primary-600 mt-1 inline-block">{t('addVendor')}</Link>
+                    <Link href={ROUTES.vendors.new} className="text-sm text-primary-600 mt-1 inline-block">{t('addVendor')}</Link>
                   </div>
                 ) : (
                   <div className="space-y-2">

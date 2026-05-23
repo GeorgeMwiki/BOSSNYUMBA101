@@ -37,6 +37,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { PriorityBadge, SLATimer, Timeline, type TimelineEvent } from '@/components/maintenance';
 import { workOrdersService, vendorsService } from '@bossnyumba/api-client';
 import { Spinner } from '@bossnyumba/design-system';
+import { ROUTES } from '@/lib/routes';
 
 interface Material {
   id: string;
@@ -569,7 +570,7 @@ export default function WorkOrderDetail() {
           <Link href={`/work-orders/${workOrder.id}/triage`} className="btn-secondary flex-1">
             <Edit className="w-4 h-4 mr-2" /> {t('edit')}
           </Link>
-          <Link href="/work-orders" className="btn-secondary flex-1">
+          <Link href={ROUTES.workOrders.root} className="btn-secondary flex-1">
             {t('backToList')}
           </Link>
         </div>
@@ -601,7 +602,7 @@ export default function WorkOrderDetail() {
               <div className="text-center py-8">
                 <Building2 className="w-10 h-10 text-gray-300 mx-auto mb-2" />
                 <p className="text-sm text-gray-500">{t('noVendorsAvailable')}</p>
-                <Link href="/vendors/new" className="btn-primary text-sm mt-3 inline-block">{t('addVendor')}</Link>
+                <Link href={ROUTES.vendors.new} className="btn-primary text-sm mt-3 inline-block">{t('addVendor')}</Link>
               </div>
             ) : (
               <div className="space-y-2">

@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { leasesService } from '@bossnyumba/api-client';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 export function LeasesList() {
   const t = useTranslations('lists');
@@ -24,7 +25,7 @@ export function LeasesList() {
         title={t('leasesTitle')}
         subtitle={t('leasesRecords', { count: leases.length })}
         action={
-          <Link href="/leases/new" className="btn-primary text-sm flex items-center gap-1">
+          <Link href={ROUTES.leases.new} className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
             {t('leasesAdd')}
           </Link>
@@ -68,7 +69,7 @@ export function LeasesList() {
             title={t('leasesEmptyTitle')}
             description={t('leasesEmptyDesc')}
             action={
-              <Link href="/leases/new" className="btn-primary inline-block">
+              <Link href={ROUTES.leases.new} className="btn-primary inline-block">
                 {t('leasesEmptyCta')}
               </Link>
             }

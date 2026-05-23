@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Plus, Calendar, Mail, FileText, Edit, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 type ScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 
@@ -37,7 +38,7 @@ export default function ScheduledReportsPage() {
         subtitle={tAnn('countLabel', { count: scheduledReports.length })}
         showBack
         action={
-          <Link href="/reports/scheduled/new" className="btn-primary text-sm flex items-center gap-1">
+          <Link href={ROUTES.reports.scheduledNew} className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
             Schedule
           </Link>
@@ -86,7 +87,7 @@ export default function ScheduledReportsPage() {
             <p className="text-sm text-gray-500 mt-1">
               Schedule reports to be generated and delivered automatically
             </p>
-            <Link href="/reports/scheduled/new" className="btn-primary mt-4 inline-block">
+            <Link href={ROUTES.reports.scheduledNew} className="btn-primary mt-4 inline-block">
               Schedule Report
             </Link>
           </div>

@@ -15,6 +15,7 @@ import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@bossnyumba/design-system';
 import { brainFetch } from '@/lib/brain-client';
+import { ROUTES } from '@/lib/routes';
 
 interface ThreadRow {
   id: string;
@@ -62,7 +63,7 @@ export default function ThreadsPage() {
             <p className="text-sm">
               {tMisc.rich('startFromBrain', {
                 brain: tMisc('brainLabel'),
-                link: (chunks) => <Link href="/brain" className="text-sky-600 underline">{chunks}</Link>,
+                link: (chunks) => <Link href={ROUTES.brain.root} className="text-sky-600 underline">{chunks}</Link>,
               })}
             </p>
           </div>

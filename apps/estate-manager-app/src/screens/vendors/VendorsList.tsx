@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react';
 import { vendorsService } from '@bossnyumba/api-client';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 export default function VendorsList() {
   const t = useTranslations('vendorsList');
@@ -22,7 +23,7 @@ export default function VendorsList() {
       <PageHeader
         title={t('title')}
         subtitle={t('countLabel', { count: vendors.length })}
-        action={<Link href="/vendors/new" className="btn-primary text-sm flex items-center gap-1"><Plus className="w-4 h-4" />{t('add')}</Link>}
+        action={<Link href={ROUTES.vendors.new} className="btn-primary text-sm flex items-center gap-1"><Plus className="w-4 h-4" />{t('add')}</Link>}
       />
       <div className="space-y-3 px-4 py-4 max-w-4xl mx-auto">
         {vendorsQuery.isLoading && <div className="card p-4 text-sm text-gray-500">{t('loading')}</div>}

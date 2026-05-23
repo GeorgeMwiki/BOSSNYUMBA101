@@ -8,6 +8,7 @@ import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyum
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { propertiesService } from '@bossnyumba/api-client';
+import { ROUTES } from '@/lib/routes';
 
 export default function PropertiesListPage() {
   const t = useTranslations('propertiesListPage');
@@ -36,7 +37,7 @@ export default function PropertiesListPage() {
         title={t('title')}
         subtitle={t('totalCount', { count: pagination?.totalItems ?? properties.length })}
         action={
-          <Link href="/properties/new" className="btn-primary text-sm flex items-center gap-1">
+          <Link href={ROUTES.properties.new} className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
             {t('add')}
           </Link>
@@ -86,7 +87,7 @@ export default function PropertiesListPage() {
             title={t('emptyTitle')}
             description={search || statusFilter ? t('emptyFilteredDesc') : t('emptyDesc')}
             action={
-              <Link href="/properties/new" className="btn-primary inline-block">
+              <Link href={ROUTES.properties.new} className="btn-primary inline-block">
                 {t('addProperty')}
               </Link>
             }

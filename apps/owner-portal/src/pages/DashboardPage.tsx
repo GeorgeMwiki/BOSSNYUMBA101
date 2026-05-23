@@ -41,6 +41,7 @@ import { ArrearsAgingChart } from '../components/charts/ArrearsAgingChart';
 import { QuickActions } from '../components/QuickActions';
 import { PortfolioAtAGlance } from '../components/PortfolioAtAGlance';
 import { ComparePropertiesTable } from '../components/ComparePropertiesTable';
+import { ROUTES } from '../lib/routes';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
 
@@ -79,22 +80,22 @@ export function DashboardPage() {
     // Navigate to detailed view based on metric type
     switch (metricType) {
       case 'portfolio':
-        navigate('/portfolio');
+        navigate(ROUTES.portfolio.root);
         break;
       case 'revenue':
-        navigate('/financial?tab=overview');
+        navigate(ROUTES.financial.overview);
         break;
       case 'occupancy':
-        navigate('/analytics/occupancy');
+        navigate(ROUTES.analytics.occupancy);
         break;
       case 'collection':
-        navigate('/financial?tab=invoices&filter=overdue');
+        navigate(ROUTES.financial.invoicesOverdue);
         break;
       case 'noi':
-        navigate('/financial?tab=statements');
+        navigate(ROUTES.financial.statements);
         break;
       case 'arrears':
-        navigate('/financial?tab=invoices&filter=overdue');
+        navigate(ROUTES.financial.invoicesOverdue);
         break;
       default:
         break;

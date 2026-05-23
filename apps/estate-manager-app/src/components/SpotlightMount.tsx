@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Spotlight } from '@bossnyumba/spotlight/react';
+import { ROUTES } from '@/lib/routes';
 
 export function SpotlightMount(): JSX.Element {
   const router = useRouter();
@@ -12,7 +13,7 @@ export function SpotlightMount(): JSX.Element {
         if (action.route) router.push(action.route);
       }}
       onPersonaHandoff={(query) => {
-        router.push(`/brain?q=${encodeURIComponent(query)}`);
+        router.push(ROUTES.brain.withQuery(query));
       }}
     />
   );

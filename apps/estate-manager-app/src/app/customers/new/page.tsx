@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
+import { ROUTES } from '@/lib/routes';
 
 /**
  * Phone placeholder map. BOSSNYUMBA is a global app — we never hard-code a
@@ -76,7 +77,7 @@ export default function CustomerFormPage() {
       }),
     onSuccess: (response: { data: { id: string } }) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
-      router.push(`/customers/${response.data.id}`);
+      router.push(ROUTES.customers.detail(response.data.id));
     },
   });
 

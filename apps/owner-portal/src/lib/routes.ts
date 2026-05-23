@@ -13,7 +13,32 @@
 export const ROUTES = {
   home: '/',
 
+  login: '/login',
+
   dashboard: '/dashboard',
+
+  portfolio: {
+    root: '/portfolio',
+    ask: '/portfolio/ask',
+    askWithQuery: (q: string): string =>
+      `/portfolio/ask?q=${encodeURIComponent(q)}`,
+  },
+
+  financial: {
+    root: '/financial',
+    overview: '/financial?tab=overview',
+    statements: '/financial?tab=statements',
+    invoicesOverdue: '/financial?tab=invoices&filter=overdue',
+  },
+
+  managerChat: {
+    root: '/manager-chat',
+    withQuery: (params: string): string => `/manager-chat?${params}`,
+  },
+
+  analytics: {
+    occupancy: '/analytics/occupancy',
+  },
 
   properties: {
     root: '/properties',

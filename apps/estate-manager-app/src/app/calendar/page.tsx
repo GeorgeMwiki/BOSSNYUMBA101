@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 type ViewMode = 'month' | 'week';
 
@@ -76,7 +77,7 @@ export default function CalendarPage() {
         title={t('title')}
         subtitle={monthTitle}
         action={
-          <Link href="/inspections/schedule" className="btn-primary text-sm flex items-center gap-1">
+          <Link href={ROUTES.inspections.schedule} className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
             {t('add')}
           </Link>
@@ -159,12 +160,12 @@ export default function CalendarPage() {
 
         {/* Quick Links */}
         <div className="flex gap-3">
-          <Link href="/calendar/events" className="card p-4 flex-1 flex items-center gap-3 hover:shadow-md transition-shadow">
+          <Link href={ROUTES.calendar.events} className="card p-4 flex-1 flex items-center gap-3 hover:shadow-md transition-shadow">
             <CalendarIcon className="w-6 h-6 text-primary-600" />
             <span className="font-medium">{t('viewEvents')}</span>
             <span className="ml-auto text-primary-600">→</span>
           </Link>
-          <Link href="/calendar/availability" className="card p-4 flex-1 flex items-center gap-3 hover:shadow-md transition-shadow">
+          <Link href={ROUTES.calendar.availability} className="card p-4 flex-1 flex items-center gap-3 hover:shadow-md transition-shadow">
             <Clock className="w-6 h-6 text-primary-600" />
             <span className="font-medium">{t('availability')}</span>
             <span className="ml-auto text-primary-600">→</span>

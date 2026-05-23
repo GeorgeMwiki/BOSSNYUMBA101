@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { BarChart3, FileText, Calendar, TrendingUp, ChevronRight, DollarSign, Home } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 interface ReportCard {
   id: string;
@@ -56,7 +57,7 @@ export default function ReportsDashboardPage() {
         title={t('title')}
         subtitle={t('subtitle')}
         action={
-          <Link href="/reports/generate" className="btn-primary text-sm flex items-center gap-1">
+          <Link href={ROUTES.reports.generate} className="btn-primary text-sm flex items-center gap-1">
             <FileText className="w-4 h-4" />
             {t('generate')}
           </Link>
@@ -94,7 +95,7 @@ export default function ReportsDashboardPage() {
         <section>
           <h2 className="text-sm font-medium text-gray-500 mb-3">{t('quickActions')}</h2>
           <div className="space-y-3">
-            <Link href="/reports/generate">
+            <Link href={ROUTES.reports.generate}>
               <div className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow border-primary-200 bg-primary-50/30">
                 <div className="p-2 bg-primary-100 rounded-lg">
                   <TrendingUp className="w-5 h-5 text-primary-600" />
@@ -106,7 +107,7 @@ export default function ReportsDashboardPage() {
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </div>
             </Link>
-            <Link href="/reports/scheduled">
+            <Link href={ROUTES.reports.scheduled}>
               <div className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
                 <div className="p-2 bg-success-50 rounded-lg">
                   <Calendar className="w-5 h-5 text-success-600" />
