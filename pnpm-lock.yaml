@@ -1180,35 +1180,6 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
-  packages/document-analysis:
-    dependencies:
-      zod:
-        specifier: ^3.22.4
-        version: 3.25.76
-    optionalDependencies:
-      pdf-parse:
-        specifier: ^1.1.1
-        version: 1.1.4
-      pdfjs-dist:
-        specifier: ^4.0.379
-        version: 4.8.69
-      tesseract.js:
-        specifier: ^5.0.5
-        version: 5.1.1
-    devDependencies:
-      '@types/node':
-        specifier: ^25.8.0
-        version: 25.8.0
-      '@vitest/coverage-v8':
-        specifier: ^4.1.6
-        version: 4.1.6(vitest@4.1.6)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vitest:
-        specifier: ^4.1.6
-        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
-
   packages/domain-models:
     dependencies:
       '@bossnyumba/compliance-plugins':
@@ -11340,7 +11311,7 @@ packages:
       obug: 2.1.1
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+      vitest: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
     dev: true
 
   /@vitest/expect@3.2.4:
@@ -11969,7 +11940,6 @@ packages:
 
   /bl@4.1.0:
     resolution: {integrity: sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==}
-    requiresBuild: true
     dependencies:
       buffer: 5.7.1
       inherits: 2.0.4
@@ -14015,7 +13985,6 @@ packages:
 
   /fs-constants@1.0.0:
     resolution: {integrity: sha512-y6OAwoSIf7FyjMIv94u+b5rdheZEjzR63GTyZJm5qh4Bi+2YgwLCcI/fPFZkL5PSixOt6ZNKm+w+Hfp/Bciwow==}
-    requiresBuild: true
     dev: false
 
   /fs.realpath@1.0.0:
