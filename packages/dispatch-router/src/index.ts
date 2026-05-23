@@ -22,3 +22,4 @@ export * from './handler-registry.js';
 export * from './intent-classifier.js';
 export * from './capture.js';
 export * from './dispatch.js';
+export * from './dispatcher.js';

@@ -72,3 +72,66 @@ export {
   type CreateLeaseApplicationContext,
   type CreateLeaseApplicationResult,
 } from './templates/estate/index.js';
+
+// ─── Wave-3-int2 — ESTATE 5-handler set + cross-module registry ──────────
+
+export {
+  buildEstateHandlerSet,
+  ESTATE_ACTIONS,
+  createCreateLeaseApplicationAdapter,
+  createPostReceiptDraftAdapter,
+  createOpenMaintenanceCaseAdapter,
+  createScheduleRenewalNegotiationAdapter,
+  createBulkMarkForRenewalPrepAdapter,
+  postReceiptDraftHandler,
+  PostReceiptDraftPayloadSchema,
+  openMaintenanceCaseHandler,
+  OpenMaintenanceCasePayloadSchema,
+  scheduleRenewalNegotiationHandler,
+  ScheduleRenewalNegotiationPayloadSchema,
+  bulkMarkForRenewalPrepHandler,
+  BulkMarkForRenewalPrepPayloadSchema,
+  type EstateHandlerDeps,
+  type BuildEstateHandlerSet,
+} from './estate/accept-proposal-handlers.js';
+
+export type {
+  PostReceiptDraftDeps,
+  PostReceiptDraftPayload,
+  PostReceiptDraftContext,
+  PostReceiptDraftResult,
+  LedgerDraftPort,
+  ReceiptStorePort,
+} from './templates/estate/handlers/post-receipt-draft.js';
+
+export type {
+  OpenMaintenanceCaseDeps,
+  OpenMaintenanceCasePayload,
+  OpenMaintenanceCaseContext,
+  OpenMaintenanceCaseResult,
+  MaintenanceTicketStorePort,
+} from './templates/estate/handlers/open-maintenance-case.js';
+
+export type {
+  ScheduleRenewalNegotiationDeps,
+  ScheduleRenewalNegotiationPayload,
+  ScheduleRenewalNegotiationContext,
+  ScheduleRenewalNegotiationResult,
+  WorkAssignmentPort,
+} from './templates/estate/handlers/schedule-renewal-negotiation.js';
+
+export type {
+  BulkMarkForRenewalPrepDeps,
+  BulkMarkForRenewalPrepPayload,
+  BulkMarkForRenewalPrepContext,
+  BulkMarkForRenewalPrepResult,
+  LeaseStorePort,
+} from './templates/estate/handlers/bulk-mark-for-renewal-prep.js';
+
+export {
+  createModuleHandlerRegistry,
+  withInvocationTracking,
+  type ModuleHandlerRegistry,
+  type CreateModuleHandlerRegistryDeps,
+  type RegisteredHandlerInfo,
+} from './registry.js';

@@ -70,6 +70,38 @@ export const estateBundle: ModuleTemplateBundle = Object.freeze({
         }),
       }),
     }),
+    Object.freeze({
+      action: 'post_receipt_draft',
+      handlerModule:
+        '@bossnyumba/module-templates/estate/handlers/post_receipt_draft',
+      allowedPersonaTiers: Object.freeze([1, 2, 3]),
+      // Money mutation but DRAFT only — managers approve final post.
+      riskTier: 'HIGH' as const,
+      emitsMoneyMutation: true,
+      payloadZod: Object.freeze({
+        kind: 'object',
+        fields: Object.freeze({
+          amount: { kind: 'object', required: true },
+          customer_entity_id: { kind: 'text', required: true },
+        }),
+      }),
+    }),
+    Object.freeze({
+      action: 'bulk_mark_for_renewal_prep',
+      handlerModule:
+        '@bossnyumba/module-templates/estate/handlers/bulk_mark_for_renewal_prep',
+      // Bulk ops ALWAYS HITL — see bulk-mark-for-renewal-prep.ts.
+      allowedPersonaTiers: Object.freeze([1, 2]),
+      riskTier: 'HIGH' as const,
+      emitsMoneyMutation: false,
+      payloadZod: Object.freeze({
+        kind: 'object',
+        fields: Object.freeze({
+          lease_ids: { kind: 'array', required: true, item_kind: 'text' },
+          reason: { kind: 'text', required: true },
+        }),
+      }),
+    }),
   ]),
 });
 

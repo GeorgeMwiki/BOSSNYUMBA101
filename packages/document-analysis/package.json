@@ -60,6 +60,7 @@
     "lint": "eslint src --no-error-on-unmatched-pattern"
   },
   "dependencies": {
+    "@bossnyumba/dispatch-router": "workspace:*",
     "zod": "^3.22.4"
   },
   "optionalDependencies": {

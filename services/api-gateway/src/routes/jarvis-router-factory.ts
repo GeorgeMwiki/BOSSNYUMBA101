@@ -61,6 +61,28 @@ export interface JarvisRouterConfig {
    * consumer can't escalate themselves to org/industry tier.
    */
   readonly consumerSurface?: boolean;
+  /**
+   * Wave-3-int2 — post-kernel.think() capture hook (Piece L brain↔tab loop).
+   *
+   * When provided, the router fires-and-forgets a capture call after every
+   * /think + /stream turn that emits an `answer` or `softened` decision.
+   * The hook runs the brain output through entity extraction + matrix
+   * dispatch → module_update_proposals. Errors do NOT bubble up to the
+   * user reply.
+   */
+  readonly captureHook?: (input: {
+    readonly tenant_id: string;
+    readonly persona: {
+      readonly persona_id: string;
+      readonly tier: 1 | 2 | 3 | 4 | 5;
+      readonly jurisdiction?: string;
+    };
+    readonly user_text: string;
+    readonly assistant_text: string;
+    readonly decision_kind: 'answer' | 'softened';
+    readonly thread_id?: string | null;
+    readonly user_id?: string | null;
+  }) => Promise<unknown>;
 }
 
 const ALL_TIERS = [
@@ -179,6 +201,31 @@ function chunkText(text: string, pieces: number): ReadonlyArray<string> {
     cursor = end;
   }
   return out;
+}
+
+/**
+ * Map a kernel tier string to the 1..5 PersonaContext tier the
+ * dispatch-router expects. Default to 4 (T-tier line staff) so any
+ * unknown / loose tiers don't accidentally get owner-level trust.
+ */
+function tierToNumber(tier: ThoughtRequest['tier']): 1 | 2 | 3 | 4 | 5 {
+  switch (tier) {
+    case 'industry':
+    case 'org':
+      return 1;
+    case 'portfolio':
+      return 2;
+    case 'property':
+    case 'block':
+      return 3;
+    case 'unit':
+    case 'lease':
+      return 4;
+    case 'tenant':
+      return 5;
+    default:
+      return 4;
+  }
 }
 
 function surfacePersonaId(surface: JarvisSurface): string {
@@ -313,6 +360,34 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
       traceScope,
       () => sov.kernel.think(req),
     );
+
+    // Wave-3-int2 — fire-and-forget brain↔tab capture hook. Refusals are
+    // dropped at the hook level; only `answer` / `softened` emit captures.
+    if (config.captureHook && scope.kind === 'tenant' && scope.tenantId) {
+      const kind = (decision as { kind?: string }).kind;
+      const text = (decision as { text?: string }).text ?? '';
+      if (kind === 'answer' || kind === 'softened') {
+        const tenantId = scope.tenantId;
+        Promise.resolve(
+          config.captureHook({
+            tenant_id: tenantId,
+            persona: {
+              persona_id: personalised.id,
+              tier: tierToNumber(req.tier),
+              jurisdiction: 'TZ',
+            },
+            user_text: body.userMessage,
+            assistant_text: text,
+            decision_kind: kind,
+            thread_id: body.threadId,
+            user_id: scope.actorUserId ?? null,
+          }),
+        ).catch(() => {
+          // Capture is non-essential — swallow errors so the user reply
+          // is never blocked. The hook's own logger records the failure.
+        });
+      }
+    }
 
     return c.json({
       success: true,
@@ -654,10 +729,39 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
 
 // ─────────────────────────────────────────────────────────────────────
 // Pre-configured Jarvis surfaces — every BossNyumba user gets one.
+//
+// Wave-3-int2: the captureHook is wired LATE (after createDispatchRouterWiring
+// runs at boot). Until then, the routers default to no hook so the existing
+// tests continue to pass.
 // ─────────────────────────────────────────────────────────────────────
 
-export const tenantJarvisRouter   = createJarvisRouter({ surface: 'tenant-app',         defaultTier: 'lease',    greetingStyle: 'warm',   consumerSurface: true });
-export const ownerJarvisRouter    = createJarvisRouter({ surface: 'owner-portal',       defaultTier: 'portfolio',greetingStyle: 'warm' });
-export const managerJarvisRouter  = createJarvisRouter({ surface: 'estate-manager-app', defaultTier: 'property', greetingStyle: 'terse' });
-export const orgAdminJarvisRouter = createJarvisRouter({ surface: 'admin-portal',       defaultTier: 'org',      greetingStyle: 'warm' });
-export const platformHqJarvisRouter = createJarvisRouter({ surface: 'platform-hq',      defaultTier: 'industry', greetingStyle: 'warm' });
+let sharedCaptureHook: JarvisRouterConfig['captureHook'] | undefined;
+
+/**
+ * Wave-3-int2 — install a shared captureHook on every pre-configured
+ * Jarvis router. Called once from the api-gateway composition root after
+ * `createDispatchRouterWiring()` returns.
+ *
+ * Safe to call multiple times — last setter wins (test environments may
+ * re-install with stubbed hooks).
+ */
+export function installJarvisCaptureHook(
+  hook: JarvisRouterConfig['captureHook'],
+): void {
+  sharedCaptureHook = hook;
+}
+
+function withSharedHook(config: JarvisRouterConfig): JarvisRouterConfig {
+  return new Proxy(config, {
+    get(target, prop, receiver) {
+      if (prop === 'captureHook') return target.captureHook ?? sharedCaptureHook;
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+}
+
+export const tenantJarvisRouter   = createJarvisRouter(withSharedHook({ surface: 'tenant-app',         defaultTier: 'lease',    greetingStyle: 'warm',   consumerSurface: true }));
+export const ownerJarvisRouter    = createJarvisRouter(withSharedHook({ surface: 'owner-portal',       defaultTier: 'portfolio',greetingStyle: 'warm' }));
+export const managerJarvisRouter  = createJarvisRouter(withSharedHook({ surface: 'estate-manager-app', defaultTier: 'property', greetingStyle: 'terse' }));
+export const orgAdminJarvisRouter = createJarvisRouter(withSharedHook({ surface: 'admin-portal',       defaultTier: 'org',      greetingStyle: 'warm' }));
+export const platformHqJarvisRouter = createJarvisRouter(withSharedHook({ surface: 'platform-hq',      defaultTier: 'industry', greetingStyle: 'warm' }));

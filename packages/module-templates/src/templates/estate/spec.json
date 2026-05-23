@@ -73,6 +73,20 @@
       "trigger_entity": "lease",
       "trigger_event": "update",
       "steps": ["compute_renewal_terms", "send_proposal", "schedule_meeting"]
+    },
+    {
+      "slug": "post_receipt_draft",
+      "title": "Record a draft receipt against a tenant",
+      "trigger_entity": "lease",
+      "trigger_event": "payment",
+      "steps": ["validate_amount", "draft_ledger_entry", "notify_manager_for_review"]
+    },
+    {
+      "slug": "bulk_mark_for_renewal_prep",
+      "title": "Flag many leases for renewal preparation",
+      "trigger_entity": "lease",
+      "trigger_event": "bulk_update",
+      "steps": ["filter_leases", "flag_each", "audit_chain"]
     }
   ],
   "ui_sections": [
