@@ -8,6 +8,7 @@ import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyum
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
+import { ROUTES } from '@/lib/routes';
 
 export default function CustomersListPage() {
   const t = useTranslations('customersListPage');
@@ -34,7 +35,7 @@ export default function CustomersListPage() {
         title={t('title')}
         subtitle={t('totalCount', { count: pagination?.totalItems ?? customers.length })}
         action={
-          <Link href="/customers/new" className="btn-primary text-sm flex items-center gap-1">
+          <Link href={ROUTES.customers.new} className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
             {t('add')}
           </Link>
@@ -72,7 +73,7 @@ export default function CustomersListPage() {
             title={t('emptyTitle')}
             description={search ? t('emptyFilteredDesc') : t('emptyDesc')}
             action={
-              <Link href="/customers/new" className="btn-primary inline-block">
+              <Link href={ROUTES.customers.new} className="btn-primary inline-block">
                 {t('addCustomer')}
               </Link>
             }

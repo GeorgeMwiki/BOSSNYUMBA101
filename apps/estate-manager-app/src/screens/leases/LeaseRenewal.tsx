@@ -5,6 +5,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { leasesService } from '@bossnyumba/api-client';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 interface LeaseRenewalProps {
   leaseId: string;
@@ -23,7 +24,7 @@ export function LeaseRenewal({ leaseId }: LeaseRenewalProps) {
 
   const renewal = useMutation({
     mutationFn: () => leasesService.renew(leaseId, { extendMonths: 12 }),
-    onSuccess: () => router.push(`/leases/${leaseId}`),
+    onSuccess: () => router.push(ROUTES.leases.detail(leaseId)),
   });
 
   return (

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 const categories = [
   'plumbing',
@@ -48,7 +49,7 @@ export default function VendorForm() {
 
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    router.push('/vendors');
+    router.push(ROUTES.vendors.root);
   };
 
   return (

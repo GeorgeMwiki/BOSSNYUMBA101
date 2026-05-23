@@ -22,11 +22,43 @@ export const ROUTES = {
   ask: {
     root: '/ask',
     thread: (threadId: string): string => `/ask/${threadId}`,
+    threadWithSeed: (threadId: string, seed: string): string =>
+      `/ask/${encodeURIComponent(threadId)}?seed=${encodeURIComponent(seed)}`,
+  },
+
+  brain: {
+    root: '/brain',
+    withQuery: (q: string): string =>
+      `/brain?q=${encodeURIComponent(q)}`,
+    threads: '/brain/threads',
+  },
+
+  calendar: {
+    root: '/calendar',
+    events: '/calendar/events',
+    availability: '/calendar/availability',
   },
 
   customers: {
     root: '/customers',
+    new: '/customers/new',
     detail: (id: string): string => `/customers/${id}`,
+  },
+
+  inspections: {
+    schedule: '/inspections/schedule',
+  },
+
+  leases: {
+    root: '/leases',
+    new: '/leases/new',
+    detail: (leaseId: string): string => `/leases/${leaseId}`,
+  },
+
+  messaging: {
+    root: '/messaging',
+    new: '/messaging/new',
+    detail: (id: string): string => `/messaging/${id}`,
   },
 
   payments: {
@@ -34,14 +66,46 @@ export const ROUTES = {
     detail: (id: string): string => `/payments/${id}`,
   },
 
-  workOrders: {
-    root: '/work-orders',
-    detail: (id: string): string => `/work-orders/${id}`,
+  properties: {
+    root: '/properties',
+    new: '/properties/new',
+    detail: (id: string): string => `/properties/${id}`,
+  },
+
+  reports: {
+    root: '/reports',
+    generate: '/reports/generate',
+    scheduled: '/reports/scheduled',
+    scheduledNew: '/reports/scheduled/new',
+  },
+
+  settings: {
+    root: '/settings',
+  },
+
+  units: {
+    root: '/units',
+    new: '/units/new',
+    detail: (id: string): string => `/units/${id}`,
   },
 
   utilities: {
     root: '/utilities',
     bills: '/utilities/bills',
+    billsPay: '/utilities/bills/pay',
+    readings: '/utilities/readings',
+    readingsRecord: '/utilities/readings/record',
+  },
+
+  vendors: {
+    root: '/vendors',
+    new: '/vendors/new',
+  },
+
+  workOrders: {
+    root: '/work-orders',
+    new: '/work-orders/new',
+    detail: (id: string): string => `/work-orders/${id}`,
   },
 } as const;
 

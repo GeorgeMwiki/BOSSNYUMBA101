@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Plus, Megaphone, ChevronRight, Pin } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 type AnnouncementPriority = 'normal' | 'important' | 'urgent';
 
@@ -51,7 +52,7 @@ export default function AnnouncementsPage() {
         title={t('title')}
         subtitle={t('countLabel', { count: announcements.length })}
         action={
-          <Link href="/announcements/create" className="btn-primary text-sm flex items-center gap-1">
+          <Link href={ROUTES.announcements.create} className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
             {t('create')}
           </Link>
@@ -124,7 +125,7 @@ export default function AnnouncementsPage() {
               {filter === 'pinned' ? t('noPinned') : t('createToNotify')}
             </p>
             {filter !== 'pinned' && (
-              <Link href="/announcements/create" className="btn-primary mt-4 inline-block">
+              <Link href={ROUTES.announcements.create} className="btn-primary mt-4 inline-block">
                 {t('createAnnouncement')}
               </Link>
             )}

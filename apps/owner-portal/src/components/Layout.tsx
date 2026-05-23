@@ -25,6 +25,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
 import { LocaleSwitcher } from './LocaleSwitcher';
+import { ROUTES } from '../lib/routes';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -59,7 +60,7 @@ export function Layout({ children }: LayoutProps) {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate(ROUTES.login);
   };
 
   return (

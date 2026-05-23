@@ -1133,5 +1133,130 @@
   },
   "eSignaturePrompt": {
     "drawTitle": "Draw Your Signature"
+  },
+  "triagePage": {
+    "applianceBroken": "Appliance broken",
+    "somethingElse": "Something else",
+    "wholeHouse": "The whole house",
+    "oneOutlet": "Just one wall socket",
+    "breakerFlipped": "Yes, one is flipped",
+    "breakerNormal": "No, all look normal",
+    "breakerNotFound": "I cannot find the breaker box",
+    "noWater": "No water coming out at all",
+    "completelyDead": "It is completely dead",
+    "runningWarmAir": "Running but blowing warm air"
+  },
+  "emergencyPage": {
+    "powerOutage": "Power Outage",
+    "securityIssue": "Security Issue",
+    "otherEmergency": "Other Emergency"
+  },
+  "inspectionPage2": {
+    "wallsUndamaged": "Walls undamaged",
+    "flooringGoodCondition": "Flooring in good condition",
+    "plumbingWorks": "Plumbing works",
+    "electricalOutletsWorking": "Electrical outlets working",
+    "doorsLocksSecure": "Doors & locks secure",
+    "windowsOpenClose": "Windows open and close",
+    "savedSignatureAlt": "Saved signature"
+  },
+  "onboardingCompletePage": {
+    "keyCollectionLabel": "Key Collection"
+  },
+  "onboardingUtilitiesPage": {
+    "copyMeterNumberLabel": "Copy Meter Number"
+  },
+  "onboardingWelcomePage2": {
+    "pushNotificationsLabel": "Push Notifications"
+  },
+  "houseRulesPage": {
+    "title": "House Rules"
+  },
+  "declaredFactsPage": {
+    "title": "Declared facts"
+  },
+  "feedbackThumbsExt": {
+    "feedbackReasonAria": "Feedback reason",
+    "tellMeWrongPlaceholder": "Tell me what was wrong (optional)"
+  },
+  "chatComposerExt": {
+    "sendMessageAria": "Send message"
+  },
+  "dashboardStats": {
+    "leaseEnds": "Lease Ends",
+    "openTickets": "Open Tickets"
+  },
+  "fileUpload": {
+    "uploadDocumentLabel": "Upload a document"
+  },
+  "moveOutNoticeForm": {
+    "whyMovingOutPlaceholder": "Why are you moving out?",
+    "mailDepositPlaceholder": "Where should we mail your deposit?",
+    "depositReturnPreference": "Deposit return preference"
+  },
+  "notificationCenterButton": {
+    "notificationsPanelAria": "Notifications panel",
+    "closeNotificationsAria": "Close notifications"
+  },
+  "feedbackThumbsFb": {
+    "thumbsUpAria": "Thumbs up",
+    "thumbsDownAria": "Thumbs down"
+  },
+  "maintenanceTicketModal": {
+    "pestControlLabel": "Pest control"
+  },
+  "ticketRatingWidget": {
+    "howWasService": "How was the service?",
+    "whatWorkedPlaceholder": "What worked well? Anything we should improve?",
+    "submitRatingAria": "Submit rating"
+  },
+  "marketingShellNav": {
+    "stationMastersLabel": "Station Masters",
+    "howItWorksLabel": "How it works"
+  },
+  "liveAffordabilityDemo": {
+    "enterIncomeLabel": "Enter income",
+    "comfortablyAffordableLabel": "Comfortably affordable"
+  },
+  "documentQualityChecker": {
+    "documentQualityLabel": "Document Quality"
+  },
+  "inspectionChecklist": {
+    "inspectionChecklistItemsAria": "Inspection checklist items",
+    "submitInspectionAria": "Submit inspection"
+  },
+  "phoneSignupForm": {
+    "sendOtpAria": "Send OTP",
+    "verifyCodeAria": "Verify code"
+  },
+  "signaturePadAria": {
+    "signaturePadAria": "Signature pad",
+    "clearSignatureAria": "Clear signature",
+    "confirmSignatureAria": "Confirm signature and submit"
+  },
+  "categorySelector": {
+    "pestControlLabel": "Pest Control"
+  },
+  "requestCardStatus": {
+    "inProgressLabel": "In Progress"
+  },
+  "paymentsData": {
+    "allTime": "All time",
+    "last30Days": "Last 30 days",
+    "last3Months": "Last 3 months",
+    "last6Months": "Last 6 months",
+    "thisYear": "This year"
+  },
+  "proposedActionMapper": {
+    "openMaintenanceForm": "Open maintenance form",
+    "openPaymentForm": "Open payment form",
+    "openMessageComposer": "Open message composer",
+    "openLeaseForm": "Open lease form"
+  },
+  "starterPrompts": {
+    "rentDue": "When is my next rent due?",
+    "openMaintenance": "Open a maintenance request",
+    "explainLease": "Explain my lease",
+    "findReceipt": "Find a payment receipt"
   }
 }

@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { unitsService, propertiesService } from '@bossnyumba/api-client';
+import { ROUTES } from '@/lib/routes';
 
 const unitSchema = z.object({
   propertyId: z.string().min(1, 'Property is required'),
@@ -90,7 +91,7 @@ function UnitFormPageInner() {
     onSuccess: (response: { data: { id: string } }) => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
       queryClient.invalidateQueries({ queryKey: ['properties'] });
-      router.push(`/units/${response.data.id}`);
+      router.push(ROUTES.units.detail(response.data.id));
     },
   });
 

@@ -32,6 +32,16 @@ export const HARDCODED_ROUTES_ALLOWLIST = new Map([
     'apps/estate-manager-app/src/lib/routes.ts',
     'estate-manager-app routes registry IS the canonical frontend route lookup table for the estate manager app.',
   ],
+  // ─── Admin platform portal (operator-only, no registry yet) ───────
+  // The admin platform portal is an internal operator surface that does
+  // not share the customer-app/owner-portal/estate-manager-app route
+  // registry pattern. The single thread-create redirect below is the
+  // only navigation call in this subtree that uses an inline path; it
+  // is structurally tied to the /ask/[threadId] route convention.
+  [
+    'apps/admin-platform-portal/src/components/ask/AskChat.tsx',
+    'admin platform portal — operator-only surface without its own ROUTES registry; thread-create redirect is structurally tied to the /ask/[threadId] convention.',
+  ],
   // ─── Next.js app-router layouts: literal segment paths only ───────
   // (We allowlist the layout-level redirect helpers since they are
   // structurally tied to the Next.js routing model itself.)

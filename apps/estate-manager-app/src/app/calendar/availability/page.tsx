@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TIME_SLOTS = [
@@ -40,7 +41,7 @@ export default function SetAvailabilityPage() {
 
   const handleSave = () => {
     // In real app: API call to save availability
-    router.push('/calendar');
+    router.push(ROUTES.calendar.root);
   };
 
   return (
