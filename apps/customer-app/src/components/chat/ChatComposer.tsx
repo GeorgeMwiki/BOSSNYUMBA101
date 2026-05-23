@@ -22,6 +22,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { Paperclip, Send, X, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { getApiBaseUrl } from '@/lib/api';
 import { getCsrfHeaders } from '@/lib/csrf';
 
@@ -77,6 +78,7 @@ export function ChatComposer({
   onLocalMessageConfirmed,
   disabled = false,
 }: ChatComposerProps): JSX.Element {
+  const t = useTranslations('chatComposer');
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState<ReadonlyArray<PendingFile>>([]);
   const [sending, setSending] = useState(false);
@@ -248,14 +250,14 @@ export function ChatComposer({
           multiple
           onChange={(e) => void onPickFiles(e.target.files)}
           className="hidden"
-          aria-label="Attach files"
+          aria-label={t('attachFiles')}
           data-testid="chat-file-input"
         />
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={sending || disabled || pending.length >= MAX_ATTACHMENTS}
-          aria-label="Attach file"
+          aria-label={t('attachFile')}
           data-testid="chat-attach-button"
           className="rounded-lg border border-white/10 bg-[#1a1a1a] p-2 text-gray-300 disabled:opacity-50"
         >

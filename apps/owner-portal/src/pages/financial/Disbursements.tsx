@@ -33,6 +33,7 @@ import { Skeleton, Alert, AlertDescription, Button, Spinner } from '@bossnyumba/
 import { useTranslations } from 'next-intl';
 import { api, formatDate, formatDateTime } from '../../lib/api';
 import { useTenantCurrencyFormatter } from '../../hooks/useTenantCurrency';
+import { ROUTES } from '../../lib/routes';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface DisbursementBreakdown {
@@ -213,7 +214,7 @@ export function DisbursementsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/financial')}
+            onClick={() => navigate(ROUTES.financial.root)}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
           >
             <ArrowLeft className="h-5 w-5" />

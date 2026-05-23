@@ -7,6 +7,7 @@ import { Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { propertiesService, reportsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 type ReportType = 'occupancy' | 'revenue' | 'maintenance' | 'inspections';
 
@@ -77,7 +78,7 @@ function GenerateReportPageInner() {
       // The mutation surfaces the error via React Query state; the UI
       // does not interrupt navigation.
     } finally {
-      router.push('/reports');
+      router.push(ROUTES.reports.root);
     }
   };
 

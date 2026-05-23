@@ -10,6 +10,7 @@ import { Skeleton, Alert, AlertDescription } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { propertiesService } from '@bossnyumba/api-client';
+import { ROUTES } from '@/lib/routes';
 
 const propertySchema = z.object({
   name: z.string().trim().min(1, 'Property name is required'),
@@ -97,7 +98,7 @@ export default function PropertyEditPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['property', id] });
       queryClient.invalidateQueries({ queryKey: ['properties'] });
-      router.push(`/properties/${id}`);
+      router.push(ROUTES.properties.detail(id));
     },
   });
 

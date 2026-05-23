@@ -806,7 +806,23 @@
     "expectedResponse": "Jibu Linalotarajiwa",
     "aimRespond": "Tunalenga kujibu ndani ya {sla}.",
     "submitting": "Inawasilisha...",
-    "submitRequest": "Wasilisha Ombi"
+    "submitRequest": "Wasilisha Ombi",
+    "locations": {
+      "kitchen": "Jikoni",
+      "bathroom": "Bafuni",
+      "bedroom": "Chumba cha Kulala",
+      "living_room": "Sebule",
+      "balcony": "Baraza",
+      "hallway": "Ukanda",
+      "storeroom": "Stoo",
+      "other": "Nyingine"
+    },
+    "timeSlots": {
+      "morning": "Asubuhi (9am - 12pm)",
+      "afternoon": "Mchana (12pm - 5pm)",
+      "evening": "Jioni (5pm - 8pm)",
+      "any": "Wakati Wowote"
+    }
   },
   "leaseRenewal": {
     "title": "Upyaji wa Mkataba",
@@ -1100,5 +1116,15 @@
     "sampleUnitTerm": "Kitengo A-204 • miezi 12",
     "sampleStartDate": "1 Juni 2024",
     "sampleEndDate": "31 Mei 2025"
+  },
+  "tenantLeaseDetail": {
+    "title": "Maelezo ya kodi",
+    "subtitle": "KPIs na shughuli za hivi karibuni za kodi yako.",
+    "kpiTitle": "Hali ya kitengo",
+    "kpiEmpty": "Ukaguzi wako wa hivi karibuni utaonyesha viwango hapa.",
+    "activityTitle": "Shughuli za hivi karibuni",
+    "activityEmpty": "Matukio kwenye kiwanja hiki yataonekana hapa yanapotokea.",
+    "disabledTitle": "Onyesho la KPI za kodi",
+    "disabledDescription": "Imefungwa na bendera ya lease_kpi_panel_enabled."
   }
 }

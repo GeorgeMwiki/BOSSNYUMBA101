@@ -6,6 +6,7 @@ import { FileText, Calendar, DollarSign } from 'lucide-react';
 import { EmptyState } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 type BillStatus = 'paid' | 'pending' | 'overdue';
 
@@ -80,7 +81,7 @@ export default function UtilityBillsPage() {
               <div className="text-2xl font-bold">{formatCurrency(pendingAmount)}</div>
             </div>
             {pendingAmount > 0 && (
-              <Link href="/utilities/bills/pay" className="btn-primary text-sm">
+              <Link href={ROUTES.utilities.billsPay} className="btn-primary text-sm">
                 Pay Now
               </Link>
             )}

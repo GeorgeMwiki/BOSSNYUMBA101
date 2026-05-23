@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { FileText, ChevronRight, Home } from 'lucide-react';
+import { ROUTES } from '@/lib/routes';
 
 // Mock lease data - would come from API/React Query
 const lease = {
@@ -18,7 +19,7 @@ export function LeaseSummary() {
   return (
     <section>
       <h2 className="text-sm font-medium text-gray-500 mb-3">{t('heading')}</h2>
-      <Link href="/lease">
+      <Link href={ROUTES.lease.root}>
         <div className="card p-4 active:scale-[0.99] transition-transform">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">

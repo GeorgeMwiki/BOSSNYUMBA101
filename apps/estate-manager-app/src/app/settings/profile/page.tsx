@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { User, Camera } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 /**
  * Phone placeholder map. BOSSNYUMBA is a global app — we never hard-code a
@@ -43,7 +44,7 @@ export default function ProfileSettingsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // In real app: API call to update profile
-    router.push('/settings');
+    router.push(ROUTES.settings.root);
   };
 
   return (

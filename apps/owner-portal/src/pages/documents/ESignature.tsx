@@ -22,6 +22,7 @@ import { Skeleton, Alert, AlertDescription, Button, EmptyState, Spinner } from '
 import { useTranslations } from 'next-intl';
 import { api, formatDate, formatDateTime } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { ROUTES } from '../../lib/routes';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface SignatureDocument {
@@ -314,7 +315,7 @@ export function ESignaturePage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/documents')}
+            onClick={() => navigate(ROUTES.documents.root)}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
           >
             <ArrowLeft className="h-5 w-5" />

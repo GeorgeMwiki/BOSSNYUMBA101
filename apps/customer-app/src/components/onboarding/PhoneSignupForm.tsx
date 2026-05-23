@@ -8,6 +8,7 @@ import { getRegionConfig } from '@bossnyumba/domain-models';
 
 import { getApiBaseUrl } from '@/lib/api';
 import { getCsrfHeaders } from '@/lib/csrf';
+import { ROUTES } from '@/lib/routes';
 
 /**
  * PhoneSignupForm — phone+OTP signup affordance.
@@ -305,7 +306,7 @@ export function PhoneSignupForm({
 
             <div className="text-center text-sm text-gray-500">
               Already have an account?{' '}
-              <Link href="/auth/login" className="text-primary-600 font-medium">
+              <Link href={ROUTES.auth.login} className="text-primary-600 font-medium">
                 Sign in
               </Link>
             </div>

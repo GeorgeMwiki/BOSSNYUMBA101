@@ -7,6 +7,7 @@ import { Skeleton, Alert, AlertDescription } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { unitsService } from '@bossnyumba/api-client';
+import { ROUTES } from '@/lib/routes';
 
 export default function UnitEditPage() {
   const t = useTranslations('unitForm');
@@ -67,7 +68,7 @@ export default function UnitEditPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['unit', id] });
       queryClient.invalidateQueries({ queryKey: ['units'] });
-      router.push(`/units/${id}`);
+      router.push(ROUTES.units.detail(id));
     },
   });
 

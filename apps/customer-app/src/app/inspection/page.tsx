@@ -12,6 +12,7 @@ import {
 import { SignaturePad } from '@/components/onboarding/SignaturePad';
 import { getApiBaseUrl } from '@/lib/api';
 import { getCsrfHeaders } from '@/lib/csrf';
+import { ROUTES } from '@/lib/routes';
 
 /**
  * `/inspection` — lightweight move-in inspection at the top level so
@@ -166,7 +167,7 @@ export default function InspectionPage(): JSX.Element {
         throw new Error('API gateway URL is not configured.');
       }
       await submitInspection(baseUrl, items, signature);
-      router.push('/onboarding');
+      router.push(ROUTES.onboarding.root);
     },
     [baseUrl, router, signature]
   );

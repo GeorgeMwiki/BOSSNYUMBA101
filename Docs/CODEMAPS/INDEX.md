@@ -30,6 +30,8 @@ Codemaps are written from source. When source moves, update the codemap.
 |---------|--------|---------|
 | [central-intelligence.md](./central-intelligence.md) | `packages/central-intelligence/` | 12-agent embodied-agent kernel — sensors, persona, policy gate, theory-of-mind, debate, LATS, four-eye |
 | [ai-copilot.md](./ai-copilot.md) | `packages/ai-copilot/` | Personas, prompts, knowledge, security, copilot workflows |
+| [persona-runtime.md](./persona-runtime.md) | `packages/persona-runtime/` | Piece D — title→tier hierarchy, persona bindings, tool catalogue, scope predicates |
+| [conversation-threads.md](./conversation-threads.md) | `packages/conversation-threads/` | Piece F — MD-tier projects + threads with hash-chained messages and versioned artifacts |
 | [observability.md](./observability.md) | `packages/observability/` + `evals/` | OTel + audit + online-judge + decision-trace + red-team corpora |
 | [forecasting.md](./forecasting.md) | `packages/forecasting/` | Probabilistic forecasting + split conformal intervals |
 | [forecasting-engine.md](./forecasting-engine.md) | `packages/forecasting-engine/` | Orchestrator, scenarios, sandbox, world-model, feedback, scoring |
@@ -41,6 +43,8 @@ Codemaps are written from source. When source moves, update the codemap.
 | [graph-privacy.md](./graph-privacy.md) | `packages/graph-privacy/` | Differential-privacy aggregator budget |
 | [aop-compiler.md](./aop-compiler.md) | `packages/aop-compiler/` | Agent-Oriented Programming DSL → kernel plan |
 | [consolidation-worker.md](./consolidation-worker.md) | `services/consolidation-worker/` | Four-pass sleep consolidation |
+| [workforce-orchestrator.md](./workforce-orchestrator.md) | `packages/workforce-orchestrator/` | Piece M — agentic workforce management (assign / follow-up / check-in / perf / advisory) |
+| [long-horizon-agent.md](./long-horizon-agent.md) | `packages/long-horizon-agent/` | Piece Q — multi-day mission lifecycle (plan, dispatch, checkpoint, drift, replan, outcome) |
 
 ### Platform spine
 
@@ -48,6 +52,7 @@ Codemaps are written from source. When source moves, update the codemap.
 |---------|--------|---------|
 | [api-gateway.md](./api-gateway.md) | `services/api-gateway/` | Hono BFF + composition root |
 | [database.md](./database.md) | `packages/database/` | Drizzle schemas, migrations, RLS, pgvector |
+| [core-entity.md](./core-entity.md) | `packages/database/src/schemas/core-entity/` | Piece A — universal asset & entity model (polymorphic root + thin per-type extensions + tenant custom fields) |
 | [payments-ledger.md](./payments-ledger.md) | `services/payments-ledger/` | Drizzle double-entry ledger |
 | [payments-service.md](./payments-service.md) | `services/payments/` | M-Pesa STK + reconciliation channel |
 | [agent-platform.md](./agent-platform.md) | `packages/agent-platform/` | Agent auth, idempotency, A2A errors |
@@ -60,19 +65,25 @@ Codemaps are written from source. When source moves, update the codemap.
 | [webhooks-service.md](./webhooks-service.md) | `services/webhooks/` | Outbound webhook delivery |
 | [outbox-processor.md](./outbox-processor.md) | `services/outbox-processor/` | Standalone outbox drainer |
 | [document-intelligence.md](./document-intelligence.md) | `services/document-intelligence/` | OCR + fraud + evidence packs |
+| [document-analysis.md](./document-analysis.md) | `packages/document-analysis/` | Piece K pipeline: ingest → OCR → extract → resolve → route |
 | [file-ingest.md](./file-ingest.md) | `packages/file-ingest/` | Conversational ingest pipeline |
+| [geo-parcels.md](./geo-parcels.md) | `packages/geo-parcels/` | Walk-and-capture land + map subdivide + cross-tenant marketplace (Piece N) |
 | [enterprise-hardening.md](./enterprise-hardening.md) | `packages/enterprise-hardening/` | SOC2 + circuit breaker + DR + FinOps |
 | [connectors.md](./connectors.md) | `packages/connectors/` | External-system adapter framework |
 | [lpms-connector.md](./lpms-connector.md) | `packages/lpms-connector/` | Legacy LPMS CSV/JSON/XML adapters |
 | [mcp-server.md](./mcp-server.md) | `packages/mcp-server/` | MCP base server + tool registry |
 | [mcp-servers.md](./mcp-servers.md) | `services/mcp-server-*/` | Per-integration MCP servers |
 | [svc-reports.md](./svc-reports.md) | `services/reports/` | PDF / Excel / CSV + scheduler |
+| [report-engine.md](./report-engine.md) | `packages/report-engine/` | Piece H — templated PDF/DOCX/PPTX in tenant brand |
+| [presentation-engine.md](./presentation-engine.md) | `packages/presentation-engine/` | Piece H — themed slide decks (5 built-in themes) |
+| [tutoring-skill-pack.md](./tutoring-skill-pack.md) | `packages/tutoring-skill-pack/` | Piece H — Socratic tutor with data-grounded examples |
 
 ### User surface
 
 | Codemap | Module | Purpose |
 |---------|--------|---------|
 | [dynamic-sections.md](./dynamic-sections.md) | `packages/dynamic-sections/` | Adaptive layout engine (UI-1) |
+| [tab-need-detector.md](./tab-need-detector.md) | `packages/tab-need-detector/` | Piece O — need detection + tab spawning + per-user personalisation |
 | [chat-ui.md](./chat-ui.md) | `packages/chat-ui/` | ProactiveHint, MasteryGate, blackboard, voice |
 | [design-system.md](./design-system.md) | `packages/design-system/` | shadcn + Tailwind v4 + OKLCH primitives |
 | [api-client.md](./api-client.md) | `packages/api-client/` | Browser HTTP client + React Query hooks |

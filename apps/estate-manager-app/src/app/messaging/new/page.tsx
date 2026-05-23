@@ -15,6 +15,7 @@ import {
   Skeleton,
 } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 interface RecipientOption {
   readonly id: string;
@@ -80,7 +81,7 @@ export default function NewConversationPage() {
       queryClient.invalidateQueries({
         queryKey: ['messaging-conversations-live'],
       });
-      router.push(`/messaging/${response.data.id}`);
+      router.push(ROUTES.messaging.detail(response.data.id));
     },
   });
 

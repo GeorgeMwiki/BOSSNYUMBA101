@@ -38,7 +38,7 @@ type Node =
       kind: 'question';
       id: string;
       question: string;
-      options: ReadonlyArray<{ key: string; label: string; nextNodeId: string }>;
+      options: ReadonlyArray<{ key: string; labelKey: string; nextNodeId: string }>;
     }
   | {
       kind: 'self-service';

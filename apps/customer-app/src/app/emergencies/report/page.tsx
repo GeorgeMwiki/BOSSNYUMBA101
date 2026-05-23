@@ -12,6 +12,7 @@ import {
   Info,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 const emergencyTypes = [
   {
@@ -57,7 +58,7 @@ export default function ReportEmergencyPage() {
 
     setIsSubmitting(true);
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    router.push('/emergencies?reported=true');
+    router.push(ROUTES.emergencies.reported);
   };
 
   return (

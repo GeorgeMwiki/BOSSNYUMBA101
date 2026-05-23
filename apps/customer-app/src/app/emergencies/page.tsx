@@ -5,6 +5,7 @@ import { Phone, AlertTriangle, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getEmergencyContacts } from '@/lib/constants';
+import { ROUTES } from '@/lib/routes';
 
 export default function EmergenciesPage() {
   const t = useTranslations('emergenciesPage');
@@ -14,7 +15,7 @@ export default function EmergenciesPage() {
       <PageHeader
         title={t('title')}
         action={
-          <Link href="/emergencies/report" className="btn-primary text-sm">
+          <Link href={ROUTES.emergencies.report} className="btn-primary text-sm">
             <Plus className="w-4 h-4 mr-1" />
             {t('reportCta')}
           </Link>

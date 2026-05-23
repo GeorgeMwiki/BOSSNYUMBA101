@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { Dopamine } from '@bossnyumba/chat-ui';
 import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
+import { ROUTES } from '../lib/routes';
 
 const { ConfettiTrigger } = Dopamine;
 
@@ -160,7 +161,7 @@ export function DesktopReview(): JSX.Element {
   const askMrMwikila = useCallback(
     (kind: string, contextId: string) => {
       const params = new URLSearchParams({ context: `${kind}:${contextId}` });
-      navigate(`/manager-chat?${params.toString()}`);
+      navigate(ROUTES.managerChat.withQuery(params.toString()));
     },
     [navigate],
   );
@@ -188,7 +189,7 @@ export function DesktopReview(): JSX.Element {
         context: `${kind}:${id}`,
         intent: action,
       });
-      navigate(`/manager-chat?${params.toString()}`);
+      navigate(ROUTES.managerChat.withQuery(params.toString()));
     },
     [askMrMwikila, data.approvals, navigate, tenant?.id, user?.id],
   );

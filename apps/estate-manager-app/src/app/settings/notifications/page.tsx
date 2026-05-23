@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 interface NotificationSetting {
   id: string;
@@ -36,7 +37,7 @@ export default function NotificationPreferencesPage() {
 
   const handleSave = () => {
     // In real app: API call to save preferences
-    router.push('/settings');
+    router.push(ROUTES.settings.root);
   };
 
   const pushSettings = settings.filter((s) => s.category === 'push');

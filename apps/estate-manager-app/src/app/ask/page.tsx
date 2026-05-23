@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ROUTES } from '@/lib/routes';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { DegradedCard } from './_components/DegradedCard';
 import { ThreadSidebar } from './_components/ThreadSidebar';
@@ -66,7 +67,7 @@ export default function AskLandingPage() {
       setStartError(null);
       const result = await createThread(value);
       if (result.ok) {
-        router.push(`/ask/${encodeURIComponent(result.data.threadId)}?seed=${encodeURIComponent(value)}`);
+        router.push(ROUTES.ask.threadWithSeed(result.data.threadId, value));
       } else {
         setStartError(result.message);
         setStarting(false);

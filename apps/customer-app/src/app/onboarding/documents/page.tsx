@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 import {
   DocumentQualityChecker,
   type QualityCheck,
@@ -247,7 +248,7 @@ export default function OnboardingDocumentsPage() {
     progress.documents = 'completed';
     localStorage.setItem('onboarding_progress', JSON.stringify(progress));
 
-    router.push('/onboarding/inspection');
+    router.push(ROUTES.onboarding.inspection);
   };
 
   const uploadedCount = documents.filter((d) => d.status === 'uploaded').length;

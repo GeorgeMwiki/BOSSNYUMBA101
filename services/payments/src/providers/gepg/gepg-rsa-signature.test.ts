@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll } from 'vitest';
 import { generateKeyPairSync } from 'node:crypto';
 import {
   canonicalizeGepgEnvelope,
@@ -7,13 +7,31 @@ import {
   GepgRsaError,
 } from './gepg-rsa-signature';
 
-function fakeKeyPair() {
+// RSA-2048 keygen is CPU-bound and can exceed vitest's default 5s timeout
+// when ~50 packages run in parallel (observed 6s+ per call). Cache two
+// reusable keypairs in beforeAll so individual tests don't pay the keygen
+// cost on every it() invocation.
+let cachedSigning: { privateKeyPem: string; publicCertPem: string };
+let cachedOther: { privateKeyPem: string; publicCertPem: string };
+
+beforeAll(() => {
+  cachedSigning = generateKeys();
+  cachedOther = generateKeys();
+}, 60_000);
+
+function generateKeys() {
   const { privateKey, publicKey } = generateKeyPairSync('rsa', {
     modulusLength: 2048,
     publicKeyEncoding: { type: 'spki', format: 'pem' },
     privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
   });
   return { privateKeyPem: privateKey, publicCertPem: publicKey };
+}
+
+function fakeKeyPair() {
+  // Default: return the cached signing pair so callers don't pay keygen.
+  // Tests that need a *fresh* pair can call generateKeys() directly.
+  return cachedSigning;
 }
 
 const SAMPLE = `<?xml version="1.0"?>
@@ -55,10 +73,9 @@ describe('sign/verify round-trip', () => {
   });
 
   it('fails verification with a different key', () => {
-    const signing = fakeKeyPair();
-    const other = fakeKeyPair();
-    const signed = signGepgEnvelope(SAMPLE, signing);
-    const r = verifyGepgEnvelope(signed.xml, { publicCertPem: other.publicCertPem });
+    // Use cached `cachedOther` to avoid a second keygen on every run.
+    const signed = signGepgEnvelope(SAMPLE, cachedSigning);
+    const r = verifyGepgEnvelope(signed.xml, { publicCertPem: cachedOther.publicCertPem });
     expect(r.valid).toBe(false);
   });
 

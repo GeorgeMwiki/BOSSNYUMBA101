@@ -16,6 +16,7 @@ import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Avatar } from '@/components/profile/Avatar';
 import { useAuth } from '@/contexts/AuthContext';
+import { ROUTES } from '@/lib/routes';
 
 export default function ProfilePage() {
   const t = useTranslations('profilePage');
@@ -30,7 +31,7 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     logout();
-    router.push('/auth/login');
+    router.push(ROUTES.auth.login);
   };
 
   return (

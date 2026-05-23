@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Spotlight } from '@bossnyumba/spotlight/react';
+import { ROUTES } from '@/lib/routes';
 
 /**
  * Spotlight mount for customer-app. Bound to Next.js router for navigation.
@@ -17,7 +18,7 @@ export function SpotlightMount(): JSX.Element {
         if (action.route) router.push(action.route);
       }}
       onPersonaHandoff={(query) => {
-        router.push(`/assistant?q=${encodeURIComponent(query)}`);
+        router.push(ROUTES.assistantWithQuery(query));
       }}
     />
   );

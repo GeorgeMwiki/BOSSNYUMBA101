@@ -13,6 +13,7 @@ import {
 
 import { getApiBaseUrl } from '@/lib/api';
 import { getCsrfHeaders } from '@/lib/csrf';
+import { ROUTES } from '@/lib/routes';
 
 /**
  * `/onboarding/redeem?token=...` — bearer-token redemption flow.
@@ -218,7 +219,7 @@ function RedeemPageInner(): JSX.Element {
             </p>
             <button
               type="button"
-              onClick={() => router.push('/onboarding')}
+              onClick={() => router.push(ROUTES.onboarding.root)}
               data-testid="redeem-continue-button"
               className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-base font-semibold text-white hover:bg-primary-700"
             >

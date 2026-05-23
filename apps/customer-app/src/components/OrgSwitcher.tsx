@@ -13,6 +13,7 @@
 import React, { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, type CustomerOrgMembership } from '../contexts/AuthContext';
+import { ROUTES } from '@/lib/routes';
 
 export interface OrgSwitcherProps {
   /** Called after navigation-style actions so parent can close menus. */
@@ -115,7 +116,7 @@ export function OrgSwitcher({ onAddOrganization }: OrgSwitcherProps) {
               onClick={() => {
                 setOpen(false);
                 onAddOrganization?.();
-                router.push('/onboarding/redeem-code');
+                router.push(ROUTES.onboarding.redeemCode);
               }}
             >
               + Add organization (enter invite code)
