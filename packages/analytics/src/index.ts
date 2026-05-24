@@ -48,3 +48,46 @@ export {
   type XlsxAdapter,
   type XlsxParseOptions,
 } from './parsers/index.js';
+
+// Charts (Vega-Lite v6 builders)
+export {
+  barChart,
+  boxplotChart,
+  funnelChart,
+  gaugeChart,
+  heatmapChart,
+  kpiTile,
+  lineChart,
+  mapChart,
+  pieChart,
+  sankeyChart,
+  scatterChart,
+  CATEGORICAL_PALETTE,
+  CHART_CONFIG,
+  DIVERGING_PALETTE,
+  SEQUENTIAL_PALETTE,
+  VEGA_LITE_V6_SCHEMA,
+  type BarChartInput,
+  type BoxplotChartInput,
+  type BuilderCommon,
+  type FunnelChartInput,
+  type GaugeChartInput,
+  type HeatmapChartInput,
+  type KpiTileInput,
+  type LineChartInput,
+  type MapChartInput,
+  type PieChartInput,
+  type SankeyChartInput,
+  type ScatterChartInput,
+} from './charts/index.js';
+
+// AI Chart Author
+export {
+  authorChartFromQuestion,
+  brainFromSynthesizer,
+  pickTemplate,
+  deterministicResponse,
+  type AuthorChartInput,
+  type ChartAuthorBrain,
+  type SynthesizerLike,
+} from './ai-chart-author/index.js';
