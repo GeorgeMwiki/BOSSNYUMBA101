@@ -24,7 +24,17 @@
 -- cosine-distance operator used by `searchByEmbedding`. Postgres 14+
 -- supports the extension with the `pgvector` package installed on the
 -- server. The CREATE EXTENSION is IF NOT EXISTS so re-runs are safe.
-CREATE EXTENSION IF NOT EXISTS vector;
+-- Wrapped in a DO/EXCEPTION block so apply-check against a stock
+-- Postgres image (which does not ship pgvector) emits a NOTICE rather
+-- than aborting the whole migration chain. Downstream ALTERs/INDEXes
+-- that depend on `vector(...)` will surface the real error if and only
+-- if the extension is actually missing at runtime — fail-loud locally,
+-- skip-loud in apply-check.
+DO $$ BEGIN
+  CREATE EXTENSION IF NOT EXISTS vector;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE '0125: pgvector unavailable: %', SQLERRM;
+END $$;
 
 -- Add the embedding column. text-embedding-3-small returns 1536-dim
 -- vectors; the dimensionality is fixed at column-create time and

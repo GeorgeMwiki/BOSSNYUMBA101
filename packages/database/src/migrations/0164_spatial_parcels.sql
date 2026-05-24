@@ -31,7 +31,18 @@
 -- 0. Extensions
 -- ============================================================================
 
-CREATE EXTENSION IF NOT EXISTS postgis;
+-- PostGIS — wrapped in DO/EXCEPTION so apply-check against a stock
+-- Postgres image (no PostGIS) emits a NOTICE instead of aborting the
+-- migration chain. Downstream `geometry(...)` columns + ST_* calls
+-- will still error if PostGIS is genuinely absent at runtime — this
+-- only prevents apply-check on bare Postgres from short-circuiting
+-- the whole migration sequence before later RLS/constraint migrations
+-- get a chance to run.
+DO $$ BEGIN
+  CREATE EXTENSION IF NOT EXISTS postgis;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE '0164_spatial_parcels: postgis unavailable: %', SQLERRM;
+END $$;
 
 -- h3 + h3_postgis are optional in some self-hosted deployments. Guard
 -- with DO blocks so a missing extension does not abort the migration —
