@@ -1,7 +1,13 @@
 import type { Config } from 'tailwindcss';
 import baseConfig from '@bossnyumba/design-system/tailwind.config';
 
-const baseExtend = (baseConfig.theme as any)?.extend ?? {};
+type ThemeExtend = {
+  readonly borderRadius?: Record<string, string>;
+  readonly boxShadow?: Record<string, string>;
+  readonly [key: string]: unknown;
+};
+const baseExtend: ThemeExtend =
+  (baseConfig.theme as { extend?: ThemeExtend } | undefined)?.extend ?? {};
 
 /**
  * Customer-app — inherits the BossNyumba base Tailwind config and adds

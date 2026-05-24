@@ -6,6 +6,16 @@ import { workOrdersService } from '@bossnyumba/api-client';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
+interface WorkOrderDto {
+  readonly workOrderNumber?: string;
+  readonly title?: string;
+  readonly status?: string;
+  readonly priority?: string;
+  readonly category?: string;
+  readonly location?: string;
+  readonly description?: string;
+}
+
 export default function WorkOrderDetailPage() {
   const t = useTranslations('workOrderSummary');
   const params = useParams();
@@ -17,7 +27,7 @@ export default function WorkOrderDetailPage() {
     retry: false,
   });
 
-  const workOrder = workOrderQuery.data?.data as any;
+  const workOrder = workOrderQuery.data?.data as WorkOrderDto | undefined;
 
   return (
     <>

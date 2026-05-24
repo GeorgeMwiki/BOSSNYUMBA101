@@ -9,6 +9,15 @@ interface VendorDetailProps {
   vendorId: string;
 }
 
+interface VendorDto {
+  readonly companyName?: string;
+  readonly name?: string;
+  readonly status?: string;
+  readonly email?: string;
+  readonly phone?: string;
+  readonly categories?: ReadonlyArray<string>;
+}
+
 export default function VendorDetail({ vendorId }: VendorDetailProps) {
   const t = useTranslations('vendorDetail');
   const vendorQuery = useQuery({
@@ -18,7 +27,7 @@ export default function VendorDetail({ vendorId }: VendorDetailProps) {
     retry: false,
   });
 
-  const vendor = vendorQuery.data?.data as any;
+  const vendor = vendorQuery.data?.data as VendorDto | undefined;
 
   return (
     <>

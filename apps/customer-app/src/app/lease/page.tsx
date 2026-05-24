@@ -9,6 +9,16 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
 
+interface LeaseDto {
+  readonly property?: { readonly name?: string };
+  readonly unit?: { readonly unitNumber?: string };
+  readonly unitId?: string;
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly rentAmount: string | number;
+  readonly status: string;
+}
+
 export default function LeasePage() {
   const t = useTranslations('leaseIndex');
   const { format: formatCurrency } = useCurrencyPreference();
@@ -17,7 +27,7 @@ export default function LeasePage() {
     queryFn: () => api.lease.getCurrent(),
   });
 
-  const lease = leaseQuery.data as any;
+  const lease = leaseQuery.data as LeaseDto | undefined;
 
   return (
     <>

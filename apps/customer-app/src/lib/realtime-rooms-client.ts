@@ -52,11 +52,24 @@ export async function bootstrapRealtimeRooms(): Promise<void> {
       };
     });
 
-    const yjs: any = await import(
+    interface LiveblocksClientLike {
+      readonly getRoom?: (roomId: string) => unknown;
+    }
+    interface LiveblocksYjsModule {
+      readonly LiveblocksYjsProvider: new (
+        room: unknown,
+        ydoc: unknown,
+      ) => {
+        destroy(): void;
+        on(event: 'sync', cb: (synced: boolean) => void): void;
+        off(event: 'sync', cb: (synced: boolean) => void): void;
+      };
+    }
+    const yjs = (await import(
       /* webpackIgnore: true */ /* @vite-ignore */ '@liveblocks/yjs'
-    );
+    )) as unknown as LiveblocksYjsModule;
     configureYjsProvider(({ ydoc, client, roomId }) => {
-      const room = (client as any).getRoom?.(roomId);
+      const room = (client as LiveblocksClientLike).getRoom?.(roomId);
       const provider = new yjs.LiveblocksYjsProvider(room, ydoc);
       return {
         destroy: () => provider.destroy(),

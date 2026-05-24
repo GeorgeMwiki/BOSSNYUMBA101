@@ -146,8 +146,18 @@ export function SessionReplayViewer({
           null;
         if (typeof PlayerCtor === 'function') {
           // rrweb-player has a Svelte-style constructor signature.
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const instance = new (PlayerCtor as any)({
+          interface PlayerInstance {
+            $destroy?: () => void;
+          }
+          type PlayerNew = new (opts: {
+            target: HTMLElement;
+            props: {
+              events: ReadonlyArray<unknown>;
+              autoPlay?: boolean;
+              showController?: boolean;
+            };
+          }) => PlayerInstance;
+          const instance = new (PlayerCtor as PlayerNew)({
             target: playerHostRef.current,
             props: {
               events,
