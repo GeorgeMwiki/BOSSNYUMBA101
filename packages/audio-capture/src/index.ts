@@ -7,3 +7,7 @@
 
 export * from './types.js';
 export * from './stt/index.js';
+export * from './tts/index.js';
+export * from './vad/index.js';
+export * from './diarization/index.js';
+export * from './enhancement/index.js';
