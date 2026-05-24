@@ -12,6 +12,14 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./a2a": {
+      "types": "./src/a2a/index.ts",
+      "default": "./dist/a2a/index.js"
+    },
+    "./planning": {
+      "types": "./src/planning/index.ts",
+      "default": "./dist/planning/index.js"
     }
   },
   "scripts": {

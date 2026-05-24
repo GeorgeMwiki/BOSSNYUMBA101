@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@bossnyumba/autonomy-governance": "workspace:*",
+    "@bossnyumba/central-intelligence": "workspace:^",
     "@bossnyumba/database": "workspace:*",
     "drizzle-orm": "^0.45.2"
   },

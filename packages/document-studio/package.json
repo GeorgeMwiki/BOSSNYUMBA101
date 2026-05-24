@@ -12,6 +12,14 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./signing": {
+      "types": "./src/signing/index.ts",
+      "default": "./dist/signing/index.js"
+    },
+    "./citations": {
+      "types": "./src/citations/index.ts",
+      "default": "./dist/citations/index.js"
     }
   },
   "scripts": {

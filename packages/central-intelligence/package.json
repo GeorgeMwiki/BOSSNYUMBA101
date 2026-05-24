@@ -12,6 +12,14 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./metacognition": {
+      "types": "./src/kernel/metacognition/index.ts",
+      "default": "./dist/kernel/metacognition/index.js"
+    },
+    "./aops": {
+      "types": "./src/agent/aops/index.ts",
+      "default": "./dist/agent/aops/index.js"
     }
   },
   "scripts": {

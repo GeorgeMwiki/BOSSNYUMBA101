@@ -22,6 +22,10 @@
       "types": "./src/reflexion/index.ts",
       "default": "./dist/reflexion/index.js"
     },
+    "./skill-promotion": {
+      "types": "./src/skill-promotion/index.ts",
+      "default": "./dist/skill-promotion/index.js"
+    },
     "./agent-certification": {
       "types": "./src/agent-certification/index.ts",
       "default": "./dist/agent-certification/index.js"

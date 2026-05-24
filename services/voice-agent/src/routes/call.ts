@@ -19,6 +19,7 @@ import { detectLanguage } from '../router/language-router.js';
 import { routeStt } from '../router/stt-router.js';
 import { routeTts, type LatencyTier } from '../router/tts-router.js';
 
+import { withSecurityEventsFastify } from '@bossnyumba/observability';
 const BodySchema = z.object({
   tenantId: z.string().min(1),
   language: z.string().min(1).optional(),
@@ -77,7 +78,7 @@ export function registerCallRoute(
   app: FastifyInstance,
   options: CallRouteOptions = {},
 ): void {
-  app.post('/voice/calls/start', async (request, reply) => {
+  app.post('/voice/calls/start', withSecurityEventsFastify({ action: 'voice-call.create', resource: 'voice-call', severity: 'info' }, async (request, reply) => {
     const parsed = BodySchema.safeParse(request.body);
     if (!parsed.success) {
       reply.code(400);
@@ -91,5 +92,5 @@ export function registerCallRoute(
     const plan = planCall(parsed.data, { wsBaseUrl });
     reply.code(201);
     return plan;
-  });
+  }));
 }
