@@ -1,0 +1,3005 @@
+{
+  "scannedAt": "2026-05-24T14:18:54.943Z",
+  "totals": {
+    "tables": 239,
+    "withRls": 104,
+    "withPolicy": 104,
+    "uncovered": 135
+  },
+  "rows": [
+    {
+      "table": "a2a_tasks",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0168_a2a_tasks.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "accounts",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001c_cases_inspections_ledger.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001c_cases_inspections_ledger.sql"
+    },
+    {
+      "table": "agency_run_checkpoints",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0136_agency_run_checkpoints.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0156_supabase_rls_phase2.sql"
+    },
+    {
+      "table": "agent_cert_revocations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0055_ai_agent_certifications.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "agent_certifications",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0055_ai_agent_certifications.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_audit_chain",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0037_ai_audit_chain.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0155_supabase_rls_policies.sql"
+    },
+    {
+      "table": "ai_background_insights",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0056_ai_background_insights.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_blog_posts",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0062_ai_blog_posts.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_cost_entries",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0035_ai_cost_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_decision_feedback",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0041_ai_intelligence_feedback.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_knowledge_chunks",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0050_ai_knowledge_base.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_learning_progress",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0061_ai_learning_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_learning_sessions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0061_ai_learning_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_learning_style_profiles",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0061_ai_learning_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_native_sentiment_rollups",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0102_ai_native_signals.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_native_signals",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0102_ai_native_signals.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_proactive_alerts",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0041_ai_intelligence_feedback.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_semantic_memories",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0038_ai_semantic_memory.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_workflow_runs",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0051_ai_workflows.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_workflow_step_logs",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0051_ai_workflows.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "alt_credit_scores",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0154_alt_credit_scores.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "aop_active_versions",
+      "tenantColumn": "scope_tenant_id",
+      "createdInFile": "0167_aop_registry.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "aop_regression_sets",
+      "tenantColumn": "scope_tenant_id",
+      "createdInFile": "0167_aop_registry.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "aop_specs",
+      "tenantColumn": "scope_tenant_id",
+      "createdInFile": "0167_aop_registry.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "approval_grant_usages",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0112_approval_grants.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "approval_grants",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0112_approval_grants.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "approval_policies",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_approval_policies.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "approval_policy_actions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0128_approval_policy.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "approval_requests",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0097_move_out_approvals.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "arrears_case_projections",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_arrears_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "arrears_cases",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0030_arrears_cases.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "arrears_line_proposals",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_arrears_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "asset_components",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_far_asset_components.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0019_far_asset_components.sql"
+    },
+    {
+      "table": "assets",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0013_maintenance_operations.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0013_maintenance_operations.sql"
+    },
+    {
+      "table": "assignments",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0011_hr.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0011_hr.sql"
+    },
+    {
+      "table": "audit_log",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0002_audit.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0002_audit.sql"
+    },
+    {
+      "table": "audit_trail_entries",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0111_audit_trail_v2.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0111_audit_trail_v2.sql"
+    },
+    {
+      "table": "autonomous_action_audit",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0080_autonomous_department_mode.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "autonomy_policies",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0080_autonomous_department_mode.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "availability",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0006_scheduling.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0006_scheduling.sql"
+    },
+    {
+      "table": "bids",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_marketplace.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "bkt_mastery",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0045_ai_classroom.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "blocks",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001b_add_missing_entities.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0155_supabase_rls_policies.sql"
+    },
+    {
+      "table": "bottlenecks",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0086_bottlenecks.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "buildings",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0164_spatial_parcels.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0164_spatial_parcels.sql"
+    },
+    {
+      "table": "carbon_market_book_entries",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0170_carbon_market_book.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "case_resolutions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "case_timelines",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "cases",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001c_cases_inspections_ledger.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001c_cases_inspections_ledger.sql"
+    },
+    {
+      "table": "classroom_participants",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0045_ai_classroom.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "classroom_quiz_responses",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0045_ai_classroom.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "classroom_quizzes",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0045_ai_classroom.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "classroom_sessions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0045_ai_classroom.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "complaint_records",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0092_feedback_and_complaints.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "completion_proofs",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0013_maintenance_operations.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0013_maintenance_operations.sql"
+    },
+    {
+      "table": "compliance_cases",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0009_compliance.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0009_compliance.sql"
+    },
+    {
+      "table": "compliance_exports",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0021_compliance_exports.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0155_supabase_rls_policies.sql"
+    },
+    {
+      "table": "compliance_items",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0009_compliance.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0009_compliance.sql"
+    },
+    {
+      "table": "compliance_notices",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0009_compliance.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0009_compliance.sql"
+    },
+    {
+      "table": "condition_check_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_far_asset_components.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0019_far_asset_components.sql"
+    },
+    {
+      "table": "conditional_survey_action_plans",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_conditional_surveys.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0018_conditional_surveys.sql"
+    },
+    {
+      "table": "conditional_survey_findings",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_conditional_surveys.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0018_conditional_surveys.sql"
+    },
+    {
+      "table": "conditional_surveys",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_conditional_surveys.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0018_conditional_surveys.sql"
+    },
+    {
+      "table": "consolidation_emissions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0152_consolidation_emissions.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "conversations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0005_messaging.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0005_messaging.sql"
+    },
+    {
+      "table": "core_memory_blocks",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0151_core_memory_blocks.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "credit_rating_promises",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0089_tenant_credit_rating.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "credit_rating_sharing_opt_ins",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0089_tenant_credit_rating.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "credit_rating_snapshots",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0089_tenant_credit_rating.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "credit_rating_weights",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0089_tenant_credit_rating.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "customer_preferences",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001b_add_missing_entities.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "customer_segment_memberships",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "customers",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "damage_deduction_cases",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_cases_sla_and_subleases.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "departments",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0011_hr.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0011_hr.sql"
+    },
+    {
+      "table": "dispatch_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0013_maintenance_operations.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0013_maintenance_operations.sql"
+    },
+    {
+      "table": "document_entities",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0108_document_entities.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "document_obligations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0108_document_entities.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "document_uploads",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0032_document_uploads.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0032_document_uploads.sql"
+    },
+    {
+      "table": "documents",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0004_documents.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0004_documents.sql"
+    },
+    {
+      "table": "dual_signoffs",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0013_maintenance_operations.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0013_maintenance_operations.sql"
+    },
+    {
+      "table": "element_photos",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0164_spatial_parcels.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0164_spatial_parcels.sql"
+    },
+    {
+      "table": "elements",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0164_spatial_parcels.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0164_spatial_parcels.sql"
+    },
+    {
+      "table": "employees",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0011_hr.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0011_hr.sql"
+    },
+    {
+      "table": "escalation_chains",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "event_dead_letter",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "event_outbox",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "event_subscriptions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "evidence_attachments",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "exception_inbox",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0080_autonomous_department_mode.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "executive_briefings",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0080_autonomous_department_mode.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "far_assignments",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_far_asset_components.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0019_far_asset_components.sql"
+    },
+    {
+      "table": "feedback_submissions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0092_feedback_and_complaints.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "field_encryption_audit",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0143_field_encryption_audit.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "floors",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0164_spatial_parcels.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0164_spatial_parcels.sql"
+    },
+    {
+      "table": "friction_fingerprints",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "gdpr_deletion_requests",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0034_gdpr_deletion_requests.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "gepg_control_numbers",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_gepg.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "gepg_reconciliation_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_gepg.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "handoff_packets",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0012_brain_threads.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0012_brain_threads.sql"
+    },
+    {
+      "table": "identity_profiles",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "implicit_feedback_signals",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0135_implicit_feedback_signals.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "improvement_snapshots",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0087_improvement_snapshots.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "inspection_ai_findings",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0104_inspection_ai_findings.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "inspection_extensions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_inspections_extensions.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0017_inspections_extensions.sql"
+    },
+    {
+      "table": "inspection_items",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "inspection_signatures",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "inspections",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001c_cases_inspections_ledger.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001c_cases_inspections_ledger.sql"
+    },
+    {
+      "table": "intelligence_history",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_intelligence_history.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0156_supabase_rls_phase2.sql"
+    },
+    {
+      "table": "interactive_report_action_acks",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0022_interactive_reports.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "interactive_report_versions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0022_interactive_reports.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "intervention_logs",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "invoices",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "iot_anomalies",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0029_iot_observations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "iot_observations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0029_iot_observations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "iot_sensors",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0029_iot_observations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "kernel_action_audit",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0123_kernel_agency.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "kernel_cot_reservoir",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0114_kernel_substrate.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0146_cot_reservoir_rls.sql"
+    },
+    {
+      "table": "kernel_feedback",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0122_kernel_feedback.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "kernel_goals",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0123_kernel_agency.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "kernel_memory_episodic",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0121_kernel_memory_stores.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0156_supabase_rls_phase2.sql"
+    },
+    {
+      "table": "kernel_memory_procedural",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0121_kernel_memory_stores.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0156_supabase_rls_phase2.sql"
+    },
+    {
+      "table": "kernel_memory_reflective",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0121_kernel_memory_stores.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0156_supabase_rls_phase2.sql"
+    },
+    {
+      "table": "kernel_memory_semantic",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0121_kernel_memory_stores.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0156_supabase_rls_phase2.sql"
+    },
+    {
+      "table": "kernel_persona_drift_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0114_kernel_substrate.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "kernel_provenance",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0114_kernel_substrate.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "leases",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "ledger_entries",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001c_cases_inspections_ledger.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001c_cases_inspections_ledger.sql"
+    },
+    {
+      "table": "legal_drafts",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0109_legal_drafts.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "maintenance_problem_categories",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0028_maintenance_taxonomy.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "maintenance_problems",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0028_maintenance_taxonomy.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "maintenance_requests",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0013_maintenance_operations.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0013_maintenance_operations.sql"
+    },
+    {
+      "table": "map_layers",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0164_spatial_parcels.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0164_spatial_parcels.sql"
+    },
+    {
+      "table": "market_rate_snapshots",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0103_market_rate_snapshots.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "marketplace_listings",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_marketplace.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "mdr_plan_items",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0161_mdr_plan.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0163_phase_e_phase_f_constraints.sql"
+    },
+    {
+      "table": "migration_runs",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0020_migration_runs.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "monthly_close_run_steps",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0099_monthly_close_runs.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "monthly_close_runs",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0099_monthly_close_runs.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "move_out_checklists",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0097_move_out_approvals.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "negotiation_policies",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_negotiation.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "negotiation_turns",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_negotiation.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "negotiations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_negotiation.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "next_best_actions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001b_add_missing_entities.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "notice_service_receipts",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "notification_dispatch_log",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0091_notification_dispatch_log.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "notification_templates",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0003_notifications.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0003_notifications.sql"
+    },
+    {
+      "table": "notifications",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0003_notifications.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0003_notifications.sql"
+    },
+    {
+      "table": "ocr_extractions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "onboarding_sessions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0164_onboarding_sessions.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0164_onboarding_sessions.sql"
+    },
+    {
+      "table": "organizations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "outcome_billing_lines",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0169_outcomes_metering.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "outcome_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0169_outcomes_metering.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "owner_skills",
+      "tenantColumn": "installed_by_tenant_id",
+      "createdInFile": "0162_owner_skills.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0163_phase_e_phase_f_constraints.sql"
+    },
+    {
+      "table": "parcel_units",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0164_spatial_parcels.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0164_spatial_parcels.sql"
+    },
+    {
+      "table": "parcels",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0164_spatial_parcels.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0164_spatial_parcels.sql"
+    },
+    {
+      "table": "payment_plan_agreements",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001b_add_missing_entities.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "payments",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "performance_records",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0011_hr.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0011_hr.sql"
+    },
+    {
+      "table": "persona_branding",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0118_persona_branding.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "persona_registry",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0150_persona_registry.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "polyglot_conversations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0105_polyglot_conversations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "portal_layouts",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0164_portal_layouts.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0164_portal_layouts.sql"
+    },
+    {
+      "table": "predictive_intervention_opportunities",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0106_tenant_predictions.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "privacy_budget_ledger",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0130_privacy_budget_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "privacy_budget_spend",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0130_privacy_budget_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "process_observations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0085_process_observations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "progressive_context_snapshots",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0042_ai_progressive_context.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "properties",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "property_grade_snapshots",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0088_property_grades.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "property_valuations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0090_property_valuations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "reflexion_buffer",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0134_reflexion_buffer.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0156_supabase_rls_phase2.sql"
+    },
+    {
+      "table": "reflexion_lessons",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0166_reflexion_lessons.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "rent_recommendations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0107_rent_recommendations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "reward_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_gamification.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "reward_policies",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_gamification.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "risk_scores",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001b_add_missing_entities.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "roles",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "rooms",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0164_spatial_parcels.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0164_spatial_parcels.sql"
+    },
+    {
+      "table": "scheduled_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0006_scheduling.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0006_scheduling.sql"
+    },
+    {
+      "table": "scheduling_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0013_maintenance_operations.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0013_maintenance_operations.sql"
+    },
+    {
+      "table": "semantic_cache_log",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0147_semantic_cache_log.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "sensor_call_log",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0126_sensor_routing_control.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0156_supabase_rls_phase2.sql"
+    },
+    {
+      "table": "sensorium_event_log",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0132_sensorium_event_log.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "session_replay_chunks",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0142_session_replay_chunks.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "sessions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "skill_registry",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0133_skill_registry.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "sovereign_action_ledger",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0129_sovereign_action_ledger.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0156_supabase_rls_phase2.sql"
+    },
+    {
+      "table": "sovereign_approvals",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0115_sovereign_approvals.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "station_master_coverage",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0023_station_master_coverage.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "sub_md_slo_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0160_autonomy_governance.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "sub_md_slos",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0160_autonomy_governance.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "sublease_requests",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_cases_sla_and_subleases.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "task_sensor_routing",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0149_sensor_routing_control.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "team_memberships",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0011_hr.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0011_hr.sql"
+    },
+    {
+      "table": "teams",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0011_hr.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0011_hr.sql"
+    },
+    {
+      "table": "temporal_communities",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0140_temporal_entity_graph.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "temporal_entities",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0140_temporal_entity_graph.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "temporal_relationships",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0140_temporal_entity_graph.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_ai_budgets",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0035_ai_cost_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_autonomy_caps",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0160_autonomy_governance.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_budget_envelopes",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0126_sensor_routing_control.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_feature_flag_overrides",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0033_feature_flags.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_financial_statements",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_tenant_finance.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0156_supabase_rls_phase2.sql"
+    },
+    {
+      "table": "tenant_gamification_profile",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_gamification.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_grading_weights",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0088_property_grades.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_groups",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_cases_sla_and_subleases.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_litigation_history",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_tenant_finance.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0156_supabase_rls_phase2.sql"
+    },
+    {
+      "table": "tenant_predictions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0106_tenant_predictions.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_preferences",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "tenant_risk_reports",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0020_tenant_risk_reports.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_segments",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "tenders",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_marketplace.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "thread_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0012_brain_threads.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0012_brain_threads.sql"
+    },
+    {
+      "table": "threads",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0012_brain_threads.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0012_brain_threads.sql"
+    },
+    {
+      "table": "tool_call_denylist",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0157_tool_call_denylist.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "training_assignments",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0070_adaptive_training.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "training_delivery_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0070_adaptive_training.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "training_paths",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0070_adaptive_training.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "transactions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "unit_waitlists",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_waitlist.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "units",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "user_roles",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "users",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "utility_accounts",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0008_utilities.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0008_utilities.sql"
+    },
+    {
+      "table": "vacancy_pipeline_runs",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0098_vacancy_pipeline_runs.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "vendor_assignments",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0013_maintenance_operations.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0013_maintenance_operations.sql"
+    },
+    {
+      "table": "vendor_scorecards",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001b_add_missing_entities.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0013_maintenance_operations.sql"
+    },
+    {
+      "table": "vendors",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "verification_badges",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0014_outbox_and_intelligence.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0014_outbox_and_intelligence.sql"
+    },
+    {
+      "table": "voice_turns",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0110_voice_turns.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0156_supabase_rls_phase2.sql"
+    },
+    {
+      "table": "waitlist_outreach_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_waitlist.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "warehouse_items",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0027_warehouse_inventory.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "warehouse_movements",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0027_warehouse_inventory.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "webhook_dead_letters",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0031_webhook_retry_dlq.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0093_webhook_rls.sql"
+    },
+    {
+      "table": "webhook_delivery_attempts",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0031_webhook_retry_dlq.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0093_webhook_rls.sql"
+    },
+    {
+      "table": "work_orders",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001_initial.sql",
+      "hasRlsEnabled": true,
+      "hasTenantPolicy": true,
+      "coveredByFile": "0001_initial.sql"
+    },
+    {
+      "table": "worker_tags",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0023_station_master_coverage.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "worm_audit_log",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0165_worm_audit_log.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    }
+  ],
+  "uncovered": [
+    {
+      "table": "a2a_tasks",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0168_a2a_tasks.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "agent_cert_revocations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0055_ai_agent_certifications.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "agent_certifications",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0055_ai_agent_certifications.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_background_insights",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0056_ai_background_insights.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_blog_posts",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0062_ai_blog_posts.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_cost_entries",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0035_ai_cost_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_decision_feedback",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0041_ai_intelligence_feedback.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_knowledge_chunks",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0050_ai_knowledge_base.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_learning_progress",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0061_ai_learning_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_learning_sessions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0061_ai_learning_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_learning_style_profiles",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0061_ai_learning_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_native_sentiment_rollups",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0102_ai_native_signals.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_native_signals",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0102_ai_native_signals.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_proactive_alerts",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0041_ai_intelligence_feedback.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_semantic_memories",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0038_ai_semantic_memory.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_workflow_runs",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0051_ai_workflows.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "ai_workflow_step_logs",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0051_ai_workflows.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "alt_credit_scores",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0154_alt_credit_scores.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "aop_active_versions",
+      "tenantColumn": "scope_tenant_id",
+      "createdInFile": "0167_aop_registry.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "aop_regression_sets",
+      "tenantColumn": "scope_tenant_id",
+      "createdInFile": "0167_aop_registry.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "aop_specs",
+      "tenantColumn": "scope_tenant_id",
+      "createdInFile": "0167_aop_registry.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "approval_grant_usages",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0112_approval_grants.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "approval_grants",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0112_approval_grants.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "approval_policies",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_approval_policies.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "approval_policy_actions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0128_approval_policy.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "approval_requests",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0097_move_out_approvals.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "arrears_case_projections",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_arrears_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "arrears_cases",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0030_arrears_cases.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "arrears_line_proposals",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_arrears_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "autonomous_action_audit",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0080_autonomous_department_mode.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "autonomy_policies",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0080_autonomous_department_mode.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "bids",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_marketplace.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "bkt_mastery",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0045_ai_classroom.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "bottlenecks",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0086_bottlenecks.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "carbon_market_book_entries",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0170_carbon_market_book.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "classroom_participants",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0045_ai_classroom.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "classroom_quiz_responses",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0045_ai_classroom.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "classroom_quizzes",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0045_ai_classroom.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "classroom_sessions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0045_ai_classroom.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "complaint_records",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0092_feedback_and_complaints.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "consolidation_emissions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0152_consolidation_emissions.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "core_memory_blocks",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0151_core_memory_blocks.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "credit_rating_promises",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0089_tenant_credit_rating.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "credit_rating_sharing_opt_ins",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0089_tenant_credit_rating.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "credit_rating_snapshots",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0089_tenant_credit_rating.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "credit_rating_weights",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0089_tenant_credit_rating.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "customer_preferences",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001b_add_missing_entities.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "damage_deduction_cases",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_cases_sla_and_subleases.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "document_entities",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0108_document_entities.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "document_obligations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0108_document_entities.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "exception_inbox",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0080_autonomous_department_mode.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "executive_briefings",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0080_autonomous_department_mode.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "feedback_submissions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0092_feedback_and_complaints.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "field_encryption_audit",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0143_field_encryption_audit.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "gdpr_deletion_requests",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0034_gdpr_deletion_requests.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "gepg_control_numbers",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_gepg.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "gepg_reconciliation_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_gepg.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "implicit_feedback_signals",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0135_implicit_feedback_signals.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "improvement_snapshots",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0087_improvement_snapshots.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "inspection_ai_findings",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0104_inspection_ai_findings.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "interactive_report_action_acks",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0022_interactive_reports.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "interactive_report_versions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0022_interactive_reports.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "iot_anomalies",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0029_iot_observations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "iot_observations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0029_iot_observations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "iot_sensors",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0029_iot_observations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "kernel_action_audit",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0123_kernel_agency.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "kernel_feedback",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0122_kernel_feedback.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "kernel_goals",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0123_kernel_agency.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "kernel_persona_drift_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0114_kernel_substrate.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "kernel_provenance",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0114_kernel_substrate.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "legal_drafts",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0109_legal_drafts.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "maintenance_problem_categories",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0028_maintenance_taxonomy.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "maintenance_problems",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0028_maintenance_taxonomy.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "market_rate_snapshots",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0103_market_rate_snapshots.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "marketplace_listings",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_marketplace.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "migration_runs",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0020_migration_runs.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "monthly_close_run_steps",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0099_monthly_close_runs.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "monthly_close_runs",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0099_monthly_close_runs.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "move_out_checklists",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0097_move_out_approvals.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "negotiation_policies",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_negotiation.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "negotiation_turns",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_negotiation.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "negotiations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_negotiation.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "notification_dispatch_log",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0091_notification_dispatch_log.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "outcome_billing_lines",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0169_outcomes_metering.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "outcome_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0169_outcomes_metering.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "payment_plan_agreements",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001b_add_missing_entities.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "persona_branding",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0118_persona_branding.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "persona_registry",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0150_persona_registry.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "polyglot_conversations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0105_polyglot_conversations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "predictive_intervention_opportunities",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0106_tenant_predictions.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "privacy_budget_ledger",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0130_privacy_budget_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "privacy_budget_spend",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0130_privacy_budget_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "process_observations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0085_process_observations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "progressive_context_snapshots",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0042_ai_progressive_context.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "property_grade_snapshots",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0088_property_grades.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "property_valuations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0090_property_valuations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "reflexion_lessons",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0166_reflexion_lessons.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "rent_recommendations",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0107_rent_recommendations.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "reward_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_gamification.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "reward_policies",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_gamification.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "risk_scores",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0001b_add_missing_entities.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "semantic_cache_log",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0147_semantic_cache_log.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "sensorium_event_log",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0132_sensorium_event_log.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "session_replay_chunks",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0142_session_replay_chunks.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "skill_registry",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0133_skill_registry.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "sovereign_approvals",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0115_sovereign_approvals.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "station_master_coverage",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0023_station_master_coverage.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "sub_md_slo_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0160_autonomy_governance.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "sub_md_slos",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0160_autonomy_governance.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "sublease_requests",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_cases_sla_and_subleases.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "task_sensor_routing",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0149_sensor_routing_control.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "temporal_communities",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0140_temporal_entity_graph.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "temporal_entities",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0140_temporal_entity_graph.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "temporal_relationships",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0140_temporal_entity_graph.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_ai_budgets",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0035_ai_cost_ledger.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_autonomy_caps",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0160_autonomy_governance.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_budget_envelopes",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0126_sensor_routing_control.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_feature_flag_overrides",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0033_feature_flags.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_gamification_profile",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_gamification.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_grading_weights",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0088_property_grades.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_groups",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0017_cases_sla_and_subleases.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_predictions",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0106_tenant_predictions.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenant_risk_reports",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0020_tenant_risk_reports.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tenders",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0018_marketplace.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "tool_call_denylist",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0157_tool_call_denylist.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "training_assignments",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0070_adaptive_training.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "training_delivery_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0070_adaptive_training.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "training_paths",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0070_adaptive_training.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "unit_waitlists",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_waitlist.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "vacancy_pipeline_runs",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0098_vacancy_pipeline_runs.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "waitlist_outreach_events",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0019_waitlist.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "warehouse_items",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0027_warehouse_inventory.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "warehouse_movements",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0027_warehouse_inventory.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "worker_tags",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0023_station_master_coverage.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    },
+    {
+      "table": "worm_audit_log",
+      "tenantColumn": "tenant_id",
+      "createdInFile": "0165_worm_audit_log.sql",
+      "hasRlsEnabled": false,
+      "hasTenantPolicy": false,
+      "coveredByFile": null
+    }
+  ]
+}

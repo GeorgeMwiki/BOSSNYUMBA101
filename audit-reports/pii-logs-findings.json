@@ -1,0 +1,214 @@
+{
+  "scannedAt": "2026-05-24T14:26:01.656Z",
+  "filesScanned": 5287,
+  "findingsCount": 23,
+  "findings": [
+    {
+      "file": "services/identity/src/otp/notifications-sms-dispatcher.ts",
+      "line": 155,
+      "snippet": "this.logger.warn('notifications service threw on enqueue', {",
+      "piiFields": [
+        "phone"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/identity/src/otp/notifications-sms-dispatcher.ts",
+      "line": 170,
+      "snippet": "this.logger.warn('OTP suppressed by preferences', {",
+      "piiFields": [
+        "phone"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/identity/src/otp/notifications-sms-dispatcher.ts",
+      "line": 179,
+      "snippet": "this.logger.warn('notifications enqueue rejected', {",
+      "piiFields": [
+        "phone"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/conversation-orchestrator.ts",
+      "line": 182,
+      "snippet": "logger.info('Processing incoming message', {",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/conversation-orchestrator.ts",
+      "line": 226,
+      "snippet": "logger.warn('Emergency keyword detected', { from: session.phoneNumber, text });",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/conversation-orchestrator.ts",
+      "line": 289,
+      "snippet": "logger.info('Created new conversation session', {",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/conversation-orchestrator.ts",
+      "line": 616,
+      "snippet": "logger.warn('Refusing to render onboarding confirmation: missing fields', {",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/conversation-orchestrator.ts",
+      "line": 705,
+      "snippet": "logger.info('Onboarding completed', {",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/conversation-orchestrator.ts",
+      "line": 762,
+      "snippet": "logger.warn('Unknown conversation state', { state: session.state });",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/conversation-orchestrator.ts",
+      "line": 796,
+      "snippet": "logger.info('Sent proactive message', { to: phoneNumber });",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/conversation-orchestrator.ts",
+      "line": 825,
+      "snippet": "logger.info('Session cleared', { phoneNumber });",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/emergency-handler.ts",
+      "line": 183,
+      "snippet": "logger.warn('Emergency keywords detected', {",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/emergency-handler.ts",
+      "line": 262,
+      "snippet": "logger.warn('Initiating emergency protocol', {",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/emergency-handler.ts",
+      "line": 534,
+      "snippet": "logger.info('Emergency resolved', {",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/feedback-collector.ts",
+      "line": 78,
+      "snippet": "logger.info('Sending Day 3 check-in', { phoneNumber, tenantName });",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/feedback-collector.ts",
+      "line": 104,
+      "snippet": "logger.info('Sending Day 10 check-in', { phoneNumber, tenantName });",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/feedback-collector.ts",
+      "line": 133,
+      "snippet": "logger.info('Sending post-maintenance feedback request', { phoneNumber, ticketId });",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/maintenance-handler.ts",
+      "line": 143,
+      "snippet": "logger.info('Starting maintenance flow', { phoneNumber: session.phoneNumber });",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/maintenance-handler.ts",
+      "line": 524,
+      "snippet": "logger.info('Submitting maintenance request', {",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/maintenance-handler.ts",
+      "line": 643,
+      "snippet": "logger.warn('Emergency maintenance issue detected', {",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/reminder-engine.ts",
+      "line": 277,
+      "snippet": "logger.info('Sent payment confirmation', { phoneNumber, receiptNumber: data.receiptNumber });",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/reminder-engine.ts",
+      "line": 530,
+      "snippet": "logger.info('Sent reminder', {",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/webhook-router.ts",
+      "line": 206,
+      "snippet": "logger.info('Processing message', {",
+      "piiFields": [
+        "phoneNumber"
+      ],
+      "severity": "medium"
+    }
+  ]
+}
