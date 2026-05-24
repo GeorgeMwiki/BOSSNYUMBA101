@@ -98,3 +98,17 @@ export {
   tail,
   values,
 } from './util/series.js';
+export {
+  backtest,
+  type BacktestOptions,
+  type BacktestMetric,
+} from './backtesting/index.js';
+export {
+  detectAnomalies,
+  type AnomalyDetectorOptions,
+} from './anomaly/index.js';
+export {
+  createEnsemble,
+  type EnsembleCombiner,
+  type EnsembleOptions,
+} from './ensembles/index.js';
