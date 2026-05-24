@@ -42,8 +42,11 @@ export class GeofenceEventBus {
             entry.listener(event);
           } catch (err) {
             // A faulty listener must not break the loop.
-            // We log a safe message — never the raw error if it could
-            // contain user PII.
+            // DEFERRED: this package has no injected logger port, so we
+            // emit a safe, PII-free message via `console.error`. When a
+            // `LoggerPort` is added to the package, swap this call to
+            // `logger.warn`. The raw `err` is intentionally discarded —
+            // it could contain tenant-bound geofence labels.
             console.error('[geofence] listener threw; continuing dispatch');
             void err;
           }

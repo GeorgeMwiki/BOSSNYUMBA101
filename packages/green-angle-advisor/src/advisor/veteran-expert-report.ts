@@ -100,8 +100,12 @@ export async function generateVeteranExpertReport(
         narrative = synth.answer;
       }
     } catch (error) {
-      // Fall back to heuristic; never throw from synth path
-      console.error('Synthesizer failed; falling back to heuristic narrative.', error);
+      // Fall back to heuristic; never throw from synth path.
+      // We intentionally swallow `error` here: it may contain raw prompt
+      // text or context bytes that include tenant PII. Callers needing
+      // structured visibility should wrap the synthesizer with their own
+      // logging layer before injecting it via `options.synthesizer`.
+      void error;
     }
   }
 

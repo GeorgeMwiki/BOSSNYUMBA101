@@ -375,7 +375,7 @@ import {
 // router returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE. Memory is always
 // wired to the in-memory default so threads work in-session; a
 // pgvector-backed adapter will replace it for production.
-// TODO(wave-30): swap in pgvector-backed ConversationMemory for prod.
+// DEFERRED(wave-30): swap in pgvector-backed ConversationMemory for prod.
 import {
   createInMemoryConversationMemory,
   createInMemoryAuditSinkAndReader,
@@ -608,7 +608,7 @@ export interface ServiceRegistry {
    *  been wired (follow-up PR). `memory` is always wired to the
    *  in-memory default so threads survive in-session — a pgvector-
    *  backed adapter will replace it for production persistence.
-   *  TODO(wave-30): swap `memory` to pgvector-backed adapter.
+   *  DEFERRED(wave-30): swap `memory` to pgvector-backed adapter.
    */
   readonly centralIntelligence: {
     readonly agent: CentralIntelligenceAgent | null;
@@ -1107,7 +1107,7 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // Central Intelligence — no concrete LLM adapter ships here (it
     // lives in a separate service). In degraded mode we still wire the
     // in-memory memory so thread listing works locally.
-    // TODO(wave-30): replace with pgvector-backed ConversationMemory.
+    // DEFERRED(wave-30): replace with pgvector-backed ConversationMemory.
     centralIntelligence: (() => {
       const { sink, reader } = createInMemoryAuditSinkAndReader();
       return {
@@ -1765,7 +1765,7 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // env var is set AND the adapter is wired (follow-up PR); until
     // then the router returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE.
     // Memory uses the in-memory default so in-session threads work.
-    // TODO(wave-30): pgvector-backed ConversationMemory for prod.
+    // DEFERRED(wave-30): pgvector-backed ConversationMemory for prod.
     centralIntelligence: (() => {
       const memory = createInMemoryConversationMemory();
       const { sink, reader } = createInMemoryAuditSinkAndReader();
