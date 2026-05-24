@@ -639,3 +639,19 @@ export {
   type A2ATaskStatus as A2aTaskStatus,
   type TaskStore as A2aTaskStorePort,
 } from './a2a-task-store.service.js';
+
+// Carbon-market book (migration 0170) — Drizzle-backed
+// `BookEntryRepository` from `packages/carbon-market/src/types.ts`.
+// Widens the P6 port (save/findById/findByTenant) with operational
+// state-transition methods (findOpenByTenant, findBySymbol, markSettled,
+// cancel). The in-memory port stays the default; this adapter is
+// opt-in at the api-gateway composition root.
+export {
+  createCarbonMarketBookService,
+  type BookEntryShape as CarbonMarketBookEntryShape,
+  type BookEntrySide as CarbonMarketBookEntrySide,
+  type BookEntryStatus as CarbonMarketBookEntryStatus,
+  type BookEntryRepositoryExtended as CarbonMarketBookRepository,
+  type CarbonMarketBookService,
+  type CreateCarbonMarketBookServiceOpts,
+} from './carbon-market-book-service.js';

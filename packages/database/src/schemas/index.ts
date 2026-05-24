@@ -431,3 +431,11 @@ export * from './aop-registry.schema.js';
 // Adds mandatory tenant_id on the adapter side so a compromised session_id
 // can't be replayed across tenants (in-memory port is single-tenant).
 export * from './a2a-tasks.schema.js';
+
+// Carbon-market book (migration 0170) — persistent backing for the
+// `BookEntryRepository` port in `packages/carbon-market/src/types.ts`.
+// Booked spot/forwards + their open/settled/cancelled state. Adapter
+// in `services/carbon-market-book-service.ts`; the carbon-market
+// package re-exports a `createPostgresBookRepository({ db })` helper
+// that closes over this service.
+export * from './carbon-market-book.schema.js';

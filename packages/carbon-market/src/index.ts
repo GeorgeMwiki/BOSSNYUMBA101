@@ -56,6 +56,16 @@ export {
   type CreateTokenizedVerifierOptions,
   type TokenizedVerifier,
 } from './tokenization/verifier.js';
+export {
+  createViemEvmReader,
+  DEFAULT_IPFS_GATEWAY,
+  DEFAULT_RPC_TIMEOUT_MS,
+  type CreateViemEvmReaderOptions,
+} from './tokenization/evm-readers.js';
+export {
+  EvmReadError,
+  IpfsResolutionError,
+} from './verra/errors.js';
 
 // Trading desk
 export {
@@ -74,3 +84,9 @@ export {
 export {
   createInMemoryBookRepository,
 } from './desk/in-memory-book-repository.js';
+export {
+  createPostgresBookRepository,
+  type CreatePostgresBookRepositoryOpts,
+  type PostgresBookRepositoryService,
+  type PostgresBookEntryRepository,
+} from './desk/postgres-book-repository.js';
