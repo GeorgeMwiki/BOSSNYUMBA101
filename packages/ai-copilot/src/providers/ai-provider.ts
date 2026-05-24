@@ -72,6 +72,22 @@ export interface AICompletionResponse {
     promptTokens: number;
     completionTokens: number;
     totalTokens: number;
+    /**
+     * Prompt-cache telemetry (Anthropic prompt caching, A2b-2 wire #10a).
+     * Populated when the provider supports prompt-cache breakpoints AND the
+     * upstream API returns the counters. `cacheReadInputTokens` are billed at
+     * ~10% of `promptTokens`, so this is the truth-source for the 40-90%
+     * input-token cost reduction the prefix cache delivers.
+     *
+     * Optional + nullable-safe: providers that don't support caching omit
+     * this field, keeping the existing shape backward-compatible.
+     */
+    cacheStats?: {
+      /** Tokens written to the cache on this turn (one-time creation cost). */
+      cacheCreationInputTokens: number;
+      /** Tokens that hit the cache and were billed at the reduced rate. */
+      cacheReadInputTokens: number;
+    };
   };
   /** Processing time in ms */
   processingTimeMs: number;

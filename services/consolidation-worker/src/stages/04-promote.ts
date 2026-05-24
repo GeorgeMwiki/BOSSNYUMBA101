@@ -26,6 +26,8 @@
 import { createHash } from 'crypto';
 import type {
   ConsolidationEmbedder,
+  Mem0DecisionOutcome,
+  Mem0DecisionPort,
   PromotionDecision,
   ReflectionResult,
   SkillRegistryPort,
@@ -36,12 +38,42 @@ import type {
 export const MIN_OCCURRENCES = 3;
 export const MIN_SUCCESS_SCORE = 0.5;
 
+/**
+ * Environment toggle for the Mem0 ADD/UPDATE/DELETE/NOOP semantics
+ * (Park et al. 2024, arXiv 2404.13501). When set to `'true'` AND a
+ * `mem0` port is supplied, candidate skills are routed through the
+ * Mem0 decision module before `upsertSkill`. Defaults OFF so the
+ * legacy promote-on-threshold behaviour is preserved.
+ */
+export const MEM0_SEMANTICS_ENV_FLAG = 'MEM0_SEMANTICS_ENABLED';
+
+function mem0SemanticsEnabled(): boolean {
+  // Defensive: env may be undefined in non-Node contexts; trim and
+  // case-fold so 'True' / ' true ' both work.
+  const raw = (
+    typeof process !== 'undefined' && process.env
+      ? process.env[MEM0_SEMANTICS_ENV_FLAG]
+      : undefined
+  ) as string | undefined;
+  return typeof raw === 'string' && raw.trim().toLowerCase() === 'true';
+}
+
 export interface PromoteArgs {
   readonly clusters: ReadonlyArray<TraceCluster>;
   readonly reflections: ReadonlyArray<ReflectionResult>;
   readonly skillRegistry?: SkillRegistryPort;
   readonly embedder?: ConsolidationEmbedder;
   readonly logger: StageLogger;
+  /**
+   * Optional Mem0 decision port. When wired AND the
+   * `MEM0_SEMANTICS_ENABLED` env flag is `'true'`, the stage routes
+   * each promote-skill candidate through this port and short-circuits
+   * on NOOP / DELETE. UPDATE flows through to `upsertSkill` (the
+   * registry's UNIQUE INDEX on (tenant_id, code_hash) already
+   * handles the supersession idempotently). When unset, the legacy
+   * threshold-only promote flow runs unchanged.
+   */
+  readonly mem0?: Mem0DecisionPort;
 }
 
 export interface PromoteReport {
@@ -110,6 +142,55 @@ export async function runPromoteStage(
       const codeHash = sha256(`${cluster.intentLabel}::${stableJson(template)}`);
       const skillName = cluster.intentLabel;
       const nlDescription = reflection.text;
+
+      // Mem0 ADD/UPDATE/DELETE/NOOP gate — only fires when both the
+      // port is wired AND the env flag is on. Keeps the legacy
+      // promote-on-threshold behaviour intact for the default rollout.
+      let mem0Decision: Mem0DecisionOutcome | null = null;
+      if (args.mem0 && mem0SemanticsEnabled()) {
+        try {
+          mem0Decision = await args.mem0.decide(
+            {
+              factText: nlDescription,
+              intentLabel: cluster.intentLabel,
+            },
+            { tenantId: cluster.tenantId },
+          );
+        } catch (error) {
+          args.logger.warn(
+            {
+              stage: '04-promote',
+              clusterId: cluster.clusterId,
+              err: asMessage(error),
+            },
+            'mem0 decision port failed — falling back to legacy promote',
+          );
+          mem0Decision = null;
+        }
+      }
+      if (mem0Decision && mem0Decision.kind === 'noop') {
+        decisions.push({
+          clusterId: cluster.clusterId,
+          tenantId: cluster.tenantId,
+          action: 'no-op',
+          reason: `mem0 NOOP: ${mem0Decision.reason}`,
+        });
+        continue;
+      }
+      if (mem0Decision && mem0Decision.kind === 'delete') {
+        // DELETE in Mem0 terms = candidate revokes a prior skill.
+        // The skill_registry doesn't expose a delete path from this
+        // stage (decay/retire is stage 05's job); we still skip the
+        // upsert and emit a no-op so the auditor can spot the
+        // revocation signal.
+        decisions.push({
+          clusterId: cluster.clusterId,
+          tenantId: cluster.tenantId,
+          action: 'no-op',
+          reason: `mem0 DELETE (revocation): ${mem0Decision.reason}`,
+        });
+        continue;
+      }
 
       if (args.skillRegistry) {
         let embedding: ReadonlyArray<number> | undefined;

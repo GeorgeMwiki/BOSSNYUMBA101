@@ -1,13 +1,31 @@
 /**
  * @bossnyumba/observability
- * 
+ *
  * Platform observability package providing:
  * - Audit logging with fluent API and simple function interface
  * - Domain event bus with outbox pattern
  * - Structured logging with Pino
  * - Distributed tracing with OpenTelemetry
  * - Metrics collection with OpenTelemetry
+ * - Security-event emission per mutation route (SOC 2 CC7.2, GDPR Art. 30)
  */
+
+// ============================================================================
+// Security events — withSecurityEvents HOF + Next.js variant + direct emit
+// ============================================================================
+
+export {
+  withSecurityEvents,
+  withSecurityEventsNextRoute,
+  recordSecurityEvent,
+  setSecurityEventSink,
+  getSecurityEventSink,
+  resetSecurityEventSink,
+  type SecurityEvent,
+  type SecurityEventBinding,
+  type SecurityEventSeverity,
+  type SecurityEventSink,
+} from './security/with-security-events.js';
 
 // ============================================================================
 // Types - Audit

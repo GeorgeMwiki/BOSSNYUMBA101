@@ -220,6 +220,23 @@ export class AnthropicProvider implements AIProvider {
     const promptTokens = data.usage?.input_tokens ?? 0;
     const completionTokens = data.usage?.output_tokens ?? 0;
 
+    // A2b-2 wire #10a — surface prompt-cache telemetry. Anthropic returns
+    // `cache_creation_input_tokens` (one-time write cost) and
+    // `cache_read_input_tokens` (cache hits billed at ~10% rate) on every
+    // response when at least one `cache_control` marker was sent. The fields
+    // are absent for non-cached turns — only populate `cacheStats` when at
+    // least one counter is present so callers can distinguish "no cache"
+    // from "cache miss".
+    const cacheCreation = data.usage?.cache_creation_input_tokens;
+    const cacheRead = data.usage?.cache_read_input_tokens;
+    const cacheStats =
+      cacheCreation !== undefined || cacheRead !== undefined
+        ? {
+            cacheCreationInputTokens: cacheCreation ?? 0,
+            cacheReadInputTokens: cacheRead ?? 0,
+          }
+        : undefined;
+
     return aiOk({
       content,
       parsedJson,
@@ -228,6 +245,7 @@ export class AnthropicProvider implements AIProvider {
         promptTokens,
         completionTokens,
         totalTokens: promptTokens + completionTokens,
+        ...(cacheStats ? { cacheStats } : {}),
       },
       processingTimeMs: Date.now() - startTime,
       finishReason,
@@ -253,7 +271,12 @@ export class AnthropicProvider implements AIProvider {
       {
         content?: Array<Record<string, unknown>>;
         stop_reason?: string;
-        usage?: { input_tokens?: number; output_tokens?: number };
+        usage?: {
+          input_tokens?: number;
+          output_tokens?: number;
+          cache_creation_input_tokens?: number;
+          cache_read_input_tokens?: number;
+        };
       },
       AIProviderError
     >
@@ -284,7 +307,12 @@ export class AnthropicProvider implements AIProvider {
       const data = (await response.json()) as {
         content?: Array<Record<string, unknown>>;
         stop_reason?: string;
-        usage?: { input_tokens?: number; output_tokens?: number };
+        usage?: {
+          input_tokens?: number;
+          output_tokens?: number;
+          cache_creation_input_tokens?: number;
+          cache_read_input_tokens?: number;
+        };
       };
       return aiOk(data);
     } catch (error) {
@@ -317,7 +345,12 @@ export class AnthropicProvider implements AIProvider {
       {
         content?: Array<Record<string, unknown>>;
         stop_reason?: string;
-        usage?: { input_tokens?: number; output_tokens?: number };
+        usage?: {
+          input_tokens?: number;
+          output_tokens?: number;
+          cache_creation_input_tokens?: number;
+          cache_read_input_tokens?: number;
+        };
       },
       AIProviderError
     >

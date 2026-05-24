@@ -640,3 +640,42 @@ export * as TenderToContractOrchestrator from './orchestrators/tender-to-contrac
 // ============================================
 export * from './gdpr/index.js';
 
+// ============================================
+// LITFIN audit Wave-2 #8 — V8-isolate JS sandbox (`isolated-vm`).
+// Ports `LITFIN PROJECT/src/core/litfin-ai/sandbox/js-sandbox.ts` to replace
+// the Node `vm` module which OWASP GenAI Q1 2026 flagged as a top-three risk
+// for agent platforms running tool calls on tenant data. The default
+// snippet budget is 200 ms wall-clock / 32 MB heap; the snippet is double-
+// capped (UTF-16 + UTF-8) to defend against astral-plane inflation, and the
+// result is scrubbed to JSON-clonable primitives before crossing back into
+// the host caller. Use `runJsSandbox` from this barrel any time a copilot
+// needs to evaluate caller-supplied JS over governed inputs.
+// ============================================
+export {
+  runJsSandbox,
+  DEFAULT_MAX_CODE_BYTES,
+  DEFAULT_TIMEOUT_MS,
+  DEFAULT_MEMORY_MB,
+  MAX_TIMEOUT_MS,
+  MAX_MEMORY_MB,
+  type SandboxRunResult,
+  type SandboxOptions,
+} from './sandbox/js-sandbox.js';
+
+// ============================================
+// Wave-2 #10 — Company Brain Primitive (research:
+// `.audit/litfin-sota-2026-05-23/11-company-brain-primitive.md`).
+//
+// Brain Event Bus: ACL-tagged, tenant-isolated, fan-out bus that
+// connectors (WhatsApp, Slack, Gmail, M-Pesa, …) emit into and that
+// consumers (consolidation-worker, work-graph indexer, skill miner)
+// subscribe to. Mirrors the Onyx/Glean "permission-aware ingestion"
+// pattern — ACL is captured at the same time as content, never
+// post-filtered.
+//
+// Namespaced to keep the brain-bus surface distinct from the
+// existing observability EventBus exports (different aggregate
+// shape, different consumer semantics).
+// ============================================
+export * as BrainEventBus from './brain-event-bus/index.js';
+

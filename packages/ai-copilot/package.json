@@ -18,6 +18,10 @@
       "types": "./src/providers/index.ts",
       "default": "./dist/providers/index.js"
     },
+    "./reflexion": {
+      "types": "./src/reflexion/index.ts",
+      "default": "./dist/reflexion/index.js"
+    },
     "./agent-certification": {
       "types": "./src/agent-certification/index.ts",
       "default": "./dist/agent-certification/index.js"
@@ -93,6 +97,14 @@
     "./onboarding/new-head": {
       "types": "./src/onboarding/new-head/index.ts",
       "default": "./dist/onboarding/new-head/index.js"
+    },
+    "./sandbox": {
+      "types": "./src/sandbox/js-sandbox.ts",
+      "default": "./dist/sandbox/js-sandbox.js"
+    },
+    "./brain-event-bus": {
+      "types": "./src/brain-event-bus/index.ts",
+      "default": "./dist/brain-event-bus/index.js"
     }
   },
   "scripts": {
@@ -118,6 +130,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.1",
     "@bossnyumba/forecasting": "workspace:*",
+    "isolated-vm": "^6.1.2",
     "jose": "^5.2.0",
     "openai": "^4.28.0",
     "uuid": "^14.0.0",

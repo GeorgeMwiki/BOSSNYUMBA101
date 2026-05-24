@@ -134,6 +134,115 @@ describe('AnthropicProvider tool-name sanitization', () => {
   });
 });
 
+describe('AnthropicProvider prompt-cache breakpoints (A2b-2 wire #10a)', () => {
+  let originalFetch: typeof globalThis.fetch;
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('marks the system prompt + last tool definition with cache_control: ephemeral on the wire', async () => {
+    let capturedBody: Record<string, unknown> = {};
+    globalThis.fetch = vi.fn(async (_url: unknown, init: RequestInit | undefined) => {
+      const raw = typeof init?.body === 'string' ? init!.body : '';
+      capturedBody = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+      return new Response(
+        JSON.stringify({
+          content: [{ type: 'text', text: 'ok' }],
+          stop_reason: 'end_turn',
+          usage: { input_tokens: 1, output_tokens: 1 },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }) as typeof globalThis.fetch;
+
+    const p = new AnthropicProvider({ apiKey: 'sk-ant-test', maxRetries: 0 });
+    const result = await p.complete({
+      prompt: compiled,
+      tools: [
+        { name: 'tool_a', description: 'A', inputSchema: { type: 'object' } },
+        { name: 'tool_b', description: 'B', inputSchema: { type: 'object' } },
+      ],
+    });
+    expect(result.success).toBe(true);
+
+    // system promoted to block-array, last block tagged
+    const systemBlocks = capturedBody.system as Array<{
+      type: string;
+      text: string;
+      cache_control?: { type: string };
+    }>;
+    expect(Array.isArray(systemBlocks)).toBe(true);
+    const lastSystem = systemBlocks[systemBlocks.length - 1];
+    expect(lastSystem?.cache_control).toEqual({ type: 'ephemeral' });
+
+    // last tool definition tagged, earlier ones untagged
+    const sentTools = capturedBody.tools as Array<{
+      name: string;
+      cache_control?: { type: string };
+    }>;
+    expect(sentTools).toHaveLength(2);
+    expect(sentTools[0]?.cache_control).toBeUndefined();
+    expect(sentTools[1]?.cache_control).toEqual({ type: 'ephemeral' });
+  });
+
+  it('surfaces cacheStats in usage when Anthropic returns cache counters', async () => {
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            content: [{ type: 'text', text: 'cached reply' }],
+            stop_reason: 'end_turn',
+            usage: {
+              input_tokens: 50,
+              output_tokens: 10,
+              cache_creation_input_tokens: 1200,
+              cache_read_input_tokens: 3400,
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+    ) as typeof globalThis.fetch;
+
+    const p = new AnthropicProvider({ apiKey: 'sk-ant-test', maxRetries: 0 });
+    const result = await p.complete({ prompt: compiled });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.usage.cacheStats).toEqual({
+        cacheCreationInputTokens: 1200,
+        cacheReadInputTokens: 3400,
+      });
+      // Non-cache counters stay unchanged so existing callers keep working.
+      expect(result.data.usage.promptTokens).toBe(50);
+      expect(result.data.usage.completionTokens).toBe(10);
+      expect(result.data.usage.totalTokens).toBe(60);
+    }
+  });
+
+  it('omits cacheStats when the API response contains no cache counters', async () => {
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            content: [{ type: 'text', text: 'plain reply' }],
+            stop_reason: 'end_turn',
+            usage: { input_tokens: 5, output_tokens: 2 },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+    ) as typeof globalThis.fetch;
+
+    const p = new AnthropicProvider({ apiKey: 'sk-ant-test', maxRetries: 0 });
+    const result = await p.complete({ prompt: compiled });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.usage.cacheStats).toBeUndefined();
+    }
+  });
+});
+
 describe('AnthropicProvider retry/backoff', () => {
   let originalFetch: typeof globalThis.fetch;
   beforeEach(() => {

@@ -180,3 +180,10 @@ export {
 export * from './registry.js';
 export * from './orchestrator.js';
 export * from './health-scheduler.js';
+
+// ─────────────────────────────────────────────────────────────────────
+// Slack connector — operator-team brain feed.
+// Wave-2 task #11.3 of `.audit/litfin-sota-2026-05-23/00-EXECUTION-ROADMAP.md`.
+// Per-tenant Slack app install: every export here is tenant-scoped.
+// ─────────────────────────────────────────────────────────────────────
+export * from './adapters/slack/index.js';

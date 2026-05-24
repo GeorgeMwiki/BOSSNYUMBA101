@@ -57,6 +57,22 @@ const RISK_FEATURES: readonly string[] = [
   'firstTimeAction',
 ];
 
+/**
+ * Numerical-contradiction penalty.
+ *
+ * When the trace records ≥1 instance of two tools returning
+ * disagreeing numerics for the same quantity (e.g. two M-Pesa
+ * receipts disagree on amount; ledger row vs bank-statement row;
+ * two property valuations differ by >5%), the action's confidence is
+ * pulled down. Linear in the count, capped so a single noisy session
+ * cannot collapse confidence to 0 on its own.
+ *
+ * Closes May 18 parity gap §5 row 1 ("per-tool numerical
+ * contradictions feeding the confidence scorer").
+ */
+const NUMERICAL_CONTRADICTION_PER_INSTANCE = 0.08;
+const NUMERICAL_CONTRADICTION_MAX_PENALTY = 0.24; // 3+ contradictions = max
+
 function clamp01(v: number): number {
   if (!Number.isFinite(v)) return 0;
   if (v < 0) return 0;
@@ -78,6 +94,21 @@ function countRiskFeatures(features: Readonly<Record<string, unknown>>): number 
     if (features[key] === true) c += 1;
   }
   return c;
+}
+
+function numericalContradictionPenalty(
+  features: Readonly<Record<string, unknown>>,
+): { penalty: number; count: number } {
+  const raw = features['numericalContradictionCount'];
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) {
+    return { penalty: 0, count: 0 };
+  }
+  const count = Math.floor(raw);
+  const penalty = Math.min(
+    NUMERICAL_CONTRADICTION_MAX_PENALTY,
+    count * NUMERICAL_CONTRADICTION_PER_INSTANCE,
+  );
+  return { penalty, count };
 }
 
 async function historicalSuccessRate(
@@ -136,6 +167,12 @@ function computeBaseline(
   ) {
     score -= 0.15;
     notes.push('-0.15 legal/safety-critical');
+  }
+
+  const numContra = numericalContradictionPenalty(context.features);
+  if (numContra.penalty > 0) {
+    score -= numContra.penalty;
+    notes.push(`-${numContra.penalty.toFixed(2)} numerical-contradictions(${numContra.count})`);
   }
 
   if (historical !== null) {

@@ -164,3 +164,55 @@ export {
   formatCell,
   type Currency,
 } from './format';
+
+// ─────────────────────────────────────────────────────────────────────
+// PortalLayout — dynamic per-user UI document
+// (`.audit/litfin-sota-2026-05-23/12-dynamic-per-user-ui.md`)
+// ─────────────────────────────────────────────────────────────────────
+export {
+  PortalLayoutSchema,
+  PortalLayoutSeedSchema,
+  PortalTopbarSchema,
+  PortalSidebarSchema,
+  PortalSidebarSectionSchema,
+  PortalSidebarItemSchema,
+  PortalDashboardSchema,
+  PortalDashboardCellSchema,
+  PortalPrimaryActionSchema,
+  PortalThemeSchema,
+  PortalFeatureFlagsSchema,
+  PortalAccessibilityProfileSchema,
+  PortalLayoutAuditSchema,
+  PortalPersonaSchema,
+  PortalPrimaryIntentSchema,
+  PortalDashboardKindSchema,
+  PORTAL_PERSONAS,
+  PORTAL_PRIMARY_INTENTS,
+  PORTAL_DASHBOARD_KINDS,
+  PORTAL_THEME_TOKEN_KEYS,
+  PORTAL_LAYOUT_SCHEMA_VERSION,
+  forkSeedIntoLayout,
+  parsePortalLayout,
+  safeParsePortalLayout,
+  type PortalLayout,
+  type PortalLayoutSeed,
+  type PortalTopbar,
+  type PortalSidebar,
+  type PortalDashboard,
+  type PortalPrimaryAction,
+  type PortalTheme,
+  type PortalFeatureFlags,
+  type PortalAccessibilityProfile,
+  type PortalLayoutAudit,
+  type PortalPersona,
+  type PortalPrimaryIntent,
+  type PortalDashboardKind,
+  type PortalThemeTokenKey,
+  type ForkSeedInput,
+} from './document';
+
+export {
+  PORTAL_LAYOUT_SEEDS,
+  PORTAL_LAYOUT_DEFAULT_SEED,
+  getPortalLayoutSeed,
+} from './seeds';

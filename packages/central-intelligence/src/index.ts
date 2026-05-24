@@ -75,3 +75,10 @@ export {
   counterModel,
   orchestrator,
 } from './kernel/index.js';
+
+// Durable-execution wrapper around the legacy task-agents executor.
+// Opt-in via `DURABLE_EXEC_ENABLED=true`; backward-compatible no-op
+// otherwise. Env vars: INNGEST_EVENT_KEY (producer), INNGEST_SIGNING_KEY
+// (consumer), DURABLE_EXEC_ENABLED (master kill-switch). See
+// `./durable/index.ts` for the full surface.
+export * from './durable/index.js';

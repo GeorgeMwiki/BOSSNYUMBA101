@@ -16,6 +16,7 @@
 import { createDatabaseClient } from '../client.js';
 import { seedDemoOrg } from './demo-org-seed.js';
 import { seedMaintenanceTaxonomyPlatformDefaults } from './maintenance-taxonomy.seed.js';
+import { seedTrcTestOrg } from './trc-test-org-seed.js';
 
 interface ParsedArgs {
   readonly org: string;
@@ -51,6 +52,10 @@ type OrgSeedRunner = (db: ReturnType<typeof createDatabaseClient>) => Promise<vo
 
 const ORG_SEEDS: Record<string, OrgSeedRunner> = {
   demo: seedDemoOrg,
+  // TRC (Test Reference Corporation) — minimal canonical test org. Tenant +
+  // org + 5 users only. NO operational data; first MD conversation
+  // bootstraps everything else. See trc-test-org-seed.ts.
+  trc: seedTrcTestOrg,
   // future: additional per-org fixture bundles.
 };
 

@@ -398,3 +398,9 @@ export * from './mdr-plan.schema.js';
 // Owner skills marketplace (migration 0162, Phase E.7) — owner-installable
 // Skills (cron / event / manual triggered workflows).
 export * from './owner-skills.schema.js';
+
+// Portal layouts (migration 0164) — per-(tenant, persona, user)
+// `PortalLayout` documents backing the dynamic per-user UI primitive
+// (`.audit/litfin-sota-2026-05-23/12-dynamic-per-user-ui.md`).
+// JSONB layout blob + composite uniqueness on (tenant, persona, user).
+export * from './portal-layouts.schema.js';

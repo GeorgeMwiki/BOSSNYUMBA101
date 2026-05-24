@@ -38,3 +38,17 @@ export {
   type BudgetGuardedAnthropicClient,
   type PriceEstimator,
 } from './budget-guard.js';
+
+// Multi-LLM fan-out synthesizer (Mixture-of-Agents pattern). Pair with the
+// single-best `multi-llm-router` for deep reasoning / document creation
+// where 3 perspectives reduce blind spots.
+export {
+  createMultiLLMSynthesizer,
+  type MultiLLMSynthesizerDeps,
+  type ProposerRegistration as SynthesizerProposerRegistration,
+  type SynthesizeOptions,
+  type SynthesisMode,
+  type SynthesisResult,
+  type SynthesisError,
+  type ProposerOutcome,
+} from './multi-llm-synthesizer.js';

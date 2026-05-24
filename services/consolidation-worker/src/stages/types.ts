@@ -143,6 +143,44 @@ export interface ConsolidationEmbedder {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Stage 04 — Mem0 ADD/UPDATE/DELETE/NOOP decision port
+//
+// Optional. When wired AND `MEM0_SEMANTICS_ENABLED=true` is set in
+// the environment, the promote stage consults this port before
+// upserting a candidate skill so that contradicted (UPDATE),
+// duplicated (NOOP), or revoked (DELETE) candidates short-circuit
+// out of `SkillRegistryPort.upsertSkill`. The composition root wires
+// this to `@bossnyumba/ai-copilot`'s `decideMem0Op` (Park et al.
+// 2024 / arXiv 2404.13501). Pure — the decision is computed by the
+// adapter; the stage itself stays IO-free.
+// ─────────────────────────────────────────────────────────────────────
+
+export interface Mem0CandidateInput {
+  readonly factText: string;
+  readonly intentLabel: string;
+  readonly confidence?: number;
+  readonly embedding?: ReadonlyArray<number>;
+}
+
+export type Mem0DecisionKind = 'add' | 'update' | 'delete' | 'noop';
+
+export interface Mem0DecisionOutcome {
+  readonly kind: Mem0DecisionKind;
+  readonly reason: string;
+  /** Existing skill row id when kind ∈ {update, delete, noop}. */
+  readonly relatedId?: string;
+  /** Similarity score when applicable. */
+  readonly similarity?: number;
+}
+
+export interface Mem0DecisionPort {
+  decide(
+    candidate: Mem0CandidateInput,
+    scope: { readonly tenantId: string | null },
+  ): Promise<Mem0DecisionOutcome>;
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Stage 05 — Decay
 // ─────────────────────────────────────────────────────────────────────
 

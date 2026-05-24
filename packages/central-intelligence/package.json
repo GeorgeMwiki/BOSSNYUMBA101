@@ -33,10 +33,14 @@
     "@anthropic-ai/sdk": ">=0.30.0",
     "@bossnyumba/forecasting": "workspace:*",
     "@bossnyumba/graph-privacy": "workspace:*",
-    "@bossnyumba/graph-sync": "workspace:*"
+    "@bossnyumba/graph-sync": "workspace:*",
+    "inngest": ">=3.0.0"
   },
   "peerDependenciesMeta": {
     "@anthropic-ai/sdk": {
+      "optional": true
+    },
+    "inngest": {
       "optional": true
     }
   }
