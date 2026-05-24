@@ -82,6 +82,18 @@ import scansRouter from './routes/scans.router';
 import stationMasterCoverageRouter from './routes/station-master-coverage.router';
 import { tendersRouter } from './routes/tenders.router';
 import { waitlistRouter } from './routes/waitlist.router';
+// Veteran-expert advisor packages — pure-function strategic
+// recommenders exposed as HTTP entry points. Each router takes the
+// advisor's typed input JSON, calls the pure composer, returns the
+// structured recommendation envelope. Tenant-scoped + audit-logged.
+import acquisitionAdvisorRouter from './routes/acquisition-advisor.router';
+import expansionAdvisorRouter from './routes/expansion-advisor.router';
+import lifecycleAdvisorRouter from './routes/lifecycle-advisor.router';
+import sustainabilityAdvisorRouter from './routes/sustainability-advisor.router';
+import greenAngleAdvisorRouter from './routes/green-angle-advisor.router';
+import estateDepartmentAdvisorRouter from './routes/estate-department-advisor.router';
+import estateAutoManagementRouter from './routes/estate-auto-management.router';
+import geoPlatformRouter from './routes/geo-platform.router';
 // Wave 8 gap-closure routers
 import warehouseRouter from './routes/warehouse.router';
 import maintenanceTaxonomyRouter from './routes/maintenance-taxonomy.router';
@@ -122,6 +134,11 @@ import publicSandboxRouter from './routes/public-sandbox.router';
 import publicLeadsRouter from './routes/public-leads.router';
 // Wave 12 — streaming AI chat (SSE) for all 4 chat surfaces
 import aiChatRouter from './routes/ai-chat.router';
+// Universal role-aware advisor — `POST /api/v1/ask`, GET starting-points,
+// POST feedback. Owned by this work-stream; routes under
+// `services/api-gateway/src/routes/advisor/` belong to P2 and are NOT
+// touched from here.
+import { askRouter } from './routes/ask/index.js';
 import workflowsRouter from './routes/workflows.router';
 import agentCertificationsRouter from './routes/agent-certifications.router';
 import classroomRouter from './routes/classroom.router';
@@ -489,6 +506,19 @@ logger.info(
   'ai-brain-utilities wired',
 );
 
+// Persistent-stores boot summary — surfaces which path each of the 5
+// stores took at boot (persistent vs memory) so operators see the live
+// posture in a single log line. Persistent paths require BOTH
+// DATABASE_URL to be set AND the per-port `PERSISTENT_*_DISABLED` env
+// flag to be off.
+logger.info(
+  {
+    modeByStore: serviceRegistry.persistentStores.modeByStore,
+    databaseUrl: Boolean(process.env.DATABASE_URL),
+  },
+  'persistent-stores wired',
+);
+
 // Wire the org-awareness query-organization skill into the Brain registry.
 // The brain factory (ai-chat.router / brain.hono) reads these extra skills
 // when it constructs per-tenant Brains, so Mr. Mwikila can answer
@@ -701,6 +731,15 @@ api.route('/scans', scansRouter);
 api.route('/station-master-coverage', stationMasterCoverageRouter);
 api.route('/tenders', tendersRouter);
 api.route('/waitlist', waitlistRouter);
+// Veteran-expert advisor packages — strategic recommenders.
+api.route('/acquisition-advisor', acquisitionAdvisorRouter);
+api.route('/expansion-advisor', expansionAdvisorRouter);
+api.route('/lifecycle-advisor', lifecycleAdvisorRouter);
+api.route('/sustainability-advisor', sustainabilityAdvisorRouter);
+api.route('/green-angle-advisor', greenAngleAdvisorRouter);
+api.route('/estate-department-advisor', estateDepartmentAdvisorRouter);
+api.route('/estate-auto-management', estateAutoManagementRouter);
+api.route('/geo-platform', geoPlatformRouter);
 // Wave 8 — warehouse stock (S7), maintenance taxonomy (S7), IoT observations (S3)
 api.route('/warehouse', warehouseRouter);
 api.route('/maintenance-taxonomy', maintenanceTaxonomyRouter);

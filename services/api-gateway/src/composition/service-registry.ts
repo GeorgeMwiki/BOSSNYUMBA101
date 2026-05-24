@@ -280,6 +280,17 @@ import {
   createCrossPortalBus,
   type CrossPortalBus,
 } from './cross-portal-bus.js';
+// Persistent-stores wiring (5-port composition) — `createPersistentStores`
+// glues the in-memory ports shipped by ai-copilot / agent-platform /
+// central-intelligence to the Drizzle-backed adapters in
+// `@bossnyumba/database`. The factory is env-gated (per-port feature
+// flags) and returns ALL in-memory stores when db is null, which is the
+// dev/CI/test default. Production boots into the persistent path
+// automatically when DATABASE_URL is set.
+import {
+  createPersistentStores,
+  type PersistentStores,
+} from './persistent-stores-wiring.js';
 // Central Command Phase C C2 — closes B1's `publishCrossPortalEvent` +
 // `dispatcher` + `recipientResolver` wiring TODOs.
 import {
@@ -795,6 +806,28 @@ export interface ServiceRegistry {
    */
   readonly recipientResolverAdapter: RecipientResolverLike | null;
 
+  /**
+   * Persistent-store composition (5 ports):
+   *   - lessonStore         (Reflexion lessons, migration 0166)
+   *   - wormAuditStore      (WORM document audit, migration 0165)
+   *   - skillRegistryWriter (skill promotion, migration 0162)
+   *   - aopRegistryStore    (autonomous-operating-procedures, migration 0167)
+   *   - getA2aTaskStore     (A2A task state, migration 0168) — tenant-pinned
+   *
+   * ALWAYS wired (the factory returns in-memory adapters when db is null,
+   * Drizzle-backed adapters when db is set + the per-port feature flag is
+   * NOT enabled). `modeByStore` records which path each store took at
+   * boot so operators can see the live posture in a single log line.
+   *
+   * Per-port opt-out env flags (all default-on once DATABASE_URL is set):
+   *   - PERSISTENT_LESSON_STORE_DISABLED
+   *   - PERSISTENT_WORM_AUDIT_DISABLED
+   *   - PERSISTENT_SKILL_REGISTRY_DISABLED
+   *   - PERSISTENT_AOP_REGISTRY_DISABLED
+   *   - PERSISTENT_A2A_TASKS_DISABLED
+   */
+  readonly persistentStores: PersistentStores;
+
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
 
@@ -1155,6 +1188,11 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
       crossPortalBus: degradedCrossPortalBus,
     }),
     recipientResolverAdapter: null,
+    // Persistent stores — degraded mode wires the in-memory fallback for
+    // every port (db=null). Same surface as the live path so routes
+    // never have to branch on isLive; they just call into the wired
+    // adapter and the store decides where the data lives.
+    persistentStores: createPersistentStores({ db: null }),
     eventBus,
     db: null,
     isLive: false,
@@ -2044,6 +2082,18 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     killswitchFanoutPublisher,
     notificationDispatcherAdapter,
     recipientResolverAdapter,
+    // Persistent stores — LIVE path wires the Drizzle-backed adapters
+    // for all 5 ports (LessonStore -> 0166, WormAuditStore -> 0165,
+    // SkillRegistryWriter -> 0162, AOPRegistryStore -> 0167, A2A
+    // TaskStore -> 0168). Per-port env flags can force memory mode
+    // for individual stores (see `persistent-stores-wiring.ts`).
+    persistentStores: createPersistentStores({
+      db,
+      logger: {
+        info: (obj, msg) => console.info('persistent-stores:', msg ?? '', obj),
+        warn: (obj, msg) => console.warn('persistent-stores:', msg ?? '', obj),
+      },
+    }),
     eventBus,
     db,
     isLive: true,
