@@ -93,9 +93,18 @@ async function buildRedisStore(url: string): Promise<OtpStore> {
   if (!mod) {
     throw new Error("ioredis module not installed; cannot build Redis OTP store");
   }
-  const RedisCtor: any =
-    (mod as any).default ?? (mod as any).Redis ?? mod;
-  const client: any = new RedisCtor(url);
+  interface RedisLike {
+    get(key: string): Promise<string | null>;
+    set(key: string, value: string, mode: 'PX', ttlMs: number): Promise<unknown>;
+    del(key: string): Promise<unknown>;
+  }
+  type RedisNew = new (url: string) => RedisLike;
+  // ioredis ships as CJS with a `default` export under ESM-interop, and
+  // also exposes a named `Redis` export — probe both, fall back to bare.
+  const modShape = mod as { default?: RedisNew; Redis?: RedisNew };
+  const RedisCtor: RedisNew =
+    modShape.default ?? modShape.Redis ?? (mod as unknown as RedisNew);
+  const client: RedisLike = new RedisCtor(url);
 
   const key = (identityId: TenantIdentityId): string =>
     `otp:${identityId as unknown as string}`;

@@ -327,8 +327,10 @@ function safeBase64Decode(s: string): string {
   } catch {
     /* fall through */
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const BufferCtor = (globalThis as any).Buffer;
+  interface NodeBufferLike {
+    readonly from: (input: string, encoding: string) => { toString: (enc: string) => string };
+  }
+  const BufferCtor = (globalThis as { Buffer?: NodeBufferLike }).Buffer;
   if (BufferCtor && typeof BufferCtor.from === 'function') {
     return BufferCtor.from(s, 'base64').toString('utf8');
   }

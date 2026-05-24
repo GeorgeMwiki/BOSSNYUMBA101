@@ -12,7 +12,7 @@
  * in a query can't silently leak across tenants.
  */
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient, type SupabaseClientOptions } from '@supabase/supabase-js';
 import { SupabaseConfigError, SupabaseConfigSchema, type SupabaseConfig } from './types.js';
 
 export interface AdminClientOptions {
@@ -69,9 +69,11 @@ export function createSupabaseAdminClient(
       },
     },
   };
+  // db.schema is typed against the consumer's Database typing; cast
+  // through unknown so a runtime schema name is accepted without us
+  // declaring a stub Database type just for the option.
   const clientOptions = options.schema
-    ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ({ ...baseOptions, db: { schema: options.schema } } as any)
-    : baseOptions;
+    ? ({ ...baseOptions, db: { schema: options.schema } } as unknown as SupabaseClientOptions<string>)
+    : (baseOptions as unknown as SupabaseClientOptions<string>);
   return createClient(parsed.data.url, parsed.data.serviceRoleKey, clientOptions) as SupabaseClient;
 }

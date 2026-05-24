@@ -7,7 +7,7 @@
  * stateless and the constructor is cheap.
  */
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient, type SupabaseClientOptions } from '@supabase/supabase-js';
 import { SupabaseConfigError, SupabaseConfigSchema, type SupabaseConfig } from './types.js';
 
 export interface UserClientOptions {
@@ -63,9 +63,12 @@ export function createSupabaseUserClient(
       },
     },
   };
+  // db.schema is typed `string & keyof Database['schema']` — Supabase
+  // wants the consumer-typed Database parameter to make `string` legal.
+  // We pass the schema name through an unknown-cast so the runtime
+  // option flows without us declaring a fake Database type.
   const clientOptions = options.schema
-    ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ({ ...baseOptions, db: { schema: options.schema } } as any)
-    : baseOptions;
+    ? ({ ...baseOptions, db: { schema: options.schema } } as unknown as SupabaseClientOptions<string>)
+    : (baseOptions as unknown as SupabaseClientOptions<string>);
   return createClient(parsed.data.url, parsed.data.anonKey, clientOptions) as SupabaseClient;
 }
