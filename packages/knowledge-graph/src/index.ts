@@ -55,5 +55,31 @@ export {
   type AnswerWithKGArgs,
 } from './graphrag/index.js';
 
+// Temporal
+export {
+  getStateAt,
+  compareStates,
+  type CompareStatesArgs,
+} from './temporal/index.js';
+
+// Provenance
+export {
+  attachProvenance,
+  validateProvenance,
+  hasProvenance,
+  type ProvenanceValidation,
+} from './provenance/index.js';
+
+// Visualization spec builders
+export {
+  forceGraphSpec,
+  cytoscapeSpec,
+  sigmaSpec,
+  chordSpec,
+  sankeySpec,
+  treeMapSpec,
+  type ClassColorMap,
+} from './viz/index.js';
+
 // Headline factory
 export { createKnowledgeGraph, type CreateKnowledgeGraphArgs } from './factory.js';
