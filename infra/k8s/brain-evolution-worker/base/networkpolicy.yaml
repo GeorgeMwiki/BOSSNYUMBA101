@@ -1,0 +1,90 @@
+# =============================================================================
+# brain-evolution-worker — default-deny + targeted egress allow-list
+# =============================================================================
+# Worker has no inbound surface — only egress to data plane, observability,
+# and external HTTPS (LLM providers for the reflection jury).
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: brain-evolution-worker-default-deny
+  labels:
+    app.kubernetes.io/name: brain-evolution-worker
+    app.kubernetes.io/part-of: bossnyumba
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: brain-evolution-worker
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: brain-evolution-worker-allow-dns-egress
+  labels:
+    app.kubernetes.io/name: brain-evolution-worker
+    app.kubernetes.io/part-of: bossnyumba
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: brain-evolution-worker
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: brain-evolution-worker-allow-egress
+  labels:
+    app.kubernetes.io/name: brain-evolution-worker
+    app.kubernetes.io/part-of: bossnyumba
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: brain-evolution-worker
+  policyTypes: [Egress]
+  egress:
+    # Postgres — read traces, write memory blocks
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bossnyumba-app
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bossnyumba-prod
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Observability
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
+    # External HTTPS — 3-LLM reflection jury (Anthropic / OpenAI / Google)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443

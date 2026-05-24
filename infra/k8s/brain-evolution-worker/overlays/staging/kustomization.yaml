@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Staging uses a dedicated jobs namespace too (mirror of prod) so the
+# CronJob lifecycle and RBAC stay isolated from the app workloads.
+namespace: bossnyumba-jobs
+
+resources:
+  - ../../base
+
+images:
+  - name: ghcr.io/bossnyumba/brain-evolution-worker
+    newTag: staging
+
+patches:
+  - target:
+      kind: CronJob
+      name: brain-evolution-worker
+    patch: |-
+      - op: replace
+        path: /spec/jobTemplate/spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+  - target:
+      kind: ExternalSecret
+      name: brain-evolution-worker-secrets
+    patch: |-
+      - op: replace
+        path: /spec/dataFrom/0/extract/key
+        value: bossnyumba/staging/brain-evolution-worker
