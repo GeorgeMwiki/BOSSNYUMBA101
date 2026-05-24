@@ -34,3 +34,26 @@ export {
   type KuzuAdapterOptions,
   type Neo4jAdapterOptions,
 } from './store/index.js';
+
+// Embeddings
+export {
+  createMockGraphEmbedder,
+  createTextGraphEmbedder,
+  cosineSimilarity,
+  findRelevant,
+  type TextEmbedder,
+  type FindRelevantArgs,
+} from './embeddings/index.js';
+
+// GraphRAG
+export {
+  expandFromSeed,
+  detectCommunities,
+  summarizeCommunity,
+  answerWithKG,
+  type ExpandFromSeedArgs,
+  type AnswerWithKGArgs,
+} from './graphrag/index.js';
+
+// Headline factory
+export { createKnowledgeGraph, type CreateKnowledgeGraphArgs } from './factory.js';
