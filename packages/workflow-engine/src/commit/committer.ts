@@ -77,6 +77,12 @@ export function createCommitter(
 /**
  * Convenience: a noop applier set used in tests + dev. Records the
  * apply call in `applierDetails` for assertion purposes.
+ *
+ * `calls` is the live recording array (typed as ReadonlyArray to discourage
+ * external mutation). Returning the live reference — rather than a frozen
+ * snapshot via a getter — keeps the API ergonomic under destructuring
+ * (`const { applier, calls } = createRecordingApplier(...)` would otherwise
+ * capture an empty frozen array at destructuring time).
  */
 export function createRecordingApplier(kind: WorkflowKind): {
   readonly applier: ChangeApplier;
@@ -98,8 +104,6 @@ export function createRecordingApplier(kind: WorkflowKind): {
   };
   return {
     applier,
-    get calls() {
-      return Object.freeze([...recorded]);
-    },
+    calls: recorded,
   };
 }
