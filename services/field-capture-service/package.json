@@ -25,6 +25,7 @@
   "dependencies": {
     "@bossnyumba/geo-intelligence": "workspace:*",
     "@bossnyumba/observability": "workspace:^",
+    "@bossnyumba/storage-adapter": "workspace:*",
     "fastify": "^4.27.0",
     "pino": "^8.21.0",
     "prom-client": "^15.1.0",

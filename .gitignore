@@ -68,3 +68,9 @@ override.tf
 override.tf.json
 *.override.tf
 *.override.tf.json
+
+# Working artifacts — audit drafts, research notes, ad-hoc scans, agent worktrees
+.audit/
+.research/
+.semgrep/
+.claude/worktrees/

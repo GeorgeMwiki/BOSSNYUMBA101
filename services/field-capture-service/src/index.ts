@@ -29,12 +29,23 @@ import {
   createInMemoryCaptureStore,
   type CaptureStore,
 } from '@bossnyumba/geo-intelligence';
+import type { StorageAdapter } from '@bossnyumba/storage-adapter';
 import { registerCaptureRoutes } from './routes/captures.js';
 import { createMetrics, type MetricsHarness } from './metrics.js';
 
 export interface BuildAppDeps {
   readonly store?: CaptureStore;
   readonly metrics?: MetricsHarness;
+  /**
+   * Optional shared StorageAdapter port. When provided, inline base64
+   * bytes received on capture routes are persisted through the
+   * adapter at `<bucket>/<tenantId>/<captureId>` (see
+   * `routes/captures.ts`). When omitted (default), inline bytes are
+   * only hashed for C2PA — preserves prior behaviour for callers that
+   * upload via a separate pre-signed flow.
+   */
+  readonly storageAdapter?: StorageAdapter;
+  readonly kindToBucket?: (kind: string) => string;
 }
 
 export async function buildApp(deps: BuildAppDeps = {}): Promise<FastifyInstance> {
@@ -50,7 +61,11 @@ export async function buildApp(deps: BuildAppDeps = {}): Promise<FastifyInstance
     return metrics.registry.metrics();
   });
 
-  await registerCaptureRoutes(app, { store });
+  await registerCaptureRoutes(app, {
+    store,
+    ...(deps.storageAdapter ? { storageAdapter: deps.storageAdapter } : {}),
+    ...(deps.kindToBucket ? { kindToBucket: deps.kindToBucket } : {}),
+  });
 
   return app;
 }

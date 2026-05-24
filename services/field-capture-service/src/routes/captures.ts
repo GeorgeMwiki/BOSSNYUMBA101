@@ -15,6 +15,7 @@
  */
 
 import type { FastifyInstance } from 'fastify';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { withSecurityEventsFastify } from '@bossnyumba/observability';
 import {
@@ -23,6 +24,10 @@ import {
   type CaptureStore,
   type FieldCaptureInput,
 } from '@bossnyumba/geo-intelligence';
+import {
+  type StorageAdapter,
+  tenantScopedPath,
+} from '@bossnyumba/storage-adapter';
 
 const CapturePayloadSchema = z.object({
   kind: z.enum(['photo', 'video', 'audio', 'inspection', 'polygon', 'sensor', 'drone', 'pano']),
@@ -92,6 +97,103 @@ function toCaptureInput(payload: z.infer<typeof CapturePayloadSchema>): FieldCap
 
 export interface CaptureRoutesDeps {
   readonly store: CaptureStore;
+  /**
+   * Optional shared storage port (`@bossnyumba/storage-adapter`). When
+   * provided, the route persists any submitted inline bytes through
+   * the adapter using `tenantScopedPath(tenantId, captureId)` and
+   * rewrites the capture's `storageUri` to the returned URI. This
+   * closes the wiring-gaps audit chain-6 hole — before this change,
+   * base64 bytes received here were hashed for C2PA only and never
+   * written to the canonical bucket, so production had no consistent
+   * tenant-scoped backend for inline-uploaded media.
+   *
+   * SECURITY: the path scoping uses the tenantId the route resolves
+   * from the request (today, from the request body — see TODO). The
+   * adapter guarantees the file physically lands inside that tenant's
+   * prefix, so a Supabase RLS policy keyed on
+   * `(storage.foldername(name))[1] = current_setting('app.current_tenant_id')`
+   * will deny cross-tenant reads.
+   */
+  readonly storageAdapter?: StorageAdapter;
+  /** Override the default kind→bucket mapping if the deployment uses bespoke names. */
+  readonly kindToBucket?: (kind: string) => string;
+}
+
+const DEFAULT_KIND_BUCKETS: Record<string, string> = {
+  photo: 'media-photos',
+  video: 'media-videos',
+  audio: 'media-audio',
+  inspection: 'tenant-uploads',
+  polygon: 'tenant-uploads',
+  sensor: 'tenant-uploads',
+  drone: 'media-videos',
+  pano: 'media-photos',
+};
+
+function pickBucket(
+  kind: string,
+  override?: (k: string) => string,
+): string {
+  if (override) {
+    try {
+      const out = override(kind);
+      if (out && typeof out === 'string') return out;
+    } catch {
+      // fall through to default
+    }
+  }
+  return DEFAULT_KIND_BUCKETS[kind] ?? 'tenant-uploads';
+}
+
+function pickContentType(kind: string): string {
+  switch (kind) {
+    case 'photo':
+    case 'pano':
+      return 'image/jpeg';
+    case 'video':
+    case 'drone':
+      return 'video/mp4';
+    case 'audio':
+      return 'audio/mp4';
+    default:
+      return 'application/octet-stream';
+  }
+}
+
+/**
+ * If the payload carries inline bytes (base64) AND a StorageAdapter is
+ * wired, push the bytes to `<bucket>/<tenantId>/<captureId>` and return
+ * the payload with a freshly-assigned `storageUri`. Otherwise return
+ * the payload unchanged. Errors from the adapter propagate.
+ */
+async function persistBytesIfNeeded(args: {
+  payload: z.infer<typeof CapturePayloadSchema>;
+  tenantId: string;
+  storageAdapter?: StorageAdapter;
+  kindToBucket?: (kind: string) => string;
+}): Promise<z.infer<typeof CapturePayloadSchema>> {
+  if (!args.storageAdapter) return args.payload;
+  if (!args.payload.bytesBase64) return args.payload;
+
+  const bytes = new Uint8Array(
+    Buffer.from(args.payload.bytesBase64, 'base64'),
+  );
+  const captureId = randomUUID();
+  const bucket = pickBucket(args.payload.kind, args.kindToBucket);
+  const path = tenantScopedPath(args.tenantId, captureId);
+  const contentType = pickContentType(args.payload.kind);
+
+  await args.storageAdapter.upload(bucket, path, bytes, contentType);
+
+  // Rewrite the payload: strip the inline bytes (they're now in object
+  // storage) and set a `storageUri` so the capture record persists a
+  // pointer rather than re-uploading the blob downstream.
+  const next: z.infer<typeof CapturePayloadSchema> = {
+    ...args.payload,
+    storageUri: `storage://${bucket}/${path}`,
+  };
+  delete (next as { bytesBase64?: string }).bytesBase64;
+  return next;
 }
 
 export async function registerCaptureRoutes(
@@ -124,10 +226,28 @@ export async function registerCaptureRoutes(
       const { surveyorUserId, tenantId, ...payload } = parsed.data;
       // Force the kind to match the route.
       const forcedPayload = { ...payload, kind: forceKind } as z.infer<typeof CapturePayloadSchema>;
+      // Persist inline bytes through the shared StorageAdapter so the
+      // blob lands at `<bucket>/<tenantId>/<captureId>` — see
+      // CaptureRoutesDeps.storageAdapter for the wiring rationale.
+      let persistedPayload: z.infer<typeof CapturePayloadSchema>;
+      try {
+        persistedPayload = await persistBytesIfNeeded({
+          payload: forcedPayload,
+          tenantId,
+          storageAdapter: deps.storageAdapter,
+          kindToBucket: deps.kindToBucket,
+        });
+      } catch (err) {
+        reply.code(502);
+        return {
+          error: 'storage upload failed',
+          details: err instanceof Error ? err.message : String(err),
+        };
+      }
       const result = await pipeline.submitFieldCapture({
         surveyorUserId,
         tenantId,
-        captures: [toCaptureInput(forcedPayload)],
+        captures: [toCaptureInput(persistedPayload)],
       });
       reply.code(201);
       return { idempotencyKey: idemKey, captures: result };
@@ -170,10 +290,33 @@ export async function registerCaptureRoutes(
         return { error: 'invalid sync body', details: parsed.error.flatten() };
       }
       const { surveyorUserId, tenantId, captures } = parsed.data;
+      // Persist any inline bytes through the shared StorageAdapter,
+      // one capture at a time so we keep the per-capture captureId
+      // distinct in the bucket. Errors fail the whole batch — the
+      // mobile client should retry the same Idempotency-Key.
+      let persistedCaptures: ReadonlyArray<z.infer<typeof CapturePayloadSchema>>;
+      try {
+        persistedCaptures = await Promise.all(
+          captures.map((c) =>
+            persistBytesIfNeeded({
+              payload: c,
+              tenantId,
+              storageAdapter: deps.storageAdapter,
+              kindToBucket: deps.kindToBucket,
+            }),
+          ),
+        );
+      } catch (err) {
+        reply.code(502);
+        return {
+          error: 'storage upload failed',
+          details: err instanceof Error ? err.message : String(err),
+        };
+      }
       const result = await pipeline.submitFieldCapture({
         surveyorUserId,
         tenantId,
-        captures: captures.map(toCaptureInput),
+        captures: persistedCaptures.map(toCaptureInput),
       });
       reply.code(202);
       return {
