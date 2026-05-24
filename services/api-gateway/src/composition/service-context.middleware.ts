@@ -33,6 +33,32 @@ export function createServiceContextMiddleware(registry: ServiceRegistry) {
     // Primary: a single typed bag of all domain services.
     c.set('services', registry);
 
+    // ─── Persistent stores — flat accessors ──────────────────────────
+    // P36 wiring-gap fix (chain 3): the 5 persistent stores are
+    // constructed in the registry but every route that reads
+    // `c.get('lessonStore')` etc. used to receive `undefined` and
+    // silently fall through to a no-op. The most visible symptom: a
+    // 1-star feedback on `/v1/ask` wrote to `c.get('lessonStore')`
+    // which returned undefined — tenants thought feedback was
+    // recorded; it wasn't. We bind the 5 ports here so every
+    // request-scoped consumer sees the live store (persistent when
+    // DATABASE_URL is set, in-memory otherwise; per-port env flags
+    // are honoured upstream in `createPersistentStores`). The
+    // wormAuditStore was already reachable via the advisor singleton
+    // by-passing the registry, but `c.get('wormAuditStore')` from any
+    // other route was returning undefined — that's closed here too.
+    // `getA2aTaskStore` is exposed as the factory (not a pre-built
+    // store) because A2A is tenant-pinned: routes call
+    // `getA2aTaskStore(tenantId)` and receive a per-tenant store.
+    c.set('lessonStore', registry.persistentStores.lessonStore);
+    c.set('wormAuditStore', registry.persistentStores.wormAuditStore);
+    c.set(
+      'skillRegistryWriter',
+      registry.persistentStores.skillRegistryWriter,
+    );
+    c.set('aopRegistryStore', registry.persistentStores.aopRegistryStore);
+    c.set('getA2aTaskStore', registry.persistentStores.getA2aTaskStore);
+
     // Flat convenience accessors (legacy router convention).
     const auth = c.get('auth') as
       | { tenantId?: string; userId?: string }
