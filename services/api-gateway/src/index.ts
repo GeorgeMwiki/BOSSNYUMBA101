@@ -71,6 +71,11 @@ import gepgRouter from './routes/gepg.router';
 import interactiveReportsRouter from './routes/interactive-reports.router';
 import lettersRouter from './routes/letters.router';
 import { marketplaceRouter } from './routes/marketplace.router';
+// Universal tenant marketplace — Section 4 of the questionnaire
+// (cross-org browsing surface). Distinct from the legacy org-side
+// `marketplaceRouter` above which manages listing publishing for
+// portfolio owners.
+import { universalMarketplaceRouter } from './routes/marketplace/index.js';
 import { createMigrationRouter } from './routes/migration.router';
 import { negotiationsRouter } from './routes/negotiations.router';
 import { createNotificationPreferencesRouter } from './routes/notification-preferences.router';
@@ -668,6 +673,7 @@ api.route('/gepg', gepgRouter);
 api.route('/interactive-reports', interactiveReportsRouter);
 api.route('/letters', lettersRouter);
 api.route('/marketplace', marketplaceRouter);
+api.route('/marketplace-universal', universalMarketplaceRouter);
 // Routers built via factory — inject real services from the composition root
 // where available. For services that aren't yet wired, the factory gracefully
 // returns a 503/501 to the client rather than a synchronous throw — a pilot
@@ -999,6 +1005,7 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/interactive-reports', app: interactiveReportsRouter, defaultTag: 'interactive-reports' },
     { prefix: '/letters', app: lettersRouter, defaultTag: 'letters' },
     { prefix: '/marketplace', app: marketplaceRouter, defaultTag: 'marketplace' },
+    { prefix: '/marketplace-universal', app: universalMarketplaceRouter, defaultTag: 'marketplace-universal' },
     { prefix: '/migration', app: migrationRouter as unknown as Hono, defaultTag: 'migration' },
     { prefix: '/negotiations', app: negotiationsRouter, defaultTag: 'negotiations' },
     { prefix: '/me/notification-preferences', app: notificationPreferencesRouter, defaultTag: 'notifications' },
