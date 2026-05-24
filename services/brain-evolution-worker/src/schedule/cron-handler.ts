@@ -24,6 +24,7 @@ import { reflectOnDay, type ReflectionEngine } from '../pipeline/stage-02-reflec
 import { extractDeltas, type DeltaExtractor } from '../pipeline/stage-03-extract-deltas.js';
 import { writeApprovedDeltas, type MemoryWriter } from '../pipeline/stage-04-write-memory.js';
 import { emitEvolutionReport, type ReportSink } from '../pipeline/stage-05-emit-report.js';
+import { generateAutobiographyDeltas } from '../pipeline/stage-06-autobiography.js';
 import { reviewDelta, type ConstitutionVerifierPort } from '../safety/review-gate.js';
 import type {
   BrainWorkerLogger,
@@ -132,10 +133,23 @@ async function runForTenant(
     logger: deps.logger,
   });
 
-  const deltas = extractDeltas({
+  const reflectionDeltas = extractDeltas({
     reflection,
     extractor: deps.extractor,
   });
+
+  // Stage 06 — autobiography deltas. Mixed into the same review-gate +
+  // write path as reflection-derived deltas so the constitution gets
+  // first say on every narrative the brain commits to its persona block.
+  const autobiographyDeltas = generateAutobiographyDeltas({
+    tenantId,
+    windowStart: traceResult.windowStart,
+    windowEnd: traceResult.windowEnd,
+    traces: traceResult.traces,
+    ...(deps.logger ? { logger: deps.logger } : {}),
+  });
+
+  const deltas = [...reflectionDeltas, ...autobiographyDeltas];
 
   // Run each delta through the review gate IN SERIES — the verifier is
   // sync so parallelism would just rack up event-loop microtasks.
