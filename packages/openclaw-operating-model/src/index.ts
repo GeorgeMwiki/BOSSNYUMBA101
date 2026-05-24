@@ -21,3 +21,6 @@ export * from './agent-domains/index.js';
 export * from './context-architecture/index.js';
 export * from './policy-engine/index.js';
 export * from './kill-switch/index.js';
+export * from './agent-as-a-service/index.js';
+export * from './chief-agent-officer/index.js';
+export * from './create.js';
