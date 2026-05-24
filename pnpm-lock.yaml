@@ -2033,6 +2033,12 @@ importers:
       '@bossnyumba/ai-copilot':
         specifier: workspace:*
         version: link:../../packages/ai-copilot
+      '@bossnyumba/ai-reviewer':
+        specifier: workspace:*
+        version: link:../../packages/ai-reviewer
+      '@bossnyumba/assignment-registry':
+        specifier: workspace:*
+        version: link:../../packages/assignment-registry
       '@bossnyumba/authz-policy':
         specifier: workspace:*
         version: link:../../packages/authz-policy
@@ -2114,12 +2120,18 @@ importers:
       '@bossnyumba/spotlight':
         specifier: workspace:*
         version: link:../../packages/spotlight
+      '@bossnyumba/stage-advisor':
+        specifier: workspace:*
+        version: link:../../packages/stage-advisor
       '@bossnyumba/sustainability-advisor':
         specifier: workspace:*
         version: link:../../packages/sustainability-advisor
       '@bossnyumba/user-context-store':
         specifier: workspace:*
         version: link:../../packages/user-context-store
+      '@bossnyumba/workflow-engine':
+        specifier: workspace:*
+        version: link:../../packages/workflow-engine
       '@hono/node-server':
         specifier: 1.19.13
         version: 1.19.13(hono@4.12.18)
@@ -2334,6 +2346,9 @@ importers:
       '@bossnyumba/domain-models':
         specifier: workspace:*
         version: link:../../packages/domain-models
+      '@bossnyumba/storage-adapter':
+        specifier: workspace:*
+        version: link:../../packages/storage-adapter
       '@react-pdf/renderer':
         specifier: ^3.4.5
         version: 3.4.5(react@18.3.1)
@@ -2374,6 +2389,9 @@ importers:
       '@bossnyumba/observability':
         specifier: workspace:^
         version: link:../../packages/observability
+      '@bossnyumba/storage-adapter':
+        specifier: workspace:*
+        version: link:../../packages/storage-adapter
       fastify:
         specifier: ^4.27.0
         version: 4.29.1

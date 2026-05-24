@@ -144,7 +144,16 @@ import aiChatRouter from './routes/ai-chat.router';
 // `services/api-gateway/src/routes/advisor/` belong to P2 and are NOT
 // touched from here.
 import { askRouter } from './routes/ask/index.js';
-import workflowsRouter from './routes/workflows.router';
+// Stage advisor surface — see wiring-gap audit chain 7 (the stage
+// router shipped at ./routes/stage/index.ts but was never imported
+// nor mounted before this change).
+import { stageRouter } from './routes/stage/index.js';
+// Persistent workflow engine — replaces the legacy in-memory-only
+// `workflowsRouter` (which used `@bossnyumba/ai-copilot`'s simpler
+// engine, lost every run on restart, and never composed with the
+// `ai-reviewer` + `assignment-registry` ScopeGuard). See wiring-gap
+// audit chain 8.
+import workflowRouter from './routes/workflow/index.js';
 import agentCertificationsRouter from './routes/agent-certifications.router';
 import classroomRouter from './routes/classroom.router';
 import trainingRouter from './routes/training.router';
@@ -795,7 +804,17 @@ api.route('/ai', aiChatRouter);
 // Universal role-aware advisor — POST /api/v1/ask, GET /api/v1/ask/starting-points,
 // POST /api/v1/ask/feedback. See `routes/ask/ask.router.ts`.
 api.route('/ask', askRouter);
-api.route('/workflows', workflowsRouter);
+// Stage-aware capability advisor (Chain 7 of WIRING_GAPS_2026-05-24.md
+// — the 8th advisor whose router shipped but was never mounted).
+api.route('/stage', stageRouter);
+// Persistent workflow engine (Chain 8) — composes
+// `@bossnyumba/workflow-engine` + `@bossnyumba/ai-reviewer` +
+// `@bossnyumba/assignment-registry`. Mounted at the singular
+// `/workflow` path; the plural `/workflows` mount that previously
+// fronted the in-memory `ai-copilot` engine has been REMOVED so
+// runs survive process restarts and so the new engine is the single
+// source of truth.
+api.route('/workflow', workflowRouter);
 api.route('/agent-certifications', agentCertificationsRouter);
 api.route('/classroom', classroomRouter);
 api.route('/training', trainingRouter);
