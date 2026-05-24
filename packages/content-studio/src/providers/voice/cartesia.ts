@@ -1,5 +1,5 @@
 /**
- * Cartesia Sonic-2 / Sonic-Turbo / Sonic-3 — lowest-latency realtime TTS.
+ * Cartesia Sonic-2 / Sonic-Turbo / Sonic-3 — lowest-latency realtime TTS. [STUB]
  *
  * 40 ms TTFB (Sonic-Turbo) — the snappiest barge-in for Mr. Mwikila's
  * inbound call agent.
@@ -8,12 +8,12 @@
  *   - Research: .audit/litfin-sota-2026-05-23/14-multimodal-generative.md (§3.3)
  *   - Cartesia: https://docs.cartesia.ai/build-with-cartesia/tts-models/latest
  *
- * Env vars (for real wiring; unused in this stub):
+ * Env vars REQUIRED to wire the real backend (currently unused — stub):
  *   - CARTESIA_API_KEY  — primary
  */
 
 import { buildC2paManifest } from '../../c2pa/attestation.js';
-import { deterministicHash } from '../shared.js';
+import { deterministicHash, warnStubInvocation } from '../shared.js';
 import type {
   ContentResult,
   LanguageTag,
@@ -21,6 +21,11 @@ import type {
   VoiceRequest,
   VoiceTask,
 } from '../../types.js';
+
+/** Explicit marker so the router and operators can detect stubbed backends. */
+export const STUB_PROVIDER = true;
+/** Env var that would unlock a real implementation. */
+export const REQUIRED_ENV_VAR = 'CARTESIA_API_KEY';
 
 const SUPPORTED: ReadonlyArray<VoiceTask> = ['agent_realtime', 'narration'];
 const PROVIDER_ID = 'cartesia';
@@ -41,6 +46,7 @@ export function createCartesiaProvider(): VoiceProvider {
     },
 
     async synthesize(req: VoiceRequest): Promise<ContentResult> {
+      warnStubInvocation(PROVIDER_ID, REQUIRED_ENV_VAR);
       const hash = deterministicHash(`${PROVIDER_ID}|${req.language}|${req.text}`);
       const url = `https://stub.bossnyumba.local/cartesia/${hash}.mp3`;
       const createdAtIso = new Date(0).toISOString();

@@ -34,7 +34,7 @@ import {
 } from './routes/parcels.js';
 import { registerGeocodeRoutes } from './routes/geocode.js';
 import { registerSnapRoutes } from './routes/snap.js';
-import type { ParcelStore } from './routes/parcels.js';
+import type { ParcelStore, TenantResolver } from './routes/parcels.js';
 import type { GeocoderChain } from './geocoder/chain.js';
 import type { SnapCandidateSource } from './snap/nearest-building.js';
 
@@ -42,12 +42,29 @@ export interface BuildAppDeps {
   readonly store?: ParcelStore;
   readonly chain?: GeocoderChain;
   readonly snapSource?: SnapCandidateSource;
+  /**
+   * Authenticates the inbound request and returns the tenant id it is
+   * allowed to operate on. REQUIRED in production. When omitted the
+   * routes fall back to the legacy `X-Tenant-Id` header — DEV-ONLY.
+   */
+  readonly tenantResolver?: TenantResolver;
+  /**
+   * Test-only escape hatch. Set to true in tests that need the
+   * legacy header-trust path; production deploys must wire a real
+   * `tenantResolver` AND leave this `false`.
+   */
+  readonly allowHeaderFallback?: boolean;
 }
 
 /**
  * Build a Fastify instance with all routes wired. Defaults Phase E.5
  * in-memory implementations; pass concrete deps from a composition
  * root to swap in PostGIS / live HTTP geocoders.
+ *
+ * Bug-sweep 2026-05-24 — when running with `NODE_ENV=production` AND
+ * no `tenantResolver` is wired AND `allowHeaderFallback` is not
+ * explicitly true, this function throws to prevent accidentally
+ * shipping a tenant-spoofable surface.
  */
 export async function buildApp(deps: BuildAppDeps = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
@@ -56,9 +73,24 @@ export async function buildApp(deps: BuildAppDeps = {}): Promise<FastifyInstance
   const chain = deps.chain ?? createDefaultGeocoderChain();
   const snapSource = deps.snapSource ?? createInMemoryCandidateSource([]);
 
+  const isProd = process.env.NODE_ENV === 'production';
+  if (isProd && !deps.tenantResolver && deps.allowHeaderFallback !== true) {
+    throw new Error(
+      'parcel-service: refusing to start in production without a tenantResolver — ' +
+        'wire deps.tenantResolver from the composition root (auth middleware) ' +
+        'or explicitly pass allowHeaderFallback=true (NOT RECOMMENDED).',
+    );
+  }
+
   app.get('/healthz', async () => ({ status: 'ok', service: 'parcel-service' }));
 
-  await registerParcelsRoutes(app, { store });
+  await registerParcelsRoutes(app, {
+    store,
+    ...(deps.tenantResolver ? { tenantResolver: deps.tenantResolver } : {}),
+    ...(deps.allowHeaderFallback !== undefined
+      ? { allowHeaderFallback: deps.allowHeaderFallback }
+      : {}),
+  });
   await registerGeocodeRoutes(app, { chain });
   await registerSnapRoutes(app, { source: snapSource });
 
@@ -107,6 +139,7 @@ export type {
   ParcelStore,
   CreateParcelInput,
   PatchParcelInput,
+  TenantResolver,
 } from './routes/parcels.js';
 
 export { registerGeocodeRoutes } from './routes/geocode.js';
@@ -121,6 +154,26 @@ export type {
   GeocoderAdapter,
   GeocoderChainDeps,
 } from './geocoder/chain.js';
+
+export {
+  createGoogleGeocoder,
+  createGoogleGeocoderStub,
+} from './geocoder/google.js';
+export type {
+  GoogleGeocoder,
+  GoogleGeocoderOpts,
+  GoogleFetch,
+} from './geocoder/google.js';
+
+export {
+  createNominatimGeocoder,
+  createNominatimStub,
+} from './geocoder/nominatim.js';
+export type {
+  NominatimGeocoder,
+  NominatimGeocoderOpts,
+  NominatimFetch,
+} from './geocoder/nominatim.js';
 
 export {
   snapNearest,

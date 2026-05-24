@@ -5,7 +5,9 @@
     "rootDir": ".",
     "module": "esnext",
     "moduleResolution": "bundler",
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node"],
+    "lib": ["ES2023"]
   },
-  "include": ["runner/**/*.ts", "scorers/**/*.ts"]
+  "include": ["runner/**/*.ts", "scorers/**/*.ts", "__tests__/**/*.ts"]
 }

@@ -40,9 +40,22 @@ import type {
 // of provider IDs; the first one registered (and not blacklisted) wins.
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Default chains — ordered most-preferred-first. Real providers (those
+ * that ship a working `fetch` impl when their env var is set) lead the
+ * chain so they win whenever the key is configured. Stubs trail so the
+ * package still resolves a result when no keys exist (dev / CI without
+ * secrets).
+ *
+ * Selection happens at `pick()` time against the providers actually
+ * registered with the router. If a real provider isn't registered, the
+ * chain naturally falls through to the next entry.
+ */
 const IMAGE_CHAINS_DEFAULT: Readonly<Record<ImageTask, ReadonlyArray<string>>> = {
-  hero_photoreal:       ['flux', 'sdxl-self-host'],
-  text_in_image:        ['ideogram'],
+  // OpenAI gpt-image-1 → real when OPENAI_API_KEY set; flux/sdxl trail.
+  hero_photoreal:       ['openai-image', 'flux', 'sdxl-self-host'],
+  // OpenAI also handles text-in-image reasonably; ideogram is the specialist fallback.
+  text_in_image:        ['openai-image', 'ideogram'],
   vector_brand:         ['recraft'],
   conversational_edit: ['nano-banana'],
   self_hosted_brand:   ['sdxl-self-host'],

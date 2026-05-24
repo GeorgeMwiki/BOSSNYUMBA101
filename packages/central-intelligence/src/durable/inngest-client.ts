@@ -211,3 +211,127 @@ export function createNoopInngestClient(): InngestClientLike {
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Local dev-server client
+// ---------------------------------------------------------------------------
+
+/**
+ * Default URL of `npx inngest-cli@latest dev`. The CLI binds to
+ * `:8288` by default. Override via `INNGEST_DEV_URL`.
+ */
+export const INNGEST_LOCAL_DEV_URL = 'http://localhost:8288';
+
+/** Default app id for the local dev client when no opts are supplied. */
+export const INNGEST_LOCAL_DEV_APP_ID = 'bossnyumba-local-dev';
+
+/** Minimal `fetch` surface — lets tests inject a mock without DOM types. */
+export type FetchLike = (
+  input: string,
+  init?: {
+    readonly method?: string;
+    readonly headers?: Readonly<Record<string, string>>;
+    readonly body?: string;
+  },
+) => Promise<{ readonly ok: boolean; readonly status: number; text(): Promise<string> }>;
+
+export interface LocalDevInngestClientOpts {
+  /** App id used as the event-key path component. Default: `bossnyumba-local-dev`. */
+  readonly appId?: string;
+  /** Base URL of the local dev server. Default: `http://localhost:8288`. */
+  readonly baseUrl?: string;
+  /**
+   * Master gate. When `false` (or unset) the factory returns a no-op
+   * client. The composition root reads `INNGEST_DEV=1` and forwards.
+   */
+  readonly enabled?: boolean;
+  /** Custom fetch — defaults to `globalThis.fetch`. Tests inject a stub. */
+  readonly fetch?: FetchLike;
+  /** Optional sink for transport errors so callers can log them. */
+  readonly onError?: (err: unknown) => void;
+}
+
+/**
+ * Local-dev Inngest client. Mirrors the `InngestClientLike` port and
+ * sends events to `<baseUrl>/e/<appId>` — the URL shape `inngest-cli dev`
+ * accepts on its event ingest endpoint.
+ *
+ * Behaviour:
+ *   - `INNGEST_DEV=1` env (or `enabled: true`) → real HTTP client.
+ *   - Anything else → no-op client (same shape as `createNoopInngestClient`),
+ *     so callers never branch.
+ *
+ * To start the dev server locally:
+ *   `npx inngest-cli@latest dev`
+ *
+ * See `docs/INNGEST-LOCAL.md` for the full setup.
+ */
+export function createLocalDevInngestClient(
+  opts: LocalDevInngestClientOpts = {},
+): InngestClientLike {
+  const envEnabled = isTruthyEnv(readEnv('INNGEST_DEV'));
+  const enabled = opts.enabled ?? envEnabled;
+  if (!enabled) return createNoopInngestClient();
+
+  const appId = opts.appId ?? INNGEST_LOCAL_DEV_APP_ID;
+  const baseUrl = opts.baseUrl ?? readEnv('INNGEST_DEV_URL') ?? INNGEST_LOCAL_DEV_URL;
+  const fetcher: FetchLike | undefined =
+    opts.fetch ?? (globalThis as { fetch?: FetchLike }).fetch;
+  if (!fetcher) {
+    throw new Error(
+      'createLocalDevInngestClient: no `fetch` available. Provide opts.fetch or run on Node>=18 / a fetch-capable runtime.',
+    );
+  }
+
+  const endpoint = `${stripTrailingSlash(baseUrl)}/e/${encodeURIComponent(appId)}`;
+
+  return {
+    async send(args) {
+      let res: Awaited<ReturnType<FetchLike>>;
+      try {
+        res = await fetcher(endpoint, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ name: args.name, data: args.data }),
+        });
+      } catch (err) {
+        // Transport-level failure (DNS, conn refused, etc.) — surface
+        // once and rethrow. The CLI not running locally lands here.
+        opts.onError?.(err);
+        throw err;
+      }
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        const err = new Error(
+          `inngest local-dev: send failed (${res.status}) ${body}`.trim(),
+        );
+        opts.onError?.(err);
+        throw err;
+      }
+      return undefined;
+    },
+    createFunction(def) {
+      // The dev-server client does NOT run functions itself — that is the
+      // job of the `inngest-cli dev` process polling the registered serve
+      // handler. Returning the definition unchanged keeps the structural
+      // contract identical to the production client.
+      return def;
+    },
+  };
+}
+
+function readEnv(name: string): string | undefined {
+  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } })
+    .process?.env;
+  return env?.[name];
+}
+
+function isTruthyEnv(value: string | undefined): boolean {
+  if (!value) return false;
+  const v = value.trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
+
+function stripTrailingSlash(url: string): string {
+  return url.endsWith('/') ? url.slice(0, -1) : url;
+}

@@ -1,5 +1,5 @@
 /**
- * Nano Banana / Nano Banana Pro — Gemini 3 Pro Image Preview.
+ * Nano Banana / Nano Banana Pro — Gemini 3 Pro Image Preview. [STUB]
  *
  * The workhorse for *conversational editing* of listing photos
  * (virtual staging, "remove the car"). Identity-preserving local edits.
@@ -8,7 +8,7 @@
  *   - Research: .audit/litfin-sota-2026-05-23/14-multimodal-generative.md (§1.5)
  *   - Google docs: https://ai.google.dev/gemini-api/docs/image-generation
  *
- * Env vars (for real wiring; unused in this stub):
+ * Env vars REQUIRED to wire the real backend (currently unused — stub):
  *   - GEMINI_API_KEY  — Gemini API access
  *   - VERTEX_PROJECT  — optional Vertex AI alternative
  *
@@ -16,7 +16,7 @@
  */
 
 import { buildC2paManifest } from '../../c2pa/attestation.js';
-import { deterministicHash } from '../shared.js';
+import { deterministicHash, warnStubInvocation } from '../shared.js';
 import type {
   ContentResult,
   ImageEditRequest,
@@ -24,6 +24,11 @@ import type {
   ImageRequest,
   ImageTask,
 } from '../../types.js';
+
+/** Explicit marker so the router and operators can detect stubbed backends. */
+export const STUB_PROVIDER = true;
+/** Env var that would unlock a real implementation. */
+export const REQUIRED_ENV_VAR = 'GEMINI_API_KEY';
 
 const SUPPORTED: ReadonlyArray<ImageTask> = ['conversational_edit'];
 const PROVIDER_ID = 'nano-banana';
@@ -35,6 +40,7 @@ export function createNanoBananaProvider(): ImageProvider {
     supportedTasks: SUPPORTED,
 
     async generate(req: ImageRequest): Promise<ContentResult> {
+      warnStubInvocation(PROVIDER_ID, REQUIRED_ENV_VAR);
       const hash = deterministicHash(`${PROVIDER_ID}|${req.prompt}|${req.seed ?? 0}`);
       const createdAtIso = new Date(0).toISOString();
       return synthResult({
@@ -48,6 +54,7 @@ export function createNanoBananaProvider(): ImageProvider {
     },
 
     async edit(req: ImageEditRequest): Promise<ContentResult> {
+      warnStubInvocation(PROVIDER_ID, REQUIRED_ENV_VAR);
       const hash = deterministicHash(`${PROVIDER_ID}|edit|${req.sourceUrl}|${req.editPrompt}`);
       const createdAtIso = new Date(0).toISOString();
       return synthResult({

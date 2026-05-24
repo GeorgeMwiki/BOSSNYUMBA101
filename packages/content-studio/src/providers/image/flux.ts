@@ -1,5 +1,5 @@
 /**
- * Flux 1.2 Pro Ultra — Black Forest Labs (BFL).
+ * Flux 1.2 Pro Ultra — Black Forest Labs (BFL). [STUB]
  *
  * Photoreal property hero shots. ~1 s at 4 MP in Ultra mode.
  *
@@ -8,22 +8,29 @@
  *   - BFL docs: https://bfl.ai/models/flux-pro-ultra
  *   - Replicate: https://replicate.com/black-forest-labs/flux-1.1-pro
  *
- * Env vars (for real wiring; unused in this stub):
- *   - BFL_API_KEY     — primary BFL hosted endpoint
- *   - REPLICATE_TOKEN — fallback path via Replicate
+ * Env vars REQUIRED to wire the real backend (currently unused — stub):
+ *   - BFL_API_KEY      — primary BFL hosted endpoint
+ *   - REPLICATE_TOKEN  — fallback path via Replicate
  *
- * Stub behaviour: deterministic placeholder URL derived from prompt hash so
- * tests can assert routing without network calls.
+ * Stub behaviour: deterministic placeholder URL derived from prompt hash
+ * so tests can assert routing without network calls. The provider emits a
+ * one-shot `console.warn` in non-test mode so operators notice they are
+ * shipping placeholders.
  */
 
 import { buildC2paManifest } from '../../c2pa/attestation.js';
-import { deterministicHash } from '../shared.js';
+import { deterministicHash, warnStubInvocation } from '../shared.js';
 import type {
   ContentResult,
   ImageProvider,
   ImageRequest,
   ImageTask,
 } from '../../types.js';
+
+/** Explicit marker so the router and operators can detect stubbed backends. */
+export const STUB_PROVIDER = true;
+/** Env var that would unlock a real implementation. */
+export const REQUIRED_ENV_VAR = 'BFL_API_KEY';
 
 const SUPPORTED: ReadonlyArray<ImageTask> = ['hero_photoreal'];
 const PROVIDER_ID = 'flux';
@@ -35,6 +42,7 @@ export function createFluxProvider(): ImageProvider {
     supportedTasks: SUPPORTED,
 
     async generate(req: ImageRequest): Promise<ContentResult> {
+      warnStubInvocation(PROVIDER_ID, REQUIRED_ENV_VAR);
       const seed = req.seed ?? 0;
       const hash = deterministicHash(`${PROVIDER_ID}|${req.prompt}|${seed}`);
       const url = `https://stub.bossnyumba.local/flux/${hash}.png`;

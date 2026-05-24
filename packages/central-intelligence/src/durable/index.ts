@@ -20,13 +20,18 @@
 export {
   createInngestComposition,
   createNoopInngestClient,
+  createLocalDevInngestClient,
+  INNGEST_LOCAL_DEV_URL,
+  INNGEST_LOCAL_DEV_APP_ID,
   type DurableFunctionContext,
   type DurableFunctionDefinition,
   type DurableStepLike,
+  type FetchLike,
   type InngestClientConfig,
   type InngestClientFactory,
   type InngestClientLike,
   type InngestComposition,
+  type LocalDevInngestClientOpts,
 } from './inngest-client.js';
 
 export {

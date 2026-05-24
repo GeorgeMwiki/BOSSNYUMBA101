@@ -1,18 +1,18 @@
 /**
  * Lelapa AI — Vulavula TTS / STT for South-African Bantu languages and
- * extended Swahili coverage.
+ * extended Swahili coverage. [STUB]
  *
  * Reference:
  *   - Research: .audit/litfin-sota-2026-05-23/14-multimodal-generative.md (§4)
  *   - Vulavula: https://lelapa.ai/products/vulavula/
  *   - Languages: https://docs.lelapa.ai/getting-started/language-support
  *
- * Env vars (for real wiring; unused in this stub):
+ * Env vars REQUIRED to wire the real backend (currently unused — stub):
  *   - LELAPA_API_KEY  — primary
  */
 
 import { buildC2paManifest } from '../../c2pa/attestation.js';
-import { deterministicHash } from '../shared.js';
+import { deterministicHash, warnStubInvocation } from '../shared.js';
 import type {
   ContentResult,
   LanguageTag,
@@ -20,6 +20,11 @@ import type {
   VoiceRequest,
   VoiceTask,
 } from '../../types.js';
+
+/** Explicit marker so the router and operators can detect stubbed backends. */
+export const STUB_PROVIDER = true;
+/** Env var that would unlock a real implementation. */
+export const REQUIRED_ENV_VAR = 'LELAPA_API_KEY';
 
 const SUPPORTED: ReadonlyArray<VoiceTask> = ['narration'];
 const PROVIDER_ID = 'lelapa';
@@ -40,6 +45,7 @@ export function createLelapaProvider(): VoiceProvider {
     },
 
     async synthesize(req: VoiceRequest): Promise<ContentResult> {
+      warnStubInvocation(PROVIDER_ID, REQUIRED_ENV_VAR);
       const hash = deterministicHash(`${PROVIDER_ID}|${req.language}|${req.text}`);
       const url = `https://stub.bossnyumba.local/lelapa/${hash}.mp3`;
       const createdAtIso = new Date(0).toISOString();

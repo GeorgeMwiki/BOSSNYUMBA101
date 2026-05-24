@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect } from 'vitest';
 import {
   buildC2paManifest,
   signManifest,
@@ -12,6 +12,7 @@ import {
   DEFAULT_DEV_KEY,
   type SigningKey,
 } from '../index.js';
+import { __resetC2paNodeCacheForTests } from '../embed.js';
 
 const baseManifestArgs = {
   title: 'Listing photo — Garden City 4B',
@@ -126,6 +127,7 @@ describe('embedManifest', () => {
   });
 
   it('embedded strategy falls back to sidecar when c2pa-node is unavailable', async () => {
+    __resetC2paNodeCacheForTests(null); // force "not installed"
     const m = buildC2paManifest(baseManifestArgs);
     const result = await embedManifest({
       asset: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
@@ -136,6 +138,80 @@ describe('embedManifest', () => {
     // c2pa-node not installed; embed silently degrades to sidecar.
     expect(result.strategy).toBe('sidecar');
     expect(result.sidecarBytes).not.toBeNull();
+    __resetC2paNodeCacheForTests(undefined);
+  });
+
+  it('embedded strategy returns DIFFERENT bytes when c2pa-node IS available (legacy embed)', async () => {
+    // Inject a fake c2pa-node module exposing the legacy `embed()`
+    // shape. Proves the real embed code path is reached and the asset
+    // bytes are replaced with the signed output (different length and
+    // different leading bytes).
+    const stubInput = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]); // jpeg SOI
+    const stubOutput = new Uint8Array([
+      0xff, 0xd8, 0xff, 0xeb, // jpeg SOI + APP11 marker (JUMBF)
+      ...new Array(64).fill(0x42),
+    ]);
+    __resetC2paNodeCacheForTests({
+      async embed(asset, _manifestJson, _mime) {
+        // Sanity: the wrapper passes the canonical manifest as a string.
+        expect(typeof _manifestJson).toBe('string');
+        expect(asset).toEqual(stubInput);
+        return stubOutput;
+      },
+    });
+
+    const m = buildC2paManifest(baseManifestArgs);
+    const result = await embedManifest({
+      asset: stubInput,
+      assetMime: 'image/jpeg',
+      manifest: m,
+      strategy: 'embedded',
+    });
+
+    expect(result.strategy).toBe('embedded');
+    expect(result.sidecarBytes).toBeNull();
+    expect(result.sidecarSuffix).toBeNull();
+    // PROOF the real embed ran: bytes differ from input.
+    expect(result.assetBytes).not.toEqual(stubInput);
+    expect(result.assetBytes.length).toBeGreaterThan(stubInput.length);
+    expect(result.assetBytes).toEqual(stubOutput);
+
+    __resetC2paNodeCacheForTests(undefined);
+  });
+
+  it('embedded strategy uses the modern createC2pa() API when present', async () => {
+    const stubInput = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+    const stubOutput = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
+    let createC2paCalls = 0;
+    __resetC2paNodeCacheForTests({
+      createC2pa() {
+        createC2paCalls += 1;
+        return {
+          async sign(input) {
+            expect(input.asset.mimeType).toBe('image/jpeg');
+            expect(input.asset.buffer).toEqual(stubInput);
+            expect(typeof input.manifest).toBe('object');
+            return { signedAsset: { buffer: stubOutput } };
+          },
+        };
+      },
+    });
+
+    const m = buildC2paManifest(baseManifestArgs);
+    const result = await embedManifest({
+      asset: stubInput,
+      assetMime: 'image/jpeg',
+      manifest: m,
+      strategy: 'embedded',
+    });
+    expect(result.strategy).toBe('embedded');
+    expect(result.assetBytes).toEqual(stubOutput);
+    expect(createC2paCalls).toBe(1);
+    __resetC2paNodeCacheForTests(undefined);
+  });
+
+  afterEach(() => {
+    __resetC2paNodeCacheForTests(undefined);
   });
 
   it('extractSidecarManifest returns null on garbage input', () => {

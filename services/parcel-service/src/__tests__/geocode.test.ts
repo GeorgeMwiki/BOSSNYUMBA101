@@ -16,13 +16,13 @@ import {
 import type { GeocoderAdapter } from '../geocoder/chain.js';
 
 describe('geocoder chain', () => {
-  it('runs Google → PlusCodes → what3words → Nominatim by default', () => {
+  it('runs Google → Nominatim → PlusCodes → what3words by default', () => {
     const chain = createDefaultGeocoderChain();
     expect(chain.providers).toEqual([
       'google',
+      'nominatim',
       'plus_codes',
       'what3words',
-      'nominatim',
     ]);
   });
 

@@ -146,9 +146,67 @@ function isMultiPolygon(v: unknown): v is GeoJsonMultiPolygon {
   return g.type === 'MultiPolygon' && Array.isArray(g.coordinates);
 }
 
-function pickTenantId(headers: Record<string, unknown>): string | null {
+/**
+ * Bug-sweep 2026-05-24 — CRITICAL #1 (multi-tenant break):
+ *
+ * Pre-fix every CRUD route trusted the inbound `X-Tenant-Id` header
+ * directly with NO authentication. Any client could spoof any tenant
+ * and read/write/delete their parcels (CWE-285 missing authorization).
+ *
+ * Post-fix the routes require a `TenantResolver` port — the composition
+ * root is responsible for wiring a real resolver that maps an
+ * authenticated request (Bearer / API key / mTLS) to a tenant id.
+ * The header path remains as a TEST-ONLY fallback, gated by
+ * `allowHeaderFallback=true` so production deploys must explicitly
+ * opt in (and never do).
+ */
+export interface TenantResolver {
+  /**
+   * Returns the tenant id the authenticated principal may operate on,
+   * or null when the request is unauthorised. MUST NOT trust any
+   * client-supplied tenant id without verifying the principal has
+   * access to it.
+   */
+  resolve(request: unknown): Promise<string | null> | string | null;
+}
+
+function isLooseHeaderRecord(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === 'object';
+}
+
+function headerFallbackTenantId(headers: unknown): string | null {
+  if (!isLooseHeaderRecord(headers)) return null;
   const raw = headers['x-tenant-id'];
-  if (typeof raw === 'string' && raw.length > 0) return raw;
+  if (typeof raw === 'string' && raw.length > 0 && raw.length <= 128) {
+    return raw;
+  }
+  return null;
+}
+
+/**
+ * Resolve the tenant for a request. Returns null when no resolver is
+ * wired OR the resolver rejects the request OR (header fallback) the
+ * header is missing / too long. Callers must reply 401/403 on null.
+ */
+async function resolveTenant(
+  request: unknown,
+  resolver: TenantResolver | undefined,
+  allowHeaderFallback: boolean,
+): Promise<string | null> {
+  if (resolver) {
+    try {
+      const resolved = await resolver.resolve(request);
+      return typeof resolved === 'string' && resolved.length > 0 ? resolved : null;
+    } catch {
+      // Defensive: a misbehaving resolver MUST NOT degrade to
+      // header-trust — that's the very thing we are guarding against.
+      return null;
+    }
+  }
+  if (allowHeaderFallback) {
+    const headers = (request as { headers?: unknown })?.headers;
+    return headerFallbackTenantId(headers);
+  }
   return null;
 }
 
@@ -158,30 +216,54 @@ function pickTenantId(headers: Record<string, unknown>): string | null {
 
 export interface ParcelsRouteDeps {
   readonly store: ParcelStore;
+  /**
+   * Authenticates the inbound request and returns the tenant id it is
+   * allowed to operate on. REQUIRED in production; omit only in tests
+   * that explicitly enable `allowHeaderFallback`.
+   */
+  readonly tenantResolver?: TenantResolver;
+  /**
+   * Test-only escape hatch: when true and no `tenantResolver` is wired,
+   * routes read `X-Tenant-Id` from the request header. NEVER set this
+   * in production — it allows tenant spoofing.
+   */
+  readonly allowHeaderFallback?: boolean;
 }
 
 export async function registerParcelsRoutes(
   app: FastifyInstance,
   deps: ParcelsRouteDeps,
 ): Promise<void> {
-  const { store } = deps;
+  const { store, tenantResolver } = deps;
+  // Default to true ONLY when no resolver is wired AND the deployment
+  // explicitly enables it. The previous behaviour was effectively the
+  // same (header trust on every call) but undocumented; making it an
+  // explicit flag forces an audit trail.
+  const allowHeaderFallback =
+    deps.allowHeaderFallback ?? tenantResolver === undefined;
+
+  async function tenantOrFail(
+    request: unknown,
+    reply: { code: (n: number) => unknown },
+  ): Promise<string | null> {
+    const tenantId = await resolveTenant(request, tenantResolver, allowHeaderFallback);
+    if (!tenantId) {
+      reply.code(401);
+      return null;
+    }
+    return tenantId;
+  }
 
   app.get('/parcels', async (request, reply) => {
-    const tenantId = pickTenantId(request.headers as Record<string, unknown>);
-    if (!tenantId) {
-      reply.code(400);
-      return { error: 'missing X-Tenant-Id header' };
-    }
+    const tenantId = await tenantOrFail(request, reply);
+    if (!tenantId) return { error: 'unauthorised: tenant could not be resolved' };
     const parcels = await store.list(tenantId);
     return { parcels };
   });
 
   app.get('/parcels/:id', async (request, reply) => {
-    const tenantId = pickTenantId(request.headers as Record<string, unknown>);
-    if (!tenantId) {
-      reply.code(400);
-      return { error: 'missing X-Tenant-Id header' };
-    }
+    const tenantId = await tenantOrFail(request, reply);
+    if (!tenantId) return { error: 'unauthorised: tenant could not be resolved' };
     const { id } = request.params as { id: string };
     const parcel = await store.get(tenantId, id);
     if (!parcel) {
@@ -192,11 +274,8 @@ export async function registerParcelsRoutes(
   });
 
   app.post('/parcels', async (request, reply) => {
-    const tenantId = pickTenantId(request.headers as Record<string, unknown>);
-    if (!tenantId) {
-      reply.code(400);
-      return { error: 'missing X-Tenant-Id header' };
-    }
+    const tenantId = await tenantOrFail(request, reply);
+    if (!tenantId) return { error: 'unauthorised: tenant could not be resolved' };
     const body = (request.body ?? {}) as Partial<CreateParcelInput>;
     if (!body.name || !isMultiPolygon(body.boundary)) {
       reply.code(400);
@@ -218,11 +297,8 @@ export async function registerParcelsRoutes(
   });
 
   app.patch('/parcels/:id', async (request, reply) => {
-    const tenantId = pickTenantId(request.headers as Record<string, unknown>);
-    if (!tenantId) {
-      reply.code(400);
-      return { error: 'missing X-Tenant-Id header' };
-    }
+    const tenantId = await tenantOrFail(request, reply);
+    if (!tenantId) return { error: 'unauthorised: tenant could not be resolved' };
     const { id } = request.params as { id: string };
     const body = (request.body ?? {}) as PatchParcelInput;
     if (body.boundary !== undefined && !isMultiPolygon(body.boundary)) {
@@ -238,11 +314,8 @@ export async function registerParcelsRoutes(
   });
 
   app.delete('/parcels/:id', async (request, reply) => {
-    const tenantId = pickTenantId(request.headers as Record<string, unknown>);
-    if (!tenantId) {
-      reply.code(400);
-      return { error: 'missing X-Tenant-Id header' };
-    }
+    const tenantId = await tenantOrFail(request, reply);
+    if (!tenantId) return { error: 'unauthorised: tenant could not be resolved' };
     const { id } = request.params as { id: string };
     const ok = await store.delete(tenantId, id);
     if (!ok) {

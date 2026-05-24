@@ -1,5 +1,8 @@
 /**
- * Geocoder chain — Google → Plus Codes → what3words → Nominatim.
+ * Geocoder chain.
+ *
+ * Ordering (per task spec): try Google (if key present) → Nominatim →
+ * Plus Codes (stub) → what3words (stub). Return on first success.
  *
  * Spec: `.audit/litfin-sota-2026-05-23/17-spatial-parcel-engine.md` §8
  * (decision: layered geocoder service in `services/parcel-service`).
@@ -11,19 +14,23 @@
  *     next provider so a single rate-limit upstream never blocks the
  *     full flow.
  *
- * Env vars consumed (Phase F — stubs ignore them):
- *   - `GOOGLE_MAPS_API_KEY`
- *   - `WHAT3WORDS_API_KEY`
+ * Env vars consumed by the default factory:
+ *   - `GOOGLE_KG_API_KEY` (or `GOOGLE_MAPS_API_KEY`) — when present, the
+ *     real Google adapter is wired in; otherwise the Google stub.
+ *   - `LIVE_GEOCODERS=1` — when set, swap the Nominatim stub for the
+ *     real HTTP adapter. Default off so unit tests stay offline.
+ *   - `WHAT3WORDS_API_KEY` — reserved for the (still-stubbed) what3words
+ *     adapter once a real impl ships.
  */
 import type { GeocodeQuery, GeocodeResult } from '../_spatial-engine-shim.js';
 import type { GoogleGeocoder } from './google.js';
-import { createGoogleGeocoderStub } from './google.js';
+import { createGoogleGeocoder, createGoogleGeocoderStub } from './google.js';
 import type { PlusCodesGeocoder } from './plus-codes.js';
 import { createPlusCodesStub } from './plus-codes.js';
 import type { What3WordsGeocoder } from './what3words.js';
 import { createWhat3WordsStub } from './what3words.js';
 import type { NominatimGeocoder } from './nominatim.js';
-import { createNominatimStub } from './nominatim.js';
+import { createNominatimGeocoder, createNominatimStub } from './nominatim.js';
 
 export interface GeocoderAdapter {
   readonly provider: GeocodeResult['provider'];
@@ -37,6 +44,12 @@ export interface GeocoderChainDeps {
   readonly nominatim?: NominatimGeocoder;
   /** Optional logger; we default to noop so tests stay silent. */
   readonly onError?: (provider: string, err: unknown) => void;
+  /**
+   * Force the all-stub chain regardless of env. Useful for tests that
+   * want to assert the wiring order without any real HTTP calls.
+   * Default `false` — the factory inspects env.
+   */
+  readonly forceStubs?: boolean;
 }
 
 export interface GeocoderChain {
@@ -45,17 +58,27 @@ export interface GeocoderChain {
 }
 
 /**
- * Build a chain with the four default stubs (Phase E.5). Composition
- * roots in Phase F inject real adapter instances.
+ * Build the default chain. Env-aware:
+ *   - With a Google key → real Google first. Without a key → Google stub.
+ *   - With `LIVE_GEOCODERS=1` → real Nominatim second. Otherwise → stub.
+ *   - Plus Codes + what3words are stubs (see their module docstrings).
+ *
+ * Callers wanting deterministic in-process behaviour (e.g. unit tests)
+ * pass `forceStubs: true` to short-circuit env inspection.
  */
 export function createDefaultGeocoderChain(
   deps: GeocoderChainDeps = {},
 ): GeocoderChain {
+  const stubsOnly = deps.forceStubs === true;
+  const googleAdapter = deps.google ?? selectGoogleAdapter(stubsOnly);
+  const nominatimAdapter = deps.nominatim ?? selectNominatimAdapter(stubsOnly);
+
+  // Order per task spec: Google → Nominatim → Plus Codes → what3words.
   const chain: ReadonlyArray<GeocoderAdapter> = [
-    deps.google ?? createGoogleGeocoderStub(),
+    googleAdapter,
+    nominatimAdapter,
     deps.plusCodes ?? createPlusCodesStub(),
     deps.what3words ?? createWhat3WordsStub(),
-    deps.nominatim ?? createNominatimStub(),
   ];
   return createGeocoderChain(chain, deps.onError);
 }
@@ -80,6 +103,40 @@ export function createGeocoderChain(
       return null;
     },
   });
+}
+
+function selectGoogleAdapter(stubsOnly: boolean): GoogleGeocoder {
+  if (stubsOnly) return createGoogleGeocoderStub();
+  const key = readEnv('GOOGLE_KG_API_KEY') ?? readEnv('GOOGLE_MAPS_API_KEY');
+  if (!key) return createGoogleGeocoderStub();
+  try {
+    return createGoogleGeocoder({ apiKey: key });
+  } catch {
+    return createGoogleGeocoderStub();
+  }
+}
+
+function selectNominatimAdapter(stubsOnly: boolean): NominatimGeocoder {
+  if (stubsOnly) return createNominatimStub();
+  if (!isLiveGeocodersEnabled()) return createNominatimStub();
+  try {
+    return createNominatimGeocoder();
+  } catch {
+    return createNominatimStub();
+  }
+}
+
+function isLiveGeocodersEnabled(): boolean {
+  const v = readEnv('LIVE_GEOCODERS');
+  if (!v) return false;
+  const norm = v.trim().toLowerCase();
+  return norm === '1' || norm === 'true' || norm === 'yes' || norm === 'on';
+}
+
+function readEnv(name: string): string | undefined {
+  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } })
+    .process?.env;
+  return env?.[name];
 }
 
 function sanitizeQuery(query: GeocodeQuery): GeocodeQuery | null {

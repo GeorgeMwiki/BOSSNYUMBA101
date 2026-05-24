@@ -23,9 +23,12 @@ import type {
 } from '../types.js';
 
 export class SidecarUnavailableError extends Error {
-  constructor(public readonly cause: unknown) {
+  // `cause` is in the Error prototype in modern Node TS lib — mark `override`.
+  override readonly cause: unknown;
+  constructor(cause: unknown) {
     super('Scientific-discovery sidecar unavailable');
     this.name = 'SidecarUnavailableError';
+    this.cause = cause;
   }
 }
 

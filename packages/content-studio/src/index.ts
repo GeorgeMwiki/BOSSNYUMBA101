@@ -28,6 +28,14 @@ export { createNanoBananaProvider } from './providers/image/nano-banana.js';
 export { createIdeogramProvider } from './providers/image/ideogram.js';
 export { createRecraftProvider } from './providers/image/recraft.js';
 export { createSdxlSelfHostProvider } from './providers/image/sdxl-self-host.js';
+export {
+  createOpenAiImageProvider,
+  type OpenAiImageProviderOptions,
+} from './providers/image/openai-image.js';
+export {
+  createMeshyProvider,
+  type MeshyProviderOptions,
+} from './providers/image/meshy.js';
 
 export { createVeoProvider } from './providers/video/veo.js';
 export { createRunwayProvider } from './providers/video/runway.js';

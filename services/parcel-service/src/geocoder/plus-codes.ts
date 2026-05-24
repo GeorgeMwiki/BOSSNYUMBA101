@@ -1,9 +1,15 @@
 /**
- * Plus Codes (Open Location Code) decoder — converts a Google-issued
- * Plus Code such as `6GCRPR5C+24` or `Nairobi 6GCRPR5C+24` into a
- * point. Phase F: drop in the official `open-location-code` npm
- * package. Phase E.5 (this scaffold) ships a deterministic stub that
- * decodes a *very* narrow surface so unit tests can assert wiring.
+ * Plus Codes (Open Location Code) decoder.
+ *
+ * STATUS: STUB.
+ *
+ * Plus Codes is a coordinate ENCODER (lat/lng ↔ code), not a geocoder
+ * over arbitrary natural-language addresses. A real implementation
+ * needs an upstream coordinate (typically from another geocoder) before
+ * we can decode any context-free Plus Code to a precise lat/lng — short
+ * codes like `5C+24` are meaningless without locality context. We keep
+ * the stub for the chain wiring so the public surface is stable; the
+ * real adapter ships when Plus-Code parcel issuance lands.
  *
  * Spec: `.audit/litfin-sota-2026-05-23/17-spatial-parcel-engine.md` §8
  * (decision: always-also-store a Plus Code on every parcel row).

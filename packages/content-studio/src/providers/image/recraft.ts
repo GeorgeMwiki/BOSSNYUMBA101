@@ -1,5 +1,5 @@
 /**
- * Recraft V3 — only mainstream tool that produces native SVG vectors.
+ * Recraft V3 — only mainstream tool that produces native SVG vectors. [STUB]
  *
  * Used for per-tenant logos / wordmarks / icon sets / vector PDF covers.
  *
@@ -8,19 +8,24 @@
  *   - Recraft: https://www.recraft.ai/
  *   - fal.ai: https://fal.ai/models/fal-ai/recraft/v3/text-to-image
  *
- * Env vars (for real wiring; unused in this stub):
+ * Env vars REQUIRED to wire the real backend (currently unused — stub):
  *   - RECRAFT_API_KEY  — direct Recraft API
  *   - FAL_KEY          — fal.ai relay (preferred for low latency)
  */
 
 import { buildC2paManifest } from '../../c2pa/attestation.js';
-import { deterministicHash } from '../shared.js';
+import { deterministicHash, warnStubInvocation } from '../shared.js';
 import type {
   ContentResult,
   ImageProvider,
   ImageRequest,
   ImageTask,
 } from '../../types.js';
+
+/** Explicit marker so the router and operators can detect stubbed backends. */
+export const STUB_PROVIDER = true;
+/** Env var that would unlock a real implementation. */
+export const REQUIRED_ENV_VAR = 'RECRAFT_API_KEY';
 
 const SUPPORTED: ReadonlyArray<ImageTask> = ['vector_brand'];
 const PROVIDER_ID = 'recraft';
@@ -32,6 +37,7 @@ export function createRecraftProvider(): ImageProvider {
     supportedTasks: SUPPORTED,
 
     async generate(req: ImageRequest): Promise<ContentResult> {
+      warnStubInvocation(PROVIDER_ID, REQUIRED_ENV_VAR);
       const styleId = req.brand?.recraftStyleId ?? 'no-style';
       const hash = deterministicHash(`${PROVIDER_ID}|${req.prompt}|${styleId}`);
       const url = `https://stub.bossnyumba.local/recraft/${hash}.svg`;

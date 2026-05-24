@@ -1,5 +1,5 @@
 /**
- * Runway Gen-4 / Gen-4 Turbo.
+ * Runway Gen-4 / Gen-4 Turbo. [STUB]
  *
  * Fast-turnaround social cuts; agency-style editing. Used as the Veo
  * quota-exhausted fallback for `fast_social_cut` reels.
@@ -8,12 +8,12 @@
  *   - Research: .audit/litfin-sota-2026-05-23/14-multimodal-generative.md (§2.3)
  *   - Runway: https://runwayml.com/research/introducing-runway-gen-4
  *
- * Env vars (for real wiring; unused in this stub):
+ * Env vars REQUIRED to wire the real backend (currently unused — stub):
  *   - RUNWAY_API_KEY  — Runway API access
  */
 
 import { buildC2paManifest } from '../../c2pa/attestation.js';
-import { deterministicHash } from '../shared.js';
+import { deterministicHash, warnStubInvocation } from '../shared.js';
 import type {
   ContentResult,
   VideoProvider,
@@ -21,7 +21,15 @@ import type {
   VideoTask,
 } from '../../types.js';
 
-const SUPPORTED: ReadonlyArray<VideoTask> = ['fast_social_cut', 'i2v_walkthrough'];
+/** Explicit marker so the router and operators can detect stubbed backends. */
+export const STUB_PROVIDER = true;
+/** Env var that would unlock a real implementation. */
+export const REQUIRED_ENV_VAR = 'RUNWAY_API_KEY';
+
+// 2026-05-24: added `sizzle_reel` — Runway Gen-4 Turbo is the canonical
+// fallback when Veo is gated (starter tier) or quota-exhausted. The router
+// chains [veo, runway] for sizzle_reel and depends on this support.
+const SUPPORTED: ReadonlyArray<VideoTask> = ['sizzle_reel', 'fast_social_cut', 'i2v_walkthrough'];
 const PROVIDER_ID = 'runway';
 const MODEL_ID = 'runway-gen-4-turbo';
 
@@ -31,6 +39,7 @@ export function createRunwayProvider(): VideoProvider {
     supportedTasks: SUPPORTED,
 
     async generate(req: VideoRequest): Promise<ContentResult> {
+      warnStubInvocation(PROVIDER_ID, REQUIRED_ENV_VAR);
       const hash = deterministicHash(
         `${PROVIDER_ID}|${req.prompt}|${req.durationSeconds}|${req.aspectRatio}`,
       );

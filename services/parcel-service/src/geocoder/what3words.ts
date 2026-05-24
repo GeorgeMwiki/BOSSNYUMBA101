@@ -1,12 +1,17 @@
 /**
- * what3words adapter — Phase F: live REST call against
- * `https://api.what3words.com/v3/convert-to-coordinates`. Phase E.5
- * (this scaffold) ships a **deterministic stub**.
+ * what3words adapter.
+ *
+ * STATUS: STUB.
+ *
+ * The real adapter calls `https://api.what3words.com/v3/convert-to-coordinates`
+ * and requires `WHAT3WORDS_API_KEY`. No key is provisioned for this
+ * deployment yet, so we keep the stub for chain wiring and skip the
+ * live call until the key lands.
  *
  * Spec: `.audit/litfin-sota-2026-05-23/17-spatial-parcel-engine.md` §8.
  *
- * Env vars consumed:
- *   - `WHAT3WORDS_API_KEY` — required in Phase F; ignored by the stub.
+ * Env vars consumed (real adapter):
+ *   - `WHAT3WORDS_API_KEY` — required; absence keeps the stub active.
  */
 import type { GeocodeQuery, GeocodeResult } from '../_spatial-engine-shim.js';
 
