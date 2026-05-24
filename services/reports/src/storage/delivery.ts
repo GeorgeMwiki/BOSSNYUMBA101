@@ -55,6 +55,11 @@ export class EmailDeliveryService implements IDeliveryService {
   static createTransporter(
     config?: nodemailer.TransportOptions
   ): nodemailer.Transporter {
+    if (!config && process.env.NODE_ENV === 'production' && !process.env.SMTP_HOST) {
+      // SMTP_HOST silently defaulting to localhost in production would
+      // route customer-facing report emails into the void.
+      throw new Error('SMTP_HOST is required in production (no silent "localhost" default)');
+    }
     return nodemailer.createTransport(
       config ?? {
         host: process.env.SMTP_HOST ?? 'localhost',
