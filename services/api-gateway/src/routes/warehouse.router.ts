@@ -114,7 +114,11 @@ app.get('/items', async (c: any) => {
   const s = svc(c);
   if (!s) return notImplemented(c);
   const category = c.req.query('category') || undefined;
-  const condition = (c.req.query('condition') as any) || undefined;
+  const rawCondition = c.req.query('condition');
+  const conditionParsed = rawCondition
+    ? ConditionSchema.safeParse(rawCondition)
+    : undefined;
+  const condition = conditionParsed?.success ? conditionParsed.data : undefined;
   const items = await s.listItems(auth.tenantId, { category, condition });
   return c.json({ success: true, data: items });
 });

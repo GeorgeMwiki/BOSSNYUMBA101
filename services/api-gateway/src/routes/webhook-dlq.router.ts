@@ -35,8 +35,7 @@ export interface WebhookDlqDeps {
 
 function defaultId(): string {
   // Node 19+ has global crypto.randomUUID.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const g = globalThis as any;
+  const g = globalThis as { readonly crypto?: { readonly randomUUID?: () => string } };
   return g.crypto?.randomUUID?.() ?? `wh-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
