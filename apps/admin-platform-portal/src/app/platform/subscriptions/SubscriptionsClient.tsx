@@ -20,6 +20,7 @@ import {
   Button,
 } from '@bossnyumba/design-system';
 import { api, formatCurrency, formatDate } from '@/lib/api';
+import { requirePublicBaseUrl } from '@/lib/env-guard';
 
 interface Subscription {
   id: string;
@@ -44,9 +45,15 @@ const statusColors: Record<string, string> = {
  * Owner-portal base URL. Tenant-detail pages (/tenants/:id) live in the
  * owner-portal app, not in HQ; admin-platform-portal links there
  * externally so HQ staff can deep-link into a tenant's own surface.
+ *
+ * Resolved through `requirePublicBaseUrl` so production builds without
+ * NEXT_PUBLIC_OWNER_PORTAL_URL fail at module load instead of silently
+ * pointing HQ staff at localhost:3001 from a deployed bundle.
  */
-const OWNER_PORTAL_BASE =
-  process.env.NEXT_PUBLIC_OWNER_PORTAL_URL ?? 'http://localhost:3001';
+const OWNER_PORTAL_BASE = requirePublicBaseUrl(
+  'NEXT_PUBLIC_OWNER_PORTAL_URL',
+  'http://localhost:3001',
+);
 
 export function SubscriptionsClient() {
   const [search, setSearch] = useState('');
