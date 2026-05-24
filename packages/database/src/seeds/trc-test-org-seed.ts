@@ -34,6 +34,8 @@ import {
   roles,
   userRoles,
 } from '../schemas/index.js';
+import { seedTrcQuestionnaireBaseline } from './trc-questionnaire-baseline.js';
+import { seedTrcElasticConfig } from './trc-elastic-config.js';
 
 // ---------------------------------------------------------------------------
 // Deterministic IDs — every entity has a stable natural-key id so the seed
@@ -357,10 +359,26 @@ export async function seedTrcTestOrg(db: DatabaseClient): Promise<void> {
     }
   });
 
+  // 5. Intelligence baseline -----------------------------------------------
+  // After the scaffold is in place, seed the questionnaire-derived brain
+  // memory (semantic facts + core blocks + reflexion lessons) and the
+  // elastic-architecture config (tenant.settings.elasticConfig +
+  // approval_policies). Both are idempotent — re-running this seed
+  // produces no net change. Operational data (properties/units/leases/
+  // payments) is STILL not seeded; that contract is preserved.
+  const baseline = await seedTrcQuestionnaireBaseline(db);
+  const elastic = await seedTrcElasticConfig(db);
+
   console.log('[trc] seed complete:');
   console.log(`[trc]   tenant=${TRC_TENANT_ID}`);
   console.log(`[trc]   org=${TRC_ORG_ID}`);
   console.log(`[trc]   roles=${TRC_ROLES.length} users=${TRC_USERS.length}`);
+  console.log(
+    `[trc]   baseline: semantic=${baseline.semanticFactsWritten} core=${baseline.coreBlocksWritten} lessons=${baseline.lessonsWritten}`,
+  );
+  console.log(
+    `[trc]   elastic: config_keys=${elastic.elasticConfigKeys.length} approval_policies=${elastic.approvalPoliciesWritten}`,
+  );
   console.log(`[trc]   NOTE: no properties/units/leases/payments seeded —`);
   console.log(`[trc]   all operational data flows from the user's first MD chat.`);
 }
