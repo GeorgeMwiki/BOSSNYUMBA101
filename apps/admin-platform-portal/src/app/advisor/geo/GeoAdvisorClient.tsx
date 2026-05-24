@@ -180,11 +180,18 @@ export function GeoAdvisorClient(): JSX.Element {
     async (lat: number, lng: number) => {
       setInsights({ status: 'loading' });
       try {
+        // This component is 'use client' so `window` is always defined.
+        // The SSR-time branch only exists to satisfy the URL constructor
+        // type — it is unreachable at runtime. We pick a sentinel that
+        // makes the unreachable path loud if it ever flips (no silent
+        // routing to localhost from a server-rendered prod bundle).
+        const baseOrigin =
+          typeof window === 'undefined'
+            ? 'http://ssr-unreachable.invalid'
+            : window.location.origin;
         const url = new URL(
           `${getApiBase()}/advisor/geo/area-insights`,
-          typeof window === 'undefined'
-            ? 'http://localhost:4000'
-            : window.location.origin,
+          baseOrigin,
         );
         url.searchParams.set('lat', lat.toString());
         url.searchParams.set('lng', lng.toString());
