@@ -267,12 +267,12 @@ export class InMemoryAccountRepository implements IAccountRepository {
       return false; // Optimistic lock failure
     }
     
-    (account as any).balanceMinorUnits = newBalanceMinorUnits;
-    (account as any).lastEntryId = lastEntryId;
-    (account as any).lastEntryAt = new Date();
-    (account as any).entryCount += 1;
-    (account as any).updatedAt = new Date();
-    (account as any).version += 1;
+    account.balanceMinorUnits = newBalanceMinorUnits;
+    account.lastEntryId = lastEntryId;
+    account.lastEntryAt = new Date();
+    account.entryCount += 1;
+    account.updatedAt = new Date();
+    account.version += 1;
     
     return true;
   }
