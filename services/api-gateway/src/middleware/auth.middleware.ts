@@ -31,8 +31,20 @@ const JWT_ACCESS_SECRET =
   process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || requireEnv('JWT_SECRET');
 const JWT_REFRESH_SECRET =
   process.env.JWT_REFRESH_SECRET || requireEnv('JWT_REFRESH_SECRET');
-const JWT_ISSUER = process.env.JWT_ISSUER || 'bossnyumba';
-const JWT_AUDIENCE = process.env.JWT_AUDIENCE || 'bossnyumba-api';
+// JWT_ISSUER / JWT_AUDIENCE form the trust boundary for token validation.
+// In production they MUST be set explicitly — a silent default would
+// silently accept tokens minted for any other deployment that shared
+// the JWT secret.
+const JWT_ISSUER =
+  process.env.JWT_ISSUER ||
+  (process.env.NODE_ENV === 'production'
+    ? requireEnv('JWT_ISSUER')
+    : 'bossnyumba');
+const JWT_AUDIENCE =
+  process.env.JWT_AUDIENCE ||
+  (process.env.NODE_ENV === 'production'
+    ? requireEnv('JWT_AUDIENCE')
+    : 'bossnyumba-api');
 
 // ============================================================================
 // Types

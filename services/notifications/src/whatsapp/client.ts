@@ -78,8 +78,17 @@ export class WhatsAppClient {
   private client: AxiosInstance;
 
   constructor(config?: Partial<WhatsAppConfig>) {
+    // WHATSAPP_API_URL must be set explicitly — pinning a default version
+    // (`/v18.0`) silently silos every tenant on a deprecated API version.
+    const apiUrl =
+      config?.apiUrl?.trim() || process.env.WHATSAPP_API_URL?.trim();
+    if (!apiUrl) {
+      throw new Error(
+        'WHATSAPP_API_URL must be set (e.g. "https://graph.facebook.com/v19.0") — no silent default',
+      );
+    }
     this.config = {
-      apiUrl: config?.apiUrl || process.env.WHATSAPP_API_URL || 'https://graph.facebook.com/v18.0',
+      apiUrl,
       accessToken: config?.accessToken || process.env.WHATSAPP_ACCESS_TOKEN || '',
       phoneNumberId: config?.phoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID || '',
       businessAccountId: config?.businessAccountId || process.env.WHATSAPP_BUSINESS_ACCOUNT_ID,

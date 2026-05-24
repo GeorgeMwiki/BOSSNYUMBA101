@@ -150,9 +150,28 @@ function getTenantId(req: Request): TenantId {
 /**
  * Resolve tenant aggregate - uses env-configured defaults (PLATFORM_FEE_PERCENT, etc.).
  * Production: replace with HTTP call to tenant service when available. See Docs/PRODUCTION_READINESS.md.
+ *
+ * PLATFORM_FEE_PERCENT MUST be set explicitly — there is no safe default
+ * for money policy. Refuse to start otherwise.
  */
+function resolvePlatformFeePercent(): number {
+  const raw = process.env.PLATFORM_FEE_PERCENT;
+  if (!raw || raw.trim() === '') {
+    throw new Error(
+      'PLATFORM_FEE_PERCENT must be set (e.g. "5.0") — no silent default for money policy',
+    );
+  }
+  const parsed = parseFloat(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(
+      `PLATFORM_FEE_PERCENT must be a non-negative number; got ${JSON.stringify(raw)}`,
+    );
+  }
+  return parsed;
+}
+
 function getTenantAggregate(tenantId: TenantId): TenantAggregate {
-  const platformFee = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5.0');
+  const platformFee = resolvePlatformFeePercent();
   return {
     id: tenantId,
     getPlatformFeePercent: () => platformFee,

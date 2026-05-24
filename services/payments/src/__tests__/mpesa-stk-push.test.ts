@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { MpesaStkPush } from '../mpesa/stk-push';
 
 describe('MpesaStkPush', () => {
@@ -78,10 +78,29 @@ describe('MpesaStkPush', () => {
     });
   });
 
-  describe('constructor defaults', () => {
-    it('defaults to sandbox environment', () => {
-      const defaultMpesa = new MpesaStkPush({});
-      expect((defaultMpesa as any).config.environment).toBe('sandbox');
+  describe('constructor environment resolution', () => {
+    const ORIGINAL_ENV = process.env.MPESA_ENVIRONMENT;
+    beforeEach(() => {
+      delete process.env.MPESA_ENVIRONMENT;
+    });
+    afterAll(() => {
+      if (ORIGINAL_ENV === undefined) delete process.env.MPESA_ENVIRONMENT;
+      else process.env.MPESA_ENVIRONMENT = ORIGINAL_ENV;
+    });
+
+    it('throws when MPESA_ENVIRONMENT is unset and no override given', () => {
+      expect(() => new MpesaStkPush({})).toThrow(/MPESA_ENVIRONMENT/);
+    });
+
+    it('reads MPESA_ENVIRONMENT from process.env', () => {
+      process.env.MPESA_ENVIRONMENT = 'production';
+      const fromEnv = new MpesaStkPush({});
+      expect((fromEnv as any).config.environment).toBe('production');
+    });
+
+    it('accepts explicit override regardless of env', () => {
+      const override = new MpesaStkPush({ environment: 'sandbox' });
+      expect((override as any).config.environment).toBe('sandbox');
     });
   });
 });

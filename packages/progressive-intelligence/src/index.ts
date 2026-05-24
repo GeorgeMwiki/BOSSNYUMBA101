@@ -51,3 +51,28 @@ export {
   type ThrottleOptions,
   type ThrottledCoach,
 } from './live-coaching/index.js';
+export {
+  streamInference,
+  streamInferenceAsSse,
+  encodeSse,
+  type StreamInferenceArgs,
+} from './streaming/index.js';
+export {
+  linkFragments,
+  unifyProfile,
+  incorporateFragment,
+  currentUnified,
+  type LinkFragmentsArgs,
+  type UnifyProfileArgs,
+  type CurrentUnifiedArgs,
+  type FragmentStore,
+} from './profile-unification/index.js';
+export {
+  buildPersonalizedPrompt,
+  type BuildPersonalizedPromptArgs,
+} from './personalization/index.js';
+export {
+  createProgressiveIntelligence,
+  type ProgressiveIntelligence,
+  type ProgressiveIntelligenceOptions,
+} from './factory.js';

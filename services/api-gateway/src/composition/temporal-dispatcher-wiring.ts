@@ -330,9 +330,25 @@ async function tryLoadRealClient(
       );
       return null;
     }
-    const address = options.address ?? process.env.TEMPORAL_ADDRESS ?? 'localhost:7233';
+    // TEMPORAL_ADDRESS / TEMPORAL_NAMESPACE MUST be set in production;
+    // a silent `localhost:7233` default in prod would route real workflow
+    // dispatches at a non-existent worker.
+    const isProd = process.env.NODE_ENV === 'production';
+    const envAddress = process.env.TEMPORAL_ADDRESS?.trim();
+    if (isProd && !options.address && !envAddress) {
+      throw new Error(
+        'TEMPORAL_ADDRESS must be set in production (no silent "localhost:7233" default)',
+      );
+    }
+    const address = options.address ?? envAddress ?? 'localhost:7233';
+    const envNamespace = process.env.TEMPORAL_NAMESPACE?.trim();
+    if (isProd && !options.namespace && !envNamespace) {
+      throw new Error(
+        'TEMPORAL_NAMESPACE must be set in production (no silent "default" namespace)',
+      );
+    }
     const namespace =
-      options.namespace ?? process.env.TEMPORAL_NAMESPACE ?? 'default';
+      options.namespace ?? envNamespace ?? 'default';
     const { connection } = await mod.Connection.connect({ address });
     const realClient = new mod.Client({ connection, namespace });
     return adaptRealClient(realClient);

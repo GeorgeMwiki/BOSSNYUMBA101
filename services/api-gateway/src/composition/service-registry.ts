@@ -1602,9 +1602,18 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
       openai?: OpenAIVoiceProvider;
     } = {};
     if (elevenKey) {
+      // ELEVENLABS_DEFAULT_VOICE_ID MUST be set explicitly when ElevenLabs
+      // is configured — a silent "rachel" default hides per-tenant brand-
+      // voice misconfiguration and locks in a deprecated voice id.
+      const defaultVoiceId = process.env.ELEVENLABS_DEFAULT_VOICE_ID?.trim();
+      if (!defaultVoiceId) {
+        throw new Error(
+          'ELEVENLABS_DEFAULT_VOICE_ID must be set when ELEVENLABS_API_KEY is configured',
+        );
+      }
       providers.elevenlabs = new ElevenLabsProvider({
         apiKey: elevenKey,
-        defaultVoiceId: process.env.ELEVENLABS_DEFAULT_VOICE_ID ?? 'rachel',
+        defaultVoiceId,
       });
     }
     if (openaiKey) {

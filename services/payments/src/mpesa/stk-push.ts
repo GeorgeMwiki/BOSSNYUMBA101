@@ -1,5 +1,16 @@
 import axios, { AxiosInstance } from 'axios';
 
+function resolveMpesaEnvironment(
+  override: 'sandbox' | 'production' | undefined,
+): 'sandbox' | 'production' {
+  if (override === 'sandbox' || override === 'production') return override;
+  const fromEnv = process.env.MPESA_ENVIRONMENT?.trim().toLowerCase();
+  if (fromEnv === 'sandbox' || fromEnv === 'production') return fromEnv;
+  throw new Error(
+    'MPESA_ENVIRONMENT must be set to "sandbox" or "production" — no silent default',
+  );
+}
+
 export interface MpesaConfig {
   consumerKey: string;
   consumerSecret: string;
@@ -53,7 +64,7 @@ export class MpesaStkPush {
       passkey: config?.passkey || process.env.MPESA_PASSKEY || '',
       shortcode: config?.shortcode || process.env.MPESA_SHORTCODE || '',
       callbackUrl: config?.callbackUrl || process.env.MPESA_CALLBACK_URL || '',
-      environment: (config?.environment || process.env.MPESA_ENVIRONMENT || 'sandbox') as 'sandbox' | 'production',
+      environment: resolveMpesaEnvironment(config?.environment),
     };
 
     const baseURL = this.config.environment === 'production' ? PRODUCTION_URL : SANDBOX_URL;
@@ -217,4 +228,31 @@ export class MpesaStkPush {
   }
 }
 
-export const mpesaStkPush = new MpesaStkPush();
+/**
+ * Lazy singleton accessor. We avoid module-load-time instantiation
+ * because `new MpesaStkPush()` now requires MPESA_ENVIRONMENT to be set
+ * — pre-existing tests that just import the package would otherwise
+ * crash at load. Callers use `getMpesaStkPush()` and the client is
+ * built on first use.
+ */
+let _instance: MpesaStkPush | null = null;
+export function getMpesaStkPush(): MpesaStkPush {
+  if (!_instance) {
+    _instance = new MpesaStkPush();
+  }
+  return _instance;
+}
+
+/**
+ * @deprecated Use `getMpesaStkPush()` — direct access required eager
+ * instantiation at module load, which is unsafe when MPESA_ENVIRONMENT
+ * is not yet set (CLI, tests). Kept as a getter-backed export for
+ * backwards compatibility.
+ */
+export const mpesaStkPush = new Proxy({} as MpesaStkPush, {
+  get(_target, prop) {
+    return (getMpesaStkPush() as unknown as Record<string | symbol, unknown>)[
+      prop as string
+    ];
+  },
+});

@@ -26,7 +26,7 @@ import {
 } from '@bossnyumba/payments-service/providers/gepg';
 import type { GepgSignatureConfig } from '@bossnyumba/payments-service/providers/gepg';
 
-import { withSecurityEvents } from '@bossnyumba/observability';
+import { withSecurityEvents, requireEnv } from '@bossnyumba/observability';
 function loadConfig(): GepgConfig {
   const isProd = process.env.NODE_ENV === 'production';
   const callbackBaseUrl = process.env.GEPG_CALLBACK_BASE_URL;
@@ -34,6 +34,15 @@ function loadConfig(): GepgConfig {
     throw new Error(
       'gepg: GEPG_CALLBACK_BASE_URL env var is required in production.'
     );
+  }
+  // GePG identity (SP / SP-Sys-Id / base URL) and environment MUST be set
+  // explicitly in production — silent "SANDBOX_*" defaults would route real
+  // tenant traffic at the wrong gateway and break reconciliation.
+  if (isProd) {
+    requireEnv('GEPG_SP');
+    requireEnv('GEPG_SP_SYS_ID');
+    requireEnv('GEPG_BASE_URL');
+    requireEnv('GEPG_ENV');
   }
   return {
     sp: process.env.GEPG_SP ?? 'SANDBOX_SP',

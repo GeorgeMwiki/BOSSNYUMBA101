@@ -20,7 +20,18 @@ import {
   BadgeTypeSchema,
 } from '../types/index.js';
 
-import { withSecurityEvents } from '@bossnyumba/observability';
+import { withSecurityEvents, requireEnv } from '@bossnyumba/observability';
+
+/**
+ * Resolve STORAGE_BASE_URL once, lazily, and cache. Falling back to a
+ * relative path (`/storage`) would silently return broken URLs to clients.
+ */
+let _storageBaseUrl: string | undefined;
+function storageBaseUrl(): string {
+  if (_storageBaseUrl !== undefined) return _storageBaseUrl;
+  _storageBaseUrl = requireEnv('STORAGE_BASE_URL');
+  return _storageBaseUrl;
+}
 // ============================================================================
 // Request/Response Schemas
 // ============================================================================
@@ -458,7 +469,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         type: body.type,
         itemCount: body.documentIds.length,
         status: 'compiled',
-        pdfUrl: body.generatePdf ? `${process.env.STORAGE_BASE_URL || '/storage'}/packs/evp_${Date.now()}.pdf` : null,
+        pdfUrl: body.generatePdf ? `${storageBaseUrl()}/packs/evp_${Date.now()}.pdf` : null,
         compiledAt: new Date().toISOString(),
       }, 201);
     })
@@ -504,7 +515,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
       const { packId } = c.req.valid('param');
       return successResponse(c, {
         packId,
-        pdfUrl: `${process.env.STORAGE_BASE_URL || '/storage'}/packs/${packId}.pdf`,
+        pdfUrl: `${storageBaseUrl()}/packs/${packId}.pdf`,
         integrityHash: 'sha256:abc123...',
         generatedAt: new Date().toISOString(),
       });
