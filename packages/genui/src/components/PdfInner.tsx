@@ -5,13 +5,32 @@
  * React.lazy in the parent so the worker URL set-up stays out of SSR.
  */
 
-import { useState } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 // @ts-ignore — module is a peer dep of the consuming app
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import * as ReactPdf from 'react-pdf';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { Document, Page, pdfjs } = ReactPdf as any;
+interface PdfjsGlobalWorkerOptions {
+  workerSrc: string;
+}
+interface PdfjsLike {
+  readonly version: string;
+  readonly GlobalWorkerOptions?: PdfjsGlobalWorkerOptions;
+}
+interface ReactPdfShape {
+  readonly Document: ComponentType<{
+    readonly file: string;
+    readonly onLoadSuccess?: (pdf: { readonly numPages: number }) => void;
+    readonly loading?: ReactNode;
+    readonly children?: ReactNode;
+  }>;
+  readonly Page: ComponentType<{
+    readonly pageNumber: number;
+    readonly width?: number;
+  }>;
+  readonly pdfjs: PdfjsLike;
+}
+
+const { Document, Page, pdfjs } = ReactPdf as unknown as ReactPdfShape;
 
 // react-pdf needs a worker URL. Use the public unpkg CDN by default;
 // admin-portal CSP allows it. Override by setting
@@ -42,8 +61,7 @@ export function PdfInner({ url }: PdfInnerProps): JSX.Element {
     <div className="text-xs">
       <Document
         file={url}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onLoadSuccess={(pdf: any) => setPages(pdf.numPages)}
+        onLoadSuccess={(pdf) => setPages(pdf.numPages)}
         loading={<span>loading PDF…</span>}
       >
         <Page pageNumber={page} width={520} />

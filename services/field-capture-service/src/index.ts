@@ -31,6 +31,7 @@ import {
 } from '@bossnyumba/geo-intelligence';
 import type { StorageAdapter } from '@bossnyumba/storage-adapter';
 import { registerCaptureRoutes } from './routes/captures.js';
+import { registerAuthHook, type TestAuthInjector } from './middleware/auth.js';
 import { createMetrics, type MetricsHarness } from './metrics.js';
 
 export interface BuildAppDeps {
@@ -46,12 +47,25 @@ export interface BuildAppDeps {
    */
   readonly storageAdapter?: StorageAdapter;
   readonly kindToBucket?: (kind: string) => string;
+  /**
+   * Test-only: bypass JWT verification by stamping `request.user`
+   * synchronously. Production never sets this — `buildApp({})` always
+   * exercises the real JWT path. See `middleware/auth.ts`.
+   */
+  readonly testAuthInjector?: TestAuthInjector;
 }
 
 export async function buildApp(deps: BuildAppDeps = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
   const store = deps.store ?? createInMemoryCaptureStore();
   const metrics = deps.metrics ?? createMetrics();
+
+  // Auth gate — must be registered BEFORE routes so the preHandler hook
+  // fires for every authenticated route. /healthz, /readyz, /metrics are
+  // skipped inside the hook.
+  registerAuthHook(app, {
+    ...(deps.testAuthInjector ? { testAuthInjector: deps.testAuthInjector } : {}),
+  });
 
   app.get('/healthz', async () => ({ status: 'ok', service: 'field-capture-service' }));
   app.get('/readyz', async () => ({ status: 'ready', service: 'field-capture-service' }));

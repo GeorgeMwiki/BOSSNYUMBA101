@@ -14,10 +14,13 @@
  * keyed by it).
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { withSecurityEventsFastify } from '@bossnyumba/observability';
+import {
+  recordSecurityEvent,
+  withSecurityEventsFastify,
+} from '@bossnyumba/observability';
 import {
   createCapturePipeline,
   defaultAiInference,
@@ -28,6 +31,7 @@ import {
   type StorageAdapter,
   tenantScopedPath,
 } from '@bossnyumba/storage-adapter';
+import { requireUser } from '../middleware/auth.js';
 
 const CapturePayloadSchema = z.object({
   kind: z.enum(['photo', 'video', 'audio', 'inspection', 'polygon', 'sensor', 'drone', 'pano']),
@@ -47,20 +51,29 @@ const CapturePayloadSchema = z.object({
   bytesBase64: z.string().optional(),
 });
 
+// NOTE: `tenantId` is intentionally NOT in any of these schemas — it is
+// derived from the authenticated JWT (see `requireUser`). A separate
+// `bodyTenantId` field is accepted for backwards compatibility with
+// older mobile-app builds; if it disagrees with the session tenant we
+// emit a security event and use the session value (never the body).
+// See P40 follow-up for the write-to-wrong-tenant risk this closes.
 const SyncBodySchema = z.object({
   surveyorUserId: z.string().min(1),
-  tenantId: z.string().min(1),
+  /** Deprecated — ignored. Kept optional so older clients keep parsing. */
+  tenantId: z.string().min(1).optional(),
   captures: z.array(CapturePayloadSchema).min(1).max(200),
 });
 
 const SingleSubmitBodySchema = CapturePayloadSchema.extend({
   surveyorUserId: z.string().min(1),
-  tenantId: z.string().min(1),
+  /** Deprecated — ignored. Kept optional so older clients keep parsing. */
+  tenantId: z.string().min(1).optional(),
 });
 
 const PolygonSubmitBodySchema = z.object({
   surveyorUserId: z.string().min(1),
-  tenantId: z.string().min(1),
+  /** Deprecated — ignored. Kept optional so older clients keep parsing. */
+  tenantId: z.string().min(1).optional(),
   capturedAt: z.string().datetime().optional(),
   geometry: z.object({
     type: z.literal('Polygon'),
@@ -70,6 +83,39 @@ const PolygonSubmitBodySchema = z.object({
   }),
   metadata: z.record(z.unknown()).optional(),
 });
+
+/**
+ * Resolve the effective tenantId for a request, comparing the
+ * session-bound value against any body-supplied value. Always returns
+ * the session value; emits a security event on mismatch so SREs can
+ * detect tampering attempts or stale clients.
+ */
+function resolveTenantId(
+  request: FastifyRequest,
+  bodyTenantId: string | undefined,
+  action: string,
+): string {
+  const sessionTenantId = requireUser(request).tenantId;
+  if (bodyTenantId && bodyTenantId !== sessionTenantId) {
+    // Fire-and-forget — recordSecurityEvent swallows its own errors so
+    // a failing sink can never block the request.
+    void recordSecurityEvent({
+      action: `${action}.tenant_mismatch`,
+      resource: 'capture',
+      severity: 'warn',
+      method: request.method,
+      route: request.url,
+      tenantId: sessionTenantId,
+      actorId: requireUser(request).userId,
+      detail: {
+        sessionTenantId,
+        bodyTenantId,
+        note: 'body tenantId ignored — session value used',
+      },
+    });
+  }
+  return sessionTenantId;
+}
 
 function decodeBase64ToBytes(b64?: string): Uint8Array | undefined {
   if (!b64) return undefined;
@@ -210,7 +256,7 @@ export async function registerCaptureRoutes(
   // ------------------------------------------------------------------
   const singleHandler = (forceKind: 'photo' | 'video' | 'audio' | 'inspection') =>
     async (
-      request: { readonly body?: unknown; readonly headers?: Record<string, unknown> },
+      request: FastifyRequest,
       reply: { code: (n: number) => unknown; send: (b: unknown) => unknown },
     ) => {
       const idemKey = requireIdempotencyKey(request.headers ?? {});
@@ -223,7 +269,12 @@ export async function registerCaptureRoutes(
         reply.code(400);
         return { error: 'invalid request body', details: parsed.error.flatten() };
       }
-      const { surveyorUserId, tenantId, ...payload } = parsed.data;
+      const { surveyorUserId, tenantId: bodyTenantId, ...payload } = parsed.data;
+      const tenantId = resolveTenantId(
+        request,
+        bodyTenantId,
+        `field.capture.${forceKind}`,
+      );
       // Force the kind to match the route.
       const forcedPayload = { ...payload, kind: forceKind } as z.infer<typeof CapturePayloadSchema>;
       // Persist inline bytes through the shared StorageAdapter so the
@@ -278,7 +329,7 @@ export async function registerCaptureRoutes(
   // ------------------------------------------------------------------
   app.post('/v1/field/capture/sync', withSecurityEventsFastify(
     { action: 'field.capture.sync', resource: 'capture', severity: 'info' },
-    async (request, reply) => {
+    async (request: FastifyRequest, reply) => {
       const idemKey = requireIdempotencyKey((request.headers ?? {}) as Record<string, unknown>);
       if (!idemKey) {
         reply.code(400);
@@ -289,7 +340,12 @@ export async function registerCaptureRoutes(
         reply.code(400);
         return { error: 'invalid sync body', details: parsed.error.flatten() };
       }
-      const { surveyorUserId, tenantId, captures } = parsed.data;
+      const { surveyorUserId, tenantId: bodyTenantId, captures } = parsed.data;
+      const tenantId = resolveTenantId(
+        request,
+        bodyTenantId,
+        'field.capture.sync',
+      );
       // Persist any inline bytes through the shared StorageAdapter,
       // one capture at a time so we keep the per-capture captureId
       // distinct in the bucket. Errors fail the whole batch — the
@@ -346,7 +402,7 @@ export async function registerCaptureRoutes(
   // ------------------------------------------------------------------
   app.post('/v1/field/parcels/:id/polygon', withSecurityEventsFastify(
     { action: 'field.parcel.polygon', resource: 'parcel', severity: 'info' },
-    async (request, reply) => {
+    async (request: FastifyRequest, reply) => {
       const idemKey = requireIdempotencyKey((request.headers ?? {}) as Record<string, unknown>);
       if (!idemKey) {
         reply.code(400);
@@ -358,7 +414,18 @@ export async function registerCaptureRoutes(
         reply.code(400);
         return { error: 'invalid polygon body', details: parsed.error.flatten() };
       }
-      const { surveyorUserId, tenantId, geometry, capturedAt, metadata } = parsed.data;
+      const {
+        surveyorUserId,
+        tenantId: bodyTenantId,
+        geometry,
+        capturedAt,
+        metadata,
+      } = parsed.data;
+      const tenantId = resolveTenantId(
+        request,
+        bodyTenantId,
+        'field.parcel.polygon',
+      );
       const result = await pipeline.submitFieldCapture({
         surveyorUserId,
         tenantId,

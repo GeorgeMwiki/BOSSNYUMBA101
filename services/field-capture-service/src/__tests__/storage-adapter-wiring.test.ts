@@ -15,12 +15,31 @@ import {
   createInMemoryStorageAdapter,
   tenantScopedPath,
 } from '@bossnyumba/storage-adapter';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { buildApp } from '../index.js';
 
 const VALID_KEY = 'idempotent-test-key-9999';
 const TENANT_A = 'tenant-a-uuid';
 const TENANT_B = 'tenant-b-uuid';
+
+/**
+ * Reads the body's `tenantId` to mint a fake session user so we can
+ * exercise both tenants from one app instance. This mirrors the
+ * production path where the JWT's `tenant_id` claim drives the storage
+ * scope — the body is only used here to pick which session to fake.
+ */
+function injectFromBodyTenant(
+  request: FastifyRequest,
+): { userId: string; tenantId: string; role: string } | undefined {
+  const body = request.body as { tenantId?: string; surveyorUserId?: string } | null;
+  const tenantId = body?.tenantId;
+  if (!tenantId) return undefined;
+  return {
+    userId: body?.surveyorUserId ?? 'test-user',
+    tenantId,
+    role: 'surveyor',
+  };
+}
 
 // 8-byte "PNG" stub so the base64 path exercises the upload but the
 // EXIF parser bails gracefully.
@@ -32,7 +51,10 @@ describe('field-capture-service — storage-adapter wiring', () => {
 
   beforeEach(async () => {
     adapter = createInMemoryStorageAdapter();
-    app = await buildApp({ storageAdapter: adapter });
+    app = await buildApp({
+      storageAdapter: adapter,
+      testAuthInjector: injectFromBodyTenant,
+    });
   });
 
   it('photo with inline bytes is persisted under tenantScopedPath', async () => {
@@ -184,7 +206,9 @@ describe('field-capture-service — storage-adapter wiring', () => {
     expect((await adapter.list('media-photos', `${TENANT_B}/`)).length).toBe(1);
   });
 
-  it('rejects empty tenantId at path-composition time (defence in depth)', async () => {
+  it('AUTH GATE: rejects with 401 when no session is established', async () => {
+    // injectFromBodyTenant returns undefined when body has no tenantId,
+    // which mirrors a request that arrives with no JWT bearer at all.
     const res = await app.inject({
       method: 'POST',
       url: '/v1/field/capture/photo',
@@ -192,18 +216,19 @@ describe('field-capture-service — storage-adapter wiring', () => {
       payload: {
         kind: 'photo',
         surveyorUserId: 'u1',
-        // empty tenantId — schema rejects it at z.string().min(1)
-        tenantId: '',
+        // No tenantId — the test injector returns undefined → 401.
         bytesBase64: TEST_BYTES_BASE64,
       },
     });
-    // The schema rejects min(1) first, but if a future caller routes
-    // around the schema, tenantScopedPath would also throw — the
-    // 400/502 here is the schema's response.
-    expect([400, 502]).toContain(res.statusCode);
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe('AUTH_MISSING_TOKEN');
   });
 
   it('rejects tenantId containing slash (path-traversal guard from tenantScopedPath)', async () => {
+    // The session carries the slashed tenantId — the storage helper
+    // refuses it. This is defence-in-depth on the storage side; the
+    // primary guarantee is that the slashed string can never reach the
+    // helper unless the JWT was itself minted with a bogus tenant_id.
     const res = await app.inject({
       method: 'POST',
       url: '/v1/field/capture/photo',
@@ -211,8 +236,6 @@ describe('field-capture-service — storage-adapter wiring', () => {
       payload: {
         kind: 'photo',
         surveyorUserId: 'u1',
-        // Slashes in tenantId would let an attacker climb into another
-        // tenant's directory — the path helper rejects these.
         tenantId: 'tenantA/../tenantB',
         capturedLocation: { lat: -1.28, lng: 36.82 },
         bytesBase64: TEST_BYTES_BASE64,
@@ -250,7 +273,7 @@ describe('field-capture-service — backward compat WITHOUT adapter', () => {
     // No storageAdapter dependency — verifies the legacy path still
     // works exactly as before (inline bytes are hashed but not stored
     // anywhere — caller's responsibility to pre-upload).
-    app = await buildApp();
+    app = await buildApp({ testAuthInjector: injectFromBodyTenant });
   });
 
   it('photo with inline bytes still succeeds without an adapter wired', async () => {

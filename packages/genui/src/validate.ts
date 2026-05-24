@@ -79,11 +79,21 @@ async function getValidator(): Promise<typeof _validator> {
   // ajv ships dual CJS/ESM and the default-export shape varies; the
   // double-default lookup handles both transports cleanly.
   const ajvMod = await import('ajv');
-  const AjvCtor =
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ((ajvMod as any).default?.default ?? (ajvMod as any).default ?? ajvMod) as new (
-      opts: Record<string, unknown>,
-    ) => { compile: (schema: unknown) => unknown };
+  // ajv ships dual CJS/ESM; the default-export shape varies. We
+  // probe `.default.default`, then `.default`, then the bare module.
+  type AjvCtor = new (
+    opts: Record<string, unknown>,
+  ) => { compile: (schema: unknown) => unknown };
+  type AjvModuleShape = {
+    readonly default?: AjvCtor | { readonly default?: AjvCtor };
+  };
+  const probed = ajvMod as unknown as AjvModuleShape;
+  const defaultMember = probed.default;
+  const nestedDefault =
+    typeof defaultMember === 'object' && defaultMember !== null && 'default' in defaultMember
+      ? defaultMember.default
+      : undefined;
+  const AjvCtor = (nestedDefault ?? defaultMember ?? (ajvMod as unknown)) as AjvCtor;
   const ajv = new AjvCtor({ allErrors: true, allowUnionTypes: true, strict: false });
   _validator = ajv.compile(STRUCTURAL_SCHEMA) as typeof _validator;
   return _validator;

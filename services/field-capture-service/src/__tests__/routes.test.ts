@@ -4,11 +4,16 @@ import { createInMemoryCaptureStore } from '@bossnyumba/geo-intelligence';
 import type { FastifyInstance } from 'fastify';
 
 const VALID_KEY = 'idempotent-test-key-9999';
+const TENANT_T1 = 't1';
+const SESSION_USER_U1 = { userId: 'u1', tenantId: TENANT_T1, role: 'surveyor' };
+
+/** Default test auth injector — every test route gets the same authenticated user. */
+const defaultInjector = () => SESSION_USER_U1;
 
 describe('field-capture-service — health + metrics', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    app = await buildApp();
+    app = await buildApp({ testAuthInjector: defaultInjector });
   });
 
   it('healthz returns ok', async () => {
@@ -33,7 +38,7 @@ describe('field-capture-service — health + metrics', () => {
 describe('POST /v1/field/capture/photo', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    app = await buildApp();
+    app = await buildApp({ testAuthInjector: defaultInjector });
   });
 
   it('rejects when idempotency-key header missing', async () => {
@@ -94,7 +99,7 @@ describe('POST /v1/field/capture/photo', () => {
 describe('POST /v1/field/capture/video|audio|inspection', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    app = await buildApp();
+    app = await buildApp({ testAuthInjector: defaultInjector });
   });
 
   it('video accepts a storageUri', async () => {
@@ -139,7 +144,7 @@ describe('POST /v1/field/capture/video|audio|inspection', () => {
 describe('POST /v1/field/capture/sync', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    app = await buildApp();
+    app = await buildApp({ testAuthInjector: defaultInjector });
   });
 
   it('accepts a batch and returns counts', async () => {
@@ -176,7 +181,7 @@ describe('GET /v1/field/queue/:surveyorId', () => {
   let store: ReturnType<typeof createInMemoryCaptureStore>;
   beforeEach(async () => {
     store = createInMemoryCaptureStore();
-    app = await buildApp({ store });
+    app = await buildApp({ store, testAuthInjector: defaultInjector });
   });
 
   it('returns empty queue when no captures', async () => {
@@ -201,7 +206,7 @@ describe('GET /v1/field/queue/:surveyorId', () => {
 describe('POST /v1/field/parcels/:id/polygon', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    app = await buildApp();
+    app = await buildApp({ testAuthInjector: defaultInjector });
   });
 
   it('accepts a closed polygon', async () => {
