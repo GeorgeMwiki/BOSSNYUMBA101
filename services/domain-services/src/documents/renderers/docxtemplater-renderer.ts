@@ -50,10 +50,20 @@ export class DocxtemplaterRenderer implements IDocumentRenderer {
         );
       }
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const zip = new (PizZipCtor as any)(template.source);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const doc = new (DocxtemplaterCtor as any)(zip, {
+        interface PizZipInstance {
+          generate(opts: { type: 'nodebuffer'; compression: 'DEFLATE' }): Buffer;
+        }
+        interface DocxtemplaterInstance {
+          render(data: Record<string, unknown>): void;
+          getZip(): PizZipInstance;
+        }
+        type PizZipNew = new (buffer: Buffer) => PizZipInstance;
+        type DocxtemplaterNew = new (
+          zip: PizZipInstance,
+          opts: { paragraphLoop?: boolean; linebreaks?: boolean }
+        ) => DocxtemplaterInstance;
+        const zip = new (PizZipCtor as PizZipNew)(template.source);
+        const doc = new (DocxtemplaterCtor as DocxtemplaterNew)(zip, {
           paragraphLoop: true,
           linebreaks: true,
         });

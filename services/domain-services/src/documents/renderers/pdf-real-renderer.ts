@@ -89,10 +89,11 @@ export class PdfRealRenderer implements IDocumentRenderer {
         'react-pdf engine expects a React element as template.source'
       );
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { renderToBuffer } = pdf as any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const buffer: Buffer = await renderToBuffer(template.source as any);
+    interface ReactPdfModule {
+      renderToBuffer(element: unknown): Promise<Buffer>;
+    }
+    const { renderToBuffer } = pdf as ReactPdfModule;
+    const buffer: Buffer = await renderToBuffer(template.source);
     return {
       buffer,
       mimeType: 'application/pdf',

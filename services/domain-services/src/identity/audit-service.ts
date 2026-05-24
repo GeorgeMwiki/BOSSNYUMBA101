@@ -9,6 +9,7 @@ import type {
   UserId,
   SessionId,
   AuditEventId,
+  OrganizationId,
   PaginationParams,
   PaginatedResult,
 } from '@bossnyumba/domain-models';
@@ -288,7 +289,7 @@ export function createAuditTarget(
     type,
     id,
     name: name ?? null,
-    organizationId: organizationId as any ?? null,
+    organizationId: (organizationId as OrganizationId | null | undefined) ?? null,
     metadata: metadata ?? {},
   };
 }

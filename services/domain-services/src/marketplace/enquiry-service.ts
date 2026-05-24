@@ -16,10 +16,11 @@
 import type {
   TenantId,
   UserId,
+  ISOTimestamp,
   Result,
 } from '@bossnyumba/domain-models';
 import { ok, err } from '@bossnyumba/domain-models';
-import type { EventBus } from '../common/events.js';
+import type { DomainEvent, EventBus } from '../common/events.js';
 import {
   createEventEnvelope,
   generateEventId,
@@ -161,26 +162,32 @@ export class EnquiryService {
       );
     }
 
+    interface MarketplaceEnquiryStartedEvent extends DomainEvent {
+      readonly eventType: 'MarketplaceEnquiryStarted';
+      readonly payload: {
+        readonly listingId: MarketplaceListingId;
+        readonly negotiationId: Negotiation['id'];
+        readonly prospectCustomerId: StartEnquiryInput['prospectCustomerId'];
+        readonly openingOffer: StartEnquiryInput['openingOffer'];
+      };
+    }
+    const event: MarketplaceEnquiryStartedEvent = {
+      eventId: generateEventId(),
+      eventType: 'MarketplaceEnquiryStarted',
+      timestamp: new Date().toISOString() as ISOTimestamp,
+      tenantId,
+      correlationId,
+      causationId: null,
+      metadata: {},
+      payload: {
+        listingId: listing.id,
+        negotiationId: negResult.data.id,
+        prospectCustomerId: input.prospectCustomerId,
+        openingOffer: input.openingOffer,
+      },
+    };
     await this.eventBus.publish(
-      createEventEnvelope(
-        {
-          eventId: generateEventId(),
-          eventType: 'MarketplaceEnquiryStarted',
-          timestamp: new Date().toISOString() as any,
-          tenantId,
-          correlationId,
-          causationId: null,
-          metadata: {},
-          payload: {
-            listingId: listing.id,
-            negotiationId: negResult.data.id,
-            prospectCustomerId: input.prospectCustomerId,
-            openingOffer: input.openingOffer,
-          },
-        } as any,
-        negResult.data.id,
-        'MarketplaceEnquiry'
-      )
+      createEventEnvelope(event, negResult.data.id, 'MarketplaceEnquiry')
     );
 
     return ok(negResult.data);
