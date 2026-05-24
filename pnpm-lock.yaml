@@ -733,6 +733,22 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
+  packages/ai-reviewer:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/aop-compiler:
     dependencies:
       zod:
@@ -788,6 +804,22 @@ importers:
       tsup:
         specifier: ^8.0.1
         version: 8.5.1(postcss@8.5.14)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
+  packages/assignment-registry:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -1713,6 +1745,25 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
+  packages/realtime-adapter:
+    dependencies:
+      '@bossnyumba/supabase-client':
+        specifier: workspace:*
+        version: link:../supabase-client
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/realtime-rooms:
     dependencies:
       '@liveblocks/client':
@@ -1841,6 +1892,41 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
+  packages/stage-advisor:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
+  packages/storage-adapter:
+    dependencies:
+      '@bossnyumba/supabase-client':
+        specifier: workspace:*
+        version: link:../supabase-client
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/strategic-reports:
     dependencies:
       zod:
@@ -1897,6 +1983,25 @@ importers:
 
   packages/user-context-store:
     dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
+  packages/workflow-engine:
+    dependencies:
+      '@bossnyumba/assignment-registry':
+        specifier: workspace:*
+        version: link:../assignment-registry
       zod:
         specifier: ^3.22.4
         version: 3.25.76
@@ -2012,6 +2117,9 @@ importers:
       '@bossnyumba/sustainability-advisor':
         specifier: workspace:*
         version: link:../../packages/sustainability-advisor
+      '@bossnyumba/user-context-store':
+        specifier: workspace:*
+        version: link:../../packages/user-context-store
       '@hono/node-server':
         specifier: 1.19.13
         version: 1.19.13(hono@4.12.18)
@@ -2251,6 +2359,40 @@ importers:
       '@types/react':
         specifier: 18.3.28
         version: 18.3.28
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
+  services/field-capture-service:
+    dependencies:
+      '@bossnyumba/geo-intelligence':
+        specifier: workspace:*
+        version: link:../../packages/geo-intelligence
+      '@bossnyumba/observability':
+        specifier: workspace:^
+        version: link:../../packages/observability
+      fastify:
+        specifier: ^4.27.0
+        version: 4.29.1
+      pino:
+        specifier: ^8.21.0
+        version: 8.21.0
+      prom-client:
+        specifier: ^15.1.0
+        version: 15.1.3
+      uuid:
+        specifier: '>=14.0.0'
+        version: 14.0.0
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -2688,9 +2830,6 @@ importers:
 
   services/voice-agent:
     dependencies:
-      '@bossnyumba/observability':
-        specifier: workspace:*
-        version: link:../../packages/observability
       fastify:
         specifier: ^4.27.0
         version: 4.29.1
