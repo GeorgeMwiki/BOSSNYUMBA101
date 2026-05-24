@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: #2563eb;
+  --brand-dark: #1e3a8a;
+  --brand-light: #dbeafe;
+  --ink: #111827;
+  --ink-muted: #6b7280;
+  --surface: #ffffff;
+  --surface-subtle: #f9fafb;
+  --surface-raised: #f3f4f6;
+}
+
+html,
+body {
+  background: var(--surface-subtle);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

@@ -786,6 +786,9 @@ api.route('/public/sandbox', publicSandboxRouter);
 api.route('/public/leads', publicLeadsRouter);
 // Streaming AI chat — POST /api/v1/ai/chat with SSE response
 api.route('/ai', aiChatRouter);
+// Universal role-aware advisor — POST /api/v1/ask, GET /api/v1/ask/starting-points,
+// POST /api/v1/ask/feedback. See `routes/ask/ask.router.ts`.
+api.route('/ask', askRouter);
 api.route('/workflows', workflowsRouter);
 api.route('/agent-certifications', agentCertificationsRouter);
 api.route('/classroom', classroomRouter);
