@@ -7,7 +7,7 @@ resources:
   - ../../base
 
 images:
-  - name: ghcr.io/bossnyumba/voice-agent
+  - name: ghcr.io/georgemwiki/bossnyumba-voice-agent
     newTag: staging
 
 patches:

@@ -57,16 +57,28 @@ spec:
   policyTypes: [Egress]
   egress:
     # Postgres — read traces, write memory blocks
+    #
+    # DECISION (P4 ops resolution): worker pods live in `bossnyumba-jobs`
+    # (one namespace for both staging and prod CronJobs, see staging-
+    # overlay comment). Postgres lives in the application namespace —
+    # `bossnyumba-prod` for the prod schedule, `bossnyumba-staging` for
+    # the staging schedule. The original draft only listed `bossnyumba-
+    # app` + `bossnyumba-prod`; `bossnyumba-app` is not a real namespace
+    # in this repo (only base kustomization defaults reference it, and
+    # every overlay overrides it). The egress rule below is the cleaned-
+    # up set: prod + staging. We rely on the K8s 1.22+ auto-applied label
+    # `kubernetes.io/metadata.name` on every namespace, so no extra label
+    # plumbing is required.
     - to:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: bossnyumba-app
+              kubernetes.io/metadata.name: bossnyumba-prod
           podSelector:
             matchLabels:
               app.kubernetes.io/name: postgres
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: bossnyumba-prod
+              kubernetes.io/metadata.name: bossnyumba-staging
           podSelector:
             matchLabels:
               app.kubernetes.io/name: postgres

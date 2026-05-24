@@ -17,5 +17,5 @@ resources:
   - externalsecret.yaml
 
 images:
-  - name: ghcr.io/bossnyumba/document-render
+  - name: ghcr.io/georgemwiki/bossnyumba-document-render
     newTag: latest

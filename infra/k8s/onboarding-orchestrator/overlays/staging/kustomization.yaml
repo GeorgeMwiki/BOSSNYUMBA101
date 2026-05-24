@@ -7,7 +7,7 @@ resources:
   - ../../base
 
 images:
-  - name: ghcr.io/bossnyumba/onboarding-orchestrator
+  - name: ghcr.io/georgemwiki/bossnyumba-onboarding-orchestrator
     newTag: staging
 
 patches:

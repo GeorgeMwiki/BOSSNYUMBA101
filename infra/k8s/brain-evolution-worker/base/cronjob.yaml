@@ -46,6 +46,12 @@ spec:
           restartPolicy: OnFailure
           serviceAccountName: brain-evolution-worker
           automountServiceAccountToken: false
+          # GHCR private registry — ESO syncs the `ghcr-pull` Secret in
+          # every workload namespace; see infra/k8s/external-secrets/.
+          # When the packages flip to public, this stanza becomes a no-op
+          # and can be removed.
+          imagePullSecrets:
+            - name: ghcr-pull
           securityContext:
             runAsNonRoot: true
             runAsUser: 1001
@@ -55,7 +61,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: brain-evolution-worker
-              image: ghcr.io/bossnyumba/brain-evolution-worker:latest
+              image: ghcr.io/georgemwiki/bossnyumba-brain-evolution-worker:latest
               imagePullPolicy: IfNotPresent
               envFrom:
                 - secretRef:

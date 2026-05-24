@@ -20,5 +20,5 @@ resources:
   - externalsecret.yaml
 
 images:
-  - name: ghcr.io/bossnyumba/brain-evolution-worker
+  - name: ghcr.io/georgemwiki/bossnyumba-brain-evolution-worker
     newTag: latest

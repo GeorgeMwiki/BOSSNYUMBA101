@@ -36,6 +36,9 @@ spec:
     spec:
       serviceAccountName: outcomes-metering
       automountServiceAccountToken: false
+      # GHCR private registry — see infra/k8s/external-secrets/.
+      imagePullSecrets:
+        - name: ghcr-pull
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
@@ -61,7 +64,7 @@ spec:
               app.kubernetes.io/name: outcomes-metering
       containers:
         - name: outcomes-metering
-          image: ghcr.io/bossnyumba/outcomes-metering:latest
+          image: ghcr.io/georgemwiki/bossnyumba-outcomes-metering:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3018

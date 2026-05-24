@@ -1,15 +1,29 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Staging uses a dedicated jobs namespace too (mirror of prod) so the
-# CronJob lifecycle and RBAC stay isolated from the app workloads.
+# DECISION (P4 ops resolution): staging and prod share a SINGLE jobs
+# namespace (`bossnyumba-jobs`). This keeps the cluster topology simple —
+# adding a `bossnyumba-jobs-staging` namespace would force us to duplicate
+# every NetworkPolicy, RBAC binding, and quota across two near-identical
+# namespaces.
+#
+# To prevent name collisions between the prod and staging CronJob (both
+# live in the same namespace), every resource in this overlay gets a
+# `-staging` name suffix via Kustomize. The pod selectors / service-
+# account names follow through automatically because Kustomize rewrites
+# the references at build time. The NetworkPolicy podSelector keeps
+# matching the original app label (`app.kubernetes.io/name:
+# brain-evolution-worker`) — Kustomize does NOT suffix label values, only
+# resource names, so prod + staging pods continue to share the same
+# default-deny policy by label match.
 namespace: bossnyumba-jobs
+nameSuffix: -staging
 
 resources:
   - ../../base
 
 images:
-  - name: ghcr.io/bossnyumba/brain-evolution-worker
+  - name: ghcr.io/georgemwiki/bossnyumba-brain-evolution-worker
     newTag: staging
 
 patches:

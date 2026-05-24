@@ -17,5 +17,5 @@ resources:
   - externalsecret.yaml
 
 images:
-  - name: ghcr.io/bossnyumba/scientific-discovery-sidecar
+  - name: ghcr.io/georgemwiki/bossnyumba-scientific-discovery-sidecar
     newTag: latest

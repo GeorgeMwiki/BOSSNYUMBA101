@@ -38,6 +38,9 @@ spec:
     spec:
       serviceAccountName: document-render
       automountServiceAccountToken: false
+      # GHCR private registry — see infra/k8s/external-secrets/.
+      imagePullSecrets:
+        - name: ghcr-pull
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
@@ -63,7 +66,7 @@ spec:
               app.kubernetes.io/name: document-render
       containers:
         - name: document-render
-          image: ghcr.io/bossnyumba/document-render:latest
+          image: ghcr.io/georgemwiki/bossnyumba-document-render:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 4000

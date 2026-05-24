@@ -37,6 +37,9 @@ spec:
     spec:
       serviceAccountName: parcel-service
       automountServiceAccountToken: false
+      # GHCR private registry — see infra/k8s/external-secrets/.
+      imagePullSecrets:
+        - name: ghcr-pull
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
@@ -62,7 +65,7 @@ spec:
               app.kubernetes.io/name: parcel-service
       containers:
         - name: parcel-service
-          image: ghcr.io/bossnyumba/parcel-service:latest
+          image: ghcr.io/georgemwiki/bossnyumba-parcel-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3017

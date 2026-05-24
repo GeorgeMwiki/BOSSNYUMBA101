@@ -36,6 +36,9 @@ spec:
     spec:
       serviceAccountName: onboarding-orchestrator
       automountServiceAccountToken: false
+      # GHCR private registry — see infra/k8s/external-secrets/.
+      imagePullSecrets:
+        - name: ghcr-pull
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
@@ -61,7 +64,7 @@ spec:
               app.kubernetes.io/name: onboarding-orchestrator
       containers:
         - name: onboarding-orchestrator
-          image: ghcr.io/bossnyumba/onboarding-orchestrator:latest
+          image: ghcr.io/georgemwiki/bossnyumba-onboarding-orchestrator:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3014

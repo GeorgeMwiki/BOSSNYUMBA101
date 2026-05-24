@@ -17,5 +17,5 @@ resources:
   - externalsecret.yaml
 
 images:
-  - name: ghcr.io/bossnyumba/parcel-service
+  - name: ghcr.io/georgemwiki/bossnyumba-parcel-service
     newTag: latest

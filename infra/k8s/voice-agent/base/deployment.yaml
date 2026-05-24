@@ -37,6 +37,11 @@ spec:
     spec:
       serviceAccountName: voice-agent
       automountServiceAccountToken: false
+      # GHCR private registry — see infra/k8s/external-secrets/ for the
+      # ESO-synced `ghcr-pull` Secret. Drop this stanza if the packages
+      # are flipped to public.
+      imagePullSecrets:
+        - name: ghcr-pull
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
@@ -62,7 +67,7 @@ spec:
               app.kubernetes.io/name: voice-agent
       containers:
         - name: voice-agent
-          image: ghcr.io/bossnyumba/voice-agent:latest
+          image: ghcr.io/georgemwiki/bossnyumba-voice-agent:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

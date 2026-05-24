@@ -17,5 +17,5 @@ resources:
   - externalsecret.yaml
 
 images:
-  - name: ghcr.io/bossnyumba/voice-agent
+  - name: ghcr.io/georgemwiki/bossnyumba-voice-agent
     newTag: latest

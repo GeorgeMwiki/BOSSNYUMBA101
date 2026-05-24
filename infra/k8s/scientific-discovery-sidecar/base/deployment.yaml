@@ -37,6 +37,9 @@ spec:
     spec:
       serviceAccountName: scientific-discovery-sidecar
       automountServiceAccountToken: false
+      # GHCR private registry — see infra/k8s/external-secrets/.
+      imagePullSecrets:
+        - name: ghcr-pull
       securityContext:
         runAsNonRoot: true
         # The Dockerfile creates the `app` user without a fixed UID; restricted
@@ -65,7 +68,7 @@ spec:
               app.kubernetes.io/name: scientific-discovery-sidecar
       containers:
         - name: scientific-discovery-sidecar
-          image: ghcr.io/bossnyumba/scientific-discovery-sidecar:latest
+          image: ghcr.io/georgemwiki/bossnyumba-scientific-discovery-sidecar:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000

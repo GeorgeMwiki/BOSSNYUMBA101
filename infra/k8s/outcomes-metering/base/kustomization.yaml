@@ -17,5 +17,5 @@ resources:
   - externalsecret.yaml
 
 images:
-  - name: ghcr.io/bossnyumba/outcomes-metering
+  - name: ghcr.io/georgemwiki/bossnyumba-outcomes-metering
     newTag: latest
