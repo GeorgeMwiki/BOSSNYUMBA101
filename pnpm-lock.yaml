@@ -809,6 +809,22 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@types/node@20.19.41)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
+  packages/carbon-market:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/central-intelligence:
     dependencies:
       '@anthropic-ai/sdk':
@@ -1587,6 +1603,22 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@types/node@20.19.41)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
+  packages/role-aware-advisor:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/scientific-discovery:
     dependencies:
       zod:
@@ -1658,6 +1690,25 @@ importers:
 
   packages/sustainability-advisor:
     dependencies:
+      '@bossnyumba/carbon-market':
+        specifier: workspace:*
+        version: link:../carbon-market
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
+  packages/user-context-store:
+    dependencies:
       zod:
         specifier: ^3.22.4
         version: 3.25.76
@@ -1680,6 +1731,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.989.0
         version: 3.1048.0
+      '@bossnyumba/acquisition-advisor':
+        specifier: workspace:*
+        version: link:../../packages/acquisition-advisor
       '@bossnyumba/agent-platform':
         specifier: workspace:*
         version: link:../../packages/agent-platform
@@ -1710,15 +1764,33 @@ importers:
       '@bossnyumba/domain-services':
         specifier: workspace:*
         version: link:../domain-services
+      '@bossnyumba/estate-auto-management':
+        specifier: workspace:*
+        version: link:../../packages/estate-auto-management
+      '@bossnyumba/estate-department-advisor':
+        specifier: workspace:*
+        version: link:../../packages/estate-department-advisor
+      '@bossnyumba/expansion-advisor':
+        specifier: workspace:*
+        version: link:../../packages/expansion-advisor
       '@bossnyumba/forecasting':
         specifier: workspace:*
         version: link:../../packages/forecasting
+      '@bossnyumba/geo-platform':
+        specifier: workspace:*
+        version: link:../../packages/geo-platform
       '@bossnyumba/graph-privacy':
         specifier: workspace:*
         version: link:../../packages/graph-privacy
       '@bossnyumba/graph-sync':
         specifier: workspace:*
         version: link:../../packages/graph-sync
+      '@bossnyumba/green-angle-advisor':
+        specifier: workspace:*
+        version: link:../../packages/green-angle-advisor
+      '@bossnyumba/lifecycle-advisor':
+        specifier: workspace:*
+        version: link:../../packages/lifecycle-advisor
       '@bossnyumba/lpms-connector':
         specifier: workspace:*
         version: link:../../packages/lpms-connector
@@ -1746,6 +1818,9 @@ importers:
       '@bossnyumba/spotlight':
         specifier: workspace:*
         version: link:../../packages/spotlight
+      '@bossnyumba/sustainability-advisor':
+        specifier: workspace:*
+        version: link:../../packages/sustainability-advisor
       '@hono/node-server':
         specifier: 1.19.13
         version: 1.19.13(hono@4.12.18)
@@ -2394,6 +2469,9 @@ importers:
 
   services/voice-agent:
     dependencies:
+      '@bossnyumba/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       fastify:
         specifier: ^4.27.0
         version: 4.29.1

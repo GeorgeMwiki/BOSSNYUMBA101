@@ -1,9 +1,9 @@
 {
-  "name": "@bossnyumba/sustainability-advisor",
+  "name": "@bossnyumba/carbon-market",
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
-  "description": "Veteran-expert ESG, carbon, and green-finance advisor for property management. GHG Scope 1/2/3 calculators, green-building rating estimators (BREEAM/LEED/Green Star/EDGE), embodied-carbon (ICMS/EN 15978), GRESB inputs, TCFD + IFRS S2 disclosure renderers, BNG + SBTN biodiversity, NbS recommender, and EU Taxonomy / carbon-credit valuation. Pure functions; injectable ports for live price feeds.",
+  "description": "Carbon-market trading-desk layer: Verra (VCS) registry client, Climate Impact X (CIX) spot/forward feed adapters, on-chain tokenized-credit verification (Toucan/KlimaDAO/Moss), and a trading-desk orchestrator that plans purchases, books paper forwards, marks-to-market, and runs jurisdictional compliance (CORSIA, Article 6.2/6.4, domestic-only). Network boundary is injectable so production wires live HTTP / RPC adapters and tests stay offline.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -22,8 +22,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "zod": "^3.22.4",
-    "@bossnyumba/carbon-market": "workspace:*"
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "typescript": "^6.0.3",

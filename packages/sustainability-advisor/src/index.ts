@@ -154,3 +154,9 @@ export {
   type PortfolioBenchmarks,
   type PortfolioRollup,
 } from './advisor/portfolio-rollup.js';
+
+// Trading-desk bridge — optional wire to `@bossnyumba/carbon-market`.
+export {
+  tradingDeskFor,
+  type TradingDeskForOptions,
+} from './advisor/trading-desk-bridge.js';
