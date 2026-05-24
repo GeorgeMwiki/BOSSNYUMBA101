@@ -1,11 +1,9 @@
 # Zero-Hardcoded Audit 2026-05-24
 
-**Read-only deep scrub — milestone 2 of 3.** Scope: every package, service,
-and app outside the eight in-flight-agent paths (see "Out of scope" at the
-bottom). This second commit appends the HIGH-severity (config-leak / silent
-degradation) and MEDIUM-severity (cleanup-when-touching-nearby) findings.
-The final commit will append AI / intelligence anti-patterns and the
-recommended fix-wave plan.
+**Read-only deep scrub — final commit (3 of 3).** Scope: every package,
+service, and app outside the eight in-flight-agent paths (see "Out of
+scope" at the bottom). This third commit appends AI / intelligence
+anti-patterns and the recommended fix-wave plan.
 
 ## Executive summary
 
@@ -41,7 +39,7 @@ recommended fix-wave plan.
 
 **None.** No hardcoded API keys, AWS access keys, JWT signing secrets, Stripe live keys, Supabase service-role tokens, or live-tenant UUIDs were found in any production code path.
 
-Scan coverage (results stored at `/tmp/audit-*.txt` during the scan, transient):
+Scan coverage:
 - Secret patterns scanned: `sk-ant-*`, `sk-*`, `AKIA[A-Z0-9]{16}`, `sk_live_*`, JWT-tokens (`eyJ...`)
 - Tenant-id patterns scanned: `'trc-*'`, `tenantId: 'demo-*'`, `tenantId: 'org-*'`
 - Result: 0 production hits. The single `'tenant-uuid'` literal found in `packages/supabase-client/src/rls-aware-client.ts:19` is a JSDoc example, not executable code (safe).
@@ -196,7 +194,82 @@ Scan coverage (results stored at `/tmp/audit-*.txt` during the scan, transient):
 
 ---
 
+## AI / intelligence anti-patterns
+
+### AI-1 (HIGH): Inconsistent default model names across critic/judge files
+See MD-9 — promoted because divergent `DEFAULT_MODEL` constants across 4 files means model deprecation requires hunting. Already covered above; fix in same wave.
+
+### AI-2 (MEDIUM): LLM JSON.parse without schema validation (6 sites)
+- File: `packages/ai-copilot/src/services/maintenance-triage.ts:157` — `const parsed = JSON.parse(content);` (no zod)
+- File: `packages/ai-copilot/src/services/nba-manager-queue.ts:461` — `const result = JSON.parse(content) as { actions: QueuedAction[] };` (cast, not parsed)
+- File: `packages/ai-copilot/src/services/conversational-personalization.ts:520, :563` — same pattern (`as { … }`)
+- File: `packages/ai-copilot/src/services/preference-profile-engine.ts:455` — same
+- File: `packages/ai-copilot/src/services/friction-fingerprint-analyzer.ts:463, :517` — same
+- File: `packages/ai-copilot/src/services/base-copilot.ts:345` — generic `JSON.parse(jsonStr) as T`
+- Why: a malformed LLM response will pass through as the wrong shape and cause downstream runtime errors. The neighbouring files (`vendor-matcher.ts`, `risk-scoring.ts`, etc.) correctly use `SomeSchema.parse(JSON.parse(content))` — be consistent.
+- Suggested fix: each site declares a zod schema and uses `.parse()` (NOT cast).
+
+### AI-3 (MEDIUM): No per-call timeout on LLM calls outside `anthropic-client.ts`
+- Spot-check: `packages/central-intelligence/src/kernel/sensors/anthropic-sensor.ts:167-273`, `packages/central-intelligence/src/kernel/critics/constitutional-critic.ts:274`, `packages/central-intelligence/src/kernel/counter-model/counter-model.ts:102` — all call `client.messages.create({...})` without a `signal` or `requestTimeout`.
+- The wrapped `anthropic-client.ts:114` does set `timeout: config.timeout ?? 60_000` SDK-wide, so per-instance timeout is in place IF the caller uses that wrapper. The above sensor/critic files build clients via `getAnthropicClient(...)` — verify they all flow through the timeout wrapper. (Not verified in this read-only pass — flagged for follow-up.)
+- Suggested fix: ensure every `messages.create({...})` call site either passes `signal: AbortSignal.timeout(X)` OR uses a wrapper that injects a timeout.
+
+### AI-4 (MEDIUM): Echo brain fallback is logged but operator visibility is per-call (info+warn)
+- File: `services/api-gateway/src/routes/ask/advisor-wiring.ts:102-110`
+- Snippet: `logger.info('advisor-wiring: multi-LLM brain returned null — falling back to echo brain', ...)`
+- Why: log is correct (not silent), but a single info-line per process startup is easy to miss. Should also emit a metric / page-the-operator event.
+- Suggested fix: add `metric.increment('advisor.brain_fallback')` and set the SLO budget so the alert fires when fallback persists > 1 min.
+
+### AI-5 (MEDIUM): Hardcoded `temperature` in prompts/default-prompts.ts is not annotated
+- File: `packages/ai-copilot/src/prompts/default-prompts.ts:123, :269, :417, :564`
+- Why: even though this file IS the prompt registry (per path), the temperature values (`0.3, 0.5, 0.6, 0.3`) lack `// reason:` comments — operator can't tune without guessing intent.
+- Suggested fix: add `// reason: low temp because output is parsed as JSON` style annotations.
+
+### AI-6 (MEDIUM): OpenAI client instantiated per-service-class (10 sites)
+- Files: `packages/ai-copilot/src/services/vendor-matcher.ts:154`, `nba-manager-queue.ts:355`, `preference-profile-engine.ts:323`, `sentiment-analyzer.ts:150`, `friction-fingerprint-analyzer.ts:331`, `maintenance-triage.ts:113`, `conversational-personalization.ts:340`, `renewal-optimizer.ts:160`, `risk-scoring.ts:427`, `next-best-action.ts:155`
+- Pattern: each constructor does `this.openai = new OpenAI({ apiKey: config.openaiApiKey });`
+- Why: each instance opens its own connection pool. In a hot path that spawns multiple service classes per request this leaks file descriptors and skips circuit-breaker logic. Anthropic side correctly uses `anthropicSingleton` in `services/api-gateway/src/composition/sovereign.ts:134`.
+- Suggested fix: introduce an `OpenAISingleton` (mirror `anthropicSingleton`) and inject via the service constructor.
+
+---
+
+## Recommended fix wave
+
+Cluster the fix work into three phases so the follow-up agent can act mechanically:
+
+### P50 — high-severity config-leak sweep
+Auto-fix HI-1..HI-12 mechanically:
+- Replace `process.env.X || 'literal'` with `requireEnv('X')` where the literal is a data value (not a sane sentinel like log-level).
+- Source currency/jurisdiction from `tenantContext.*` in graph-tools, VP-finance, owner.financial_summary, and KRA filing.
+- Drop deprecated OpenAI model literal `'gpt-4-turbo-preview'`.
+
+Touches: `services/payments-ledger/`, `services/document-intelligence/`, `services/payments/mpesa/`, `services/api-gateway/middleware/auth.middleware.ts`, `packages/database/src/schemas/`, `packages/central-intelligence/src/kernel/{tools,sub-mds,vp-personas,tool-spec}/`, `packages/ai-copilot/src/{providers,prompts}/`.
+
+### P51 — centralise jurisdiction / locale / currency types
+Fix MD-11..17:
+- Make `packages/domain-models` the single source of `Jurisdiction`, `LocaleTag`, `CurrencyCode`.
+- Replace 8 duplicate union-type declarations with imports.
+
+Touches: `packages/acquisition-advisor/`, `packages/central-intelligence/src/kernel/{regulatory-mirror,sub-mds,supervisor}/`, `packages/strategic-reports/`.
+
+### P52 — central LLM-param + retry policy config
+Fix MD-1..6, MD-9, AI-1, AI-5:
+- Move every hardcoded `temperature`/`maxTokens`/`retries`/`attempts` to a typed config module.
+- Reduce 4+ `DEFAULT_MODEL` constants to one import from `ANTHROPIC_MODELS`.
+- Add a `// reason:` comment to every non-trivial numeric default.
+
+Touches: `packages/ai-copilot/`, `packages/central-intelligence/`, `packages/observability/`, `services/notifications/`, `services/reports/`.
+
+### P53 (optional) — observability hardening
+Fix AI-2 (LLM JSON validation), AI-3 (timeout audit), AI-4 (echo-brain metric), AI-6 (OpenAI singleton).
+
+---
+
 ## Out of scope (in-flight agent paths — re-audit after their commits land)
+
+The following package paths are being actively rewritten by concurrent agents
+(P41–P48). All scan results above were filtered to EXCLUDE them. Re-run this
+audit once those agents land their commits:
 
 - `packages/analytics/` (P41)
 - `packages/forecasting/` (P42)
@@ -208,3 +281,31 @@ Scan coverage (results stored at `/tmp/audit-*.txt` during the scan, transient):
 - `packages/document-quality-guarantor/` (P48)
 
 The `document-ai/src/ocr/anthropic-vision-adapter.ts:34` literal `'claude-opus-4-7'` is the only intersection — flagged in MD-9 above for completeness but P50 must NOT touch that file until P46 lands.
+
+---
+
+## Scan methodology
+
+All scans run from the repo root with `grep -rEn` against `*.ts` and `*.tsx`,
+excluding `node_modules`, `dist`, `.next`, and the 8 in-flight package paths
+above. Test files (`__tests__/`, `fixtures/`, `seeds/`, `*.test.ts`,
+`*.spec.ts`) and the test-double directories were filtered out so all hits
+above are production code.
+
+Pattern list (transient `/tmp/audit-*.txt` files during the scan):
+1. Secrets: `sk-ant-*`, `sk-*`, `AKIA[A-Z0-9]{16}`, `sk_live_*`, JWT `eyJ...`
+2. Tenant-id leaks: `'trc-*'`, `tenantId: 'demo-*'`
+3. Env fallbacks: `process.env.X || 'literal'`
+4. Model names: `claude-[34]`, `gpt-[345]`, `opus-`, `sonnet-`, `haiku-`, `gemini-`, `deepseek-`
+5. Jurisdictions / currencies: `'(TZ|KE|UG|RW|NG|ZA)'`, `'(TZS|KES|UGX|RWF|NGN|ZAR)'`
+6. Fake brains: `createEchoBrain`, `EchoBrain`, `fakeBrain`, `mockBrain`, `stubBrain`
+7. Inline prompts (heuristic): `(systemPrompt|prompt|messages):\s*['"\`].{200,}`
+8. LLM params: `temperature: 0\.[0-9]+`, `top_p:`, `max_tokens:`, `maxTokens:`
+9. Localhost URLs: `https?://(localhost|127\.0\.0\.1|internal\.|0\.0\.0\.0)`
+10. Locales: `'(sw|en)-(TZ|KE|UG|RW|NG|ZA)'`
+11. Retries: `(retries|maxRetries|attempts):\s*[1-9][0-9]?`
+
+False-positive rate was high on patterns 2, 5, 7 — kind-strings like
+`'tenant-app'`, `z.literal('TZ')` enum constraints, and Cypher
+`MERGE (p)-[:HAS_UNIT*1..3]->(u)` matched the regex but are legitimate.
+Manual triage filtered these out so the findings above are real risks.
