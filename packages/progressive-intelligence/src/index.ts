@@ -30,3 +30,24 @@ export {
   normalizeIdentifier,
 } from './entity-resolution/scoring.js';
 export { createDeterministicMockEmbedder } from './embedders.js';
+export {
+  flagUncertainCases,
+  requestLabel,
+  incorporateLabel,
+  emptyModel,
+  detectNoisyLabels,
+  noisyLabelsToCases,
+  type FlagUncertainCasesArgs,
+  type RequestLabelArgs,
+  type IncorporateLabelArgs,
+  type DetectNoiseArgs,
+} from './active-learning/index.js';
+export {
+  coach,
+  heuristicCoach,
+  createThrottledCoach,
+  type CoachArgs,
+  type HeuristicCoachArgs,
+  type ThrottleOptions,
+  type ThrottledCoach,
+} from './live-coaching/index.js';
