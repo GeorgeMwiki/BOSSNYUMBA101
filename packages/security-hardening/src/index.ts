@@ -10,3 +10,5 @@
 export * from './types.js';
 export * from './webauthn/index.js';
 export * from './mfa/index.js';
+export * from './headers/index.js';
+export * from './rate-limit/index.js';
