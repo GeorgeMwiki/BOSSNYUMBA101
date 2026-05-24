@@ -91,3 +91,52 @@ export {
   type ChartAuthorBrain,
   type SynthesizerLike,
 } from './ai-chart-author/index.js';
+
+// Dashboards
+export {
+  composeFromTemplate,
+  evaluateDashboard,
+  TEMPLATE_NAMES,
+  type ComposeFromTemplateParams,
+  type EvaluateDashboardInput,
+  type QueryFetcher,
+  type RenderedDashboard,
+  type RenderedWidget,
+  type TemplateName,
+} from './dashboards/index.js';
+
+// Streaming
+export { subscribeToWidget, type RealtimePort, type SubscribeOptions } from './streaming/index.js';
+
+// ───────────────────────── createAnalytics factory ─────────────────────────
+
+import type { ChartAuthorBrain } from './ai-chart-author/index.js';
+import type { RealtimePort } from './streaming/index.js';
+
+export interface CreateAnalyticsOptions {
+  readonly brain?: ChartAuthorBrain;
+  readonly realtime?: RealtimePort;
+  /** Optional storage adapter — not currently consumed by the package
+   *  but retained so the composition root can pass one through for
+   *  future parsed-data caching. */
+  readonly storage?: unknown;
+}
+
+export interface AnalyticsInstance {
+  readonly brain: ChartAuthorBrain | undefined;
+  readonly realtime: RealtimePort | undefined;
+  readonly storage: unknown;
+}
+
+/**
+ * Top-level factory. All subsystems are also importable directly; this
+ * factory is a convenience for compositions that want one place to wire
+ * the brain + realtime + storage ports.
+ */
+export function createAnalytics(opts: CreateAnalyticsOptions = {}): AnalyticsInstance {
+  return Object.freeze({
+    brain: opts.brain,
+    realtime: opts.realtime,
+    storage: opts.storage,
+  });
+}
