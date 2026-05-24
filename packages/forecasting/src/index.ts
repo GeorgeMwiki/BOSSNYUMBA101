@@ -112,3 +112,20 @@ export {
   type EnsembleCombiner,
   type EnsembleOptions,
 } from './ensembles/index.js';
+export {
+  forecastRent,
+  forecastOccupancy,
+  forecastChurn,
+  forecastMaintenanceFailure,
+  forecastEnergyConsumption,
+  forecastMarketCycle,
+  rentCapFor,
+  applyRentCap,
+  type RentForecastInput,
+  type OccupancyForecastInput,
+  type ChurnForecastInput,
+  type MaintenanceForecastInput,
+  type EnergyForecastInput,
+  type MarketCycleForecastInput,
+  type RentCapPolicy,
+} from './re-forecasters/index.js';
