@@ -30,6 +30,7 @@ import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
 import { asApprovalRequestId } from '@bossnyumba/domain-services/approvals';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -118,7 +119,7 @@ const HistoryQuerySchema = z.object({
 // ---------------------------------------------------------------------------
 // POST / — create
 // ---------------------------------------------------------------------------
-app.post('/', zValidator('json', CreateRequestSchema), async (c: any) => {
+app.post('/', zValidator('json', CreateRequestSchema), withSecurityEvents({ action: 'approval.create', resource: 'approval', severity: 'info' }, async (c: any) => {
   const service = svc(c);
   if (!service) return notConfigured(c);
   const tenantId = c.get('tenantId');
@@ -145,7 +146,7 @@ app.post('/', zValidator('json', CreateRequestSchema), async (c: any) => {
       fallback: 'Failed to create approval request',
     });
   }
-});
+}));
 
 // ---------------------------------------------------------------------------
 // GET / — pending for current user
@@ -264,7 +265,7 @@ app.post(
     UserRole.ADMIN,
   ),
   zValidator('json', ApproveSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'approval.create', resource: 'approval', severity: 'info' }, async (c: any) => {
     const service = svc(c);
     if (!service) return notConfigured(c);
     const tenantId = c.get('tenantId');
@@ -296,7 +297,7 @@ app.post(
         fallback: 'Failed to approve request',
       });
     }
-  },
+  }),
 );
 
 // ---------------------------------------------------------------------------
@@ -313,7 +314,7 @@ app.post(
     UserRole.ADMIN,
   ),
   zValidator('json', RejectSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'approval.create', resource: 'approval', severity: 'info' }, async (c: any) => {
     const service = svc(c);
     if (!service) return notConfigured(c);
     const tenantId = c.get('tenantId');
@@ -345,7 +346,7 @@ app.post(
         fallback: 'Failed to reject request',
       });
     }
-  },
+  }),
 );
 
 // ---------------------------------------------------------------------------
@@ -361,7 +362,7 @@ app.post(
     UserRole.ADMIN,
   ),
   zValidator('json', EscalateSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'approval.create', resource: 'approval', severity: 'info' }, async (c: any) => {
     const service = svc(c);
     if (!service) return notConfigured(c);
     const tenantId = c.get('tenantId');
@@ -394,7 +395,7 @@ app.post(
         fallback: 'Failed to escalate request',
       });
     }
-  },
+  }),
 );
 
 // ---------------------------------------------------------------------------
@@ -427,7 +428,7 @@ app.put(
   '/policies/:type',
   requireRole(UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN, UserRole.ADMIN),
   zValidator('json', PolicySchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'approval.update', resource: 'approval', severity: 'info' }, async (c: any) => {
     const service = svc(c);
     if (!service) return notConfigured(c);
     const tenantId = c.get('tenantId');
@@ -452,7 +453,7 @@ app.put(
         fallback: 'Failed to update approval policy',
       });
     }
-  },
+  }),
 );
 
 export default app;

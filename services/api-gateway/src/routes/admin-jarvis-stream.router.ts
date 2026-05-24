@@ -47,6 +47,7 @@ import { UserRole } from '../types/user-role';
 import { getSovereignBrain } from '../composition/sovereign';
 import { trace, type Attributes } from '@opentelemetry/api';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 type AnyCtx = any;
 
 // ─────────────────────────────────────────────────────────────────────
@@ -166,7 +167,7 @@ export const adminJarvisStreamRouter = new Hono();
 adminJarvisStreamRouter.use('*', authMiddleware);
 adminJarvisStreamRouter.use('*', requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN));
 
-adminJarvisStreamRouter.post('/', async (c: AnyCtx) => {
+adminJarvisStreamRouter.post('/', withSecurityEvents({ action: 'admin.create', resource: 'admin', severity: 'warn' }, async (c: AnyCtx) => {
   let body: unknown;
   try {
     body = await c.req.json();
@@ -268,6 +269,6 @@ adminJarvisStreamRouter.post('/', async (c: AnyCtx) => {
   });
 
   return c.body(emitter.stream, 200, agUiSseHeaders());
-});
+}));
 
 export default adminJarvisStreamRouter;

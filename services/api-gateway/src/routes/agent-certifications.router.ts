@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const IssueSchema = z.object({
   agentId: z.string().min(1).max(128),
   scopes: z.array(z.string().min(1)).min(1).max(32),
@@ -100,7 +101,7 @@ app.post(
   '/',
   requireRole(UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN, UserRole.ADMIN),
   zValidator('json', IssueSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'agent-certification.create', resource: 'agent-certification', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth');
     const body = c.req.valid('json');
     const s = svc(c);
@@ -125,14 +126,14 @@ app.post(
         400,
       );
     }
-  },
+  }),
 );
 
 app.delete(
   '/:certId',
   requireRole(UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN, UserRole.ADMIN),
   zValidator('json', RevokeSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'agent-certification.delete', resource: 'agent-certification', severity: 'notice' }, async (c: any) => {
     const auth = c.get('auth');
     const certId = c.req.param('certId');
     const body = c.req.valid('json');
@@ -151,7 +152,7 @@ app.delete(
         400,
       );
     }
-  },
+  }),
 );
 
 export default app;

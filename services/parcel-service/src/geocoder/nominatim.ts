@@ -22,7 +22,7 @@
  *     self-hosted instance for production scale.
  *   - `NOMINATIM_USER_AGENT` (optional) — override the User-Agent string.
  */
-import type { GeocodeQuery, GeocodeResult } from '../_spatial-engine-shim.js';
+import type { GeocodeQuery, GeocodeResult } from '@bossnyumba/spatial-engine';
 
 export interface NominatimGeocoder {
   readonly provider: 'nominatim';

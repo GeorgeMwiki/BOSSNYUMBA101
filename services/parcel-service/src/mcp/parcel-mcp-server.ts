@@ -29,7 +29,7 @@ import type {
   BoundingBox,
   GeoJsonPoint,
   Parcel,
-} from '../_spatial-engine-shim.js';
+} from '@bossnyumba/spatial-engine';
 import type { GeocoderChain } from '../geocoder/chain.js';
 import type { ParcelStore } from '../routes/parcels.js';
 import type { SnapCandidateSource } from '../snap/nearest-building.js';

@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const SetOverrideSchema = z.object({
   enabled: z.boolean(),
 });
@@ -67,7 +68,7 @@ app.put(
     UserRole.ADMIN,
   ),
   zValidator('json', SetOverrideSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'feature-flag.update', resource: 'feature-flag', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth');
     const flagKey = c.req.param('key');
     const body = c.req.valid('json');
@@ -99,7 +100,7 @@ app.put(
         status,
       );
     }
-  },
+  }),
 );
 
 export const featureFlagsRouter = app;

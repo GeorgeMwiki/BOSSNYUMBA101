@@ -21,6 +21,7 @@ import type {
   WebhookDeliveryQueued,
 } from '../workers/webhook-retry-worker.js';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 export interface WebhookDlqDeps {
   repository: WebhookDeliveryRepository;
   /** Emit a fresh delivery event. The new deliveryId is returned and
@@ -108,7 +109,7 @@ export function createWebhookDlqRouter(deps: WebhookDlqDeps): Hono {
   // ---------------------------------------------------------------------
   // POST /api/v1/webhooks/dead-letters/:id/replay
   // ---------------------------------------------------------------------
-  app.post('/api/v1/webhooks/dead-letters/:id/replay', async (c) => {
+  app.post('/api/v1/webhooks/dead-letters/:id/replay', withSecurityEvents({ action: 'webhook-dlq.create', resource: 'webhook-dlq', severity: 'info' }, async (c) => {
     const id = c.req.param('id');
     const auth = c.get('auth');
 
@@ -156,7 +157,7 @@ export function createWebhookDlqRouter(deps: WebhookDlqDeps): Hono {
         fallback: 'failed to replay',
       });
     }
-  });
+  }));
 
   return app;
 }

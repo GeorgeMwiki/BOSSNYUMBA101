@@ -17,6 +17,7 @@ import { scheduledEvents } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -118,10 +119,10 @@ app.get('/', async (c) => {
   }
 });
 
-app.post('/events', (c) => notImplemented(c, 'Creating events'));
-app.put('/events/:id', (c) => notImplemented(c, 'Updating events'));
-app.delete('/events/:id', (c) => notImplemented(c, 'Deleting events'));
+app.post('/events', withSecurityEvents({ action: 'schedule.create', resource: 'schedule', severity: 'info' }, (c) => notImplemented(c, 'Creating events')));
+app.put('/events/:id', withSecurityEvents({ action: 'schedule.update', resource: 'schedule', severity: 'info' }, (c) => notImplemented(c, 'Updating events')));
+app.delete('/events/:id', withSecurityEvents({ action: 'schedule.delete', resource: 'schedule', severity: 'notice' }, (c) => notImplemented(c, 'Deleting events')));
 app.get('/availability', (c) => notImplemented(c, 'Reading availability'));
-app.put('/availability', (c) => notImplemented(c, 'Updating availability'));
+app.put('/availability', withSecurityEvents({ action: 'schedule.update', resource: 'schedule', severity: 'info' }, (c) => notImplemented(c, 'Updating availability')));
 
 export const schedulingRouter = app;

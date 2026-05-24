@@ -7,6 +7,7 @@ import { databaseMiddleware } from '../middleware/database';
 import { mapPaymentRow, majorToMinor, minorToMajor, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const MoneySchema = z.object({
   amount: z.number().positive(),
   currency: z.string().length(3).optional(),
@@ -104,7 +105,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapPaymentRow(row) });
 });
 
-app.post('/', zValidator('json', PaymentCreateSchema), async (c) => {
+app.post('/', zValidator('json', PaymentCreateSchema), withSecurityEvents({ action: 'payment.create', resource: 'payment', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -127,7 +128,7 @@ app.post('/', zValidator('json', PaymentCreateSchema), async (c) => {
     updatedBy: auth.userId,
   });
   return c.json({ success: true, data: mapPaymentRow(row) }, 201);
-});
+}));
 
 // Payment plans — allow tenants in arrears to set up instalment
 // schedules. These are shallow wrappers over the payments repo; the
@@ -144,7 +145,7 @@ const PaymentPlanCreateSchema = z.object({
   notes: z.string().max(500).optional(),
 });
 
-app.post('/plans', zValidator('json', PaymentPlanCreateSchema), async (c) => {
+app.post('/plans', zValidator('json', PaymentPlanCreateSchema), withSecurityEvents({ action: 'payment.create', resource: 'payment', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   // Compute the equal-instalment amount. Last instalment absorbs
@@ -178,7 +179,7 @@ app.post('/plans', zValidator('json', PaymentPlanCreateSchema), async (c) => {
     createdAt: new Date().toISOString(),
   };
   return c.json({ success: true, data: plan }, 201);
-});
+}));
 
 app.get('/plans', async (c) => {
   const auth = c.get('auth');
@@ -269,7 +270,7 @@ app.get('/plans/:id', async (c) => {
   );
 });
 
-app.post('/:id/process', zValidator('json', PaymentProcessSchema), async (c) => {
+app.post('/:id/process', zValidator('json', PaymentProcessSchema), withSecurityEvents({ action: 'payment.create', resource: 'payment', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const raw = c.req.valid('json');
@@ -283,6 +284,6 @@ app.post('/:id/process', zValidator('json', PaymentProcessSchema), async (c) => 
     updatedBy: auth.userId,
   });
   return c.json({ success: true, data: mapPaymentRow(row) });
-});
+}));
 
 export const paymentsApp = app;

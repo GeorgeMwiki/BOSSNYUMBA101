@@ -17,6 +17,7 @@ import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 import { safeInternalError } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 type AnyCtx = any;
 
 function getOrg(c: AnyCtx) {
@@ -156,7 +157,7 @@ app.post(
     UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
   ),
-  async (c: AnyCtx) => {
+  withSecurityEvents({ action: 'org-awareness.create', resource: 'org-awareness', severity: 'info' }, async (c: AnyCtx) => {
     const auth = c.get('auth');
     const org = getOrg(c);
     if (!org) return notImplemented(c);
@@ -183,7 +184,7 @@ app.post(
     } catch (e) {
       return internalError(c, e);
     }
-  },
+  }),
 );
 
 app.post(
@@ -193,7 +194,7 @@ app.post(
     UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
   ),
-  async (c: AnyCtx) => {
+  withSecurityEvents({ action: 'org-awareness.create', resource: 'org-awareness', severity: 'info' }, async (c: AnyCtx) => {
     const auth = c.get('auth');
     const org = getOrg(c);
     if (!org) return notImplemented(c);
@@ -211,7 +212,7 @@ app.post(
     } catch (e) {
       return internalError(c, e);
     }
-  },
+  }),
 );
 
 export default app;

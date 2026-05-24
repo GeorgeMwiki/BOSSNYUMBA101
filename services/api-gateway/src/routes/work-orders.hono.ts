@@ -7,6 +7,7 @@ import { databaseMiddleware } from '../middleware/database';
 import { majorToMinor, mapWorkOrderRow, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const WorkOrderCreateSchema = z.object({
   propertyId: z.string().min(1),
   unitId: z.string().optional(),
@@ -132,7 +133,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapWorkOrderRow(row) });
 });
 
-app.post('/', zValidator('json', WorkOrderCreateSchema), async (c) => {
+app.post('/', zValidator('json', WorkOrderCreateSchema), withSecurityEvents({ action: 'work-order.create', resource: 'work-order', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -159,21 +160,21 @@ app.post('/', zValidator('json', WorkOrderCreateSchema), async (c) => {
     updatedBy: auth.userId,
   });
   return c.json({ success: true, data: mapWorkOrderRow(row) }, 201);
-});
+}));
 
-app.put('/:id', zValidator('json', WorkOrderUpdateSchema), async (c) => {
+app.put('/:id', zValidator('json', WorkOrderUpdateSchema), withSecurityEvents({ action: 'work-order.update', resource: 'work-order', severity: 'info' }, async (c) => {
   return updateWorkOrder(c);
-});
+}));
 
-app.patch('/:id', zValidator('json', WorkOrderUpdateSchema), async (c) => {
+app.patch('/:id', zValidator('json', WorkOrderUpdateSchema), withSecurityEvents({ action: 'work-order.update', resource: 'work-order', severity: 'info' }, async (c) => {
   return updateWorkOrder(c);
-});
+}));
 
-app.delete('/:id', async (c) => {
+app.delete('/:id', withSecurityEvents({ action: 'work-order.delete', resource: 'work-order', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   await repos.workOrders.delete(c.req.param('id'), auth.tenantId, auth.userId);
   return c.json({ success: true, data: { message: 'Work order deleted' } });
-});
+}));
 
 export const workOrdersRouter = app;

@@ -26,6 +26,7 @@ import {
 } from '@bossnyumba/payments-service/providers/gepg';
 import type { GepgSignatureConfig } from '@bossnyumba/payments-service/providers/gepg';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 function loadConfig(): GepgConfig {
   const isProd = process.env.NODE_ENV === 'production';
   const callbackBaseUrl = process.env.GEPG_CALLBACK_BASE_URL;
@@ -132,7 +133,7 @@ app.post(
   '/control-numbers',
   authMiddleware,
   zValidator('json', ControlNumberCreateSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'gepg.create', resource: 'gepg', severity: 'info' }, async (c) => {
     const auth = c.get('auth');
     const body = c.req.valid('json');
     const provider = getProvider(c);
@@ -159,7 +160,7 @@ app.post(
         fallback: 'GePG gateway error',
       });
     }
-  }
+  })
 );
 
 // --- GET /v1/payments/gepg/control-numbers/:controlNumber --------------------
@@ -187,7 +188,7 @@ app.get('/control-numbers/:controlNumber', authMiddleware, async (c) => {
 
 // --- POST /v1/payments/gepg/callback ----------------------------------------
 // Signature middleware runs FIRST to capture raw body for verification.
-app.post('/callback', signatureMiddleware, async (c) => {
+app.post('/callback', signatureMiddleware, withSecurityEvents({ action: 'gepg.create', resource: 'gepg', severity: 'info' }, async (c) => {
   const raw = c.get('gepgRawBody') as string;
   const signature = c.get('gepgSignature') as string;
 
@@ -215,7 +216,7 @@ app.post('/callback', signatureMiddleware, async (c) => {
       400
     );
   }
-});
+}));
 
 export default app;
 export const gepgRouter = app;

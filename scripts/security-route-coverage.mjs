@@ -165,12 +165,55 @@ function extractHandlers(content) {
   while ((m = HANDLER_RX.exec(content)) !== null) {
     const startIdx = m.index;
     const verb = m[2].toLowerCase();
-    // Walk forward to find matching close paren — bounded scan.
+    // Filter out non-route `.<verb>(` calls. A Hono/Fastify/Express route
+    // registration ALWAYS starts with a route-path argument: a string
+    // literal whose first char is '/' (e.g. `app.post('/users', ...)`) or
+    // a template literal (`app.post(`${prefix}/users`, …)`). The same
+    // `.delete(` pattern is used by Map/Set/repo calls (`bucket.delete(id)`,
+    // `repos.users.delete(...)`, `seenEvents.delete(k)`), and treating
+    // those as routes inflates the denominator with un-wrappable
+    // false-positives. Skip when the first non-whitespace char after the
+    // opening paren is not `'`, `"`, or backtick.
+    const openIdx = startIdx + m[0].length;
+    let scan = openIdx;
+    while (scan < content.length && /\s/.test(content[scan])) scan++;
+    const firstCh = content[scan];
+    if (firstCh !== "'" && firstCh !== '"' && firstCh !== '`') {
+      continue;
+    }
+    // Walk forward to find matching close paren — bounded scan. Detection
+    // only needs the FIRST ~800 chars (the `withSecurityEvents(` call would
+    // sit right after the route path / middleware chain, never inside the
+    // body), but we keep the wider window so multi-line registrations with
+    // a few middlewares still see the wrap token. Tracking strings + line
+    // comments avoids false depth-of-paren counts inside template literals
+    // / regex / strings — without this, large handler bodies poison the
+    // close-paren search.
     let depth = 0;
     let end = startIdx + m[0].length - 1; // points at the opening paren
-    const upper = Math.min(content.length, startIdx + 4_000);
+    const upper = Math.min(content.length, startIdx + 8_000);
+    let inStr = null;
+    let inLineComment = false;
+    let inBlockComment = false;
     for (let i = end; i < upper; i++) {
       const ch = content[i];
+      const nx = content[i + 1];
+      if (inLineComment) {
+        if (ch === '\n') inLineComment = false;
+        continue;
+      }
+      if (inBlockComment) {
+        if (ch === '*' && nx === '/') { inBlockComment = false; i++; }
+        continue;
+      }
+      if (inStr) {
+        if (ch === '\\') { i++; continue; }
+        if (ch === inStr) inStr = null;
+        continue;
+      }
+      if (ch === '/' && nx === '/') { inLineComment = true; i++; continue; }
+      if (ch === '/' && nx === '*') { inBlockComment = true; i++; continue; }
+      if (ch === '"' || ch === "'" || ch === '`') { inStr = ch; continue; }
       if (ch === '(') depth++;
       else if (ch === ')') {
         depth--;
@@ -181,7 +224,10 @@ function extractHandlers(content) {
       }
     }
     const slice = content.slice(startIdx, end + 1);
-    const wrapped = /\bwithSecurityEvents\s*\(/.test(slice);
+    // Accept all three runtime variants: Hono (`withSecurityEvents`), Fastify
+    // (`withSecurityEventsFastify`), and Next.js App Router
+    // (`withSecurityEventsNextRoute`). All three call the same sink.
+    const wrapped = /\bwithSecurityEvents(?:Fastify|NextRoute)?\s*\(/.test(slice);
     // Find line number.
     const lineNumber = content.slice(0, startIdx).split('\n').length;
     handlers.push({ verb, wrapped, lineNumber });

@@ -9,6 +9,7 @@ import { UserRole } from '../types/user-role';
 import { mapLeaseRow, majorToMinor, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // Wave 19 Agent H+I: lease mutations are staff-only. RESIDENT / OWNER
 // users read via `/leases/current*` (self) but cannot create, update,
 // terminate, renew, or delete leases.
@@ -202,7 +203,7 @@ app.get('/current/renewal-offer', async (c) => {
   });
 });
 
-app.post('/current/renew', async (c) => {
+app.post('/current/renew', withSecurityEvents({ action: 'lease.create', resource: 'lease', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const result = await repos.leases.findByCustomer(auth.userId, auth.tenantId, { limit: 20, offset: 0 });
@@ -235,7 +236,7 @@ app.post('/current/renew', async (c) => {
     auth.userId
   );
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
-});
+}));
 
 app.get('/current/move-out', async (c) => {
   const auth = c.get('auth');
@@ -263,7 +264,7 @@ app.get('/current/move-out', async (c) => {
   });
 });
 
-app.post('/current/move-out', async (c) => {
+app.post('/current/move-out', withSecurityEvents({ action: 'lease.create', resource: 'lease', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const result = await repos.leases.findByCustomer(auth.userId, auth.tenantId, { limit: 20, offset: 0 });
@@ -315,7 +316,7 @@ app.post('/current/move-out', async (c) => {
       inspectionDue: true,
     },
   });
-});
+}));
 
 app.get('/expiring', async (c) => {
   // "Expiring" still needs a full scan because the filter is post-DB
@@ -358,7 +359,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 });
 
-app.post('/', staffOnly, requireCapability('create', 'lease'), zValidator('json', CreateLeaseSchema), async (c) => {
+app.post('/', staffOnly, requireCapability('create', 'lease'), zValidator('json', CreateLeaseSchema), withSecurityEvents({ action: 'lease.create', resource: 'lease', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -392,9 +393,9 @@ app.post('/', staffOnly, requireCapability('create', 'lease'), zValidator('json'
   );
 
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) }, 201);
-});
+}));
 
-app.put('/:id', staffOnly, zValidator('json', UpdateLeaseSchema), async (c) => {
+app.put('/:id', staffOnly, zValidator('json', UpdateLeaseSchema), withSecurityEvents({ action: 'lease.update', resource: 'lease', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -418,16 +419,16 @@ app.put('/:id', staffOnly, zValidator('json', UpdateLeaseSchema), async (c) => {
     auth.userId
   );
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
-});
+}));
 
-app.post('/:id/activate', staffOnly, async (c) => {
+app.post('/:id/activate', staffOnly, withSecurityEvents({ action: 'lease.create', resource: 'lease', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const row = await repos.leases.update(c.req.param('id'), auth.tenantId, { status: 'active', activatedAt: new Date(), activatedBy: auth.userId }, auth.userId);
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
-});
+}));
 
-app.post('/:id/terminate', staffOnly, zValidator('json', TerminateLeaseSchema), async (c) => {
+app.post('/:id/terminate', staffOnly, zValidator('json', TerminateLeaseSchema), withSecurityEvents({ action: 'lease.create', resource: 'lease', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -444,9 +445,9 @@ app.post('/:id/terminate', staffOnly, zValidator('json', TerminateLeaseSchema), 
     auth.userId
   );
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
-});
+}));
 
-app.post('/:id/renew', staffOnly, zValidator('json', RenewLeaseSchema), async (c) => {
+app.post('/:id/renew', staffOnly, zValidator('json', RenewLeaseSchema), withSecurityEvents({ action: 'lease.create', resource: 'lease', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -477,13 +478,13 @@ app.post('/:id/renew', staffOnly, zValidator('json', RenewLeaseSchema), async (c
     auth.userId
   );
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
-});
+}));
 
-app.delete('/:id', staffOnly, requireCapability('delete', 'lease'), async (c) => {
+app.delete('/:id', staffOnly, requireCapability('delete', 'lease'), withSecurityEvents({ action: 'lease.delete', resource: 'lease', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   await repos.leases.delete(c.req.param('id'), auth.tenantId, auth.userId);
   return c.json({ success: true, data: { message: 'Lease deleted' } });
-});
+}));
 
 export const leasesRouter = app;

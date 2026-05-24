@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const SetBudgetSchema = z.object({
   monthlyCapUsdMicro: z.number().int().nonnegative(),
   hardStop: z.boolean().optional(),
@@ -113,7 +114,7 @@ app.put(
     UserRole.ADMIN,
   ),
   zValidator('json', SetBudgetSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'ai-cost.update', resource: 'ai-cost', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth');
     const body = c.req.valid('json');
     const l = ledger(c);
@@ -128,7 +129,7 @@ app.put(
       const { body: errBody, status } = mapError(e);
       return c.json(errBody, status);
     }
-  },
+  }),
 );
 
 export const aiCostsRouter = app;

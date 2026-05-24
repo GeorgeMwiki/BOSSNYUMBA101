@@ -26,6 +26,7 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { generateToken } from '../middleware/auth';
 import { UserRole } from '../types/user-role';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 
 // Process-local challenge store. Replace with Redis for multi-replica.
@@ -141,7 +142,7 @@ const ChallengeSchema = z.object({
  * challenge. We gate it with authMiddleware so the caller at least
  * needs a valid scoped token.
  */
-app.post('/challenge', authMiddleware, zValidator('json', ChallengeSchema), async (c) => {
+app.post('/challenge', authMiddleware, zValidator('json', ChallengeSchema), withSecurityEvents({ action: 'auth-mfa.create', resource: 'auth-mfa', severity: 'warn' }, async (c) => {
   const body = c.req.valid('json');
   const challengeId = randomUUID();
   challenges.set(challengeId, {
@@ -159,7 +160,7 @@ app.post('/challenge', authMiddleware, zValidator('json', ChallengeSchema), asyn
       expiresAt: new Date(Date.now() + CHALLENGE_TTL_MS).toISOString(),
     },
   });
-});
+}));
 
 const VerifySchema = z.object({
   challengeId: z.string().min(1),
@@ -167,7 +168,7 @@ const VerifySchema = z.object({
   secret: z.string().min(16), // caller supplies the stored user secret
 });
 
-app.post('/verify', zValidator('json', VerifySchema), async (c) => {
+app.post('/verify', zValidator('json', VerifySchema), withSecurityEvents({ action: 'auth-mfa.create', resource: 'auth-mfa', severity: 'warn' }, async (c) => {
   const { challengeId, code, secret } = c.req.valid('json');
   const entry = challenges.get(challengeId);
   if (!entry || entry.consumedAt) {
@@ -202,14 +203,14 @@ app.post('/verify', zValidator('json', VerifySchema), async (c) => {
     success: true,
     data: { token, expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString() },
   });
-});
+}));
 
 const EnrollSchema = z.object({
   accountName: z.string().min(1).max(100),
   issuer: z.string().default('BOSSNYUMBA'),
 });
 
-app.post('/enroll', authMiddleware, zValidator('json', EnrollSchema), async (c) => {
+app.post('/enroll', authMiddleware, zValidator('json', EnrollSchema), withSecurityEvents({ action: 'auth-mfa.create', resource: 'auth-mfa', severity: 'warn' }, async (c) => {
   const auth = c.get('auth');
   const { accountName, issuer } = c.req.valid('json');
   // 20 bytes = 160 bits of entropy, the RFC-6238 recommended minimum.
@@ -232,14 +233,14 @@ app.post('/enroll', authMiddleware, zValidator('json', EnrollSchema), async (c) 
       userId: auth.userId,
     },
   });
-});
+}));
 
 const ConfirmSchema = z.object({
   secret: z.string().min(16),
   code: z.string().regex(/^\d{6}$/, '6-digit TOTP code required'),
 });
 
-app.post('/confirm', authMiddleware, zValidator('json', ConfirmSchema), async (c) => {
+app.post('/confirm', authMiddleware, zValidator('json', ConfirmSchema), withSecurityEvents({ action: 'auth-mfa.create', resource: 'auth-mfa', severity: 'warn' }, async (c) => {
   const { secret, code } = c.req.valid('json');
   if (!verifyTotp(secret, code)) {
     return c.json(
@@ -251,6 +252,6 @@ app.post('/confirm', authMiddleware, zValidator('json', ConfirmSchema), async (c
   // the (encrypted) secret on the user record. We just attest that the
   // code validates against the secret.
   return c.json({ success: true, data: { verified: true } });
-});
+}));
 
 export const authMfaRouter = app;

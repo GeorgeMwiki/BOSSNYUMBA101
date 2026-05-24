@@ -25,6 +25,7 @@ import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const DOMAIN_ENUM = z.enum([
   'finance',
   'leasing',
@@ -115,7 +116,7 @@ function notConfigured(c: any) {
 // ---------------------------------------------------------------------------
 // POST /standing
 // ---------------------------------------------------------------------------
-app.post('/standing', zValidator('json', GrantStandingSchema), async (c: any) => {
+app.post('/standing', zValidator('json', GrantStandingSchema), withSecurityEvents({ action: 'approval-grant.create', resource: 'approval-grant', severity: 'warn' }, async (c: any) => {
   const service = svc(c);
   if (!service) return notConfigured(c);
   const auth = c.get('auth');
@@ -133,12 +134,12 @@ app.post('/standing', zValidator('json', GrantStandingSchema), async (c: any) =>
       fallback: 'Failed to issue standing grant',
     });
   }
-});
+}));
 
 // ---------------------------------------------------------------------------
 // POST /single
 // ---------------------------------------------------------------------------
-app.post('/single', zValidator('json', GrantSingleSchema), async (c: any) => {
+app.post('/single', zValidator('json', GrantSingleSchema), withSecurityEvents({ action: 'approval-grant.create', resource: 'approval-grant', severity: 'warn' }, async (c: any) => {
   const service = svc(c);
   if (!service) return notConfigured(c);
   const auth = c.get('auth');
@@ -156,12 +157,12 @@ app.post('/single', zValidator('json', GrantSingleSchema), async (c: any) => {
       fallback: 'Failed to issue single-action grant',
     });
   }
-});
+}));
 
 // ---------------------------------------------------------------------------
 // POST /:id/revoke
 // ---------------------------------------------------------------------------
-app.post('/:id/revoke', zValidator('json', RevokeSchema), async (c: any) => {
+app.post('/:id/revoke', zValidator('json', RevokeSchema), withSecurityEvents({ action: 'approval-grant.create', resource: 'approval-grant', severity: 'warn' }, async (c: any) => {
   const service = svc(c);
   if (!service) return notConfigured(c);
   const auth = c.get('auth');
@@ -178,7 +179,7 @@ app.post('/:id/revoke', zValidator('json', RevokeSchema), async (c: any) => {
       fallback: 'Failed to revoke grant',
     });
   }
-});
+}));
 
 // ---------------------------------------------------------------------------
 // GET /active

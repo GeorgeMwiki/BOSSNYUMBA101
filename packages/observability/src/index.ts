@@ -16,6 +16,7 @@
 
 export {
   withSecurityEvents,
+  withSecurityEventsFastify,
   withSecurityEventsNextRoute,
   recordSecurityEvent,
   setSecurityEventSink,

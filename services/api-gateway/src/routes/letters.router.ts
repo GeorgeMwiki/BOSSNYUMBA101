@@ -31,6 +31,7 @@ import {
   TextRenderer,
 } from '@bossnyumba/domain-services';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ---------------------------------------------------------------------------
 // Tenant-scoped in-memory repository (pilot fallback).
 // ---------------------------------------------------------------------------
@@ -121,7 +122,7 @@ function failureStatus(code: string): number {
   }
 }
 
-app.post('/', zValidator('json', CreateSchema), async (c) => {
+app.post('/', zValidator('json', CreateSchema), withSecurityEvents({ action: 'letter.create', resource: 'letter', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const service = buildLetterService();
@@ -139,9 +140,9 @@ app.post('/', zValidator('json', CreateSchema), async (c) => {
     );
   }
   return c.json({ success: true, data: result.value }, 201);
-});
+}));
 
-app.post('/:id/draft', zValidator('json', DraftSchema), async (c) => {
+app.post('/:id/draft', zValidator('json', DraftSchema), withSecurityEvents({ action: 'letter.create', resource: 'letter', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json') as DraftSchema extends z.ZodType<infer T> ? T : never;
   const service = buildLetterService();
@@ -154,9 +155,9 @@ app.post('/:id/draft', zValidator('json', DraftSchema), async (c) => {
     );
   }
   return c.json({ success: true, data: result.value });
-});
+}));
 
-app.post('/:id/submit-for-approval', async (c) => {
+app.post('/:id/submit-for-approval', withSecurityEvents({ action: 'letter.create', resource: 'letter', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const service = buildLetterService();
   const result = await service.submitForApproval(c.req.param('id'), auth.tenantId, auth.userId);
@@ -167,9 +168,9 @@ app.post('/:id/submit-for-approval', async (c) => {
     );
   }
   return c.json({ success: true, data: result.value });
-});
+}));
 
-app.post('/:id/approve', zValidator('json', ApproveSchema), async (c) => {
+app.post('/:id/approve', zValidator('json', ApproveSchema), withSecurityEvents({ action: 'letter.create', resource: 'letter', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const service = buildLetterService();
@@ -186,9 +187,9 @@ app.post('/:id/approve', zValidator('json', ApproveSchema), async (c) => {
     );
   }
   return c.json({ success: true, data: result.value });
-});
+}));
 
-app.post('/:id/reject', zValidator('json', RejectSchema), async (c) => {
+app.post('/:id/reject', zValidator('json', RejectSchema), withSecurityEvents({ action: 'letter.create', resource: 'letter', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const service = buildLetterService();
@@ -200,7 +201,7 @@ app.post('/:id/reject', zValidator('json', RejectSchema), async (c) => {
     );
   }
   return c.json({ success: true, data: result.value });
-});
+}));
 
 app.get('/:id/download', async (c) => {
   const auth = c.get('auth');

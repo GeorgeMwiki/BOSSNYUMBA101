@@ -24,6 +24,7 @@ import {
 } from '@bossnyumba/domain-services';
 import { parseUpload } from '@bossnyumba/ai-copilot/services/migration/parsers/parse-upload';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // Singleton per-process accumulator — session scoping handled per-run.
 // In production, swap for a persistent repository backed by
 // `progressive_context_snapshots` (migration 0042).
@@ -49,7 +50,7 @@ export function createMigrationRouter(deps: {
   }
 
   // ----------------------- POST /upload -----------------------
-  app.post('/upload', async (c) => {
+  app.post('/upload', withSecurityEvents({ action: 'migration.create', resource: 'migration', severity: 'info' }, async (c) => {
     const tenantId = c.get('tenantId');
     const actorId = c.get('actorId');
     if (!tenantId || !actorId) return c.json({ error: 'unauthenticated' }, 401);
@@ -123,10 +124,10 @@ export function createMigrationRouter(deps: {
       warnings: parsed.warnings,
       progressivePreview,
     });
-  });
+  }));
 
   // ----------------------- POST /:runId/commit -----------------------
-  app.post('/:runId/commit', async (c) => {
+  app.post('/:runId/commit', withSecurityEvents({ action: 'migration.create', resource: 'migration', severity: 'info' }, async (c) => {
     const tenantId = c.get('tenantId');
     const actorId = c.get('actorId');
     if (!tenantId || !actorId) return c.json({ error: 'unauthenticated' }, 401);
@@ -147,13 +148,13 @@ export function createMigrationRouter(deps: {
       counts: result.counts,
       skipped: result.skipped,
     });
-  });
+  }));
 
   // ----------------------- POST /:runId/ask -----------------------
   // Copilot turn: the client posts the admin's chat message; we forward
   // it to the MigrationWizardCopilot (wired via the BrainRegistry in
   // brain.hono.ts). The handler here is a thin proxy.
-  app.post('/:runId/ask', async (c) => {
+  app.post('/:runId/ask', withSecurityEvents({ action: 'migration.create', resource: 'migration', severity: 'info' }, async (c) => {
     const tenantId = c.get('tenantId');
     const actorId = c.get('actorId');
     if (!tenantId || !actorId) return c.json({ error: 'unauthenticated' }, 401);
@@ -210,7 +211,7 @@ export function createMigrationRouter(deps: {
       ack: true,
       note: 'copilot proxy scaffolded — flag-gated dev response while BrainRegistry wiring is pending',
     });
-  });
+  }));
 
   return app;
 }

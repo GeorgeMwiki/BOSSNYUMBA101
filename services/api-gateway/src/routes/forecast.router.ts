@@ -37,6 +37,7 @@ import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ---------------------------------------------------------------------------
 // Zod schemas
 // ---------------------------------------------------------------------------
@@ -151,7 +152,7 @@ function authContextFrom(auth: any): AuthContext {
 app.post(
   '/node',
   zValidator('json', ForecastNodeBodySchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'forecast.create', resource: 'forecast', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth');
     const body = c.req.valid('json');
     const services = getForecastServices(c);
@@ -243,7 +244,7 @@ app.post(
         fallback: 'Failed to produce forecast',
       });
     }
-  },
+  }),
 );
 
 // ---------------------------------------------------------------------------

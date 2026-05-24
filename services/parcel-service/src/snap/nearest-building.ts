@@ -14,12 +14,12 @@
 import {
   DEFAULT_SNAP_RADIUS_M,
   snapToNearestBuilding,
-} from '../_spatial-engine-shim.js';
+} from '@bossnyumba/spatial-engine';
 import type {
   GeoJsonPoint,
   ReferenceBuilding,
   SnapResult,
-} from '../_spatial-engine-shim.js';
+} from '@bossnyumba/spatial-engine';
 
 export interface SnapCandidateSource {
   /** Fetch candidate buildings inside a bbox around `point` (radiusM). */

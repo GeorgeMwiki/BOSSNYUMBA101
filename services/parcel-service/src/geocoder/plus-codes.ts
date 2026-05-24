@@ -14,7 +14,7 @@
  * Spec: `.audit/litfin-sota-2026-05-23/17-spatial-parcel-engine.md` §8
  * (decision: always-also-store a Plus Code on every parcel row).
  */
-import type { GeocodeQuery, GeocodeResult } from '../_spatial-engine-shim.js';
+import type { GeocodeQuery, GeocodeResult } from '@bossnyumba/spatial-engine';
 
 export interface PlusCodesGeocoder {
   readonly provider: 'plus_codes';

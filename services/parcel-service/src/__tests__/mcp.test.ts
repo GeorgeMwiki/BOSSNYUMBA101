@@ -18,7 +18,7 @@ import { createInMemoryCandidateSource } from '../snap/nearest-building.js';
 import type {
   GeoJsonMultiPolygon,
   ReferenceBuilding,
-} from '../_spatial-engine-shim.js';
+} from '@bossnyumba/spatial-engine';
 
 // A tiny square parcel inside the Nairobi bbox used by the stub
 // geocoder.  Centroid lands inside the bbox produced for the same seed.

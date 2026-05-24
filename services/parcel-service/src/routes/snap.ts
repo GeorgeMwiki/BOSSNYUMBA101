@@ -18,6 +18,7 @@ import type { FastifyInstance } from 'fastify';
 import { snapNearest } from '../snap/nearest-building.js';
 import type { SnapCandidateSource } from '../snap/nearest-building.js';
 
+import { withSecurityEventsFastify } from '@bossnyumba/observability';
 export interface SnapRouteDeps {
   readonly source: SnapCandidateSource;
 }
@@ -32,7 +33,7 @@ export async function registerSnapRoutes(
   app: FastifyInstance,
   deps: SnapRouteDeps,
 ): Promise<void> {
-  app.post('/snap-to-nearest-building', async (request, reply) => {
+  app.post('/snap-to-nearest-building', withSecurityEventsFastify({ action: 'parcel-snap.create', resource: 'parcel-snap', severity: 'info' }, async (request, reply) => {
     const body = (request.body ?? {}) as SnapBody;
     const lat = typeof body.lat === 'number' ? body.lat : NaN;
     const lng = typeof body.lng === 'number' ? body.lng : NaN;
@@ -68,5 +69,5 @@ export async function registerSnapRoutes(
       footprint: result.building.footprint,
       distanceM: result.distanceM,
     };
-  });
+  }));
 }

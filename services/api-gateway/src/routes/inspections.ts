@@ -35,6 +35,7 @@ import { inspections } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -113,10 +114,10 @@ app.get('/:id', async (c) => {
   }
 });
 
-app.post('/', (c) => notImplemented(c, 'Scheduling'));
-app.put('/:id/start', (c) => notImplemented(c, 'Starting'));
-app.post('/:id/items', (c) => notImplemented(c, 'Adding items to'));
-app.post('/:id/sign', (c) => notImplemented(c, 'Signing'));
+app.post('/', withSecurityEvents({ action: 'inspection.create', resource: 'inspection', severity: 'info' }, (c) => notImplemented(c, 'Scheduling')));
+app.put('/:id/start', withSecurityEvents({ action: 'inspection.update', resource: 'inspection', severity: 'info' }, (c) => notImplemented(c, 'Starting')));
+app.post('/:id/items', withSecurityEvents({ action: 'inspection.create', resource: 'inspection', severity: 'info' }, (c) => notImplemented(c, 'Adding items to')));
+app.post('/:id/sign', withSecurityEvents({ action: 'inspection.create', resource: 'inspection', severity: 'info' }, (c) => notImplemented(c, 'Signing')));
 
 // ============================================================================
 // PUT /:id/complete — close an inspection with area-by-area results.
@@ -151,7 +152,7 @@ const CompleteInspectionSchema = z.object({
 app.put(
   '/:id/complete',
   zValidator('json', CompleteInspectionSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'inspection.update', resource: 'inspection', severity: 'info' }, async (c) => {
     const db = (c.get('services') ?? {}).db;
     if (!db) return dbUnavailable(c);
     const tenantId = c.get('tenantId');
@@ -230,7 +231,7 @@ app.put(
         fallback: 'Inspection complete failed',
       });
     }
-  },
+  }),
 );
 
 export const inspectionsRouter = app;

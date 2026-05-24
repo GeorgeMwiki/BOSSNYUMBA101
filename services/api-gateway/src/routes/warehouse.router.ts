@@ -18,6 +18,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const ConditionSchema = z.enum([
   'new',
   'functioning',
@@ -118,7 +119,7 @@ app.get('/items', async (c: any) => {
   return c.json({ success: true, data: items });
 });
 
-app.post('/items', zValidator('json', CreateItemSchema), async (c: any) => {
+app.post('/items', zValidator('json', CreateItemSchema), withSecurityEvents({ action: 'warehouse.create', resource: 'warehouse', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const s = svc(c);
@@ -126,7 +127,7 @@ app.post('/items', zValidator('json', CreateItemSchema), async (c: any) => {
   const result = await s.createItem(auth.tenantId, body, auth.userId);
   if (!result.ok) return mapErr(c, result);
   return c.json({ success: true, data: result.value }, 201);
-});
+}));
 
 app.get('/items/:id', async (c: any) => {
   const auth = c.get('auth');
@@ -143,7 +144,7 @@ app.get('/items/:id', async (c: any) => {
   return c.json({ success: true, data: result.value });
 });
 
-app.post('/items/:id/movements', zValidator('json', MovementSchema), async (c: any) => {
+app.post('/items/:id/movements', zValidator('json', MovementSchema), withSecurityEvents({ action: 'warehouse.create', resource: 'warehouse', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const s = svc(c);
@@ -155,7 +156,7 @@ app.post('/items/:id/movements', zValidator('json', MovementSchema), async (c: a
   );
   if (!result.ok) return mapErr(c, result);
   return c.json({ success: true, data: result.value }, 201);
-});
+}));
 
 app.get('/items/:id/movements', async (c: any) => {
   const auth = c.get('auth');

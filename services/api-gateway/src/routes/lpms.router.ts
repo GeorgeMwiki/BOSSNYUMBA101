@@ -28,6 +28,7 @@ import {
   LpmsParseError,
 } from '@bossnyumba/lpms-connector';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const ImportSchema = z.object({
   format: z.enum(['csv', 'json', 'xml']),
   content: z.string().min(1).max(50 * 1024 * 1024), // 50MB cap per upload
@@ -39,7 +40,7 @@ const ImportSchema = z.object({
 const app = new Hono();
 app.use('*', authMiddleware);
 
-app.post('/import', zValidator('json', ImportSchema), async (c: any) => {
+app.post('/import', zValidator('json', ImportSchema), withSecurityEvents({ action: 'lpm.create', resource: 'lpm', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
 
@@ -109,7 +110,7 @@ app.post('/import', zValidator('json', ImportSchema), async (c: any) => {
       e instanceof LpmsParseError ? 400 : 500
     );
   }
-});
+}));
 
 app.get('/preview-schema', (c: any) => {
   return c.json({

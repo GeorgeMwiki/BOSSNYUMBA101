@@ -13,6 +13,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { GeocoderChain } from '../geocoder/chain.js';
 
+import { withSecurityEventsFastify } from '@bossnyumba/observability';
 export interface GeocodeRouteDeps {
   readonly chain: GeocoderChain;
 }
@@ -39,7 +40,7 @@ export async function registerGeocodeRoutes(
   app: FastifyInstance,
   deps: GeocodeRouteDeps,
 ): Promise<void> {
-  app.post('/geocode', async (request, reply) => {
+  app.post('/geocode', withSecurityEventsFastify({ action: 'geocode.create', resource: 'geocode', severity: 'info' }, async (request, reply) => {
     const body = (request.body ?? {}) as GeocodeBody;
     if (typeof body.address !== 'string' || body.address.trim().length === 0) {
       reply.code(400);
@@ -64,5 +65,5 @@ export async function registerGeocodeRoutes(
       formattedAddress: result.formattedAddress,
       confidence: result.confidence,
     };
-  });
+  }));
 }

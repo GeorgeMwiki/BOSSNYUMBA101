@@ -13,7 +13,7 @@
  * Env vars consumed (real adapter):
  *   - `WHAT3WORDS_API_KEY` — required; absence keeps the stub active.
  */
-import type { GeocodeQuery, GeocodeResult } from '../_spatial-engine-shim.js';
+import type { GeocodeQuery, GeocodeResult } from '@bossnyumba/spatial-engine';
 
 export interface What3WordsGeocoder {
   readonly provider: 'what3words';

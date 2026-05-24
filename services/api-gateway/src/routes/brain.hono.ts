@@ -40,6 +40,7 @@ import {
 import { getBrainExtraSkills } from '../composition/brain-extensions';
 import { scrubMessage } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ---------------------------------------------------------------------------
 // Lazy boot — fail fast on missing env, but defer until first request so the
 // gateway can boot for unrelated routes (health, auth-only) when Brain env
@@ -214,7 +215,7 @@ brainRouter.get('/personae', async (c) => {
 
 // ----- Turn (chat) ------------------------------------------------------
 
-brainRouter.post('/turn', async (c) => {
+brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource: 'brain', severity: 'info' }, async (c) => {
   let body;
   try {
     body = await c.req.json();
@@ -313,7 +314,7 @@ brainRouter.post('/turn', async (c) => {
   } catch (err) {
     return handleError(c, err);
   }
-});
+}));
 
 // ----- Threads ----------------------------------------------------------
 
@@ -353,7 +354,7 @@ brainRouter.get('/threads/:id', async (c) => {
 
 // ----- Migration --------------------------------------------------------
 
-brainRouter.post('/migrate/extract', async (c) => {
+brainRouter.post('/migrate/extract', withSecurityEvents({ action: 'brain.create', resource: 'brain', severity: 'info' }, async (c) => {
   try {
     await authenticate(c);
   } catch (err) {
@@ -370,9 +371,9 @@ brainRouter.post('/migrate/extract', async (c) => {
   const bundle = migrationExtract(parsed.data);
   const diff = migrationDiff({ bundle });
   return c.json({ bundle, diff });
-});
+}));
 
-brainRouter.post('/migrate/commit', async (c) => {
+brainRouter.post('/migrate/commit', withSecurityEvents({ action: 'brain.create', resource: 'brain', severity: 'info' }, async (c) => {
   let ctx;
   try {
     ctx = await authenticate(c);
@@ -415,6 +416,6 @@ brainRouter.post('/migrate/commit', async (c) => {
   } catch (err) {
     return handleError(c, err);
   }
-});
+}));
 
 export { brainRouter };

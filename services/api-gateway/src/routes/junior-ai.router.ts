@@ -24,6 +24,7 @@ import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const AUTONOMY_DOMAIN_VALUES = [
   'finance',
   'leasing',
@@ -119,7 +120,7 @@ function violationEnvelope(c: any, err: any) {
 app.post(
   '/provision',
   zValidator('json', ProvisionBodySchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'junior-ai.create', resource: 'junior-ai', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth');
     const body = c.req.valid('json');
     const service = svc(c);
@@ -147,7 +148,7 @@ app.post(
         fallback: 'Junior-AI provision failed',
       });
     }
-  },
+  }),
 );
 
 app.get('/mine', async (c: any) => {
@@ -192,7 +193,7 @@ app.get('/:id', async (c: any) => {
 app.patch(
   '/:id/scope',
   zValidator('json', ScopePatchSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'junior-ai.update', resource: 'junior-ai', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth');
     const id = c.req.param('id');
     const body = c.req.valid('json');
@@ -220,13 +221,13 @@ app.patch(
         fallback: 'Junior-AI scope adjust failed',
       });
     }
-  },
+  }),
 );
 
 app.post(
   '/:id/suspend',
   zValidator('json', SuspendBodySchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'junior-ai.create', resource: 'junior-ai', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth');
     const id = c.req.param('id');
     const body = c.req.valid('json');
@@ -242,10 +243,10 @@ app.post(
         fallback: 'Junior-AI suspend failed',
       });
     }
-  },
+  }),
 );
 
-app.post('/:id/revoke', async (c: any) => {
+app.post('/:id/revoke', withSecurityEvents({ action: 'junior-ai.create', resource: 'junior-ai', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const id = c.req.param('id');
   const service = svc(c);
@@ -260,6 +261,6 @@ app.post('/:id/revoke', async (c: any) => {
       fallback: 'Junior-AI revoke failed',
     });
   }
-});
+}));
 
 export default app;

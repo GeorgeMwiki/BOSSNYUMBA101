@@ -19,6 +19,7 @@ import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
 import { MonthlyClose } from '@bossnyumba/ai-copilot/orchestrators';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const {
   MONTHLY_CLOSE_STEPS,
   MonthlyCloseAlreadyCompletedError,
@@ -66,7 +67,7 @@ function orch(c: any) {
   return services.monthlyClose?.orchestrator ?? null;
 }
 
-app.post('/trigger', zValidator('json', TriggerSchema), async (c: any) => {
+app.post('/trigger', zValidator('json', TriggerSchema), withSecurityEvents({ action: 'monthly-close.create', resource: 'monthly-close', severity: 'info' }, async (c: any) => {
   const svc = orch(c);
   if (!svc) return notConfigured(c);
   const auth = c.get('auth');
@@ -100,7 +101,7 @@ app.post('/trigger', zValidator('json', TriggerSchema), async (c: any) => {
       fallback: 'Monthly-close trigger failed.',
     });
   }
-});
+}));
 
 app.get('/', async (c: any) => {
   const svc = orch(c);
@@ -154,7 +155,7 @@ app.get('/:runId', async (c: any) => {
 app.post(
   '/:runId/approve-step',
   zValidator('json', ApproveStepSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'monthly-close.create', resource: 'monthly-close', severity: 'info' }, async (c: any) => {
     const svc = orch(c);
     if (!svc) return notConfigured(c);
     const auth = c.get('auth');
@@ -196,7 +197,7 @@ app.post(
         fallback: 'Monthly-close approve-step failed.',
       });
     }
-  },
+  }),
 );
 
 export default app;

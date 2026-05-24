@@ -7,6 +7,21 @@ export * from './anthropic.js';
 export * from './advisor.js';
 export * from './anthropic-client.js';
 
+// Production OpenAI + DeepSeek providers — wired by the multi-LLM
+// router AND by the multi-LLM synthesizer at the composition root.
+export {
+  OpenAIChatProvider,
+  OPENAI_MODELS,
+  type OpenAIChatProviderConfig,
+  type OpenAIModelId,
+} from './openai.js';
+export {
+  DeepSeekProvider,
+  DEEPSEEK_MODELS,
+  type DeepSeekProviderConfig,
+  type DeepSeekModelId,
+} from './deepseek.js';
+
 // Wave-26 Agent Z4 — public exports for the three previously-unwired AI
 // brain utilities so the api-gateway composition root can import them
 // without reaching into deep module paths.

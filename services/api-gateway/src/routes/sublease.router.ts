@@ -21,6 +21,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -76,7 +77,7 @@ app.get('/', async (c: any) => {
   });
 });
 
-app.post('/', zValidator('json', SubmitSchema), async (c: any) => {
+app.post('/', zValidator('json', SubmitSchema), withSecurityEvents({ action: 'sublease.create', resource: 'sublease', severity: 'notice' }, async (c: any) => {
   const service = c.get('subleaseService');
   if (!service) return notConfigured(c);
   try {
@@ -98,7 +99,7 @@ app.post('/', zValidator('json', SubmitSchema), async (c: any) => {
       fallback: 'Failed to submit sublease request',
     });
   }
-});
+}));
 
 app.get('/pending', async (c: any) => {
   const service = c.get('subleaseService');
@@ -164,7 +165,7 @@ app.get('/:id', async (c: any) => {
   }
 });
 
-app.post('/:id/review', zValidator('json', ReviewSchema), async (c: any) => {
+app.post('/:id/review', zValidator('json', ReviewSchema), withSecurityEvents({ action: 'sublease.create', resource: 'sublease', severity: 'notice' }, async (c: any) => {
   const service = c.get('subleaseService');
   if (!service) return notConfigured(c);
   try {
@@ -185,9 +186,9 @@ app.post('/:id/review', zValidator('json', ReviewSchema), async (c: any) => {
       fallback: 'Failed to review sublease request',
     });
   }
-});
+}));
 
-app.post('/:id/approve', zValidator('json', ApproveSchema), async (c: any) => {
+app.post('/:id/approve', zValidator('json', ApproveSchema), withSecurityEvents({ action: 'sublease.create', resource: 'sublease', severity: 'notice' }, async (c: any) => {
   const service = c.get('subleaseService');
   if (!service) return notConfigured(c);
   try {
@@ -208,9 +209,9 @@ app.post('/:id/approve', zValidator('json', ApproveSchema), async (c: any) => {
       fallback: 'Failed to approve sublease request',
     });
   }
-});
+}));
 
-app.post('/:id/revoke', zValidator('json', RevokeSchema), async (c: any) => {
+app.post('/:id/revoke', zValidator('json', RevokeSchema), withSecurityEvents({ action: 'sublease.create', resource: 'sublease', severity: 'notice' }, async (c: any) => {
   const service = c.get('subleaseService');
   if (!service) return notConfigured(c);
   try {
@@ -236,6 +237,6 @@ app.post('/:id/revoke', zValidator('json', RevokeSchema), async (c: any) => {
       fallback: 'Failed to revoke sublease request',
     });
   }
-});
+}));
 
 export default app;

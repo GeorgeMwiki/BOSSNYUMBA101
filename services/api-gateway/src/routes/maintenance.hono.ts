@@ -30,6 +30,7 @@ import {
 import { and, eq, desc } from 'drizzle-orm';
 import { maintenanceRequests } from '@bossnyumba/database';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 
 app.use('*', authMiddleware);
@@ -116,7 +117,7 @@ app.get('/requests/:id', async (c) => {
   return c.json({ success: true, data: row });
 });
 
-app.post('/requests', zValidator('json', CreateRequestSchema), async (c) => {
+app.post('/requests', zValidator('json', CreateRequestSchema), withSecurityEvents({ action: 'maintenance.create', resource: 'maintenance', severity: 'info' }, async (c) => {
   const { userId, tenantId } = auth(c);
   const input = c.req.valid('json');
   const id = uuid();
@@ -148,9 +149,9 @@ app.post('/requests', zValidator('json', CreateRequestSchema), async (c) => {
     })
     .returning();
   return c.json({ success: true, data: row }, 201);
-});
+}));
 
-app.patch('/requests/:id', zValidator('json', UpdateRequestSchema), async (c) => {
+app.patch('/requests/:id', zValidator('json', UpdateRequestSchema), withSecurityEvents({ action: 'maintenance.update', resource: 'maintenance', severity: 'info' }, async (c) => {
   const { userId, tenantId } = auth(c);
   const id = c.req.param('id');
   const input = c.req.valid('json');
@@ -163,7 +164,7 @@ app.patch('/requests/:id', zValidator('json', UpdateRequestSchema), async (c) =>
     .returning();
   if (!row) return c.json({ error: 'not_found' }, 404);
   return c.json({ success: true, data: row });
-});
+}));
 
 // ---------------------------------------------------------------------------
 // Dispatch events
@@ -176,7 +177,7 @@ const DispatchSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
-app.post('/requests/:id/dispatch', zValidator('json', DispatchSchema), async (c) => {
+app.post('/requests/:id/dispatch', zValidator('json', DispatchSchema), withSecurityEvents({ action: 'maintenance.create', resource: 'maintenance', severity: 'info' }, async (c) => {
   const { userId, tenantId } = auth(c);
   const requestId = c.req.param('id');
   const input = c.req.valid('json');
@@ -219,7 +220,7 @@ app.post('/requests/:id/dispatch', zValidator('json', DispatchSchema), async (c)
     metadata: {},
   });
   return c.json({ success: true, data: event }, 201);
-});
+}));
 
 app.get('/requests/:id/dispatch-events', async (c) => {
   const { tenantId } = auth(c);
@@ -271,7 +272,7 @@ const CompletionSchema = z.object({
   notes: z.string().max(2_000).optional(),
 });
 
-app.post('/requests/:id/complete', zValidator('json', CompletionSchema), async (c) => {
+app.post('/requests/:id/complete', zValidator('json', CompletionSchema), withSecurityEvents({ action: 'maintenance.create', resource: 'maintenance', severity: 'info' }, async (c) => {
   const { userId, tenantId } = auth(c);
   const requestId = c.req.param('id');
   const input = c.req.valid('json');
@@ -312,21 +313,21 @@ app.post('/requests/:id/complete', zValidator('json', CompletionSchema), async (
     );
 
   return c.json({ success: true, data: proof }, 201);
-});
+}));
 
 const VerifyProofSchema = z.object({ notes: z.string().max(2000).optional() });
 const RejectProofSchema = z.object({ reason: z.string().min(1).max(1000) });
 
-app.post('/completion-proofs/:id/verify', zValidator('json', VerifyProofSchema), async (c) => {
+app.post('/completion-proofs/:id/verify', zValidator('json', VerifyProofSchema), withSecurityEvents({ action: 'maintenance.create', resource: 'maintenance', severity: 'info' }, async (c) => {
   const { userId, tenantId } = auth(c);
   const id = c.req.param('id');
   const repo = new CompletionProofRepository(db(c));
   const row = await repo.verify(id, tenantId, userId);
   if (!row) return c.json({ error: 'not_found' }, 404);
   return c.json({ success: true, data: row });
-});
+}));
 
-app.post('/completion-proofs/:id/reject', zValidator('json', RejectProofSchema), async (c) => {
+app.post('/completion-proofs/:id/reject', zValidator('json', RejectProofSchema), withSecurityEvents({ action: 'maintenance.create', resource: 'maintenance', severity: 'info' }, async (c) => {
   const { tenantId } = auth(c);
   const id = c.req.param('id');
   const body = c.req.valid('json');
@@ -334,6 +335,6 @@ app.post('/completion-proofs/:id/reject', zValidator('json', RejectProofSchema),
   const row = await repo.reject(id, tenantId, body.reason);
   if (!row) return c.json({ error: 'not_found' }, 404);
   return c.json({ success: true, data: row });
-});
+}));
 
 export const maintenanceRouter = app;

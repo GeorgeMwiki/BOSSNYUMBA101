@@ -34,6 +34,7 @@ import {
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -118,7 +119,7 @@ app.get('/bundles/:id', async (c: any) => {
 // ---------------------------------------------------------------------------
 // POST /bundles — create a new scan bundle (draft state).
 // ---------------------------------------------------------------------------
-app.post('/bundles', zValidator('json', CreateBundleSchema), async (c: any) => {
+app.post('/bundles', zValidator('json', CreateBundleSchema), withSecurityEvents({ action: 'scan.create', resource: 'scan', severity: 'info' }, async (c: any) => {
   const services = c.get('services');
   const db = services?.db;
   if (!db) return notConfigured(c);
@@ -174,7 +175,7 @@ app.post('/bundles', zValidator('json', CreateBundleSchema), async (c: any) => {
       fallback: 'Create failed',
     });
   }
-});
+}));
 
 // ---------------------------------------------------------------------------
 // POST /bundles/:id/pages — upload one page to the bundle.
@@ -182,7 +183,7 @@ app.post('/bundles', zValidator('json', CreateBundleSchema), async (c: any) => {
 app.post(
   '/bundles/:id/pages',
   zValidator('json', UploadPageSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'scan.create', resource: 'scan', severity: 'info' }, async (c: any) => {
     const services = c.get('services');
     const db = services?.db;
     if (!db) return notConfigured(c);
@@ -272,13 +273,13 @@ app.post(
         fallback: 'Upload failed',
       });
     }
-  }
+  })
 );
 
 // ---------------------------------------------------------------------------
 // POST /bundles/:id/ocr — queue OCR for the bundle.
 // ---------------------------------------------------------------------------
-app.post('/bundles/:id/ocr', async (c: any) => {
+app.post('/bundles/:id/ocr', withSecurityEvents({ action: 'scan.create', resource: 'scan', severity: 'info' }, async (c: any) => {
   const services = c.get('services');
   const db = services?.db;
   if (!db) return notConfigured(c);
@@ -377,7 +378,7 @@ app.post('/bundles/:id/ocr', async (c: any) => {
       fallback: 'OCR queue failed',
     });
   }
-});
+}));
 
 // ---------------------------------------------------------------------------
 // POST /bundles/:id/submit — finalize + freeze the bundle.
@@ -385,7 +386,7 @@ app.post('/bundles/:id/ocr', async (c: any) => {
 app.post(
   '/bundles/:id/submit',
   zValidator('json', SubmitBundleSchema.optional()),
-  async (c: any) => {
+  withSecurityEvents({ action: 'scan.create', resource: 'scan', severity: 'info' }, async (c: any) => {
     const services = c.get('services');
     const db = services?.db;
     if (!db) return notConfigured(c);
@@ -500,7 +501,7 @@ app.post(
         fallback: 'Submit failed',
       });
     }
-  }
+  })
 );
 
 export default app;

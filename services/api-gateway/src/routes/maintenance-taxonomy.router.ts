@@ -16,6 +16,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const SeveritySchema = z.enum(['low', 'medium', 'high', 'critical', 'emergency']);
 
 const CreateCategorySchema = z.object({
@@ -71,7 +72,7 @@ app.get('/categories', async (c: any) => {
   return c.json({ success: true, data: items });
 });
 
-app.post('/categories', zValidator('json', CreateCategorySchema), async (c: any) => {
+app.post('/categories', zValidator('json', CreateCategorySchema), withSecurityEvents({ action: 'maintenance-taxonomy.create', resource: 'maintenance-taxonomy', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const s = svc(c);
@@ -86,7 +87,7 @@ app.post('/categories', zValidator('json', CreateCategorySchema), async (c: any)
       err?.code === 'DUPLICATE' ? 409 : 400
     );
   }
-});
+}));
 
 app.get('/problems', async (c: any) => {
   const auth = c.get('auth');
@@ -109,7 +110,7 @@ app.get('/problems/by-category/:categoryId', async (c: any) => {
   return c.json({ success: true, data: items });
 });
 
-app.post('/problems', zValidator('json', CreateProblemSchema), async (c: any) => {
+app.post('/problems', zValidator('json', CreateProblemSchema), withSecurityEvents({ action: 'maintenance-taxonomy.create', resource: 'maintenance-taxonomy', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const s = svc(c);
@@ -124,7 +125,7 @@ app.post('/problems', zValidator('json', CreateProblemSchema), async (c: any) =>
       err?.code === 'DUPLICATE' ? 409 : 400
     );
   }
-});
+}));
 
 export const maintenanceTaxonomyRouter = app;
 export default app;

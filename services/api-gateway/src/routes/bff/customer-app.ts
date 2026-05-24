@@ -36,6 +36,7 @@ import { safeInternalError } from '../../utils/safe-error';
 import { logger } from '../../utils/logger';
 import { mapWorkOrderRow } from '../db-mappers';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
@@ -217,7 +218,7 @@ const SubleaseCreateSchema = z.object({
   splitPercent: z.record(z.string(), z.number()).optional(),
 });
 
-app.post('/sublease', zValidator('json', SubleaseCreateSchema), async (c) => {
+app.post('/sublease', zValidator('json', SubleaseCreateSchema), withSecurityEvents({ action: 'customer-app.create', resource: 'customer-app', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const services = c.get('services');
   const subleaseService = services?.subleaseService ?? services?.sublease?.service;
@@ -256,7 +257,7 @@ app.post('/sublease', zValidator('json', SubleaseCreateSchema), async (c) => {
       fallback: 'Failed to submit sublease request',
     });
   }
-});
+}));
 
 app.get('/sublease', async (c) => {
   const auth = c.get('auth');
@@ -383,7 +384,7 @@ const NegotiateStartSchema = z.object({
 app.post(
   '/marketplace/:unitId/negotiate',
   zValidator('json', NegotiateStartSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'customer-app.create', resource: 'customer-app', severity: 'info' }, async (c) => {
     const auth = c.get('auth');
     const services = c.get('services') ?? {};
     const negSvc = services.negotiation;
@@ -436,7 +437,7 @@ app.post(
         fallback: 'Failed to start negotiation',
       });
     }
-  },
+  }),
 );
 
 app.get('/marketplace/:unitId/negotiations', async (c) => {

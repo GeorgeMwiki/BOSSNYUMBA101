@@ -18,6 +18,7 @@ import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const UpdatePolicySchema = z
   .object({
     autonomousModeEnabled: z.boolean().optional(),
@@ -76,7 +77,7 @@ app.get('/policy', async (c: any) => {
   }
 });
 
-app.put('/policy', zValidator('json', UpdatePolicySchema), async (c: any) => {
+app.put('/policy', zValidator('json', UpdatePolicySchema), withSecurityEvents({ action: 'autonomy.update', resource: 'autonomy', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const service = svc(c);
@@ -107,9 +108,9 @@ app.put('/policy', zValidator('json', UpdatePolicySchema), async (c: any) => {
       fallback: 'Autonomy policy update failed',
     });
   }
-});
+}));
 
-app.post('/policy/enable', async (c: any) => {
+app.post('/policy/enable', withSecurityEvents({ action: 'autonomy.create', resource: 'autonomy', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const service = svc(c);
   if (!service) return notImplemented(c);
@@ -127,9 +128,9 @@ app.post('/policy/enable', async (c: any) => {
       fallback: 'Autonomy enable failed',
     });
   }
-});
+}));
 
-app.post('/policy/disable', async (c: any) => {
+app.post('/policy/disable', withSecurityEvents({ action: 'autonomy.create', resource: 'autonomy', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const service = svc(c);
   if (!service) return notImplemented(c);
@@ -147,6 +148,6 @@ app.post('/policy/disable', async (c: any) => {
       fallback: 'Autonomy disable failed',
     });
   }
-});
+}));
 
 export default app;

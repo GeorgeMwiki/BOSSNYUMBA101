@@ -1,26 +1,26 @@
 /**
- * @bossnyumba/spatial-engine — public entrypoint.
+ * @bossnyumba/spatial-engine — public entrypoint (pure-logic surface).
  *
  * Muzima spatial parcel engine. See
  * `.audit/litfin-sota-2026-05-23/17-spatial-parcel-engine.md` for the
  * full spec, and the per-module file headers for the rationale.
  *
- * The React components live under `./components/*` and re-export
- * here for ergonomics. They are *client-only* — MapLibre touches the
- * DOM and MUST NOT be rendered on the server. Next.js consumers should
- * import from `@bossnyumba/spatial-engine/react` inside a `'use client'`
+ * **Root entrypoint = pure logic only** (types, color-coding, geometry,
+ * snap-to-building). Node consumers (parcel-service, brain workers,
+ * agents) import from here without a JSX toolchain.
+ *
+ * React components live under `./components/*` and are exported via
+ * the SEPARATE `@bossnyumba/spatial-engine/react` subpath (see
+ * `package.json:exports."./react"`). Next.js consumers should import
+ * from `@bossnyumba/spatial-engine/react` inside a `'use client'`
  * file or with `dynamic(() => import(...), { ssr: false })`.
+ *
+ * 2026-05-24: split out the React re-exports so the root entrypoint
+ * type-checks under non-JSX TS configs (closes the parcel-service
+ * `_spatial-engine-shim` workaround).
  */
 
 export * from './types.js';
 export * from './color-coding.js';
 export * from './geometry.js';
 export * from './snap-to-building.js';
-
-// React shell — re-export so callers can `import { ParcelMap } from
-// '@bossnyumba/spatial-engine'`.
-export { ParcelMap } from './components/ParcelMap.js';
-export type { ParcelMapProps, ParcelClickEvent } from './components/ParcelMap.js';
-
-export { ElementInspector } from './components/ElementInspector.js';
-export type { ElementInspectorProps } from './components/ElementInspector.js';

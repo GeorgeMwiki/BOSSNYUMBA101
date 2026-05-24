@@ -11,7 +11,7 @@ import {
   snapNearest,
 } from '../snap/nearest-building.js';
 import { buildApp } from '../index.js';
-import type { ReferenceBuilding } from '../_spatial-engine-shim.js';
+import type { ReferenceBuilding } from '@bossnyumba/spatial-engine';
 
 function makeBuilding(
   id: string,

@@ -26,6 +26,7 @@ import { documentRenderJobs } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -142,7 +143,7 @@ app.get('/jobs/:id', async (c: any) => {
  * of docx/pdf/typst deps. When the worker is offline the row still
  * persists and a follow-up pass will drain the queue.
  */
-app.post('/jobs', zValidator('json', EnqueueSchema), async (c: any) => {
+app.post('/jobs', zValidator('json', EnqueueSchema), withSecurityEvents({ action: 'document-render.create', resource: 'document-render', severity: 'info' }, async (c: any) => {
   const services = c.get('services');
   const db = services?.db;
   if (!db) return notConfigured(c);
@@ -227,6 +228,6 @@ app.post('/jobs', zValidator('json', EnqueueSchema), async (c: any) => {
       fallback: 'Enqueue failed',
     });
   }
-});
+}));
 
 export default app;

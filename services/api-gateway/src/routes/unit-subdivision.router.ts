@@ -27,6 +27,7 @@ import { units } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -111,7 +112,7 @@ app.get('/', async (c) => {
 // Write path is gated on the four-eye approval workflow (sovereign
 // approvals). Surface returns 501 so callers see "not implemented" and
 // not "service degraded".
-app.post('/', (c) => {
+app.post('/', withSecurityEvents({ action: 'unit-subdivision.create', resource: 'unit-subdivision', severity: 'info' }, (c) => {
   return c.json(
     {
       success: false,
@@ -123,7 +124,7 @@ app.post('/', (c) => {
     },
     501,
   );
-});
+}));
 
 export const unitSubdivisionRouter = app;
 export default unitSubdivisionRouter;

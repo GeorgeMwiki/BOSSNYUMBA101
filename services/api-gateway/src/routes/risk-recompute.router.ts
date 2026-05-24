@@ -52,6 +52,7 @@ import type {
 } from '../composition/background-wiring';
 import { safeInternalError } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ---------------------------------------------------------------------------
 // Schemas
 // ---------------------------------------------------------------------------
@@ -158,7 +159,7 @@ export function createRiskRecomputeRouter(
       UserRole.ADMIN,
     ),
     zValidator('json', TriggerSchema),
-    async (c: any) => {
+    withSecurityEvents({ action: 'risk-recompute.create', resource: 'risk-recompute', severity: 'info' }, async (c: any) => {
       const dispatcher = deps.getDispatcher();
       const jobs = deps.getJobs();
       if (!dispatcher || !jobs) return unavailable(c);
@@ -287,7 +288,7 @@ export function createRiskRecomputeRouter(
         },
         202,
       );
-    },
+    }),
   );
 
   // --- GET /status/:jobId --------------------------------------------------

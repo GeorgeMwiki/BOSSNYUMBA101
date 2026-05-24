@@ -19,6 +19,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const idParam = z.object({
   leaseId: z.string().min(1),
 });
@@ -79,7 +80,7 @@ renewalsRouter.get('/', async (c) => {
 renewalsRouter.post(
   '/:leaseId/window',
   zValidator('param', idParam),
-  async (c) => {
+  withSecurityEvents({ action: 'renewal.create', resource: 'renewal', severity: 'info' }, async (c) => {
     const { leaseId } = c.req.valid('param');
     const tenantId = c.get('tenantId');
     const userId = c.get('userId');
@@ -93,14 +94,14 @@ renewalsRouter.post(
     return result.ok
       ? c.json({ success: true, data: result.value })
       : c.json({ success: false, error: result.error }, 400);
-  },
+  }),
 );
 
 renewalsRouter.post(
   '/:leaseId/propose',
   zValidator('param', idParam),
   zValidator('json', ProposeSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'renewal.create', resource: 'renewal', severity: 'info' }, async (c) => {
     const { leaseId } = c.req.valid('param');
     const body = c.req.valid('json');
     const tenantId = c.get('tenantId');
@@ -115,14 +116,14 @@ renewalsRouter.post(
     return result.ok
       ? c.json({ success: true, data: result.value })
       : c.json({ success: false, error: result.error }, 400);
-  },
+  }),
 );
 
 renewalsRouter.post(
   '/:leaseId/accept',
   zValidator('param', idParam),
   zValidator('json', AcceptSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'renewal.create', resource: 'renewal', severity: 'info' }, async (c) => {
     const { leaseId } = c.req.valid('param');
     const body = c.req.valid('json');
     const tenantId = c.get('tenantId');
@@ -137,14 +138,14 @@ renewalsRouter.post(
     return result.ok
       ? c.json({ success: true, data: result.value })
       : c.json({ success: false, error: result.error }, 400);
-  },
+  }),
 );
 
 renewalsRouter.post(
   '/:leaseId/decline',
   zValidator('param', idParam),
   zValidator('json', DeclineSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'renewal.create', resource: 'renewal', severity: 'info' }, async (c) => {
     const { leaseId } = c.req.valid('param');
     const body = c.req.valid('json');
     const tenantId = c.get('tenantId');
@@ -159,14 +160,14 @@ renewalsRouter.post(
     return result.ok
       ? c.json({ success: true, data: result.value })
       : c.json({ success: false, error: result.error }, 400);
-  },
+  }),
 );
 
 renewalsRouter.post(
   '/:leaseId/terminate',
   zValidator('param', idParam),
   zValidator('json', TerminateSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'renewal.create', resource: 'renewal', severity: 'info' }, async (c) => {
     const { leaseId } = c.req.valid('param');
     const body = c.req.valid('json');
     const tenantId = c.get('tenantId');
@@ -185,7 +186,7 @@ renewalsRouter.post(
     return result.ok
       ? c.json({ success: true, data: result.value })
       : c.json({ success: false, error: result.error }, 400);
-  },
+  }),
 );
 
 export default renewalsRouter;

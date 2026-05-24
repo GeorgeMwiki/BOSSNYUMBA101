@@ -39,6 +39,7 @@ import bcrypt from 'bcrypt';
 import { randomUUID, randomBytes } from 'crypto';
 import { runWelcomeCoordinator } from '../composition/onboarding-welcome-md';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ---------------------------------------------------------------------------
 // Crypto-grade ID generation (replaces former Math.random() usage).
 //
@@ -288,7 +289,7 @@ const app = new Hono();
 //     a one-shot `verificationToken` the FE can wire to the confirm
 //     screen for E2E testability (in production this lands via an
 //     email link, NOT in the HTTP response).
-app.post('/signup', zValidator('json', SignupSchema), async (c) => {
+app.post('/signup', zValidator('json', SignupSchema), withSecurityEvents({ action: 'onboarding.create', resource: 'onboarding', severity: 'info' }, async (c) => {
   const body = c.req.valid('json');
   const normalizedEmail = body.email.trim().toLowerCase();
 
@@ -370,7 +371,7 @@ app.post('/signup', zValidator('json', SignupSchema), async (c) => {
     },
     201,
   );
-});
+}));
 
 // 1b. POST /verify-email ----------------------------------------------------
 //
@@ -382,7 +383,7 @@ const VerifyEmailSchema = z.object({
   verificationToken: z.string().min(16).max(256),
 });
 
-app.post('/verify-email', zValidator('json', VerifyEmailSchema), async (c) => {
+app.post('/verify-email', zValidator('json', VerifyEmailSchema), withSecurityEvents({ action: 'onboarding.create', resource: 'onboarding', severity: 'info' }, async (c) => {
   const body = c.req.valid('json');
   const pending = pendingEmailVerifications.get(body.verificationToken);
   if (!pending) {
@@ -455,13 +456,13 @@ app.post('/verify-email', zValidator('json', VerifyEmailSchema), async (c) => {
       steps: updated.steps,
     },
   });
-});
+}));
 
 // 2. POST /first-property ---------------------------------------------------
 app.post(
   '/first-property',
   zValidator('json', FirstPropertySchema),
-  async (c) => {
+  withSecurityEvents({ action: 'onboarding.create', resource: 'onboarding', severity: 'info' }, async (c) => {
     const session = resolveSession(c);
     if (!session) {
       return c.json(
@@ -497,14 +498,14 @@ app.post(
         steps: nextSteps,
       },
     });
-  },
+  }),
 );
 
 // 3. POST /first-tenant-import ---------------------------------------------
 app.post(
   '/first-tenant-import',
   zValidator('json', FirstTenantImportSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'onboarding.create', resource: 'onboarding', severity: 'info' }, async (c) => {
     const session = resolveSession(c);
     if (!session) {
       return c.json(
@@ -540,7 +541,7 @@ app.post(
         steps: nextSteps,
       },
     });
-  },
+  }),
 );
 
 // 4. POST /first-md-chat ----------------------------------------------------
@@ -548,7 +549,7 @@ app.post(
 //   welcome.coordinator sub-MD which greets the owner, surveys intent,
 //   and suggests 3 starter Skills. This is the owner's first "wow"
 //   moment — keep latency tight (<20s in E2E budget).
-app.post('/first-md-chat', zValidator('json', FirstMdChatSchema), async (c) => {
+app.post('/first-md-chat', zValidator('json', FirstMdChatSchema), withSecurityEvents({ action: 'onboarding.create', resource: 'onboarding', severity: 'info' }, async (c) => {
   const session = resolveSession(c);
   if (!session) {
     return c.json(
@@ -597,7 +598,7 @@ app.post('/first-md-chat', zValidator('json', FirstMdChatSchema), async (c) => {
       steps: nextSteps,
     },
   });
-});
+}));
 
 // 5. GET /checklist ---------------------------------------------------------
 app.get('/checklist', async (c) => {
@@ -637,14 +638,14 @@ app.get('/checklist', async (c) => {
 // Guarded by NODE_ENV so production never exposes it. This keeps the
 // in-memory pilot store testable without exposing a private API.
 if (process.env.NODE_ENV !== 'production') {
-  app.post('/__test__/reset', (c) => {
+  app.post('/__test__/reset', withSecurityEvents({ action: 'onboarding.create', resource: 'onboarding', severity: 'info' }, (c) => {
     sessions.clear();
     sessionsByToken.clear();
     pendingEmailVerifications.clear();
     credentials.emailToTenantId.clear();
     credentials.tenantIdToCredential.clear();
     return c.json({ success: true });
-  });
+  }));
 }
 
 export const onboardingFlowRouter = app;

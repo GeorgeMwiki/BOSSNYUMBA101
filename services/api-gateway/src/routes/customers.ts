@@ -8,6 +8,7 @@ import { UserRole } from '../types/user-role';
 import { mapCustomerRow, mapUnitRow, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // Wave 19 Agent H+I: customer CRUD on arbitrary customers is a landlord
 // operation. Self-service endpoints (`/me`, `/me/PUT`) use JWT `userId`
 // and remain open for residents to edit their own profile.
@@ -105,7 +106,7 @@ app.get('/me', async (c) => {
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
 });
 
-app.put('/me', zValidator('json', CustomerUpdateSchema), async (c) => {
+app.put('/me', zValidator('json', CustomerUpdateSchema), withSecurityEvents({ action: 'customer.update', resource: 'customer', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const existing = await repos.customers.findById(auth.userId, auth.tenantId);
@@ -129,7 +130,7 @@ app.put('/me', zValidator('json', CustomerUpdateSchema), async (c) => {
     auth.userId
   );
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
-});
+}));
 
 app.get('/', staffOnly, async (c) => {
   const auth = c.get('auth');
@@ -159,7 +160,7 @@ app.get('/:id', staffOnly, async (c) => {
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
 });
 
-app.post('/', staffOnly, zValidator('json', CustomerCreateSchema), async (c) => {
+app.post('/', staffOnly, zValidator('json', CustomerCreateSchema), withSecurityEvents({ action: 'customer.create', resource: 'customer', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -180,9 +181,9 @@ app.post('/', staffOnly, zValidator('json', CustomerCreateSchema), async (c) => 
     auth.userId
   );
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) }, 201);
-});
+}));
 
-app.put('/:id', staffOnly, zValidator('json', CustomerUpdateSchema), async (c) => {
+app.put('/:id', staffOnly, zValidator('json', CustomerUpdateSchema), withSecurityEvents({ action: 'customer.update', resource: 'customer', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -205,14 +206,14 @@ app.put('/:id', staffOnly, zValidator('json', CustomerUpdateSchema), async (c) =
     auth.userId
   );
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
-});
+}));
 
-app.delete('/:id', staffOnly, async (c) => {
+app.delete('/:id', staffOnly, withSecurityEvents({ action: 'customer.delete', resource: 'customer', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
   await repos.customers.delete(id, auth.tenantId, auth.userId);
   return c.json({ success: true, data: { message: 'Customer deleted' } });
-});
+}));
 
 export const customersRouter = app;

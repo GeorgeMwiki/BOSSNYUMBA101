@@ -18,6 +18,7 @@ import { sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // Drizzle schema for `conversations` drifts from the physical table
 // (schema has `customer_id`, `title`, `metadata`, `last_message_at`; DB
 // has `entity_type`, `entity_id`, `subject`, `created_by`). Using raw
@@ -169,8 +170,8 @@ app.get('/conversations/:id/messages', async (c) => {
   }
 });
 
-app.post('/conversations', (c) => notImplemented(c, 'Creating conversations'));
-app.post('/conversations/:id/messages', (c) => notImplemented(c, 'Sending messages'));
-app.put('/conversations/:id/read', (c) => notImplemented(c, 'Marking as read'));
+app.post('/conversations', withSecurityEvents({ action: 'messaging.create', resource: 'messaging', severity: 'info' }, (c) => notImplemented(c, 'Creating conversations')));
+app.post('/conversations/:id/messages', withSecurityEvents({ action: 'messaging.create', resource: 'messaging', severity: 'info' }, (c) => notImplemented(c, 'Sending messages')));
+app.put('/conversations/:id/read', withSecurityEvents({ action: 'messaging.update', resource: 'messaging', severity: 'info' }, (c) => notImplemented(c, 'Marking as read')));
 
 export const messagingRouter = app;

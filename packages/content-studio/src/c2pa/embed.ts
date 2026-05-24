@@ -121,8 +121,10 @@ let cachedC2paNode: C2paNodeLike | null | undefined;
 async function loadC2paNode(): Promise<C2paNodeLike | null> {
   if (cachedC2paNode !== undefined) return cachedC2paNode;
   try {
-    // @ts-expect-error - optional peer dep, may not be installed
-    const mod = (await import('c2pa-node')) as C2paNodeLike;
+    // c2pa-node is installed (package.json deps). When absent in a
+    // consumer with peerDependenciesMeta.optional=true, the dynamic
+    // import throws and we fall through to the null branch below.
+    const mod = (await import('c2pa-node')) as unknown as C2paNodeLike;
     cachedC2paNode = mod ?? null;
     return cachedC2paNode;
   } catch {

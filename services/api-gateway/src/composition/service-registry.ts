@@ -232,6 +232,10 @@ import {
   createBrainKernelWiring,
   type BrainKernelWiring as BrainKernelWiringSlot,
 } from './brain-kernel-wiring.js';
+import {
+  createMultiLLMSynthesizerWiring,
+  type MultiLLMSynthesizerWiring,
+} from './multi-llm-synthesizer-wiring.js';
 // ProdFix-1 wires 4 + 5 — NIDA + e-Ardhi adapters + lazy Temporal
 // dispatchers + HQ tool registry composition. Encapsulated so the
 // service-registry stays thin.
@@ -1773,11 +1777,25 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
       // routing service so the kernel's four-eye gate consults real
       // per-action policies and sensor adapters can later record per-
       // call telemetry to `sensor_call_log`.
+      //
+      // Multi-LLM synthesizer wiring — null when fewer than 2
+      // vendors are configured (Anthropic + at least one of OpenAI
+      // / DeepSeek). When non-null, threads the port into the kernel
+      // so `req.requireSynthesis === true` turns route through the
+      // mixture-of-agents fan-out + Claude-Opus synthesis pass.
+      const synthesizerWiring: MultiLLMSynthesizerWiring | null =
+        createMultiLLMSynthesizerWiring({
+          logger: {
+            info: (obj, msg) => console.info('synth-wiring:', msg, obj),
+            warn: (obj, msg) => console.warn('synth-wiring:', msg, obj),
+          },
+        });
       const brainKernel = createBrainKernelWiring({
         buildBudgetGuardedAnthropicClient,
         approvalPolicyResolver: createApprovalPolicyService(db),
         sensorRoutingService: createSensorRoutingService(db),
         hqToolRegistry: hqPortBindings.hqToolRegistry,
+        synthesizer: synthesizerWiring?.port ?? null,
         // Phase F.3 — production-grade orchestrator hook chain. The
         // 9-hook PreToolUse / PostToolUse / Stop chain binds to real
         // Drizzle / `scrubPii` / approval-gate / sovereign-ledger

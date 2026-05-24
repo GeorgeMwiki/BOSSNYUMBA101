@@ -22,7 +22,7 @@
  *   - `WHAT3WORDS_API_KEY` — reserved for the (still-stubbed) what3words
  *     adapter once a real impl ships.
  */
-import type { GeocodeQuery, GeocodeResult } from '../_spatial-engine-shim.js';
+import type { GeocodeQuery, GeocodeResult } from '@bossnyumba/spatial-engine';
 import type { GoogleGeocoder } from './google.js';
 import { createGoogleGeocoder, createGoogleGeocoderStub } from './google.js';
 import type { PlusCodesGeocoder } from './plus-codes.js';

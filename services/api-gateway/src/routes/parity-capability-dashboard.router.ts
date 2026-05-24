@@ -30,6 +30,7 @@ import { customRateLimit } from '../middleware/rate-limiter';
 import { UserRole } from '../types/user-role';
 import { safeInternalError } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 type AnyCtx = any;
 
 // ─────────────────────────────────────────────────────────────────────
@@ -251,7 +252,7 @@ parityCapabilityDashboardRouter.post(
   // Override the router-level role gate — re-judge is platform-admin only.
   requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN),
   rejudgeRateLimit,
-  async (c: AnyCtx) => {
+  withSecurityEvents({ action: 'parity-capability-dashboard.create', resource: 'parity-capability-dashboard', severity: 'warn' }, async (c: AnyCtx) => {
     const services = getServices(c);
     const dashboard = services.parityCapabilityDashboard;
     if (!dashboard?.rejudge) {
@@ -304,7 +305,7 @@ parityCapabilityDashboardRouter.post(
     } catch (e) {
       return internalError(c, e);
     }
-  },
+  }),
 );
 
 export default parityCapabilityDashboardRouter;

@@ -404,3 +404,30 @@ export * from './owner-skills.schema.js';
 // (`.audit/litfin-sota-2026-05-23/12-dynamic-per-user-ui.md`).
 // JSONB layout blob + composite uniqueness on (tenant, persona, user).
 export * from './portal-layouts.schema.js';
+
+// WORM audit log (migration 0165) — append-only hash-chained audit
+// substrate for every document leaving `@bossnyumba/document-studio`.
+// Persistent backing for the `WormAuditStore` port in
+// `packages/document-studio/src/signing/worm-audit.ts`.
+// SOC 2 / GDPR Art. 30 audit trail for personal-data exports.
+export * from './worm-audit-log.schema.js';
+
+// Reflexion lessons (migration 0166) — per-(tenant, task_tag) bucketed
+// teaching material distilled from CoT traces. Persistent backing for
+// the `LessonStore` port in `packages/ai-copilot/src/reflexion/types.ts`.
+// Render order: recency_score DESC, created_at DESC.
+export * from './lesson-store.schema.js';
+
+// AOP registry (migration 0167) — versioned, append-only catalogue of
+// Agent Operating Procedures. Three sibling tables: aop_specs,
+// aop_regression_sets, aop_active_versions. Persistent backing for
+// the `AOPRegistryStore` port in
+// `packages/central-intelligence/src/agent/aops/aop-registry.ts`.
+export * from './aop-registry.schema.js';
+
+// A2A v1.0 task store (migration 0168) — persistent backing for the
+// `TaskStore` port in `packages/agent-platform/src/a2a/task-lifecycle.ts`.
+// Status transitions: submitted -> working -> { completed | failed | canceled }.
+// Adds mandatory tenant_id on the adapter side so a compromised session_id
+// can't be replayed across tenants (in-memory port is single-tenant).
+export * from './a2a-tasks.schema.js';

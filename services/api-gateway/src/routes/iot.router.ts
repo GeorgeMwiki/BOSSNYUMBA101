@@ -18,6 +18,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const SensorKindSchema = z.enum([
   'water_meter',
   'electricity_meter',
@@ -86,7 +87,7 @@ function notImplemented(c: any) {
   );
 }
 
-app.post('/sensors', zValidator('json', RegisterSensorSchema), async (c: any) => {
+app.post('/sensors', zValidator('json', RegisterSensorSchema), withSecurityEvents({ action: 'iot.create', resource: 'iot', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const s = svc(c);
@@ -102,7 +103,7 @@ app.post('/sensors', zValidator('json', RegisterSensorSchema), async (c: any) =>
       status
     );
   }
-});
+}));
 
 app.get('/sensors', async (c: any) => {
   const auth = c.get('auth');
@@ -139,7 +140,7 @@ app.get('/sensors/:id', async (c: any) => {
   return c.json({ success: true, data: sensor });
 });
 
-app.post('/sensors/:id/observations', zValidator('json', ObservationSchema), async (c: any) => {
+app.post('/sensors/:id/observations', zValidator('json', ObservationSchema), withSecurityEvents({ action: 'iot.create', resource: 'iot', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const s = svc(c);
@@ -168,7 +169,7 @@ app.post('/sensors/:id/observations', zValidator('json', ObservationSchema), asy
       status
     );
   }
-});
+}));
 
 app.get('/sensors/:id/observations', async (c: any) => {
   const auth = c.get('auth');
@@ -198,7 +199,7 @@ app.get('/anomalies', async (c: any) => {
   return c.json({ success: true, data: items });
 });
 
-app.post('/anomalies/:id/acknowledge', zValidator('json', AckSchema), async (c: any) => {
+app.post('/anomalies/:id/acknowledge', zValidator('json', AckSchema), withSecurityEvents({ action: 'iot.create', resource: 'iot', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const s = svc(c);
@@ -213,9 +214,9 @@ app.post('/anomalies/:id/acknowledge', zValidator('json', AckSchema), async (c: 
       err?.code === 'NOT_FOUND' ? 404 : 400
     );
   }
-});
+}));
 
-app.post('/anomalies/:id/resolve', zValidator('json', ResolveSchema), async (c: any) => {
+app.post('/anomalies/:id/resolve', zValidator('json', ResolveSchema), withSecurityEvents({ action: 'iot.create', resource: 'iot', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const s = svc(c);
@@ -230,7 +231,7 @@ app.post('/anomalies/:id/resolve', zValidator('json', ResolveSchema), async (c: 
       err?.code === 'NOT_FOUND' ? 404 : 400
     );
   }
-});
+}));
 
 export const iotRouter = app;
 export default app;

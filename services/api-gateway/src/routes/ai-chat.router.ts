@@ -51,6 +51,7 @@ import {
 import { getBrainExtraSkills } from '../composition/brain-extensions';
 import { v4 as uuid } from 'uuid';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ---------------------------------------------------------------------------
 // Lazy boot — the brain registry is constructed on first request so the
 // gateway continues to boot for unrelated routes when ANTHROPIC_API_KEY is
@@ -195,7 +196,7 @@ export async function pipeStreamTurnToSSE(
 
 const router = new Hono();
 
-router.post('/chat', async (c) => {
+router.post('/chat', withSecurityEvents({ action: 'ai-chat.create', resource: 'ai-chat', severity: 'info' }, async (c) => {
   let body;
   try {
     body = await c.req.json();
@@ -294,6 +295,6 @@ router.post('/chat', async (c) => {
 
     await pipeStreamTurnToSSE(stream, iter);
   });
-});
+}));
 
 export default router;

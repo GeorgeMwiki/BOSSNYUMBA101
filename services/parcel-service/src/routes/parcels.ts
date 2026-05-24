@@ -10,13 +10,14 @@
  */
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { areaSqm, centroid } from '../_spatial-engine-shim.js';
+import { areaSqm, centroid } from '@bossnyumba/spatial-engine';
 import type {
   Parcel,
   GeoJsonMultiPolygon,
   AuthoritativeSource,
-} from '../_spatial-engine-shim.js';
+} from '@bossnyumba/spatial-engine';
 
+import { withSecurityEventsFastify } from '@bossnyumba/observability';
 // ---------------------------------------------------------------------------
 // In-memory store (Phase E.5 default; swapped by composition root).
 // ---------------------------------------------------------------------------
@@ -273,7 +274,7 @@ export async function registerParcelsRoutes(
     return { parcel };
   });
 
-  app.post('/parcels', async (request, reply) => {
+  app.post('/parcels', withSecurityEventsFastify({ action: 'parcel.create', resource: 'parcel', severity: 'info' }, async (request, reply) => {
     const tenantId = await tenantOrFail(request, reply);
     if (!tenantId) return { error: 'unauthorised: tenant could not be resolved' };
     const body = (request.body ?? {}) as Partial<CreateParcelInput>;
@@ -294,9 +295,9 @@ export async function registerParcelsRoutes(
     });
     reply.code(201);
     return { parcel };
-  });
+  }));
 
-  app.patch('/parcels/:id', async (request, reply) => {
+  app.patch('/parcels/:id', withSecurityEventsFastify({ action: 'parcel.update', resource: 'parcel', severity: 'info' }, async (request, reply) => {
     const tenantId = await tenantOrFail(request, reply);
     if (!tenantId) return { error: 'unauthorised: tenant could not be resolved' };
     const { id } = request.params as { id: string };
@@ -311,9 +312,9 @@ export async function registerParcelsRoutes(
       return { error: 'parcel not found' };
     }
     return { parcel: updated };
-  });
+  }));
 
-  app.delete('/parcels/:id', async (request, reply) => {
+  app.delete('/parcels/:id', withSecurityEventsFastify({ action: 'parcel.delete', resource: 'parcel', severity: 'notice' }, async (request, reply) => {
     const tenantId = await tenantOrFail(request, reply);
     if (!tenantId) return { error: 'unauthorised: tenant could not be resolved' };
     const { id } = request.params as { id: string };
@@ -324,5 +325,5 @@ export async function registerParcelsRoutes(
     }
     reply.code(204);
     return null;
-  });
+  }));
 }

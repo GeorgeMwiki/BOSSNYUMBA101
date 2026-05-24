@@ -27,6 +27,7 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { parseListPagination, buildListResponse } from './pagination';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const CASE_TYPES = [
   'arrears', 'deposit_dispute', 'damage_claim', 'lease_violation',
   'noise_complaint', 'maintenance_dispute', 'eviction', 'harassment',
@@ -132,7 +133,7 @@ app.get('/', async (c) => {
   return c.json({ success: true, ...buildListResponse(items, total, p) });
 });
 
-app.post('/', zValidator('json', CaseCreateSchema), async (c) => {
+app.post('/', zValidator('json', CaseCreateSchema), withSecurityEvents({ action: 'case.create', resource: 'case', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const db = c.get('db');
   if (!db) {
@@ -167,7 +168,7 @@ app.post('/', zValidator('json', CaseCreateSchema), async (c) => {
   const fetched = await db.execute(sql`SELECT * FROM cases WHERE id = ${id} AND tenant_id = ${auth.tenantId} LIMIT 1`);
   const row = (fetched as unknown as Record<string, unknown>[])[0];
   return c.json({ success: true, data: rowToCase(row) }, 201);
-});
+}));
 
 app.get('/:id', async (c) => {
   const auth = c.get('auth');
@@ -247,7 +248,7 @@ app.get('/:id/full', async (c) => {
   return c.json({ success: true, data: rowToCase(rows[0]) });
 });
 
-app.post('/:id/resolve', zValidator('json', CaseResolveSchema), async (c) => {
+app.post('/:id/resolve', zValidator('json', CaseResolveSchema), withSecurityEvents({ action: 'case.create', resource: 'case', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const db = c.get('db');
   if (!db) {
@@ -278,6 +279,6 @@ app.post('/:id/resolve', zValidator('json', CaseResolveSchema), async (c) => {
     );
   }
   return c.json({ success: true, data: rowToCase(rows[0]) });
-});
+}));
 
 export const casesRouter = app;

@@ -37,6 +37,7 @@ import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
 import type { GraphQueryService } from '@bossnyumba/graph-sync';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ---------------------------------------------------------------------------
 // Validation schemas
 // ---------------------------------------------------------------------------
@@ -259,7 +260,7 @@ app.get('/node/:label/:id', async (c: any) => {
 app.post(
   '/neighbourhood',
   zValidator('json', NeighbourhoodBodySchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'graph.create', resource: 'graph', severity: 'info' }, async (c: any) => {
     const service = queryService(c);
     if (!service) return unavailable(c);
 
@@ -374,7 +375,7 @@ app.post(
         fallback: 'Graph neighbourhood expansion failed',
       });
     }
-  },
+  }),
 );
 
 // ---------------------------------------------------------------------------
@@ -409,7 +410,7 @@ const NAMED_QUERIES: Record<QueryKey, NamedQueryRunner> = {
   getPortfolioOverview: (svc, tenantId) => svc.getPortfolioOverview(tenantId),
 };
 
-app.post('/query', zValidator('json', QueryBodySchema), async (c: any) => {
+app.post('/query', zValidator('json', QueryBodySchema), withSecurityEvents({ action: 'graph.create', resource: 'graph', severity: 'info' }, async (c: any) => {
   const service = queryService(c);
   if (!service) return unavailable(c);
 
@@ -454,7 +455,7 @@ app.post('/query', zValidator('json', QueryBodySchema), async (c: any) => {
       fallback: `Graph query ${body.queryKey} failed`,
     });
   }
-});
+}));
 
 // ---------------------------------------------------------------------------
 // GET /health — Neo4j reachability + per-label node counts (admin only)

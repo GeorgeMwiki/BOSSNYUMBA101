@@ -53,6 +53,7 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ---------------------------------------------------------------------------
 // Zod schemas
 // ---------------------------------------------------------------------------
@@ -225,7 +226,7 @@ function tenantMissing(c: any) {
 app.post(
   '/thread',
   zValidator('json', CreateThreadBodySchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'intelligence.create', resource: 'intelligence', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth');
     const body = c.req.valid('json');
     const { memory } = getIntelligence(c);
@@ -256,7 +257,7 @@ app.post(
         fallback: 'Failed to create intelligence thread',
       });
     }
-  },
+  }),
 );
 
 // ---------------------------------------------------------------------------
@@ -266,7 +267,7 @@ app.post(
 app.post(
   '/thread/:threadId/message',
   zValidator('json', SendMessageBodySchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'intelligence.create', resource: 'intelligence', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth');
     const threadId = c.req.param('threadId');
     const body = c.req.valid('json');
@@ -327,7 +328,7 @@ app.post(
         });
       }
     });
-  },
+  }),
 );
 
 // ---------------------------------------------------------------------------

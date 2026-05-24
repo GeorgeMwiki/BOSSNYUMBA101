@@ -28,6 +28,7 @@ import {
   PerformanceRepository,
 } from '@bossnyumba/database';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
@@ -63,7 +64,7 @@ app.post(
     'json',
     z.object({ code: z.string().min(1), name: z.string().min(1), description: z.string().optional() })
   ),
-  async (c) => {
+  withSecurityEvents({ action: 'hr.create', resource: 'hr', severity: 'info' }, async (c) => {
     const deny = requireManage(c);
     if (deny) return deny;
     const { userId, tenantId } = auth(c);
@@ -78,7 +79,7 @@ app.post(
       createdBy: userId,
     });
     return c.json({ success: true, data: row }, 201);
-  }
+  })
 );
 
 // ---------------------------------------------------------------------------
@@ -116,7 +117,7 @@ app.post(
       juniorPersonaId: z.string().optional(),
     })
   ),
-  async (c) => {
+  withSecurityEvents({ action: 'hr.create', resource: 'hr', severity: 'info' }, async (c) => {
     const deny = requireManage(c);
     if (deny) return deny;
     const { userId, tenantId } = auth(c);
@@ -133,7 +134,7 @@ app.post(
       createdBy: userId,
     });
     return c.json({ success: true, data: row }, 201);
-  }
+  })
 );
 
 // ---------------------------------------------------------------------------
@@ -178,7 +179,7 @@ app.post(
         .default('full_time'),
     })
   ),
-  async (c) => {
+  withSecurityEvents({ action: 'hr.create', resource: 'hr', severity: 'info' }, async (c) => {
     const deny = requireManage(c);
     if (deny) return deny;
     const { userId, tenantId } = auth(c);
@@ -198,7 +199,7 @@ app.post(
       createdBy: userId,
     });
     return c.json({ success: true, data: row }, 201);
-  }
+  })
 );
 
 // Team membership
@@ -214,7 +215,7 @@ app.post(
       roleLabel: z.string().optional(),
     })
   ),
-  async (c) => {
+  withSecurityEvents({ action: 'hr.create', resource: 'hr', severity: 'info' }, async (c) => {
     const deny = requireManage(c);
     if (deny) return deny;
     const { userId, tenantId } = auth(c);
@@ -235,7 +236,7 @@ app.post(
       })
       .returning();
     return c.json({ success: true, data: row }, 201);
-  }
+  })
 );
 
 // ---------------------------------------------------------------------------
@@ -281,7 +282,7 @@ app.get('/assignments', async (c) => {
   return c.json({ success: true, data: rows });
 });
 
-app.post('/assignments', zValidator('json', CreateAssignmentSchema), async (c) => {
+app.post('/assignments', zValidator('json', CreateAssignmentSchema), withSecurityEvents({ action: 'hr.create', resource: 'hr', severity: 'info' }, async (c) => {
   const deny = requireManage(c);
   if (deny) return deny;
   const { userId, tenantId } = auth(c);
@@ -305,7 +306,7 @@ app.post('/assignments', zValidator('json', CreateAssignmentSchema), async (c) =
     createdBy: userId,
   });
   return c.json({ success: true, data: row }, 201);
-});
+}));
 
 app.post(
   '/assignments/:id/status',
@@ -323,7 +324,7 @@ app.post(
       ]),
     })
   ),
-  async (c) => {
+  withSecurityEvents({ action: 'hr.create', resource: 'hr', severity: 'info' }, async (c) => {
     const { userId } = auth(c);
     const id = c.req.param('id');
     const input = c.req.valid('json');
@@ -332,7 +333,7 @@ app.post(
     // Maintain the standard envelope so clients can unpack response.data
     // uniformly across all endpoints.
     return c.json({ success: true, data: { id, status: input.status } });
-  }
+  })
 );
 
 // ---------------------------------------------------------------------------
@@ -374,7 +375,7 @@ app.post(
         .optional(),
     })
   ),
-  async (c) => {
+  withSecurityEvents({ action: 'hr.create', resource: 'hr', severity: 'info' }, async (c) => {
     const { userId, tenantId } = auth(c);
     const input = c.req.valid('json');
     const repo = new PerformanceRepository(db(c));
@@ -393,7 +394,7 @@ app.post(
       createdBy: userId,
     });
     return c.json({ success: true }, 201);
-  }
+  })
 );
 
 export const hrRouter = app;

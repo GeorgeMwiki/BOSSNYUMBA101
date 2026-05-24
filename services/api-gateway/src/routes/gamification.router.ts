@@ -18,6 +18,7 @@ import {
   type CashbackQueuePort,
 } from '@bossnyumba/domain-services/gamification';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 function getService(c: { get: (k: string) => unknown }) {
   const injected = c.get('gamificationService');
   if (injected) return injected as ReturnType<typeof createGamificationService>;
@@ -68,7 +69,7 @@ app.get('/policies', async (c) => {
 });
 
 // --- PUT policies ----------------------------------------------------------
-app.put('/policies', zValidator('json', PolicyUpdateSchema), async (c) => {
+app.put('/policies', zValidator('json', PolicyUpdateSchema), withSecurityEvents({ action: 'gamification.update', resource: 'gamification', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const patch = c.req.valid('json');
   const service = getService(c);
@@ -78,7 +79,7 @@ app.put('/policies', zValidator('json', PolicyUpdateSchema), async (c) => {
   } catch (err) {
     return mapError(c, err);
   }
-});
+}));
 
 // --- GET customer state ----------------------------------------------------
 app.get('/customers/:customerId', async (c) => {

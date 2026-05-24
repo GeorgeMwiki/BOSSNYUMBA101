@@ -18,7 +18,7 @@
  *     deployments that already provision the canonical Maps key name
  *     keep working without churn.
  */
-import type { GeocodeQuery, GeocodeResult } from '../_spatial-engine-shim.js';
+import type { GeocodeQuery, GeocodeResult } from '@bossnyumba/spatial-engine';
 
 export interface GoogleGeocoder {
   readonly provider: 'google';

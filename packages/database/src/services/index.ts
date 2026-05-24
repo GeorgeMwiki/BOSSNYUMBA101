@@ -577,3 +577,65 @@ export {
   type RecordConsolidationEmissionArgs,
   type ListConsolidationEmissionsArgs,
 } from './consolidation-emissions.service.js';
+
+// ─────────────────────────────────────────────────────────────────────
+// Persistent adapters for the 5 in-memory ports (migrations 0165-0168).
+// Each adapter is opt-in at the api-gateway / agent-platform composition
+// root; in-memory ports stay the default for dev / tests.
+// ─────────────────────────────────────────────────────────────────────
+
+// WORM audit log (migration 0165) — Drizzle-backed `WormAuditStore`
+// from `packages/document-studio/src/signing/worm-audit.ts`. Hash-chained
+// per-tenant, append-only — SOC 2 / GDPR Art. 30 audit substrate for
+// every document leaving `@bossnyumba/document-studio`.
+export {
+  createWormAuditLogService,
+  type WormAuditEntry,
+  type WormAuditStore,
+  type WormAuditStoreService,
+} from './worm-audit-log.service.js';
+
+// Reflexion lessons (migration 0166) — Drizzle-backed `LessonStore`
+// from `packages/ai-copilot/src/reflexion/types.ts`. Per-(tenant, task_tag)
+// bucketed teaching material; dedupe-bump path is a single ON CONFLICT
+// DO UPDATE.
+export {
+  createLessonStoreService,
+  type Lesson as LessonStoreLesson,
+  type LessonStore as LessonStorePort,
+} from './lesson-store.service.js';
+
+// Skill-registry writer — Drizzle-backed `SkillRegistryWriter` from
+// `packages/ai-copilot/src/skill-promotion/types.ts`. Wraps the existing
+// `skill_registry` table (migration 0133). Idempotent upsert with
+// counter-bump on re-promote.
+export {
+  createSkillRegistryWriterService,
+  type PromotionRecord as SkillPromotionRecord,
+  type SkillRegistryWriter as SkillRegistryWriterPort,
+} from './skill-registry-writer.service.js';
+
+// AOP registry (migration 0167) — Drizzle-backed `AOPRegistryStore`
+// from `packages/central-intelligence/src/agent/aops/aop-registry.ts`.
+// Append-only specs, overwrite-on-id regression sets, flippable active
+// versions. Optional scopeTenantId for multi-tenant deployments.
+export {
+  createAopRegistryStoreService,
+  type AopSpecLike,
+  type AopRegistryStore as AopRegistryStorePort,
+  type AopRegistryStoreOpts,
+  type RegressionSetLike,
+} from './aop-registry-store.service.js';
+
+// A2A v1.0 task store (migration 0168) — Drizzle-backed `TaskStore`
+// from `packages/agent-platform/src/a2a/task-lifecycle.ts`. Idempotent
+// put-by-id; tenant-scoped (mandatory tenantId at construction time).
+export {
+  createA2aTaskStoreService,
+  type A2aTaskStoreOpts,
+  type A2ATask as A2aTaskRecord,
+  type A2ATaskMessage as A2aTaskMessage,
+  type A2ATaskPart as A2aTaskPart,
+  type A2ATaskStatus as A2aTaskStatus,
+  type TaskStore as A2aTaskStorePort,
+} from './a2a-task-store.service.js';

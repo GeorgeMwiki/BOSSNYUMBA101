@@ -65,6 +65,7 @@ import {
   type DecisionTraceRecorder,
   type EmbedderPort,
   type KillswitchPort,
+  type MultiLLMSynthesizerPort,
   type SeedBrainToolDeps,
 } from '@bossnyumba/central-intelligence';
 import {
@@ -225,6 +226,16 @@ export interface BrainKernelWiringDeps {
     /** Optional proposer id for ledger writes. */
     readonly proposer?: string;
   };
+  /**
+   * Optional multi-LLM synthesizer port for the kernel's deep-reasoning
+   * path. When wired, turns carrying `req.requireSynthesis === true` are
+   * routed through a mixture-of-agents fan-out (Anthropic + OpenAI +
+   * DeepSeek) plus a Claude-Opus synthesis pass. Null when no viable
+   * synthesizer can be built — the kernel keeps the single-shot sensor
+   * path with no behavioural change. Built by
+   * `createMultiLLMSynthesizerWiring` (see multi-llm-synthesizer-wiring.ts).
+   */
+  readonly synthesizer?: MultiLLMSynthesizerPort | null;
 }
 
 /**
@@ -453,6 +464,14 @@ export function createBrainKernelWiring(
       toolRegistry,
       embedder,
     };
+    if (deps.synthesizer) {
+      // readonly on ComposeSovereignConfig — re-cast through a
+      // mutable view to preserve the immutable type on the public
+      // surface while still passing the wire in. Mirrors the pattern
+      // used by `approvalPolicyResolver` above.
+      (composeArgs as { synthesizer?: MultiLLMSynthesizerPort }).synthesizer =
+        deps.synthesizer;
+    }
     if (deps.approvalPolicyResolver) {
       // Structural duck-cast: the database service's
       // `ApprovalPolicyResolver` shape already matches the kernel's

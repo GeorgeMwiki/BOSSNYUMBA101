@@ -16,6 +16,7 @@ import {
 } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // Wave 19 Agent H+I: property create/update/delete are staff-only.
 // Read endpoints already filter via `hasPropertyAccess` (JWT ACL).
 const staffOnly = requireRole(
@@ -136,7 +137,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapPropertyRow(row) });
 });
 
-app.post('/', staffOnly, requireCapability('create', 'property'), zValidator('json', PropertyCreateSchema), async (c) => {
+app.post('/', staffOnly, requireCapability('create', 'property'), zValidator('json', PropertyCreateSchema), withSecurityEvents({ action: 'property.create', resource: 'property', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -173,9 +174,9 @@ app.post('/', staffOnly, requireCapability('create', 'property'), zValidator('js
   );
 
   return c.json({ success: true, data: mapPropertyRow(row) }, 201);
-});
+}));
 
-app.put('/:id', staffOnly, zValidator('json', PropertyUpdateSchema), async (c) => {
+app.put('/:id', staffOnly, zValidator('json', PropertyUpdateSchema), withSecurityEvents({ action: 'property.update', resource: 'property', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -216,9 +217,9 @@ app.put('/:id', staffOnly, zValidator('json', PropertyUpdateSchema), async (c) =
   );
 
   return c.json({ success: true, data: mapPropertyRow(row) });
-});
+}));
 
-app.delete('/:id', staffOnly, requireCapability('delete', 'property'), async (c) => {
+app.delete('/:id', staffOnly, requireCapability('delete', 'property'), withSecurityEvents({ action: 'property.delete', resource: 'property', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -227,6 +228,6 @@ app.delete('/:id', staffOnly, requireCapability('delete', 'property'), async (c)
   }
   await repos.properties.delete(id, auth.tenantId, auth.userId);
   return c.json({ success: true, data: { message: 'Property deleted' } });
-});
+}));
 
 export const propertiesRouter = app;

@@ -13,8 +13,8 @@
       "default": "./dist/index.js"
     },
     "./react": {
-      "types": "./src/components/ParcelMap.tsx",
-      "default": "./dist/components/ParcelMap.js"
+      "types": "./src/react.ts",
+      "default": "./dist/react.js"
     },
     "./types": {
       "types": "./src/types.ts",

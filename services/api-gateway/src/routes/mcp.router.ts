@@ -26,6 +26,7 @@ import type {
 import { getPrompt, listPrompts } from '@bossnyumba/mcp-server';
 import { generateAgentCard } from '@bossnyumba/agent-platform';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 interface JsonRpcRequest {
   readonly jsonrpc: '2.0';
   readonly id: number | string | null;
@@ -129,7 +130,7 @@ app.get('/manifest', (c: any) => {
 // JSON-RPC entrypoint
 // ---------------------------------------------------------------------------
 
-app.post('/', async (c: any) => {
+app.post('/', withSecurityEvents({ action: 'mcp.create', resource: 'mcp', severity: 'info' }, async (c: any) => {
   const mcp = getMcp(c);
   if (!mcp) {
     return c.json(
@@ -283,7 +284,7 @@ app.post('/', async (c: any) => {
 
   const status = 'error' in response ? 200 : 200; // JSON-RPC uses 200
   return c.json(response, status);
-});
+}));
 
 // ---------------------------------------------------------------------------
 // Agent Card (A2A)

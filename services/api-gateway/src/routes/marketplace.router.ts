@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const MediaItemSchema = z.object({
   type: z.enum(['photo', 'video', 'floor_360', 'street_view']),
   url: z.string().url().max(2048),
@@ -85,7 +86,7 @@ function notImplemented(c: any, name: string) {
 // Listings
 // ---------------------------------------------------------------------------
 
-app.post('/listings', zValidator('json', PublishListingSchema), async (c) => {
+app.post('/listings', zValidator('json', PublishListingSchema), withSecurityEvents({ action: 'marketplace.create', resource: 'marketplace', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const service = svc<any>(c, 'listing');
@@ -103,7 +104,7 @@ app.post('/listings', zValidator('json', PublishListingSchema), async (c) => {
       400
     );
   return c.json({ success: true, data: result.value }, 201);
-});
+}));
 
 app.get('/listings', zValidator('query', SearchSchema), async (c) => {
   const auth = c.get('auth');
@@ -134,7 +135,7 @@ app.get('/listings/:id', async (c) => {
 app.put(
   '/listings/:id/status',
   zValidator('json', UpdateStatusSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'marketplace.update', resource: 'marketplace', severity: 'info' }, async (c) => {
     const auth = c.get('auth');
     const body = c.req.valid('json');
     const service = svc<any>(c, 'listing');
@@ -153,7 +154,7 @@ app.put(
         result.error.code === 'NOT_FOUND' ? 404 : 400
       );
     return c.json({ success: true, data: result.value });
-  }
+  })
 );
 
 // ---------------------------------------------------------------------------
@@ -163,7 +164,7 @@ app.put(
 app.post(
   '/listings/:id/enquiries',
   zValidator('json', EnquirySchema),
-  async (c) => {
+  withSecurityEvents({ action: 'marketplace.create', resource: 'marketplace', severity: 'info' }, async (c) => {
     const auth = c.get('auth');
     const body = c.req.valid('json');
     const service = svc<any>(c, 'enquiry');
@@ -186,7 +187,7 @@ app.post(
         result.error.code === 'NOT_FOUND' ? 404 : 400
       );
     return c.json({ success: true, data: result.value }, 201);
-  }
+  })
 );
 
 export const marketplaceRouter = app;

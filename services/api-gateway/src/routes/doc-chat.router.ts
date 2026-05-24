@@ -36,6 +36,7 @@ import {
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -211,7 +212,7 @@ app.get('/sessions/:id/messages', async (c: any) => {
 // ---------------------------------------------------------------------------
 // POST /sessions — create a new chat session (persists, does not call the LLM)
 // ---------------------------------------------------------------------------
-app.post('/sessions', zValidator('json', StartSessionSchema), async (c: any) => {
+app.post('/sessions', zValidator('json', StartSessionSchema), withSecurityEvents({ action: 'doc-chat.create', resource: 'doc-chat', severity: 'info' }, async (c: any) => {
   const services = c.get('services');
   const db = services?.db;
   if (!db) return notConfigured(c);
@@ -267,7 +268,7 @@ app.post('/sessions', zValidator('json', StartSessionSchema), async (c: any) => 
       fallback: 'Create failed',
     });
   }
-});
+}));
 
 // ---------------------------------------------------------------------------
 // POST /sessions/:id/ask — ask a question. Persists user + assistant message
@@ -276,7 +277,7 @@ app.post('/sessions', zValidator('json', StartSessionSchema), async (c: any) => 
 app.post(
   '/sessions/:id/ask',
   zValidator('json', AskSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'doc-chat.create', resource: 'doc-chat', severity: 'info' }, async (c: any) => {
     const services = c.get('services');
     const db = services?.db;
     if (!db) return notConfigured(c);
@@ -418,7 +419,7 @@ app.post(
       },
       200
     );
-  }
+  })
 );
 
 // ---------------------------------------------------------------------------
@@ -427,7 +428,7 @@ app.post(
 app.post(
   '/sessions/:id/messages',
   zValidator('json', PostMessageSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'doc-chat.create', resource: 'doc-chat', severity: 'info' }, async (c: any) => {
     const services = c.get('services');
     const db = services?.db;
     if (!db) return notConfigured(c);
@@ -497,7 +498,7 @@ app.post(
     }
 
     return c.json({ success: true, data: message }, 201);
-  }
+  })
 );
 
 export default app;

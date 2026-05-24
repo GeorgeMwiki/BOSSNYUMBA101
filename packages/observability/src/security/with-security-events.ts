@@ -157,6 +157,95 @@ export function withSecurityEvents<C extends HonoContextLike, R>(
 }
 
 /**
+ * Fastify wrapper. Handler matches Fastify's
+ * `(request: FastifyRequest, reply: FastifyReply) => Promise<T> | T`.
+ * Reads `request.tenantId` / `request.actorId` when the auth plugin has
+ * decorated the request; falls back to header-derived values.
+ */
+// Pass-through generic so the caller's Fastify Request/Reply types flow
+// without being narrowed by our internal structural shape. Inside the
+// wrapper we read via narrow structural casts (`as unknown as ...`).
+export function withSecurityEventsFastify<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  H extends (request: any, reply: any) => any,
+>(binding: SecurityEventBinding, handler: H): H {
+  const wrapped = async (request: unknown, reply: unknown): Promise<unknown> => {
+    const started = performance.now();
+    let result: unknown;
+    let errored = false;
+    let thrown: unknown;
+    try {
+      result = await handler(request, reply);
+      return result;
+    } catch (err) {
+      errored = true;
+      thrown = err;
+      throw err;
+    } finally {
+      const latencyMs = performance.now() - started;
+      const req = request as FastifyRequestLike & {
+        tenantId?: unknown;
+        actorId?: unknown;
+        routeOptions?: { url?: string };
+      };
+      const rep = reply as FastifyReplyLike;
+      const headers = req.headers ?? {};
+      const tenantId =
+        typeof req.tenantId === 'string'
+          ? req.tenantId
+          : headerStr(headers, 'x-tenant-id');
+      const actorId =
+        typeof req.actorId === 'string'
+          ? req.actorId
+          : headerStr(headers, 'x-actor-id');
+      const evt: SecurityEvent = {
+        at: new Date().toISOString(),
+        action: binding.action,
+        resource: binding.resource,
+        severity: binding.severity ?? 'info',
+        method: req.method ?? 'UNKNOWN',
+        route: req.routeOptions?.url ?? req.url ?? 'unknown',
+        tenantId,
+        actorId,
+        responseStatus: errored ? 500 : rep.statusCode ?? 200,
+        latencyMs,
+        errored,
+        detail: thrown
+          ? { errorMessage: String((thrown as Error).message ?? thrown) }
+          : (binding.extractDetail?.(req, result) ?? {}),
+        correlationId: headerStr(headers, 'x-correlation-id') ?? headerStr(headers, 'x-request-id'),
+        clientIp: headerStr(headers, 'x-forwarded-for') ?? headerStr(headers, 'x-real-ip'),
+      };
+      try {
+        await activeSink(evt);
+      } catch {
+        // never let the sink fail the request.
+      }
+    }
+  };
+  return wrapped as H;
+}
+
+interface FastifyRequestLike {
+  readonly method?: string;
+  readonly url?: string;
+  readonly headers?: Record<string, string | string[] | undefined>;
+}
+
+interface FastifyReplyLike {
+  readonly statusCode?: number;
+}
+
+function headerStr(
+  headers: Record<string, string | string[] | undefined>,
+  name: string,
+): string | null {
+  const v = headers[name] ?? headers[name.toLowerCase()];
+  if (Array.isArray(v)) return v[0] ?? null;
+  return typeof v === 'string' ? v : null;
+}
+
+/**
  * Next.js App Router wrapper. The handler signature must match Next's
  * `(req: Request, ctx?) => Response | Promise<Response>`.
  */
