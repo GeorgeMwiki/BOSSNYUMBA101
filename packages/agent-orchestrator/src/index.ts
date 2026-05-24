@@ -8,3 +8,5 @@
 
 export * from './types.js';
 export * as singleAgent from './single-agent/index.js';
+export * as multiAgent from './multi-agent/index.js';
+export * as stateMachine from './state-machine/index.js';
