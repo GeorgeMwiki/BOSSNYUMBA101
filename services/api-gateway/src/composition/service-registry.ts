@@ -291,6 +291,18 @@ import {
   createPersistentStores,
   type PersistentStores,
 } from './persistent-stores-wiring.js';
+// P40 composition-root flip — activates `createStorageAdapterProvider`
+// (the bridge that delegates the legacy `StorageProvider` interface to
+// the shared `@bossnyumba/storage-adapter` port) on a Supabase backend
+// when env vars are present; falls back to `LocalStorageProvider` for
+// dev/CI parity. Surfaces the wired `StorageProvider` on
+// `registry.documentStorage.provider` so `DocumentService`,
+// `EvidencePackBuilderService`, and every other consumer inherits the
+// same `tenantScopedPath(tenantId, key)` enforcement on every call.
+import {
+  createDocumentStorageWiring,
+  type DocumentStorageWiring,
+} from './document-storage-wiring.js';
 // Central Command Phase C C2 — closes B1's `publishCrossPortalEvent` +
 // `dispatcher` + `recipientResolver` wiring TODOs.
 import {
@@ -828,6 +840,21 @@ export interface ServiceRegistry {
    */
   readonly persistentStores: PersistentStores;
 
+  /**
+   * P40 composition-root flip — wired StorageProvider for the document
+   * pipeline (DocumentService + EvidencePackBuilderService). When the
+   * Supabase env vars are present (`NEXT_PUBLIC_SUPABASE_URL` +
+   * `SUPABASE_SERVICE_ROLE_KEY`) we bind `createStorageAdapterProvider`
+   * to a `createSupabaseStorageAdapter` so every upload/read/delete
+   * passes through `tenantScopedPath(tenantId, key)` — matching the
+   * Supabase Storage RLS policy on the first path segment.
+   *
+   * Backward-compat: when Supabase env is unset we fall back to
+   * `LocalStorageProvider`, the existing dev/CI default. The gateway
+   * boots either way. Mode + bucket are surfaced for ops dashboards.
+   */
+  readonly documentStorage: DocumentStorageWiring;
+
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
 
@@ -1193,6 +1220,11 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // never have to branch on isLive; they just call into the wired
     // adapter and the store decides where the data lives.
     persistentStores: createPersistentStores({ db: null }),
+    // P40 — document-storage wiring. Reads Supabase env vars at boot;
+    // falls back to LocalStorageProvider so the gateway always has a
+    // functional StorageProvider for downstream DocumentService /
+    // EvidencePackBuilderService consumers regardless of DB state.
+    documentStorage: createDocumentStorageWiring(),
     eventBus,
     db: null,
     isLive: false,
@@ -2101,6 +2133,18 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
       logger: {
         info: (obj, msg) => console.info('persistent-stores:', msg ?? '', obj),
         warn: (obj, msg) => console.warn('persistent-stores:', msg ?? '', obj),
+      },
+    }),
+    // P40 composition-root flip — Supabase-backed StorageProvider for
+    // DocumentService / EvidencePackBuilderService. Falls back to
+    // LocalStorageProvider when Supabase env is unset so live-mode
+    // gateways without a Supabase project still boot.
+    documentStorage: createDocumentStorageWiring({
+      logger: {
+        info: (obj, msg) =>
+          console.info('document-storage-wiring:', msg ?? '', obj),
+        warn: (obj, msg) =>
+          console.warn('document-storage-wiring:', msg ?? '', obj),
       },
     }),
     eventBus,

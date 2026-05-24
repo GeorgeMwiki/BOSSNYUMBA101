@@ -58,6 +58,8 @@
     "@bossnyumba/role-aware-advisor": "workspace:*",
     "@bossnyumba/spotlight": "workspace:*",
     "@bossnyumba/stage-advisor": "workspace:*",
+    "@bossnyumba/storage-adapter": "workspace:*",
+    "@bossnyumba/supabase-client": "workspace:*",
     "@bossnyumba/sustainability-advisor": "workspace:*",
     "@bossnyumba/user-context-store": "workspace:*",
     "@bossnyumba/workflow-engine": "workspace:*",
