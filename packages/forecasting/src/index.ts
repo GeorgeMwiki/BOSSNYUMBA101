@@ -43,3 +43,58 @@ export {
   type TgnForecasterDeps,
 } from './models/tgn-forecaster.js';
 export { canonicalJSON, sha256Hex, sha256Short } from './util/hash.js';
+
+// ─────────────────────────────────────────────────────────────────────
+// Time-series forecasting layer — added 2026-05-24.
+// ─────────────────────────────────────────────────────────────────────
+
+export {
+  createNaiveSeasonalForecaster,
+  type NaiveSeasonalOptions,
+} from './models/naive-seasonal.js';
+export {
+  createMovingAverageForecaster,
+  type MovingAverageOptions,
+} from './models/moving-average.js';
+export {
+  createHoltWintersForecaster,
+  type HoltWintersOptions,
+} from './models/holt-winters.js';
+export {
+  createLinearRegressionForecaster,
+  type LinearRegressionOptions,
+} from './models/linear-regression.js';
+export {
+  createChronosAdapter,
+  createTimesFMAdapter,
+  createTimeGPTAdapter,
+  createLLMForecaster,
+  createDeterministicMockNetwork,
+  type ChronosAdapterOptions,
+  type TimesFMAdapterOptions,
+  type TimeGPTAdapterOptions,
+  type LLMForecasterOptions,
+  type LLMBrain,
+  type FoundationModelNetwork,
+  type FoundationModelResponse,
+  type FoundationModelCallArgs,
+} from './models/adapters.js';
+export {
+  wrapWithConformalIntervals,
+  type CalibrationSample,
+  type ConformalWrapperOptions,
+} from './conformal/time-series.js';
+export {
+  advanceTimestamp,
+  assertValidSeries,
+  buildForecastIntervals,
+  frequencyToMinutes,
+  futureTimestamps,
+  heuristicIntervals,
+  lagDifference,
+  mean,
+  median,
+  stdDev,
+  tail,
+  values,
+} from './util/series.js';
