@@ -67,3 +67,63 @@ export {
   type PKCEChallenge,
   type ServiceTokenStore,
 } from './auth/index.js';
+
+// Domain servers
+export {
+  createPropertyMCPServer,
+  createPaymentsMCPServer,
+  createMaintenanceMCPServer,
+  createDocumentsMCPServer,
+  createGeoMCPServer,
+  type PropertyMCPServerConfig,
+  type PaymentsMCPServerConfig,
+  type MaintenanceMCPServerConfig,
+  type DocumentsMCPServerConfig,
+  type GeoMCPServerConfig,
+  type Property,
+  type Unit,
+  type Lease,
+  type PropertyPort,
+  type LedgerEntry,
+  type ArrearsRecord,
+  type PaymentsPort,
+  type MaintenanceTicket,
+  type MaintenancePort,
+  type DocumentRecord,
+  type DocumentsPort,
+  type Parcel,
+  type Segment,
+  type GeoPort,
+} from './domain-servers/index.js';
+
+// ──────────────────────────────────────────────────────────────────────────────
+// createMCP — convenience composition helper
+// ──────────────────────────────────────────────────────────────────────────────
+
+import type { MCPServer } from './server/index.js';
+import type { MCPClient } from './client/index.js';
+import type { AuditPort } from './types.js';
+
+/**
+ * `createMCP({ servers, clients, audit })` is a convenience entrypoint that
+ * keeps a typed bag of running servers + clients + the audit port in one
+ * place. Useful when wiring an app that needs both sides (e.g. hosts the
+ * Property MCP server *and* connects to an external github MCP server).
+ */
+export interface MCPBundle {
+  readonly servers: ReadonlyMap<string, MCPServer>;
+  readonly clients: ReadonlyMap<string, MCPClient>;
+  readonly audit?: AuditPort;
+}
+
+export function createMCP(opts: {
+  readonly servers?: Readonly<Record<string, MCPServer>>;
+  readonly clients?: Readonly<Record<string, MCPClient>>;
+  readonly audit?: AuditPort;
+}): MCPBundle {
+  const servers = new Map(Object.entries(opts.servers ?? {}));
+  const clients = new Map(Object.entries(opts.clients ?? {}));
+  const bundle: { -readonly [K in keyof MCPBundle]: MCPBundle[K] } = { servers, clients };
+  if (opts.audit) bundle.audit = opts.audit;
+  return bundle;
+}
