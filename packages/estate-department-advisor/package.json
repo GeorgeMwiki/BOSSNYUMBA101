@@ -1,0 +1,32 @@
+{
+  "name": "@bossnyumba/estate-department-advisor",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Veteran-expert head-of-estate-department strategic advisor. Decides WHICH operations to run, HOW to staff, WHEN to act on signals, and HOW to position against industry benchmarks. Pure functions; benchmarks embedded with citations (BOMA EER 2024 Q4, IREM 2024 IEA, CEL 2024, NCREIF). Optional LLM narrative via injected port.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6",
+    "@types/node": "^25.8.0"
+  }
+}

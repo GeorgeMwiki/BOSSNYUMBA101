@@ -8,6 +8,10 @@
  * The Python sidecar exposes `/tigramite/pcmciplus`. This client just
  * speaks HTTP; the algorithm lives there.
  *
+ * The sidecar implementation lives at
+ * `services/scientific-discovery-sidecar/`. URL defaults to
+ * `http://localhost:8000`; override via `DISCOVERY_SIDECAR_URL`.
+ *
  * Same error model as `refutation-client.ts`.
  */
 
@@ -24,6 +28,7 @@ import {
 } from './refutation-client.js';
 
 const ENV_VAR = 'DISCOVERY_SIDECAR_URL';
+const DEFAULT_BASE_URL = 'http://localhost:8000';
 
 export interface PcmciClientOptions {
   readonly baseUrl?: string;
@@ -55,12 +60,7 @@ export interface PcmciClient {
 }
 
 export function createPcmciClient(opts: PcmciClientOptions = {}): PcmciClient {
-  const baseUrl = opts.baseUrl ?? process.env[ENV_VAR];
-  if (!baseUrl) {
-    throw new Error(
-      `PCMCIplus client: ${ENV_VAR} must be set (or pass baseUrl). See sidecar/python-sidecar-spec.md.`,
-    );
-  }
+  const baseUrl = opts.baseUrl ?? process.env[ENV_VAR] ?? DEFAULT_BASE_URL;
   const fetchImpl = opts.fetchImpl ?? fetch;
   const timeoutMs = opts.timeoutMs ?? 30_000;
 

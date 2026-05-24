@@ -2,11 +2,12 @@
  * Refutation client — TS adapter for the Python DoWhy sidecar.
  *
  * The sidecar contract is fixed in `sidecar/python-sidecar-spec.md`.
+ * The Python implementation lives at `services/scientific-discovery-sidecar/`.
  * This file only knows how to speak HTTP to it; it does not parse
  * statistical results.
  *
  * Configuration:
- *   - `DISCOVERY_SIDECAR_URL` env var, e.g. `http://localhost:8088`.
+ *   - `DISCOVERY_SIDECAR_URL` env var, default `http://localhost:8000`.
  *   - Override via `createRefutationClient({ baseUrl })`.
  *
  * Failure modes:
@@ -50,6 +51,7 @@ export class SidecarSchemaError extends Error {
 }
 
 const ENV_VAR = 'DISCOVERY_SIDECAR_URL';
+const DEFAULT_BASE_URL = 'http://localhost:8000';
 
 export interface RefutationClientOptions {
   readonly baseUrl?: string;
@@ -76,12 +78,7 @@ export interface RefutationClient {
 }
 
 export function createRefutationClient(opts: RefutationClientOptions = {}): RefutationClient {
-  const baseUrl = opts.baseUrl ?? process.env[ENV_VAR];
-  if (!baseUrl) {
-    throw new Error(
-      `Refutation client: ${ENV_VAR} must be set (or pass baseUrl). See sidecar/python-sidecar-spec.md.`,
-    );
-  }
+  const baseUrl = opts.baseUrl ?? process.env[ENV_VAR] ?? DEFAULT_BASE_URL;
   const fetchImpl = opts.fetchImpl ?? fetch;
   const timeoutMs = opts.timeoutMs ?? 10_000;
 

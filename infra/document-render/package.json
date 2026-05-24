@@ -1,0 +1,19 @@
+{
+  "name": "bossnyumba-document-render",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted document render stack — Carbone + Typst + Puppeteer. Consumed by @bossnyumba/document-studio renderers.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "healthcheck": "node scripts/healthcheck.js"
+  },
+  "dependencies": {
+    "carbone": "^3.5.7",
+    "express": "^4.19.2",
+    "puppeteer-core": "^22.15.0"
+  }
+}

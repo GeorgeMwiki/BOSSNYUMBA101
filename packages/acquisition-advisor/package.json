@@ -1,0 +1,32 @@
+{
+  "name": "@bossnyumba/acquisition-advisor",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Veteran-expert real-estate acquisition + due-diligence advisor. Deal sourcing + comp-sale triangulation + LOI/PSA risk scoring + ASTM Phase I/II + ALTA 2021 title + ALTA/NSPS survey + entitlement-path + geotech + financial DD + EA-jurisdictional checklists. Pure functions; orchestration via injected ports.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6",
+    "@types/node": "^25.8.0"
+  }
+}

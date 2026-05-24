@@ -150,9 +150,36 @@ export interface RendererInput<TData = Record<string, unknown>> {
   readonly data: TData;
 }
 
+/**
+ * Structured upstream-error payload. Renderers never throw on
+ * non-200 / spawn-failure / missing-binary; they return this shape so
+ * the synthesis pipeline can react (retry, fall back to stub, surface
+ * to the property manager) without try/catch noise.
+ */
+export interface RendererError {
+  /** Stable, machine-readable code — used by callers for branching. */
+  readonly code:
+    | 'upstream_http_error'
+    | 'upstream_timeout'
+    | 'upstream_network_error'
+    | 'binary_not_found'
+    | 'binary_failed'
+    | 'browser_not_available'
+    | 'invalid_input'
+    | 'unsupported_format';
+  /** Human-readable message — safe to log; never leaks secrets. */
+  readonly message: string;
+  /** Upstream HTTP status code when relevant. */
+  readonly status?: number;
+  /** Origin of the error (e.g. `carbone`, `typst`, `puppeteer`). */
+  readonly origin: string;
+}
+
 export interface RendererOutput {
   readonly buffer: Uint8Array;
   readonly mimeType: string;
+  /** Set when the upstream rendering pipeline failed; buffer is empty. */
+  readonly error?: RendererError;
 }
 
 export interface Renderer {
