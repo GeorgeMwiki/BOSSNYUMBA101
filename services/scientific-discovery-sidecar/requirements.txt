@@ -35,6 +35,13 @@ networkx==3.4.2
 # --- I/O ------------------------------------------------------------------
 pyarrow==18.1.0  # parquet support
 
+# --- observability --------------------------------------------------------
+# Prometheus middleware: registers /metrics on the same FastAPI app so the
+# ServiceMonitor scrape (infra/k8s/scientific-discovery-sidecar/base/
+# servicemonitor.yaml) hits the app port (8000) rather than needing a
+# second metrics listener.
+prometheus-fastapi-instrumentator==7.1.0
+
 # --- testing --------------------------------------------------------------
 pytest==8.3.4
 httpx==0.28.1  # FastAPI TestClient transport

@@ -1,4 +1,7 @@
-# Prometheus Operator ServiceMonitor — scrape /metrics on the metrics port.
+# Prometheus Operator ServiceMonitor — scrape /metrics on the app port.
+# The outcomes-metering service exposes /metrics on the same listener
+# as the app (no separate metrics port), so the scrape targets the
+# `http` Service port.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -13,7 +16,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: outcomes-metering
   endpoints:
-    - port: metrics
+    - port: http
       path: /metrics
       interval: 30s
       scrapeTimeout: 10s

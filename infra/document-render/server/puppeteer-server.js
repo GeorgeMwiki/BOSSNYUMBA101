@@ -8,12 +8,20 @@
 //     body  { html: string, format?: string }
 //     200   application/pdf
 //     5xx   text/plain reason
-//   GET  /health → 200 ok
+//   GET  /health   → 200 ok (liveness — process is up)
+//   GET  /readyz   → 200 ok if we can open + close a page on the
+//                    shared browser, 503 otherwise
+//   GET  /metrics  → Prometheus exposition (same port; K8s ServiceMonitor scrapes it)
 //
 // Refs: https://pptr.dev/api/puppeteer.page.pdf
 
 import express from 'express';
 import puppeteer from 'puppeteer-core';
+import {
+  attachMetricsEndpoint,
+  attachMetricsMiddleware,
+  createMetricsRegistry,
+} from './metrics.js';
 
 const CHROMIUM_PATH = process.env.PUPPETEER_EXECUTABLE_PATH ?? '/usr/bin/chromium';
 
@@ -30,19 +38,47 @@ function getBrowser() {
   return browserPromise;
 }
 
-export function startPuppeteer(port) {
+/**
+ * Build (without binding) the puppeteer server. The optional
+ * `browserFactory` slot lets tests inject a stub browser without
+ * launching a real Chromium process.
+ */
+export function buildPuppeteerApp(opts = {}) {
   const app = express();
   app.use(express.json({ limit: '20mb' }));
 
-  app.get('/health', async (_req, res) => {
+  const metrics = createMetricsRegistry('puppeteer');
+  attachMetricsMiddleware(app, metrics);
+
+  // Inject a custom browser source for tests. Production reuses the
+  // module-scoped `browserPromise` to keep a single warm Chromium.
+  const factory = opts.browserFactory ?? getBrowser;
+
+  app.get('/health', (_req, res) => res.status(200).json({ ok: true, service: 'puppeteer' }));
+
+  app.get('/readyz', async (_req, res) => {
     try {
-      const b = await getBrowser();
-      const ok = b.connected ?? true;
-      res.status(200).json({ ok });
+      const browser = await factory();
+      // Real liveness check: open a fresh page and immediately close
+      // it. If Chromium is dead this throws and we surface 503.
+      const page = await browser.newPage();
+      await page.close();
+      const connected = typeof browser.connected === 'boolean' ? browser.connected : true;
+      return res.status(200).json({
+        ready: true,
+        service: 'puppeteer',
+        connected,
+      });
     } catch (err) {
-      res.status(500).json({ ok: false, error: String(err) });
+      return res.status(503).json({
+        ready: false,
+        service: 'puppeteer',
+        reason: err.message ?? String(err),
+      });
     }
   });
+
+  attachMetricsEndpoint(app, metrics);
 
   app.post('/render', async (req, res) => {
     const { html, format } = req.body ?? {};
@@ -51,7 +87,7 @@ export function startPuppeteer(port) {
     }
     let page;
     try {
-      const browser = await getBrowser();
+      const browser = await factory();
       page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'networkidle0' });
       const pdf = await page.pdf({
@@ -66,6 +102,11 @@ export function startPuppeteer(port) {
     }
   });
 
+  return { app, metrics };
+}
+
+export function startPuppeteer(port) {
+  const { app } = buildPuppeteerApp();
   return app.listen(port, () => {
     console.log(`[puppeteer] listening on :${port}`);
   });

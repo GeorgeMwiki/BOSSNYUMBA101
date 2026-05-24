@@ -10,25 +10,86 @@
 //             — `inputs` are exposed to the template as `sys.inputs.*`.
 //     200   application/pdf
 //     5xx   text/plain typst stderr
-//   GET  /health → 200 ok
+//   GET  /health   → 200 ok (liveness — process is up)
+//   GET  /readyz   → 200 ok if `typst --version` succeeded at boot, 503 otherwise
+//   GET  /metrics  → Prometheus exposition (same port; K8s ServiceMonitor scrapes it)
 //
 // Refs:
 //   - https://typst.app/docs/reference/foundations/sys/
 //   - https://github.com/typst/typst (CLI)
 
 import express from 'express';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  attachMetricsEndpoint,
+  attachMetricsMiddleware,
+  createMetricsRegistry,
+} from './metrics.js';
 
 const TYPST_BIN = process.env.TYPST_BINARY ?? '/usr/local/bin/typst';
 
-export function startTypst(port) {
+/**
+ * Probe the typst binary once at boot. Returns a frozen state object
+ * describing whether the binary is usable. We cache the result so the
+ * /readyz probe doesn't shell out on every K8s scrape (every 5–10s).
+ */
+export function probeTypstBinary(binary = TYPST_BIN) {
+  try {
+    const result = spawnSync(binary, ['--version'], {
+      encoding: 'utf8',
+      timeout: 5_000,
+    });
+    if (result.error) {
+      return { ready: false, reason: `spawn error: ${result.error.message}` };
+    }
+    if (result.status !== 0) {
+      return {
+        ready: false,
+        reason: `typst --version exit ${result.status}: ${result.stderr?.trim() ?? ''}`,
+      };
+    }
+    return { ready: true, version: result.stdout.trim() };
+  } catch (err) {
+    return { ready: false, reason: `probe threw: ${err.message ?? String(err)}` };
+  }
+}
+
+/**
+ * Build (without binding) the typst server. Tests inject `readyState`
+ * to drive the /readyz branch without needing the binary on disk.
+ */
+export function buildTypstApp(opts = {}) {
   const app = express();
   app.use(express.json({ limit: '10mb' }));
 
-  app.get('/health', (_req, res) => res.status(200).json({ ok: true }));
+  const metrics = createMetricsRegistry('typst');
+  attachMetricsMiddleware(app, metrics);
+
+  // Boot-time probe. Tests pass `opts.readyState` to skip the real
+  // binary call when typst isn't installed in the test environment.
+  const readyState = opts.readyState ?? probeTypstBinary();
+
+  app.get('/health', (_req, res) => res.status(200).json({ ok: true, service: 'typst' }));
+
+  app.get('/readyz', (_req, res) => {
+    if (readyState.ready) {
+      return res.status(200).json({
+        ready: true,
+        service: 'typst',
+        version: readyState.version,
+      });
+    }
+    return res.status(503).json({
+      ready: false,
+      service: 'typst',
+      reason: readyState.reason ?? 'unknown',
+    });
+  });
+
+  attachMetricsEndpoint(app, metrics);
 
   app.post('/compile', async (req, res) => {
     const { source, inputs } = req.body ?? {};
@@ -78,6 +139,16 @@ export function startTypst(port) {
     }
   });
 
+  return { app, metrics, readyState };
+}
+
+export function startTypst(port) {
+  const { app, readyState } = buildTypstApp();
+  if (!readyState.ready) {
+    console.warn(
+      `[typst] readyz will return 503 until restart — boot probe failed: ${readyState.reason}`,
+    );
+  }
   return app.listen(port, () => {
     console.log(`[typst] listening on :${port}`);
   });

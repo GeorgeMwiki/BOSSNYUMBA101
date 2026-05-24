@@ -1,6 +1,11 @@
 # =============================================================================
 # outcomes-metering — Fastify HTTP + BrainEventBus consumer
-# Source: services/outcomes-metering (port 3018, healthz at /healthz)
+# Source: services/outcomes-metering (port 3018)
+#   - /healthz  — liveness (always 200 once the process is up)
+#   - /readyz   — readiness; pings the DB pool when DATABASE_URL is set,
+#                 returns 200 immediately in memory mode (no DB wired)
+#   - /metrics  — Prometheus exposition (same port as the app; no
+#                 separate metrics listener)
 # =============================================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -31,7 +36,10 @@ spec:
         app.kubernetes.io/version: "0.1.0"
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "9464"
+        # /metrics is exposed on the same port as the app (3018) — see
+        # services/outcomes-metering/src/observability/metrics.ts. No
+        # second metrics listener.
+        prometheus.io/port: "3018"
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: outcomes-metering
@@ -67,11 +75,9 @@ spec:
           image: ghcr.io/georgemwiki/bossnyumba-outcomes-metering:latest
           imagePullPolicy: IfNotPresent
           ports:
+            # Single listener; /metrics shares the app port.
             - containerPort: 3018
               name: http
-              protocol: TCP
-            - containerPort: 9464
-              name: metrics
               protocol: TCP
           envFrom:
             - secretRef:
@@ -85,8 +91,6 @@ spec:
               value: 0.0.0.0
             - name: OTEL_SERVICE_NAME
               value: outcomes-metering
-            - name: OTEL_METRICS_EXPORTER_PORT
-              value: "9464"
           resources:
             requests:
               cpu: "200m"
@@ -101,6 +105,8 @@ spec:
             capabilities:
               drop: ["ALL"]
           livenessProbe:
+            # Liveness is "process is up" — keep on /healthz which is
+            # cheap + dependency-free.
             httpGet:
               path: /healthz
               port: 3018
@@ -109,8 +115,11 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
+            # Readiness reflects "can we actually serve traffic" — the
+            # /readyz handler pings the DB pool when one is wired, else
+            # falls back to immediate 200 (memory mode).
             httpGet:
-              path: /healthz
+              path: /readyz
               port: 3018
             initialDelaySeconds: 5
             periodSeconds: 5

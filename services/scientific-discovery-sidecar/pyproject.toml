@@ -29,6 +29,10 @@ dependencies = [
     "statsmodels==0.14.4",
     "networkx==3.4.2",
     "pyarrow==18.1.0",
+    # Prometheus middleware — exposes /metrics on the same port as the app
+    # (k8s manifest at infra/k8s/scientific-discovery-sidecar/base/servicemonitor.yaml
+    # scrapes /metrics on port 8000).
+    "prometheus-fastapi-instrumentator==7.1.0",
 ]
 
 [project.optional-dependencies]

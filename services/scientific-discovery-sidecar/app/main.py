@@ -23,7 +23,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __service__, __version__
-from app.routes import dowhy_refute, health, pcmciplus
+from app.routes import dowhy_refute, health, pcmciplus, readyz
 from app.settings import Settings, load_settings
 
 
@@ -82,10 +82,48 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     app.include_router(health.router)
+    app.include_router(readyz.router)
     app.include_router(dowhy_refute.router)
     app.include_router(pcmciplus.router)
 
+    # Wire Prometheus middleware — must happen before the app starts
+    # serving so the FastAPI route table is fully registered. The
+    # instrumentator exposes /metrics on the same port as the app,
+    # matching the ServiceMonitor scrape config (port 8000).
+    _wire_prometheus_metrics(app)
+
     return app
+
+
+def _wire_prometheus_metrics(app: FastAPI) -> None:
+    """Mount the Prometheus instrumentator and `/metrics` endpoint.
+
+    Import is local so unit tests that stub out the dep (or environments
+    with the package missing) degrade to a no-op rather than crashing
+    app creation.
+    """
+    try:
+        from prometheus_fastapi_instrumentator import Instrumentator
+    except ImportError:  # pragma: no cover — dep missing in dev only
+        logging.getLogger("scientific-discovery-sidecar.metrics").warning(
+            "prometheus-fastapi-instrumentator not installed; "
+            "/metrics will return 404. Install requirements.txt to enable.",
+        )
+        return
+
+    # `should_group_status_codes=False` keeps `200`, `201` etc distinct
+    # so we can spot regression spikes per code. `excluded_handlers`
+    # avoids the noisy /health probe drowning out real RED metrics.
+    instrumentator = Instrumentator(
+        should_group_status_codes=False,
+        excluded_handlers=["/health", "/readyz", "/metrics"],
+    )
+    instrumentator.instrument(app).expose(
+        app,
+        endpoint="/metrics",
+        include_in_schema=False,
+        tags=["health"],
+    )
 
 
 app = create_app()

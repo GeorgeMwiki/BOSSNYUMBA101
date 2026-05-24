@@ -38,6 +38,11 @@ import {
 } from './routes/events.js';
 import { registerBillingRoutes } from './routes/billing.js';
 import {
+  registerReadyzRoutes,
+  type ReadinessDbPool,
+} from './routes/readyz.js';
+import { registerMetrics } from './observability/metrics.js';
+import {
   createInMemoryBillingStore,
   type BillingStore,
 } from './store/billing-store.js';
@@ -63,6 +68,12 @@ export interface BuildAppDeps {
   readonly clock?: () => Date;
   /** Optional record-id minter for deterministic tests. */
   readonly newRecordId?: () => string;
+  /**
+   * Optional DB pool used by `/readyz`. When omitted, the readiness
+   * probe returns 200 in "memory mode" — the in-memory store has no
+   * async dependency to wait on.
+   */
+  readonly dbPool?: ReadinessDbPool;
 }
 
 export interface BuildAppResult {
@@ -81,7 +92,15 @@ export async function buildApp(deps: BuildAppDeps = {}): Promise<BuildAppResult>
 
   const store = deps.store ?? createInMemoryBillingStore();
 
+  // Order matters: metrics middleware registers `onRequest`/`onResponse`
+  // hooks that must observe the health/readyz/billing routes below.
+  registerMetrics(app);
+
   app.get('/healthz', async () => ({ status: 'ok', service: 'outcomes-metering' }));
+
+  await registerReadyzRoutes(app, {
+    ...(deps.dbPool ? { dbPool: deps.dbPool } : {}),
+  });
 
   await registerEventsRoutes(app, {
     store,

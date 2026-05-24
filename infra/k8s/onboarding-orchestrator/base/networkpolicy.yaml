@@ -60,13 +60,15 @@ spec:
       ports:
         - protocol: TCP
           port: 3014
+    # Prometheus scrape from the monitoring namespace — /metrics is
+    # served on the app port (3014), not a dedicated metrics listener.
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: monitoring
       ports:
         - protocol: TCP
-          port: 9464
+          port: 3014
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
