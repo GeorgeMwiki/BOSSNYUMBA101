@@ -1,14 +1,21 @@
 /**
- * @bossnyumba/document-quality-guarantor — public barrel.
+ * @bossnyumba/document-quality-guarantor — public barrel + factory.
  *
- * The single import surface for the rest of the system. Callers wire
- * engines + gates + queue + escalation + audit into the factory and
- * receive a fully assembled façade.
+ *   createDocumentQualityGuarantor({
+ *     intakeEngines, outputEngines,
+ *     gates,
+ *     queue, escalation, audit,
+ *   })
  *
- * Subsystems beyond intake/output/format-coverage/audit (quality
- * gates, retry queue, escalation) land in milestones 2 and 3; this
- * barrel re-exports them as they ship so consumers never have to
- * change their import paths.
+ * Returns a façade with:
+ *   - processIntake(req)   → ExtractedDocument
+ *   - processOutput(req)   → RenderedDocument
+ *   - getEscalation(id)    → EscalationTicket | undefined
+ *   - replayAudit(opId)    → OperationReplay
+ *
+ * The façade is the only thing the rest of the system imports. Each
+ * subsystem is still exported individually for tests that want to
+ * exercise one piece in isolation.
  */
 
 export * from './types.js';
@@ -40,3 +47,93 @@ export {
   type OutputOrchestrator,
   type OutputOrchestratorDeps,
 } from './output/index.js';
+
+export {
+  accessibilityGate,
+  citationCoverageGate,
+  composeGates,
+  confidenceGate,
+  fontEmbeddingGate,
+  roundtripFidelityGate,
+  schemaCompletenessGate,
+  visualDiffGate,
+  type AccessibilityGateInput,
+  type CitationCoverageGateInput,
+  type CitationCoverageGateOptions,
+  type ComposedGateInput,
+  type ComposeGatesOptions,
+  type ConfidenceGateInput,
+  type ConfidenceGateOptions,
+  type FontEmbeddingGateInput,
+  type Gate,
+  type RoundtripFidelityGateInput,
+  type RoundtripFidelityGateOptions,
+  type SchemaCompletenessGateInput,
+  type SchemaCompletenessGateOptions,
+  type VisualDiffGateInput,
+  type VisualDiffGateOptions,
+} from './quality-gates/index.js';
+
+export {
+  createInMemoryRetryQueue,
+  nextDelayMs,
+  expectedSeries,
+  type RetryQueue,
+  type RetryQueueDeps,
+  type EnqueueJobInput,
+  type LeasedJob,
+} from './retry-queue/index.js';
+
+export {
+  createEscalationService,
+  type EscalateInput,
+  type EscalationDeps,
+  type EscalationService,
+  type WorkflowEnginePort,
+} from './escalation/index.js';
+
+// ─────────────────────────────────────────────────────────────────────
+// createDocumentQualityGuarantor — the assembled façade.
+// ─────────────────────────────────────────────────────────────────────
+
+import type { AuditChainStore, OperationReplay } from './audit/index.js';
+import { replayOperation } from './audit/index.js';
+import type { EscalationService } from './escalation/index.js';
+import type { IntakeOrchestrator } from './intake/index.js';
+import type { OutputOrchestrator } from './output/index.js';
+import type { RetryQueue } from './retry-queue/index.js';
+import type {
+  EscalationTicket,
+  EscalationTicketId,
+  ExtractedDocument,
+  IntakeRequest,
+  OutputRequest,
+  RenderedDocument,
+  TenantId,
+} from './types.js';
+
+export interface DocumentQualityGuarantorDeps {
+  readonly intake: IntakeOrchestrator;
+  readonly output: OutputOrchestrator;
+  readonly queue: RetryQueue;
+  readonly escalation: EscalationService;
+  readonly audit: AuditChainStore;
+}
+
+export interface DocumentQualityGuarantor {
+  processIntake(req: IntakeRequest): Promise<ExtractedDocument>;
+  processOutput(req: OutputRequest): Promise<RenderedDocument>;
+  getEscalation(ticketId: EscalationTicketId): EscalationTicket | undefined;
+  replayAudit(tenantId: TenantId, operationId: string): Promise<OperationReplay>;
+}
+
+export function createDocumentQualityGuarantor(
+  deps: DocumentQualityGuarantorDeps,
+): DocumentQualityGuarantor {
+  return {
+    processIntake: (req) => deps.intake.extract(req),
+    processOutput: (req) => deps.output.render(req),
+    getEscalation: (ticketId) => deps.escalation.getEscalation(ticketId),
+    replayAudit: (tenantId, operationId) => replayOperation(deps.audit, tenantId, operationId),
+  };
+}
