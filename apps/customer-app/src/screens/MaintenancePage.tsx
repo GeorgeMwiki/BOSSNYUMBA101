@@ -90,12 +90,15 @@ const tickets: MaintenanceTicket[] = [
   },
 ];
 
-const statusConfig: Record<TicketStatus, { label: string; icon: React.ElementType; color: string }> = {
-  submitted: { label: 'Submitted', icon: Clock, color: 'badge-info' },
-  in_progress: { label: 'In Progress', icon: Wrench, color: 'badge-warning' },
-  scheduled: { label: 'Scheduled', icon: Clock, color: 'badge-info' },
-  completed: { label: 'Completed', icon: CheckCircle, color: 'badge-success' },
-};
+function useStatusConfig(): Record<TicketStatus, { label: string; icon: React.ElementType; color: string }> {
+  const t = useTranslations('p89.maintenancePage');
+  return {
+    submitted: { label: 'Submitted', icon: Clock, color: 'badge-info' },
+    in_progress: { label: t('inProgressLabel'), icon: Wrench, color: 'badge-warning' },
+    scheduled: { label: 'Scheduled', icon: Clock, color: 'badge-info' },
+    completed: { label: 'Completed', icon: CheckCircle, color: 'badge-success' },
+  };
+}
 
 const priorityConfig: Record<Priority, { label: string; color: string; borderColor: string }> = {
   emergency: { label: 'Emergency', color: 'badge-danger', borderColor: 'border-l-danger-500' },
@@ -106,6 +109,7 @@ const priorityConfig: Record<Priority, { label: string; color: string; borderCol
 
 export default function MaintenancePage() {
   const t = useTranslations('maintenanceScreen');
+  const statusConfig = useStatusConfig();
   const [showNewRequestForm, setShowNewRequestForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'open' | 'closed'>('open');
   

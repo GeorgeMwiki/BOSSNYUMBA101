@@ -26,7 +26,11 @@ export interface ProposedAction {
 
 export interface NativeRoute {
   readonly path: string;
-  readonly label: string;
+  /**
+   * i18n message key under `p89.proposedAction` namespace. Consumers
+   * resolve with `useTranslations('p89.proposedAction')(labelKey)`.
+   */
+  readonly labelKey: string;
 }
 
 /**
@@ -46,7 +50,7 @@ export function mapProposedActionToRoute(
   ) {
     return {
       path: buildMaintenancePath(action),
-      label: 'Open maintenance form',
+      labelKey: 'openMaintenance',
     };
   }
   // Payment — verbs "pay" / "schedule" + object "payment" / "rent" / "invoice"
@@ -56,7 +60,7 @@ export function mapProposedActionToRoute(
   ) {
     return {
       path: buildPaymentPath(action),
-      label: 'Open payment form',
+      labelKey: 'openPayment',
     };
   }
   // Message — verbs "send" / "draft" + object "message" / "notification"
@@ -66,14 +70,14 @@ export function mapProposedActionToRoute(
   ) {
     return {
       path: buildMessagePath(action),
-      label: 'Open message composer',
+      labelKey: 'openMessage',
     };
   }
   // Lease — verbs "renew" / "terminate" / "modify" + object "lease"
   if (object.includes('lease') || verb.includes('renew') || verb.includes('terminate')) {
     return {
       path: buildLeasePath(action),
-      label: 'Open lease form',
+      labelKey: 'openLease',
     };
   }
   return null;
