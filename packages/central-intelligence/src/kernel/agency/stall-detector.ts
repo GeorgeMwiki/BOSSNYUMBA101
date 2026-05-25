@@ -50,6 +50,7 @@ import type {
   GoalsPort,
   GoalStep,
 } from './goals/types.js';
+import { logger } from '../../logger.js';
 
 export type StallProposalKind = 'continue' | 'block' | 'abandon';
 
@@ -280,8 +281,7 @@ export async function runStallDetection(
   } catch (error) {
     // Listing failure is logged but never throws — the detector is a
     // background sweeper and one bad query should not stop the loop.
-    // eslint-disable-next-line no-console
-    console.warn('stall-detector: goals.list failed', error);
+    logger.warn('stall-detector: goals.list failed', { error });
     return { scanned: 0, stalled: [] };
   }
 
@@ -302,8 +302,7 @@ export async function runStallDetection(
           AUDIT_LOOKBACK_ROWS,
         );
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.warn('stall-detector: auditReader.listForGoal failed', error);
+        logger.warn('stall-detector: auditReader.listForGoal failed', { error });
       }
     }
 
@@ -345,8 +344,7 @@ export async function runStallDetection(
       try {
         await deps.eventSink.emit('goal_stalled', report);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.warn('stall-detector: eventSink.emit failed', error);
+        logger.warn('stall-detector: eventSink.emit failed', { error });
       }
     }
   }

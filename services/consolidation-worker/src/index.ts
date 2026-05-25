@@ -40,6 +40,7 @@ import {
 import type { EntityConsolidatorPort } from './stages/06-consolidate.js';
 import type { ReEmbedPort } from './stages/07-re-embed.js';
 import type { ConstitutionalCriticPort } from './stages/03-reflect.js';
+import { logger } from './logger.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Logger — tiny pino-shape that doesn't require pulling pino in.
@@ -48,14 +49,14 @@ import type { ConstitutionalCriticPort } from './stages/03-reflect.js';
 function consoleLogger(): WorkerLogger {
   return {
     info: (obj, msg) =>
-      // eslint-disable-next-line no-console
-      console.info('[consolidation-worker]', msg ?? '', obj),
+      logger.info('[consolidation-worker]', { arg0: msg ?? '', obj })
+      ,
     warn: (obj, msg) =>
-      // eslint-disable-next-line no-console
-      console.warn('[consolidation-worker]', msg ?? '', obj),
+      logger.warn('[consolidation-worker]', { arg0: msg ?? '', obj })
+      ,
     error: (obj, msg) =>
-      // eslint-disable-next-line no-console
-      console.error('[consolidation-worker]', msg ?? '', obj),
+      logger.error('[consolidation-worker]', { arg0: msg ?? '', obj })
+      ,
   };
 }
 
@@ -115,11 +116,7 @@ function createReservoirSource(db: DrizzleLikeClient): ReservoirSource {
         }
         return entries;
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.warn(
-          '[consolidation-worker] reservoir fetch failed (schema may be pre-migration):',
-          asMessage(error),
-        );
+        logger.warn('[consolidation-worker] reservoir fetch failed (schema may be pre-migration)', { value: asMessage(error) });
         return [];
       }
     },
@@ -417,8 +414,7 @@ const isDirect =
 
 if (isDirect) {
   main().catch((error) => {
-    // eslint-disable-next-line no-console
-    console.error('[consolidation-worker] fatal:', error);
+    logger.error('[consolidation-worker] fatal', { error: error });
     process.exit(2);
   });
 }

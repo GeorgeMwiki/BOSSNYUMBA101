@@ -17,6 +17,7 @@ import type {
   GoalStepDraft,
 } from '../goals/types.js';
 import type { Executor, ExecutorOutcome } from '../executor/executor.js';
+import { logger } from '../../../logger.js';
 
 export interface WakeTriggerDetectArgs {
   readonly tenantId: string;
@@ -83,10 +84,7 @@ export async function runWakeCycle(
       try {
         detected = await trigger.detect({ tenantId, clock });
       } catch (err) {
-        console.error(
-          `agency-wake-loop: trigger '${trigger.id}' detect failed for tenant '${tenantId}'`,
-          err,
-        );
+        logger.error(`agency-wake-loop: trigger '${trigger.id}' detect failed for tenant '${tenantId}'`, { error: err });
         continue;
       }
 
@@ -113,10 +111,7 @@ export async function runWakeCycle(
           });
           goalId = opened.id;
         } catch (err) {
-          console.error(
-            `agency-wake-loop: goals.open failed for tenant '${tenantId}' / trigger '${trigger.id}'`,
-            err,
-          );
+          logger.error(`agency-wake-loop: goals.open failed for tenant '${tenantId}' / trigger '${trigger.id}'`, { error: err });
           continue;
         }
         goalsOpened += 1;
@@ -125,10 +120,7 @@ export async function runWakeCycle(
         try {
           outcome = await deps.executor.executeGoal(goalId);
         } catch (err) {
-          console.error(
-            `agency-wake-loop: executeGoal failed for tenant '${tenantId}' / goal '${goalId}'`,
-            err,
-          );
+          logger.error(`agency-wake-loop: executeGoal failed for tenant '${tenantId}' / goal '${goalId}'`, { error: err });
         }
         if (outcome) {
           goalsExecuted += 1;

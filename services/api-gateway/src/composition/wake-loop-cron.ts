@@ -52,6 +52,7 @@ import {
   createBoundWakeReadDeps,
 } from './agency-port-bindings.js';
 import { readSovereignLedgerFailClosedFromEnv } from './service-registry.js';
+import { logger } from '../utils/logger.js';
 
 type StallDetectorRunArgs = agencyKernel.StallDetectorRunArgs;
 type StallDetectorRunOutcome = agencyKernel.StallDetectorRunOutcome;
@@ -561,10 +562,7 @@ export function createWakeLoopCronSupervisor(
 export async function runFromEnv(): Promise<WakeLoopCronTickResult | null> {
   const dbUrl = process.env.DATABASE_URL?.trim();
   if (!dbUrl) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      'wake-loop-cron CLI: DATABASE_URL not set — no-op',
-    );
+    logger.warn('wake-loop-cron CLI: DATABASE_URL not set — no-op');
     return null;
   }
   let db: unknown = null;
@@ -572,8 +570,7 @@ export async function runFromEnv(): Promise<WakeLoopCronTickResult | null> {
     const mod = await import('./db-client.js');
     db = ((mod as { getDb?: () => unknown }).getDb?.() ?? null) as unknown;
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn('wake-loop-cron CLI: db-client import failed', error);
+    logger.warn('wake-loop-cron CLI: db-client import failed', { error });
     return null;
   }
   const supervisor = createWakeLoopCronSupervisor({
@@ -599,13 +596,11 @@ const isDirect =
 if (isDirect) {
   runFromEnv()
     .then((result) => {
-      // eslint-disable-next-line no-console
-      console.log('wake-loop-cron CLI:', result ?? '(no-op)');
+      logger.info('wake-loop-cron CLI', { value: result ?? '(no-op)' });
       process.exit(0);
     })
     .catch((error) => {
-      // eslint-disable-next-line no-console
-      console.error('wake-loop-cron CLI: fatal', error);
+      logger.error('wake-loop-cron CLI: fatal', { error: error });
       process.exit(2);
     });
 }

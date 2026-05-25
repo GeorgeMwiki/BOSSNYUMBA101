@@ -41,6 +41,8 @@ import { sensorCallLog } from '../schemas/sensor-call-log.schema.js';
 import type { SensorCallOutcome } from '../schemas/sensor-call-log.schema.js';
 import { tenantBudgetEnvelopes } from '../schemas/tenant-budget-envelopes.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export type TenantTier = 'free' | 'growth' | 'enterprise';
 
@@ -255,7 +257,7 @@ export function createSensorRoutingService(db: DatabaseClient): SensorRoutingSer
         }
         return { id };
       } catch (error) {
-        console.error('sensor-routing.recordSensorCall failed:', error);
+        logger.error('sensor-routing.recordSensorCall failed', { error: error });
         return { id };
       }
     },
@@ -313,7 +315,7 @@ export function createSensorRoutingService(db: DatabaseClient): SensorRoutingSer
           hardCapEnforced: row.hardCapEnforced,
         };
       } catch (error) {
-        console.error('sensor-routing.getBudgetStatus failed:', error);
+        logger.error('sensor-routing.getBudgetStatus failed', { error: error });
         return null;
       }
     },

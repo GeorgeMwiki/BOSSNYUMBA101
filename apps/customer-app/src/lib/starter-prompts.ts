@@ -12,29 +12,36 @@ import { humanizeError } from './humanize-error';
 
 export interface StarterPrompt {
   readonly id: string;
-  readonly label: string;
+  /**
+   * Pre-localised label from the backend (optional — fallback prompts
+   * use `labelKey` resolved through `useTranslations('p89.starterPrompts')`
+   * at render time).
+   */
+  readonly label?: string;
+  /** i18n key under `p89.starterPrompts` namespace (for fallback prompts). */
+  readonly labelKey?: string;
   readonly prompt: string;
 }
 
 const TENANT_FALLBACK: ReadonlyArray<StarterPrompt> = Object.freeze([
   {
     id: 'tenant:rent-due',
-    label: 'When is my next rent due?',
+    labelKey: 'rentDue',
     prompt: 'When is my next rent payment due?',
   },
   {
     id: 'tenant:maintenance',
-    label: 'Open a maintenance request',
+    labelKey: 'openMaintenance',
     prompt: 'I need to report a maintenance issue in my unit.',
   },
   {
     id: 'tenant:lease',
-    label: 'Explain my lease',
+    labelKey: 'explainLease',
     prompt: 'Can you summarise the key terms of my lease?',
   },
   {
     id: 'tenant:receipts',
-    label: 'Find a payment receipt',
+    labelKey: 'findReceipt',
     prompt: 'Show me my recent rent payment receipts.',
   },
 ]);

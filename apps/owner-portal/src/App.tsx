@@ -10,6 +10,9 @@ import { InvitePage } from './pages/InvitePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { PropertiesPage } from './pages/PropertiesPage';
 import { PropertyDetailPage } from './pages/PropertyDetailPage';
+import { PropertyCreatePage } from './pages/PropertyCreatePage';
+import { UnitCreatePage } from './pages/UnitCreatePage';
+import { LeaseDraftPage } from './pages/LeaseDraftPage';
 import { FinancialPage } from './pages/FinancialPage';
 import { MaintenancePage } from './pages/MaintenancePage';
 import { DocumentsPage } from './pages/DocumentsPage';
@@ -147,7 +150,10 @@ function App() {
                   <Route path="/" element={<HomeRedirect />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/properties" element={<PropertiesPage />} />
+                  <Route path="/properties/new" element={<PropertyCreatePage />} />
                   <Route path="/properties/:id" element={<PropertyDetailPage />} />
+                  <Route path="/units/new" element={<UnitCreatePage />} />
+                  <Route path="/leases/new" element={<LeaseDraftPage />} />
                   <Route path="/portfolio" element={<PortfolioPage />} />
                   <Route path="/portfolio/performance" element={<PortfolioPerformancePage />} />
                   <Route path="/portfolio/growth" element={<PortfolioGrowthPage />} />

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Building2, MapPin, Users, ArrowRight, Search } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Building2, MapPin, Users, ArrowRight, Search, Plus } from 'lucide-react';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { formatPercentage } from '../lib/api';
@@ -8,6 +8,7 @@ import { useProperties } from '../lib/hooks';
 
 export function PropertiesPage() {
   const t = useTranslations('propertiesPage');
+  const navigate = useNavigate();
   const { data: properties = [], isLoading, error, refetch } = useProperties();
   const [search, setSearch] = useState('');
 
@@ -47,6 +48,10 @@ export function PropertiesPage() {
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500">{t('subtitle')}</p>
         </div>
+        <Button onClick={() => navigate('/properties/new')}>
+          <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
+          {t('addProperty')}
+        </Button>
       </div>
 
       <div className="relative max-w-md">
@@ -122,6 +127,14 @@ export function PropertiesPage() {
           title={search ? t('noMatches') : t('noPropertiesTitle')}
           description={
             search ? t('noMatchesDesc') : t('noPropertiesDesc')
+          }
+          action={
+            search ? undefined : (
+              <Button onClick={() => navigate('/properties/new')}>
+                <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
+                {t('addProperty')}
+              </Button>
+            )
           }
         />
       )}

@@ -602,6 +602,10 @@ export const PdfViewerPartSchema = z
     name: z.string().min(1).max(200),
     initialPage: z.number().int().min(1).max(10_000).optional(),
     allowAnnotate: z.boolean().optional(),
+    /** Optional override for the zoom-out button aria-label (i18n). */
+    zoomOutAriaLabel: z.string().max(60).optional(),
+    /** Optional override for the zoom-in button aria-label (i18n). */
+    zoomInAriaLabel: z.string().max(60).optional(),
   })
   .strict();
 
@@ -732,6 +736,8 @@ export const ChatEmbedPartSchema = z
     scope: z.string().min(1).max(200),
     placeholder: z.string().max(200).optional(),
     initialMessages: z.array(ChatEmbedMessageSchema).max(50).optional(),
+    /** Optional override for the empty-state copy (i18n). */
+    emptyText: z.string().max(200).optional(),
   })
   .strict();
 

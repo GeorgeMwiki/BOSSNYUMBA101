@@ -8,6 +8,7 @@
 import type { TenantId, PropertyId } from '../types/index.js';
 import type { ReportFormat } from '../generators/index.js';
 import type { IReportStorage, StoredReport } from '../storage/storage.js';
+import { logger } from '../logger.js';
 
 // ============================================================================
 // Types
@@ -572,7 +573,7 @@ export class AuditPackBuilderService {
             completedDocs++;
             auditPack.completedDocuments = completedDocs;
           } catch (docError) {
-            console.error(`Failed to generate document ${doc.id}:`, docError);
+            logger.error(`Failed to generate document ${doc.id}`, { error: docError });
             // Continue with other documents
           }
         }

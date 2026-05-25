@@ -11,6 +11,7 @@ import { readdir, readFile } from 'fs/promises';
 import { join, dirname, resolve, relative } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import postgres from 'postgres';
+import { logger } from './logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = resolve(join(__dirname, 'migrations'));
@@ -138,11 +139,11 @@ const isCliEntry = (() => {
 if (isCliEntry) {
   runMigrations()
     .then((r) => {
-      console.warn(`[migrations] applied=${r.applied} skipped=${r.skipped}`);
+      logger.warn(`[migrations] applied=${r.applied} skipped=${r.skipped}`);
       process.exit(0);
     })
     .catch((err) => {
-      console.error('[migrations] failed', err);
+      logger.error('[migrations] failed', { error: err });
       process.exit(1);
     });
 }

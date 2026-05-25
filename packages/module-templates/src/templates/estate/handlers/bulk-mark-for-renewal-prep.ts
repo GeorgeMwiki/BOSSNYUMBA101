@@ -20,6 +20,7 @@
  */
 
 import { z } from 'zod';
+import { logger } from '../../../logger.js';
 
 // ─── Payload schema ───────────────────────────────────────────────────────
 
@@ -138,13 +139,10 @@ export async function bulkMarkForRenewalPrepHandler(
         'TODO: write to lease.flagged_for_renewal_prep when migration lands',
       );
     } else {
-      console.warn(
-        'TODO: write to lease.flagged_for_renewal_prep when migration lands',
-        {
+      logger.warn('TODO: write to lease.flagged_for_renewal_prep when migration lands', {
           proposal_id: ctx.proposalId,
           lease_count: parsed.lease_ids.length,
-        },
-      );
+        });
     }
   } else {
     updated = outcome.updated;

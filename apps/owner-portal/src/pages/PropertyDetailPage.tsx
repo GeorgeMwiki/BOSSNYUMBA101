@@ -10,8 +10,10 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  Plus,
+  FileText,
 } from 'lucide-react';
-import { Skeleton, EmptyState } from '@bossnyumba/design-system';
+import { Skeleton, EmptyState, Button } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { api, formatPercentage } from '../lib/api';
 import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
@@ -111,20 +113,29 @@ export function PropertyDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link
-          to="/properties"
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{property.name}</h1>
-          <div className="flex items-center gap-1 text-gray-500">
-            <MapPin className="h-4 w-4" />
-            {property.address.line1}, {property.address.city}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Link
+            to="/properties"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label={t('backToProperties')}
+          >
+            <ArrowLeft className="h-5 w-5 text-gray-600" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{property.name}</h1>
+            <div className="flex items-center gap-1 text-gray-500">
+              <MapPin className="h-4 w-4" />
+              {property.address.line1}, {property.address.city}
+            </div>
           </div>
         </div>
+        <Link to={`/units/new?propertyId=${property.id}`}>
+          <Button>
+            <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
+            {t('addUnit')}
+          </Button>
+        </Link>
       </div>
 
       {/* Stats */}
@@ -198,28 +209,38 @@ export function PropertyDetailPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-gray-900">
-                      {formatCurrency(unit.rentAmount)}/mo
-                    </p>
-                    <span
-                      className={`inline-flex items-center gap-1 text-xs font-medium ${
-                        unit.status === 'OCCUPIED'
-                          ? 'text-green-600'
-                          : unit.status === 'AVAILABLE'
-                          ? 'text-yellow-600'
-                          : 'text-gray-600'
-                      }`}
-                    >
-                      {unit.status === 'OCCUPIED' ? (
-                        <CheckCircle className="h-3 w-3" />
-                      ) : unit.status === 'AVAILABLE' ? (
-                        <Clock className="h-3 w-3" />
-                      ) : (
-                        <AlertCircle className="h-3 w-3" />
-                      )}
-                      {unit.status}
-                    </span>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="font-medium text-gray-900">
+                        {formatCurrency(unit.rentAmount)}/mo
+                      </p>
+                      <span
+                        className={`inline-flex items-center gap-1 text-xs font-medium ${
+                          unit.status === 'OCCUPIED'
+                            ? 'text-green-600'
+                            : unit.status === 'AVAILABLE'
+                            ? 'text-yellow-600'
+                            : 'text-gray-600'
+                        }`}
+                      >
+                        {unit.status === 'OCCUPIED' ? (
+                          <CheckCircle className="h-3 w-3" />
+                        ) : unit.status === 'AVAILABLE' ? (
+                          <Clock className="h-3 w-3" />
+                        ) : (
+                          <AlertCircle className="h-3 w-3" />
+                        )}
+                        {unit.status}
+                      </span>
+                    </div>
+                    {unit.status !== 'OCCUPIED' && (
+                      <Link to={`/leases/new?unitId=${unit.id}`}>
+                        <Button size="sm" variant="outline">
+                          <FileText className="h-3 w-3 mr-1" aria-hidden="true" />
+                          {t('draftLease')}
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </div>
               ))}

@@ -82,11 +82,33 @@ function matchAny(text: string, patterns: readonly RegExp[]): boolean {
   return patterns.some((p) => p.test(text));
 }
 
+/**
+ * Optional localised labels for blocks emitted by the generator.
+ *
+ * The generator produces UIBlock objects that the consumer app renders.
+ * When `labels` is omitted the generator uses English defaults — this
+ * preserves the previous behaviour. Callers in apps with `useTranslations`
+ * are expected to pass localised strings (the package is library-only and
+ * cannot resolve `t()` calls itself).
+ */
+export interface BlockGeneratorLabels {
+  readonly leaseTimelineSigning?: string;
+  readonly leaseTimelineRentStart?: string;
+  readonly leaseTimelineRenewalWindow?: string;
+  readonly leaseTimelineLeaseEnd?: string;
+  readonly maintenanceInProgress?: string;
+  readonly propertyComparisonMonthlyRent?: string;
+  readonly propertyComparisonSecurityDeposit?: string;
+  readonly quickReplyGoDeeper?: string;
+  readonly quickReplyTestMe?: string;
+}
+
 export interface BlockGeneratorInput {
   readonly responseText: string;
   readonly toolCalls: readonly string[];
   readonly language?: 'en' | 'sw';
   readonly defaultCurrency?: string;
+  readonly labels?: BlockGeneratorLabels;
 }
 
 export function generateBlocks(input: BlockGeneratorInput): readonly UIBlock[] {
@@ -94,8 +116,21 @@ export function generateBlocks(input: BlockGeneratorInput): readonly UIBlock[] {
   //   getDefaultCurrency(tenant.countryCode) via @bossnyumba/compliance-plugins
   //   once tenants-table migration lands. USD is the neutral fallback.
   //   See Docs/KNOWN_ISSUES.md#ki-005.
-  const { responseText, toolCalls, defaultCurrency = 'USD' } = input;
+  const { responseText, toolCalls, defaultCurrency = 'USD', labels = {} } = input;
   const blocks: UIBlock[] = [];
+
+  // English defaults — consumer apps override via `labels` to localise.
+  const L = {
+    leaseTimelineSigning: labels.leaseTimelineSigning ?? 'Signing',
+    leaseTimelineRentStart: labels.leaseTimelineRentStart ?? 'Rent start',
+    leaseTimelineRenewalWindow: labels.leaseTimelineRenewalWindow ?? 'Renewal window',
+    leaseTimelineLeaseEnd: labels.leaseTimelineLeaseEnd ?? 'Lease end',
+    maintenanceInProgress: labels.maintenanceInProgress ?? 'In progress',
+    propertyComparisonMonthlyRent: labels.propertyComparisonMonthlyRent ?? 'Monthly rent',
+    propertyComparisonSecurityDeposit: labels.propertyComparisonSecurityDeposit ?? 'Security deposit',
+    quickReplyGoDeeper: labels.quickReplyGoDeeper ?? 'Go deeper',
+    quickReplyTestMe: labels.quickReplyTestMe ?? 'Test me',
+  };
 
   if (
     toolCalls.includes('rent-affordability-calculator') ||
@@ -141,10 +176,10 @@ export function generateBlocks(input: BlockGeneratorInput): readonly UIBlock[] {
       position: 'below',
       title: 'Lease timeline',
       events: [
-        { label: 'Signing', date: 'Month 0', status: 'completed' },
-        { label: 'Rent start', date: 'Month 0', status: 'completed' },
-        { label: 'Renewal window', date: 'Month 10', status: 'current' },
-        { label: 'Lease end', date: 'Month 12', status: 'upcoming' },
+        { label: L.leaseTimelineSigning, date: 'Month 0', status: 'completed' },
+        { label: L.leaseTimelineRentStart, date: 'Month 0', status: 'completed' },
+        { label: L.leaseTimelineRenewalWindow, date: 'Month 10', status: 'current' },
+        { label: L.leaseTimelineLeaseEnd, date: 'Month 12', status: 'upcoming' },
       ],
     };
     blocks.push(block);
@@ -161,7 +196,7 @@ export function generateBlocks(input: BlockGeneratorInput): readonly UIBlock[] {
         { id: 'reported', label: 'Reported' },
         { id: 'triaged', label: 'Triaged' },
         { id: 'assigned', label: 'Assigned' },
-        { id: 'in_progress', label: 'In progress' },
+        { id: 'in_progress', label: L.maintenanceInProgress },
         { id: 'resolved', label: 'Resolved' },
       ],
     };
@@ -194,9 +229,9 @@ export function generateBlocks(input: BlockGeneratorInput): readonly UIBlock[] {
       title: 'Property comparison',
       columns: [{ header: 'Unit A' }, { header: 'Unit B', highlight: true }],
       rows: [
-        { label: 'Monthly rent', values: ['25,000', '30,000'] },
+        { label: L.propertyComparisonMonthlyRent, values: ['25,000', '30,000'] },
         { label: 'Bedrooms', values: ['2', '3'] },
-        { label: 'Security deposit', values: ['50,000', '60,000'] },
+        { label: L.propertyComparisonSecurityDeposit, values: ['50,000', '60,000'] },
       ],
     };
     blocks.push(block);
@@ -209,8 +244,8 @@ export function generateBlocks(input: BlockGeneratorInput): readonly UIBlock[] {
       type: 'quick_replies',
       position: 'below',
       replies: [
-        { label: 'Go deeper', prompt: 'Can you go deeper on this concept?' },
-        { label: 'Test me', prompt: 'Quiz me on what we just discussed' },
+        { label: L.quickReplyGoDeeper, prompt: 'Can you go deeper on this concept?' },
+        { label: L.quickReplyTestMe, prompt: 'Quiz me on what we just discussed' },
       ],
     };
     blocks.push(replies);

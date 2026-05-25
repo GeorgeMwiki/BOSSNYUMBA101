@@ -108,6 +108,15 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=4 \
 
 ENV NODE_ENV=production
 
+# Run as non-root user (mirrors infra/k8s/*/securityContext.runAsNonRoot: true).
+# Debian syntax — base image is node:22-bookworm-slim. Chromium sandbox
+# requires CAP_SYS_ADMIN at kernel level, but Puppeteer with --no-sandbox
+# still works inside non-root; the OS package `chromium-sandbox` gives
+# SUID-based sandbox that runs as the app user.
+RUN groupadd -r app && useradd -r -g app -d /app -s /sbin/nologin app \
+ && chown -R app:app /app
+USER app
+
 # tini reaps soffice/chromium children cleanly.
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "/app/server/index.js"]

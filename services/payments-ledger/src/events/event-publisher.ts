@@ -5,6 +5,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { TenantId } from '@bossnyumba/domain-models';
 import { DomainEvent, PaymentDomainEvent } from './payment-events';
+import { logger } from '../logger.js';
 
 /**
  * Outbox entry for transactional event publishing
@@ -140,7 +141,7 @@ export class InMemoryEventPublisher implements IEventPublisher {
         try {
           await handler(event);
         } catch (error) {
-          console.error(`Error in event handler for ${event.eventType}:`, error);
+          logger.error(`Error in event handler for ${event.eventType}`, { error: error });
         }
       }
     }

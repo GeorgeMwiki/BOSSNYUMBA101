@@ -51,6 +51,16 @@ export interface SectionComponentProps {
   readonly orgId?: string | undefined;
   readonly entityType: string;
   readonly scope: SectionScope;
+  /**
+   * Optional consumer-supplied localised title override for the
+   * section heading (i18n). When omitted, the seed section components
+   * fall back to their English defaults.
+   */
+  readonly localisedTitle?: string;
+  /**
+   * Optional consumer-supplied localised description override (i18n).
+   */
+  readonly localisedDescription?: string;
 }
 
 /**

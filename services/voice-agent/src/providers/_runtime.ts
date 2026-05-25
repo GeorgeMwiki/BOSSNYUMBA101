@@ -15,6 +15,7 @@
  * Keep this file dependency-free — only `node:*` builtins. Provider files
  * remain ~200 lines each.
  */
+import { logger } from '../logger.js';
 /* eslint-disable no-console */
 
 import { setTimeout as delay, clearTimeout as clearDelay } from 'node:timers';
@@ -245,5 +246,5 @@ const warnedKeys = new Set<string>();
 export function warnOnce(key: string, message: string): void {
   if (warnedKeys.has(key)) return;
   warnedKeys.add(key);
-  console.warn(message);
+  logger.warn('value', { value: message });
 }

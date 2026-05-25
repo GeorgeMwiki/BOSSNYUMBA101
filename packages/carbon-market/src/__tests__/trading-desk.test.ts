@@ -203,6 +203,7 @@ describe('createTradingDesk — bookForward', () => {
     expect(entry.id).toBe('BE-1');
     expect(entry.status).toBe('OPEN');
     expect(entry.side).toBe('BUY');
+    // nosemgrep: missing-tenant-id-arg reason: test of repo.findById's globally-unique-id lookup contract.
     const stored = await repo.findById('BE-1');
     expect(stored).not.toBeNull();
     expect(stored!.qty).toBe(500);
@@ -412,12 +413,14 @@ describe('createInMemoryBookRepository', () => {
       tradeDate: '2026-05-24T12:00:00Z', status: 'OPEN',
     };
     await repo.save(entry);
+    // nosemgrep: missing-tenant-id-arg reason: test of repo.findById's globally-unique-id lookup contract.
     const found = await repo.findById('X');
     expect(found).toEqual(entry);
   });
 
   it('findById returns null when missing', async () => {
     const repo = createInMemoryBookRepository();
+    // nosemgrep: missing-tenant-id-arg reason: test of repo.findById's globally-unique-id lookup contract (negative case).
     expect(await repo.findById('NOPE')).toBeNull();
   });
 

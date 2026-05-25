@@ -30,6 +30,8 @@ import { randomUUID } from 'crypto';
 import { and, asc, desc, eq, gte, sql } from 'drizzle-orm';
 import { sessionReplayChunks } from '../schemas/session-replay-chunks.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export interface SessionReplayChunkInput {
   readonly tenantId: string;
@@ -136,7 +138,7 @@ export function createSessionReplayChunksService(
         if (isUniqueViolation(message)) {
           return { ok: false, chunkId: null, reason: 'duplicate' };
         }
-        console.error('session-replay-chunks.appendChunk failed:', error);
+        logger.error('session-replay-chunks.appendChunk failed', { error: error });
         return { ok: false, chunkId: null, reason: 'db-error' };
       }
     },
@@ -163,7 +165,7 @@ export function createSessionReplayChunksService(
           .limit(limit)) as ReadonlyArray<RawRow>;
         return (rows ?? []).map(rowToEntry);
       } catch (error) {
-        console.error('session-replay-chunks.listForSession failed:', error);
+        logger.error('session-replay-chunks.listForSession failed', { error: error });
         return [];
       }
     },
@@ -216,10 +218,7 @@ export function createSessionReplayChunksService(
           chunkCount: Number(r.chunkCount) || 0,
         }));
       } catch (error) {
-        console.error(
-          'session-replay-chunks.listRecentSessions failed:',
-          error,
-        );
+        logger.error('session-replay-chunks.listRecentSessions failed', { error: error });
         return [];
       }
     },

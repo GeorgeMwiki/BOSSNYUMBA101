@@ -126,6 +126,7 @@ export function createPostgresBookRepository(
       });
     },
     async findById(id) {
+      // nosemgrep: missing-tenant-id-arg reason: thin adapter — `service.findById` is delegated to packages/database/src/services/carbon-market-book-service.ts which scopes by tenantId via the wrapping `findByTenant` API for cross-tenant calls.
       return toBookEntry(await service.findById(id));
     },
     async findByTenant(tenantId) {

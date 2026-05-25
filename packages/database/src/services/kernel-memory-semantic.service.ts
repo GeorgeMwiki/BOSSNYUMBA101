@@ -32,6 +32,8 @@ import { randomUUID } from 'crypto';
 import { and, eq, like, sql, desc, isNull, count, type SQL } from 'drizzle-orm';
 import { kernelMemorySemantic } from '../schemas/kernel-memory-semantic.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 /**
  * Per-user cap on declared facts — protects the kernel memory store
@@ -244,7 +246,7 @@ export function createSemanticMemoryService(
         if (error instanceof DeclaredFactsCapExceededError) {
           throw error;
         }
-        console.error('kernel-memory-semantic.upsertFact failed:', error);
+        logger.error('kernel-memory-semantic.upsertFact failed', { error: error });
       }
     },
 
@@ -270,7 +272,7 @@ export function createSemanticMemoryService(
         const hit = Array.isArray(rows) ? rows[0] : undefined;
         return hit ? rowToFact(hit) : null;
       } catch (error) {
-        console.error('kernel-memory-semantic.lookup failed:', error);
+        logger.error('kernel-memory-semantic.lookup failed', { error: error });
         return null;
       }
     },
@@ -301,7 +303,7 @@ export function createSemanticMemoryService(
 
         return (rows ?? []).map(rowToFact);
       } catch (error) {
-        console.error('kernel-memory-semantic.search failed:', error);
+        logger.error('kernel-memory-semantic.search failed', { error: error });
         return [];
       }
     },
@@ -351,10 +353,7 @@ export function createSemanticMemoryService(
             distance: Number(r.distance),
           }));
       } catch (error) {
-        console.error(
-          'kernel-memory-semantic.searchByEmbedding failed:',
-          error,
-        );
+        logger.error('kernel-memory-semantic.searchByEmbedding failed', { error: error });
         return [];
       }
     },
@@ -380,7 +379,7 @@ export function createSemanticMemoryService(
         }>;
         return Array.isArray(out) ? out.length : 0;
       } catch (error) {
-        console.error('kernel-memory-semantic.decay failed:', error);
+        logger.error('kernel-memory-semantic.decay failed', { error: error });
         return 0;
       }
     },
@@ -445,18 +444,14 @@ function sanitizeEmbedding(
   if (raw === undefined || raw === null) return undefined;
   if (!Array.isArray(raw)) return undefined;
   if (raw.length !== EMBEDDING_DIMS) {
-    console.warn(
-      `kernel-memory-semantic: dropping embedding — expected ${EMBEDDING_DIMS} dims, got ${raw.length}`,
-    );
+    logger.warn(`kernel-memory-semantic: dropping embedding — expected ${EMBEDDING_DIMS} dims, got ${raw.length}`);
     return undefined;
   }
   const cleaned: number[] = new Array(raw.length);
   for (let i = 0; i < raw.length; i += 1) {
     const n = Number(raw[i]);
     if (!Number.isFinite(n)) {
-      console.warn(
-        `kernel-memory-semantic: dropping embedding — non-finite value at index ${i}`,
-      );
+      logger.warn(`kernel-memory-semantic: dropping embedding — non-finite value at index ${i}`);
       return undefined;
     }
     cleaned[i] = n;

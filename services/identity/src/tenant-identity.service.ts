@@ -117,6 +117,7 @@ export class TenantIdentityService {
       return { verified: false, identity: null };
     }
     await this.identityRepo.touchActivity(identityId);
+    // nosemgrep: missing-tenant-id-arg reason: identities are globally-unique by identityId; tenant scope is one of the columns on the identity row.
     const identity = await this.identityRepo.findById(identityId);
     return { verified: true, identity };
   }

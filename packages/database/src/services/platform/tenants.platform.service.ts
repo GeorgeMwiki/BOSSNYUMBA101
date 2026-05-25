@@ -27,6 +27,7 @@ import {
   userStatusEnum,
   type tenantStatusEnum,
 } from '../../schemas/tenant.schema.js';
+import { logger } from '../../logger.js';
 import type { DatabaseClient } from '../../client.js';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -258,7 +259,7 @@ export function createPlatformTenantsService(
           totalReturned: rows.length,
         };
       } catch (error) {
-        console.error('platform.tenants.listTenants failed:', error);
+        logger.error('platform.tenants.listTenants failed', { error: error });
         return { rows: [], nextCursor: null, totalReturned: 0 };
       }
     },
@@ -273,7 +274,7 @@ export function createPlatformTenantsService(
           .limit(1)) as ReadonlyArray<{ id: string }>;
         return rows.length > 0;
       } catch (error) {
-        console.error('platform.tenants.slugExists failed:', error);
+        logger.error('platform.tenants.slugExists failed', { error: error });
         return false;
       }
     },
@@ -288,7 +289,7 @@ export function createPlatformTenantsService(
           .limit(1)) as ReadonlyArray<{ id: string }>;
         return rows.length > 0;
       } catch (error) {
-        console.error('platform.tenants.tenantExists failed:', error);
+        logger.error('platform.tenants.tenantExists failed', { error: error });
         return false;
       }
     },
@@ -356,7 +357,7 @@ export function createPlatformTenantsService(
           } as never);
         });
       } catch (error) {
-        console.error('platform.tenants.provisionTenant failed:', error);
+        logger.error('platform.tenants.provisionTenant failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.tenants.provisionTenant failed');
@@ -400,10 +401,7 @@ export function createPlatformTenantsService(
             .where(eq(tenants.id, args.tenantId));
         });
       } catch (error) {
-        console.error(
-          'platform.tenants.rollbackTenantProvision failed:',
-          error,
-        );
+        logger.error('platform.tenants.rollbackTenantProvision failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.tenants.rollbackTenantProvision failed');

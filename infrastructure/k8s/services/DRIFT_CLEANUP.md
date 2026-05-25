@@ -21,3 +21,31 @@ Authoritative statement on library services lives in `docker/Dockerfile.service`
 (top comment) and `docker-compose.yml` (lines 96-117). Adding these services
 back as standalone deployables requires a thin HTTP wrapper (hono/express)
 exposing `/healthz` plus a Dockerfile — tracked as a known gap.
+
+## Update 2026-05-25 — P98 K8s sweep
+
+The current authoritative K8s manifests live under `infra/k8s/` (note: the
+sibling directory, NOT this `infrastructure/k8s/` legacy path). The P98
+sweep added per-service trees for:
+
+- **Singleton-loop workers** (Deployment + NetworkPolicy + ExternalSecret):
+  `consolidation-worker`, `outbox-processor`, `proactive-triggers-worker`
+- **Stdio MCP servers** (Deployment + NetworkPolicy + ExternalSecret, no
+  Service since transport is stdio):
+  `mcp-server-firs`, `mcp-server-nin`, `mcp-server-nggis`,
+  `mcp-server-opay`, `mcp-server-process-intel`
+- **HTTP service** (full Deployment + Service + HPA + PDB + NetworkPolicy
+  + ServiceMonitor + ExternalSecret): `payments-ledger` on port 3001
+  (the only `services/*` member with an actual `app.listen()` call —
+  see `services/payments-ledger/src/server.ts`)
+
+`payments-ledger` is the renamed successor to the orphaned
+`bossnyumba/payments:latest` image referenced above. It owns the
+double-entry ledger (CLAUDE.md hard rule: every credit/debit goes
+through `LedgerService.post()`).
+
+`services/notifications`, `services/payments`, `services/reports`,
+`services/document-intelligence`, `services/identity`,
+`services/webhooks`, `services/domain-services` remain pure
+in-process libraries imported by api-gateway and ship no standalone
+K8s manifest.

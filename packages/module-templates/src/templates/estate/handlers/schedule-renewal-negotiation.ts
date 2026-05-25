@@ -17,6 +17,7 @@
  */
 
 import { z } from 'zod';
+import { logger } from '../../../logger.js';
 
 // ─── Payload schema ───────────────────────────────────────────────────────
 
@@ -148,10 +149,7 @@ export async function scheduleRenewalNegotiationHandler(
         'TODO: route to Piece M work_assignments when port lands',
       );
     } else {
-      console.warn(
-        'TODO: route to Piece M work_assignments when port lands',
-        { proposal_id: ctx.proposalId, lease_id: parsed.lease_id },
-      );
+      logger.warn('TODO: route to Piece M work_assignments when port lands', { proposal_id: ctx.proposalId, lease_id: parsed.lease_id });
     }
   } else {
     assignmentId = assignment.id;

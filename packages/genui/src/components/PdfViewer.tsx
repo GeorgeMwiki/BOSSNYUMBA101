@@ -57,7 +57,7 @@ export function PdfViewer(props: PdfViewerProps): JSX.Element {
           type="button"
           onClick={() => setZoom((z) => Math.max(0.25, z - 0.25))}
           className="rounded border border-border bg-surface px-2 py-0.5"
-          aria-label="Zoom out"
+          aria-label={props.zoomOutAriaLabel ?? 'Zoom out'}
         >
           −
         </button>
@@ -66,7 +66,7 @@ export function PdfViewer(props: PdfViewerProps): JSX.Element {
           type="button"
           onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
           className="rounded border border-border bg-surface px-2 py-0.5"
-          aria-label="Zoom in"
+          aria-label={props.zoomInAriaLabel ?? 'Zoom in'}
         >
           +
         </button>

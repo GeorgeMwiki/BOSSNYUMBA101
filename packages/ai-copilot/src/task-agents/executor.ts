@@ -28,6 +28,7 @@ import type {
 } from './types.js';
 import type { AutonomyPolicyService } from '../autonomy/autonomy-policy-service.js';
 import type { CostLedger } from '../cost-ledger.js';
+import { logger } from '../logger.js';
 
 // ---------------------------------------------------------------------------
 // Executor ports
@@ -290,7 +291,7 @@ export class TaskAgentExecutor {
       } catch (err) {
         // swallow — audit failure must not bubble up
          
-        console.error('TaskAgentExecutor: audit write failed', errorMessage(err));
+        logger.error('TaskAgentExecutor: audit write failed', { error: errorMessage(err) });
       }
     }
 
@@ -310,7 +311,7 @@ export class TaskAgentExecutor {
         await this.deps.eventPublisher.publish(event);
       } catch (err) {
          
-        console.error('TaskAgentExecutor: event publish failed', errorMessage(err));
+        logger.error('TaskAgentExecutor: event publish failed', { error: errorMessage(err) });
       }
     }
 

@@ -15,6 +15,7 @@ import {
 } from '../providers/anthropic-client.js';
 import { analyzeMessage as analyzePromptShield } from '../security/prompt-shield.js';
 import { scanOutput } from '../security/output-guard.js';
+import { logger } from '../logger.js';
 
 /**
  * Round-3 audit H11 / 8.4 fix — the `ai-mediator` previously had NO
@@ -91,11 +92,8 @@ function getClient(): AnthropicClient | null {
   if (!apiKey) {
     // Round-3 audit 8.5 — emit an unambiguous log line so a
     // production deployment running entirely on stubs is visible.
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[ai-mediator] ANTHROPIC_API_KEY not set — falling back to deterministic stubs. ' +
-        'This is operationally valid for dev but production should configure the key.'
-    );
+    logger.warn('[ai-mediator] ANTHROPIC_API_KEY not set — falling back to deterministic stubs. ' +
+        'This is operationally valid for dev but production should configure the key.');
     return null;
   }
   try {
@@ -104,8 +102,7 @@ function getClient(): AnthropicClient | null {
       defaultModel: ModelTier.SONNET,
     });
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('[ai-mediator] Anthropic client construction failed', e);
+    logger.error('[ai-mediator] Anthropic client construction failed', { error: e });
     return null;
   }
 }

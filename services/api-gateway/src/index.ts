@@ -307,6 +307,9 @@ import {
 } from './health/deep-health';
 import { validateEnv } from './config/validate-env';
 import { securityEventsMiddleware } from '@bossnyumba/observability';
+// SOTA perf middleware — Brotli compression + Cache-Control presets.
+// See `packages/performance-toolkit/src/cache/` for the implementation.
+import { expressCacheControl } from '@bossnyumba/performance-toolkit/cache';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -340,6 +343,9 @@ let isShuttingDown = false;
 
 // Middleware
 app.use(helmet());
+// Default Cache-Control = private+revalidate so no API response is ever
+// CDN-cached by accident. Route-level overrides win (set per-handler).
+app.use(expressCacheControl('private-revalidate'));
 
 // CORS — restrict to allowed origins. Wildcard CORS combined with cookie
 // auth would enable CSRF; header-based auth alone is defensible, but we

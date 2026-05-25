@@ -29,6 +29,8 @@
 import { eq, lte, sql } from 'drizzle-orm';
 import { marketDataCache } from '../schemas/market-data-cache.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 // ─────────────────────────────────────────────────────────────────────
 // Public types
@@ -111,7 +113,7 @@ export function createMarketDataCacheService(
           fetchedAt,
         };
       } catch (error) {
-        console.error('market-data-cache.get failed:', error);
+        logger.error('market-data-cache.get failed', { error: error });
         return null;
       }
     },
@@ -156,7 +158,7 @@ export function createMarketDataCacheService(
             set: setOnConflict as never,
           });
       } catch (error) {
-        console.error('market-data-cache.put failed:', error);
+        logger.error('market-data-cache.put failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('market-data-cache.put failed');
@@ -179,7 +181,7 @@ export function createMarketDataCacheService(
         }
         return 0;
       } catch (error) {
-        console.error('market-data-cache.purgeExpired failed:', error);
+        logger.error('market-data-cache.purgeExpired failed', { error: error });
         return 0;
       }
     },

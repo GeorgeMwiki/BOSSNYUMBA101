@@ -1,5 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+// prefetchOnHover injects `<link rel="prefetch">` on first hover/focus
+// for each nav target so the route bundle is in cache by the time the
+// user clicks. Mirrors Next.js Link default behaviour for our Vite SPA.
+import { prefetchOnHover } from '@bossnyumba/performance-toolkit/lazy-load';
 import {
   LayoutDashboard,
   Building2,
@@ -174,10 +178,14 @@ export function Layout({ children }: LayoutProps) {
           <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
               const isActive = location.pathname.startsWith(item.href);
+              const prefetch = prefetchOnHover(item.href);
               return (
                 <Link
                   key={item.name}
                   to={item.href}
+                  onMouseEnter={prefetch.onMouseEnter}
+                  onFocus={prefetch.onFocus}
+                  onTouchStart={prefetch.onTouchStart}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-blue-50 text-blue-700'
@@ -193,6 +201,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="border-t border-gray-200 p-4">
             <Link
               to="/settings"
+              {...prefetchOnHover('/settings')}
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
             >
               <Settings className="h-5 w-5" />

@@ -106,6 +106,11 @@ export interface ProactiveHintProps {
   readonly className?: string;
   /** Optional inline-style override merged into the outer container. */
   readonly style?: CSSProperties;
+  /**
+   * Optional override for the dismiss button aria-label (i18n).
+   * Consumer apps should pass a localised string.
+   */
+  readonly dismissAriaLabel?: string;
 }
 
 /**
@@ -366,6 +371,7 @@ export function ProactiveHint({
   now = Date.now,
   className,
   style,
+  dismissAriaLabel = 'Dismiss hint',
 }: ProactiveHintProps): JSX.Element | null {
   const effectiveStorage = useMemo<HintStorage | null>(
     () => (storage === undefined ? getDefaultStorage() : storage),
@@ -443,7 +449,7 @@ export function ProactiveHint({
         </div>
         <button
           type="button"
-          aria-label="Dismiss hint"
+          aria-label={dismissAriaLabel}
           data-testid="proactive-hint-dismiss"
           onClick={() => handleDismiss(active.id)}
           style={styles.dismissButton}

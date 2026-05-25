@@ -37,6 +37,7 @@
  * remains import-safe whether `@anthropic-ai/sdk` is installed or not.
  */
 
+import { logger } from '../../logger.js';
 export interface ConstitutionRule {
   readonly id: string;
   readonly description: string;
@@ -283,11 +284,7 @@ async function scoreWithClaude(
       .join('');
     return parseScoresLenient(text, args.rules);
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      'constitutional-critic: Claude call failed; falling back to heuristic:',
-      error instanceof Error ? error.message : String(error),
-    );
+    logger.warn('constitutional-critic: Claude call failed; falling back to heuristic', { value: error instanceof Error ? error.message : String(error) });
     return scoreHeuristic(args.reflection, args.rules);
   }
 }

@@ -20,6 +20,8 @@
 import { eq } from 'drizzle-orm';
 import { autonomyPolicies } from '../schemas/autonomy.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 // ─────────────────────────────────────────────────────────────────────
 // Public types — duck-typed against the kernel-agency port shape so
@@ -165,7 +167,7 @@ export function createPgAutonomyPolicyService(
           .limit(1);
         row = Array.isArray(rows) ? rows[0] : undefined;
       } catch (error) {
-        console.error('autonomy-policy.decide failed:', error);
+        logger.error('autonomy-policy.decide failed', { error: error });
         return defaultAllowLowStakes(args, 'db-error');
       }
 

@@ -1351,5 +1351,37 @@
     "emptyDescription": "When the orchestrator wants a sign-off, it shows up here.",
     "disabledTitle": "Proposals preview",
     "disabledDescription": "Gated by the module_proposals_enabled flag."
+  },
+  "p89": {
+    "askThread": {
+      "closeArtifactAria": "Close artifact"
+    },
+    "auditTrail": {
+      "panelAria": "Audit trail",
+      "reloadAria": "Reload audit trail",
+      "promptHashLabel": "Prompt hash",
+      "prevHashLabel": "Prev hash",
+      "thisHashLabel": "This hash"
+    },
+    "briefing": {
+      "moreOptionsAria": "More options"
+    },
+    "graph": {
+      "depthAria": "Traversal depth",
+      "depthClamped": "Max depth clamped to 3.",
+      "startSearchTitle": "Start by searching for a unit, tenant, vendor, or incident",
+      "sessionExpiredTitle": "Your session has expired",
+      "needRoleTitle": "You need property-manager or higher",
+      "errorTitle": "Something went wrong",
+      "visualisationAria": "Graph visualisation",
+      "noAttributes": "No attributes returned."
+    },
+    "jarvis": {
+      "attachImagesAria": "Attach images",
+      "propertyConcierge": "Property Concierge"
+    },
+    "attachment": {
+      "addPhotosLabel": "Add photos"
+    }
   }
 }

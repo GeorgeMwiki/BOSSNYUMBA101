@@ -25,6 +25,7 @@ import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { platformAnnouncements } from '../../schemas/platform-announcements.schema.js';
 import type { DatabaseClient } from '../../client.js';
+import { logger } from '../../logger.js';
 
 export type AnnouncementChannel = 'banner' | 'email' | 'both';
 
@@ -112,10 +113,7 @@ export function createPlatformAnnouncementService(
         ? await deps.recipientResolver
             .count({ scope: args.scope, channel: args.channel })
             .catch((err) => {
-              console.error(
-                'platform.announcements.recipientResolver failed:',
-                err,
-              );
+              logger.error('platform.announcements.recipientResolver failed', { error: err });
               return 0;
             })
         : 0;
@@ -134,7 +132,7 @@ export function createPlatformAnnouncementService(
           createdBy: deps.resolveActor(),
         } as never);
       } catch (error) {
-        console.error('platform.announcements.send insert failed:', error);
+        logger.error('platform.announcements.send insert failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.announcements.send insert failed');
@@ -179,7 +177,7 @@ export function createPlatformAnnouncementService(
           // Dispatcher failure: row stays `queued`; operator will
           // notice and intervene. We do NOT rethrow so the audit row
           // remains visible.
-          console.error('platform.announcements.dispatch failed:', error);
+          logger.error('platform.announcements.dispatch failed', { error: error });
         }
       }
       return {
@@ -218,14 +216,11 @@ export function createPlatformAnnouncementService(
           } catch (error) {
             // The DB row is already marked retracted; the dispatcher
             // can resync on a follow-up sweep. Log + swallow.
-            console.error(
-              'platform.announcements.recall dispatcher failed:',
-              error,
-            );
+            logger.error('platform.announcements.recall dispatcher failed', { error: error });
           }
         }
       } catch (error) {
-        console.error('platform.announcements.recall update failed:', error);
+        logger.error('platform.announcements.recall update failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.announcements.recall failed');

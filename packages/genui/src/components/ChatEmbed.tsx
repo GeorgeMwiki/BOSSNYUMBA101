@@ -65,7 +65,7 @@ export function ChatEmbed(props: ChatEmbedProps): JSX.Element {
       </div>
       <div className="max-h-64 overflow-auto rounded border border-border bg-surface-sunken p-2">
         {messages.length === 0 ? (
-          <div className="text-xs text-muted-foreground">No messages yet.</div>
+          <div className="text-xs text-muted-foreground">{props.emptyText ?? 'No messages yet.'}</div>
         ) : (
           <ul className="m-0 list-none space-y-1 p-0">
             {messages.map((m, i) => (

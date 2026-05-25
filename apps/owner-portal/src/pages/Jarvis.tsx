@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { createBossnyumbaClient, createJarvisClient } from '@bossnyumba/api-sdk';
 import {
   MicButton,
@@ -60,6 +61,7 @@ function readStoredMode(): JarvisMode {
 }
 
 export default function Jarvis(): JSX.Element {
+  const t = useTranslations('p89.jarvis');
   const [draft, setDraft] = useState('');
   const [threadId] = useState(
     () => `own_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -192,7 +194,7 @@ export default function Jarvis(): JSX.Element {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-border bg-surface px-6 py-4">
-        <h1 className="text-xl font-semibold text-foreground">Portfolio Concierge</h1>
+        <h1 className="text-xl font-semibold text-foreground">{t('portfolioConcierge')}</h1>
         <p className="text-sm text-muted-foreground">
           Your personal AI counterpart for properties, returns, and decisions.
         </p>
@@ -346,13 +348,13 @@ export default function Jarvis(): JSX.Element {
                 multiple
                 onChange={onPickImages}
                 className="hidden"
-                aria-label="Attach images"
+                aria-label={t('attachImagesAria')}
               />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isThinking || pendingImages.length >= MAX_IMAGES_PER_TURN}
-                aria-label="Attach images"
+                aria-label={t('attachImagesAria')}
                 title={
                   pendingImages.length >= MAX_IMAGES_PER_TURN
                     ? `Up to ${MAX_IMAGES_PER_TURN} images per turn`

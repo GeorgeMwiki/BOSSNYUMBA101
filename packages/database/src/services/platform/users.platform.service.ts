@@ -26,6 +26,7 @@ import {
   tenants,
   users,
 } from '../../schemas/tenant.schema.js';
+import { logger } from '../../logger.js';
 import type { DatabaseClient } from '../../client.js';
 
 export type HqUserRole =
@@ -239,7 +240,7 @@ export function createPlatformUsersService(
         const rows = trimmed.map(toListRow);
         return { rows, nextCursor, totalReturned: rows.length };
       } catch (error) {
-        console.error('platform.users.listUsers failed:', error);
+        logger.error('platform.users.listUsers failed', { error: error });
         return { rows: [], nextCursor: null, totalReturned: 0 };
       }
     },
@@ -254,7 +255,7 @@ export function createPlatformUsersService(
           .limit(1)) as ReadonlyArray<{ id: string }>;
         return rows.length > 0;
       } catch (error) {
-        console.error('platform.users.tenantExists failed:', error);
+        logger.error('platform.users.tenantExists failed', { error: error });
         return false;
       }
     },
@@ -274,7 +275,7 @@ export function createPlatformUsersService(
           .limit(1)) as ReadonlyArray<{ id: string }>;
         return rows.length > 0;
       } catch (error) {
-        console.error('platform.users.emailExistsOnTenant failed:', error);
+        logger.error('platform.users.emailExistsOnTenant failed', { error: error });
         return false;
       }
     },
@@ -310,7 +311,7 @@ export function createPlatformUsersService(
             : null,
         } as never);
       } catch (error) {
-        console.error('platform.users.createUser failed:', error);
+        logger.error('platform.users.createUser failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.users.createUser failed');
@@ -340,7 +341,7 @@ export function createPlatformUsersService(
           } as never)
           .where(eq(users.id, userId));
       } catch (error) {
-        console.error('platform.users.deactivateUser failed:', error);
+        logger.error('platform.users.deactivateUser failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.users.deactivateUser failed');

@@ -18,6 +18,8 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { marketRateSnapshots } from '../schemas/market-rate-snapshots.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export type DriftFlag = 'below_market' | 'above_market' | 'on_band';
 
@@ -91,7 +93,7 @@ export function createMarketRateSnapshotsService(
         } as never);
         return snapshot;
       } catch (error) {
-        console.error('market-rate-snapshots.insert failed:', error);
+        logger.error('market-rate-snapshots.insert failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('market-rate-snapshots.insert failed');
@@ -116,7 +118,7 @@ export function createMarketRateSnapshotsService(
           .limit(limit)) as ReadonlyArray<MarketRateRowDb>;
         return rows.map(rowToShape);
       } catch (error) {
-        console.error('market-rate-snapshots.listRecent failed:', error);
+        logger.error('market-rate-snapshots.listRecent failed', { error: error });
         return [];
       }
     },

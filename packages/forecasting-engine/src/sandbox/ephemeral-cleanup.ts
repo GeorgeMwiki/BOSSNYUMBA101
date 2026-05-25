@@ -7,6 +7,7 @@
  * sandbox itself; this module only tracks the bookkeeping.
  */
 
+import { logger } from '../logger.js';
 interface RegistryEntry {
   readonly runId: string;
   readonly createdAtMs: number;
@@ -37,7 +38,7 @@ export class EphemeralCleanup {
           await e.dispose();
           expired.push(e.runId);
         } catch (err) {
-          console.error('Sandbox dispose failed', { runId: e.runId, err });
+          logger.error('Sandbox dispose failed', { runId: e.runId, err });
           throw new Error(
             `Failed to dispose expired sandbox ${e.runId}: ${
               err instanceof Error ? err.message : String(err)

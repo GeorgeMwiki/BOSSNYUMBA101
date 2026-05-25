@@ -32,6 +32,8 @@ function SectionStub({
   entityType,
   tenantId,
   scope,
+  localisedTitle,
+  localisedDescription,
 }: StubProps): ReactElement {
   return (
     <article
@@ -43,9 +45,9 @@ function SectionStub({
     >
       <header className="space-y-1">
         <h2 className="text-lg md:text-xl font-semibold text-slate-900">
-          {title}
+          {localisedTitle ?? title}
         </h2>
-        <p className="text-sm text-slate-600 max-w-prose">{description}</p>
+        <p className="text-sm text-slate-600 max-w-prose">{localisedDescription ?? description}</p>
       </header>
       <div
         data-testid={`section-stub-${entityType}-genui-frame`}
@@ -112,11 +114,18 @@ export function DealsSection(props: SectionComponentProps): ReactElement {
   );
 }
 
+// "KRA Filings" is a Kenya-specific tax-authority surface (Kenya Revenue
+// Authority). The literal is the canonical name of the regulator and
+// only renders when the consumer does NOT pass `localisedTitle` — and
+// in that situation it is correct to render the English name (it is a
+// proper noun, like "IRS" in the US).
+const KRA_FILINGS_DEFAULT_TITLE = 'KRA Filings';
+
 export function KraFilingsSection(props: SectionComponentProps): ReactElement {
   return (
     <SectionStub
       {...props}
-      title="KRA Filings"
+      title={KRA_FILINGS_DEFAULT_TITLE}
       description="Statutory filings + their submission status to the tax authority."
       genUiPartKind="timeline"
     />

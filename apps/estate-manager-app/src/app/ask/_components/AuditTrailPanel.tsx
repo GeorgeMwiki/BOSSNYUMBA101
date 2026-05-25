@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
   Check,
@@ -74,6 +75,7 @@ export function AuditTrailPanel({
   authHeaders,
   title,
 }: AuditTrailPanelProps) {
+  const t = useTranslations('p89.auditTrail');
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
 
@@ -159,7 +161,7 @@ export function AuditTrailPanel({
   }
 
   return (
-    <section className="flex h-full flex-col" aria-label="Audit trail">
+    <section className="flex h-full flex-col" aria-label={t('panelAria')}>
       <header className="flex items-center justify-between border-b border-border px-5 py-4">
         <div>
           <p className="font-mono text-[0.62rem] uppercase tracking-widest text-signal-500">
@@ -173,7 +175,7 @@ export function AuditTrailPanel({
           type="button"
           onClick={() => void load()}
           className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[0.65rem] font-medium text-neutral-500 transition-colors duration-fast hover:bg-surface-raised hover:text-foreground"
-          aria-label="Reload audit trail"
+          aria-label={t('reloadAria')}
         >
           <RefreshCw className="h-3 w-3" />
           Reload
@@ -279,6 +281,7 @@ export function AuditTrailPanel({
 // ─────────────────────────────────────────────────────────────────────
 
 function RecordDetails({ record }: { readonly record: AuditRecord }) {
+  const t = useTranslations('p89.auditTrail');
   const evidenceJson = JSON.stringify(record.evidence ?? {}, null, 2);
   return (
     <dl className="mt-3 space-y-2 rounded-md border border-border bg-background p-3 text-[0.68rem]">
@@ -288,20 +291,20 @@ function RecordDetails({ record }: { readonly record: AuditRecord }) {
       )}
       {record.promptHash && (
         <DetailRow
-          label="Prompt hash"
+          label={t('promptHashLabel')}
           value={record.promptHash}
           mono
           icon={<Fingerprint className="h-3 w-3 text-signal-500" />}
         />
       )}
       <DetailRow
-        label="Prev hash"
+        label={t('prevHashLabel')}
         value={truncateHash(record.prevHash)}
         mono
         icon={<Link2 className="h-3 w-3 text-neutral-500" />}
       />
       <DetailRow
-        label="This hash"
+        label={t('thisHashLabel')}
         value={truncateHash(record.thisHash)}
         mono
         icon={<Link2 className="h-3 w-3 text-signal-500" />}

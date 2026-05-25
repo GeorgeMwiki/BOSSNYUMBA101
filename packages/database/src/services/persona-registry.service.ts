@@ -17,6 +17,8 @@ import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import type { DatabaseClient } from '../client.js';
 import { personaRegistry } from '../schemas/persona-registry.schema.js';
+import { logger } from '../logger.js';
+
 
 /**
  * Mirrors the kernel's `PersonaIdentity` shape. Duplicated here so the
@@ -52,7 +54,7 @@ export function createPersonaRegistryService(
           .from(personaRegistry);
         return (rows as ReadonlyArray<Record<string, unknown>>).map(toPersona);
       } catch (error) {
-        console.error('persona-registry.list failed:', error);
+        logger.error('persona-registry.list failed', { error: error });
         return [];
       }
     },
@@ -92,7 +94,7 @@ export function createPersonaRegistryService(
           });
         return persona;
       } catch (error) {
-        console.error('persona-registry.upsert failed:', error);
+        logger.error('persona-registry.upsert failed', { error: error });
         return persona;
       }
     },
@@ -105,7 +107,7 @@ export function createPersonaRegistryService(
           .returning();
         return Array.isArray(result) && result.length > 0;
       } catch (error) {
-        console.error('persona-registry.delete failed:', error);
+        logger.error('persona-registry.delete failed', { error: error });
         return false;
       }
     },

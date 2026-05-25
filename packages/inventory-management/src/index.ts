@@ -14,6 +14,7 @@
  */
 
 // Types
+import { logger } from './logger.js';
 export * from './types.js';
 
 // SKU + catalog
@@ -269,8 +270,7 @@ export function createInventoryManagement(deps: {
             poIds.push(r.poId);
           } catch (e) {
             // Graceful — record nothing, leave caller to retry.
-            // eslint-disable-next-line no-console
-            console.error('inventory.reorder: procurement adapter failed', e);
+            logger.error('inventory.reorder: procurement adapter failed', { error: e });
           }
         }
       }

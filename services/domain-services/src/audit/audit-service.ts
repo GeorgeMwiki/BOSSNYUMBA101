@@ -53,6 +53,7 @@ export class AuditService {
 
   /** Get audit log with query filters */
   async getAuditLog(query: AuditQuery): Promise<PaginatedAuditResult> {
+    // nosemgrep: missing-tenant-id-arg reason: `query: AuditQuery` requires `tenantId` at the type level (see types.ts).
     return this.repository.findMany(query);
   }
 
@@ -93,6 +94,7 @@ export class AuditService {
       limit: query.limit ?? 10000,
       offset: 0,
     };
+    // nosemgrep: missing-tenant-id-arg reason: `fullQuery: AuditQuery` requires `tenantId` at the type level (see types.ts).
     const result = await this.repository.findMany(fullQuery);
 
     if (format === 'json') {

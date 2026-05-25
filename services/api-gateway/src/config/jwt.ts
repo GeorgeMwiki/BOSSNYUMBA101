@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { logger } from '../utils/logger.js';
 
 // Dev-only ephemeral secret. Generated per-process so it never ships in
 // source, never persists across restarts, and never matches a known value
@@ -23,11 +24,8 @@ export function getJwtSecret(): string {
 
   if (!ephemeralDevSecret) {
     ephemeralDevSecret = crypto.randomBytes(48).toString('base64');
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[jwt] JWT_SECRET not set — generated ephemeral dev secret. ' +
-        'Tokens will not survive process restart. Set JWT_SECRET in .env for persistent dev tokens.'
-    );
+    logger.warn('[jwt] JWT_SECRET not set — generated ephemeral dev secret. ' +
+        'Tokens will not survive process restart. Set JWT_SECRET in .env for persistent dev tokens.');
   }
   return ephemeralDevSecret;
 }

@@ -534,6 +534,9 @@ importers:
       '@bossnyumba/observability':
         specifier: workspace:^
         version: link:../../packages/observability
+      '@bossnyumba/performance-toolkit':
+        specifier: workspace:*
+        version: link:../../packages/performance-toolkit
       '@bossnyumba/realtime-rooms':
         specifier: workspace:*
         version: link:../../packages/realtime-rooms
@@ -622,6 +625,9 @@ importers:
       next:
         specifier: ^15.5.15
         version: 15.5.18(@babel/core@7.29.0)(@playwright/test@1.59.1)(react-dom@18.3.1)(react@18.3.1)
+      next-intl:
+        specifier: '>=4.9.1'
+        version: 4.11.1(next@15.5.18)(react@18.3.1)(typescript@6.0.3)
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -861,6 +867,18 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
+  packages/anti-corruption-layer:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/aop-compiler:
     dependencies:
       zod:
@@ -959,6 +977,18 @@ importers:
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
   packages/audio-capture:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
+  packages/audio-logics-litfin:
     devDependencies:
       '@types/node':
         specifier: ^25.8.0
@@ -1302,6 +1332,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(postgres@3.4.9)
+      pino:
+        specifier: ^8.17.0
+        version: 8.21.0
       postgres:
         specifier: ^3.4.3
         version: 3.4.9
@@ -1767,6 +1800,18 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
+  packages/feature-flags-adapter:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/file-ingest:
     dependencies:
       papaparse:
@@ -2063,6 +2108,86 @@ importers:
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
   packages/lifecycle-advisor:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
+  packages/litfin-port-memory-extra:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
+  packages/litfin-port-observability-extra:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
+  packages/litfin-port-security-extra:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
+  packages/litfin-port-tools-extra:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
+  packages/litfin-port-ui-extra:
     dependencies:
       zod:
         specifier: ^3.22.4
@@ -2425,6 +2550,22 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
+  packages/optimistic-concurrency:
+    dependencies:
+      '@bossnyumba/audit-hash-chain':
+        specifier: workspace:*
+        version: link:../audit-hash-chain
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/org-graph:
     dependencies:
       zod:
@@ -2449,6 +2590,30 @@ importers:
       zod:
         specifier: ^3.22.4
         version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
+  packages/payments-event-store:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
+  packages/performance-toolkit:
     devDependencies:
       '@types/node':
         specifier: ^25.8.0
@@ -3112,6 +3277,9 @@ importers:
       '@bossnyumba/payments-service':
         specifier: workspace:*
         version: link:../payments
+      '@bossnyumba/performance-toolkit':
+        specifier: workspace:*
+        version: link:../../packages/performance-toolkit
       '@bossnyumba/persona-runtime':
         specifier: workspace:*
         version: link:../../packages/persona-runtime

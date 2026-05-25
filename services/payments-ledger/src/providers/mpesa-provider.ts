@@ -14,6 +14,7 @@ import {
   CurrencyCode
 } from '@bossnyumba/domain-models';
 import type { PaymentStatus } from '../types';
+import { logger } from '../logger.js';
 
 /**
  * RSA-encrypt the initiator password with Safaricom's public cert so
@@ -327,7 +328,7 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
   async cancelPaymentIntent(externalId: string, reason?: string): Promise<void> {
     // M-PESA STK Push cannot be cancelled once initiated
     // It times out automatically after ~1 minute
-    console.warn(`M-PESA payment ${externalId} cannot be cancelled - will timeout`);
+    logger.warn(`M-PESA payment ${externalId} cannot be cancelled - will timeout`);
   }
 
   async getPaymentIntentStatus(

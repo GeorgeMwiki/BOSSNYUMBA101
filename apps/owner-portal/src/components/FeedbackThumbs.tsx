@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 export type FeedbackVerdict = 'up' | 'down';
 
@@ -31,6 +32,7 @@ export function FeedbackThumbs({
   onFeedback,
   disabled = false,
 }: FeedbackThumbsProps): JSX.Element {
+  const t = useTranslations('p89.feedbackThumbs');
   const [submitting, setSubmitting] = useState(false);
   const [submittedVerdict, setSubmittedVerdict] = useState<FeedbackVerdict | null>(null);
   const [showReason, setShowReason] = useState(false);
@@ -83,10 +85,10 @@ export function FeedbackThumbs({
       data-testid={`feedback-thumbs-${turnId}`}
     >
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span>Was this helpful?</span>
+        <span>{t('prompt')}</span>
         <button
           type="button"
-          aria-label="Thumbs up"
+          aria-label={t('thumbsUpAria')}
           aria-pressed={upChosen}
           disabled={buttonsDisabled}
           onClick={(): void => void submit('up')}
@@ -100,7 +102,7 @@ export function FeedbackThumbs({
         </button>
         <button
           type="button"
-          aria-label="Thumbs down"
+          aria-label={t('thumbsDownAria')}
           aria-pressed={downChosen}
           disabled={buttonsDisabled}
           onClick={(): void => void submit('down')}
@@ -122,8 +124,8 @@ export function FeedbackThumbs({
             onChange={(e): void =>
               setReason(e.target.value.slice(0, REASON_MAX_LEN))
             }
-            placeholder="Tell me what was wrong (optional)"
-            aria-label="Feedback reason"
+            placeholder={t('reasonPlaceholder')}
+            aria-label={t('reasonAriaLabel')}
             disabled={buttonsDisabled}
             className="min-w-0 flex-1 rounded border border-border bg-surface px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground disabled:opacity-50"
             maxLength={REASON_MAX_LEN}

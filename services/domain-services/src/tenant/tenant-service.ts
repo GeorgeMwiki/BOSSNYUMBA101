@@ -198,6 +198,7 @@ export class TenantService {
    * Get a tenant by ID.
    */
   async getTenant(tenantId: TenantId): Promise<Tenant | null> {
+    // nosemgrep: missing-tenant-id-arg reason: the `tenants` repository is keyed by tenantId — the lookup IS the tenant.
     return this.uow.tenants.findById(tenantId);
   }
   
@@ -224,6 +225,7 @@ export class TenantService {
     updatedBy: UserId,
     correlationId: string
   ): Promise<Result<Tenant, TenantServiceErrorResult>> {
+    // nosemgrep: missing-tenant-id-arg reason: the `tenants` repository is keyed by tenantId — the lookup IS the tenant.
     const existing = await this.uow.tenants.findById(tenantId);
     if (!existing) {
       return err({
@@ -231,7 +233,7 @@ export class TenantService {
         message: 'Tenant not found',
       });
     }
-    
+
     const tenant = await this.uow.tenants.update(tenantId, input, updatedBy);
     
     // Build changes map
@@ -306,6 +308,7 @@ export class TenantService {
     deactivatedBy: UserId,
     correlationId: string
   ): Promise<Result<Tenant, TenantServiceErrorResult>> {
+    // nosemgrep: missing-tenant-id-arg reason: the `tenants` repository is keyed by tenantId — the lookup IS the tenant.
     const existing = await this.uow.tenants.findById(tenantId);
     if (!existing) {
       return err({
@@ -313,7 +316,7 @@ export class TenantService {
         message: 'Tenant not found',
       });
     }
-    
+
     const result = await this.updateTenant(
       tenantId,
       { status: 'churned' as TenantStatus },
@@ -334,6 +337,7 @@ export class TenantService {
     updatedBy: UserId,
     correlationId: string
   ): Promise<Result<Tenant, TenantServiceErrorResult>> {
+    // nosemgrep: missing-tenant-id-arg reason: the `tenants` repository is keyed by tenantId — the lookup IS the tenant.
     const existing = await this.uow.tenants.findById(tenantId);
     if (!existing) {
       return err({
@@ -341,7 +345,7 @@ export class TenantService {
         message: 'Tenant not found',
       });
     }
-    
+
     if (existing.subscriptionTier === newTier) {
       return ok(existing);
     }
@@ -356,6 +360,7 @@ export class TenantService {
     
     // If downgrading, check usage won't exceed new limits
     if (this.isTierDowngrade(existing.subscriptionTier, newTier)) {
+      // nosemgrep: missing-tenant-id-arg reason: `findWithUsage` is keyed by tenantId — the lookup IS the tenant.
       const usage = await this.uow.tenants.findWithUsage(tenantId);
       if (usage?.usage) {
         const limits = this.getTierLimits(newTier);
@@ -399,6 +404,7 @@ export class TenantService {
     updatedBy: UserId,
     correlationId: string
   ): Promise<Result<Tenant, TenantServiceErrorResult>> {
+    // nosemgrep: missing-tenant-id-arg reason: the `tenants` repository is keyed by tenantId — the lookup IS the tenant.
     const existing = await this.uow.tenants.findById(tenantId);
     if (!existing) {
       return err({
@@ -406,7 +412,7 @@ export class TenantService {
         message: 'Tenant not found',
       });
     }
-    
+
     const existingPolicies = (existing.config as Record<string, unknown>)?.policyConstitution ?? {};
     const mergedPolicies = { ...existingPolicies as Record<string, unknown>, ...policies };
     
@@ -424,6 +430,7 @@ export class TenantService {
   async getPolicyConstitution(
     tenantId: TenantId
   ): Promise<Result<Record<string, unknown>, TenantServiceErrorResult>> {
+    // nosemgrep: missing-tenant-id-arg reason: the `tenants` repository is keyed by tenantId — the lookup IS the tenant.
     const existing = await this.uow.tenants.findById(tenantId);
     if (!existing) {
       return err({
@@ -458,6 +465,7 @@ export class TenantService {
   async listTenants(
     pagination?: PaginationParams
   ): Promise<PaginatedResult<Tenant>> {
+    // nosemgrep: missing-tenant-id-arg reason: platform-admin listing — enumerates ALL tenants by design.
     return this.uow.tenants.findMany(pagination);
   }
   
@@ -470,6 +478,7 @@ export class TenantService {
     updatedBy: UserId,
     correlationId: string
   ): Promise<Result<Tenant, TenantServiceErrorResult>> {
+    // nosemgrep: missing-tenant-id-arg reason: the `tenants` repository is keyed by tenantId — the lookup IS the tenant.
     const existing = await this.uow.tenants.findById(tenantId);
     if (!existing) {
       return err({
@@ -477,7 +486,7 @@ export class TenantService {
         message: 'Tenant not found',
       });
     }
-    
+
     // Merge existing config with new config
     const mergedConfig: TenantConfig = {
       ...DEFAULT_TENANT_CONFIG,

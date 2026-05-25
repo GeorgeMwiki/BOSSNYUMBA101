@@ -29,6 +29,7 @@ import { CASE_STUDY_07_HOLDOVER_DRAMA } from './07-holdover-drama.js';
 import { CASE_STUDY_08_CARETAKER_FRAUD } from './08-caretaker-internal-fraud.js';
 import { CASE_STUDY_09_DAR_REFURB_DIVEST } from './09-dar-block-refurb-or-divest.js';
 import { CASE_STUDY_10_FIRST_90_DAYS } from './10-first-90-days-post-acquisition.js';
+import { logger } from '../../logger.js';
 
 export * from './case-study-types.js';
 export { CASE_STUDY_01_MUTHAIGA_ACQUISITION } from './01-muthaiga-portfolio-acquisition.js';
@@ -144,7 +145,7 @@ export async function seedCaseStudies(
       });
       count += 1;
     } catch (error) {
-      console.error(`seedCaseStudies: failed on ${cs.id}`, error);
+      logger.error(`seedCaseStudies: failed on ${cs.id}`, { error: error });
       throw new Error(
         `Failed to seed case study ${cs.id}: ${error instanceof Error ? error.message : 'unknown'}`,
       );

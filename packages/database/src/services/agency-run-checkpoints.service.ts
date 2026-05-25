@@ -29,9 +29,11 @@
 import { randomUUID } from 'crypto';
 import { and, asc, eq, lt, sql } from 'drizzle-orm';
 import {
+
   agencyRunCheckpoints,
   type AgencyCheckpointState,
 } from '../schemas/agency-run-checkpoints.schema.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 export type { AgencyCheckpointState };
@@ -112,7 +114,7 @@ export function createAgencyRunCheckpointsService(
             startedAt: new Date(),
           } as never);
       } catch (error) {
-        console.error('agency-run-checkpoints.recordPending failed:', error);
+        logger.error('agency-run-checkpoints.recordPending failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('agency-run-checkpoints.recordPending failed');
@@ -133,7 +135,7 @@ export function createAgencyRunCheckpointsService(
           } as never)
           .where(eq(agencyRunCheckpoints.id, id));
       } catch (error) {
-        console.error('agency-run-checkpoints.recordRunning failed:', error);
+        logger.error('agency-run-checkpoints.recordRunning failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('agency-run-checkpoints.recordRunning failed');
@@ -152,7 +154,7 @@ export function createAgencyRunCheckpointsService(
           } as never)
           .where(eq(agencyRunCheckpoints.id, id));
       } catch (error) {
-        console.error('agency-run-checkpoints.recordSuccess failed:', error);
+        logger.error('agency-run-checkpoints.recordSuccess failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('agency-run-checkpoints.recordSuccess failed');
@@ -170,7 +172,7 @@ export function createAgencyRunCheckpointsService(
           } as never)
           .where(eq(agencyRunCheckpoints.id, id));
       } catch (error) {
-        console.error('agency-run-checkpoints.recordFailure failed:', error);
+        logger.error('agency-run-checkpoints.recordFailure failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('agency-run-checkpoints.recordFailure failed');
@@ -188,7 +190,7 @@ export function createAgencyRunCheckpointsService(
           } as never)
           .where(eq(agencyRunCheckpoints.id, id));
       } catch (error) {
-        console.error('agency-run-checkpoints.recordPaused failed:', error);
+        logger.error('agency-run-checkpoints.recordPaused failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('agency-run-checkpoints.recordPaused failed');
@@ -205,7 +207,7 @@ export function createAgencyRunCheckpointsService(
           .orderBy(asc(agencyRunCheckpoints.stepIndex))) as ReadonlyArray<unknown>;
         return rows.map(rowToCheckpoint);
       } catch (error) {
-        console.error('agency-run-checkpoints.listForRun failed:', error);
+        logger.error('agency-run-checkpoints.listForRun failed', { error: error });
         return [];
       }
     },
@@ -226,10 +228,7 @@ export function createAgencyRunCheckpointsService(
           .limit(limit)) as ReadonlyArray<unknown>;
         return rows.map(rowToCheckpoint);
       } catch (error) {
-        console.error(
-          'agency-run-checkpoints.listStuckRunning failed:',
-          error,
-        );
+        logger.error('agency-run-checkpoints.listStuckRunning failed', { error: error });
         return [];
       }
     },
@@ -245,7 +244,7 @@ export function createAgencyRunCheckpointsService(
         const row = rows[0];
         return row ? rowToCheckpoint(row) : null;
       } catch (error) {
-        console.error('agency-run-checkpoints.getById failed:', error);
+        logger.error('agency-run-checkpoints.getById failed', { error: error });
         return null;
       }
     },

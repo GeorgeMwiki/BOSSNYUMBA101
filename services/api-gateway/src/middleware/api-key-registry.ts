@@ -1,4 +1,5 @@
 /* eslint-disable no-secrets/no-secrets -- doc-comment example illustrates the env-var syntax; the literal hashes are placeholders, not real keys. */
+import { logger } from '../utils/logger.js';
 /**
  * API key registry — hashed lookup with per-key tenant/role/scopes binding.
  * Replaces the legacy SUPER_ADMIN-by-any-key pattern from C-1.
@@ -88,11 +89,9 @@ export function resolveApiKeyLegacyOrRegistry(apiKey: string): ApiKeyRecord | nu
   const legacyKeys = (process.env.API_KEYS ?? '').split(',').filter(Boolean);
   if (legacyKeys.length > 0 && legacyKeys.includes(apiKey)) {
     if (process.env.NODE_ENV === 'production') {
-      console.error(
-        '[auth] CRITICAL: legacy API_KEYS env var is DEPRECATED. Migrate to API_KEY_REGISTRY with per-key tenant/role/scope binding. See Docs/analysis/SECURITY_REVIEW_WAVES_1-3.md#c-1.'
-      );
+      logger.error('[auth] CRITICAL: legacy API_KEYS env var is DEPRECATED. Migrate to API_KEY_REGISTRY with per-key tenant/role/scope binding. See Docs/analysis/SECURITY_REVIEW_WAVES_1-3.md#c-1.');
     } else {
-      console.warn('[auth] legacy API_KEYS fallback — migrate to API_KEY_REGISTRY');
+      logger.warn('[auth] legacy API_KEYS fallback — migrate to API_KEY_REGISTRY');
     }
     return {
       hash: sha256Hex(apiKey),

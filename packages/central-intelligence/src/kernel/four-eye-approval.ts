@@ -36,6 +36,7 @@
  */
 
 import { randomUUID } from 'crypto';
+import { logger } from '../logger.js';
 
 export type ApprovalStatus =
   | 'pending'
@@ -381,7 +382,7 @@ export function createApprovalGate(deps: ApprovalGateDeps): ApprovalGate {
         });
         return { policy: resolved, source: 'resolver' };
       } catch (error) {
-        console.error('approval-gate: policyResolver failed, using default:', error);
+        logger.error('approval-gate: policyResolver failed, using default', { error: error });
       }
     }
     return { policy: DEFAULT_APPROVAL_POLICY, source: 'legacy-default' };

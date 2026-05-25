@@ -33,6 +33,7 @@ import {
   classificationsForTable,
   type FieldClassification,
 } from '../data-classification.js';
+import { logger } from '../../logger.js';
 import {
   deserializeBlob,
   ENCRYPTED_BLOB_PREFIX,
@@ -132,8 +133,7 @@ export async function encryptRow<T extends Record<string, unknown>>(
           }),
         )
         .catch((error: unknown) => {
-          // eslint-disable-next-line no-console
-          console.warn('[encryption.audit] sink failure (non-fatal)', {
+          logger.warn('[encryption.audit] sink failure (non-fatal)', {
             table: classification.table,
             column: classification.column,
             error: error instanceof Error ? error.message : String(error),

@@ -8,6 +8,7 @@ import type { ReportFormat } from '../reports/report-types.js';
 import type { IReportStorage } from '../storage/storage.js';
 import type { IDeliveryService } from '../storage/delivery.js';
 import { getReportSubject } from '../storage/delivery.js';
+import { logger } from '../logger.js';
 
 export interface ScheduledJobData {
   scheduleId: string;
@@ -107,7 +108,7 @@ export function createReportJobProcessor(
   );
 
   worker.on('failed', (job, err) => {
-    console.error(`Report job ${job?.id} failed:`, err);
+    logger.error(`Report job ${job?.id} failed`, { error: err });
   });
 
   return worker;

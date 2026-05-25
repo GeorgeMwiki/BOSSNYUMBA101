@@ -46,6 +46,8 @@ import { and, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { skillRegistry } from '../schemas/skill-registry.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 // ─────────────────────────────────────────────────────────────────────
 // Port shape (mirrors packages/ai-copilot/src/skill-promotion/types.ts).
@@ -124,8 +126,7 @@ export function createSkillRegistryWriterService(
         const returnedId = inserted?.[0]?.id;
         return returnedId === id;
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('skill-registry-writer.upsertSkill failed:', error);
+        logger.error('skill-registry-writer.upsertSkill failed', { error: error });
         return false;
       }
     },
@@ -159,8 +160,7 @@ export function createSkillRegistryWriterService(
           initialFailureCount: Number(row.failureCount ?? 0),
         });
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('skill-registry-writer.findByCodeHash failed:', error);
+        logger.error('skill-registry-writer.findByCodeHash failed', { error: error });
         return null;
       }
     },

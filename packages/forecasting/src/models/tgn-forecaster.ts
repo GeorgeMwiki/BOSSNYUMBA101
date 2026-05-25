@@ -33,6 +33,7 @@ import type {
 } from '../types.js';
 import { sha256Hex, sha256Short } from '../util/hash.js';
 import type { Calibrator } from '../conformal/inductive.js';
+import { logger } from '../logger.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Ports consumed by the forecaster
@@ -120,10 +121,7 @@ export function createTgnForecaster(deps: TgnForecasterDeps): Forecaster {
           alpha: 0.99,         // mark explicitly as "uncalibrated wide band"
         };
         /* eslint-disable no-console */
-        console.warn(
-          'forecasting: calibrator under-sampled, returning uncalibrated band',
-          { kind, err: (err as Error).message },
-        );
+        logger.warn('forecasting: calibrator under-sampled, returning uncalibrated band', { kind, err: (err as Error).message });
         /* eslint-enable no-console */
       }
 

@@ -27,6 +27,7 @@ import type {
   VendorId,
 } from '../types.js';
 import { SYSTEM_CLOCK } from '../types.js';
+import { logger } from '../logger.js';
 
 const PoItemSchema = z.object({
   sku: z.string().nullable().optional(),
@@ -199,7 +200,7 @@ export function createPurchaseOrderService(
           const render = await deps.documentStudio.renderPoPdf(po, vendor);
           pdfUrl = render.url;
         } catch (err) {
-          console.error(`PO ${args.id} PDF render failed`, err);
+          logger.error(`PO ${args.id} PDF render failed`, { error: err });
         }
       }
       const issued: PurchaseOrder = {
@@ -214,7 +215,7 @@ export function createPurchaseOrderService(
         try {
           await deps.notifyVendor({ po: issued, vendor });
         } catch (err) {
-          console.error(`PO ${args.id} vendor-notification failed`, err);
+          logger.error(`PO ${args.id} vendor-notification failed`, { error: err });
         }
       }
       return issued;

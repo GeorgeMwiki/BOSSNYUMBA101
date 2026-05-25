@@ -575,6 +575,7 @@ export class IdentityService {
    * Get a session by ID.
    */
   async getSession(sessionId: SessionId): Promise<Session | null> {
+    // nosemgrep: missing-tenant-id-arg reason: sessions are looked up by globally-unique session ID (cookie); tenantId is then derived from the session itself.
     return this.uow.sessions.findById(sessionId);
   }
   
@@ -584,8 +585,9 @@ export class IdentityService {
   async validateSession(
     sessionId: SessionId
   ): Promise<Result<Session, IdentityServiceErrorResult>> {
+    // nosemgrep: missing-tenant-id-arg reason: sessions are looked up by globally-unique session ID (cookie); tenantId is then derived from the session itself.
     const session = await this.uow.sessions.findById(sessionId);
-    
+
     if (!session) {
       return err({
         code: IdentityServiceError.SESSION_NOT_FOUND,
@@ -619,8 +621,9 @@ export class IdentityService {
     revokedBy: UserId,
     correlationId: string
   ): Promise<Result<void, IdentityServiceErrorResult>> {
+    // nosemgrep: missing-tenant-id-arg reason: sessions are looked up by globally-unique session ID (cookie); tenantId is then derived from the session itself.
     const session = await this.uow.sessions.findById(sessionId);
-    
+
     if (!session) {
       return err({
         code: IdentityServiceError.SESSION_NOT_FOUND,

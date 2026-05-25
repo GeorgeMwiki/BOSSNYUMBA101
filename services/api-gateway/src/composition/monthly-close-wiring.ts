@@ -71,6 +71,7 @@ import {
   withAgentSpan,
   recordDegraded,
 } from '../instrumentation/agent-spans.js';
+import { logger } from '../utils/logger.js';
 
 const { MonthlyCloseOrchestrator } = MonthlyClose;
 
@@ -278,16 +279,13 @@ function adaptLogger(
   }
   return {
     info(meta, msg) {
-      // eslint-disable-next-line no-console
-      console.info('[monthly-close]', msg, meta);
+      logger.info('[monthly-close]', { msg, meta });
     },
     warn(meta, msg) {
-      // eslint-disable-next-line no-console
-      console.warn('[monthly-close]', msg, meta);
+      logger.warn('[monthly-close]', { msg, meta });
     },
     error(meta, msg) {
-      // eslint-disable-next-line no-console
-      console.error('[monthly-close]', msg, meta);
+      logger.error('[monthly-close]', { msg, meta });
     },
   };
 }

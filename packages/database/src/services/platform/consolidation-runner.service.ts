@@ -16,6 +16,7 @@
  * the call.
  */
 
+import { logger } from '../../logger.js';
 export interface ConsolidationTickReport {
   readonly tickId: string;
   readonly tenantId: string | null;
@@ -63,7 +64,7 @@ export function createConsolidationRunnerService(
         });
         return report;
       } catch (error) {
-        console.error('platform.consolidation.runTick failed:', error);
+        logger.error('platform.consolidation.runTick failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.consolidation.runTick failed');
@@ -78,10 +79,7 @@ export function createConsolidationRunnerService(
         }
         await worker.rollbackSnapshot(snapshotId);
       } catch (error) {
-        console.error(
-          'platform.consolidation.rollbackToSnapshot failed:',
-          error,
-        );
+        logger.error('platform.consolidation.rollbackToSnapshot failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.consolidation.rollbackToSnapshot failed');

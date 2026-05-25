@@ -21,6 +21,7 @@
  */
 
 import { createBrain, createBrainForTesting } from '../brain.js';
+import { logger } from '../logger.js';
 import { ALL_SCENARIOS } from './index.js';
 import { runScenarios, printReport } from './runner.js';
 import type { EvalRunReport } from './runner.js';
@@ -49,8 +50,7 @@ async function main() {
       })
     : createBrainForTesting();
 
-  // eslint-disable-next-line no-console
-  console.log(
+  logger.info(
     `Brain eval — ${ALL_SCENARIOS.length} scenarios, mode=${liveMode ? 'live' : 'mock'}`
   );
 
@@ -77,8 +77,7 @@ async function main() {
       },
     });
   } catch (err) {
-     
-    console.error('eval-runner crashed during scenario execution:', err);
+    logger.error('eval-runner crashed during scenario execution', { error: err });
     process.exit(2);
   }
 
@@ -99,23 +98,19 @@ async function main() {
     )
   );
   if (crashed.length > 0) {
-     
-    console.error(`${crashed.length} scenario(s) crashed:`);
+    logger.error(`${crashed.length} scenario(s) crashed`);
     for (const c of crashed) {
-       
-      console.error(`  ✗ ${c.scenarioId}`);
+      logger.error(`  ✗ ${c.scenarioId}`);
     }
     process.exit(1);
   }
-  // eslint-disable-next-line no-console
-  console.log(
+  logger.info(
     `Mock-mode gate: all ${report.total} scenarios executed without crash.`
   );
   process.exit(0);
 }
 
 void main().catch((err) => {
-   
-  console.error('eval-runner fatal:', err);
+  logger.error('eval-runner fatal', { error: err });
   process.exit(2);
 });

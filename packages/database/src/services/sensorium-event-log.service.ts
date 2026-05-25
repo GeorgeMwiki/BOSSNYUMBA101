@@ -28,10 +28,12 @@
 import { randomUUID } from 'crypto';
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import {
+
   SENSORIUM_EVENT_TYPES,
   sensoriumEventLog,
   type SensoriumEventType,
 } from '../schemas/sensorium-event-log.schema.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 const VALID_EVENT_TYPES: ReadonlySet<string> = new Set(SENSORIUM_EVENT_TYPES);
@@ -155,7 +157,7 @@ export function createSensoriumEventLogService(
         await db.insert(sensoriumEventLog).values(accepted as never);
         return { inserted: accepted.length, rejected };
       } catch (error) {
-        console.error('sensorium.appendBatch failed:', error);
+        logger.error('sensorium.appendBatch failed', { error: error });
         return { inserted: 0, rejected: rejected + accepted.length };
       }
     },
@@ -184,7 +186,7 @@ export function createSensoriumEventLogService(
           .limit(limit)) as ReadonlyArray<RawRow>;
         return (rows ?? []).map(rowToEntry);
       } catch (error) {
-        console.error('sensorium.listForSession failed:', error);
+        logger.error('sensorium.listForSession failed', { error: error });
         return [];
       }
     },
@@ -223,7 +225,7 @@ export function createSensoriumEventLogService(
         }
         return out;
       } catch (error) {
-        console.error('sensorium.countByTypeForUser failed:', error);
+        logger.error('sensorium.countByTypeForUser failed', { error: error });
         return empty;
       }
     },

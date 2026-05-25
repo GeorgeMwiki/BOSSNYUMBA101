@@ -25,6 +25,7 @@ import Fastify from 'fastify';
 
 import { authMiddleware, type TestAuthInjector } from './middleware/auth.js';
 import { registerCallRoute } from './routes/call.js';
+import { logger } from './logger.js';
 
 export interface BuildAppOptions {
   readonly wsBaseUrl?: string;
@@ -77,8 +78,7 @@ async function main(): Promise<void> {
 // Only auto-start when executed directly (not when imported by tests).
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
-    // eslint-disable-next-line no-console
-    console.error('voice-agent fatal error:', error);
+    logger.error('voice-agent fatal error', { error: error });
     process.exit(1);
   });
 }

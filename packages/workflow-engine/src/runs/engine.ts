@@ -187,6 +187,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
   }
 
   async function loadOrThrow(runId: string): Promise<WorkflowRun> {
+    // nosemgrep: missing-tenant-id-arg reason: workflow runs are globally-unique by runId; tenant is read from the returned `run.tenantId` and verified by callers (see line 180).
     const r = await deps.runRepository.findById(runId);
     if (!r) throw new Error(`run_not_found:${runId}`);
     return r;
@@ -476,6 +477,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     },
 
     async getRun(runId) {
+      // nosemgrep: missing-tenant-id-arg reason: workflow runs are globally-unique by runId; tenant comes back inside `run.tenantId` for the caller to verify.
       return deps.runRepository.findById(runId);
     },
 

@@ -32,6 +32,7 @@ import {
   type EncryptionEnv,
   type MasterKeySnapshot,
 } from './tenant-key-derivation.js';
+import { logger } from '../../logger.js';
 import type { FieldEncryptionAuditService } from '../../services/field-encryption-audit.service.js';
 
 /** 14 days expressed in milliseconds. */
@@ -182,8 +183,7 @@ export async function loadMasterKeySnapshotWithSoakGuard(
       // Audit failure is non-fatal for the snapshot load itself —
       // mirror the sink's fire-and-forget design from
       // `drizzle-encryption-middleware.ts`.
-      // eslint-disable-next-line no-console
-      console.warn('[encryption.rotation] sentinel record failed (non-fatal)', {
+      logger.warn('[encryption.rotation] sentinel record failed (non-fatal)', {
         error: error instanceof Error ? error.message : String(error),
       });
     }

@@ -21,6 +21,7 @@ import type {
   ReceiptLineCondition,
 } from '../types.js';
 import { SYSTEM_CLOCK } from '../types.js';
+import { logger } from '../logger.js';
 
 const ReceiptItemSchema = z.object({
   poItemSku: z.string().nullable().optional(),
@@ -123,7 +124,7 @@ export function createGoodsReceiptService(
         try {
           await deps.notifyVendor({ receipt, po: updatedPo });
         } catch (err) {
-          console.error(`Receipt notify failed for PO ${po.id}`, err);
+          logger.error(`Receipt notify failed for PO ${po.id}`, { error: err });
         }
       }
       return { receipt, updatedPo };

@@ -37,7 +37,11 @@ import { useTranslations } from 'next-intl';
 import { formatDate, formatPercentage } from '../lib/api';
 import { useProperties, useOwnerDashboard, type DashboardRange } from '../lib/hooks';
 import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
-import { ArrearsAgingChart } from '../components/charts/ArrearsAgingChart';
+// LazyArrearsAgingChart wraps the eager component in React.Suspense +
+// dynamic import via @bossnyumba/performance-toolkit. Saves ~80KB
+// (recharts) from the dashboard initial bundle — recharts only loads
+// once the chart actually mounts. See `components/charts/lazy.tsx`.
+import { LazyArrearsAgingChart } from '../components/charts/lazy';
 import { QuickActions } from '../components/QuickActions';
 import { PortfolioAtAGlance } from '../components/PortfolioAtAGlance';
 import { ComparePropertiesTable } from '../components/ComparePropertiesTable';
@@ -483,7 +487,7 @@ export function DashboardPage() {
           onClick={() => handleMetricDrillDown('arrears', 'Arrears Aging')}
           className="bg-white rounded-xl border border-gray-200 p-6 text-left hover:shadow-md transition-all"
         >
-          <ArrearsAgingChart data={arrears} />
+          <LazyArrearsAgingChart data={arrears} />
         </button>
 
         {/* Quick Actions */}

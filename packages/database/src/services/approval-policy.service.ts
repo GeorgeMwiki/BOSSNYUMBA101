@@ -28,9 +28,11 @@
 import { randomUUID } from 'crypto';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import {
+
   approvalPolicyActions,
   type ApprovalPolicyRoleGroup,
 } from '../schemas/approval-policy.schema.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -236,7 +238,7 @@ export function createApprovalPolicyService(
             return rowToPolicy(r as DbPolicyRow, 'tenant');
           }
         } catch (error) {
-          console.error('approval-policy.resolve tenant lookup failed:', error);
+          logger.error('approval-policy.resolve tenant lookup failed', { error: error });
           return defaultBaseline(args.actionType);
         }
       }
@@ -258,7 +260,7 @@ export function createApprovalPolicyService(
           return rowToPolicy(r as DbPolicyRow, 'platform-default');
         }
       } catch (error) {
-        console.error('approval-policy.resolve platform lookup failed:', error);
+        logger.error('approval-policy.resolve platform lookup failed', { error: error });
         return defaultBaseline(args.actionType);
       }
 
@@ -339,7 +341,7 @@ export function createApprovalPolicyService(
           .returning({ id: approvalPolicyActions.id });
         return Array.isArray(result) && result.length > 0;
       } catch (error) {
-        console.error('approval-policy.remove failed:', error);
+        logger.error('approval-policy.remove failed', { error: error });
         return false;
       }
     },
@@ -357,7 +359,7 @@ export function createApprovalPolicyService(
           rowToPolicy(r as DbPolicyRow, tenantId ? 'tenant' : 'platform-default'),
         );
       } catch (error) {
-        console.error('approval-policy.list failed:', error);
+        logger.error('approval-policy.list failed', { error: error });
         return [];
       }
     },

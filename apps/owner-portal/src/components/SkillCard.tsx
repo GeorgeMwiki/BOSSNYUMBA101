@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { Star, Clock, Zap, Hand, Calendar } from 'lucide-react';
 import { SkillInstallToggle } from './SkillInstallToggle';
 
@@ -61,6 +62,7 @@ export function SkillCard({
   onInstall,
   onRun,
 }: SkillCardProps): JSX.Element {
+  const t = useTranslations('p89.skillCard');
   return (
     <article className="flex flex-col rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
       <header className="mb-2 flex items-start justify-between gap-2">
@@ -97,7 +99,7 @@ export function SkillCard({
               {skill.lastRunAt ? ` · last ${skill.lastRunAt}` : ''}
             </span>
           ) : (
-            <span>No runs yet</span>
+            <span>{t('noRunsYet')}</span>
           )}
         </div>
         <div className="flex items-center gap-2">

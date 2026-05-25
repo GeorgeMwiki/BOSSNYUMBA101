@@ -1,5 +1,17 @@
+import dynamic from 'next/dynamic';
 import { PortalShell } from '../_lib/PortalShell';
-import { SustainabilityAdvisorClient } from './SustainabilityAdvisorClient';
+import { AdvisorLoading } from '../_lib/states';
+
+const SustainabilityAdvisorClient = dynamic(
+  () =>
+    import('./SustainabilityAdvisorClient.js').then((m) => ({
+      default: m.SustainabilityAdvisorClient,
+    })),
+  {
+    ssr: false,
+    loading: () => <AdvisorLoading label="Loading sustainability advisor…" />,
+  },
+);
 
 export const metadata = {
   title: 'Sustainability advisor — BossNyumba HQ',

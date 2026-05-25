@@ -351,6 +351,7 @@ function buildOwnerDashboardPayload(scope) {
 }
 
 async function getAdminDashboardData(auth, repos) {
+  // nosemgrep: missing-tenant-id-arg reason: platform-admin branch only — cross-tenant listing is the intent. Non-admin branch falls back to the caller's own tenant via auth.tenantId, which IS the tenant key.
   const tenantRows =
     auth.role === UserRole.SUPER_ADMIN || auth.role === UserRole.ADMIN || auth.role === UserRole.SUPPORT
       ? (await repos.tenants.findMany({ limit: 500, offset: 0 })).items

@@ -48,6 +48,7 @@ import {
   type BillingStore,
 } from './store/billing-store.js';
 import type { BrainEventSubscriber } from '@bossnyumba/ai-copilot/brain-event-bus';
+import { logger } from './logger.js';
 
 // ---------------------------------------------------------------------------
 // App builder
@@ -145,15 +146,11 @@ async function main(): Promise<void> {
   const host = process.env.HOST ?? '0.0.0.0';
   try {
     await app.listen({ port, host });
-    // eslint-disable-next-line no-console
-    console.log(
-      `[outcomes-metering] listening on http://${host}:${port} (consumer=${
+    logger.info(`[outcomes-metering] listening on http://${host}:${port} (consumer=${
         consumer ? 'wired' : 'not-wired'
-      })`,
-    );
+      })`);
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[outcomes-metering] fatal:', err);
+    logger.error('[outcomes-metering] fatal', { error: err });
     process.exit(1);
   }
 }

@@ -21,6 +21,7 @@
  */
 import { sql } from 'drizzle-orm';
 import type { DatabaseClient } from '../../client.js';
+import { logger } from '../../logger.js';
 
 export type ServiceHealthState =
   | 'healthy'
@@ -115,7 +116,7 @@ export function createServiceHeartbeatService(
           notes: `synthesised from process.uptime(): ${upMs}ms`,
         });
       } catch (error) {
-        console.error('service-heartbeat: api-gateway probe failed:', error);
+        logger.error('service-heartbeat: api-gateway probe failed', { error: error });
         rows.push({
           serviceName: 'api-gateway',
           state: 'unknown',
@@ -149,7 +150,7 @@ export function createServiceHeartbeatService(
             : `SELECT 1 returned in ${latencyMs}ms`,
         });
       } catch (error) {
-        console.error('service-heartbeat: postgres probe failed:', error);
+        logger.error('service-heartbeat: postgres probe failed', { error: error });
         rows.push({
           serviceName: 'postgres-primary',
           state: 'unhealthy',
@@ -165,7 +166,7 @@ export function createServiceHeartbeatService(
           const row = await probe();
           rows.push(row);
         } catch (error) {
-          console.error('service-heartbeat: extra probe failed:', error);
+          logger.error('service-heartbeat: extra probe failed', { error: error });
         }
       }
 

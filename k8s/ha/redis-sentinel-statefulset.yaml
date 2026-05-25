@@ -111,11 +111,27 @@ spec:
                   matchLabels:
                     app.kubernetes.io/name: redis-sentinel
                 topologyKey: kubernetes.io/hostname
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999          # redis:7.2-alpine ships UID 999 for the `redis` user
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: sentinel
           image: redis:7.2-alpine
           imagePullPolicy: IfNotPresent
           command: ["/bin/sh", "/etc/redis/sentinel-bootstrap.sh"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           env:
             - name: REDIS_PASSWORD
               valueFrom:

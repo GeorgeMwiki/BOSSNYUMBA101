@@ -105,10 +105,26 @@ spec:
                   matchLabels:
                     app.kubernetes.io/name: postgres-haproxy
                 topologyKey: kubernetes.io/hostname
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 99           # haproxy:2.9-alpine ships UID 99 for the `haproxy` user
+        runAsGroup: 99
+        fsGroup: 99
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: haproxy
           image: haproxy:2.9-alpine
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 5432
               name: writes

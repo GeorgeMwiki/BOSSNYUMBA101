@@ -33,6 +33,7 @@ import type {
   JarvisThinkRequest,
 } from '@bossnyumba/api-sdk';
 import type { ListeningHandle, VoiceAudioPort } from '../voice/voice-audio-port.js';
+import { logger } from '../logger.js';
 
 export interface JarvisTurn {
   readonly id: string;
@@ -326,7 +327,7 @@ export function useJarvis(opts: UseJarvisOptions): UseJarvisReturn {
       };
       setIsListening(true);
     } catch (err) {
-      console.error('startListening failed', err);
+      logger.error('startListening failed', { error: err });
       setError(err instanceof Error ? err.message : String(err));
     }
   }, [opts.voice, cancelSpeaking, think]);
@@ -351,7 +352,7 @@ export function useJarvis(opts: UseJarvisOptions): UseJarvisReturn {
       .speak(last.text, { signal: ctrl.signal })
       .catch((err: unknown) => {
         if ((err as { name?: string })?.name === 'AbortError') return;
-        console.warn('TTS playback failed', err);
+        logger.warn('TTS playback failed', { err });
       })
       .finally(() => {
         if (speakAbortRef.current === ctrl) speakAbortRef.current = null;

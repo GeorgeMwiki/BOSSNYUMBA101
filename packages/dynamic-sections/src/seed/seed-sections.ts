@@ -26,6 +26,14 @@
  */
 
 import type { Section } from '../contracts/section.js';
+
+// "KRA Filings" is a Kenya-specific tax-authority surface (Kenya Revenue
+// Authority — a proper noun). The seed exports this label as the default
+// for the section registry; consumer apps that have i18n wired up are
+// expected to translate the displayed label at render time using their
+// own message catalogue. The seed itself stays English so the
+// dynamic-sections package remains library-only (no i18n dependency).
+const KRA_FILINGS_LABEL = 'KRA Filings';
 import {
   EmployeesSection,
   CustomersSection,
@@ -107,7 +115,7 @@ export const seedSections: readonly Section[] = [
   },
   {
     key: 'kra-filings',
-    label: 'KRA Filings',
+    label: KRA_FILINGS_LABEL,
     icon: 'file-text',
     entity_type: 'kra-filings',
     sort_order: 60,

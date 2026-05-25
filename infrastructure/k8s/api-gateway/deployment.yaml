@@ -18,10 +18,26 @@ spec:
         app: api-gateway
         app.kubernetes.io/name: api-gateway
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000           # matches services/*/Dockerfile addgroup/adduser `app`
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: api-gateway
           image: bossnyumba/api-gateway:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 4000
               name: http

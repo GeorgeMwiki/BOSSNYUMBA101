@@ -42,6 +42,7 @@
  */
 
 import type { KillswitchTrigger } from './defection-probe.js';
+import { logger } from '../logger.js';
 
 export type AlignmentBand = 'robust' | 'moderate' | 'faking_suspected';
 
@@ -339,8 +340,7 @@ export async function runAlignmentProbeAndMaybeTrip<T = unknown>(
       });
       killswitchTripped = true;
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('alignment-faking-probe.killswitch.trip failed:', error);
+      logger.error('alignment-faking-probe.killswitch.trip failed', { error: error });
     }
   }
 

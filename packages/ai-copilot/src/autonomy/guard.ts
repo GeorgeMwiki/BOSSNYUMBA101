@@ -59,6 +59,7 @@ import type {
 } from '../learning-loop/confidence-scorer.js';
 import { LOW_CONFIDENCE_THRESHOLD } from '../learning-loop/confidence-scorer.js';
 import type { OutcomeCapture } from '../learning-loop/outcome-capture.js';
+import { logger } from '../logger.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -283,10 +284,7 @@ export function withAutonomyGuard(deps: WithAutonomyGuardDeps): AutonomyGuardFn 
       } catch (err) {
         // Scorer is advisory — never block on its failure.
          
-        console.error(
-          'autonomy-guard: confidence scorer failed',
-          err instanceof Error ? err.message : String(err),
-        );
+        logger.error('autonomy-guard: confidence scorer failed', { error: err instanceof Error ? err.message : String(err) });
       }
     }
 
@@ -446,10 +444,7 @@ export function withAutonomyGuard(deps: WithAutonomyGuardDeps): AutonomyGuardFn 
           // Consume failure must never roll back the mutation — the
           // audit trail already records the attempt. Surface via reason.
            
-          console.error(
-            'autonomy-guard: grant consume failed',
-            err instanceof Error ? err.message : String(err),
-          );
+          logger.error('autonomy-guard: grant consume failed', { error: err instanceof Error ? err.message : String(err) });
         }
       }
 
@@ -504,10 +499,7 @@ export function withAutonomyGuard(deps: WithAutonomyGuardDeps): AutonomyGuardFn 
         queuedApprovalId = queued ?? null;
       } catch (err) {
          
-        console.error(
-          'autonomy-guard: onApprovalRequired sink failed',
-          err instanceof Error ? err.message : String(err),
-        );
+        logger.error('autonomy-guard: onApprovalRequired sink failed', { error: err instanceof Error ? err.message : String(err) });
       }
     }
 

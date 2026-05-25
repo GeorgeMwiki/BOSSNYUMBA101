@@ -179,6 +179,7 @@ export class PostgresVendorRepository implements VendorRepositoryPort {
     // Drizzle implementation can refine with SQL filters; at the
     // interface level we let this be permissive so the repo can
     // be wired to different query helpers.
+    // nosemgrep: missing-tenant-id-arg reason: Drizzle relational query — tenantId is inside the `where` clause, not at the top level the rule expects.
     const rows = await this.db.query.vendors.findMany({
       where: {
         tenantId: params.tenantId,
@@ -204,6 +205,7 @@ export class PostgresVendorRepository implements VendorRepositoryPort {
   }
 
   async findAllActive(tenantId: string): Promise<VendorProfileDto[]> {
+    // nosemgrep: missing-tenant-id-arg reason: Drizzle relational query — tenantId is inside the `where` clause, not at the top level the rule expects.
     const rows = await this.db.query.vendors.findMany({
       where: { tenantId, status: 'active' },
     });
@@ -217,6 +219,7 @@ export class PostgresVendorRepository implements VendorRepositoryPort {
     windowEnd: Date;
   }): Promise<VendorWorkOrderOutcomeDto[]> {
     if (!this.db.query.workOrders) return [];
+    // nosemgrep: missing-tenant-id-arg reason: Drizzle relational query — tenantId is inside the `where` clause, not at the top level the rule expects.
     const rows = await this.db.query.workOrders.findMany({
       where: {
         tenantId: params.tenantId,

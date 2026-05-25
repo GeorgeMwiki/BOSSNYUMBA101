@@ -16,6 +16,7 @@ import {
 import { NGGIS_TOOLS, findNggisTool } from './tools/index.js';
 import { MockNggisAdapter } from './adapter.js';
 import type { NggisAdapter, NggisTool, ToolDeps } from './types.js';
+import { logger } from './logger.js';
 
 const DEFAULT_NAME = 'bossnyumba-mcp-nggis';
 const DEFAULT_VERSION = '0.1.0';
@@ -176,8 +177,7 @@ const invokedDirectly = (() => {
 
 if (invokedDirectly) {
   main().catch((err) => {
-    // eslint-disable-next-line no-console
-    console.error('[mcp-server-nggis] fatal:', err);
+    logger.error('[mcp-server-nggis] fatal', { error: err });
     process.exit(1);
   });
 }

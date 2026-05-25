@@ -19,56 +19,59 @@ interface QuickAction {
   color: string;
 }
 
-const quickActions: QuickAction[] = [
-  {
-    id: 'view-statements',
-    label: 'View Statements',
-    description: 'Monthly financial reports',
-    icon: <FileText className="h-5 w-5" />,
-    href: '/financial?tab=statements',
-    color: 'bg-blue-100 text-blue-600 hover:bg-blue-200',
-  },
-  {
-    id: 'export-report',
-    label: 'Export Report',
-    description: 'Download PDF/Excel',
-    icon: <Download className="h-5 w-5" />,
-    href: '/reports?action=export',
-    color: 'bg-green-100 text-green-600 hover:bg-green-200',
-  },
-  {
-    id: 'review-approvals',
-    label: 'Review Approvals',
-    description: 'Pending work orders',
-    icon: <CheckSquare className="h-5 w-5" />,
-    href: '/approvals',
-    color: 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200',
-  },
-  {
-    id: 'message-manager',
-    label: 'Message Manager',
-    description: 'Contact estate manager',
-    icon: <MessageSquare className="h-5 w-5" />,
-    href: '/messages',
-    color: 'bg-purple-100 text-purple-600 hover:bg-purple-200',
-  },
-  {
-    id: 'view-maintenance',
-    label: 'Maintenance Status',
-    description: 'Track work orders',
-    icon: <Wrench className="h-5 w-5" />,
-    href: '/maintenance',
-    color: 'bg-orange-100 text-orange-600 hover:bg-orange-200',
-  },
-  {
-    id: 'view-disbursements',
-    label: 'Disbursements',
-    description: 'Payment history',
-    icon: <DollarSign className="h-5 w-5" />,
-    href: '/financial?tab=disbursements',
-    color: 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200',
-  },
-];
+function useQuickActions(): QuickAction[] {
+  const t = useTranslations('p89.quickActions');
+  return [
+    {
+      id: 'view-statements',
+      label: t('viewStatements'),
+      description: 'Monthly financial reports',
+      icon: <FileText className="h-5 w-5" />,
+      href: '/financial?tab=statements',
+      color: 'bg-blue-100 text-blue-600 hover:bg-blue-200',
+    },
+    {
+      id: 'export-report',
+      label: t('exportReport'),
+      description: 'Download PDF/Excel',
+      icon: <Download className="h-5 w-5" />,
+      href: '/reports?action=export',
+      color: 'bg-green-100 text-green-600 hover:bg-green-200',
+    },
+    {
+      id: 'review-approvals',
+      label: t('reviewApprovals'),
+      description: 'Pending work orders',
+      icon: <CheckSquare className="h-5 w-5" />,
+      href: '/approvals',
+      color: 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200',
+    },
+    {
+      id: 'message-manager',
+      label: t('messageManager'),
+      description: 'Contact estate manager',
+      icon: <MessageSquare className="h-5 w-5" />,
+      href: '/messages',
+      color: 'bg-purple-100 text-purple-600 hover:bg-purple-200',
+    },
+    {
+      id: 'view-maintenance',
+      label: t('maintenanceStatus'),
+      description: 'Track work orders',
+      icon: <Wrench className="h-5 w-5" />,
+      href: '/maintenance',
+      color: 'bg-orange-100 text-orange-600 hover:bg-orange-200',
+    },
+    {
+      id: 'view-disbursements',
+      label: 'Disbursements',
+      description: 'Payment history',
+      icon: <DollarSign className="h-5 w-5" />,
+      href: '/financial?tab=disbursements',
+      color: 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200',
+    },
+  ];
+}
 
 interface QuickActionsProps {
   className?: string;
@@ -76,6 +79,7 @@ interface QuickActionsProps {
 
 export function QuickActions({ className }: QuickActionsProps) {
   const t = useTranslations('quickActions');
+  const quickActions = useQuickActions();
   return (
     <div className={className}>
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('title')}</h3>

@@ -44,6 +44,7 @@ import {
   type ExtractedFact,
   type ReflectiveDigestPayload,
 } from './consolidation-types.js';
+import { logger } from '../../logger.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Public entry
@@ -502,8 +503,7 @@ function asMsg(error: unknown): string {
 function defaultLogger(): ConsolidationLogger {
   return {
     warn(msg, meta) {
-      // eslint-disable-next-line no-console
-      console.warn(`[consolidation] ${msg}`, meta ?? '');
+      logger.warn(`[consolidation] ${msg}`, { value: meta ?? '' })
     },
   };
 }

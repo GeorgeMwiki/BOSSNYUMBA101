@@ -26,6 +26,7 @@ import type {
   TenantId,
 } from './types/index.js';
 import type { INotificationProvider, SendParams } from './providers/provider.interface.js';
+import { logger } from './logger.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -274,11 +275,8 @@ export async function enqueueNotification(
   // `userId` or the user's opt-outs will be ignored. This is now
   // surfaced via a warning so misuse is observable in logs.
   if (!input.userId && input.templateId && !input.idempotencyKey?.startsWith('announcement:')) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[dispatcher] enqueueNotification called without userId for templateId=${String(input.templateId)} — ` +
-        `preference checks SKIPPED. If this is a per-user notification, ALWAYS pass userId.`
-    );
+    logger.warn(`[dispatcher] enqueueNotification called without userId for templateId=${String(input.templateId)} — ` +
+        `preference checks SKIPPED. If this is a per-user notification, ALWAYS pass userId.`);
   }
   if (input.userId) {
     // Round-3 audit H6 — `checkAllowed` is now async because the
@@ -422,8 +420,7 @@ async function handleDeadLetter(
   } catch (err) {
     // DLQ write failure is a hard infra issue — log via console (intentional
     // fallback-of-last-resort since structured logger isn't injected here).
-    // eslint-disable-next-line no-console
-    console.error('notifications.dispatcher: DLQ sink failed', err);
+    logger.error('notifications.dispatcher: DLQ sink failed', { error: err });
   }
 
   if (eventBus) {
@@ -445,8 +442,7 @@ async function handleDeadLetter(
         }
       );
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('notifications.dispatcher: eventBus.publish failed', err);
+      logger.error('notifications.dispatcher: eventBus.publish failed', { error: err });
     }
   }
 }

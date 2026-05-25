@@ -1,5 +1,17 @@
+import dynamic from 'next/dynamic';
 import { PortalShell } from '../_lib/PortalShell';
-import { GreenAngleAdvisorClient } from './GreenAngleAdvisorClient';
+import { AdvisorLoading } from '../_lib/states';
+
+const GreenAngleAdvisorClient = dynamic(
+  () =>
+    import('./GreenAngleAdvisorClient.js').then((m) => ({
+      default: m.GreenAngleAdvisorClient,
+    })),
+  {
+    ssr: false,
+    loading: () => <AdvisorLoading label="Loading green-angle advisor…" />,
+  },
+);
 
 export const metadata = {
   title: 'Green-angle advisor — BossNyumba HQ',

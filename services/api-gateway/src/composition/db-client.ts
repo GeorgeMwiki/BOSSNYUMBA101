@@ -17,6 +17,7 @@ import {
   createDatabaseClient,
   createReadonlyDatabaseClient,
 } from '@bossnyumba/database';
+import { logger } from '../utils/logger.js';
 
 // NOTE: we deliberately avoid importing the named `DatabaseClient` type
 // from `@bossnyumba/database` because its name collides with a namespace
@@ -94,9 +95,7 @@ export function getDbReadonly(): DrizzleClient | null {
     const message = error instanceof Error ? error.message : String(error);
     // eslint-disable-next-line no-console -- HA visibility: surfaces replica
     // misconfiguration on boot so operators see it in the deploy logs.
-    console.warn(
-      `db-client: read-replica init failed (${message}); falling back to primary`,
-    );
+    logger.warn(`db-client: read-replica init failed (${message}); falling back to primary`);
     cachedReadonlyClient = getDb();
     return cachedReadonlyClient;
   }

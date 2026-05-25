@@ -1,4 +1,5 @@
 // @ts-nocheck — Hono v4 MiddlewareHandler status-code literal union: multiple c.json({...}, status) branches widen return type and TypedResponse overload rejects the union. Tracked at hono-dev/hono#3891.
+import { logger } from '../utils/logger.js';
 /**
  * Tenant Context Middleware - BOSSNYUMBA
  *
@@ -52,11 +53,9 @@ function resolveCountryPluginWithDefault(rawCode: string | null): CountryPlugin 
       if (!defaultFallbackWarned) {
         defaultFallbackWarned = true;
         // eslint-disable-next-line no-console -- one-shot operator visibility
-        console.warn(
-          `[tenant-context] unknown / missing countryCode (${JSON.stringify(rawCode)}); ` +
+        logger.warn(`[tenant-context] unknown / missing countryCode (${JSON.stringify(rawCode)}); ` +
             `falling back to DEFAULT_COUNTRY_ID=${DEFAULT_COUNTRY_ID}. ` +
-            `Update tenants.countryCode to silence this warning.`,
-        );
+            `Update tenants.countryCode to silence this warning.`);
       }
       return getCountryPlugin(DEFAULT_COUNTRY_ID);
     }

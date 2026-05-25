@@ -20,6 +20,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { createBossnyumbaClient, createJarvisClient } from '@bossnyumba/api-sdk';
 import { useJarvisStream } from '@bossnyumba/chat-ui';
 import { AdaptiveRenderer, type AgUiUiPart } from '@bossnyumba/genui';
@@ -100,6 +101,7 @@ export function OwnerJarvisShell({
   placeholder,
   compact = false,
 }: OwnerJarvisShellProps): JSX.Element {
+  const t = useTranslations('p89.jarvisShell');
   const [draft, setDraft] = useState('');
   const [threadId] = useState(
     () => `own_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -245,7 +247,7 @@ export function OwnerJarvisShell({
           placeholder={placeholder ?? 'Ask Mr. Mwikila about your portfolio…'}
           disabled={isStreaming}
           className="flex-1 rounded border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
-          aria-label="Owner Jarvis input"
+          aria-label={t('inputAria')}
         />
         <button
           type="submit"

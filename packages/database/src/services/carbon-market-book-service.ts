@@ -47,9 +47,11 @@
 
 import { and, asc, desc, eq, gte, sql } from 'drizzle-orm';
 import {
+
   carbonMarketBookEntries,
   type CarbonMarketBookEntryRow,
 } from '../schemas/carbon-market-book.schema.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -231,8 +233,7 @@ export function createCarbonMarketBookService(
         // Losing a booked trade desynchronises the desk + repo. Surface
         // the failure so the trading-desk can refuse to mark the order
         // as booked.
-        // eslint-disable-next-line no-console
-        console.error('carbon-market-book.save failed:', error);
+        logger.error('carbon-market-book.save failed', { error: error });
         throw error;
       }
     },
@@ -248,8 +249,7 @@ export function createCarbonMarketBookService(
         const row = rows?.[0];
         return row ? rowToEntry(row) : null;
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('carbon-market-book.findById failed:', error);
+        logger.error('carbon-market-book.findById failed', { error: error });
         return null;
       }
     },
@@ -264,8 +264,7 @@ export function createCarbonMarketBookService(
           .orderBy(desc(carbonMarketBookEntries.tradeDate))) as ReadonlyArray<CarbonMarketBookEntryRow>;
         return Object.freeze((rows ?? []).map(rowToEntry));
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('carbon-market-book.findByTenant failed:', error);
+        logger.error('carbon-market-book.findByTenant failed', { error: error });
         return Object.freeze([]);
       }
     },
@@ -285,8 +284,7 @@ export function createCarbonMarketBookService(
           .orderBy(asc(carbonMarketBookEntries.tradeDate))) as ReadonlyArray<CarbonMarketBookEntryRow>;
         return Object.freeze((rows ?? []).map(rowToEntry));
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('carbon-market-book.findOpenByTenant failed:', error);
+        logger.error('carbon-market-book.findOpenByTenant failed', { error: error });
         return Object.freeze([]);
       }
     },
@@ -308,8 +306,7 @@ export function createCarbonMarketBookService(
           .orderBy(desc(carbonMarketBookEntries.tradeDate))) as ReadonlyArray<CarbonMarketBookEntryRow>;
         return Object.freeze((rows ?? []).map(rowToEntry));
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('carbon-market-book.findBySymbol failed:', error);
+        logger.error('carbon-market-book.findBySymbol failed', { error: error });
         return Object.freeze([]);
       }
     },
@@ -340,8 +337,7 @@ export function createCarbonMarketBookService(
         }
         return rowToEntry(rows[0]!);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('carbon-market-book.markSettled failed:', error);
+        logger.error('carbon-market-book.markSettled failed', { error: error });
         throw error;
       }
     },
@@ -378,8 +374,7 @@ export function createCarbonMarketBookService(
         }
         return rowToEntry(rows[0]!);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('carbon-market-book.cancel failed:', error);
+        logger.error('carbon-market-book.cancel failed', { error: error });
         throw error;
       }
     },

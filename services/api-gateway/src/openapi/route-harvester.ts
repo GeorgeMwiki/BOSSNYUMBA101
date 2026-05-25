@@ -25,6 +25,7 @@ import {
   listRegisteredRoutes,
   type OpenApiRouteMeta,
 } from './schema-registry';
+import { logger } from '../utils/logger.js';
 
 // Extend Zod with `.openapi()` once at module load — `@asteasolutions/zod-to-openapi`
 // reflects on schemas via a method patched onto ZodType.prototype, which
@@ -192,10 +193,7 @@ export function buildOpenApiSpec(
       } catch (err) {
         // Surface but never abort — a single bad schema shouldn't tank
         // the whole spec.
-        // eslint-disable-next-line no-console
-        console.warn(
-          `openapi: failed to register ${hr.method} ${hr.fullPath}: ${err instanceof Error ? err.message : String(err)}`
-        );
+        logger.warn(`openapi: failed to register ${hr.method} ${hr.fullPath}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   }
@@ -212,8 +210,7 @@ export function buildOpenApiSpec(
   for (const r of registered) {
     const key = `${r.prefix} ${r.method} ${r.path}`;
     if (!matched.has(key)) {
-      // eslint-disable-next-line no-console
-      console.warn(`openapi: registered route ${key} has no mounted handler`);
+      logger.warn(`openapi: registered route ${key} has no mounted handler`);
     }
   }
 

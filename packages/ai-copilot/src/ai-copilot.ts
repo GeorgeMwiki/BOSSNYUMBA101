@@ -79,6 +79,7 @@ import {
   CostTracking,
 } from './governance/ai-governance.js';
 import { HumanReview } from './types/core.types.js';
+import { logger } from './logger.js';
 
 /**
  * Graph Intelligence configuration
@@ -227,14 +228,11 @@ export class AICopilot {
             )
             .catch((err: unknown) => {
                
-              console.error(
-                'AICopilot.governance.logCopilotInvocation failed',
-                {
+              logger.error('AICopilot.governance.logCopilotInvocation failed', {
                   requestId,
                   tenantId: tenant.tenantId,
                   err: err instanceof Error ? err.message : String(err),
-                }
-              );
+                });
             });
         }
       },
@@ -254,7 +252,7 @@ export class AICopilot {
           })
           .catch((err: unknown) => {
              
-            console.error('AICopilot.governance.logPrediction failed', {
+            logger.error('AICopilot.governance.logPrediction failed', {
               tenantId: prediction.tenant.tenantId,
               err: err instanceof Error ? err.message : String(err),
             });
@@ -484,7 +482,7 @@ export class AICopilot {
         'success'
       ).catch((err: unknown) => {
          
-        console.error('AICopilot.executeGraphTool governance log failed', {
+        logger.error('AICopilot.executeGraphTool governance log failed', {
           toolName,
           tenantId: tenant.tenantId,
           err: err instanceof Error ? err.message : String(err),

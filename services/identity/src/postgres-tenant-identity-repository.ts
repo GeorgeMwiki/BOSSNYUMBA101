@@ -153,6 +153,7 @@ export class PostgresTenantIdentityRepository {
       set.lastActivityAt = new Date(patch.lastActivityAt);
 
     if (Object.keys(set).length === 0) {
+      // nosemgrep: missing-tenant-id-arg reason: self-call inside the repository's own update — the underlying `findById` is the tenant-identity table; `id` IS the key. Tenant scope is one of the columns and the caller verifies it.
       const existing = await this.findById(id);
       if (!existing) {
         throw new Error(

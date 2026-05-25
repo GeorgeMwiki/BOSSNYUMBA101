@@ -85,6 +85,7 @@ import {
   createZillowMarketDataAdapter,
   type MarketDataPort,
 } from '@bossnyumba/market-intelligence';
+import { logger } from '../utils/logger.js';
 
 // Visibility role — mirrored locally so this composition root doesn't
 // need a type-only barrel export from `@bossnyumba/database` (TS
@@ -135,10 +136,7 @@ async function loadAnthropicClient(): Promise<AnthropicMessagesClient | null> {
     return anthropicSingleton;
   } catch (err) {
     // SDK not installed — log once and fall back.
-    console.warn(
-      'sovereign-composition: @anthropic-ai/sdk not loadable; falling back to stub sensor',
-      err instanceof Error ? err.message : err,
-    );
+    logger.warn('sovereign-composition: @anthropic-ai/sdk not loadable; falling back to stub sensor', { value: err instanceof Error ? err.message : err });
     anthropicSingleton = null;
     return null;
   }
@@ -616,9 +614,7 @@ export function getMarketDataKernelTools():
 
   const port = buildMarketDataPort(provider);
   if (!port) {
-    console.warn(
-      `sovereign-composition: unknown MARKET_DATA_PROVIDER='${provider}'; ignoring`,
-    );
+    logger.warn(`sovereign-composition: unknown MARKET_DATA_PROVIDER='${provider}'; ignoring`);
     marketDataKernelToolsSingleton = null;
     return null;
   }

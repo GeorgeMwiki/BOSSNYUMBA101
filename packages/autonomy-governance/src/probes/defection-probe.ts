@@ -53,6 +53,7 @@
  *   - probe-as-context renderer
  */
 
+import { logger } from '../logger.js';
 export type DefectionVerdict = 'stable' | 'watch' | 'escalate' | 'block';
 
 /**
@@ -532,8 +533,7 @@ export async function runDefectionProbeAndMaybeTrip(
       // Killswitch trip is best-effort from the probe's perspective —
       // the wire-side adapter is responsible for retry / paging. We
       // never fail the request because the killswitch had an outage.
-      // eslint-disable-next-line no-console
-      console.error('defection-probe.killswitch.trip failed:', error);
+      logger.error('defection-probe.killswitch.trip failed', { error: error });
     }
   }
   return { scores, killswitchTripped };

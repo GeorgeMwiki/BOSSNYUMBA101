@@ -14,6 +14,7 @@
 
 import { createHash } from 'node:crypto';
 import type { ZodSchema } from 'zod';
+import { logger } from './logger.js';
 
 // ---------- Public types ----------
 
@@ -310,7 +311,7 @@ export function createBaseConnector(deps: BaseConnectorDeps): BaseConnector {
       await audit.audit(auditRow);
     } catch (err) {
       // Audit must not break the call.
-      console.error(`[connector:${config.id}] audit failed`, err);
+      logger.error(`[connector:${config.id}] audit failed`, { error: err });
     }
   }
 

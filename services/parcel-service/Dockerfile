@@ -31,4 +31,9 @@ COPY --from=builder /repo /repo
 ENV NODE_ENV=production
 EXPOSE 3017
 WORKDIR /repo/services/parcel-service
+
+# Run as non-root user (mirrors infra/k8s/*/securityContext.runAsNonRoot: true)
+RUN addgroup -S app && adduser -S app -G app && chown -R app:app /repo
+USER app
+
 CMD ["node", "dist/index.js"]

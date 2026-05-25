@@ -19,6 +19,8 @@ import { randomUUID } from 'crypto';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { kernelGoals } from '../schemas/kernel-goals.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export type GoalStatus =
   | 'active'
@@ -193,7 +195,7 @@ export function createKernelGoalsService(
           stepsDone: 0,
         } as never);
       } catch (error) {
-        console.error('kernel-goals.open failed:', error);
+        logger.error('kernel-goals.open failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('kernel-goals.open failed');
@@ -223,7 +225,7 @@ export function createKernelGoalsService(
           .limit(limit)) as ReadonlyArray<GoalRow>;
         return (rows ?? []).map(rowToGoal);
       } catch (error) {
-        console.error('kernel-goals.list failed:', error);
+        logger.error('kernel-goals.list failed', { error: error });
         return [];
       }
     },
@@ -240,7 +242,7 @@ export function createKernelGoalsService(
         if (!row) return null;
         return rowToGoal(row);
       } catch (error) {
-        console.error('kernel-goals.get failed:', error);
+        logger.error('kernel-goals.get failed', { error: error });
         return null;
       }
     },
@@ -280,7 +282,7 @@ export function createKernelGoalsService(
           } as never)
           .where(eq(kernelGoals.id, args.goalId));
       } catch (error) {
-        console.error('kernel-goals.updateStepStatus failed:', error);
+        logger.error('kernel-goals.updateStepStatus failed', { error: error });
       }
     },
 
@@ -297,7 +299,7 @@ export function createKernelGoalsService(
           .set(set as never)
           .where(eq(kernelGoals.id, id));
       } catch (error) {
-        console.error('kernel-goals.setStatus failed:', error);
+        logger.error('kernel-goals.setStatus failed', { error: error });
       }
     },
 
@@ -342,7 +344,7 @@ export function createKernelGoalsService(
                   : 0,
           }));
       } catch (error) {
-        console.error('kernel-goals.listStallScanTargets failed:', error);
+        logger.error('kernel-goals.listStallScanTargets failed', { error: error });
         return [];
       }
     },
@@ -362,7 +364,7 @@ export function createKernelGoalsService(
           } as never)
           .where(eq(kernelGoals.id, goalId));
       } catch (error) {
-        console.error('kernel-goals.markStalled failed:', error);
+        logger.error('kernel-goals.markStalled failed', { error: error });
       }
     },
   };

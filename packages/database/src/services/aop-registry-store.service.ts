@@ -40,6 +40,7 @@
 
 import { and, asc, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import {
+
   aopActiveVersions,
   aopRegressionSets,
   aopSpecs,
@@ -47,6 +48,7 @@ import {
   type AopRegressionSetRow,
   type AopSpecRow,
 } from '../schemas/aop-registry.schema.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -141,8 +143,7 @@ export function createAopRegistryStoreService(
         ) {
           throw error;
         }
-        // eslint-disable-next-line no-console
-        console.error('aop-registry-store.putSpec failed:', error);
+        logger.error('aop-registry-store.putSpec failed', { error: error });
         throw error;
       }
     },
@@ -158,8 +159,7 @@ export function createAopRegistryStoreService(
           (rows ?? []).map((row) => row.spec as unknown as AopSpecLike),
         );
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('aop-registry-store.listSpecs failed:', error);
+        logger.error('aop-registry-store.listSpecs failed', { error: error });
         return Object.freeze([]);
       }
     },
@@ -186,8 +186,7 @@ export function createAopRegistryStoreService(
             } as never,
           });
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('aop-registry-store.putRegressionSet failed:', error);
+        logger.error('aop-registry-store.putRegressionSet failed', { error: error });
         // Don't throw — the registry hydrates from listRegressionSets at
         // boot; a transient outage shouldn't wedge the host. The next
         // `putRegressionSet` succeeds without operator intervention.
@@ -208,8 +207,7 @@ export function createAopRegistryStoreService(
           ),
         );
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('aop-registry-store.listRegressionSets failed:', error);
+        logger.error('aop-registry-store.listRegressionSets failed', { error: error });
         return Object.freeze([]);
       }
     },
@@ -251,8 +249,7 @@ export function createAopRegistryStoreService(
             } as never,
           });
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('aop-registry-store.putActiveVersion failed:', error);
+        logger.error('aop-registry-store.putActiveVersion failed', { error: error });
         // Best-effort — the registry's refresh() will re-hydrate.
       }
     },
@@ -271,8 +268,7 @@ export function createAopRegistryStoreService(
           ),
         );
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('aop-registry-store.listActiveVersions failed:', error);
+        logger.error('aop-registry-store.listActiveVersions failed', { error: error });
         return Object.freeze([]);
       }
     },

@@ -38,4 +38,9 @@ COPY --from=builder /repo /repo
 ENV NODE_ENV=production
 EXPOSE 3018
 WORKDIR /repo/services/outcomes-metering
+
+# Run as non-root user (mirrors infra/k8s/*/securityContext.runAsNonRoot: true)
+RUN addgroup -S app && adduser -S app -G app && chown -R app:app /repo
+USER app
+
 CMD ["node", "dist/index.js"]

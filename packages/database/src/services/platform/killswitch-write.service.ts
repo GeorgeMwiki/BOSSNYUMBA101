@@ -24,6 +24,7 @@ import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { platformKillswitchState } from '../../schemas/platform-killswitch-state.schema.js';
 import type { DatabaseClient } from '../../client.js';
+import { logger } from '../../logger.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Structural port shapes — duck-typed to keep this package from
@@ -171,10 +172,7 @@ export function createPlatformKillswitchWriteService(
       });
     } catch (error) {
       // Cross-portal publish is best-effort; DB is source of truth.
-      console.error(
-        'platform.killswitch.publishCrossPortalEvent failed:',
-        error,
-      );
+      logger.error('platform.killswitch.publishCrossPortalEvent failed', { error: error });
     }
   }
 
@@ -202,7 +200,7 @@ export function createPlatformKillswitchWriteService(
           note: r.note,
         };
       } catch (error) {
-        console.error('platform.killswitch.readCurrent failed:', error);
+        logger.error('platform.killswitch.readCurrent failed', { error: error });
         return null;
       }
     },
@@ -280,7 +278,7 @@ export function createPlatformKillswitchWriteService(
           updatedAt: now.toISOString(),
         };
       } catch (error) {
-        console.error('platform.killswitch.writeKillswitch failed:', error);
+        logger.error('platform.killswitch.writeKillswitch failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.killswitch.writeKillswitch failed');
@@ -324,7 +322,7 @@ export function createPlatformKillswitchWriteService(
           setAt: now.toISOString(),
         });
       } catch (error) {
-        console.error('platform.killswitch.restoreKillswitch failed:', error);
+        logger.error('platform.killswitch.restoreKillswitch failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.killswitch.restoreKillswitch failed');

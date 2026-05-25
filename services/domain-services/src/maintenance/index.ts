@@ -943,6 +943,7 @@ export class MaintenanceService {
    * Check for SLA breaches and trigger alerts.
    */
   async checkSLABreaches(tenantId: TenantId): Promise<WorkOrder[]> {
+    // nosemgrep: missing-tenant-id-arg reason: `tenantId` is passed positionally as the first arg — the rule's positional-arg pattern-not only matches when a SECOND arg is also present.
     const allWorkOrders = await this.workOrderRepo.findMany(tenantId);
     const breachedWorkOrders: WorkOrder[] = [];
 

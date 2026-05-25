@@ -366,6 +366,7 @@ export async function assertApproved(
     readonly now?: Date;
   },
 ): Promise<PolicyGateApprovalResult> {
+  // nosemgrep: missing-tenant-id-arg reason: policy approvals are globally-unique by approvalId; tenant is on the record and the optional `args.tenantId` is cross-checked in the caller.
   const record = await args.lookup.findById(approvalId);
   if (!record) {
     return {

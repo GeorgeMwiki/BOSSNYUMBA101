@@ -1,5 +1,17 @@
+import dynamic from 'next/dynamic';
 import { PortalShell } from '../_lib/PortalShell';
-import { LifecycleAdvisorClient } from './LifecycleAdvisorClient';
+import { AdvisorLoading } from '../_lib/states';
+
+const LifecycleAdvisorClient = dynamic(
+  () =>
+    import('./LifecycleAdvisorClient.js').then((m) => ({
+      default: m.LifecycleAdvisorClient,
+    })),
+  {
+    ssr: false,
+    loading: () => <AdvisorLoading label="Loading lifecycle advisor…" />,
+  },
+);
 
 export const metadata = {
   title: 'Lifecycle advisor — BossNyumba HQ',

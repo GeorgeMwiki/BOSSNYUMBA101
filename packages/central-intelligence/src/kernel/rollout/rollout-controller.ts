@@ -20,6 +20,7 @@
  */
 
 import { pickVariant, type CanaryRoute } from './canary-router.js';
+import { logger } from '../../logger.js';
 
 export type RolloutStatus =
   | 'shadow'
@@ -116,7 +117,7 @@ export function createRolloutController(
         // preamble. This is the failure mode that defines the entire
         // rollout-safety pattern: degraded substrate must NOT take
         // production traffic to a poorly-tested prompt.
-        console.error('rollout-controller: registry read failed:', error);
+        logger.error('rollout-controller: registry read failed', { error: error });
         return null;
       }
 
