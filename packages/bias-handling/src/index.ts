@@ -50,3 +50,36 @@ export {
 } from './group-fairness-metrics/index.js';
 
 export type { GroupCounts } from './group-fairness-metrics/index.js';
+
+// Mitigation — 3 tiers
+export {
+  MITIGATION_STRATEGIES,
+  addFairnessConstraint,
+  adversarialDebiasing,
+  equalizedOddsPostprocess,
+  learnedFairRepresentations,
+  rejectOptionClassification,
+  reweigh,
+} from './mitigation/index.js';
+export type {
+  AdversarialDebiasingArgs,
+  AdversarialDebiasingResult,
+  AdversarialPredictor,
+  AdversaryNetwork,
+  CalibrationRow,
+  ConstrainedModelResult,
+  ConstraintAdapterArgs,
+  EqualizedOddsPostprocessArgs,
+  EqualizedOddsThresholds,
+  FairRepresentationConfig,
+  FairRepresentationProjector,
+  InnerTrainerInput,
+  RejectOptionConfig,
+  RejectOptionInput,
+  ReweighRow,
+  ReweighedRow,
+} from './mitigation/index.js';
+
+// Subgroup discovery — Slice Finder
+export { findSlices, twoSidedBinomialPValue } from './subgroup-discovery/index.js';
+export type { FindSlicesArgs } from './subgroup-discovery/index.js';
