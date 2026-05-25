@@ -16,7 +16,7 @@
  * land as follow-up sink adapters wired through the same helper.
  */
 
-import { appendFileSync, openSync, writeSync, closeSync } from 'node:fs';
+import { appendFile } from 'node:fs/promises';
 import {
   createInMemorySink as createInMemoryOcsfSink,
   createLineSink as createOcsfLineSink,
@@ -35,15 +35,17 @@ export interface OcsfBundle {
 
 /**
  * Build an OCSF sink backed by an append-only file at `path`. Uses
- * sync `appendFileSync` per emit — fine for the modest audit volume
- * the gateway produces; rotate via logrotate or the SIEM-side
- * collector.
+ * async `appendFile` so the request event loop never stalls on disk
+ * latency — critical for high-traffic webhook endpoints
+ * (`/africastalking`, `/twilio`, `/meta`, `/inngest`) that all hit
+ * `ocsf.emit` on the request thread. Rotate via logrotate or the
+ * SIEM-side collector.
  */
 function createFileLineWriter(path: string): LineWriter {
   return {
     async write(line: string): Promise<void> {
       try {
-        appendFileSync(path, line, { encoding: 'utf8' });
+        await appendFile(path, line, { encoding: 'utf8' });
       } catch {
         // Fire-and-forget — never propagate file errors.
       }
