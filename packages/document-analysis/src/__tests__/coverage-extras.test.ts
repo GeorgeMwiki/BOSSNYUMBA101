@@ -97,6 +97,7 @@ describe('extractEntities — vendor_invoice profile', () => {
     expect(fields.find((f) => f.key === 'amount')?.value).toEqual({
       currency: 'TZS',
       amount: 70800,
+      amountMinor: 7_080_000,
     });
   });
 });

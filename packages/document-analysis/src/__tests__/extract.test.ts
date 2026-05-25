@@ -108,6 +108,7 @@ describe('extractEntities — lease application', () => {
     expect(findField(fields, 'requested_rent')?.value).toEqual({
       currency: 'TZS',
       amount: 850000,
+      amountMinor: 85_000_000,
     });
   });
 
@@ -138,6 +139,7 @@ describe('extractEntities — payment receipt', () => {
     expect(findField(fields, 'amount')?.value).toEqual({
       currency: 'TZS',
       amount: 850000,
+      amountMinor: 85_000_000,
     });
     expect(findField(fields, 'gepg_reference')?.value).toBe('991234567890');
     expect(findField(fields, 'payment_date')?.value).toBe('2025-02-15');
