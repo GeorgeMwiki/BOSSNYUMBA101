@@ -157,10 +157,16 @@ function findOutboundSites(src) {
 
 function fileHasSsrfGuard(src) {
   // The file is considered guarded if it imports safeHttpFetch OR
-  // any of the named guard helpers BOSSNYUMBA exposes.
+  // any of the named guard helpers BOSSNYUMBA exposes (including
+  // `assertUrlSafe`, the pure URL-policy assertion exported by
+  // packages/enterprise-hardening/src/http/safe-http-fetch.ts for
+  // callers that own their own fetch port but want the same SSRF
+  // policy — e.g. webhook-delivery dispatcher, voice-agent provider
+  // runtime, content-studio shared fetch wrapper).
   return (
     /\bsafeHttpFetch\b/.test(src) ||
     /\bsafeFetch\b/.test(src) ||
+    /\bassertUrlSafe\s*\(/.test(src) ||
     /\bvalidateOutboundUrl\s*\(/.test(src) ||
     /\bvalidateOutboundUrlWithDns\s*\(/.test(src) ||
     /\bisSafeSameOriginPath\s*\(/.test(src)

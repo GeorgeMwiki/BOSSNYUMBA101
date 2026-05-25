@@ -182,11 +182,28 @@ function parseClause(
         lineNumber,
       );
     }
+    // P84 audit BUG-HI-7: `parseFloat('1e308')` returns Infinity, and
+    // `Math.round(Infinity * MICRO_FACTOR)` returns Infinity. Without
+    // this guard the predicate `amountCmp <= Infinity` silently
+    // approves any amount. Reject Infinity / NaN / negative loudly.
     const value = parseFloat(amountMatch[2]);
+    if (!Number.isFinite(value) || value < 0) {
+      throw new ApprovalMatrixDslParseError(
+        `amount must be a finite non-negative number, got '${amountMatch[2]}'`,
+        lineNumber,
+      );
+    }
+    const micros = Math.round(value * MICRO_FACTOR);
+    if (!Number.isSafeInteger(micros)) {
+      throw new ApprovalMatrixDslParseError(
+        `amount overflows the safe-integer micro range, got '${amountMatch[2]}'`,
+        lineNumber,
+      );
+    }
     const currency = amountMatch[3].toUpperCase();
     const cmp: AmountCmp = {
       op,
-      valueMicros: Math.round(value * MICRO_FACTOR),
+      valueMicros: micros,
     };
     return {
       predicate: {

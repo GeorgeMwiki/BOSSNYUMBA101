@@ -278,8 +278,7 @@ export async function startScheduler(
 // Direct-run guard — only auto-start when this module is the entrypoint.
 const isEntrypoint = (() => {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const url = (import.meta as any)?.url as string | undefined;
+    const url = (import.meta as { url?: string }).url;
     if (!url) return false;
     const argvUrl = `file://${process.argv[1] ?? ''}`;
     return url === argvUrl;

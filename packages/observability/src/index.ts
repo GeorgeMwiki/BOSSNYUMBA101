@@ -1,13 +1,32 @@
 /**
  * @bossnyumba/observability
- * 
+ *
  * Platform observability package providing:
  * - Audit logging with fluent API and simple function interface
  * - Domain event bus with outbox pattern
  * - Structured logging with Pino
  * - Distributed tracing with OpenTelemetry
  * - Metrics collection with OpenTelemetry
+ * - Security-event emission per mutation route (SOC 2 CC7.2, GDPR Art. 30)
  */
+
+// ============================================================================
+// Security events — withSecurityEvents HOF + Next.js variant + direct emit
+// ============================================================================
+
+export {
+  withSecurityEvents,
+  withSecurityEventsFastify,
+  withSecurityEventsNextRoute,
+  recordSecurityEvent,
+  setSecurityEventSink,
+  getSecurityEventSink,
+  resetSecurityEventSink,
+  type SecurityEvent,
+  type SecurityEventBinding,
+  type SecurityEventSeverity,
+  type SecurityEventSink,
+} from './security/with-security-events.js';
 
 // ============================================================================
 // Types - Audit
@@ -118,7 +137,14 @@ export {
 } from './audit-logger.js';
 
 // ============================================================================
-// Audit - Route-level Security Events
+// Audit - Route-level Security Events (legacy type aliases)
+//
+// `withSecurityEvents`/`recordSecurityEvent` are exported once at the
+// top of this barrel (lines 16-29). The `AuditableContext`/`AuditableNext`/
+// `WithSecurityEventsOptions` types are kept here for in-package tests
+// and the `securityEventsMiddleware` Hono signature. `securityEventsMiddleware`
+// is the only function added in this block; the function exports above
+// already cover the binding-shaped Hono + Fastify + Next wrappers.
 // ============================================================================
 
 export type {
@@ -127,11 +153,7 @@ export type {
   WithSecurityEventsOptions,
 } from './security/with-security-events.js';
 
-export {
-  withSecurityEvents,
-  securityEventsMiddleware,
-  recordSecurityEvent,
-} from './security/with-security-events.js';
+export { securityEventsMiddleware } from './security/with-security-events.js';
 
 // ============================================================================
 // Event Bus
@@ -245,6 +267,12 @@ export {
   resolveSecretPair,
   verifyWithEnvRotation,
 } from './security/secrets-derivation.js';
+
+// ============================================================================
+// Env helpers — central place for required-config enforcement
+// ============================================================================
+
+export { requireEnv, optionalEnv, envFlag } from './env.js';
 
 // ============================================================================
 // Eval — online LLM-judge sampling + R-MOAT-6 dimensions

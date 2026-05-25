@@ -7,6 +7,7 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { paginateArray } from './db-mappers';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // Document uploads are metadata records; the blob itself is uploaded to
 // object storage beforehand and referenced by `url`. We cap size at 50MB
 // (matches most WhatsApp/document gateway limits) and enforce a mime
@@ -185,7 +186,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapDocumentRow(row) });
 });
 
-app.post('/', zValidator('json', DocumentCreateSchema), async (c) => {
+app.post('/', zValidator('json', DocumentCreateSchema), withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -216,9 +217,9 @@ app.post('/', zValidator('json', DocumentCreateSchema), async (c) => {
   });
 
   return c.json({ success: true, data: mapDocumentRow(row) }, 201);
-});
+}));
 
-app.put('/:id', zValidator('json', DocumentUpdateSchema), async (c) => {
+app.put('/:id', zValidator('json', DocumentUpdateSchema), withSecurityEvents({ action: 'document.update', resource: 'document', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -245,13 +246,13 @@ app.put('/:id', zValidator('json', DocumentUpdateSchema), async (c) => {
   });
 
   return c.json({ success: true, data: mapDocumentRow(row) });
-});
+}));
 
-app.delete('/:id', async (c) => {
+app.delete('/:id', withSecurityEvents({ action: 'document.delete', resource: 'document', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   await repos.documents.delete(c.req.param('id'), auth.tenantId, auth.userId);
   return c.json({ success: true, data: { message: 'Document deleted' } });
-});
+}));
 
 export const documentsHonoRouter = app;

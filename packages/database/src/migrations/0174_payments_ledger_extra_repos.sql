@@ -16,8 +16,8 @@
 -- ledger.schema.ts`, and 0167 reconciled the legacy Prisma column names
 -- to the Drizzle layout. RLS for all four is already shipped:
 --
---     0166_rls_promote_out_wave.sql   ⇒ payment_intents + disbursements
---     0169_payments_ledger_rls.sql    ⇒ accounts + ledger_entries + statements
+--     0166b_rls_promote_out_wave.sql   ⇒ payment_intents + disbursements
+--     0169b_payments_ledger_rls.sql    ⇒ accounts + ledger_entries + statements
 --
 -- This migration is therefore a NO-OP on a fresh, Drizzle-managed DB. Its
 -- job is purely defence-in-depth:

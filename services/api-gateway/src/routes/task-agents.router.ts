@@ -23,6 +23,7 @@ import {
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -148,7 +149,7 @@ const RunBodySchema = z
   })
   .passthrough();
 
-app.post('/:id/run', zValidator('json', RunBodySchema), async (c: any) => {
+app.post('/:id/run', zValidator('json', RunBodySchema), withSecurityEvents({ action: 'task-agent.create', resource: 'task-agent', severity: 'info' }, async (c: any) => {
   const id = c.req.param('id');
   const body = c.req.valid('json');
   const auth = c.get('auth') ?? {};
@@ -182,6 +183,6 @@ app.post('/:id/run', zValidator('json', RunBodySchema), async (c: any) => {
       fallback: 'Task-agent run failed',
     });
   }
-});
+}));
 
 export default app;

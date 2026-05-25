@@ -83,7 +83,7 @@ COMMENT ON COLUMN report_templates.output_formats IS
 
 -- ============================================================================
 -- 3. ENABLE + FORCE RLS, install policies.
---    Pattern from 0166_rls_promote_out_wave.sql / 0182_section_layouts.sql,
+--    Pattern from 0166b_rls_promote_out_wave.sql / 0182_section_layouts.sql,
 --    with the NULL-tenant escape on SELECT for platform built-ins.
 -- ============================================================================
 

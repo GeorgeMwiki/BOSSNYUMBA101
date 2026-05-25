@@ -26,6 +26,7 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { perUserRateLimit } from '../middleware/rate-limiter';
 import { getDb } from '../composition/db-client';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const DeclareSchema = z.object({
   key: z
     .string()
@@ -67,7 +68,7 @@ router.use('*', authMiddleware);
 router.use('*', perUserRateLimit({ windowMs: 60_000, max: 30 }));
 
 // POST /memory/declare — upsert one declared fact.
-router.post('/declare', zValidator('json', DeclareSchema), async (c) => {
+router.post('/declare', zValidator('json', DeclareSchema), withSecurityEvents({ action: 'memory-declare.create', resource: 'memory-declare', severity: 'info' }, async (c) => {
   const body = c.req.valid('json');
   const auth = c.get('auth') ?? {};
   const tenantId = auth.tenantId ?? null;
@@ -146,7 +147,7 @@ router.post('/declare', zValidator('json', DeclareSchema), async (c) => {
     key: body.key,
     source: 'declared',
   });
-});
+}));
 
 // GET /memory/declare — list declared facts for the authed user.
 router.get('/declare', zValidator('query', ListSchema), async (c) => {
@@ -185,7 +186,7 @@ router.get('/declare', zValidator('query', ListSchema), async (c) => {
 });
 
 // DELETE /memory/declare — soft-delete (clears the value) one fact.
-router.delete('/declare', zValidator('json', DeleteSchema), async (c) => {
+router.delete('/declare', zValidator('json', DeleteSchema), withSecurityEvents({ action: 'memory-declare.delete', resource: 'memory-declare', severity: 'notice' }, async (c) => {
   const { key } = c.req.valid('json');
   const auth = c.get('auth') ?? {};
   const tenantId = auth.tenantId ?? null;
@@ -244,6 +245,6 @@ router.delete('/declare', zValidator('json', DeleteSchema), async (c) => {
     );
   }
   return c.json({ success: true, key });
-});
+}));
 
 export default router;

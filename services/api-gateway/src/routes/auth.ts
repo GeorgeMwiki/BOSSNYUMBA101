@@ -11,6 +11,7 @@ import { tokenBlocklist } from '../middleware/token-blocklist';
 import { tenants, users, roles, userRoles } from '@bossnyumba/database';
 import { UserRole } from '../types/user-role';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // Request schemas — enforced server-side so clients cannot bypass.
 const LoginSchema = z.object({
   email: z.string().email().max(255),
@@ -172,7 +173,7 @@ async function buildMePayload(auth: any) {
   };
 }
 
-app.post('/login', zValidator('json', LoginSchema), async (c) => {
+app.post('/login', zValidator('json', LoginSchema), withSecurityEvents({ action: 'auth.create', resource: 'auth', severity: 'warn' }, async (c) => {
   const db = getDatabaseClient();
   if (!db) {
     return c.json(
@@ -271,14 +272,14 @@ app.post('/login', zValidator('json', LoginSchema), async (c) => {
       expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     },
   });
-});
+}));
 
 app.get('/me', authMiddleware, async (c) => {
   const auth = c.get('auth');
   return c.json({ success: true, data: await buildMePayload(auth) });
 });
 
-app.post('/refresh', authMiddleware, async (c) => {
+app.post('/refresh', authMiddleware, withSecurityEvents({ action: 'auth.create', resource: 'auth', severity: 'warn' }, async (c) => {
   const auth = c.get('auth');
   // Refresh-token rotation: the OLD token is added to the blocklist so
   // a compromised refresh cannot be replayed once the legitimate user
@@ -300,9 +301,9 @@ app.post('/refresh', authMiddleware, async (c) => {
       expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     },
   });
-});
+}));
 
-app.post('/logout', authMiddleware, async (c) => {
+app.post('/logout', authMiddleware, withSecurityEvents({ action: 'auth.create', resource: 'auth', severity: 'warn' }, async (c) => {
   const auth = c.get('auth');
   // Stateless JWTs can't self-invalidate; the blocklist is the
   // authoritative "this token is dead" signal for the remaining TTL.
@@ -310,16 +311,16 @@ app.post('/logout', authMiddleware, async (c) => {
     tokenBlocklist.revoke(auth.jti, auth.exp);
   }
   return c.json({ success: true, data: { loggedOut: true } });
-});
+}));
 
-app.post('/register', (c) =>
-  c.json({ success: false, error: { code: 'LIVE_DATA_NOT_IMPLEMENTED', message: 'Self-registration is not enabled.' } }, 503)
+app.post('/register', withSecurityEvents({ action: 'auth.create', resource: 'auth', severity: 'warn' }, (c) =>
+  c.json({ success: false, error: { code: 'LIVE_DATA_NOT_IMPLEMENTED', message: 'Self-registration is not enabled.' } }, 503))
 );
-app.post('/change-password', (c) =>
-  c.json({ success: false, error: { code: 'LIVE_DATA_NOT_IMPLEMENTED', message: 'Password change is not enabled.' } }, 503)
+app.post('/change-password', withSecurityEvents({ action: 'auth.create', resource: 'auth', severity: 'warn' }, (c) =>
+  c.json({ success: false, error: { code: 'LIVE_DATA_NOT_IMPLEMENTED', message: 'Password change is not enabled.' } }, 503))
 );
-app.post('/forgot-password', (c) =>
-  c.json({ success: false, error: { code: 'LIVE_DATA_NOT_IMPLEMENTED', message: 'Password reset is not enabled.' } }, 503)
+app.post('/forgot-password', withSecurityEvents({ action: 'auth.create', resource: 'auth', severity: 'warn' }, (c) =>
+  c.json({ success: false, error: { code: 'LIVE_DATA_NOT_IMPLEMENTED', message: 'Password reset is not enabled.' } }, 503))
 );
 
 export const authRouter = app;

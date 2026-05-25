@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const PublishTenderSchema = z
   .object({
     scope: z.string().min(1).max(2000),
@@ -83,7 +84,7 @@ function notImplemented(c: any, what: string) {
   );
 }
 
-app.post('/', zValidator('json', PublishTenderSchema), async (c) => {
+app.post('/', zValidator('json', PublishTenderSchema), withSecurityEvents({ action: 'tender.create', resource: 'tender', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const svc = tenderService(c);
@@ -101,7 +102,7 @@ app.post('/', zValidator('json', PublishTenderSchema), async (c) => {
       400
     );
   return c.json({ success: true, data: result.value }, 201);
-});
+}));
 
 app.get('/:id', async (c) => {
   const auth = c.get('auth');
@@ -116,7 +117,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: tender });
 });
 
-app.post('/:id/bids', zValidator('json', SubmitBidSchema), async (c) => {
+app.post('/:id/bids', zValidator('json', SubmitBidSchema), withSecurityEvents({ action: 'tender.create', resource: 'tender', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const svc = tenderService(c);
@@ -140,7 +141,7 @@ app.post('/:id/bids', zValidator('json', SubmitBidSchema), async (c) => {
     );
   }
   return c.json({ success: true, data: result.value }, 201);
-});
+}));
 
 app.get('/:id/bids', async (c) => {
   const auth = c.get('auth');
@@ -150,7 +151,7 @@ app.get('/:id/bids', async (c) => {
   return c.json({ success: true, data: bids });
 });
 
-app.post('/:id/award', zValidator('json', AwardSchema), async (c) => {
+app.post('/:id/award', zValidator('json', AwardSchema), withSecurityEvents({ action: 'tender.create', resource: 'tender', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const svc = tenderService(c);
@@ -172,9 +173,9 @@ app.post('/:id/award', zValidator('json', AwardSchema), async (c) => {
       400
     );
   return c.json({ success: true, data: result.value });
-});
+}));
 
-app.post('/:id/cancel', zValidator('json', CancelSchema), async (c) => {
+app.post('/:id/cancel', zValidator('json', CancelSchema), withSecurityEvents({ action: 'tender.create', resource: 'tender', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const svc = tenderService(c);
@@ -193,7 +194,7 @@ app.post('/:id/cancel', zValidator('json', CancelSchema), async (c) => {
       400
     );
   return c.json({ success: true, data: result.value });
-});
+}));
 
 // Note: /v1/bids/:id/counter is mounted as a separate router entry in the
 // gateway; we expose the handler here for composition.
@@ -203,7 +204,7 @@ export function mountBidCounterRoute(bidsApp: Hono) {
   bidsApp.post(
     '/:id/counter',
     zValidator('json', CounterBidSchema),
-    async (c) => {
+    withSecurityEvents({ action: 'tender.create', resource: 'tender', severity: 'info' }, async (c) => {
       const auth = c.get('auth');
       const body = c.req.valid('json');
       const svc = negotiationService(c);
@@ -242,7 +243,7 @@ export function mountBidCounterRoute(bidsApp: Hono) {
           400
         );
       return c.json({ success: true, data: result.value });
-    }
+    })
   );
   return bidsApp;
 }

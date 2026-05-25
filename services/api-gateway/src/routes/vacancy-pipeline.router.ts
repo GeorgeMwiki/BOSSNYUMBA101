@@ -35,6 +35,7 @@ import { logger } from '../utils/logger';
 // same `import { MonthlyClose } from '...'` shape.
 import { VacancyToLease } from '@bossnyumba/ai-copilot/orchestrators';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const VacancyToLeaseOrchestrator = VacancyToLease.VacancyToLeaseOrchestrator;
 const InMemoryVacancyPipelineRunRepository =
   VacancyToLease.InMemoryVacancyPipelineRunRepository;
@@ -360,7 +361,7 @@ const ListQuerySchema = z.object({
 app.post(
   '/:unitId/start',
   zValidator('json', StartBodySchema),
-  async (c) => {
+  withSecurityEvents({ action: 'vacancy-pipeline.create', resource: 'vacancy-pipeline', severity: 'info' }, async (c) => {
     try {
       const orchestrator = buildOrchestrator(c);
       if (!orchestrator) return unavailable(c);
@@ -378,7 +379,7 @@ app.post(
     } catch (err) {
       return mapOrchestratorError(c, err);
     }
-  },
+  }),
 );
 
 app.get('/:runId', async (c) => {
@@ -419,7 +420,7 @@ app.get('/', zValidator('query', ListQuerySchema), async (c) => {
 app.post(
   '/:runId/advance',
   zValidator('json', AdvanceBodySchema),
-  async (c) => {
+  withSecurityEvents({ action: 'vacancy-pipeline.create', resource: 'vacancy-pipeline', severity: 'info' }, async (c) => {
     try {
       const orchestrator = buildOrchestrator(c);
       if (!orchestrator) return unavailable(c);
@@ -446,13 +447,13 @@ app.post(
     } catch (err) {
       return mapOrchestratorError(c, err);
     }
-  },
+  }),
 );
 
 app.post(
   '/:runId/cancel',
   zValidator('json', CancelBodySchema),
-  async (c) => {
+  withSecurityEvents({ action: 'vacancy-pipeline.create', resource: 'vacancy-pipeline', severity: 'info' }, async (c) => {
     try {
       const orchestrator = buildOrchestrator(c);
       if (!orchestrator) return unavailable(c);
@@ -469,7 +470,7 @@ app.post(
     } catch (err) {
       return mapOrchestratorError(c, err);
     }
-  },
+  }),
 );
 
 export default app;

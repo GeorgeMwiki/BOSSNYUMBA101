@@ -21,6 +21,18 @@ import {
   BadgeTypeSchema,
 } from '../types/index.js';
 
+import { withSecurityEvents, requireEnv } from '@bossnyumba/observability';
+
+/**
+ * Resolve STORAGE_BASE_URL once, lazily, and cache. Falling back to a
+ * relative path (`/storage`) would silently return broken URLs to clients.
+ */
+let _storageBaseUrl: string | undefined;
+function storageBaseUrl(): string {
+  if (_storageBaseUrl !== undefined) return _storageBaseUrl;
+  _storageBaseUrl = requireEnv('STORAGE_BASE_URL');
+  return _storageBaseUrl;
+}
 // ============================================================================
 // Request/Response Schemas
 // ============================================================================
@@ -379,7 +391,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.post(
     '/documents/upload',
     zValidator('json', uploadDocumentSchema, validationErrorHook),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const body = c.req.valid('json');
       // Implementation would use DocumentCollectionService
       return successResponse(c, {
@@ -388,14 +400,14 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         ...body,
         uploadedAt: new Date().toISOString(),
       }, 201);
-    }
+    })
   );
 
   // POST /documents/verify - Verify a single document (OCR + Fraud check)
   app.post(
     '/documents/verify',
     zValidator('json', verifyDocumentSchema, validationErrorHook),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const body = c.req.valid('json');
       // Implementation would use OCRExtractionService and FraudDetectionService
       return successResponse(c, {
@@ -405,31 +417,31 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         status: 'verified',
         processedAt: new Date().toISOString(),
       });
-    }
+    })
   );
 
   // POST /documents/verify/batch - Verify multiple documents
   app.post(
     '/documents/verify/batch',
     zValidator('json', verifyBatchSchema, validationErrorHook),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const body = c.req.valid('json');
       return successResponse(c, {
         documentsProcessed: body.documentIds.length,
-        results: body.documentIds.map(id => ({
+        results: body.documentIds.map((id: string) => ({
           documentId: id,
           status: 'verified',
         })),
         completedAt: new Date().toISOString(),
       });
-    }
+    })
   );
 
   // GET /documents/:id/status - Get document verification status
   app.get(
     '/documents/:id/status',
     zValidator('param', documentIdParamSchema),
-    async (c) => {
+    async (c: any) => {
       const { id } = c.req.valid('param');
       return successResponse(c, {
         documentId: id,
@@ -446,7 +458,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.get(
     '/documents/:id',
     zValidator('param', documentIdParamSchema),
-    async (c) => {
+    async (c: any) => {
       const { id } = c.req.valid('param');
       return successResponse(c, {
         id,
@@ -461,20 +473,20 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.delete(
     '/documents/:id',
     zValidator('param', documentIdParamSchema),
-    async (c) => {
+    withSecurityEvents({ action: 'document.delete', resource: 'document', severity: 'notice' }, async (c: any) => {
       const { id } = c.req.valid('param');
       return successResponse(c, {
         id,
         deleted: true,
       });
-    }
+    })
   );
 
   // POST /documents/:id/reupload-request - Request document re-upload
   app.post(
     '/documents/reupload-request',
     zValidator('json', requestReuploadSchema, validationErrorHook),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const body = c.req.valid('json');
       return successResponse(c, {
         documentId: body.documentId,
@@ -482,7 +494,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         reason: body.reason,
         requestedAt: new Date().toISOString(),
       });
-    }
+    })
   );
 
   // ============================================================================
@@ -493,7 +505,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.post(
     '/validation/customer',
     zValidator('json', validateCustomerSchema, validationErrorHook),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const body = c.req.valid('json');
       return successResponse(c, {
         customerId: body.customerId,
@@ -504,14 +516,14 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         checksPassed: 6,
         validatedAt: new Date().toISOString(),
       });
-    }
+    })
   );
 
   // GET /validation/:customerId/latest - Get latest validation result
   app.get(
     '/validation/:customerId/latest',
     zValidator('param', customerIdParamSchema),
-    async (c) => {
+    async (c: any) => {
       const { customerId } = c.req.valid('param');
       return successResponse(c, {
         customerId,
@@ -527,7 +539,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
     '/validation/:validationId/review',
     zValidator('param', validationIdParamSchema),
     zValidator('json', recordValidationReviewSchema, validationErrorHook),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const { validationId } = c.req.valid('param');
       const body = c.req.valid('json');
       return successResponse(c, {
@@ -536,7 +548,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         notes: body.notes,
         reviewedAt: new Date().toISOString(),
       });
-    }
+    })
   );
 
   // ============================================================================
@@ -547,7 +559,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.post(
     '/evidence-packs/generate',
     zValidator('json', generateEvidencePackSchema, validationErrorHook),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const body = c.req.valid('json');
       return successResponse(c, {
         packId: `evp_${Date.now()}`,
@@ -555,17 +567,17 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         type: body.type,
         itemCount: body.documentIds.length,
         status: 'compiled',
-        pdfUrl: body.generatePdf ? `${process.env.STORAGE_BASE_URL || '/storage'}/packs/evp_${Date.now()}.pdf` : null,
+        pdfUrl: body.generatePdf ? `${storageBaseUrl()}/packs/evp_${Date.now()}.pdf` : null,
         compiledAt: new Date().toISOString(),
       }, 201);
-    }
+    })
   );
 
   // POST /evidence-packs/generate/quick - Quick generate based on type
   app.post(
     '/evidence-packs/generate/quick',
     zValidator('json', generateQuickPackSchema, validationErrorHook),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const body = c.req.valid('json');
       return successResponse(c, {
         packId: `evp_${Date.now()}`,
@@ -573,14 +585,14 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         status: 'compiled',
         compiledAt: new Date().toISOString(),
       }, 201);
-    }
+    })
   );
 
   // GET /evidence-packs/:packId - Get evidence pack details
   app.get(
     '/evidence-packs/:packId',
     zValidator('param', packIdParamSchema),
-    async (c) => {
+    async (c: any) => {
       const { packId } = c.req.valid('param');
       return successResponse(c, {
         id: packId,
@@ -597,22 +609,22 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.post(
     '/evidence-packs/:packId/pdf',
     zValidator('param', packIdParamSchema),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const { packId } = c.req.valid('param');
       return successResponse(c, {
         packId,
-        pdfUrl: `${process.env.STORAGE_BASE_URL || '/storage'}/packs/${packId}.pdf`,
+        pdfUrl: `${storageBaseUrl()}/packs/${packId}.pdf`,
         integrityHash: 'sha256:abc123...',
         generatedAt: new Date().toISOString(),
       });
-    }
+    })
   );
 
   // POST /evidence-packs/:packId/submit - Submit pack
   app.post(
     '/evidence-packs/:packId/submit',
     zValidator('param', packIdParamSchema),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const { packId } = c.req.valid('param');
       const body = await c.req.json().catch(() => ({})) as { submittedTo?: string };
       return successResponse(c, {
@@ -621,14 +633,14 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         submittedTo: body.submittedTo ?? 'Legal Department',
         submittedAt: new Date().toISOString(),
       });
-    }
+    })
   );
 
   // GET /evidence-packs/customer/:customerId - Get customer's packs
   app.get(
     '/evidence-packs/customer/:customerId',
     zValidator('param', customerIdParamSchema),
-    async (c) => {
+    async (c: any) => {
       const { customerId } = c.req.valid('param');
       return successResponse(c, {
         customerId,
@@ -646,7 +658,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.get(
     '/identity/:customerId/badges',
     zValidator('param', customerIdParamSchema),
-    async (c) => {
+    async (c: any) => {
       const { customerId } = c.req.valid('param');
       return successResponse(c, {
         customerId,
@@ -667,7 +679,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.post(
     '/identity/badges',
     zValidator('json', createBadgeSchema, validationErrorHook),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const body = c.req.valid('json');
       return successResponse(c, {
         id: `badge_${Date.now()}`,
@@ -676,7 +688,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         isActive: true,
         awardedAt: new Date().toISOString(),
       }, 201);
-    }
+    })
   );
 
   // POST /identity/badges/:badgeId/revoke - Revoke a badge
@@ -684,7 +696,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
     '/identity/badges/:badgeId/revoke',
     zValidator('param', badgeIdParamSchema),
     zValidator('json', revokeBadgeSchema, validationErrorHook),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const { badgeId } = c.req.valid('param');
       const body = c.req.valid('json');
       return successResponse(c, {
@@ -693,14 +705,14 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         revokedAt: new Date().toISOString(),
         revocationReason: body.reason,
       });
-    }
+    })
   );
 
   // GET /identity/:customerId/profile - Get identity profile
   app.get(
     '/identity/:customerId/profile',
     zValidator('param', customerIdParamSchema),
-    async (c) => {
+    async (c: any) => {
       const { customerId } = c.req.valid('param');
       // Identity lookup is not yet wired to the real repository — return
       // 501 rather than a hardcoded "John Doe" so production callers can
@@ -727,7 +739,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.get(
     '/fraud/:id/score',
     zValidator('param', documentIdParamSchema),
-    async (c) => {
+    async (c: any) => {
       const { id } = c.req.valid('param');
       return successResponse(c, {
         documentId: id,
@@ -743,7 +755,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.get(
     '/fraud/customer/:customerId',
     zValidator('param', customerIdParamSchema),
-    async (c) => {
+    async (c: any) => {
       const { customerId } = c.req.valid('param');
       return successResponse(c, {
         customerId,
@@ -760,7 +772,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
     '/fraud/:fraudScoreId/review',
     zValidator('param', fraudScoreIdParamSchema),
     zValidator('json', recordFraudReviewSchema, validationErrorHook),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const { fraudScoreId } = c.req.valid('param');
       const body = c.req.valid('json');
       return successResponse(c, {
@@ -768,7 +780,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         decision: body.decision,
         reviewedAt: new Date().toISOString(),
       });
-    }
+    })
   );
 
   // ============================================================================
@@ -779,7 +791,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.post(
     '/expiry/trackers',
     zValidator('json', createExpiryTrackerSchema, validationErrorHook),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const body = c.req.valid('json');
       return successResponse(c, {
         id: `exp_${Date.now()}`,
@@ -790,14 +802,14 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         status: 'active',
         createdAt: new Date().toISOString(),
       }, 201);
-    }
+    })
   );
 
   // GET /expiry/trackers/:trackerId - Get tracker details
   app.get(
     '/expiry/trackers/:trackerId',
     zValidator('param', trackerIdParamSchema),
-    async (c) => {
+    async (c: any) => {
       const { trackerId } = c.req.valid('param');
       return successResponse(c, {
         id: trackerId,
@@ -812,7 +824,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
     '/expiry/customer/:customerId',
     zValidator('param', customerIdParamSchema),
     zValidator('query', expiryQuerySchema),
-    async (c) => {
+    async (c: any) => {
       const { customerId } = c.req.valid('param');
       const query = c.req.valid('query');
       return successResponse(c, {
@@ -831,7 +843,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.get(
     '/expiry/expiring-soon',
     zValidator('query', expiryQuerySchema),
-    async (c) => {
+    async (c: any) => {
       const query = c.req.valid('query');
       return successResponse(c, {
         trackers: [],
@@ -849,7 +861,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.get(
     '/expiry/expired',
     zValidator('query', paginationQuerySchema),
-    async (c) => {
+    async (c: any) => {
       const query = c.req.valid('query');
       return successResponse(c, {
         trackers: [],
@@ -866,21 +878,21 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.post(
     '/expiry/trackers/:trackerId/acknowledge',
     zValidator('param', trackerIdParamSchema),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const { trackerId } = c.req.valid('param');
       return successResponse(c, {
         id: trackerId,
         isAcknowledged: true,
         acknowledgedAt: new Date().toISOString(),
       });
-    }
+    })
   );
 
   // POST /expiry/trackers/:trackerId/renew - Record renewal
   app.post(
     '/expiry/trackers/:trackerId/renew',
     zValidator('param', trackerIdParamSchema),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const { trackerId } = c.req.valid('param');
       const body = await c.req.json().catch(() => ({})) as { newDocumentId?: string; newExpiresAt?: string };
       return successResponse(c, {
@@ -889,24 +901,24 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         renewedAt: new Date().toISOString(),
         newExpiresAt: body.newExpiresAt,
       });
-    }
+    })
   );
 
   // POST /expiry/process-reminders - Process pending reminders (called by scheduler)
-  app.post('/expiry/process-reminders', async (c) => {
+  app.post('/expiry/process-reminders', withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
     return successResponse(c, {
       processed: 0,
       remindersSent: 0,
       alertsSent: 0,
       processedAt: new Date().toISOString(),
     });
-  });
+  }));
 
   // POST /expiry/missing-document-chaser - Send missing document chaser
   app.post(
     '/expiry/missing-document-chaser',
     zValidator('json', sendMissingDocChaserSchema, validationErrorHook),
-    async (c) => {
+    withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c: any) => {
       const body = c.req.valid('json');
       return successResponse(c, {
         customerId: body.customerId,
@@ -914,11 +926,11 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         chaserSent: true,
         sentAt: new Date().toISOString(),
       });
-    }
+    })
   );
 
   // GET /expiry/statistics - Get expiry statistics
-  app.get('/expiry/statistics', async (c) => {
+  app.get('/expiry/statistics', async (c: any) => {
     return successResponse(c, {
       total: 0,
       active: 0,
@@ -937,7 +949,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   app.get(
     '/progress/:customerId',
     zValidator('param', customerIdParamSchema),
-    async (c) => {
+    async (c: any) => {
       const { customerId } = c.req.valid('param');
       return successResponse(c, {
         customerId,

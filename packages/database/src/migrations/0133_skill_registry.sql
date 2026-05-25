@@ -16,7 +16,14 @@
 -- Idempotent: CREATE EXTENSION / TABLE / INDEX ... IF NOT EXISTS.
 -- ─────────────────────────────────────────────────────────────────────
 
-CREATE EXTENSION IF NOT EXISTS vector;
+-- pgvector — wrapped in DO/EXCEPTION so apply-check against a stock
+-- Postgres image (no pgvector) emits a NOTICE instead of aborting the
+-- migration chain. See 0125 for the same pattern.
+DO $$ BEGIN
+  CREATE EXTENSION IF NOT EXISTS vector;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE '0133: pgvector unavailable: %', SQLERRM;
+END $$;
 
 CREATE TABLE IF NOT EXISTS skill_registry (
   id                      TEXT PRIMARY KEY,

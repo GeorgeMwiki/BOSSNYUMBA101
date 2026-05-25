@@ -7,11 +7,49 @@
  */
 
 import { prefixedId } from '../common/id-generator.js';
-import type { EventBus } from '../common/events.js';
+import type { DomainEvent, EventBus } from '../common/events.js';
 import {
   createEventEnvelope,
   generateEventId,
 } from '../common/events.js';
+
+interface TenderPublishedEvent extends DomainEvent {
+  readonly eventType: 'TenderPublished';
+  readonly payload: {
+    readonly tenderId: TenderId;
+    readonly scope: Tender['scope'];
+    readonly visibility: Tender['visibility'];
+  };
+}
+
+interface BidSubmittedEvent extends DomainEvent {
+  readonly eventType: 'BidSubmitted';
+  readonly payload: {
+    readonly bidId: BidId;
+    readonly tenderId: TenderId;
+    readonly vendorId: Bid['vendorId'];
+    readonly price: Bid['price'];
+  };
+}
+
+interface TenderAwardedEvent extends DomainEvent {
+  readonly eventType: 'TenderAwarded';
+  readonly payload: {
+    readonly tenderId: TenderId;
+    readonly bidId: BidId;
+    readonly vendorId: Bid['vendorId'];
+    readonly awardedPrice: Bid['price'];
+    readonly workOrderId: Tender['workOrderId'];
+  };
+}
+
+interface TenderCancelledEvent extends DomainEvent {
+  readonly eventType: 'TenderCancelled';
+  readonly payload: {
+    readonly tenderId: TenderId;
+    readonly reason: string;
+  };
+}
 import type {
   TenantId,
   UserId,
@@ -124,7 +162,7 @@ export class TenderService {
             scope: created.scope,
             visibility: created.visibility,
           },
-        } as any,
+        } satisfies TenderPublishedEvent,
         created.id,
         'Tender'
       )
@@ -215,7 +253,7 @@ export class TenderService {
             vendorId: created.vendorId,
             price: created.price,
           },
-        } as any,
+        } satisfies BidSubmittedEvent,
         created.id,
         'Bid'
       )
@@ -294,7 +332,7 @@ export class TenderService {
             awardedPrice: updatedBid.price,
             workOrderId: updatedTender.workOrderId,
           },
-        } as any,
+        } satisfies TenderAwardedEvent,
         updatedTender.id,
         'Tender'
       )
@@ -353,7 +391,7 @@ export class TenderService {
           causationId: null,
           metadata: {},
           payload: { tenderId: updated.id, reason },
-        } as any,
+        } satisfies TenderCancelledEvent,
         updated.id,
         'Tender'
       )

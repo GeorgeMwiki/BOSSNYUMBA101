@@ -9,6 +9,7 @@ import { UserRole } from '../types/user-role';
 import { majorToMinor, mapInvoiceRow, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // Wave 19 Agent H+I: invoice mutations (create/update/send/cancel) are
 // staff-only. Customers read their own invoices via the customer-app
 // BFF dashboard.
@@ -164,7 +165,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: await enrichInvoice(repos, auth.tenantId, row) });
 });
 
-app.post('/', staffOnly, requireCapability('create', 'invoice'), zValidator('json', InvoiceCreateSchema), async (c) => {
+app.post('/', staffOnly, requireCapability('create', 'invoice'), zValidator('json', InvoiceCreateSchema), withSecurityEvents({ action: 'invoice.create', resource: 'invoice', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -198,9 +199,9 @@ app.post('/', staffOnly, requireCapability('create', 'invoice'), zValidator('jso
     updatedBy: auth.userId,
   });
   return c.json({ success: true, data: await enrichInvoice(repos, auth.tenantId, row) }, 201);
-});
+}));
 
-app.put('/:id', staffOnly, zValidator('json', InvoiceUpdateSchema), async (c) => {
+app.put('/:id', staffOnly, zValidator('json', InvoiceUpdateSchema), withSecurityEvents({ action: 'invoice.update', resource: 'invoice', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -226,14 +227,14 @@ app.put('/:id', staffOnly, zValidator('json', InvoiceUpdateSchema), async (c) =>
     updatedBy: auth.userId,
   });
   return c.json({ success: true, data: await enrichInvoice(repos, auth.tenantId, row) });
-});
+}));
 
-app.post('/:id/send', staffOnly, async (c) => {
+app.post('/:id/send', staffOnly, withSecurityEvents({ action: 'invoice.create', resource: 'invoice', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const row = await repos.invoices.update(c.req.param('id'), auth.tenantId, { status: 'sent', sentAt: new Date(), updatedBy: auth.userId });
   return c.json({ success: true, data: await enrichInvoice(repos, auth.tenantId, row) });
-});
+}));
 
 app.get('/:id/pdf', async (c) => {
   const auth = c.get('auth');
@@ -251,7 +252,7 @@ app.get('/:id/pdf', async (c) => {
   });
 });
 
-app.delete('/:id', staffOnly, async (c) => {
+app.delete('/:id', staffOnly, withSecurityEvents({ action: 'invoice.delete', resource: 'invoice', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const row = await repos.invoices.update(c.req.param('id'), auth.tenantId, {
@@ -261,6 +262,6 @@ app.delete('/:id', staffOnly, async (c) => {
     updatedBy: auth.userId,
   });
   return c.json({ success: true, data: await enrichInvoice(repos, auth.tenantId, row) });
-});
+}));
 
 export const invoicesApp = app;

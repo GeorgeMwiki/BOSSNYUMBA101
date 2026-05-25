@@ -23,6 +23,7 @@ import {
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const fallbackRepo: ExceptionRepository = new InMemoryExceptionRepository();
 const fallbackInbox = new ExceptionInbox({ repository: fallbackRepo });
 
@@ -89,7 +90,7 @@ exceptionsRouter.get('/', zValidator('query', ListQuerySchema), async (c) => {
 exceptionsRouter.post(
   '/:id/acknowledge',
   zValidator('param', IdParamSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'exception.create', resource: 'exception', severity: 'info' }, async (c) => {
     const tenantId = c.get('tenantId') as string | undefined;
     const userId = c.get('userId') as string | undefined;
     if (!tenantId || !userId) {
@@ -105,14 +106,14 @@ exceptionsRouter.post(
         400,
       );
     }
-  },
+  }),
 );
 
 exceptionsRouter.post(
   '/:id/resolve',
   zValidator('param', IdParamSchema),
   zValidator('json', ResolveBodySchema),
-  async (c) => {
+  withSecurityEvents({ action: 'exception.create', resource: 'exception', severity: 'info' }, async (c) => {
     const tenantId = c.get('tenantId') as string | undefined;
     const userId = c.get('userId') as string | undefined;
     if (!tenantId || !userId) {
@@ -133,7 +134,7 @@ exceptionsRouter.post(
         400,
       );
     }
-  },
+  }),
 );
 
 export default exceptionsRouter;

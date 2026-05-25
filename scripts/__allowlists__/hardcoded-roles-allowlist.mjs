@@ -51,4 +51,30 @@ export const HARDCODED_ROLES_ALLOWLIST = new Map([
     'apps/estate-manager-app/src/app/ask/[threadId]/page.tsx',
     'Chat-turn role discriminator (user|agent) is a message-shape tag, not a user-permission role policy.',
   ],
+
+  // ─── Per-role copilot / advisor routing seams (added 2026-05-25) ──
+  [
+    'packages/portal-genui/src/intent/detector.ts',
+    'portal-genui intent detector dispatches owner-vs-tenant copilot copy; the role IS the routing key.',
+  ],
+  [
+    'packages/role-aware-advisor/src/data-access-guard.ts',
+    'role-aware-advisor data-access-guard IS the per-role data-scope policy table — role literals are lookup keys.',
+  ],
+  [
+    'packages/role-aware-advisor/src/starting-points.ts',
+    'role-aware-advisor starting-points IS the per-role onboarding suggestion registry; literals are lookup keys.',
+  ],
+  [
+    'packages/user-context-store/src/data-port.ts',
+    'user-context-store data-port routes by owner/tenant role to build the user context payload (dispatch seam).',
+  ],
+  [
+    'packages/user-context-store/src/signals/open-items.ts',
+    'open-items signal computes per-role pending-action lists; role literals are the per-role branch selectors.',
+  ],
+  [
+    'services/api-gateway/src/composition/user-context-data-port-adapter.ts',
+    'composition root adapter picks owner-vs-tenant data port at wire-time; role string IS the composition key.',
+  ],
 ]);

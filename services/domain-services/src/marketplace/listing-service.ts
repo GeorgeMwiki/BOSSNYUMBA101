@@ -7,11 +7,19 @@
  */
 
 import { prefixedId } from '../common/id-generator.js';
-import type { EventBus } from '../common/events.js';
+import type { DomainEvent, EventBus } from '../common/events.js';
 import {
   createEventEnvelope,
   generateEventId,
 } from '../common/events.js';
+
+interface MarketplaceListingEvent extends DomainEvent {
+  readonly payload: {
+    readonly listingId: MarketplaceListingId;
+    readonly unitId: string;
+    readonly status: ListingStatus;
+  };
+}
 import type {
   TenantId,
   UserId,
@@ -201,25 +209,22 @@ export class ListingService {
     eventType: string,
     timestamp: ISOTimestamp
   ): Promise<void> {
+    const event: MarketplaceListingEvent = {
+      eventId: generateEventId(),
+      eventType,
+      timestamp,
+      tenantId,
+      correlationId,
+      causationId: null,
+      metadata: {},
+      payload: {
+        listingId: listing.id,
+        unitId: listing.unitId,
+        status: listing.status,
+      },
+    };
     await this.eventBus.publish(
-      createEventEnvelope(
-        {
-          eventId: generateEventId(),
-          eventType,
-          timestamp,
-          tenantId,
-          correlationId,
-          causationId: null,
-          metadata: {},
-          payload: {
-            listingId: listing.id,
-            unitId: listing.unitId,
-            status: listing.status,
-          },
-        } as any,
-        listing.id,
-        'MarketplaceListing'
-      )
+      createEventEnvelope(event, listing.id, 'MarketplaceListing')
     );
   }
 }

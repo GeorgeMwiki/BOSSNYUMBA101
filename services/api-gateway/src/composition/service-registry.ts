@@ -313,6 +313,22 @@ import {
 // shape. Drizzle-backed; lives behind a `null`-tolerant runtime check
 // inside the supervisor when the DB is unavailable.
 import { createReflexionBufferService } from '@bossnyumba/database';
+
+// P38 + P54 wiring (re-added after P66 main-merge clobbered them).
+// `persistent-stores-wiring.ts` glues the 5 persistent-store ports
+// (LessonStore / WormAuditStore / SkillRegistryWriter / AOPRegistryStore /
+// A2A TaskStore) to their Drizzle-backed adapters; `document-storage-wiring.ts`
+// returns the `StorageProvider` consumed by DocumentService / EvidencePackBuilder.
+// Both are read by `service-context.middleware.ts` (flat per-request keys)
+// and by `index.ts:579` (boot-time `modeByStore` log).
+import {
+  createPersistentStores,
+  type PersistentStores,
+} from './persistent-stores-wiring.js';
+import {
+  createDocumentStorageWiring,
+  type DocumentStorageWiring,
+} from './document-storage-wiring.js';
 import {
   createTrainingAdminEndpoints,
   createTrainingGenerator,
@@ -370,6 +386,103 @@ import {
   type ConversationAuditReader,
   type ConversationAuditRecorder,
 } from '@bossnyumba/central-intelligence';
+// PO-port wave-5 wiring #1 — six-layer cognitive memory (episodic, narrative,
+// procedural, reflective, topic-files, cohort cache). Lives ALONGSIDE the
+// existing single-layer `ConversationMemory` (which the streaming kernel
+// still consumes). MemoryV2 surfaces the richer cognitive substrate that
+// future sleep-pass orchestrators + reflection jobs will read/write.
+// In-memory variant ships in degraded mode + as the live-mode default until
+// pgvector-backed adapters land.
+import {
+  createInMemoryMemoryV2,
+  type MemoryV2,
+} from '@bossnyumba/memory-v2';
+// PO-port wave-5 wiring #2 — per-tenant LLM budget cap + auto-downgrade
+// ladder. Every llmRouter / Anthropic-client call routes through
+// `governor.evaluateCall` first. Default caps: $50/day, 5M tokens/day;
+// downgrade ladder kicks in at 85% of cap (opus → sonnet → haiku).
+// Overridable per-tenant via the budget store; ops can also override
+// via env (LLM_BUDGET_DAILY_CENTS etc.) once the seed helper lands.
+import {
+  createLLMBudgetGovernor,
+  createInMemoryBudgetStore,
+  type LLMBudgetGovernor,
+} from '@bossnyumba/llm-budget-governor';
+// P76 BUG-HI-3 closure — Postgres-backed `BudgetStore` swap. Live mode
+// now persists per-tenant spend to `tenant_llm_budgets` so caps survive
+// restarts. Degraded mode keeps the in-memory adapter (logs a single
+// warn so operators know spend won't persist).
+import { wireBudgetStore } from './llm-budget-postgres-wiring.js';
+// PO-port wave-5 wiring #3 — OCSF 1.5 emitter. Secondary audit sink that
+// maps every internal audit event to OCSF + pushes to syslog / file /
+// HTTP for SIEM ingestion (Sentinel / Splunk / Datadog). Coexists with
+// the primary AuditTrailRecorder which writes to Postgres + the
+// hash-chained sovereign ledger; the OCSF emitter is fire-and-forget
+// and never blocks the primary audit path.
+import type {
+  InternalAuditEvent as OcsfInternalAuditEvent,
+  OCSFSink,
+} from '@bossnyumba/ocsf-emitter';
+import { createOcsfBundle } from './ocsf-emitter-wiring.js';
+// PO-port wave-5 wiring #4 — cross-tenant denial recorder. Audit-side
+// sink fired from `ensureTenantIsolation` (TENANT_MISMATCH branch) and
+// any other authz-policy denial surface. Fire-and-forget; never blocks
+// the response path. Defaults to an in-memory ring buffer (10k rows);
+// swap to a Drizzle adapter in a follow-up.
+import {
+  createCrossOrgDenialRecorderBundle,
+  type CrossOrgDenialRecorderBundle,
+} from './cross-org-denial-recorder-wiring.js';
+// LITFIN-port wave wiring (Batch 1 — 5 utility namespaces).
+// Bundles audit-hash-chain + memory-tool-wire-adapter + probe-runners +
+// property-voices-debate + conformal-calibration-online so consumers
+// can pull canonical pure-function surfaces via DI rather than reaching
+// for the raw packages from arbitrary callsites.
+import {
+  createLitfinUtilitiesBundle,
+  type LitfinUtilitiesBundle,
+} from './litfin-utilities-wiring.js';
+// LITFIN-port wave wiring (Batch 2 — 5 domain bundles).
+// Bundles mcp-cost-persistence + fairness-eval + analytics +
+// knowledge-graph + compliance-pack. Analytics + KG ship pre-wired
+// in-memory instances; the others are DI-exposed namespaces (their
+// instantiation needs per-tenant brain / collectors which the
+// composition root cannot bind statically).
+import {
+  createLitfinDomainBundle,
+  type LitfinDomainBundle,
+} from './litfin-domain-wiring.js';
+// LITFIN-port wave wiring (Batch 3 — 5 platform bundles).
+// Bundles security-hardening + document-ai + progressive-intelligence +
+// document-quality-guarantor + audio-capture. Each ships a pre-wired
+// facade with safe defaults (in-memory stores / mock ports) plus the
+// raw namespace export so consumers can swap in concrete adapters.
+import {
+  createLitfinPlatformBundle,
+  type LitfinPlatformBundle,
+} from './litfin-platform-wiring.js';
+// LITFIN-port wave wiring (Batch 4 — 6 agent-stack bundles).
+// Bundles agent-runtime + mcp + agent-orchestrator + open-coding-agent-
+// patterns + openclaw-operating-model + agentic-os. Brain-dependent
+// members are namespace-only (no safe defaults without an LLM key);
+// the OpenClaw operating-model facade is pre-wired async via a
+// Promise slot (same pattern as cross-portal bus).
+import {
+  createLitfinAgentStackBundle,
+  type LitfinAgentStackBundle,
+} from './litfin-agent-stack-wiring.js';
+// P75 follow-up — per-tenant brain-dependent agent-stack assembly. The
+// LITFIN bundle exposes namespaces only because the brain port must be
+// tenant-scoped (every Anthropic call debits the correct tenant's
+// budget cap). This factory + LRU+TTL cache resolves a fully-wired
+// AgentStack (brain + orchestrator + open-coding + agent-runtime
+// factory) per tenant on demand.
+import {
+  createAgentStackBundle,
+  type AgentStack,
+  type AgentStackBundle,
+  type BudgetGuardedAnthropicFactory as AgentStackBudgetGuardedAnthropicFactory,
+} from './agent-stack-brain-wiring.js';
 // Canonical Property Graph (CPG) — Neo4j query service. Constructed
 // lazily so the gateway still boots when NEO4J_URI is unset; the graph
 // router returns 503 GRAPH_SERVICE_UNAVAILABLE when this slot is null.
@@ -508,6 +621,20 @@ export interface ServiceRegistry {
     | ((tenantId: string, operation?: string) => BudgetGuardedAnthropicClient)
     | null;
 
+  /**
+   * PO-port wave-5 wiring #2 — per-tenant LLM budget governor with
+   * auto-downgrade ladder (opus → sonnet → haiku). Sits in front of
+   * `llmRouter` / Anthropic clients: every call routes through
+   * `governor.evaluateCall({ tenantId, model, estimatedTokens })` first;
+   * the governor either proceeds, downgrades to a cheaper tier, or
+   * blocks when the tenant has burned through their cap. Always wired
+   * (in-memory budget store in both degraded + live until a Postgres
+   * adapter lands). Default caps: $50/day, $1000/month per tenant —
+   * seedable via `governor.recordSpend` or the `seedBudget` admin
+   * helper, overridable per-tenant via the budget store.
+   */
+  readonly llmBudgetGovernor: LLMBudgetGovernor;
+
   /** Arrears ledger (NEW 4). Service + loader for the projection endpoint. */
   readonly arrears: {
     readonly service: ArrearsService | null;
@@ -587,6 +714,20 @@ export interface ServiceRegistry {
    *  Postgres-backed in live mode, null when DATABASE_URL is unset. */
   readonly propertyGrading: PropertyGradingService | null;
 
+  /**
+   * PO-port wave-5 wiring #1 — six-layer cognitive memory v2 (episodic,
+   * narrative, procedural, reflective, topic files, cohort cache).
+   * Always non-null — the in-memory variant ships in both degraded and
+   * live mode until pgvector / Drizzle-backed adapters land. Consumers
+   * (sleep-pass orchestrator, reflection workers, brain-kernel) read
+   * from the appropriate sub-store via `registry.memoryV2.stores.*`.
+   *
+   * NOTE: this layer is ADDITIVE to `centralIntelligence.memory`
+   * (single-layer thread memory used by the streaming agent loop). The
+   * two surfaces will fold together when pgvector wiring lands.
+   */
+  readonly memoryV2: MemoryV2;
+
   /** Central Intelligence — embodied first-person agent surface.
    *  The concrete LLM adapter lives in a separate service; `agent` only
    *  becomes non-null when `CI_LLM_URL` is present AND the adapter has
@@ -621,6 +762,162 @@ export interface ServiceRegistry {
      */
     readonly brainKernel: BrainKernelWiringSlot | null;
   };
+
+  /**
+   * PO-port wave-5 wiring #3 — OCSF 1.5 secondary audit sink.
+   *
+   * Pluggable sink: in-memory (default in degraded / dev), JSON-lines
+   * file (default in live; env `OCSF_LOG_PATH`), syslog or HTTP
+   * (follow-up adapters). Maps every internal audit event onto the
+   * OCSF envelope with PII redaction.
+   *
+   * The OCSF sink is a SECONDARY pipeline — never blocks or replaces
+   * the primary `AuditTrailRecorder` (hash-chained Postgres). It runs
+   * fire-and-forget; sink errors are swallowed via the `emitted` flag
+   * on the EmitResult so a transient SIEM outage cannot break a
+   * response path. Consumers wire-in by calling
+   * `ocsf.emit(internalEvent)` after their primary audit record lands.
+   */
+  readonly ocsf: {
+    readonly sink: OCSFSink;
+    readonly emit: (
+      event: OcsfInternalAuditEvent,
+    ) => Promise<{ readonly emitted: boolean }>;
+  };
+
+  /**
+   * PO-port wave-5 wiring #4 — cross-tenant denial recorder.
+   *
+   * Audit-side sink fired from `ensureTenantIsolation` middleware's
+   * TENANT_MISMATCH branch (and any future authz-policy denial site).
+   * Records each denial via the bundle's per-process recorder state
+   * (1s per-actor rate-limit + LRU-trim at 5000 buckets so a malicious
+   * actor cannot OOM the gateway). Default sink: in-memory ring
+   * buffer (10k rows). Always wired in both degraded + live modes.
+   *
+   * Brute-force scanner (`findBruteForcePatterns` from the package) is
+   * reachable by feeding `bundle.recentRows()` into it from an ops
+   * endpoint; the recorder itself only writes.
+   */
+  readonly crossOrgDenialRecorder: CrossOrgDenialRecorderBundle;
+
+  /**
+   * LITFIN-port batch 1 — 5 utility namespaces exposed via DI.
+   *
+   * Always non-null in both degraded + live modes (every member is a
+   * pure-function surface). Consumers reach for `litfinUtilities.<pkg>.<fn>`
+   * to avoid scattering raw package imports across the codebase. The
+   * downstream consumers per package:
+   *   - `auditHashChain` — sovereign + tenant + decision audit
+   *     streams (cron verifier, sleep-pass governance audit)
+   *   - `memoryToolWireAdapter` — Anthropic Memory Tool envelope for
+   *     the BrainKernel ↔ topic-files memory boundary
+   *   - `probeRunners` — sycophancy + defection probe schedulers (eval
+   *     workers + CI gate)
+   *   - `propertyVoicesDebate` — three-voice debate preset for
+   *     contested decisions (pricing, eviction, deposit deductions)
+   *   - `conformalCalibrationOnline` — adaptive α-update for the
+   *     forecasting confidence interval calibrator
+   */
+  readonly litfinUtilities: LitfinUtilitiesBundle;
+
+  /**
+   * LITFIN-port batch 2 — 5 domain bundles exposed via DI.
+   *
+   * Always non-null in both degraded + live modes. Members:
+   *   - `mcpCostPersistence` — per-MCP cost tracking + health
+   *     probe namespace (state machines instantiated per-server)
+   *   - `fairnessEval` — counterfactual fairness namespace
+   *     (`createFairnessEval` invoked per-tenant with the brain
+   *     port resolvable at runtime)
+   *   - `analytics` — analytics namespace; `analyticsInstance` is
+   *     the pre-wired facade
+   *   - `knowledgeGraph` — KG namespace; `knowledgeGraphInstance`
+   *     is the in-memory facade (real-estate ontology, mock
+   *     embedder). Production swap: Neo4j adapter + OpenAI embedder
+   *   - `compliancePack` — 10 framework catalogs + DSAR + erasure
+   *     cascade + envelope encryption + residency + breach
+   *     notification namespace (per-tenant engine instantiated by
+   *     the caller via `createComplianceEngine`)
+   */
+  readonly litfinDomain: LitfinDomainBundle;
+
+  /**
+   * LITFIN-port batch 3 — 5 platform-domain bundles exposed via DI.
+   *
+   * Always non-null in both degraded + live modes. Each bundle member
+   * ships a pre-wired facade with safe defaults so the gateway boots
+   * without external creds. Members:
+   *   - `securityHardening` namespace + `securityHardeningInstance`
+   *     pre-wired with NODE_ENV-aware headers env, in-memory rate-
+   *     limit store, in-memory step-up store, anomaly detector,
+   *     credential-stuffing detector
+   *   - `documentAI` namespace + `documentAIInstance` pre-wired with
+   *     mock OCR + mock e-sig (production swap: pass Anthropic +
+   *     DocuSign ports via `createDocumentAI({ brain, eSignature })`)
+   *   - `progressiveIntelligence` namespace +
+   *     `progressiveIntelligenceInstance` pre-wired with deterministic
+   *     mock embedder (no brain — coaching / streaming endpoints
+   *     return dormant results until a brain port is bound)
+   *   - `documentQualityGuarantor` namespace + `dqgAuditStore`
+   *     pre-wired in-memory audit chain. Per-tenant guarantor facades
+   *     are instantiated at request time because intake/output
+   *     orchestrators bind to per-tenant brain + format-registry ports
+   *   - `audioCapture` namespace + `audioCaptureInstance` pre-wired
+   *     with no ports — every adapter is null until provider creds
+   *     land. Consumers gate on `audioCaptureInstance.stt !== null`
+   */
+  readonly litfinPlatform: LitfinPlatformBundle;
+
+  /**
+   * LITFIN-port batch 4 — 6 agent-stack bundles exposed via DI.
+   *
+   * Always non-null in both degraded + live modes. Most members are
+   * namespace-only because they require a brain port (per-tenant,
+   * per-request); the OpenClaw operating-model is the exception and
+   * ships pre-wired via an async `openclawInstance: Promise<...>`
+   * slot (in-memory stores + auto-seeded 10 shipped agent domains).
+   * Members:
+   *   - `agentRuntime` namespace (Claude Code parity — hooks +
+   *     slash + sub-agents + skills + MCP host + memory + permissions).
+   *     Async factory; instantiated per project / per worker.
+   *   - `mcp` namespace (deep MCP protocol primitives — sister to the
+   *     already-wired `@bossnyumba/mcp-server` deployable surface).
+   *   - `agentOrchestrator` namespace (single + multi + state machine +
+   *     cost optimisation + durable + judge-jury). Brain-dependent.
+   *   - `openCodingAgentPatterns` namespace (repo-map + minimal diff +
+   *     sandbox + TDD + plan persistence + browser + trajectory).
+   *     Brain-dependent.
+   *   - `openclawOperatingModel` namespace + `openclawInstance`
+   *     pre-wired Promise (in-memory + auto-seeded 10 domains).
+   *   - `agenticOS` namespace (meta-synthesis layer). Requires 5+
+   *     concrete ports; namespace-only until those converge.
+   */
+  readonly litfinAgentStack: LitfinAgentStackBundle;
+
+  /**
+   * P75 follow-up — per-tenant brain-dependent agent-stack factory.
+   *
+   * Resolves a fully-wired `AgentStack` per tenant from a bounded
+   * LRU+TTL cache (100 tenants × 5 min). Each stack carries:
+   *
+   *   - `brain` — Anthropic-backed `BrainPort` (agent-orchestrator
+   *     shape; budget-guarded so every call debits the tenant's cap).
+   *   - `orchestrator` — `createOrchestrator({ brain })` pre-built.
+   *   - `openCodingAgent` — opt-in via `enableOpenCodingAgent: true`
+   *     (heavy: repo-map + sandbox + browser).
+   *   - `agentRuntimeFactory` — async lazy factory with the tenant
+   *     brain pre-bound; callers supply only `projectPath`.
+   *   - `agenticOs: null` — until the agent-registry + constitution +
+   *     kg ports converge under a single namespace (follow-up).
+   *
+   * Returns `brain: null` when no `ANTHROPIC_API_KEY` is set;
+   * consumers fall back to their degraded paths.
+   *
+   * Access pattern: `registry.agentStack.getAgentStackForTenant(tenantId)`.
+   * The `cache` slot is exposed for ops introspection (size / clear).
+   */
+  readonly agentStack: AgentStackBundle;
 
   /** Wave 29 — Forecasting (TGN + conformal prediction intervals).
    *  Every member is `null` until BOTH `TGN_INFERENCE_URL` and
@@ -799,6 +1096,25 @@ export interface ServiceRegistry {
 
   /** True when DATABASE_URL was set and services were constructed. */
   readonly isLive: boolean;
+
+  /**
+   * P38 — persistent-store ports. Wires LessonStore / WormAuditStore /
+   * SkillRegistryWriter / AOPRegistryStore + per-tenant A2A TaskStore
+   * factory. In degraded mode the in-memory ports are wired; in live mode
+   * the Drizzle-backed adapters from `@bossnyumba/database`. Per-port
+   * `PERSISTENT_*_DISABLED` env flags force the in-memory path even when
+   * `db` is set. Read by `service-context.middleware.ts` (every request)
+   * and the boot-time `modeByStore` log in `index.ts:579`.
+   */
+  readonly persistentStores: PersistentStores;
+
+  /**
+   * P54 — document StorageProvider bridge. Routes DocumentService +
+   * EvidencePackBuilder uploads through the shared `@bossnyumba/storage-
+   * adapter` (Supabase backend) via the tenant-scoped-path bridge. Falls
+   * back to `LocalStorageProvider` when Supabase env is unset.
+   */
+  readonly documentStorage: DocumentStorageWiring;
 }
 
 export interface BuildServicesInput {
@@ -1018,6 +1334,19 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     privacyBudgetComposer: createPrivacyBudgetComposerService(),
     llmRouter: null,
     buildBudgetGuardedAnthropicClient: null,
+    // PO-port wave-5 wiring #2 — LLM budget governor is always wired.
+    // Degraded mode falls back to the in-memory store (no DB to persist
+    // to); P76 BUG-HI-3 closure: live mode swap to the Postgres-backed
+    // store happens in the live registry below. Default caps: $50/day,
+    // 5M tokens/day; downgrade at 85% of cap. Even when no real LLM
+    // calls happen in degraded mode, the slot is non-null so consumer
+    // routes can call `governor.snapshot(tenantId)` without null-guards.
+    llmBudgetGovernor: createLLMBudgetGovernor({
+      store: wireBudgetStore({
+        db: null,
+        logger: { warn: (meta, msg) => console.warn('llm-budget:', msg ?? '', meta) },
+      }),
+    }),
     arrears: {
       service: null,
       repo: null,
@@ -1067,6 +1396,47 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
       }),
     },
     graph: { queryService: buildGraphQueryService() },
+    // PO-port wave-5 wiring #1 — six-layer cognitive memory v2 in degraded
+    // mode runs entirely against in-memory adapters (no embedder, no
+    // reflection brain). Sleep-pass orchestrators and reflection workers
+    // tolerate `embedder === null` + `brain === null` by skipping the
+    // vector-search and summarisation steps respectively.
+    memoryV2: createInMemoryMemoryV2(),
+    // PO-port wave-5 wiring #3 — OCSF emitter (secondary SIEM-egress sink).
+    // Degraded mode: in-memory sink unless `OCSF_LOG_PATH` is set.
+    ocsf: createOcsfBundle(),
+    // PO-port wave-5 wiring #4 — cross-tenant denial recorder. Always
+    // wired (in-memory sink in degraded mode). The recorder is fire-
+    // and-forget; rate-limit + LRU-trim guarantee bounded memory.
+    crossOrgDenialRecorder: createCrossOrgDenialRecorderBundle(),
+    // LITFIN-port batch 1 — 5 pure-function utility namespaces. Always
+    // wired (no I/O). Consumers (sleep-pass, probe cron, debate gate,
+    // ACI calibrator) pull from this bundle via DI.
+    litfinUtilities: createLitfinUtilitiesBundle(),
+    // LITFIN-port batch 2 — 5 domain bundles (mcp-cost-persistence,
+    // fairness-eval, analytics, knowledge-graph, compliance-pack).
+    // Always wired; in-memory facade for analytics + KG.
+    litfinDomain: createLitfinDomainBundle(),
+    // LITFIN-port batch 3 — 5 platform bundles (security-hardening,
+    // document-ai, progressive-intelligence, document-quality-guarantor,
+    // audio-capture). Always wired; pre-wired facades with safe
+    // defaults; namespaces exposed for follow-up port wiring.
+    litfinPlatform: createLitfinPlatformBundle(),
+    // LITFIN-port batch 4 — 6 agent-stack bundles (agent-runtime, mcp,
+    // agent-orchestrator, open-coding-agent-patterns, openclaw-
+    // operating-model, agentic-os). Always wired; brain-dependent
+    // members are namespace-only; openclaw ships an async pre-wired
+    // facade with auto-seeded shipped domains.
+    litfinAgentStack: createLitfinAgentStackBundle(),
+    // P75 follow-up — per-tenant brain-dependent agent-stack factory.
+    // Degraded mode has no Anthropic key wiring, so the bundle hands
+    // back a stack with `brain: null`. The factory still exposes the
+    // bound `agentRuntimeFactory` so projects that only need filesystem
+    // discovery (slash + sub-agents + skills) keep working.
+    agentStack: createAgentStackBundle({
+      buildBudgetGuardedAnthropicClient: null,
+      logger: { warn: (meta, msg) => console.warn('agent-stack:', msg ?? '', meta) },
+    }),
     // Central Intelligence — no concrete LLM adapter ships here (it
     // lives in a separate service). In degraded mode we still wire the
     // in-memory memory so thread listing works locally.
@@ -1154,6 +1524,13 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     eventBus,
     db: null,
     isLive: false,
+    // P38 — degraded mode: `db: null` forces the in-memory ports for
+    // every store. The middleware reads the same shape either way.
+    persistentStores: createPersistentStores({ db: null }),
+    // P54 — degraded mode: no Supabase env => LocalStorageProvider falls
+    // back. The wiring stays a real `DocumentStorageWiring` so consumers
+    // can switch on `mode` without null-checks.
+    documentStorage: createDocumentStorageWiring(),
   };
 }
 
@@ -1652,6 +2029,16 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     privacyBudgetComposer: createPrivacyBudgetComposerService(),
     llmRouter,
     buildBudgetGuardedAnthropicClient,
+    // PO-port wave-5 wiring #2 — LLM budget governor. Live mode swaps
+    // to the Postgres-backed store so per-tenant spend survives gateway
+    // restarts (P76 BUG-HI-3 closure — was leaking the cap across
+    // deploy / OOM / scale-down). Caps are seedable per-tenant via the
+    // admin override helpers; the governor's `evaluateCall` is the
+    // choke-point every llmRouter + Anthropic-client call must traverse
+    // before reaching the provider.
+    llmBudgetGovernor: createLLMBudgetGovernor({
+      store: wireBudgetStore({ db }),
+    }),
     arrears: {
       service: arrearsService,
       repo: arrearsRepo,
@@ -1718,6 +2105,51 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // NEO4J_URI is unset; the graph router degrades to 503 so live-mode
     // gateways without a Neo4j upstream still boot cleanly.
     graph: { queryService: buildGraphQueryService() },
+    // PO-port wave-5 wiring #1 — six-layer cognitive memory v2. Live mode
+    // also runs in-memory until pgvector / Drizzle store adapters land
+    // (follow-up). The slot is always non-null so downstream consumers
+    // (sleep-pass orchestrator, reflection workers) can read shapes
+    // without null-checks.
+    memoryV2: createInMemoryMemoryV2(),
+    // PO-port wave-5 wiring #3 — OCSF emitter (secondary SIEM-egress
+    // sink). Live mode picks up `OCSF_LOG_PATH` for the file-line sink;
+    // syslog / HTTP forwarders land as follow-up sink adapters.
+    ocsf: createOcsfBundle(),
+    // PO-port wave-5 wiring #4 — cross-tenant denial recorder. Live mode
+    // still uses the in-memory sink until a Drizzle-backed adapter lands
+    // (follow-up wave-30 in Docs/TODO_BACKLOG.md). The recorder slot is
+    // always non-null so `ensureTenantIsolation` and any other authz-
+    // policy denial site can record without null-guards.
+    crossOrgDenialRecorder: createCrossOrgDenialRecorderBundle(),
+    // LITFIN-port batch 1 — 5 pure-function utility namespaces (same in
+    // live mode; no I/O to swap to a Postgres adapter). Consumers pull
+    // canonical surfaces via `registry.litfinUtilities.<pkg>`.
+    litfinUtilities: createLitfinUtilitiesBundle(),
+    // LITFIN-port batch 2 — 5 domain bundles (mcp-cost-persistence,
+    // fairness-eval, analytics, knowledge-graph, compliance-pack).
+    // Live mode is identical today; Neo4j-backed KG + per-tenant
+    // compliance engines are follow-up wirings.
+    litfinDomain: createLitfinDomainBundle(),
+    // LITFIN-port batch 3 — 5 platform bundles (security-hardening,
+    // document-ai, progressive-intelligence, document-quality-guarantor,
+    // audio-capture). Live mode is identical today; concrete OCR /
+    // STT / WebAuthn ports land via follow-up wirings.
+    litfinPlatform: createLitfinPlatformBundle(),
+    // LITFIN-port batch 4 — 6 agent-stack bundles. Live mode identical
+    // today; brain-dependent members instantiated per-tenant by their
+    // consumers (brain port resolves at request time via the per-tenant
+    // budget-guarded Anthropic client).
+    litfinAgentStack: createLitfinAgentStackBundle(),
+    // P75 follow-up — per-tenant brain-dependent agent-stack factory.
+    // Live mode threads the budget-guarded Anthropic factory through
+    // the bundle so every per-tenant brain call debits the right
+    // tenant's cap. Cached LRU (100 tenants × 5 min TTL) so a single
+    // assembly is reused across the brain's request lifetime.
+    agentStack: createAgentStackBundle({
+      buildBudgetGuardedAnthropicClient:
+        (buildBudgetGuardedAnthropicClient as AgentStackBudgetGuardedAnthropicFactory | null),
+      logger: { warn: (meta, msg) => console.warn('agent-stack:', msg ?? '', meta) },
+    }),
     // Central Intelligence — the concrete LLM adapter lives in a
     // separate service. `agent` is only populated when `CI_LLM_URL`
     // env var is set AND the adapter is wired (follow-up PR); until
@@ -2030,6 +2462,14 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     eventBus,
     db,
     isLive: true,
+    // P38 — live mode: Drizzle-backed adapters wired by default (each
+    // port can be forced back to in-memory via its
+    // `PERSISTENT_*_DISABLED` env flag). The middleware reads the same
+    // shape as degraded mode so `c.set('lessonStore', ...)` is uniform.
+    persistentStores: createPersistentStores({ db }),
+    // P54 — live mode: production path picks up Supabase env when set,
+    // otherwise falls back to LocalStorageProvider transparently.
+    documentStorage: createDocumentStorageWiring(),
   };
 }
 

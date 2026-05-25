@@ -123,6 +123,7 @@ import type {
   FeedbackMemoryPort,
   GroundingFactsProvider,
   MemoryHierarchy,
+  MultiLLMSynthesizerPort,
   PersonaDriftSink,
   ProvenanceSink,
   Sensor,
@@ -309,6 +310,17 @@ export interface ComposeSovereignConfig {
    */
   readonly behaviorSignalSource?: import('./kernel-types.js').BehaviorSignalSourcePort;
   /**
+   * Optional multi-LLM synthesizer port. When wired, turns carrying
+   * `req.requireSynthesis === true` route through a mixture-of-agents
+   * fan-out (Anthropic + OpenAI + DeepSeek by default) plus a Claude
+   * Opus synthesis pass. Default OFF (per-turn opt-in) so the cost
+   * profile of existing single-shot callers is unchanged. The
+   * api-gateway composition root constructs the port via
+   * `createBrainSynthesizerPort(...)` in
+   * `services/api-gateway/src/composition/multi-llm-synthesizer-wiring.ts`.
+   */
+  readonly synthesizer?: MultiLLMSynthesizerPort;
+  /**
    * Phase E.5.1 — orchestrator wire-up.
    *
    * When supplied, the kernel's `think()` / `thinkStream()` calls
@@ -469,6 +481,7 @@ export function composeSovereign(config: ComposeSovereignConfig): SovereignBrain
     (kernelDeps as any).toolRegistry = config.toolRegistry;
   }
   if (config.embedder)          (kernelDeps as any).embedder = config.embedder;
+  if (config.synthesizer)       (kernelDeps as any).synthesizer = config.synthesizer;
   // C5 — Progressive Intelligence.
   if (config.skillRetriever)    (kernelDeps as any).skillRetriever = config.skillRetriever;
   if (config.reflexionRetriever) (kernelDeps as any).reflexionRetriever = config.reflexionRetriever;

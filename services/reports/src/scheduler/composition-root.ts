@@ -96,9 +96,11 @@ export function buildWorkerDeps(config: SchedulerConfig): CompositionResult {
           console.warn('[scheduler] CaseSLAWorker not reachable — shimming');
           return;
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const w = new (CaseSLAWorker as any)({ config });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        interface SlaWorkerInstance {
+          tick?: () => Promise<void> | void;
+        }
+        type SlaWorkerNew = new (opts: { config: unknown }) => SlaWorkerInstance;
+        const w = new (CaseSLAWorker as SlaWorkerNew)({ config });
         await (w.tick ? w.tick() : Promise.resolve());
       }
     : shim('runSlaWorker', shimmed, 'DATABASE_URL missing');

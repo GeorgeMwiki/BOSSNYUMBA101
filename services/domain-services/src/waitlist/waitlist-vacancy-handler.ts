@@ -15,7 +15,7 @@
  */
 
 import { prefixedId } from '../common/id-generator.js';
-import type { EventBus } from '../common/events.js';
+import type { DomainEvent, EventBus, EventEnvelope } from '../common/events.js';
 import {
   createEventEnvelope,
   generateEventId,
@@ -96,10 +96,14 @@ export class WaitlistVacancyHandler {
    * Register this handler on the event bus. Call once at boot.
    */
   register(): () => void {
-    return this.eventBus.subscribe<any>('UnitVacated', async (envelope) => {
-      const payload = (envelope as any).event?.payload as UnitVacatedEventPayload;
-      const tenantId = (envelope as any).event.tenantId as TenantId;
-      const correlationId = (envelope as any).event.correlationId as string;
+    interface UnitVacatedEvent extends DomainEvent {
+      readonly eventType: 'UnitVacated';
+      readonly payload: UnitVacatedEventPayload;
+    }
+    return this.eventBus.subscribe<UnitVacatedEvent>('UnitVacated', async (envelope: EventEnvelope<UnitVacatedEvent>) => {
+      const payload = envelope.event.payload;
+      const tenantId = envelope.event.tenantId;
+      const correlationId = envelope.event.correlationId;
       await this.handleVacancy(tenantId, payload, correlationId);
     });
   }
@@ -196,26 +200,32 @@ export class WaitlistVacancyHandler {
       }
     }
 
+    interface WaitlistVacancyWaveDispatchedEvent extends DomainEvent {
+      readonly eventType: 'WaitlistVacancyWaveDispatched';
+      readonly payload: {
+        readonly unitId: string;
+        readonly dispatched: number;
+        readonly skipped: number;
+        readonly totalActive: number;
+      };
+    }
+    const waveEvent: WaitlistVacancyWaveDispatchedEvent = {
+      eventId: generateEventId(),
+      eventType: 'WaitlistVacancyWaveDispatched',
+      timestamp: this.now(),
+      tenantId,
+      correlationId,
+      causationId: null,
+      metadata: {},
+      payload: {
+        unitId: payload.unitId,
+        dispatched,
+        skipped,
+        totalActive: sorted.length,
+      },
+    };
     await this.eventBus.publish(
-      createEventEnvelope(
-        {
-          eventId: generateEventId(),
-          eventType: 'WaitlistVacancyWaveDispatched',
-          timestamp: this.now(),
-          tenantId,
-          correlationId,
-          causationId: null,
-          metadata: {},
-          payload: {
-            unitId: payload.unitId,
-            dispatched,
-            skipped,
-            totalActive: sorted.length,
-          },
-        } as any,
-        payload.unitId,
-        'Unit'
-      )
+      createEventEnvelope(waveEvent, payload.unitId, 'Unit')
     );
 
     return { dispatched, skipped };

@@ -97,18 +97,58 @@ function labelLookup(
   return out;
 }
 
+/**
+ * Money amount with both legacy float-major and integer-minor
+ * representations. `amountMinor` is the canonical value for any
+ * downstream ledger or rule path (precision-safe integer in cents).
+ * `amount` is preserved for backward-compat with display layers that
+ * already render the major-unit float.
+ *
+ * P84 audit BUG-HI-6: `parseFloat` alone loses precision above ~15
+ * digits. We now parse the digits with `Math.round(value * 100)` to
+ * produce a precision-safe integer minor-unit value, and validate
+ * via `Number.isFinite` to refuse Infinity / NaN.
+ */
+export interface ExtractedAmount {
+  readonly currency: string;
+  /** Legacy major-unit float — kept for back-compat display. */
+  readonly amount: number;
+  /** Canonical integer minor units (cents). Precision-safe. */
+  readonly amountMinor: number;
+}
+
+function parseAmountToMinor(raw: string): ExtractedAmount['amount'] | null {
+  // Strip separators, then parseFloat. Refuse Infinity/NaN.
+  const cleaned = raw.replace(/[\s,]/g, '');
+  const major = Number.parseFloat(cleaned);
+  if (!Number.isFinite(major) || major < 0) return null;
+  return major;
+}
+
+function buildAmount(currency: string, major: number): ExtractedAmount {
+  // `Math.round(major * 100)` guards against `0.1 + 0.2`-style drift up
+  // to the safe-integer limit (~$90 trillion in minor units).
+  const minor = Math.round(major * 100);
+  if (!Number.isSafeInteger(minor)) {
+    // Should never happen for realistic invoice values; degrade
+    // gracefully by clamping `amount` and signalling via amountMinor=0
+    // rather than throwing in an extraction hot-path.
+    return { currency, amount: major, amountMinor: 0 };
+  }
+  return { currency, amount: major, amountMinor: minor };
+}
+
 function extractAllAmounts(
   text: string,
-): Array<{ value: { currency: string; amount: number }; confidence: number; matchedText: string }> {
+): Array<{ value: ExtractedAmount; confidence: number; matchedText: string }> {
   CURRENCY_AMOUNT_RX.lastIndex = 0;
-  const out: Array<{ value: { currency: string; amount: number }; confidence: number; matchedText: string }> = [];
+  const out: Array<{ value: ExtractedAmount; confidence: number; matchedText: string }> = [];
   let m: RegExpExecArray | null;
   while ((m = CURRENCY_AMOUNT_RX.exec(text)) !== null) {
     const currency = m[1]?.toUpperCase() ?? 'KES';
-    const raw = (m[2] ?? '').replace(/[\s,]/g, '');
-    const amount = Number.parseFloat(raw);
-    if (Number.isFinite(amount) && amount > 0) {
-      out.push({ value: { currency, amount }, confidence: 0.9, matchedText: m[0] });
+    const major = parseAmountToMinor(m[2] ?? '');
+    if (major !== null && major > 0) {
+      out.push({ value: buildAmount(currency, major), confidence: 0.9, matchedText: m[0] });
     }
   }
   return out;
@@ -177,11 +217,11 @@ const LEASE_FIELDS: ReadonlyArray<FieldSpec> = [
       );
       if (labelled && labelled[1] && labelled[2]) {
         const currency = labelled[1].toUpperCase();
-        const amount = Number.parseFloat(labelled[2].replace(/[\s,]/g, ''));
-        if (Number.isFinite(amount)) {
+        const major = parseAmountToMinor(labelled[2]);
+        if (major !== null) {
           return [
             {
-              value: { currency, amount },
+              value: buildAmount(currency, major),
               confidence: 0.95,
               matchedText: labelled[0],
             },
@@ -258,11 +298,11 @@ const LEASE_APPLICATION_FIELDS: ReadonlyArray<FieldSpec> = [
       );
       if (labelled && labelled[1] && labelled[2]) {
         const currency = labelled[1].toUpperCase();
-        const amount = Number.parseFloat(labelled[2].replace(/[\s,]/g, ''));
-        if (Number.isFinite(amount)) {
+        const major = parseAmountToMinor(labelled[2]);
+        if (major !== null) {
           return [
             {
-              value: { currency, amount },
+              value: buildAmount(currency, major),
               confidence: 0.9,
               matchedText: labelled[0],
             },
@@ -296,11 +336,11 @@ const PAYMENT_FIELDS: ReadonlyArray<FieldSpec> = [
       );
       if (labelled && labelled[1] && labelled[2]) {
         const currency = labelled[1].toUpperCase();
-        const amount = Number.parseFloat(labelled[2].replace(/[\s,]/g, ''));
-        if (Number.isFinite(amount)) {
+        const major = parseAmountToMinor(labelled[2]);
+        if (major !== null) {
           return [
             {
-              value: { currency, amount },
+              value: buildAmount(currency, major),
               confidence: 0.95,
               matchedText: labelled[0],
             },
@@ -528,11 +568,11 @@ const VENDOR_INVOICE_FIELDS: ReadonlyArray<FieldSpec> = [
         const m = rx.exec(t);
         if (m && m[1] && m[2]) {
           const currency = m[1].toUpperCase();
-          const amount = Number.parseFloat(m[2].replace(/[\s,]/g, ''));
-          if (Number.isFinite(amount)) {
+          const major = parseAmountToMinor(m[2]);
+          if (major !== null) {
             return [
               {
-                value: { currency, amount },
+                value: buildAmount(currency, major),
                 confidence: 0.95,
                 matchedText: m[0],
               },

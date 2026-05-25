@@ -21,6 +21,7 @@ import { authMiddleware } from '../middleware/hono-auth';
 import type { TrainingAdminEndpoints } from '@bossnyumba/ai-copilot/training';
 import { safeJsonBody, JsonBodyError } from '../utils/safe-json-body';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 function getEndpoints(c: any): TrainingAdminEndpoints | null {
   const services = c.get('services') ?? {};
   return services.training ?? null;
@@ -71,7 +72,7 @@ function mapErr(c: any, err: unknown, fallback = 400) {
 const app = new Hono();
 app.use('*', authMiddleware);
 
-app.post('/generate', async (c: any) => {
+app.post('/generate', withSecurityEvents({ action: 'training.create', resource: 'training', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const ep = getEndpoints(c);
   if (!ep) return notImplemented(c);
@@ -82,9 +83,9 @@ app.post('/generate', async (c: any) => {
   } catch (e: unknown) {
     return mapErr(c, e, 400);
   }
-});
+}));
 
-app.post('/paths', async (c: any) => {
+app.post('/paths', withSecurityEvents({ action: 'training.create', resource: 'training', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const ep = getEndpoints(c);
   if (!ep) return notImplemented(c);
@@ -95,7 +96,7 @@ app.post('/paths', async (c: any) => {
   } catch (e: unknown) {
     return mapErr(c, e, 400);
   }
-});
+}));
 
 app.get('/paths', async (c: any) => {
   const auth = c.get('auth');
@@ -109,7 +110,7 @@ app.get('/paths', async (c: any) => {
   }
 });
 
-app.patch('/paths/:id', async (c: any) => {
+app.patch('/paths/:id', withSecurityEvents({ action: 'training.update', resource: 'training', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const id = c.req.param('id');
   const ep = getEndpoints(c);
@@ -121,9 +122,9 @@ app.patch('/paths/:id', async (c: any) => {
   } catch (e: unknown) {
     return mapErr(c, e, 400);
   }
-});
+}));
 
-app.post('/paths/:id/assign', async (c: any) => {
+app.post('/paths/:id/assign', withSecurityEvents({ action: 'training.create', resource: 'training', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const id = c.req.param('id');
   const ep = getEndpoints(c);
@@ -135,7 +136,7 @@ app.post('/paths/:id/assign', async (c: any) => {
   } catch (e: unknown) {
     return mapErr(c, e, 400);
   }
-});
+}));
 
 app.get('/assignments', async (c: any) => {
   const auth = c.get('auth');
@@ -184,7 +185,7 @@ app.get('/mastery/:userId', async (c: any) => {
   }
 });
 
-app.post('/assignments/:id/mark-complete', async (c: any) => {
+app.post('/assignments/:id/mark-complete', withSecurityEvents({ action: 'training.create', resource: 'training', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const id = c.req.param('id');
   const ep = getEndpoints(c);
@@ -199,7 +200,7 @@ app.post('/assignments/:id/mark-complete', async (c: any) => {
   } catch (e: unknown) {
     return mapErr(c, e, 400);
   }
-});
+}));
 
 app.get('/next-step', async (c: any) => {
   const auth = c.get('auth');

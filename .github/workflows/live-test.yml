@@ -91,7 +91,13 @@ jobs:
 
     steps:
       - name: Why are we running
-        run: echo "reason=${{ github.event.inputs.reason }}"
+        # Pass the workflow input through an env var rather than direct
+        # ${{ ... }} interpolation into the shell — the latter is a
+        # script-injection seam (Semgrep `run-shell-injection` ERROR).
+        env:
+          WORKFLOW_REASON: ${{ github.event.inputs.reason }}
+        run: |
+          printf 'reason=%s\n' "$WORKFLOW_REASON"
 
       - name: Checkout
         uses: actions/checkout@v6

@@ -90,19 +90,19 @@ declare module '@bossnyumba/domain-models' {
 const MoneyProto = Money.prototype as unknown as Record<string, unknown>;
 
 if (typeof MoneyProto.isZero !== 'function') {
-  (Money.prototype as any).isZero = function (this: Money): boolean {
+  MoneyProto.isZero = function (this: Money): boolean {
     return this.amountMinorUnits === 0;
   };
 }
 
 if (typeof MoneyProto.isNegative !== 'function') {
-  (Money.prototype as any).isNegative = function (this: Money): boolean {
+  MoneyProto.isNegative = function (this: Money): boolean {
     return this.amountMinorUnits < 0;
   };
 }
 
 // Override default Object.prototype.toString with a useful representation
-(Money.prototype as any).toString = function (this: Money): string {
+MoneyProto.toString = function (this: Money): string {
   return `${this.currency} ${(this.amountMinorUnits / 100).toFixed(2)}`;
 };
 

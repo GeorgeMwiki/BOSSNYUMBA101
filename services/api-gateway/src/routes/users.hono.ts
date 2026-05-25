@@ -6,6 +6,7 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { roles, userRoles } from '@bossnyumba/database';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 type RoleInfo = { role: string; permissions: string[] };
 
 // any — Drizzle select builder chain type widens through generics in a
@@ -118,7 +119,7 @@ const USER_WRITE_ROLES = new Set(['super_admin', 'admin', 'tenant_admin']);
 // Only super_admin may create other super_admins or cross-tenant admins.
 const SUPER_ADMIN_ONLY_ROLES = new Set(['super_admin']);
 
-app.post('/', async (c) => {
+app.post('/', withSecurityEvents({ action: 'user.create', resource: 'user', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const db = c.get('db');
@@ -181,9 +182,9 @@ app.post('/', async (c) => {
 
   const roleMap = await getRoleMap(db, auth.tenantId, [row.id]);
   return c.json({ success: true, data: mapUser(row, roleMap.get(row.id)) }, 201);
-});
+}));
 
-app.put('/:id', async (c) => {
+app.put('/:id', withSecurityEvents({ action: 'user.update', resource: 'user', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const db = c.get('db');
@@ -199,13 +200,13 @@ app.put('/:id', async (c) => {
   if (!row) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } }, 404);
   const roleMap = await getRoleMap(db, auth.tenantId, [row.id]);
   return c.json({ success: true, data: mapUser(row, roleMap.get(row.id)) });
-});
+}));
 
-app.delete('/:id', async (c) => {
+app.delete('/:id', withSecurityEvents({ action: 'user.delete', resource: 'user', severity: 'warn' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   await repos.users.delete(c.req.param('id'), auth.tenantId, auth.userId);
   return c.json({ success: true, data: { message: 'User deleted' } });
-});
+}));
 
 export const usersRouter = app;

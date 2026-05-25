@@ -10,6 +10,18 @@ interface LeaseDetailProps {
   leaseId: string;
 }
 
+interface LeaseDetailDto {
+  readonly leaseNumber?: string;
+  readonly customer?: { readonly name?: string };
+  readonly customerId?: string;
+  readonly unit?: { readonly unitNumber?: string };
+  readonly unitId?: string;
+  readonly status?: string;
+  readonly rentAmount?: string | number;
+  readonly startDate: string;
+  readonly endDate: string;
+}
+
 export function LeaseDetail({ leaseId }: LeaseDetailProps) {
   const t = useTranslations('leaseDetail');
   const leaseQuery = useQuery({
@@ -19,7 +31,7 @@ export function LeaseDetail({ leaseId }: LeaseDetailProps) {
     retry: false,
   });
 
-  const lease = leaseQuery.data?.data as any;
+  const lease = leaseQuery.data?.data as LeaseDetailDto | undefined;
 
   return (
     <>

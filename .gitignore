@@ -45,6 +45,12 @@ npm-debug.log*
 # Turbo
 .turbo/
 
+# Generated AI BOM artifact — produced by scripts/build-ai-bom.mjs in CI.
+# Committed copies are not authoritative; the workflow regenerates per release.
+ai-bom.json
+ai-bom.json.sig
+ai-bom.json.pem
+
 # Cache
 .cache/
 
@@ -62,3 +68,9 @@ override.tf
 override.tf.json
 *.override.tf
 *.override.tf.json
+
+# Working artifacts — audit drafts, research notes, ad-hoc scans, agent worktrees
+.audit/
+.research/
+.semgrep/
+.claude/worktrees/

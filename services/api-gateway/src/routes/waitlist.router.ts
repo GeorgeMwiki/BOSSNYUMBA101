@@ -140,7 +140,8 @@ app.post(
   zValidator('json', TriggerOutreachSchema.partial()),
   async (c) => {
     const auth = c.get('auth');
-    const body = (c.req.valid('json') as any) ?? {};
+    type TriggerOutreachBody = Partial<z.infer<typeof TriggerOutreachSchema>>;
+    const body: TriggerOutreachBody = c.req.valid('json') ?? {};
     const handler = vacancyHandler(c);
     if (!handler) return notImplemented(c, 'vacancy handler');
     const correlationId =

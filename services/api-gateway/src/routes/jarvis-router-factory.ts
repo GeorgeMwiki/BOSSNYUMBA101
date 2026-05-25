@@ -46,6 +46,7 @@ import { getSovereignBrain } from '../composition/sovereign';
 import { getDb } from '../composition/db-client';
 import { withKernelSpan, type KernelTraceScope } from '../observability/kernel-tracing';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 export type JarvisSurface = ThoughtRequest['surface'];
 
 export interface JarvisRouterConfig {
@@ -326,7 +327,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
   const app = new Hono();
   app.use('*', authMiddleware);
 
-  app.post('/think', zValidator('json', ThinkSchema), async (c) => {
+  app.post('/think', zValidator('json', ThinkSchema), withSecurityEvents({ action: 'jarvis.create', resource: 'jarvis', severity: 'info' }, async (c) => {
     const body = c.req.valid('json');
     const profile = actorProfileFromContext(c, config.greetingStyle);
     const scope = scopeFromContext(c, config.surface);
@@ -399,7 +400,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
       },
       decision,
     });
-  });
+  }));
 
   // ───────────────────────────────────────────────────────────────────
   // POST /stream — SSE variant of /think.
@@ -421,7 +422,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
   //
   // Pre-sensor refusal path: turn_start, gate event (inviolable), done.
   // ───────────────────────────────────────────────────────────────────
-  app.post('/stream', zValidator('json', ThinkSchema), async (c) => {
+  app.post('/stream', zValidator('json', ThinkSchema), withSecurityEvents({ action: 'jarvis.create', resource: 'jarvis', severity: 'info' }, async (c) => {
     const body = c.req.valid('json');
     const profile = actorProfileFromContext(c, config.greetingStyle);
     const scope = scopeFromContext(c, config.surface);
@@ -549,9 +550,9 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
         });
       }
     });
-  });
+  }));
 
-  app.post('/briefing', zValidator('json', BriefingSchema), async (c) => {
+  app.post('/briefing', zValidator('json', BriefingSchema), withSecurityEvents({ action: 'jarvis.create', resource: 'jarvis', severity: 'info' }, async (c) => {
     const body = c.req.valid('json');
     const profile = actorProfileFromContext(c, config.greetingStyle);
     const scope = scopeFromContext(c, config.surface);
@@ -596,9 +597,9 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
       },
     );
     return c.json({ success: true, surface: config.surface, briefing: (briefing as any).briefing });
-  });
+  }));
 
-  app.post('/actions', zValidator('json', ProposeActionSchema), async (c) => {
+  app.post('/actions', zValidator('json', ProposeActionSchema), withSecurityEvents({ action: 'jarvis.create', resource: 'jarvis', severity: 'info' }, async (c) => {
     const body = c.req.valid('json');
     const auth = c.get('auth') ?? {};
     const proposerUserId = auth.userId ?? auth.sub ?? 'unknown-user';
@@ -613,9 +614,9 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
       stakes: body.stakes,
     });
     return c.json({ success: true, approval: record });
-  });
+  }));
 
-  app.post('/actions/:id/sign', zValidator('json', SignSchema), async (c) => {
+  app.post('/actions/:id/sign', zValidator('json', SignSchema), withSecurityEvents({ action: 'jarvis.create', resource: 'jarvis', severity: 'info' }, async (c) => {
     const id = c.req.param('id');
     const body = c.req.valid('json');
     const auth = c.get('auth') ?? {};
@@ -637,7 +638,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
         400,
       );
     }
-  });
+  }));
 
   app.get('/actions/:id', async (c) => {
     const id = c.req.param('id');
@@ -677,7 +678,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
   // signal is dropped rather than queued in memory (which would lie
   // to the caller about persistence).
   // ───────────────────────────────────────────────────────────────────
-  app.post('/feedback', zValidator('json', FeedbackSchema), async (c) => {
+  app.post('/feedback', zValidator('json', FeedbackSchema), withSecurityEvents({ action: 'jarvis.create', resource: 'jarvis', severity: 'info' }, async (c) => {
     const body = c.req.valid('json');
     const auth = c.get('auth') ?? {};
     const tenantId = auth.tenantId ?? null;
@@ -722,7 +723,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
     });
 
     return c.json({ success: true, id: out.id });
-  });
+  }));
 
   return app;
 }

@@ -52,6 +52,7 @@ import { UserRole } from '../types/user-role';
 import type { SessionReplayStoragePort } from '../storage/session-replay-storage';
 import { e400, e401, e404, e429, e500, e503, errorResponse } from '../utils/error-response';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ─────────────────────────────────────────────────────────────────────
 // Validation
 // ─────────────────────────────────────────────────────────────────────
@@ -184,7 +185,7 @@ app.use('*', authMiddleware);
 app.post(
   '/chunks',
   zValidator('json', PostChunkBodySchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'session-replay.create', resource: 'session-replay', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth') as
       | { tenantId: string; userId: string }
       | undefined;
@@ -290,7 +291,7 @@ app.post(
         byteSize: gzipBytes.byteLength,
       },
     });
-  },
+  }),
 );
 
 // GET /sessions/:sessionId/chunks — list metadata for the replay viewer.

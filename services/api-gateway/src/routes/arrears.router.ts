@@ -26,6 +26,7 @@ import {
   type LedgerReplayEntry,
 } from '@bossnyumba/payments-ledger-service/arrears';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 function getService(c: { get: (k: string) => unknown }) {
   const injected = c.get('arrearsService');
   if (injected) return injected as ReturnType<typeof createArrearsService>;
@@ -166,7 +167,7 @@ app.get('/cases/:id/projection', async (c) => {
 });
 
 // --- POST case -------------------------------------------------------------
-app.post('/cases', zValidator('json', OpenCaseSchema), async (c) => {
+app.post('/cases', zValidator('json', OpenCaseSchema), withSecurityEvents({ action: 'arrears.create', resource: 'arrears', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const service = getService(c);
@@ -190,10 +191,10 @@ app.post('/cases', zValidator('json', OpenCaseSchema), async (c) => {
   } catch (err) {
     return mapError(c, err);
   }
-});
+}));
 
 // --- POST propose ----------------------------------------------------------
-app.post('/cases/:id/propose', zValidator('json', ProposeSchema), async (c) => {
+app.post('/cases/:id/propose', zValidator('json', ProposeSchema), withSecurityEvents({ action: 'arrears.create', resource: 'arrears', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const caseId = c.req.param('id');
@@ -217,13 +218,13 @@ app.post('/cases/:id/propose', zValidator('json', ProposeSchema), async (c) => {
   } catch (err) {
     return mapError(c, err);
   }
-});
+}));
 
 // --- POST approve ----------------------------------------------------------
 app.post(
   '/proposals/:proposalId/approve',
   zValidator('json', ApproveSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'arrears.create', resource: 'arrears', severity: 'info' }, async (c) => {
     const auth = c.get('auth');
     const { approvalNotes } = c.req.valid('json');
     const proposalId = c.req.param('proposalId');
@@ -240,14 +241,14 @@ app.post(
     } catch (err) {
       return mapError(c, err);
     }
-  }
+  })
 );
 
 // --- POST reject -----------------------------------------------------------
 app.post(
   '/proposals/:proposalId/reject',
   zValidator('json', RejectSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'arrears.create', resource: 'arrears', severity: 'info' }, async (c) => {
     const auth = c.get('auth');
     const { rejectionReason } = c.req.valid('json');
     const proposalId = c.req.param('proposalId');
@@ -264,7 +265,7 @@ app.post(
     } catch (err) {
       return mapError(c, err);
     }
-  }
+  })
 );
 
 function mapError(c: unknown, err: unknown) {

@@ -12,8 +12,8 @@
 -- independent surfaces (owner.dashboard / tenant.dashboard /
 -- admin.dashboard) get independent layouts per user.
 --
--- RLS policy pattern mirrors migration 0166_rls_promote_out_wave.sql
--- and 0169_payments_ledger_rls.sql:
+-- RLS policy pattern mirrors migration 0166b_rls_promote_out_wave.sql
+-- and 0169b_payments_ledger_rls.sql:
 --   * ENABLE ROW LEVEL SECURITY
 --   * FORCE ROW LEVEL SECURITY
 --   * tenant_isolation_select policy (USING)
@@ -65,7 +65,7 @@ COMMENT ON TABLE section_layouts IS
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- 2. ENABLE + FORCE RLS, install tenant-isolation policies.
---    Pattern from 0166_rls_promote_out_wave.sql.
+--    Pattern from 0166b_rls_promote_out_wave.sql.
 -- ─────────────────────────────────────────────────────────────────────────
 
 DO $$

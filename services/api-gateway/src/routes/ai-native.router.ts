@@ -38,6 +38,7 @@ import { zValidator } from '@hono/zod-validator';
 import { authMiddleware } from '../middleware/hono-auth';
 import { safeInternalError } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 type AnyCtx = any;
 
 function getServices(c: AnyCtx): Record<string, unknown> {
@@ -139,7 +140,7 @@ router.use('*', authMiddleware);
 router.post(
   '/sentiment/scan',
   zValidator('json', SentimentScanSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'ai-native.create', resource: 'ai-native', severity: 'info' }, async (c) => {
     try {
       const services = getServices(c);
       const monitor = (services as any).sentimentMonitor;
@@ -164,7 +165,7 @@ router.post(
     } catch (err) {
       return internalError(c, err);
     }
-  },
+  }),
 );
 
 // --- GET /ai-native/signals?since=... ---------------------------------------
@@ -199,7 +200,7 @@ router.get('/signals', async (c) => {
 router.post(
   '/inspections/:id/analyze',
   zValidator('json', InspectionAnalyzeSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'ai-native.create', resource: 'ai-native', severity: 'info' }, async (c) => {
     try {
       const services = getServices(c);
       const multimodal = (services as any).multimodalInspection;
@@ -225,14 +226,14 @@ router.post(
     } catch (err) {
       return internalError(c, err);
     }
-  },
+  }),
 );
 
 // --- POST /ai-native/query/nl -----------------------------------------------
 router.post(
   '/query/nl',
   zValidator('json', NLQuerySchema),
-  async (c) => {
+  withSecurityEvents({ action: 'ai-native.create', resource: 'ai-native', severity: 'info' }, async (c) => {
     try {
       const services = getServices(c);
       const nlq = (services as any).naturalLanguageQuery;
@@ -254,14 +255,14 @@ router.post(
       }
       return internalError(c, err);
     }
-  },
+  }),
 );
 
 // --- POST /ai-native/simulate/policy ----------------------------------------
 router.post(
   '/simulate/policy',
   zValidator('json', SimulatePolicySchema),
-  async (c) => {
+  withSecurityEvents({ action: 'ai-native.create', resource: 'ai-native', severity: 'info' }, async (c) => {
     try {
       const services = getServices(c);
       const simulator = (services as any).policySimulator;
@@ -287,7 +288,7 @@ router.post(
     } catch (err) {
       return internalError(c, err);
     }
-  },
+  }),
 );
 
 // --- GET /ai-native/predictions/tenant/:customerId --------------------------
@@ -401,7 +402,7 @@ const DynamicPricingProposeSchema = z.object({
 router.post(
   '/dynamic-pricing/:unitId/propose',
   zValidator('json', DynamicPricingProposeSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'ai-native.create', resource: 'ai-native', severity: 'info' }, async (c) => {
     try {
       const auth = c.get('auth');
       const unitId = c.req.param('unitId');
@@ -438,7 +439,7 @@ router.post(
     } catch (err) {
       return internalError(c, err);
     }
-  },
+  }),
 );
 
 // --- POST /ai-native/doc-intelligence/:documentId/extract -------------------
@@ -451,7 +452,7 @@ const DocExtractSchema = z.object({
 router.post(
   '/doc-intelligence/:documentId/extract',
   zValidator('json', DocExtractSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'ai-native.create', resource: 'ai-native', severity: 'info' }, async (c) => {
     try {
       const auth = c.get('auth');
       const documentId = c.req.param('documentId');
@@ -479,7 +480,7 @@ router.post(
     } catch (err) {
       return internalError(c, err);
     }
-  },
+  }),
 );
 
 router.get('/doc-intelligence/:documentId/entities', async (c) => {
@@ -545,7 +546,7 @@ const LegalDraftSchema = z.object({
   facts: z.record(z.string(), z.unknown()),
 });
 
-router.post('/legal-draft', zValidator('json', LegalDraftSchema), async (c) => {
+router.post('/legal-draft', zValidator('json', LegalDraftSchema), withSecurityEvents({ action: 'ai-native.create', resource: 'ai-native', severity: 'info' }, async (c) => {
   try {
     const auth = c.get('auth');
     const body = c.req.valid('json');
@@ -577,7 +578,7 @@ router.post('/legal-draft', zValidator('json', LegalDraftSchema), async (c) => {
   } catch (err) {
     return internalError(c, err);
   }
-});
+}));
 
 router.get('/legal-drafts', async (c) => {
   try {
@@ -615,7 +616,7 @@ const VoiceTurnSchema = z.object({
   callerPhone: z.string().max(40).optional(),
 });
 
-router.post('/voice/turn', zValidator('json', VoiceTurnSchema), async (c) => {
+router.post('/voice/turn', zValidator('json', VoiceTurnSchema), withSecurityEvents({ action: 'ai-native.create', resource: 'ai-native', severity: 'info' }, async (c) => {
   try {
     const auth = c.get('auth');
     const body = c.req.valid('json');
@@ -641,6 +642,6 @@ router.post('/voice/turn', zValidator('json', VoiceTurnSchema), async (c) => {
   } catch (err) {
     return internalError(c, err);
   }
-});
+}));
 
 export default router;

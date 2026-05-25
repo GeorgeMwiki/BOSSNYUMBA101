@@ -45,8 +45,14 @@ const OptionalSchema = z.object({
   // Auth — additional JWT knobs
   JWT_ACCESS_SECRET: z.string().min(32).optional(),
   JWT_REFRESH_SECRET: z.string().min(32).optional(),
+  // P84 audit: JWT_ISSUER + JWT_AUDIENCE are validated here (dev/test
+  // default ok) but the live auth middleware (auth.middleware.ts) fails
+  // fast in production when unset, per BUG-HI-4. Default was
+  // 'bossnyumba-client' here but 'bossnyumba-api' in the middleware —
+  // aligned to 'bossnyumba-api' so tokens issued under the validated
+  // env match the verifier when neither is explicitly configured.
   JWT_ISSUER: z.string().default('bossnyumba'),
-  JWT_AUDIENCE: z.string().default('bossnyumba-client'),
+  JWT_AUDIENCE: z.string().default('bossnyumba-api'),
 
   // CORS
   ALLOWED_ORIGINS: z.string().optional(),

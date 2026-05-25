@@ -48,6 +48,7 @@ import gepgRouter from '../routes/gepg.router';
 import interactiveReportsRouter from '../routes/interactive-reports.router';
 import lettersRouter from '../routes/letters.router';
 import { marketplaceRouter } from '../routes/marketplace.router';
+import { universalMarketplaceRouter } from '../routes/marketplace/index.js';
 import { negotiationsRouter } from '../routes/negotiations.router';
 import occupancyTimelineRouter from '../routes/occupancy-timeline.router';
 import renewalsRouter from '../routes/renewals.router';
@@ -104,6 +105,7 @@ export function buildStaticRouterCatalog(): MountedRouter[] {
     { prefix: '/interactive-reports', app: interactiveReportsRouter, defaultTag: 'interactive-reports' },
     { prefix: '/letters', app: lettersRouter, defaultTag: 'letters' },
     { prefix: '/marketplace', app: marketplaceRouter, defaultTag: 'marketplace' },
+    { prefix: '/marketplace-universal', app: universalMarketplaceRouter, defaultTag: 'marketplace-universal' },
     { prefix: '/negotiations', app: negotiationsRouter, defaultTag: 'negotiations' },
     { prefix: '/occupancy-timeline', app: occupancyTimelineRouter, defaultTag: 'occupancy-timeline' },
     { prefix: '/renewals', app: renewalsRouter, defaultTag: 'renewals' },

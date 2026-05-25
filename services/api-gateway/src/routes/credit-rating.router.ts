@@ -28,6 +28,7 @@ import {
 } from '@bossnyumba/ai-copilot';
 import { scrubMessage } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const RecordPromiseSchema = z.object({
   kind: z.enum(['extension', 'installment', 'lease_amendment']),
   agreedDate: z.string().datetime(),
@@ -154,7 +155,7 @@ app.post(
     UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
   ),
-  async (c: any) => {
+  withSecurityEvents({ action: 'credit-rating.create', resource: 'credit-rating', severity: 'info' }, async (c: any) => {
     const s = svc(c);
     if (!s) return notConfigured(c);
     const tenantId = c.get('tenantId');
@@ -165,7 +166,7 @@ app.post(
     } catch (err) {
       return mapError(c, err);
     }
-  },
+  }),
 );
 
 // --- POST record promise outcome (admin) ------------------------------------
@@ -179,7 +180,7 @@ app.post(
     UserRole.ADMIN,
   ),
   zValidator('json', RecordPromiseSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'credit-rating.create', resource: 'credit-rating', severity: 'info' }, async (c: any) => {
     const s = svc(c);
     if (!s) return notConfigured(c);
     const tenantId = c.get('tenantId');
@@ -191,7 +192,7 @@ app.post(
     } catch (err) {
       return mapError(c, err);
     }
-  },
+  }),
 );
 
 // --- GET self-service rating ------------------------------------------------
@@ -225,7 +226,7 @@ app.get('/my-rating', async (c: any) => {
 app.post(
   '/my-rating/opt-in-sharing',
   zValidator('json', OptInShareSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'credit-rating.create', resource: 'credit-rating', severity: 'info' }, async (c: any) => {
     const s = svc(c);
     if (!s) return notConfigured(c);
     const tenantId = c.get('tenantId');
@@ -255,7 +256,7 @@ app.post(
     } catch (err) {
       return mapError(c, err);
     }
-  },
+  }),
 );
 
 // --- GET portable certificate -----------------------------------------------
@@ -330,7 +331,7 @@ app.put(
   '/weights',
   requireRole(UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN, UserRole.ADMIN),
   zValidator('json', WeightsSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'credit-rating.update', resource: 'credit-rating', severity: 'info' }, async (c: any) => {
     const s = svc(c);
     if (!s) return notConfigured(c);
     const tenantId = c.get('tenantId');
@@ -341,7 +342,7 @@ app.put(
     } catch (err) {
       return mapError(c, err);
     }
-  },
+  }),
 );
 
 export default app;

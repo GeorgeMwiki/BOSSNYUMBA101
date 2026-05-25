@@ -104,7 +104,7 @@ export class StripePaymentProvider extends BasePaymentProvider {
         metadata: customer.metadata as Record<string, string>
       };
     } catch (error) {
-      if ((error as any).code === 'resource_missing') {
+      if ((error as { readonly code?: string }).code === 'resource_missing') {
         return null;
       }
       throw error;
@@ -326,7 +326,7 @@ export class StripePaymentProvider extends BasePaymentProvider {
       const account = await this.stripe.accounts.retrieve(accountId);
       return this.mapConnectedAccount(account);
     } catch (error) {
-      if ((error as any).code === 'resource_missing') {
+      if ((error as { readonly code?: string }).code === 'resource_missing') {
         return null;
       }
       throw error;

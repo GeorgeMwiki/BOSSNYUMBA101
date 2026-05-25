@@ -16,6 +16,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ---------------------------------------------------------------------------
 // Deps — inject the preference service so the gateway doesn't import the
 // notifications package directly (keeps service boundaries crisp).
@@ -75,7 +76,7 @@ export function createNotificationPreferencesRouter(api: PreferencesApi): Hono {
     return c.json({ data: prefs });
   });
 
-  app.put('/', async (c) => {
+  app.put('/', withSecurityEvents({ action: 'notification-preference.update', resource: 'notification-preference', severity: 'info' }, async (c) => {
     const auth = c.get('auth');
     if (!auth) {
       return c.json({ error: { code: 'UNAUTHORIZED', message: 'Auth required' } }, 401);
@@ -101,7 +102,7 @@ export function createNotificationPreferencesRouter(api: PreferencesApi): Hono {
     }
     const updated = api.upsertPreferences(auth.userId, auth.tenantId, parsed.data);
     return c.json({ data: updated });
-  });
+  }));
 
   return app;
 }

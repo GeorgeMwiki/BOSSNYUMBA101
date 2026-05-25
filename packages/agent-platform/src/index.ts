@@ -79,3 +79,6 @@ export {
 
 // Agent card
 export { generateAgentCard, type AgentCardDeps } from './agent-card.js';
+
+// A2A (Agent-to-Agent) protocol v1.0 — Google / Linux Foundation
+export * as a2a from './a2a/index.js';

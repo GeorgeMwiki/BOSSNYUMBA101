@@ -27,6 +27,7 @@ import {
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -112,7 +113,7 @@ function newId(prefix: string): string {
 app.post(
   '/:id/action-plans/:aid/ack',
   zValidator('json', AckBodySchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'interactive-report.create', resource: 'interactive-report', severity: 'info' }, async (c: any) => {
     const tenantId = c.get('tenantId');
     const userId = c.get('userId');
     const interactiveReportVersionId = c.req.param('id');
@@ -272,7 +273,7 @@ app.post(
       },
       202
     );
-  }
+  })
 );
 
 export default app;

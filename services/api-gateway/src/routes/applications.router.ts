@@ -17,6 +17,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -61,7 +62,7 @@ app.get('/', async (c: any) => {
   });
 });
 
-app.post('/route', zValidator('json', RouteBodySchema), async (c: any) => {
+app.post('/route', zValidator('json', RouteBodySchema), withSecurityEvents({ action: 'application.create', resource: 'application', severity: 'info' }, async (c: any) => {
   const router = c.get('stationMasterRouter');
   if (!router) return notConfigured(c);
   const tenantId = c.get('tenantId');
@@ -79,6 +80,6 @@ app.post('/route', zValidator('json', RouteBodySchema), async (c: any) => {
       status
     );
   }
-});
+}));
 
 export default app;

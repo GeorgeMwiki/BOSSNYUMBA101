@@ -25,6 +25,7 @@ import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ─────────────────────────────────────────────────────────────────────
 // Port shape — duck-typed against `KernelPromptRegistryService` so the
 // router does not compile-time-depend on @bossnyumba/database.
@@ -156,7 +157,7 @@ export function createPromptRolloutRouter(
     '/:capability/shadow',
     zValidator('param', capabilityParamSchema),
     zValidator('json', shadowBodySchema),
-    async (c) => {
+    withSecurityEvents({ action: 'prompt-rollout.create', resource: 'prompt-rollout', severity: 'info' }, async (c) => {
       const { capability } = c.req.valid('param');
       const body = c.req.valid('json');
       const auth = c.get('auth');
@@ -180,14 +181,14 @@ export function createPromptRolloutRouter(
           400,
         );
       }
-    },
+    }),
   );
 
   app.post(
     '/:capability/promote',
     zValidator('param', capabilityParamSchema),
     zValidator('json', promoteBodySchema),
-    async (c) => {
+    withSecurityEvents({ action: 'prompt-rollout.create', resource: 'prompt-rollout', severity: 'info' }, async (c) => {
       const { capability } = c.req.valid('param');
       const body = c.req.valid('json');
       const auth = c.get('auth');
@@ -209,14 +210,14 @@ export function createPromptRolloutRouter(
           400,
         );
       }
-    },
+    }),
   );
 
   app.post(
     '/:capability/rollback',
     zValidator('param', capabilityParamSchema),
     zValidator('json', rollbackBodySchema),
-    async (c) => {
+    withSecurityEvents({ action: 'prompt-rollout.create', resource: 'prompt-rollout', severity: 'info' }, async (c) => {
       const { capability } = c.req.valid('param');
       const body = c.req.valid('json');
       const auth = c.get('auth');
@@ -257,7 +258,7 @@ export function createPromptRolloutRouter(
           500,
         );
       }
-    },
+    }),
   );
 
   return app;

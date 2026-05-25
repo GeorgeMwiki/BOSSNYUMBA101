@@ -25,7 +25,23 @@ import {
 } from '@bossnyumba/chat-ui';
 import { AdaptiveRenderer, type AgUiUiPart } from '@bossnyumba/genui';
 
-const DEFAULT_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL ?? 'http://localhost:4000';
+// Build-time guard: production deployments MUST set
+// NEXT_PUBLIC_API_GATEWAY_URL. The localhost fallback exists only so a
+// developer running `next dev` against the local gateway gets a working
+// console without explicit env wiring. Any non-development NODE_ENV
+// without the env var fails loud at module load — silent prod routing
+// to localhost is a P0 misconfiguration bug.
+function resolveGatewayUrl(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_API_GATEWAY_URL?.trim();
+  if (fromEnv && fromEnv.length > 0) return fromEnv;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'NEXT_PUBLIC_API_GATEWAY_URL is required in production builds of estate-manager-app.',
+    );
+  }
+  return 'http://localhost:4000';
+}
+const DEFAULT_GATEWAY = resolveGatewayUrl();
 
 // UI-side cap. The gateway enforces 10 / 4 MiB per attachment as the hard
 // server-side limit; the console intentionally caps lower so a manager

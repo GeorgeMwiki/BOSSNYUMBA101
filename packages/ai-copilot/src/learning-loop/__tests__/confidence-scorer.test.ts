@@ -247,6 +247,46 @@ describe('createConfidenceScorer.scoreAction (async)', () => {
   });
 });
 
+describe('createConfidenceScorer — numerical-contradiction penalty (May 18 §5 closure)', () => {
+  it('applies no penalty when the feature is absent', () => {
+    const scorer = createConfidenceScorer();
+    const score = scorer.scoreActionSync(baseCtx);
+    expect(score.value).toBe(0.5);
+    expect(score.reasoning).not.toContain('numerical-contradictions');
+  });
+
+  it('applies linear penalty for 1 contradiction (-0.08)', () => {
+    const scorer = createConfidenceScorer();
+    const score = scorer.scoreActionSync(ctx({ numericalContradictionCount: 1 }));
+    expect(score.value).toBeCloseTo(0.42, 5);
+    expect(score.reasoning).toContain('numerical-contradictions(1)');
+  });
+
+  it('caps at -0.24 for 3+ contradictions', () => {
+    const scorer = createConfidenceScorer();
+    const score = scorer.scoreActionSync(ctx({ numericalContradictionCount: 10 }));
+    expect(score.value).toBeCloseTo(0.26, 5);
+    expect(score.reasoning).toContain('numerical-contradictions(10)');
+  });
+
+  it('ignores non-positive, NaN, or non-numeric values', () => {
+    const scorer = createConfidenceScorer();
+    expect(scorer.scoreActionSync(ctx({ numericalContradictionCount: 0 })).value).toBe(0.5);
+    expect(scorer.scoreActionSync(ctx({ numericalContradictionCount: -3 })).value).toBe(0.5);
+    expect(scorer.scoreActionSync(ctx({ numericalContradictionCount: NaN })).value).toBe(0.5);
+    expect(scorer.scoreActionSync(ctx({ numericalContradictionCount: 'two' })).value).toBe(0.5);
+  });
+
+  it('stacks with legal-notice penalty without exceeding clamp', () => {
+    const scorer = createConfidenceScorer();
+    const score = scorer.scoreActionSync(
+      ctx({ numericalContradictionCount: 3, isLegalNotice: true }),
+    );
+    // 0.5 - 0.15 (legal) - 0.24 (contra) - 0.05 (risk-feature isLegalNotice) = 0.06
+    expect(score.value).toBeCloseTo(0.06, 5);
+  });
+});
+
 describe('requiresHumanReview', () => {
   function score(value: number): ConfidenceScore {
     return { value, baseline: value, llmAdjustment: 0, reasoning: '' };

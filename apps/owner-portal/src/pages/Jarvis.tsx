@@ -24,7 +24,21 @@ import {
   type VoiceAudioPort,
 } from '@bossnyumba/chat-ui';
 
-const DEFAULT_GATEWAY = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+// Build-time guard: production builds MUST define VITE_API_URL. Vite
+// inlines `import.meta.env.PROD` so this collapses to a constant `true`
+// in a prod bundle — any deployer that forgets the env var sees a loud
+// boot error instead of the console silently calling localhost:4000.
+function resolveGatewayUrl(): string {
+  const fromEnv = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+  if (fromEnv && fromEnv.length > 0) return fromEnv;
+  if (import.meta.env.PROD) {
+    throw new Error(
+      'VITE_API_URL is required in production builds of owner-portal.',
+    );
+  }
+  return 'http://localhost:4000';
+}
+const DEFAULT_GATEWAY = resolveGatewayUrl();
 
 // UI-side cap. The gateway enforces 10 / 4 MiB per attachment as the
 // hard server-side limit; the console intentionally caps lower so an

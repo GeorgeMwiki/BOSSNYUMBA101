@@ -51,15 +51,44 @@ export interface BulkSmsRequest {
 const SANDBOX_URL = 'https://api.sandbox.africastalking.com/version1';
 const PRODUCTION_URL = 'https://api.africastalking.com/version1';
 
+function resolveAtEnvironment(
+  override: 'sandbox' | 'production' | undefined,
+): 'sandbox' | 'production' {
+  if (override === 'sandbox' || override === 'production') return override;
+  const fromEnv = (
+    process.env.AFRICAS_TALKING_ENVIRONMENT ?? process.env.AT_ENVIRONMENT
+  )
+    ?.trim()
+    .toLowerCase();
+  if (fromEnv === 'sandbox' || fromEnv === 'production') return fromEnv;
+  throw new Error(
+    'AFRICAS_TALKING_ENVIRONMENT (or AT_ENVIRONMENT) must be set to "sandbox" or "production"',
+  );
+}
+
+function resolveAtUsername(override: string | undefined): string {
+  const v = (
+    override ??
+    process.env.AFRICAS_TALKING_USERNAME ??
+    process.env.AT_USERNAME
+  )?.trim();
+  if (!v) {
+    throw new Error(
+      'AFRICAS_TALKING_USERNAME (or AT_USERNAME) must be set — no silent "sandbox" default',
+    );
+  }
+  return v;
+}
+
 export class AfricasTalkingSms {
   private config: AfricasTalkingConfig;
   private client: AxiosInstance;
 
   constructor(config?: Partial<AfricasTalkingConfig>) {
-    const env = (config?.environment ?? process.env.AFRICAS_TALKING_ENVIRONMENT ?? process.env.AT_ENVIRONMENT ?? 'sandbox') as 'sandbox' | 'production';
+    const env = resolveAtEnvironment(config?.environment);
     this.config = {
       apiKey: config?.apiKey || process.env.AFRICAS_TALKING_API_KEY || process.env.AT_API_KEY || '',
-      username: config?.username || process.env.AFRICAS_TALKING_USERNAME || process.env.AT_USERNAME || 'sandbox',
+      username: resolveAtUsername(config?.username),
       environment: env,
       senderId: config?.senderId || process.env.AFRICAS_TALKING_SENDER_ID || process.env.AT_SENDER_ID,
     };

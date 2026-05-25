@@ -17,7 +17,7 @@ const HOT_PREFIXES: ReadonlyArray<[string, string]> = [
   ['/api/v1/mcp', 'mcp'],
   ['/api/v1/voice', 'voice'],
   ['/api/v1/public/marketing', 'marketing-brain'],
-  ['/api/v1/workflows', 'workflows'],
+  ['/api/v1/workflow', 'workflow'],
 ];
 
 function pathSurface(path: string): string {

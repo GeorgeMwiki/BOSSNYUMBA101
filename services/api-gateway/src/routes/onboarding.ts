@@ -36,6 +36,7 @@ import {
 import { InMemoryEventBus } from '@bossnyumba/domain-services';
 import type { TenantId, CustomerId, LeaseId } from '@bossnyumba/domain-models';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ---------------------------------------------------------------------------
 // Process-wide in-memory repo. Tenant isolation is enforced by the
 // composite `tenantId::id` key.
@@ -114,7 +115,7 @@ app.get('/', (c) => {
   });
 });
 
-app.post('/', zValidator('json', StartSchema), async (c) => {
+app.post('/', zValidator('json', StartSchema), withSecurityEvents({ action: 'onboarding.create', resource: 'onboarding', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const correlationId =
@@ -143,7 +144,7 @@ app.post('/', zValidator('json', StartSchema), async (c) => {
     );
   }
   return c.json({ success: true, data: result.value }, 201);
-});
+}));
 
 app.get('/:id', async (c) => {
   const auth = c.get('auth');
@@ -161,7 +162,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: session });
 });
 
-app.post('/:id/complete-step', zValidator('json', CompleteStepSchema), async (c) => {
+app.post('/:id/complete-step', zValidator('json', CompleteStepSchema), withSecurityEvents({ action: 'onboarding.create', resource: 'onboarding', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id');
   const body = c.req.valid('json');
@@ -191,6 +192,6 @@ app.post('/:id/complete-step', zValidator('json', CompleteStepSchema), async (c)
     );
   }
   return c.json({ success: true, data: result.value });
-});
+}));
 
 export const onboardingRouter = app;

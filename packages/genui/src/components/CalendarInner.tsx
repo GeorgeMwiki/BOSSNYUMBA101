@@ -6,19 +6,30 @@
  */
 
 // @ts-ignore — module is a peer dep of the consuming app
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import FullCalendarMod from '@fullcalendar/react';
 // @ts-ignore — module is a peer dep of the consuming app
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import dayGridPlugin from '@fullcalendar/daygrid';
 // @ts-ignore — module is a peer dep of the consuming app
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import timeGridPlugin from '@fullcalendar/timegrid';
 
+import type { ComponentType } from 'react';
 import type { CalendarEvent } from '../types';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const FullCalendar = FullCalendarMod as any;
+interface FullCalendarEventInput {
+  readonly id?: string;
+  readonly title: string;
+  readonly start: string;
+  readonly end?: string;
+  readonly color?: string;
+}
+interface FullCalendarProps {
+  readonly plugins: ReadonlyArray<unknown>;
+  readonly initialView?: string;
+  readonly events: ReadonlyArray<FullCalendarEventInput>;
+  readonly height?: 'auto' | number | string;
+}
+
+const FullCalendar = FullCalendarMod as unknown as ComponentType<FullCalendarProps>;
 
 export interface CalendarInnerProps {
   readonly events: ReadonlyArray<CalendarEvent>;

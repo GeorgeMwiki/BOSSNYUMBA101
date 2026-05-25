@@ -21,6 +21,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -70,7 +71,7 @@ app.get('/', async (c: any) => {
   });
 });
 
-app.post('/', zValidator('json', FileClaimSchema), async (c: any) => {
+app.post('/', zValidator('json', FileClaimSchema), withSecurityEvents({ action: 'damage-deduction.create', resource: 'damage-deduction', severity: 'info' }, async (c: any) => {
   const service = c.get('damageDeductionService');
   if (!service) return notConfigured(c);
   try {
@@ -92,7 +93,7 @@ app.post('/', zValidator('json', FileClaimSchema), async (c: any) => {
       fallback: 'Failed to file damage claim',
     });
   }
-});
+}));
 
 app.get('/open', async (c: any) => {
   const repo = c.get('services')?.damageDeductions?.repo;
@@ -136,7 +137,7 @@ app.get('/:id', async (c: any) => {
   }
 });
 
-app.post('/:id/respond', zValidator('json', RespondSchema), async (c: any) => {
+app.post('/:id/respond', zValidator('json', RespondSchema), withSecurityEvents({ action: 'damage-deduction.create', resource: 'damage-deduction', severity: 'info' }, async (c: any) => {
   const service = c.get('damageDeductionService');
   if (!service) return notConfigured(c);
   try {
@@ -157,9 +158,9 @@ app.post('/:id/respond', zValidator('json', RespondSchema), async (c: any) => {
       fallback: 'Failed to record tenant response',
     });
   }
-});
+}));
 
-app.post('/:id/mediate', async (c: any) => {
+app.post('/:id/mediate', withSecurityEvents({ action: 'damage-deduction.create', resource: 'damage-deduction', severity: 'info' }, async (c: any) => {
   const service = c.get('damageDeductionService');
   if (!service) return notConfigured(c);
   try {
@@ -179,9 +180,9 @@ app.post('/:id/mediate', async (c: any) => {
       fallback: 'Failed to run AI mediator',
     });
   }
-});
+}));
 
-app.post('/:id/settle', zValidator('json', SettleSchema), async (c: any) => {
+app.post('/:id/settle', zValidator('json', SettleSchema), withSecurityEvents({ action: 'damage-deduction.create', resource: 'damage-deduction', severity: 'info' }, async (c: any) => {
   const service = c.get('damageDeductionService');
   if (!service) return notConfigured(c);
   try {
@@ -202,9 +203,9 @@ app.post('/:id/settle', zValidator('json', SettleSchema), async (c: any) => {
       fallback: 'Failed to settle damage claim',
     });
   }
-});
+}));
 
-app.post('/:id/evidence-bundle', async (c: any) => {
+app.post('/:id/evidence-bundle', withSecurityEvents({ action: 'damage-deduction.create', resource: 'damage-deduction', severity: 'info' }, async (c: any) => {
   const service = c.get('damageDeductionService');
   if (!service) return notConfigured(c);
   try {
@@ -229,6 +230,6 @@ app.post('/:id/evidence-bundle', async (c: any) => {
       fallback: 'Failed to build evidence bundle',
     });
   }
-});
+}));
 
 export default app;

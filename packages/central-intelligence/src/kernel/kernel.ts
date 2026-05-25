@@ -39,6 +39,7 @@ import type {
   GroundingFactsProvider,
   KernelStreamEvent,
   MemoryHierarchy,
+  MultiLLMSynthesizerPort,
   PersonaDriftSink,
   ProvenanceRecord,
   ProvenanceSink,
@@ -294,6 +295,31 @@ export interface BrainKernelDeps {
     shouldDebate(req: ThoughtRequest): boolean;
     runDebate(question: string, context: string): Promise<DebateOutcome>;
   };
+  /**
+   * Optional multi-LLM synthesizer port. When supplied AND the inbound
+   * turn carries `req.requireSynthesis === true`, the kernel replaces
+   * the single sensor call at step 7 with a mixture-of-agents fan-out
+   * (typically Anthropic + OpenAI + DeepSeek) followed by a Claude-Opus
+   * synthesis pass. The synthesizer output is plugged in as a sensor
+   * result so steps 8-13 (normalize, judge, drift, policy, confidence,
+   * provenance) keep working unchanged.
+   *
+   * The toggle defaults OFF (`requireSynthesis` is opt-in per turn) so
+   * existing single-shot callers keep their cost profile. On any
+   * failure (proposer rejection, synthesizer error, network) the kernel
+   * falls back to the single-shot path and records `synthesis-fallback`
+   * on the trace.
+   *
+   * Composition root (`services/api-gateway/src/composition/multi-llm-
+   * synthesizer-wiring.ts`) builds the port from
+   * `@bossnyumba/ai-copilot/providers/multi-llm-synthesizer.ts`.
+   *
+   * Distinct from `debate` (above): synthesis runs N providers ONCE in
+   * parallel and merges; debate runs N voices × R rounds sequentially.
+   * Synthesis is cheaper and emits an agreement metric the judge can
+   * escalate on. Debate wins when both are eligible on the same turn.
+   */
+  readonly synthesizer?: MultiLLMSynthesizerPort;
   /**
    * Optional agency port. When supplied, step 4 (memory recall) also
    * reads the user's ACTIVE goals via `agency.goals.list(...)` and
@@ -1103,6 +1129,18 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         (req.stakes === 'high' || req.stakes === 'critical') &&
         deps.debate.shouldDebate(req);
 
+      // Synthesizer eligibility — opt-in per turn via
+      // `req.requireSynthesis`. The optional `shouldSynthesize(req)`
+      // gate on the port lets adapters apply a tier ceiling (e.g. skip
+      // when `stakes === 'low'` to save spend). Debate wins when both
+      // are eligible — see the dep jsdoc for the rationale.
+      const synthesizerEligible =
+        !debateEligible &&
+        deps.synthesizer !== undefined &&
+        req.requireSynthesis === true &&
+        (deps.synthesizer.shouldSynthesize === undefined ||
+          deps.synthesizer.shouldSynthesize(req));
+
       let sensorResult: SensorCallResult;
       let debateRoundsCompleted: number | undefined;
       let debateConverged: boolean | undefined;
@@ -1159,6 +1197,62 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
             'sensor-call',
             sensorStart,
             `sensor=${sensorResult.sensorId} model=${sensorResult.modelId}`,
+          );
+        }
+      } else if (synthesizerEligible && deps.synthesizer) {
+        // Multi-LLM synthesizer detour. Fan out across N proposers
+        // (typically Anthropic + OpenAI + DeepSeek) and synthesize via
+        // Claude Opus. The synthesis text is plugged in as a sensor
+        // result so steps 8-13 (normalize → confidence → provenance)
+        // work unchanged. Failure collapses to the single-shot path so
+        // a synthesizer outage NEVER blocks the user's turn.
+        const synthesisStart = clock().getTime();
+        try {
+          const synthOut = await deps.synthesizer.synthesize({
+            systemPrompt: system,
+            userMessage: scrubbedUserMessage,
+            priorTurns,
+            stakes: req.stakes,
+            mode: 'merge',
+          });
+          sensorResult = {
+            text: synthOut.content,
+            thought: null,
+            toolCalls: [],
+            latencyMs: synthOut.latencyMs,
+            modelId: synthOut.modelId,
+            sensorId: '__multi-llm-synthesizer__',
+          };
+          traceStep(
+            'sensor-call',
+            sensorStart,
+            `synthesizer ok proposers=${synthOut.proposerSuccessCount}/${
+              synthOut.proposerSuccessCount + synthOut.proposerFailureCount
+            } agreement=${synthOut.agreement.toFixed(2)} escalate=${synthOut.escalate} fallback=${synthOut.synthesizerFallback}`,
+          );
+        } catch (e) {
+          traceStep(
+            'sensor-call',
+            synthesisStart,
+            'synthesizer failed; falling back to single-shot',
+            e,
+          );
+          sensorResult = await router.call(
+            {
+              system,
+              systemPrompt: system,
+              userMessage: scrubbedUserMessage,
+              priorTurns,
+              extendedThinking: wantsThinking,
+              stakes: req.stakes,
+              ...(req.attachments ? { attachments: req.attachments } : {}),
+            },
+            required,
+          );
+          traceStep(
+            'sensor-call',
+            sensorStart,
+            `sensor=${sensorResult.sensorId} model=${sensorResult.modelId} (post-synth-fallback)`,
           );
         }
       } else {

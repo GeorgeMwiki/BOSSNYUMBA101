@@ -17,6 +17,7 @@
 export interface PlatformFeeEnvLike {
   readonly PLATFORM_FEE_BPS?: string;
   readonly PLATFORM_FEE_PERCENT?: string;
+  readonly NODE_ENV?: string;
 }
 
 export interface PlatformFeeLogger {
@@ -27,7 +28,13 @@ export const PLATFORM_FEE_DEFAULT_BPS = 500;
 
 /**
  * Resolve the configured fee in basis points. Precedence:
- *   PLATFORM_FEE_BPS (preferred) → PLATFORM_FEE_PERCENT (deprecated) → 500 bps.
+ *   PLATFORM_FEE_BPS (preferred) → PLATFORM_FEE_PERCENT (deprecated) →
+ *   500 bps (DEV/TEST only — throws in production).
+ *
+ * P84 audit BUG-HI-5: a deployer who forgets to set `PLATFORM_FEE_BPS`
+ * would silently charge 5% on every payment. We now fail-fast in
+ * production. In dev/test the 500 bps default is preserved so existing
+ * test fixtures keep working but a `logger.warn` is emitted.
  *
  * `logger` is optional so tests can call this in isolation; production
  * passes the pino logger from `server.ts`.
@@ -61,6 +68,19 @@ export function resolvePlatformFeeBps(
       );
     }
     return Math.round(pct * 100);
+  }
+  // No explicit config — fail-fast in production so we never silently
+  // charge 5% (the historical default) on real money flows.
+  if (env.NODE_ENV === 'production') {
+    throw new Error(
+      'PLATFORM_FEE_UNCONFIGURED: set PLATFORM_FEE_BPS (preferred, integer basis points in [0, 10000]) or PLATFORM_FEE_PERCENT (deprecated, percent in [0, 100]).',
+    );
+  }
+  if (logger) {
+    logger.warn(
+      { default: PLATFORM_FEE_DEFAULT_BPS },
+      `platform-fee: using DEV default ${PLATFORM_FEE_DEFAULT_BPS} bps — set PLATFORM_FEE_BPS in production`,
+    );
   }
   return PLATFORM_FEE_DEFAULT_BPS;
 }

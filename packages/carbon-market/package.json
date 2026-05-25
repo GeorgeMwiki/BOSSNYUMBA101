@@ -1,0 +1,34 @@
+{
+  "name": "@bossnyumba/carbon-market",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Carbon-market trading-desk layer: Verra (VCS) registry client, Climate Impact X (CIX) spot/forward feed adapters, on-chain tokenized-credit verification (Toucan/KlimaDAO/Moss), and a trading-desk orchestrator that plans purchases, books paper forwards, marks-to-market, and runs jurisdictional compliance (CORSIA, Article 6.2/6.4, domestic-only). Network boundary is injectable so production wires live HTTP / RPC adapters and tests stay offline.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@bossnyumba/enterprise-hardening": "workspace:*",
+    "viem": "^2.21.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

@@ -13,6 +13,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const CreateSessionSchema = z.object({
   title: z.string().min(1).max(200),
   language: z.enum(['en', 'sw', 'mixed']).optional(),
@@ -69,7 +70,7 @@ function mapErr(c: any, err: unknown, fallback = 400) {
   );
 }
 
-app.post('/sessions', zValidator('json', CreateSessionSchema), async (c: any) => {
+app.post('/sessions', zValidator('json', CreateSessionSchema), withSecurityEvents({ action: 'classroom.create', resource: 'classroom', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const s = svc(c);
@@ -86,7 +87,7 @@ app.post('/sessions', zValidator('json', CreateSessionSchema), async (c: any) =>
   } catch (e: unknown) {
     return mapErr(c, e, 500);
   }
-});
+}));
 
 app.get('/sessions/:id', async (c: any) => {
   const auth = c.get('auth');
@@ -109,7 +110,7 @@ app.get('/sessions/:id', async (c: any) => {
 app.post(
   '/sessions/:id/quiz',
   zValidator('json', QuizAnswerSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'classroom.create', resource: 'classroom', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth');
     const body = c.req.valid('json');
     const s = svc(c);
@@ -124,7 +125,7 @@ app.post(
     } catch (e: unknown) {
       return mapErr(c, e, 500);
     }
-  }
+  })
 );
 
 app.get('/mastery/:userId', async (c: any) => {

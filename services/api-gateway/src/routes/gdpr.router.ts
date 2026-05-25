@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const DeleteRequestSchema = z.object({
   customerId: z.string().min(1).max(120),
   notes: z.string().max(2000).optional(),
@@ -76,7 +77,7 @@ app.post(
     UserRole.ADMIN,
   ),
   zValidator('json', DeleteRequestSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'gdpr.create', resource: 'gdpr', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth');
     const body = c.req.valid('json');
     const s = svc(c);
@@ -88,7 +89,7 @@ app.post(
       const { body: errBody, status } = mapError(e);
       return c.json(errBody, status);
     }
-  },
+  }),
 );
 
 app.get('/delete-request/:id', async (c: any) => {
@@ -120,7 +121,7 @@ app.get('/delete-requests', async (c: any) => {
 app.post(
   '/delete-request/:id/execute',
   requireRole(UserRole.SUPER_ADMIN),
-  async (c: any) => {
+  withSecurityEvents({ action: 'gdpr.create', resource: 'gdpr', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth');
     const s = svc(c);
     if (!s) return notImplemented(c);
@@ -162,7 +163,7 @@ app.post(
       const { body: errBody, status } = mapError(e);
       return c.json(errBody, status);
     }
-  },
+  }),
 );
 
 export const gdprRouter = app;

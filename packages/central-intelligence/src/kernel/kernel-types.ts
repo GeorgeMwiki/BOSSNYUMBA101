@@ -139,6 +139,31 @@ export interface ThoughtRequest {
    */
   readonly afterHoursOverride?: boolean;
   /**
+   * Deep-reasoning toggle. When `true` AND the kernel has a
+   * `MultiLLMSynthesizerPort` wired, the sensor step (7) is replaced
+   * with a mixture-of-agents fan-out across N proposer models followed
+   * by a Claude-Opus synthesis. Used for "I really need a calibrated
+   * answer" code paths: legal-adjacent advice, owner-payout strategy,
+   * rent-increase letters, eviction-letter drafting.
+   *
+   * Defaults to `false` so existing callers keep the single-shot sensor
+   * path. The synthesizer is a side-channel — when wired but flag is
+   * off, the kernel never spends budget on it. When flag is on but the
+   * synthesizer fails, the kernel falls back to the single-shot sensor
+   * path (logged on the decision trace).
+   *
+   * Distinct from `debate`:
+   *   - `debate` runs N voices × R rounds with a sequential-critic
+   *     pattern, intended for "advocate vs. critic vs. devil's
+   *     advocate" deliberation.
+   *   - `requireSynthesis` runs N providers ONCE in parallel and merges,
+   *     intended for cross-vendor blind-spot reduction (Anthropic +
+   *     OpenAI + DeepSeek). Cheaper, lower-variance, and the synthesis
+   *     output carries a Jaccard agreement score the caller can use
+   *     to escalate when proposers diverge.
+   */
+  readonly requireSynthesis?: boolean;
+  /**
    * Wave-13 F2 — optional intended action namespace string (e.g.
    * `md:create-lease`, `md:adjust-invoice`, `md:read-tenant`). When
    * the kernel is wired with `BrainKernelDeps.tierPolicy`, this
@@ -146,6 +171,68 @@ export interface ThoughtRequest {
    * sensor call. Absent action ⇒ tier-policy gate is a no-op.
    */
   readonly action?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Multi-LLM synthesizer port — duck-typed so the central-intelligence
+// package does not pick up a hard dep on `@bossnyumba/ai-copilot`. The
+// composition root wires the real
+// `createMultiLLMSynthesizer(...)` (Anthropic + OpenAI + DeepSeek
+// proposers + Claude Opus synthesizer) and the kernel calls
+// `synthesize(args)` when `req.requireSynthesis === true` lands on a
+// turn whose `stakes` warrants the cost.
+// ─────────────────────────────────────────────────────────────────────
+
+export interface MultiLLMSynthesizerCall {
+  /** System prompt the kernel composed at step 6. */
+  readonly systemPrompt: string;
+  /** User-facing message — kernel passes the PII-scrubbed text. */
+  readonly userMessage: string;
+  /** Prior turns the kernel already assembled. */
+  readonly priorTurns: ReadonlyArray<{
+    readonly role: 'user' | 'assistant';
+    readonly content: string;
+  }>;
+  /** Stakes — synthesizer adapters may use this to gate mode (jury vs. merge). */
+  readonly stakes: ThoughtRequest['stakes'];
+  /** Synthesis mode hint — adapter may override. */
+  readonly mode?: 'merge' | 'jury' | 'race-verify';
+}
+
+export interface MultiLLMSynthesizerResult {
+  /** Final synthesized text. Treated as a sensor output by the kernel. */
+  readonly content: string;
+  /** Number of proposers that returned a usable answer. */
+  readonly proposerSuccessCount: number;
+  /** Number of proposers that failed. */
+  readonly proposerFailureCount: number;
+  /** Agreement score [0, 1] across proposers' outputs. */
+  readonly agreement: number;
+  /** True iff agreement fell below the synthesizer's min threshold. */
+  readonly escalate: boolean;
+  /** True iff synthesizer LLM failed and we fell back to a proposer. */
+  readonly synthesizerFallback: boolean;
+  /** Model id of the synthesizer (or the fallback proposer). */
+  readonly modelId: string;
+  /** Total wall-clock latency for the whole fan-out + synthesis. */
+  readonly latencyMs: number;
+}
+
+/**
+ * Decision the kernel uses to gate the synthesizer detour. Adapters
+ * own the proposer/synthesizer construction so the kernel stays
+ * provider-agnostic; the kernel only owns the "should I" decision
+ * (driven by `req.requireSynthesis`).
+ */
+export interface MultiLLMSynthesizerPort {
+  /**
+   * Optional gate. When omitted, the kernel runs the synthesizer
+   * whenever `req.requireSynthesis === true`. Adapters can override
+   * to enforce a tier ceiling (e.g. skip on `stakes==='low'`).
+   */
+  shouldSynthesize?(req: ThoughtRequest): boolean;
+  /** Fan-out + synthesize. Errors propagate; the kernel catches. */
+  synthesize(args: MultiLLMSynthesizerCall): Promise<MultiLLMSynthesizerResult>;
 }
 
 // ─────────────────────────────────────────────────────────────────────

@@ -23,6 +23,7 @@ import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 import { safeInternalError } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 type AnyCtx = any;
 
 const WeightsInputSchema = z.object({
@@ -142,7 +143,7 @@ propertyGradingRouter.get('/portfolio', async (c: AnyCtx) => {
 propertyGradingRouter.post(
   '/recompute/:propertyId',
   requireRole(UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN, UserRole.ADMIN),
-  async (c: AnyCtx) => {
+  withSecurityEvents({ action: 'property-grading.create', resource: 'property-grading', severity: 'info' }, async (c: AnyCtx) => {
     const auth = c.get('auth');
     const svc = getService(c);
     if (!svc) return unavailable(c);
@@ -153,7 +154,7 @@ propertyGradingRouter.post(
     } catch (e) {
       return internalError(c, e);
     }
-  },
+  }),
 );
 
 propertyGradingRouter.get('/weights', async (c: AnyCtx) => {
@@ -171,7 +172,7 @@ propertyGradingRouter.get('/weights', async (c: AnyCtx) => {
 propertyGradingRouter.put(
   '/weights',
   requireRole(UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN, UserRole.ADMIN),
-  async (c: AnyCtx) => {
+  withSecurityEvents({ action: 'property-grading.update', resource: 'property-grading', severity: 'info' }, async (c: AnyCtx) => {
     const auth = c.get('auth');
     const svc = getService(c);
     if (!svc) return unavailable(c);
@@ -184,7 +185,7 @@ propertyGradingRouter.put(
     } catch (e) {
       return internalError(c, e);
     }
-  },
+  }),
 );
 
 export default propertyGradingRouter;

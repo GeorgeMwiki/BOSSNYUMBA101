@@ -7,6 +7,7 @@ import { databaseMiddleware } from '../middleware/database';
 import { majorToMinor, mapWorkOrderRow, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const WorkOrderCreateSchema = z.object({
   propertyId: z.string().min(1),
   unitId: z.string().optional(),
@@ -48,6 +49,21 @@ function workOrderNumber() {
   return `WO-${Date.now().toString().slice(-6)}`;
 }
 
+/**
+ * P84 audit: `new Date(maybeUserString)` silently returns an Invalid
+ * Date for malformed input, then writes `NaN` into the DB or throws a
+ * cryptic "RangeError: Invalid time value" downstream. Validate
+ * loudly so the caller receives a 400 instead.
+ */
+function parseUserDate(raw: string | undefined | null): Date | undefined {
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(`INVALID_DATE: '${raw}' is not a parseable ISO timestamp`);
+  }
+  return d;
+}
+
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
@@ -66,6 +82,24 @@ async function updateWorkOrder(c: any) {
       ? body.actualCost.amount
       : body.actualCost;
 
+  let scheduledAt: Date | undefined;
+  let completedAt: Date | undefined;
+  try {
+    scheduledAt = parseUserDate(body.scheduledAt ?? body.scheduledDate);
+    completedAt = parseUserDate(body.completedAt);
+  } catch (err) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'INVALID_DATE',
+          message: err instanceof Error ? err.message : 'Invalid date',
+        },
+      },
+      400,
+    );
+  }
+
   const row = await repos.workOrders.update(c.req.param('id'), auth.tenantId, {
     vendorId: body.vendorId,
     priority: body.priority ? String(body.priority).toLowerCase() : undefined,
@@ -77,8 +111,8 @@ async function updateWorkOrder(c: any) {
     attachments: body.attachments,
     estimatedCost: estimatedCost != null ? majorToMinor(estimatedCost) : undefined,
     actualCost: actualCost != null ? majorToMinor(actualCost) : undefined,
-    scheduledAt: body.scheduledAt || body.scheduledDate ? new Date(body.scheduledAt || body.scheduledDate) : undefined,
-    completedAt: body.completedAt ? new Date(body.completedAt) : undefined,
+    scheduledAt,
+    completedAt,
     completionNotes: body.completionNotes,
     updatedBy: auth.userId,
   });
@@ -132,7 +166,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapWorkOrderRow(row) });
 });
 
-app.post('/', zValidator('json', WorkOrderCreateSchema), async (c) => {
+app.post('/', zValidator('json', WorkOrderCreateSchema), withSecurityEvents({ action: 'work-order.create', resource: 'work-order', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -159,21 +193,21 @@ app.post('/', zValidator('json', WorkOrderCreateSchema), async (c) => {
     updatedBy: auth.userId,
   });
   return c.json({ success: true, data: mapWorkOrderRow(row) }, 201);
-});
+}));
 
-app.put('/:id', zValidator('json', WorkOrderUpdateSchema), async (c) => {
+app.put('/:id', zValidator('json', WorkOrderUpdateSchema), withSecurityEvents({ action: 'work-order.update', resource: 'work-order', severity: 'info' }, async (c) => {
   return updateWorkOrder(c);
-});
+}));
 
-app.patch('/:id', zValidator('json', WorkOrderUpdateSchema), async (c) => {
+app.patch('/:id', zValidator('json', WorkOrderUpdateSchema), withSecurityEvents({ action: 'work-order.update', resource: 'work-order', severity: 'info' }, async (c) => {
   return updateWorkOrder(c);
-});
+}));
 
-app.delete('/:id', async (c) => {
+app.delete('/:id', withSecurityEvents({ action: 'work-order.delete', resource: 'work-order', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   await repos.workOrders.delete(c.req.param('id'), auth.tenantId, auth.userId);
   return c.json({ success: true, data: { message: 'Work order deleted' } });
-});
+}));
 
 export const workOrdersRouter = app;

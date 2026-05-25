@@ -24,6 +24,7 @@ import {
   Sandbox,
 } from '@bossnyumba/marketing-brain';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const ScenarioRunSchema = z.object({
   sessionId: z.string().min(1).max(120),
   scenarioId: z.enum([
@@ -45,7 +46,7 @@ const store = Sandbox.createSandboxStore();
 
 const app = new Hono();
 
-app.post('/estate', zValidator('json', GenerateSchema), (c) => {
+app.post('/estate', zValidator('json', GenerateSchema), withSecurityEvents({ action: 'public-sandbox.create', resource: 'public-sandbox', severity: 'info' }, (c) => {
   const body = c.req.valid('json');
   const estate = Sandbox.generateSandboxEstate({
     sessionId: body.sessionId,
@@ -54,7 +55,7 @@ app.post('/estate', zValidator('json', GenerateSchema), (c) => {
   Sandbox.putSandbox(store, estate);
   Sandbox.gcSandboxes(store);
   return c.json({ success: true, data: estate });
-});
+}));
 
 app.get('/estate/:id', (c) => {
   const estate = Sandbox.getSandbox(store, c.req.param('id'));
@@ -90,18 +91,18 @@ app.get('/scenarios', (c) => {
   return c.json({ success: true, data: Sandbox.SCENARIO_CATALOG });
 });
 
-app.post('/scenarios/run', zValidator('json', ScenarioRunSchema), (c) => {
+app.post('/scenarios/run', zValidator('json', ScenarioRunSchema), withSecurityEvents({ action: 'public-sandbox.create', resource: 'public-sandbox', severity: 'info' }, (c) => {
   const body = c.req.valid('json');
   const estate = Sandbox.getSandbox(store, body.sessionId);
   if (!estate) return c.json(notFoundBody(), 404);
   const run = Sandbox.runScenario(body.scenarioId, estate);
   return c.json({ success: true, data: run });
-});
+}));
 
-app.delete('/estate/:id', (c) => {
+app.delete('/estate/:id', withSecurityEvents({ action: 'public-sandbox.delete', resource: 'public-sandbox', severity: 'notice' }, (c) => {
   const ok = Sandbox.deleteSandbox(store, c.req.param('id'));
   return c.json({ success: ok });
-});
+}));
 
 function notFoundBody() {
   return {

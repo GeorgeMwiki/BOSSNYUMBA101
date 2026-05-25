@@ -53,15 +53,18 @@ describe('inngest-client — env gating', () => {
     expect(client).toBeNull();
   });
 
-  it('createInngestClient returns null when inngest package not installed', async () => {
-    // No INNGEST_EVENT_KEY in env → forceEnabled to get past gate.
+  it('createInngestClient returns an Inngest client when package installed + enabled', async () => {
+    // 2026-05-24: inngest is now a real dep of api-gateway (per the
+    // durable-execution W4.5 wave). When forced enabled + key supplied,
+    // the factory returns a live Inngest app instance. The earlier
+    // assertion (`expect(client).toBeNull()`) tested the pre-install
+    // optional-load path and is no longer applicable.
     const client = await createInngestClient({
       forceEnabled: true,
       eventKey: 'evt_local',
     });
-    // The actual `inngest` package isn't in api-gateway's deps yet;
-    // the factory should fall back to null instead of crashing.
-    expect(client).toBeNull();
+    expect(client).not.toBeNull();
+    expect(typeof (client as { send?: unknown })?.send).toBe('function');
   });
 
   it('getInngestSigningKey returns null when env unset', () => {

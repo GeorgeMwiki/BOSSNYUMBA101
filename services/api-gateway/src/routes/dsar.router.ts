@@ -52,6 +52,7 @@ import {
   rateLimitStore as sharedRateLimitStore,
 } from '../middleware/rate-limiter';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ─────────────────────────────────────────────────────────────────────
 // Rate-limit bucket — 3 exports per tenant per hour. Bug fix
 // A-BUG-DEEP #2: previously held in a router-local Map; now backed by
@@ -378,7 +379,7 @@ export function createDsarRouter(opts: CreateDsarRouterOptions = {}): Hono {
   // Query params:
   //   ?dryRun=true  — preview which rows WOULD be touched, no writes.
   // ───────────────────────────────────────────────────────────────────
-  app.post('/:subjectId/rtbf', async (c: any) => {
+  app.post('/:subjectId/rtbf', withSecurityEvents({ action: 'dsar.create', resource: 'dsar', severity: 'info' }, async (c: any) => {
     const subjectId = c.req.param('subjectId');
     if (!subjectId || subjectId.trim().length === 0) {
       return badRequest(c, 'subjectId is required');
@@ -449,7 +450,7 @@ export function createDsarRouter(opts: CreateDsarRouterOptions = {}): Hono {
         fallback: 'Failed to execute RTBF request',
       });
     }
-  });
+  }));
 
   return app;
 }

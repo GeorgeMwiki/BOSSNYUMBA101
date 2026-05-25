@@ -27,6 +27,7 @@ import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
 import { createMoveOutChecklist } from '@bossnyumba/domain-services/lease';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -107,7 +108,7 @@ app.post(
     UserRole.ADMIN,
   ),
   zValidator('json', CreateChecklistSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'move-out.create', resource: 'move-out', severity: 'info' }, async (c: any) => {
     const service = svc(c);
     if (!service) return notConfigured(c);
     const tenantId = c.get('tenantId');
@@ -150,7 +151,7 @@ app.post(
         fallback: 'Failed to create move-out checklist',
       });
     }
-  },
+  }),
 );
 
 // ---------------------------------------------------------------------------
@@ -206,7 +207,7 @@ app.post(
     UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
   ),
-  async (c: any) => {
+  withSecurityEvents({ action: 'move-out.create', resource: 'move-out', severity: 'info' }, async (c: any) => {
     const service = svc(c);
     if (!service) return notConfigured(c);
     const tenantId = c.get('tenantId');
@@ -305,7 +306,7 @@ app.post(
         fallback: 'Failed to complete move-out step',
       });
     }
-  },
+  }),
 );
 
 // ---------------------------------------------------------------------------
@@ -323,7 +324,7 @@ app.post(
     UserRole.ADMIN,
   ),
   zValidator('json', FinalizeBody),
-  async (c: any) => {
+  withSecurityEvents({ action: 'move-out.create', resource: 'move-out', severity: 'info' }, async (c: any) => {
     const service = svc(c);
     if (!service) return notConfigured(c);
     const tenantId = c.get('tenantId');
@@ -379,7 +380,7 @@ app.post(
         fallback: 'Failed to finalize move-out',
       });
     }
-  },
+  }),
 );
 
 export default app;

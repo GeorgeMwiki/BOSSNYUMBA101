@@ -22,6 +22,7 @@ import { complianceExports } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const ScheduleSchema = z.object({
   exportType: z.enum(['tz_tra', 'ke_dpa', 'ke_kra', 'tz_land_act']),
   periodStart: z.string(),
@@ -90,7 +91,7 @@ complianceRouter.get('/exports', listExports);
 complianceRouter.post(
   '/exports',
   zValidator('json', ScheduleSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'compliance.create', resource: 'compliance', severity: 'info' }, async (c) => {
     const body = c.req.valid('json');
     const tenantId = c.get('tenantId');
     const userId = c.get('userId');
@@ -220,10 +221,10 @@ complianceRouter.post(
         fallback: 'Schedule failed',
       });
     }
-  },
+  }),
 );
 
-complianceRouter.post('/exports/:id/generate', async (c) => {
+complianceRouter.post('/exports/:id/generate', withSecurityEvents({ action: 'compliance.create', resource: 'compliance', severity: 'info' }, async (c) => {
   const id = c.req.param('id');
   const tenantId = c.get('tenantId');
   const service = c.get('complianceExportService');
@@ -241,7 +242,7 @@ complianceRouter.post('/exports/:id/generate', async (c) => {
       error instanceof Error ? error.message : 'Generation failed';
     return c.json({ success: false, error: { message } }, 400);
   }
-});
+}));
 
 complianceRouter.get('/exports/:id/download', async (c) => {
   const id = c.req.param('id');

@@ -8,16 +8,43 @@
  * the latest polygon. Read-only fences just render the polygon.
  */
 
-import { useState } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 
 // @ts-ignore — peer dep on the consuming app
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import * as ReactLeaflet from 'react-leaflet';
 
 import type { GeoFencePoint } from '../types';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { MapContainer, TileLayer, Polygon, Marker, useMapEvents } = ReactLeaflet as any;
+interface MapClickEvent {
+  readonly latlng: { readonly lat: number; readonly lng: number };
+}
+interface MapEventHandlers {
+  readonly click?: (e: MapClickEvent) => void;
+}
+interface ReactLeafletShape {
+  readonly MapContainer: ComponentType<{
+    readonly center: [number, number];
+    readonly zoom: number;
+    readonly style?: React.CSSProperties;
+    readonly children?: ReactNode;
+  }>;
+  readonly TileLayer: ComponentType<{
+    readonly url: string;
+    readonly attribution?: string;
+  }>;
+  readonly Polygon: ComponentType<{
+    readonly positions: ReadonlyArray<[number, number]>;
+    readonly pathOptions?: { readonly color?: string; readonly weight?: number };
+  }>;
+  readonly Marker: ComponentType<{
+    readonly position: [number, number];
+    readonly children?: ReactNode;
+  }>;
+  readonly useMapEvents: (handlers: MapEventHandlers) => void;
+}
+
+const { MapContainer, TileLayer, Polygon, Marker, useMapEvents } =
+  ReactLeaflet as unknown as ReactLeafletShape;
 
 export interface GeoFenceInnerProps {
   readonly center: readonly [number, number];
@@ -33,9 +60,8 @@ interface ClickCaptureProps {
 }
 
 function ClickCapture({ enabled, onAppend }: ClickCaptureProps): null {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   useMapEvents({
-    click: (e: any) => {
+    click: (e) => {
       if (!enabled) return;
       onAppend({ lat: e.latlng.lat, lng: e.latlng.lng });
     },

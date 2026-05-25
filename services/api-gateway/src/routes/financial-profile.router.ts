@@ -14,6 +14,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const IncomeSourceSchema = z.object({
   kind: z.enum([
     'salary',
@@ -109,7 +110,7 @@ financialProfileRouter.get('/', async (c) => {
 financialProfileRouter.post(
   '/statements',
   zValidator('json', SubmitStatementSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'financial-profile.create', resource: 'financial-profile', severity: 'info' }, async (c) => {
     const body = c.req.valid('json');
     const tenantId = c.get('tenantId');
     const userId = c.get('userId');
@@ -122,13 +123,13 @@ financialProfileRouter.post(
     return result.ok
       ? c.json({ success: true, data: result.value }, 201)
       : c.json({ success: false, error: result.error }, 400);
-  },
+  }),
 );
 
 financialProfileRouter.post(
   '/statements/:id/bank-ref',
   zValidator('json', BankReferenceSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'financial-profile.create', resource: 'financial-profile', severity: 'info' }, async (c) => {
     const id = c.req.param('id');
     const body = c.req.valid('json');
     const tenantId = c.get('tenantId');
@@ -142,13 +143,13 @@ financialProfileRouter.post(
     return result.ok
       ? c.json({ success: true, data: result.value })
       : c.json({ success: false, error: result.error }, 400);
-  },
+  }),
 );
 
 financialProfileRouter.post(
   '/litigation',
   zValidator('json', LitigationSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'financial-profile.create', resource: 'financial-profile', severity: 'info' }, async (c) => {
     const body = c.req.valid('json');
     const tenantId = c.get('tenantId');
     const userId = c.get('userId');
@@ -161,7 +162,7 @@ financialProfileRouter.post(
     return result.ok
       ? c.json({ success: true, data: result.value }, 201)
       : c.json({ success: false, error: result.error }, 400);
-  },
+  }),
 );
 
 export default financialProfileRouter;

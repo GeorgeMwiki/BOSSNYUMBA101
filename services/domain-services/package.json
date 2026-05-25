@@ -31,6 +31,7 @@
   "dependencies": {
     "@bossnyumba/database": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",
+    "@bossnyumba/storage-adapter": "workspace:*",
     "@react-pdf/renderer": "^3.4.5",
     "docxtemplater": "^3.68.5",
     "drizzle-orm": "^0.45.2",

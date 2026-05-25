@@ -20,6 +20,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -109,7 +110,7 @@ app.get('/', async (c: any) => {
   });
 });
 
-app.post('/components', zValidator('json', ComponentSchema), async (c: any) => {
+app.post('/components', zValidator('json', ComponentSchema), withSecurityEvents({ action: 'far.create', resource: 'far', severity: 'info' }, async (c: any) => {
   const service = c.get('farService');
   if (!service) return notConfigured(c);
   try {
@@ -147,7 +148,7 @@ app.post('/components', zValidator('json', ComponentSchema), async (c: any) => {
       fallback: 'Failed to register asset component',
     });
   }
-});
+}));
 
 app.get('/components/:id', async (c: any) => {
   const repo = c.get('services')?.far?.repo;
@@ -178,7 +179,7 @@ app.get('/components/:id', async (c: any) => {
 app.post(
   '/components/:id/assign',
   zValidator('json', AssignSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'far.create', resource: 'far', severity: 'info' }, async (c: any) => {
     const service = c.get('farService');
     if (!service) return notConfigured(c);
     try {
@@ -213,7 +214,7 @@ app.post(
         fallback: 'Failed to assign monitoring',
       });
     }
-  },
+  }),
 );
 
 app.get(
@@ -241,7 +242,7 @@ app.get(
 app.post(
   '/assignments/:id/check',
   zValidator('json', CheckSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'far.create', resource: 'far', severity: 'info' }, async (c: any) => {
     const service = c.get('farService');
     if (!service) return notConfigured(c);
     try {
@@ -277,7 +278,7 @@ app.post(
         fallback: 'Failed to log condition check',
       });
     }
-  },
+  }),
 );
 
 app.get('/components/:id/scheduled-checks', async (c: any) => {

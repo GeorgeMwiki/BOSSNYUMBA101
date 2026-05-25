@@ -10,6 +10,7 @@ export * from './scenario.js';
 export * from './golden-scenarios.js';
 export * from './scenarios-extended.js';
 export * from './runner.js';
+export * from './hallucination-guard.js';
 
 import { GOLDEN_SCENARIOS } from './golden-scenarios.js';
 import { EXTENDED_SCENARIOS } from './scenarios-extended.js';

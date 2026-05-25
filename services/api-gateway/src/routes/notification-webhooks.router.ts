@@ -52,6 +52,7 @@ export type TenantResolver = (
   selector: string
 ) => string | null | Promise<string | null>;
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 export interface WebhookHandlerDeps {
   /** Handler invoked with the parsed status update. Kept abstract so the
    * gateway can decide whether to update the DB directly or emit an event. */
@@ -458,7 +459,7 @@ export function createNotificationWebhookRouter(deps: WebhookHandlerDeps): Hono 
   );
   app.use('/meta', idempotency('meta', extractMetaSelector, 'idempotency-key'));
 
-  app.post('/africastalking', async (c) => {
+  app.post('/africastalking', withSecurityEvents({ action: 'webhook.create', resource: 'webhook', severity: 'info' }, async (c) => {
     const raw = await c.req.raw.text();
     const sig = c.req.header('x-at-signature');
     const ts = c.req.header(TIMESTAMP_HEADER);
@@ -488,9 +489,9 @@ export function createNotificationWebhookRouter(deps: WebhookHandlerDeps): Hono 
       raw: payload,
     });
     return c.json({ received: true });
-  });
+  }));
 
-  app.post('/twilio', async (c) => {
+  app.post('/twilio', withSecurityEvents({ action: 'webhook.create', resource: 'webhook', severity: 'info' }, async (c) => {
     const raw = await c.req.raw.text();
     const sig = c.req.header('x-twilio-signature');
     // Twilio signs over the FULL URL — prefer the env-pinned URL so
@@ -527,9 +528,9 @@ export function createNotificationWebhookRouter(deps: WebhookHandlerDeps): Hono 
       raw: payload,
     });
     return c.json({ received: true });
-  });
+  }));
 
-  app.post('/meta', async (c) => {
+  app.post('/meta', withSecurityEvents({ action: 'webhook.create', resource: 'webhook', severity: 'info' }, async (c) => {
     const raw = await c.req.raw.text();
     const sig = c.req.header('x-hub-signature-256');
     const ts = c.req.header(TIMESTAMP_HEADER);
@@ -560,7 +561,7 @@ export function createNotificationWebhookRouter(deps: WebhookHandlerDeps): Hono 
       raw: payload,
     });
     return c.json({ received: true });
-  });
+  }));
 
   return app;
 }

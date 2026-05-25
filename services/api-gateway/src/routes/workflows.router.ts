@@ -18,6 +18,7 @@ import {
 } from '@bossnyumba/ai-copilot';
 import { authMiddleware } from '../middleware/hono-auth';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const StartSchema = z.object({
   workflowId: z.string().min(1).max(80),
   input: z.record(z.unknown()).optional(),
@@ -52,7 +53,7 @@ app.get('/', (c) => {
   });
 });
 
-app.post('/run', zValidator('json', StartSchema), async (c) => {
+app.post('/run', zValidator('json', StartSchema), withSecurityEvents({ action: 'workflow.create', resource: 'workflow', severity: 'info' }, async (c) => {
   const auth = c.get('auth') as
     | { tenantId: string; userId: string; role: string; roles?: string[] }
     | undefined;
@@ -75,7 +76,7 @@ app.post('/run', zValidator('json', StartSchema), async (c) => {
     const status = /role check/.test(msg) ? 403 : /unknown workflow/.test(msg) ? 404 : 400;
     return c.json({ success: false, error: { code: 'WORKFLOW_START_FAILED', message: msg } }, status);
   }
-});
+}));
 
 app.get('/:runId', async (c) => {
   const auth = c.get('auth') as { tenantId: string } | undefined;
@@ -87,7 +88,7 @@ app.get('/:runId', async (c) => {
   return c.json({ success: true, data: run });
 });
 
-app.post('/:runId/advance', zValidator('json', AdvanceSchema), async (c) => {
+app.post('/:runId/advance', zValidator('json', AdvanceSchema), withSecurityEvents({ action: 'workflow.create', resource: 'workflow', severity: 'info' }, async (c) => {
   const auth = c.get('auth') as { tenantId: string; userId: string } | undefined;
   if (!auth) return c.json({ success: false, error: { code: 'UNAUTHENTICATED' } }, 401);
   const body = c.req.valid('json');
@@ -107,6 +108,6 @@ app.post('/:runId/advance', zValidator('json', AdvanceSchema), async (c) => {
     const status = /not awaiting/.test(msg) ? 409 : /not found|mismatch/.test(msg) ? 404 : 400;
     return c.json({ success: false, error: { code: 'ADVANCE_FAILED', message: msg } }, status);
   }
-});
+}));
 
 export default app;

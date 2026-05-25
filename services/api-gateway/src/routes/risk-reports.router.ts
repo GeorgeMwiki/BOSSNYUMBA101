@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 export const riskReportsRouter = new Hono();
 
 riskReportsRouter.use('*', authMiddleware);
@@ -38,7 +39,7 @@ riskReportsRouter.get('/', async (c) => {
   });
 });
 
-riskReportsRouter.post('/:customerId/generate', async (c) => {
+riskReportsRouter.post('/:customerId/generate', withSecurityEvents({ action: 'risk-report.create', resource: 'risk-report', severity: 'info' }, async (c) => {
   const customerId = c.req.param('customerId');
   const tenantId = c.get('tenantId');
   const userId = c.get('userId');
@@ -69,7 +70,7 @@ riskReportsRouter.post('/:customerId/generate', async (c) => {
       fallback: 'Generation failed',
     });
   }
-});
+}));
 
 riskReportsRouter.get('/:customerId/latest', async (c) => {
   const customerId = c.req.param('customerId');

@@ -20,6 +20,7 @@ import { complaintRecords } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const createComplaintSchema = z.object({
   subject: z.string().min(1).max(200),
   description: z.string().min(1).max(5000),
@@ -56,7 +57,7 @@ function newId(): string {
   return `cmp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-app.post('/', zValidator('json', createComplaintSchema), async (c) => {
+app.post('/', zValidator('json', createComplaintSchema), withSecurityEvents({ action: 'complaint.create', resource: 'complaint', severity: 'info' }, async (c) => {
   const db = (c.get('services') ?? {}).db;
   if (!db) return dbUnavailable(c);
   const auth = c.get('auth');
@@ -83,7 +84,7 @@ app.post('/', zValidator('json', createComplaintSchema), async (c) => {
       fallback: 'Complaint write failed',
     });
   }
-});
+}));
 
 app.get('/', async (c) => {
   const db = (c.get('services') ?? {}).db;
@@ -139,7 +140,7 @@ app.get('/:id', async (c) => {
   }
 });
 
-app.put('/:id/resolve', zValidator('json', resolveComplaintSchema), async (c) => {
+app.put('/:id/resolve', zValidator('json', resolveComplaintSchema), withSecurityEvents({ action: 'complaint.update', resource: 'complaint', severity: 'info' }, async (c) => {
   const db = (c.get('services') ?? {}).db;
   if (!db) return dbUnavailable(c);
   const auth = c.get('auth');
@@ -170,6 +171,6 @@ app.put('/:id/resolve', zValidator('json', resolveComplaintSchema), async (c) =>
       fallback: 'Complaint resolve failed',
     });
   }
-});
+}));
 
 export const complaintsRouter = app;

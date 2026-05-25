@@ -365,10 +365,6 @@ export const HARDCODED_CURRENCY_ALLOWLIST = new Map([
     'Customer settings currency-picker enumerates KES/USD as the user-selectable currency options.',
   ],
   [
-    'apps/customer-app/src/components/home/HomeSummaryCard.tsx',
-    'Customer-app home-summary card fallback to TZS for legacy tenants; tracked-gap pending tenant FX.',
-  ],
-  [
     'apps/customer-app/src/lib/hooks/useCurrencyPreference.ts',
     'Customer-app FALLBACK_CURRENCY = USD constant is the platform-default tip of the resolution chain.',
   ],
@@ -411,4 +407,102 @@ export const HARDCODED_CURRENCY_ALLOWLIST = new Map([
   // is NOT NULL in schema). The fallback was replaced with a fail-loud invariant
   // check in Wave 12 (no allowlist entry needed — those files now contain no
   // literal 'KES').
+
+  // ─── TRC (Tanzania Regulatory Council) seeds ──────────────────────
+  [
+    'packages/database/src/seeds/trc-elastic-config.ts',
+    'TRC elastic-config seed bootstraps TZS for Tanzania demo tenant; TZS is Tanzania-only by jurisdiction (seed data).',
+  ],
+  [
+    'packages/database/src/seeds/trc-test-org-seed.ts',
+    'TRC test-org seed bootstraps TZS currency for the Tanzania demo tenant; sandbox seed data only.',
+  ],
+
+  // ─── ai-copilot eval baseline currency-mapping ────────────────────
+  [
+    'packages/ai-copilot/src/eval/hallucination-guard.ts',
+    'Hallucination-guard eval baseline enumerates per-jurisdiction currency mapping (TZS/KES/UGX) for test scenarios.',
+  ],
+
+  // ─── carbon-market-book domain default ────────────────────────────
+  [
+    'packages/database/src/services/carbon-market-book-service.ts',
+    'Carbon-market-book DEFAULT_CURRENCY=USD; voluntary carbon markets are USD-denominated by industry convention.',
+  ],
+
+  // ─── document-analysis entity-extractor fallback ──────────────────
+  [
+    'packages/document-analysis/src/extract/entity-extractor.ts',
+    'Document entity-extractor falls back to KES when regex-extracted currency is missing; Kenya-first OCR default.',
+  ],
+
+  // ─── openclaw-operating-model: agent-as-a-service invoice ─────────
+  [
+    'packages/openclaw-operating-model/src/agent-as-a-service/invoice.ts',
+    'OpenClaw agent-as-a-service invoice default USD; agent-marketplace billing is USD-denominated by platform convention.',
+  ],
+
+  // ─── outcomes-package: DEFAULT_CURRENCY constants + metric fallbacks
+  [
+    'packages/outcomes/src/catalog.ts',
+    'Outcomes catalog DEFAULT_CURRENCY=USD constant is the platform-default for outcomes-metering when tenant FX is missing.',
+  ],
+  [
+    'packages/outcomes/src/rent-collected-metric.ts',
+    'Rent-collected metric falls back to USD when unit row has no currency; tracked-gap pending currency_preferences wire.',
+  ],
+  [
+    'packages/outcomes/src/ticket-resolved-metric.ts',
+    'Ticket-resolved metric falls back to USD when unit row has no currency; tracked-gap pending currency_preferences wire.',
+  ],
+  [
+    'packages/outcomes/src/vacancy-filled-metric.ts',
+    'Vacancy-filled metric falls back to USD when unit row has no currency; tracked-gap pending currency_preferences wire.',
+  ],
+
+  // ─── procurement-coordination: approvals + requisitions defaults ──
+  [
+    'packages/procurement-coordination/src/approvals/approval-engine.ts',
+    'Procurement approval-engine default-policy thresholds use USD as the seed currency; tracked-gap pending tenant FX.',
+  ],
+  [
+    'packages/procurement-coordination/src/requisitions/requisitions.ts',
+    'Procurement requisitions default USD when items[0] has no currency; tracked-gap pending currency_preferences wire.',
+  ],
+
+  // ─── user-context-store: profile-loader fallbacks ─────────────────
+  [
+    'packages/user-context-store/src/profile/owner-profile.ts',
+    'Owner-profile loader falls back to KES when row.default_currency is null; Kenya-first profile default.',
+  ],
+  [
+    'packages/user-context-store/src/profile/tenant-profile.ts',
+    'Tenant-profile loader falls back to KES when row.currency is null; Kenya-first profile default (tracked-gap).',
+  ],
+
+  // ─── api-gateway: marketplace in-memory data-port + lease-expiry ──
+  [
+    'services/api-gateway/src/routes/marketplace/in-memory-data-port.ts',
+    'Marketplace in-memory data-port is demo/stub data (KES default for Kenya-first demo); sandbox/bootstrap data only.',
+  ],
+  [
+    'services/api-gateway/src/workers/lease-expiry-alert-cron.ts',
+    'Lease-expiry alert worker falls back to TZS when r.rent_currency is null; tracked-gap pending NOT-NULL migration.',
+  ],
+
+  // ─── outcomes-metering: brain-event consumer + billing-store ──────
+  [
+    'services/outcomes-metering/src/consumers/brain-event-consumer.ts',
+    'Brain-event consumer falls back to USD when payload omits currency; tracked-gap pending event schema enforcement.',
+  ],
+  [
+    'services/outcomes-metering/src/store/billing-store.ts',
+    'Billing-store dominant-currency default USD when no events collected; tracked-gap pending tenant-default FX.',
+  ],
+
+  // ─── admin-platform-portal acquisition-advisor demo data ──────────
+  [
+    'apps/admin-platform-portal/src/app/advisor/acquisition/AcquisitionAdvisorClient.tsx',
+    'Admin acquisition-advisor demo client uses USD as the platform-default currency for sample-acquisition deal inputs.',
+  ],
 ]);

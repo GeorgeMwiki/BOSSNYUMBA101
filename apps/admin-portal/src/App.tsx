@@ -15,10 +15,17 @@
 
 import React from 'react';
 
+interface ViteImportMeta {
+  readonly env?: {
+    readonly VITE_PLATFORM_PORTAL_URL?: string;
+    readonly VITE_OWNER_PORTAL_URL?: string;
+  };
+}
+const viteMeta = import.meta as unknown as ViteImportMeta;
 const PLATFORM_PORTAL_URL =
-  (import.meta as any).env?.VITE_PLATFORM_PORTAL_URL ?? 'http://localhost:3020';
+  viteMeta.env?.VITE_PLATFORM_PORTAL_URL ?? 'http://localhost:3020';
 const OWNER_PORTAL_URL =
-  (import.meta as any).env?.VITE_OWNER_PORTAL_URL ?? 'http://localhost:3001';
+  viteMeta.env?.VITE_OWNER_PORTAL_URL ?? 'http://localhost:3001';
 
 export default function App(): JSX.Element {
   return (

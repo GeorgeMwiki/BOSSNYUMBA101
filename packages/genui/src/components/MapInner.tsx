@@ -10,18 +10,35 @@
  * `leaflet.offline` we wire a localForage-backed cache here.
  */
 
-// react-leaflet is a peer dep on the consuming app. The cast through
-// `any` keeps typecheck clean whether the install is present or only
-// stubbed during package build. The runtime contract (MapContainer +
-// TileLayer + Marker + Popup) matches react-leaflet v4 exactly.
+// react-leaflet is a peer dep on the consuming app. The destructure
+// pulls the runtime contract (MapContainer + TileLayer + Marker +
+// Popup) that matches react-leaflet v4 exactly, but the types may not
+// be present during package build, so we declare a minimal local shape.
 // @ts-ignore — module is a peer dep of the consuming app
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import * as ReactLeaflet from 'react-leaflet';
 
+import type { ComponentType, ReactNode } from 'react';
 import type { MapMarker } from '../types';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { MapContainer, TileLayer, Marker, Popup } = ReactLeaflet as any;
+interface ReactLeafletShape {
+  readonly MapContainer: ComponentType<{
+    readonly center: [number, number];
+    readonly zoom: number;
+    readonly style?: React.CSSProperties;
+    readonly children?: ReactNode;
+  }>;
+  readonly TileLayer: ComponentType<{
+    readonly url: string;
+    readonly attribution?: string;
+  }>;
+  readonly Marker: ComponentType<{
+    readonly position: [number, number];
+    readonly children?: ReactNode;
+  }>;
+  readonly Popup: ComponentType<{ readonly children?: ReactNode }>;
+}
+
+const { MapContainer, TileLayer, Marker, Popup } = ReactLeaflet as unknown as ReactLeafletShape;
 
 export interface MapInnerProps {
   readonly center: readonly [number, number];

@@ -3,7 +3,7 @@
 -- =============================================================================
 -- These tables exist as Drizzle schemas (cases.schema.ts, inspections.schema.ts,
 -- ledger.schema.ts) but had no prior matching SQL migration, so later
--- migrations (0014, 0015, 0017*, 0018_conditional_surveys, 0025, 0026) broke
+-- migrations (0014, 0015, 0017*, 0018c_conditional_surveys, 0025, 0026) broke
 -- when run from a fresh DB under ON_ERROR_STOP.
 --
 -- This migration is additive and uses IF NOT EXISTS throughout so it is safe

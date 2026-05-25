@@ -11,6 +11,7 @@ import { and, desc, eq, inArray } from 'drizzle-orm';
 import { e400, e403, e404, e503, errorResponse } from '../../utils/error-response';
 import { getOwnerScope as resolveOwnerScope } from '../../lib/owner-scope';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 function csvEscape(value) {
   const text = String(value ?? '');
   if (text.includes(',') || text.includes('"') || text.includes('\n')) {
@@ -301,7 +302,7 @@ app.get('/work-orders', async (c) => {
   return c.json({ success: true, data: enrichOwnerWorkOrders(scope) });
 });
 
-app.post('/work-orders/:id/approve', async (c) => {
+app.post('/work-orders/:id/approve', withSecurityEvents({ action: 'owner-portal.create', resource: 'owner-portal', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -317,9 +318,9 @@ app.post('/work-orders/:id/approve', async (c) => {
   });
 
   return c.json({ success: true, data: mapWorkOrderRow(row) });
-});
+}));
 
-app.post('/work-orders/:id/reject', async (c) => {
+app.post('/work-orders/:id/reject', withSecurityEvents({ action: 'owner-portal.create', resource: 'owner-portal', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -347,7 +348,7 @@ app.post('/work-orders/:id/reject', async (c) => {
   });
 
   return c.json({ success: true, data: mapWorkOrderRow(row) });
-});
+}));
 
 app.get('/financial/stats', async (c) => {
   const auth = c.get('auth');
@@ -504,7 +505,7 @@ app.get('/messaging/conversations/:id/messages', async (c) => {
   return c.json({ success: true, data });
 });
 
-app.post('/messaging/conversations/:id/messages', async (c) => {
+app.post('/messaging/conversations/:id/messages', withSecurityEvents({ action: 'owner-portal.create', resource: 'owner-portal', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const db = c.get('db');
@@ -546,7 +547,7 @@ app.post('/messaging/conversations/:id/messages', async (c) => {
       createdAt: message.createdAt,
     },
   });
-});
+}));
 
 app.get('/documents/signatures', async (c) => {
   const auth = c.get('auth');
@@ -607,7 +608,7 @@ app.get('/documents/signatures', async (c) => {
   return c.json({ success: true, data: { pending, history } });
 });
 
-app.post('/documents/:id/sign', async (c) => {
+app.post('/documents/:id/sign', withSecurityEvents({ action: 'owner-portal.create', resource: 'owner-portal', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -635,7 +636,7 @@ app.post('/documents/:id/sign', async (c) => {
   });
 
   return c.json({ success: true, data: { id: row.id, signedAt: metadata.signedAt } });
-});
+}));
 
 // ----------------------------------------------------------------------------
 // Frontend gap-fix endpoint — owner-portal CoOwnerInviteModal renders the
@@ -931,7 +932,7 @@ function signInvitationToken(payload) {
   return `${body}.${sig}`;
 }
 
-app.post('/invitations/co-owner', async (c) => {
+app.post('/invitations/co-owner', withSecurityEvents({ action: 'owner-portal.create', resource: 'owner-portal', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = await c.req.json().catch(() => ({}));
 
@@ -1012,7 +1013,7 @@ app.post('/invitations/co-owner', async (c) => {
       meta: { note: INVITATIONS_NOTE },
     },
   });
-});
+}));
 
 // ----------------------------------------------------------------------------
 // 9. GET /invitations — honest-empty until the invitations table exists.
@@ -1030,7 +1031,7 @@ app.get('/invitations', (c) => {
 //     success. No-op until the invitations table is wired; the BFF
 //     contract is what the owner-portal needs today.
 // ----------------------------------------------------------------------------
-app.post('/invitations/:id/cancel', (c) => {
+app.post('/invitations/:id/cancel', withSecurityEvents({ action: 'owner-portal.create', resource: 'owner-portal', severity: 'info' }, (c) => {
   const id = c.req.param('id');
   return c.json({
     success: true,
@@ -1040,6 +1041,6 @@ app.post('/invitations/:id/cancel', (c) => {
       meta: { note: INVITATIONS_NOTE },
     },
   });
-});
+}));
 
 export const ownerPortalRouter = app;

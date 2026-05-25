@@ -27,6 +27,7 @@ import {
 } from '@bossnyumba/payments-service/providers/gepg';
 import type { GepgSignatureConfig } from '@bossnyumba/payments-service/providers/gepg';
 
+import { withSecurityEvents, requireEnv } from '@bossnyumba/observability';
 function loadConfig(): GepgConfig {
   const isProd = process.env.NODE_ENV === 'production';
   const callbackBaseUrl = process.env.GEPG_CALLBACK_BASE_URL;
@@ -34,6 +35,15 @@ function loadConfig(): GepgConfig {
     throw new Error(
       'gepg: GEPG_CALLBACK_BASE_URL env var is required in production.'
     );
+  }
+  // GePG identity (SP / SP-Sys-Id / base URL) and environment MUST be set
+  // explicitly in production — silent "SANDBOX_*" defaults would route real
+  // tenant traffic at the wrong gateway and break reconciliation.
+  if (isProd) {
+    requireEnv('GEPG_SP');
+    requireEnv('GEPG_SP_SYS_ID');
+    requireEnv('GEPG_BASE_URL');
+    requireEnv('GEPG_ENV');
   }
   return {
     sp: process.env.GEPG_SP ?? 'SANDBOX_SP',
@@ -167,7 +177,7 @@ app.post(
   '/control-numbers',
   authMiddleware,
   zValidator('json', ControlNumberCreateSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'gepg.create', resource: 'gepg', severity: 'info' }, async (c) => {
     const auth = c.get('auth');
     const body = c.req.valid('json');
     const provider = getProvider(c);
@@ -194,7 +204,7 @@ app.post(
         fallback: 'GePG gateway error',
       });
     }
-  }
+  })
 );
 
 // --- GET /v1/payments/gepg/control-numbers/:controlNumber --------------------
@@ -222,7 +232,7 @@ app.get('/control-numbers/:controlNumber', authMiddleware, async (c) => {
 
 // --- POST /v1/payments/gepg/callback ----------------------------------------
 // Signature middleware runs FIRST to capture raw body for verification.
-app.post('/callback', signatureMiddleware, async (c) => {
+app.post('/callback', signatureMiddleware, withSecurityEvents({ action: 'gepg.create', resource: 'gepg', severity: 'info' }, async (c) => {
   const raw = c.get('gepgRawBody') as string;
   const signature = c.get('gepgSignature') as string;
 
@@ -256,7 +266,7 @@ app.post('/callback', signatureMiddleware, async (c) => {
       400
     );
   }
-});
+}));
 
 export default app;
 export const gepgRouter = app;

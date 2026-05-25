@@ -62,6 +62,20 @@ declare module 'hono' {
     // Station master
     stationMasterCoverageRepo: unknown;
     stationMasterRouter: unknown;
+
+    // Persistent stores — bound by service-context.middleware.ts so
+    // any route can do `c.get('lessonStore')` etc. and receive the
+    // live store (persistent when DATABASE_URL is set, in-memory
+    // otherwise). Pre-fix, these reads returned `undefined` and the
+    // consumer's fallback path silently dropped writes — see P36
+    // wiring-gap audit (Docs/WIRING_GAPS_2026-05-24.md chain 3).
+    // `getA2aTaskStore` is the per-tenant factory; routes call it
+    // with their auth.tenantId to obtain a tenant-pinned TaskStore.
+    lessonStore: unknown;
+    wormAuditStore: unknown;
+    skillRegistryWriter: unknown;
+    aopRegistryStore: unknown;
+    getA2aTaskStore: unknown;
   }
 }
 

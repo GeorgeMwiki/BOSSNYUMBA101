@@ -14,6 +14,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const SynthesizeSchema = z.object({
   text: z.string().min(1).max(10_000),
   language: z.enum(['en', 'sw', 'mixed']).default('en'),
@@ -70,7 +71,7 @@ function mapVoiceErr(c: any, err: any) {
   );
 }
 
-app.post('/transcribe', zValidator('json', TranscribeJsonSchema), async (c: any) => {
+app.post('/transcribe', zValidator('json', TranscribeJsonSchema), withSecurityEvents({ action: 'voice.create', resource: 'voice', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const voice = svc(c);
@@ -97,9 +98,9 @@ app.post('/transcribe', zValidator('json', TranscribeJsonSchema), async (c: any)
   );
   if (!result.success) return mapVoiceErr(c, result.error);
   return c.json({ success: true, data: result.data });
-});
+}));
 
-app.post('/synthesize', zValidator('json', SynthesizeSchema), async (c: any) => {
+app.post('/synthesize', zValidator('json', SynthesizeSchema), withSecurityEvents({ action: 'voice.create', resource: 'voice', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const voice = svc(c);
@@ -127,7 +128,7 @@ app.post('/synthesize', zValidator('json', SynthesizeSchema), async (c: any) => 
       model: result.data.model,
     },
   });
-});
+}));
 
 export const voiceRouter = app;
 export default app;

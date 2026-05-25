@@ -24,6 +24,7 @@ import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const PersonaSchema = z.object({
   id: z.string().min(1),
   displayName: z.string().min(1),
@@ -89,7 +90,7 @@ app.post(
   '/',
   requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN),
   zValidator('json', PersonaSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'persona.create', resource: 'persona', severity: 'info' }, async (c: any) => {
     const r = reg(c);
     if (!r) return notImplemented(c);
     const body = c.req.valid('json');
@@ -103,14 +104,14 @@ app.post(
         400,
       );
     }
-  },
+  }),
 );
 
 app.put(
   '/:id',
   requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN),
   zValidator('json', PersonaPatchSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'persona.update', resource: 'persona', severity: 'info' }, async (c: any) => {
     const r = reg(c);
     if (!r) return notImplemented(c);
     const id = c.req.param('id');
@@ -126,13 +127,13 @@ app.put(
         status,
       );
     }
-  },
+  }),
 );
 
 app.delete(
   '/:id',
   requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN),
-  async (c: any) => {
+  withSecurityEvents({ action: 'persona.delete', resource: 'persona', severity: 'notice' }, async (c: any) => {
     const r = reg(c);
     if (!r) return notImplemented(c);
     const id = c.req.param('id');
@@ -144,18 +145,18 @@ app.delete(
       );
     }
     return c.json({ success: true, data: { id, removed: true } }, 200);
-  },
+  }),
 );
 
 app.post(
   '/refresh',
   requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN),
-  async (c: any) => {
+  withSecurityEvents({ action: 'persona.create', resource: 'persona', severity: 'info' }, async (c: any) => {
     const r = reg(c);
     if (!r) return notImplemented(c);
     await r.refresh();
     return c.json({ success: true, data: { refreshed: true } }, 200);
-  },
+  }),
 );
 
 export default app;

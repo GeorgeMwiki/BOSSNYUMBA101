@@ -78,9 +78,21 @@ rules:
         - '**/error-response.test.ts'
         - '**/*.test.ts'
         - '**/*.spec.ts'
-    pattern-either:
-      - pattern: '$C.json({ error: $E }, $STATUS)'
-      - pattern: '$C.json({ error: $E, ... }, $STATUS)'
+    patterns:
+      - pattern-either:
+          - pattern: '$C.json({ error: $E }, $STATUS)'
+          - pattern: '$C.json({ error: $E, ... }, $STATUS)'
+      # The canonical envelope (`success: false` co-located with the
+      # error object) is already going through the right shape; the
+      # rule's intent is to flag RAW `{ error: ... }` payloads that
+      # bypass the canonical contract. Excluding the canonical shape
+      # here drops ~30 false-positives in *.hono.ts route handlers
+      # that DO use the correct envelope — those don't need to
+      # round-trip through errorResponse() if the literal envelope is
+      # already correctly shaped.
+      - pattern-not: '$C.json({ success: false, error: { code: $CODE, message: $MSG, ... } }, $STATUS)'
+      - pattern-not: '$C.json({ success: false, error: { code: $CODE, message: $MSG } }, $STATUS)'
+      - pattern-not: '$C.json({ success: false, error: $E }, $STATUS)'
 
   # ---------------------------------------------------------------------------
   # 3. prototype-pollution-spread

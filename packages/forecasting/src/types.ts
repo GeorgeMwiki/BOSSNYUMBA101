@@ -268,3 +268,192 @@ export interface GraphSignal {
 export function assertExhaustiveRiskKind(value: never): never {
   throw new Error(`forecasting: unhandled risk kind ${String(value)}`);
 }
+
+// ═════════════════════════════════════════════════════════════════════
+// Time-series forecasting layer (added 2026-05-24)
+//
+// Complements the per-node graph forecaster above with a univariate
+// time-series layer: rent, occupancy, churn, maintenance, energy,
+// market-cycle. Composes foundation-model adapters (Chronos/TimesFM/
+// TimeGPT) with local pure-TS baselines (naive, MA, Holt-Winters,
+// linear-regression) and a conformal-interval wrapper.
+//
+// All types are pure contracts. No runtime.
+// ═════════════════════════════════════════════════════════════════════
+
+/** A single observation in a univariate time-series. */
+export interface TimePoint {
+  /** ISO timestamp of the observation. Strictly increasing across the series. */
+  readonly t: string;
+  /** Observed scalar value. Must be finite. */
+  readonly y: number;
+}
+
+export const TimePointSchema: z.ZodType<TimePoint> = z.object({
+  t: z.string().min(1),
+  y: z.number().finite(),
+});
+
+/** Sampling frequency of a series. */
+export const TIME_SERIES_FREQUENCIES = [
+  'hourly',
+  'daily',
+  'weekly',
+  'monthly',
+  'quarterly',
+  'yearly',
+] as const;
+
+export type TimeSeriesFrequency = (typeof TIME_SERIES_FREQUENCIES)[number];
+
+/** A named univariate time-series. */
+export interface TimeSeries {
+  readonly id: string;
+  readonly frequency: TimeSeriesFrequency;
+  readonly points: ReadonlyArray<TimePoint>;
+  /** Optional unit-of-measure ('TZS', 'kWh', 'pct', etc.) */
+  readonly unit?: string;
+  /** Optional jurisdiction code (ISO-3166) for jurisdictional logic. */
+  readonly jurisdiction?: string;
+}
+
+export const TimeSeriesSchema = z.object({
+  id: z.string().min(1),
+  frequency: z.enum(TIME_SERIES_FREQUENCIES),
+  points: z.array(TimePointSchema),
+  unit: z.string().optional(),
+  jurisdiction: z.string().optional(),
+});
+
+/** Forecast horizon (number of frequency-steps into the future). */
+export interface Horizon {
+  /** Steps ahead (1 = next bucket). */
+  readonly steps: number;
+}
+
+export const HorizonSchema: z.ZodType<Horizon> = z.object({
+  steps: z.number().int().positive().max(1000),
+});
+
+/** Forecast interval — point + lower + upper, optionally conformal-calibrated. */
+export interface ForecastInterval {
+  /** Step number ahead (1-indexed). */
+  readonly step: number;
+  /** Predicted ISO timestamp for this step. */
+  readonly t: string;
+  /** Point prediction. */
+  readonly point: number;
+  /** Lower bound of the prediction interval. */
+  readonly lower: number;
+  /** Upper bound of the prediction interval. */
+  readonly upper: number;
+  /** Target miscoverage rate alpha. Coverage = 1 - alpha. */
+  readonly alpha: number;
+  /** True iff the interval was produced by a conformal calibrator
+   *  (not a parametric/uncalibrated heuristic). */
+  readonly conformal: boolean;
+}
+
+export const ForecastIntervalSchema: z.ZodType<ForecastInterval> = z.object({
+  step:      z.number().int().positive(),
+  t:         z.string().min(1),
+  point:     z.number().finite(),
+  lower:     z.number().finite(),
+  upper:     z.number().finite(),
+  alpha:     z.number().min(0.001).max(0.5),
+  conformal: z.boolean(),
+});
+
+/** Multi-step time-series forecast — what every adapter returns. */
+export interface TimeSeriesForecast {
+  readonly seriesId: string;
+  readonly modelKind: ModelKind;
+  readonly modelVersion: string;
+  readonly horizon: Horizon;
+  readonly points: ReadonlyArray<ForecastInterval>;
+  readonly generatedAt: string;
+  /** Optional driver/feature attributions (best-effort). */
+  readonly drivers?: ReadonlyArray<ForecastDriver>;
+  /** Optional metadata bag (model-specific). Always JSON-serialisable. */
+  readonly meta?: Readonly<Record<string, string | number | boolean>>;
+}
+
+export const TIME_SERIES_FORECAST_KINDS = [
+  'naive-seasonal',
+  'moving-average',
+  'holt-winters',
+  'linear-regression',
+  'chronos',
+  'timesfm',
+  'timegpt',
+  'llm-zero-shot',
+  'ensemble',
+  're-rent',
+  're-occupancy',
+  're-churn',
+  're-maintenance',
+  're-energy',
+  're-market-cycle',
+] as const;
+
+export type ModelKind = (typeof TIME_SERIES_FORECAST_KINDS)[number];
+
+export const ModelKindSchema = z.enum(TIME_SERIES_FORECAST_KINDS);
+
+/** Options forwarded to a forecaster. Always optional. */
+export interface ForecastingOptions {
+  /** Miscoverage rate; default 0.1 (90% interval). */
+  readonly alpha?: number;
+  /** Seasonal period (in steps) hint. */
+  readonly seasonality?: number;
+  /** Bag of model-specific options; opaque to the port. */
+  readonly extra?: Readonly<Record<string, unknown>>;
+}
+
+/** The forecaster port — implemented by every model adapter. */
+export interface ForecastingPort {
+  readonly kind: ModelKind;
+  predict(args: {
+    readonly series: TimeSeries;
+    readonly horizon: Horizon;
+    readonly opts?: ForecastingOptions;
+  }): Promise<TimeSeriesForecast>;
+}
+
+/** Backtest evaluation result. */
+export interface BacktestMetricResult {
+  readonly metric: 'mae' | 'mape' | 'rmse' | 'mase' | 'crps';
+  readonly value: number;
+}
+
+export interface BacktestSplit {
+  /** Split index (0-based). */
+  readonly index: number;
+  /** Number of training points used. */
+  readonly trainSize: number;
+  /** Number of validation points used. */
+  readonly testSize: number;
+  /** Per-step error for this split (length = horizon.steps). */
+  readonly residuals: ReadonlyArray<number>;
+}
+
+export interface BacktestResult {
+  readonly seriesId: string;
+  readonly modelKind: ModelKind;
+  readonly splits: ReadonlyArray<BacktestSplit>;
+  readonly metrics: ReadonlyArray<BacktestMetricResult>;
+}
+
+/** Detected anomaly in a series. */
+export interface Anomaly {
+  /** Index in the series (0-based). */
+  readonly index: number;
+  /** Timestamp of the anomalous point. */
+  readonly t: string;
+  /** Observed value. */
+  readonly y: number;
+  /** Anomaly score (higher = more anomalous). */
+  readonly score: number;
+  /** Detection method that flagged it. */
+  readonly method: 'zscore' | 'change-point' | 'isolation-forest';
+}

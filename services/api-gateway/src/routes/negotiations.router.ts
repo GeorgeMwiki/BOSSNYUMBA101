@@ -21,6 +21,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const ConcessionSchema = z.object({
   kind: z.enum([
     'free_month',
@@ -123,21 +124,21 @@ function svcOr503(c: any, key: 'negotiation') {
 app.post(
   '/policies',
   zValidator('json', PolicyCreateSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'negotiation.create', resource: 'negotiation', severity: 'info' }, async (c) => {
     const auth = c.get('auth');
     const body = c.req.valid('json');
     const svc = svcOr503(c, 'negotiation');
     if (!('createPolicy' in svc)) return svc; // 503 passthrough
     const result = await svc.createPolicy(auth.tenantId, body, auth.userId);
     return c.json({ success: true, data: result }, 201);
-  }
+  })
 );
 
 // ---------------------------------------------------------------------------
 // Negotiations
 // ---------------------------------------------------------------------------
 
-app.post('/', zValidator('json', NegotiationStartSchema), async (c) => {
+app.post('/', zValidator('json', NegotiationStartSchema), withSecurityEvents({ action: 'negotiation.create', resource: 'negotiation', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const svc = svcOr503(c, 'negotiation');
@@ -156,9 +157,9 @@ app.post('/', zValidator('json', NegotiationStartSchema), async (c) => {
     );
   }
   return c.json({ success: true, data: result.value }, 201);
-});
+}));
 
-app.post('/:id/turns', zValidator('json', NegotiationCounterSchema), async (c) => {
+app.post('/:id/turns', zValidator('json', NegotiationCounterSchema), withSecurityEvents({ action: 'negotiation.create', resource: 'negotiation', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const svc = svcOr503(c, 'negotiation');
@@ -189,9 +190,9 @@ app.post('/:id/turns', zValidator('json', NegotiationCounterSchema), async (c) =
     );
   }
   return c.json({ success: true, data: result.value });
-});
+}));
 
-app.post('/:id/accept', zValidator('json', NegotiationCloseSchema), async (c) => {
+app.post('/:id/accept', zValidator('json', NegotiationCloseSchema), withSecurityEvents({ action: 'negotiation.create', resource: 'negotiation', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const svc = svcOr503(c, 'negotiation');
@@ -214,9 +215,9 @@ app.post('/:id/accept', zValidator('json', NegotiationCloseSchema), async (c) =>
       400
     );
   return c.json({ success: true, data: result.value });
-});
+}));
 
-app.post('/:id/reject', zValidator('json', NegotiationCloseSchema), async (c) => {
+app.post('/:id/reject', zValidator('json', NegotiationCloseSchema), withSecurityEvents({ action: 'negotiation.create', resource: 'negotiation', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
   const svc = svcOr503(c, 'negotiation');
@@ -238,7 +239,7 @@ app.post('/:id/reject', zValidator('json', NegotiationCloseSchema), async (c) =>
       400
     );
   return c.json({ success: true, data: result.value });
-});
+}));
 
 app.get('/:id/audit', async (c) => {
   const auth = c.get('auth');

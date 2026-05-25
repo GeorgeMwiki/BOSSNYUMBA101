@@ -41,8 +41,8 @@ missing tables.
 hand-running the `.sql` migration files (they use `IF NOT EXISTS`
 guards so they are safe to re-run):
 ```
-psql "$DATABASE_URL" -f packages/database/src/migrations/0018_tenant_finance.sql
-psql "$DATABASE_URL" -f packages/database/src/migrations/0020_tenant_risk_reports.sql
+psql "$DATABASE_URL" -f packages/database/src/migrations/0018e_tenant_finance.sql
+psql "$DATABASE_URL" -f packages/database/src/migrations/0020b_tenant_risk_reports.sql
 psql "$DATABASE_URL" -f packages/database/src/migrations/0021_compliance_exports.sql
 ```
 

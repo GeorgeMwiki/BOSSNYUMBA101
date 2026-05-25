@@ -9,11 +9,38 @@
  */
 
 import { prefixedId } from '../common/id-generator.js';
-import type { EventBus } from '../common/events.js';
+import type { DomainEvent, EventBus } from '../common/events.js';
 import {
   createEventEnvelope,
   generateEventId,
 } from '../common/events.js';
+
+interface WaitlistJoinedEvent extends DomainEvent {
+  readonly eventType: 'WaitlistJoined';
+  readonly payload: {
+    readonly waitlistId: WaitlistId;
+    readonly unitId: UnitWaitlistEntry['unitId'];
+    readonly customerId: UnitWaitlistEntry['customerId'];
+    readonly source: UnitWaitlistEntry['source'];
+  };
+}
+
+interface WaitlistOptedOutEvent extends DomainEvent {
+  readonly eventType: 'WaitlistOptedOut';
+  readonly payload: {
+    readonly waitlistId: WaitlistId;
+    readonly reason: string | null;
+  };
+}
+
+interface WaitlistConvertedEvent extends DomainEvent {
+  readonly eventType: 'WaitlistConverted';
+  readonly payload: {
+    readonly waitlistId: WaitlistId;
+    readonly unitId: UnitWaitlistEntry['unitId'];
+    readonly customerId: UnitWaitlistEntry['customerId'];
+  };
+}
 import type {
   TenantId,
   UserId,
@@ -124,7 +151,7 @@ export class WaitlistService {
             customerId: created.customerId,
             source: created.source,
           },
-        } as any,
+        } satisfies WaitlistJoinedEvent,
         created.id,
         'UnitWaitlist'
       )
@@ -171,7 +198,7 @@ export class WaitlistService {
             waitlistId: updated.id,
             reason: input.reason ?? null,
           },
-        } as any,
+        } satisfies WaitlistOptedOutEvent,
         updated.id,
         'UnitWaitlist'
       )
@@ -238,7 +265,7 @@ export class WaitlistService {
               unitId: updated.unitId,
               customerId: updated.customerId,
             },
-          } as any,
+          } satisfies WaitlistConvertedEvent,
           updated.id,
           'UnitWaitlist'
         )

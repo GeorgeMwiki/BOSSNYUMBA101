@@ -4,6 +4,7 @@ import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { UserRole } from '../types/user-role';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 type TenantRow = {
   id: string;
   name: string;
@@ -55,7 +56,7 @@ app.get('/current', async (c) => {
   return c.json({ success: true, data: mapTenant(tenant) });
 });
 
-app.patch('/current', async (c) => {
+app.patch('/current', withSecurityEvents({ action: 'tenant.update', resource: 'tenant', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = await c.req.json();
@@ -70,7 +71,7 @@ app.patch('/current', async (c) => {
     auth.userId
   );
   return c.json({ success: true, data: mapTenant(tenant) });
-});
+}));
 
 app.get('/current/settings', async (c) => {
   const auth = c.get('auth');
@@ -80,7 +81,7 @@ app.get('/current/settings', async (c) => {
   return c.json({ success: true, data: tenant.settings ?? {} });
 });
 
-app.patch('/current/settings', async (c) => {
+app.patch('/current/settings', withSecurityEvents({ action: 'tenant.update', resource: 'tenant', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = await c.req.json();
@@ -97,7 +98,7 @@ app.patch('/current/settings', async (c) => {
     auth.userId
   );
   return c.json({ success: true, data: tenant.settings ?? {} });
-});
+}));
 
 app.get('/current/subscription', async (c) => {
   const auth = c.get('auth');

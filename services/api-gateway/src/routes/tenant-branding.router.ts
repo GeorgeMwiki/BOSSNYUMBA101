@@ -20,6 +20,7 @@ import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const BrandingUpdateSchema = z
   .object({
     aiPersonaDisplayName: z.string().min(1).max(120).optional(),
@@ -76,7 +77,7 @@ app.put(
   '/',
   requireRole(UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN, UserRole.ADMIN),
   zValidator('json', BrandingUpdateSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'tenant-branding.update', resource: 'tenant-branding', severity: 'info' }, async (c: any) => {
     const service = svc(c);
     if (!service) return notConfigured(c);
     const auth = c.get('auth');
@@ -91,7 +92,7 @@ app.put(
         fallback: 'Failed to update tenant branding',
       });
     }
-  },
+  }),
 );
 
 // ---------------------------------------------------------------------------
@@ -100,7 +101,7 @@ app.put(
 app.post(
   '/reset',
   requireRole(UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN, UserRole.ADMIN),
-  async (c: any) => {
+  withSecurityEvents({ action: 'tenant-branding.create', resource: 'tenant-branding', severity: 'info' }, async (c: any) => {
     const service = svc(c);
     if (!service) return notConfigured(c);
     const auth = c.get('auth');
@@ -114,7 +115,7 @@ app.post(
         fallback: 'Failed to reset tenant branding',
       });
     }
-  },
+  }),
 );
 
 export default app;

@@ -15,6 +15,7 @@ import {
 import { parseListPagination, buildListResponse } from './pagination';
 import type { AuthContext } from './hono-auth';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // Wave 19 Agent H+I: unit mutations are staff-only. Reads are still
 // gated by `hasPropertyAccess` (JWT ACL).
 const staffOnly = requireRole(
@@ -96,7 +97,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapUnitRow(row) });
 });
 
-app.post('/', staffOnly, zValidator('json', UnitCreateSchema), async (c) => {
+app.post('/', staffOnly, zValidator('json', UnitCreateSchema), withSecurityEvents({ action: 'unit.create', resource: 'unit', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -128,9 +129,9 @@ app.post('/', staffOnly, zValidator('json', UnitCreateSchema), async (c) => {
   );
 
   return c.json({ success: true, data: mapUnitRow(row) }, 201);
-});
+}));
 
-app.put('/:id', staffOnly, zValidator('json', UnitUpdateSchema), async (c) => {
+app.put('/:id', staffOnly, zValidator('json', UnitUpdateSchema), withSecurityEvents({ action: 'unit.update', resource: 'unit', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -161,9 +162,9 @@ app.put('/:id', staffOnly, zValidator('json', UnitUpdateSchema), async (c) => {
     auth.userId
   );
   return c.json({ success: true, data: mapUnitRow(row) });
-});
+}));
 
-app.put('/:id/status', staffOnly, zValidator('json', UnitStatusSchema), async (c) => {
+app.put('/:id/status', staffOnly, zValidator('json', UnitStatusSchema), withSecurityEvents({ action: 'unit.update', resource: 'unit', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -172,9 +173,9 @@ app.put('/:id/status', staffOnly, zValidator('json', UnitStatusSchema), async (c
   const body = c.req.valid('json');
   const row = await repos.units.update(id, auth.tenantId, { status: normalizeUnitStatusToDb(body.status) }, auth.userId);
   return c.json({ success: true, data: mapUnitRow(row) });
-});
+}));
 
-app.delete('/:id', staffOnly, async (c) => {
+app.delete('/:id', staffOnly, withSecurityEvents({ action: 'unit.delete', resource: 'unit', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -182,6 +183,6 @@ app.delete('/:id', staffOnly, async (c) => {
   if (!existing) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Unit not found' } }, 404);
   await repos.units.delete(id, auth.tenantId, auth.userId);
   return c.json({ success: true, data: { message: 'Unit deleted' } });
-});
+}));
 
 export const unitsRouter = app;

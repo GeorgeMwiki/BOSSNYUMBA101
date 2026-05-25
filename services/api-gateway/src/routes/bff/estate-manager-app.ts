@@ -43,6 +43,7 @@ import { requireRole } from '../../middleware/authorization';
 import { UserRole } from '../../types/user-role';
 import { routeCatch } from '../../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use(
@@ -591,19 +592,19 @@ app.get('/vendors/scorecards', async (c) => {
 
 // Mutations route through the canonical tenant-scoped routers. The BFF
 // never owned writes; these 501s make that explicit.
-app.post('/work-orders/:id/triage', (c) => notImplemented(c, 'Triaging work orders'));
-app.post('/work-orders/:id/approve', (c) => notImplemented(c, 'Approving work orders'));
-app.post('/work-orders/:id/assign', (c) => notImplemented(c, 'Assigning vendors'));
-app.post('/work-orders/:id/schedule', (c) => notImplemented(c, 'Scheduling work orders'));
-app.post('/work-orders/:id/complete', (c) => notImplemented(c, 'Completing work orders'));
-app.post('/work-orders/:id/verify', (c) => notImplemented(c, 'Verifying work orders'));
-app.post('/inspections', (c) => notImplemented(c, 'Scheduling inspections'));
-app.post('/inspections/:id/items', (c) => notImplemented(c, 'Recording inspection items'));
-app.post('/inspections/:id/complete', (c) => notImplemented(c, 'Completing inspections'));
-app.put('/units/:id/status', (c) => notImplemented(c, 'Updating unit status'));
-app.post('/collections/action', (c) => notImplemented(c, 'Collection actions'));
-app.post('/vendors/:id/flag', (c) => notImplemented(c, 'Flagging vendors'));
-app.post('/vendors/:id/invoices/:invoiceId/approve', (c) => notImplemented(c, 'Approving vendor invoices'));
+app.post('/work-orders/:id/triage', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Triaging work orders')));
+app.post('/work-orders/:id/approve', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Approving work orders')));
+app.post('/work-orders/:id/assign', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Assigning vendors')));
+app.post('/work-orders/:id/schedule', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Scheduling work orders')));
+app.post('/work-orders/:id/complete', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Completing work orders')));
+app.post('/work-orders/:id/verify', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Verifying work orders')));
+app.post('/inspections', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Scheduling inspections')));
+app.post('/inspections/:id/items', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Recording inspection items')));
+app.post('/inspections/:id/complete', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Completing inspections')));
+app.put('/units/:id/status', withSecurityEvents({ action: 'estate-manager-app.update', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Updating unit status')));
+app.post('/collections/action', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Collection actions')));
+app.post('/vendors/:id/flag', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Flagging vendors')));
+app.post('/vendors/:id/invoices/:invoiceId/approve', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Approving vendor invoices')));
 
 export const estateManagerAppRouter = app;
 export default estateManagerAppRouter;

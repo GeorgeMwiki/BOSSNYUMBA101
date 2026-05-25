@@ -20,6 +20,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
@@ -78,7 +79,7 @@ app.get('/', async (c: any) => {
   });
 });
 
-app.post('/', zValidator('json', ScheduleSchema), async (c: any) => {
+app.post('/', zValidator('json', ScheduleSchema), withSecurityEvents({ action: 'conditional-survey.create', resource: 'conditional-survey', severity: 'info' }, async (c: any) => {
   const service = c.get('conditionalSurveyService');
   if (!service) return notConfigured(c);
   try {
@@ -108,7 +109,7 @@ app.post('/', zValidator('json', ScheduleSchema), async (c: any) => {
       fallback: 'Failed to schedule conditional survey',
     });
   }
-});
+}));
 
 app.get(
   '/overdue',
@@ -161,7 +162,7 @@ app.get('/:id', async (c: any) => {
 app.post(
   '/:id/findings',
   zValidator('json', FindingSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'conditional-survey.create', resource: 'conditional-survey', severity: 'info' }, async (c: any) => {
     const service = c.get('conditionalSurveyService');
     if (!service) return notConfigured(c);
     try {
@@ -198,13 +199,13 @@ app.post(
         fallback: 'Failed to attach finding',
       });
     }
-  },
+  }),
 );
 
 app.post(
   '/:id/compile',
   zValidator('json', CompileSchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'conditional-survey.create', resource: 'conditional-survey', severity: 'info' }, async (c: any) => {
     const service = c.get('conditionalSurveyService');
     if (!service) return notConfigured(c);
     try {
@@ -232,10 +233,10 @@ app.post(
         fallback: 'Failed to compile conditional survey report',
       });
     }
-  },
+  }),
 );
 
-app.post('/:id/plans/:planId/approve', async (c: any) => {
+app.post('/:id/plans/:planId/approve', withSecurityEvents({ action: 'conditional-survey.create', resource: 'conditional-survey', severity: 'info' }, async (c: any) => {
   const service = c.get('conditionalSurveyService');
   if (!service) return notConfigured(c);
   try {
@@ -265,6 +266,6 @@ app.post('/:id/plans/:planId/approve', async (c: any) => {
       fallback: 'Failed to approve action plan',
     });
   }
-});
+}));
 
 export default app;

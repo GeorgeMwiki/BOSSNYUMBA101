@@ -1,0 +1,667 @@
+{
+  "scannedAt": "2026-05-24T14:25:05.115Z",
+  "root": ".",
+  "filesScanned": 5261,
+  "totals": {
+    "total": 81,
+    "critical": 0,
+    "high": 0,
+    "medium": 17,
+    "low": 64,
+    "byKind": {
+      "phone-number": 12,
+      "price-magic-number": 64,
+      "email-address": 5
+    }
+  },
+  "findings": [
+    {
+      "file": "apps/customer-app/src/app/onboarding/inspection/page.tsx",
+      "line": 89,
+      "kind": "phone-number",
+      "snippet": "meterNumber: '04-123-4567-890',",
+      "severity": "medium",
+      "matched": "04-123-4567-890"
+    },
+    {
+      "file": "apps/customer-app/src/app/onboarding/utilities/page.tsx",
+      "line": 51,
+      "kind": "phone-number",
+      "snippet": "meterNumber: '04-123-4567-890',",
+      "severity": "medium",
+      "matched": "04-123-4567-890"
+    },
+    {
+      "file": "apps/customer-app/src/app/onboarding/utilities/page.tsx",
+      "line": 68,
+      "kind": "phone-number",
+      "snippet": "value: '04-123-4567-890',",
+      "severity": "medium",
+      "matched": "04-123-4567-890"
+    },
+    {
+      "file": "apps/tenant-portal/src/lib/marketplace/api-client.test.ts",
+      "line": 72,
+      "kind": "price-magic-number",
+      "snippet": "minPrice: 50000,",
+      "severity": "low",
+      "matched": "50000"
+    },
+    {
+      "file": "apps/tenant-portal/src/lib/marketplace/api-client.test.ts",
+      "line": 78,
+      "kind": "price-magic-number",
+      "snippet": "expect(calledUrl).toContain('minPrice=50000');",
+      "severity": "low",
+      "matched": "50000"
+    },
+    {
+      "file": "packages/ai-copilot/src/__tests__/ai-copilot.test.ts",
+      "line": 107,
+      "kind": "price-magic-number",
+      "snippet": "rentAmount: 50000,",
+      "severity": "low",
+      "matched": "50000"
+    },
+    {
+      "file": "packages/ai-copilot/src/__tests__/ai-copilot.test.ts",
+      "line": 135,
+      "kind": "price-magic-number",
+      "snippet": "currentArrearsAmount: 25000,",
+      "severity": "low",
+      "matched": "25000"
+    },
+    {
+      "file": "packages/ai-copilot/src/__tests__/ai-copilot.test.ts",
+      "line": 144,
+      "kind": "price-magic-number",
+      "snippet": "rentAmount: 50000,",
+      "severity": "low",
+      "matched": "50000"
+    },
+    {
+      "file": "packages/database/src/__tests__/query-analyzer.test.ts",
+      "line": 114,
+      "kind": "price-magic-number",
+      "snippet": "seqScanWarnThreshold: 1000,",
+      "severity": "low",
+      "matched": "1000"
+    },
+    {
+      "file": "packages/database/src/seed.ts",
+      "line": 162,
+      "kind": "price-magic-number",
+      "snippet": "baseRentAmount: 45000,",
+      "severity": "low",
+      "matched": "45000"
+    },
+    {
+      "file": "packages/database/src/seed.ts",
+      "line": 172,
+      "kind": "price-magic-number",
+      "snippet": "baseRentAmount: 55000,",
+      "severity": "low",
+      "matched": "55000"
+    },
+    {
+      "file": "packages/database/src/seed.ts",
+      "line": 221,
+      "kind": "price-magic-number",
+      "snippet": "rentAmount: 45000,",
+      "severity": "low",
+      "matched": "45000"
+    },
+    {
+      "file": "packages/database/src/seed.ts",
+      "line": 224,
+      "kind": "price-magic-number",
+      "snippet": "securityDepositAmount: 90000,",
+      "severity": "low",
+      "matched": "90000"
+    },
+    {
+      "file": "packages/database/src/seed.ts",
+      "line": 239,
+      "kind": "price-magic-number",
+      "snippet": "rentAmount: 55000,",
+      "severity": "low",
+      "matched": "55000"
+    },
+    {
+      "file": "packages/database/src/seed.ts",
+      "line": 242,
+      "kind": "price-magic-number",
+      "snippet": "securityDepositAmount: 110000,",
+      "severity": "low",
+      "matched": "110000"
+    },
+    {
+      "file": "packages/design-system/src/components/DataGrid.stories.tsx",
+      "line": 13,
+      "kind": "email-address",
+      "snippet": "{ id: '1', name: 'Alice', email: 'a@x.co' },",
+      "severity": "medium",
+      "matched": "a@x.co"
+    },
+    {
+      "file": "packages/design-system/src/components/DataGrid.stories.tsx",
+      "line": 14,
+      "kind": "email-address",
+      "snippet": "{ id: '2', name: 'Bob', email: 'b@x.co' },",
+      "severity": "medium",
+      "matched": "b@x.co"
+    },
+    {
+      "file": "packages/enterprise-hardening/src/enterprise/custom-workflows.ts",
+      "line": 291,
+      "kind": "email-address",
+      "snippet": "collectionsTeam: 'collections@company.com',",
+      "severity": "medium",
+      "matched": "collections@company.com"
+    },
+    {
+      "file": "packages/enterprise-hardening/src/resilience/circuit-breaker.ts",
+      "line": 452,
+      "kind": "price-magic-number",
+      "snippet": "slowCallThreshold: 5000, // 5 seconds",
+      "severity": "low",
+      "matched": "5000"
+    },
+    {
+      "file": "packages/estate-auto-management/src/__tests__/vendor-scoring.test.ts",
+      "line": 8,
+      "kind": "price-magic-number",
+      "snippet": "{ id: 'v1', name: 'AlphaServ', family: 'hvac', medianJobPrice: 1000, medianResponseHours: 24, reworkRate: 0.05, distanceKm: 5, compliant: true, available: true },",
+      "severity": "low",
+      "matched": "1000"
+    },
+    {
+      "file": "packages/estate-auto-management/src/__tests__/vendor-scoring.test.ts",
+      "line": 44,
+      "kind": "price-magic-number",
+      "snippet": "bestPrice: 1000,",
+      "severity": "low",
+      "matched": "1000"
+    },
+    {
+      "file": "packages/market-intelligence/src/__tests__/zillow-adapter.test.ts",
+      "line": 112,
+      "kind": "price-magic-number",
+      "snippet": "listPrice: 1500,",
+      "severity": "low",
+      "matched": "1500"
+    },
+    {
+      "file": "packages/market-intelligence/src/__tests__/zillow-adapter.test.ts",
+      "line": 121,
+      "kind": "price-magic-number",
+      "snippet": "listPrice: 1800,",
+      "severity": "low",
+      "matched": "1800"
+    },
+    {
+      "file": "packages/market-intelligence/src/__tests__/zillow-adapter.test.ts",
+      "line": 166,
+      "kind": "price-magic-number",
+      "snippet": "listPrice: 1500,",
+      "severity": "low",
+      "matched": "1500"
+    },
+    {
+      "file": "packages/observability/src/audit/audit-logger.test.ts",
+      "line": 262,
+      "kind": "price-magic-number",
+      "snippet": "originalAmount: 15000,",
+      "severity": "low",
+      "matched": "15000"
+    },
+    {
+      "file": "packages/observability/src/audit/audit-logger.test.ts",
+      "line": 263,
+      "kind": "price-magic-number",
+      "snippet": "refundAmount: 15000,",
+      "severity": "low",
+      "matched": "15000"
+    },
+    {
+      "file": "packages/observability/src/audit/audit-logger.test.ts",
+      "line": 270,
+      "kind": "price-magic-number",
+      "snippet": "originalAmount: 15000,",
+      "severity": "low",
+      "matched": "15000"
+    },
+    {
+      "file": "packages/observability/src/audit/audit-logger.test.ts",
+      "line": 271,
+      "kind": "price-magic-number",
+      "snippet": "refundAmount: 15000,",
+      "severity": "low",
+      "matched": "15000"
+    },
+    {
+      "file": "packages/portal-genui/src/fields/registry.ts",
+      "line": 273,
+      "kind": "phone-number",
+      "snippet": "mockValue: '+255712345678',",
+      "severity": "medium",
+      "matched": "+255712345678"
+    },
+    {
+      "file": "services/api-gateway/src/__tests__/fixtures/demo-data.ts",
+      "line": 237,
+      "kind": "price-magic-number",
+      "snippet": "rentAmount: 2500000,",
+      "severity": "low",
+      "matched": "2500000"
+    },
+    {
+      "file": "services/api-gateway/src/__tests__/fixtures/demo-data.ts",
+      "line": 238,
+      "kind": "price-magic-number",
+      "snippet": "depositAmount: 5000000,",
+      "severity": "low",
+      "matched": "5000000"
+    },
+    {
+      "file": "services/api-gateway/src/__tests__/fixtures/demo-data.ts",
+      "line": 258,
+      "kind": "price-magic-number",
+      "snippet": "rentAmount: 1500000,",
+      "severity": "low",
+      "matched": "1500000"
+    },
+    {
+      "file": "services/api-gateway/src/__tests__/fixtures/demo-data.ts",
+      "line": 259,
+      "kind": "price-magic-number",
+      "snippet": "depositAmount: 3000000,",
+      "severity": "low",
+      "matched": "3000000"
+    },
+    {
+      "file": "services/api-gateway/src/__tests__/fixtures/demo-data.ts",
+      "line": 279,
+      "kind": "price-magic-number",
+      "snippet": "rentAmount: 3500000,",
+      "severity": "low",
+      "matched": "3500000"
+    },
+    {
+      "file": "services/api-gateway/src/__tests__/fixtures/demo-data.ts",
+      "line": 280,
+      "kind": "price-magic-number",
+      "snippet": "depositAmount: 7000000,",
+      "severity": "low",
+      "matched": "7000000"
+    },
+    {
+      "file": "services/api-gateway/src/__tests__/fixtures/demo-data.ts",
+      "line": 350,
+      "kind": "price-magic-number",
+      "snippet": "rentAmount: 2500000,",
+      "severity": "low",
+      "matched": "2500000"
+    },
+    {
+      "file": "services/api-gateway/src/__tests__/fixtures/demo-data.ts",
+      "line": 351,
+      "kind": "price-magic-number",
+      "snippet": "depositAmount: 5000000,",
+      "severity": "low",
+      "matched": "5000000"
+    },
+    {
+      "file": "services/api-gateway/src/__tests__/fixtures/demo-data.ts",
+      "line": 377,
+      "kind": "price-magic-number",
+      "snippet": "rentAmount: 1500000,",
+      "severity": "low",
+      "matched": "1500000"
+    },
+    {
+      "file": "services/api-gateway/src/__tests__/fixtures/demo-data.ts",
+      "line": 378,
+      "kind": "price-magic-number",
+      "snippet": "depositAmount: 3000000,",
+      "severity": "low",
+      "matched": "3000000"
+    },
+    {
+      "file": "services/api-gateway/src/__tests__/fixtures/demo-data.ts",
+      "line": 563,
+      "kind": "price-magic-number",
+      "snippet": "unitPrice: 2500000,",
+      "severity": "low",
+      "matched": "2500000"
+    },
+    {
+      "file": "services/api-gateway/src/__tests__/fixtures/demo-data.ts",
+      "line": 595,
+      "kind": "price-magic-number",
+      "snippet": "unitPrice: 1500000,",
+      "severity": "low",
+      "matched": "1500000"
+    },
+    {
+      "file": "services/api-gateway/src/__tests__/fixtures/demo-data.ts",
+      "line": 626,
+      "kind": "price-magic-number",
+      "snippet": "unitPrice: 2500000,",
+      "severity": "low",
+      "matched": "2500000"
+    },
+    {
+      "file": "services/api-gateway/src/middleware/authorization.ts",
+      "line": 259,
+      "kind": "price-magic-number",
+      "snippet": "maxAmount: 100000, // TZS",
+      "severity": "low",
+      "matched": "100000"
+    },
+    {
+      "file": "services/api-gateway/src/middleware/authorization.ts",
+      "line": 267,
+      "kind": "price-magic-number",
+      "snippet": "maxAmount: 50000,",
+      "severity": "low",
+      "matched": "50000"
+    },
+    {
+      "file": "services/api-gateway/src/middleware/authorization.ts",
+      "line": 277,
+      "kind": "price-magic-number",
+      "snippet": "maxAmount: 50000,",
+      "severity": "low",
+      "matched": "50000"
+    },
+    {
+      "file": "services/api-gateway/src/middleware/authorization.ts",
+      "line": 284,
+      "kind": "price-magic-number",
+      "snippet": "maxAmount: 200000,",
+      "severity": "low",
+      "matched": "200000"
+    },
+    {
+      "file": "services/api-gateway/src/middleware/authorization.ts",
+      "line": 294,
+      "kind": "price-magic-number",
+      "snippet": "maxAmount: 500000,",
+      "severity": "low",
+      "matched": "500000"
+    },
+    {
+      "file": "services/api-gateway/src/middleware/authorization.ts",
+      "line": 301,
+      "kind": "price-magic-number",
+      "snippet": "maxAmount: 2000000,",
+      "severity": "low",
+      "matched": "2000000"
+    },
+    {
+      "file": "services/api-gateway/src/routes/__tests__/marketplace-universal.router.test.ts",
+      "line": 205,
+      "kind": "price-magic-number",
+      "snippet": "'/marketplace-universal/listings?minPrice=50000&maxPrice=80000',",
+      "severity": "low",
+      "matched": "50000"
+    },
+    {
+      "file": "services/api-gateway/src/routes/__tests__/marketplace-universal.router.test.ts",
+      "line": 205,
+      "kind": "price-magic-number",
+      "snippet": "'/marketplace-universal/listings?minPrice=50000&maxPrice=80000',",
+      "severity": "low",
+      "matched": "80000"
+    },
+    {
+      "file": "services/api-gateway/src/routes/__tests__/marketplace-universal.router.test.ts",
+      "line": 241,
+      "kind": "price-magic-number",
+      "snippet": "'/marketplace-universal/listings?minPrice=100000&maxPrice=50000',",
+      "severity": "low",
+      "matched": "100000"
+    },
+    {
+      "file": "services/api-gateway/src/routes/__tests__/marketplace-universal.router.test.ts",
+      "line": 241,
+      "kind": "price-magic-number",
+      "snippet": "'/marketplace-universal/listings?minPrice=100000&maxPrice=50000',",
+      "severity": "low",
+      "matched": "50000"
+    },
+    {
+      "file": "services/api-gateway/src/routes/__tests__/marketplace-universal.router.test.ts",
+      "line": 331,
+      "kind": "price-magic-number",
+      "snippet": "proposedPrice: 50000,",
+      "severity": "low",
+      "matched": "50000"
+    },
+    {
+      "file": "services/api-gateway/src/routes/__tests__/role-gate.test.ts",
+      "line": 72,
+      "kind": "price-magic-number",
+      "snippet": "rentAmount: 1000,",
+      "severity": "low",
+      "matched": "1000"
+    },
+    {
+      "file": "services/api-gateway/src/routes/bff/owner-portal.ts",
+      "line": 145,
+      "kind": "price-magic-number",
+      "snippet": "approvalThreshold: 50000,",
+      "severity": "low",
+      "matched": "50000"
+    },
+    {
+      "file": "services/api-gateway/src/routes/marketplace/in-memory-data-port.ts",
+      "line": 80,
+      "kind": "email-address",
+      "snippet": "primaryEmail: 'hello@ashaproperties.example',",
+      "severity": "medium",
+      "matched": "hello@ashaproperties.example"
+    },
+    {
+      "file": "services/api-gateway/src/routes/marketplace/in-memory-data-port.ts",
+      "line": 81,
+      "kind": "phone-number",
+      "snippet": "primaryPhone: '+254700111222',",
+      "severity": "medium",
+      "matched": "+254700111222"
+    },
+    {
+      "file": "services/api-gateway/src/routes/marketplace/in-memory-data-port.ts",
+      "line": 98,
+      "kind": "email-address",
+      "snippet": "primaryEmail: 'lettings@kilimanihomes.example',",
+      "severity": "medium",
+      "matched": "lettings@kilimanihomes.example"
+    },
+    {
+      "file": "services/api-gateway/src/routes/marketplace/in-memory-data-port.ts",
+      "line": 99,
+      "kind": "phone-number",
+      "snippet": "primaryPhone: '+254711222333',",
+      "severity": "medium",
+      "matched": "+254711222333"
+    },
+    {
+      "file": "services/domain-services/src/approvals/default-policies.ts",
+      "line": 43,
+      "kind": "price-magic-number",
+      "snippet": "{ minAmount: 500, maxAmount: 5000, requiredRole: 'property_manager', approvalLevel: 2 },",
+      "severity": "low",
+      "matched": "5000"
+    },
+    {
+      "file": "services/domain-services/src/approvals/default-policies.ts",
+      "line": 44,
+      "kind": "price-magic-number",
+      "snippet": "{ minAmount: 5000, maxAmount: null, requiredRole: 'owner', approvalLevel: 3 },",
+      "severity": "low",
+      "matched": "5000"
+    },
+    {
+      "file": "services/domain-services/src/approvals/default-policies.ts",
+      "line": 71,
+      "kind": "price-magic-number",
+      "snippet": "{ minAmount: 500, maxAmount: 5000, requiredRole: 'property_manager', approvalLevel: 2 },",
+      "severity": "low",
+      "matched": "5000"
+    },
+    {
+      "file": "services/domain-services/src/approvals/default-policies.ts",
+      "line": 72,
+      "kind": "price-magic-number",
+      "snippet": "{ minAmount: 5000, maxAmount: null, requiredRole: 'owner', approvalLevel: 3 },",
+      "severity": "low",
+      "matched": "5000"
+    },
+    {
+      "file": "services/domain-services/src/approvals/default-policies.ts",
+      "line": 88,
+      "kind": "price-magic-number",
+      "snippet": "{ minAmount: 0, maxAmount: 1000, requiredRole: 'estate_manager', approvalLevel: 1 },",
+      "severity": "low",
+      "matched": "1000"
+    },
+    {
+      "file": "services/domain-services/src/approvals/default-policies.ts",
+      "line": 89,
+      "kind": "price-magic-number",
+      "snippet": "{ minAmount: 1000, maxAmount: null, requiredRole: 'property_manager', approvalLevel: 2 },",
+      "severity": "low",
+      "matched": "1000"
+    },
+    {
+      "file": "services/domain-services/src/approvals/default-policies.ts",
+      "line": 109,
+      "kind": "price-magic-number",
+      "snippet": "{ minAmount: 500, maxAmount: 2500, requiredRole: 'property_manager', approvalLevel: 2 },",
+      "severity": "low",
+      "matched": "2500"
+    },
+    {
+      "file": "services/domain-services/src/approvals/default-policies.ts",
+      "line": 110,
+      "kind": "price-magic-number",
+      "snippet": "{ minAmount: 2500, maxAmount: null, requiredRole: 'owner', approvalLevel: 3 },",
+      "severity": "low",
+      "matched": "2500"
+    },
+    {
+      "file": "services/domain-services/src/approvals/postgres-approval-policy-repository.test.ts",
+      "line": 168,
+      "kind": "price-magic-number",
+      "snippet": "{ minAmount: 0, maxAmount: 1000, requiredRole: 'estate_manager', approvalLevel: 1 },",
+      "severity": "low",
+      "matched": "1000"
+    },
+    {
+      "file": "services/domain-services/src/lease/__tests__/renewal-service.test.ts",
+      "line": 26,
+      "kind": "price-magic-number",
+      "snippet": "rentAmount: 100000,",
+      "severity": "low",
+      "matched": "100000"
+    },
+    {
+      "file": "services/domain-services/src/marketplace/__tests__/listing-service.test.ts",
+      "line": 121,
+      "kind": "price-magic-number",
+      "snippet": "{ unitId: 'u2', listingKind: 'sale', headlinePrice: 5000 },",
+      "severity": "low",
+      "matched": "5000"
+    },
+    {
+      "file": "services/domain-services/src/migration/__tests__/postgres-migration-repository.test.ts",
+      "line": 153,
+      "kind": "price-magic-number",
+      "snippet": "units: [{ id: 'u1', propertyId: 'p1', unitCode: 'U01', baseRentAmount: 1000 }],",
+      "severity": "low",
+      "matched": "1000"
+    },
+    {
+      "file": "services/domain-services/src/negotiation/__tests__/postgres-negotiation-repository.test.ts",
+      "line": 105,
+      "kind": "price-magic-number",
+      "snippet": "listPrice: 100000,",
+      "severity": "low",
+      "matched": "100000"
+    },
+    {
+      "file": "services/domain-services/src/negotiation/__tests__/postgres-negotiation-repository.test.ts",
+      "line": 106,
+      "kind": "price-magic-number",
+      "snippet": "floorPrice: 80000,",
+      "severity": "low",
+      "matched": "80000"
+    },
+    {
+      "file": "services/domain-services/src/negotiation/__tests__/postgres-negotiation-repository.test.ts",
+      "line": 192,
+      "kind": "price-magic-number",
+      "snippet": "agreedPrice: 90000,",
+      "severity": "low",
+      "matched": "90000"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/templates.ts",
+      "line": 1094,
+      "kind": "phone-number",
+      "snippet": "TZ: '+255 712 345 678',",
+      "severity": "medium",
+      "matched": "+255 712 345 678"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/templates.ts",
+      "line": 1095,
+      "kind": "phone-number",
+      "snippet": "KE: '+254 712 345 678',",
+      "severity": "medium",
+      "matched": "+254 712 345 678"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/templates.ts",
+      "line": 1096,
+      "kind": "phone-number",
+      "snippet": "UG: '+256 772 345 678',",
+      "severity": "medium",
+      "matched": "+256 772 345 678"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/templates.ts",
+      "line": 1097,
+      "kind": "phone-number",
+      "snippet": "RW: '+250 788 345 678',",
+      "severity": "medium",
+      "matched": "+250 788 345 678"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/templates.ts",
+      "line": 1098,
+      "kind": "phone-number",
+      "snippet": "ZA: '+27 72 345 6789',",
+      "severity": "medium",
+      "matched": "+27 72 345 6789"
+    },
+    {
+      "file": "services/notifications/src/whatsapp/templates.ts",
+      "line": 1099,
+      "kind": "phone-number",
+      "snippet": "NG: '+234 802 345 6789',",
+      "severity": "medium",
+      "matched": "+234 802 345 6789"
+    },
+    {
+      "file": "services/payments/src/__tests__/gepg-provider.test.ts",
+      "line": 122,
+      "kind": "price-magic-number",
+      "snippet": "paidAmount: 1000,",
+      "severity": "low",
+      "matched": "1000"
+    }
+  ]
+}

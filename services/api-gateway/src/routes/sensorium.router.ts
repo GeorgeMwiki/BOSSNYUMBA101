@@ -45,6 +45,7 @@ import {
 } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // ─────────────────────────────────────────────────────────────────────
 // Validation
 // ─────────────────────────────────────────────────────────────────────
@@ -162,7 +163,7 @@ app.use('*', authMiddleware);
 app.post(
   '/events',
   zValidator('json', PostBodySchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'sensorium.create', resource: 'sensorium', severity: 'info' }, async (c: any) => {
     const auth = c.get('auth') as
       | { tenantId: string; userId: string }
       | undefined;
@@ -268,7 +269,7 @@ app.post(
         500,
       );
     }
-  },
+  }),
 );
 
 export const sensoriumRouter = app;

@@ -40,6 +40,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // Liveblocks node SDK is loaded lazily so the gateway boots without
 // the package installed (degraded mode returns 503). The factory is
 // injectable for tests — see {@link configureLiveblocksFactory}.
@@ -114,7 +115,7 @@ app.use('*', authMiddleware);
 app.post(
   '/auth',
   zValidator('json', PostBodySchema),
-  async (c: any) => {
+  withSecurityEvents({ action: 'liveblocks-auth.create', resource: 'liveblocks-auth', severity: 'warn' }, async (c: any) => {
     const auth = c.get('auth') as
       | { tenantId: string; userId: string; role?: string }
       | undefined;
@@ -186,7 +187,7 @@ app.post(
         500,
       );
     }
-  },
+  }),
 );
 
 export const liveblocksAuthRouter = app;

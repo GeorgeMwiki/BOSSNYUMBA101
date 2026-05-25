@@ -25,6 +25,7 @@ import {
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 // Legacy feedback shape — long-form bug/feature/etc submissions captured
 // from staff/tenant surveys. Persists to `feedback_submissions`.
 const legacyFeedbackSchema = z.object({
@@ -106,7 +107,7 @@ function newId(prefix: string): string {
 
 // --- Feedback endpoints -----------------------------------------------------
 
-app.post('/', zValidator('json', submitFeedbackSchema), async (c) => {
+app.post('/', zValidator('json', submitFeedbackSchema), withSecurityEvents({ action: 'feedback.create', resource: 'feedback', severity: 'info' }, async (c) => {
   const db = (c.get('services') ?? {}).db;
   if (!db) return dbUnavailable(c);
   const auth = c.get('auth');
@@ -177,7 +178,7 @@ app.post('/', zValidator('json', submitFeedbackSchema), async (c) => {
       fallback: 'Feedback write failed',
     });
   }
-});
+}));
 
 app.get('/', async (c) => {
   const db = (c.get('services') ?? {}).db;
@@ -211,7 +212,7 @@ app.get('/', async (c) => {
 
 // --- Complaints (mounted under /feedback/complaints/*) --------------------
 
-app.post('/complaints', zValidator('json', createComplaintSchema), async (c) => {
+app.post('/complaints', zValidator('json', createComplaintSchema), withSecurityEvents({ action: 'feedback.create', resource: 'feedback', severity: 'info' }, async (c) => {
   const db = (c.get('services') ?? {}).db;
   if (!db) return dbUnavailable(c);
   const auth = c.get('auth');
@@ -238,7 +239,7 @@ app.post('/complaints', zValidator('json', createComplaintSchema), async (c) => 
       fallback: 'Complaint write failed',
     });
   }
-});
+}));
 
 app.get('/complaints/:id', async (c) => {
   const db = (c.get('services') ?? {}).db;
@@ -272,7 +273,7 @@ app.get('/complaints/:id', async (c) => {
 app.put(
   '/complaints/:id/resolve',
   zValidator('json', resolveComplaintSchema),
-  async (c) => {
+  withSecurityEvents({ action: 'feedback.update', resource: 'feedback', severity: 'info' }, async (c) => {
     const db = (c.get('services') ?? {}).db;
     if (!db) return dbUnavailable(c);
     const auth = c.get('auth');
@@ -303,7 +304,7 @@ app.put(
         fallback: 'Complaint resolve failed',
       });
     }
-  },
+  }),
 );
 
 // --- Single feedback by id (must come after /complaints/:id) --------------

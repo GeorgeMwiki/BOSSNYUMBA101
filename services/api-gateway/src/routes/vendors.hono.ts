@@ -7,6 +7,7 @@ import { databaseMiddleware } from '../middleware/database';
 import { mapVendorRow, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 const ContactSchema = z.object({
   name: z.string().min(1).max(100),
   email: z.string().email().optional(),
@@ -85,7 +86,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapVendorRow(row) });
 });
 
-app.post('/', zValidator('json', VendorCreateSchema), async (c) => {
+app.post('/', zValidator('json', VendorCreateSchema), withSecurityEvents({ action: 'vendor.create', resource: 'vendor', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -110,9 +111,9 @@ app.post('/', zValidator('json', VendorCreateSchema), async (c) => {
     updatedBy: auth.userId,
   });
   return c.json({ success: true, data: mapVendorRow(row) }, 201);
-});
+}));
 
-app.put('/:id', zValidator('json', VendorUpdateSchema), async (c) => {
+app.put('/:id', zValidator('json', VendorUpdateSchema), withSecurityEvents({ action: 'vendor.update', resource: 'vendor', severity: 'info' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -129,13 +130,13 @@ app.put('/:id', zValidator('json', VendorUpdateSchema), async (c) => {
   });
   if (!row) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Vendor not found' } }, 404);
   return c.json({ success: true, data: mapVendorRow(row) });
-});
+}));
 
-app.delete('/:id', async (c) => {
+app.delete('/:id', withSecurityEvents({ action: 'vendor.delete', resource: 'vendor', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   await repos.vendors.delete(c.req.param('id'), auth.tenantId, auth.userId);
   return c.json({ success: true, data: { message: 'Vendor deleted' } });
-});
+}));
 
 export const vendorsRouter = app;

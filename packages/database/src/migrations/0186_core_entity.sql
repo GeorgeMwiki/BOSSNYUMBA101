@@ -1,3 +1,13 @@
+-- @safety: dynamic-not-null-reviewed
+-- Reviewed 2026-05-25: every NOT NULL inside this file's DO/EXECUTE blocks
+-- lives inside a `CREATE TABLE IF NOT EXISTS core_entity (...)` body, so the
+-- constraint lands on a newly-created column with zero rows (trivially safe
+-- — the same NEW_TABLE classification the static analyser would assign if
+-- the CREATE TABLE were not wrapped in EXECUTE for the PostGIS-availability
+-- fallback). No ALTER COLUMN ... SET NOT NULL is issued against an
+-- existing table; the dynamic indirection exists solely to switch the
+-- geo_geog column between geography(GEOMETRY, 4326) and JSONB based on
+-- whether the PostGIS extension is installed.
 -- =============================================================================
 -- 0186: core_entity — Piece A universal asset & entity model (polymorphic root).
 --

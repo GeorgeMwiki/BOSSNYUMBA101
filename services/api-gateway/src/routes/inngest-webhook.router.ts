@@ -42,6 +42,7 @@
 import { Hono } from 'hono';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
+import { withSecurityEvents } from '@bossnyumba/observability';
 export interface InngestRuntime {
   /** Process an Inngest event. Returns the run result envelope or
    *  throws when the runtime is misconfigured. The runtime is
@@ -137,7 +138,7 @@ function isReplay(eventId: string | undefined, now: number = Date.now()): boolea
 
 const app = new Hono();
 
-app.post('/', async (c) => {
+app.post('/', withSecurityEvents({ action: 'inngest-webhook.create', resource: 'inngest-webhook', severity: 'info' }, async (c) => {
   const rawBody = await c.req.raw.text();
   const sigHeader = c.req.header('x-inngest-signature') ?? c.req.header('X-Inngest-Signature');
   const verdict = verifyInngestSignature(rawBody, sigHeader);
@@ -240,7 +241,7 @@ app.post('/', async (c) => {
       500,
     );
   }
-});
+}));
 
 export const __internal = {
   verifyInngestSignature,

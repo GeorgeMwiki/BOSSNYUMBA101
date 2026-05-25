@@ -73,11 +73,20 @@ const AUTH_PATTERNS = [
   /\brequireFreshToken\s*\(/,
   // Generic auth helper names (defensive).
   /\brequireAuth\s*\(/,
+  /\brequireUser\s*\(/,
   /\bwithAuth\s*\(/,
   /\bprotect\s*\(/,
   /\bgetServerUser\s*\(/,
   /\bgetServerSession\s*\(/,
   /\bverifySupabaseJwt\s*\(/,
+  // BOSSNYUMBA composition-root tenant resolvers — when a route is
+  // composed via a `TenantResolver` / `resolveTenantId` port the auth
+  // gate is applied at composition time, not in the handler file. The
+  // pattern below recognises both Fastify (parcel-service style) and
+  // Hono (api-gateway style) variants.
+  /\btenantResolver\b/,
+  /\bresolveTenantId\s*\(/,
+  /\btenantOrFail\s*\(/,
   // Next.js cookie-based session helpers.
   /\bPLATFORM_SESSION_COOKIE\b/,
   /\bcookies\(\)\s*\.get\(/, // followed in same file by session lookup
