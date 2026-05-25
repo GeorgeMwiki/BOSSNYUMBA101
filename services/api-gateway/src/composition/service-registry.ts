@@ -447,6 +447,15 @@ import {
   createLitfinDomainBundle,
   type LitfinDomainBundle,
 } from './litfin-domain-wiring.js';
+// LITFIN-port wave wiring (Batch 3 — 5 platform bundles).
+// Bundles security-hardening + document-ai + progressive-intelligence +
+// document-quality-guarantor + audio-capture. Each ships a pre-wired
+// facade with safe defaults (in-memory stores / mock ports) plus the
+// raw namespace export so consumers can swap in concrete adapters.
+import {
+  createLitfinPlatformBundle,
+  type LitfinPlatformBundle,
+} from './litfin-platform-wiring.js';
 // Canonical Property Graph (CPG) — Neo4j query service. Constructed
 // lazily so the gateway still boots when NEO4J_URI is unset; the graph
 // router returns 503 GRAPH_SERVICE_UNAVAILABLE when this slot is null.
@@ -805,6 +814,33 @@ export interface ServiceRegistry {
    *     the caller via `createComplianceEngine`)
    */
   readonly litfinDomain: LitfinDomainBundle;
+
+  /**
+   * LITFIN-port batch 3 — 5 platform-domain bundles exposed via DI.
+   *
+   * Always non-null in both degraded + live modes. Each bundle member
+   * ships a pre-wired facade with safe defaults so the gateway boots
+   * without external creds. Members:
+   *   - `securityHardening` namespace + `securityHardeningInstance`
+   *     pre-wired with NODE_ENV-aware headers env, in-memory rate-
+   *     limit store, in-memory step-up store, anomaly detector,
+   *     credential-stuffing detector
+   *   - `documentAI` namespace + `documentAIInstance` pre-wired with
+   *     mock OCR + mock e-sig (production swap: pass Anthropic +
+   *     DocuSign ports via `createDocumentAI({ brain, eSignature })`)
+   *   - `progressiveIntelligence` namespace +
+   *     `progressiveIntelligenceInstance` pre-wired with deterministic
+   *     mock embedder (no brain — coaching / streaming endpoints
+   *     return dormant results until a brain port is bound)
+   *   - `documentQualityGuarantor` namespace + `dqgAuditStore`
+   *     pre-wired in-memory audit chain. Per-tenant guarantor facades
+   *     are instantiated at request time because intake/output
+   *     orchestrators bind to per-tenant brain + format-registry ports
+   *   - `audioCapture` namespace + `audioCaptureInstance` pre-wired
+   *     with no ports — every adapter is null until provider creds
+   *     land. Consumers gate on `audioCaptureInstance.stt !== null`
+   */
+  readonly litfinPlatform: LitfinPlatformBundle;
 
   /** Wave 29 — Forecasting (TGN + conformal prediction intervals).
    *  Every member is `null` until BOTH `TGN_INFERENCE_URL` and
@@ -1299,6 +1335,11 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // fairness-eval, analytics, knowledge-graph, compliance-pack).
     // Always wired; in-memory facade for analytics + KG.
     litfinDomain: createLitfinDomainBundle(),
+    // LITFIN-port batch 3 — 5 platform bundles (security-hardening,
+    // document-ai, progressive-intelligence, document-quality-guarantor,
+    // audio-capture). Always wired; pre-wired facades with safe
+    // defaults; namespaces exposed for follow-up port wiring.
+    litfinPlatform: createLitfinPlatformBundle(),
     // Central Intelligence — no concrete LLM adapter ships here (it
     // lives in a separate service). In degraded mode we still wire the
     // in-memory memory so thread listing works locally.
@@ -1990,6 +2031,11 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // Live mode is identical today; Neo4j-backed KG + per-tenant
     // compliance engines are follow-up wirings.
     litfinDomain: createLitfinDomainBundle(),
+    // LITFIN-port batch 3 — 5 platform bundles (security-hardening,
+    // document-ai, progressive-intelligence, document-quality-guarantor,
+    // audio-capture). Live mode is identical today; concrete OCR /
+    // STT / WebAuthn ports land via follow-up wirings.
+    litfinPlatform: createLitfinPlatformBundle(),
     // Central Intelligence — the concrete LLM adapter lives in a
     // separate service. `agent` is only populated when `CI_LLM_URL`
     // env var is set AND the adapter is wired (follow-up PR); until
