@@ -16,6 +16,7 @@ import type {
   StoredTurn,
   ThreadSummary,
 } from './types';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 /* ──────────────────────────── Base config ──────────────────────────── */
 
@@ -178,6 +179,7 @@ export async function createThread(
       headers: {
         'Content-Type': 'application/json',
         ...getAuthHeader(),
+        ...getCsrfHeaders(),
       },
       body: JSON.stringify({ seedMessage }),
     });
@@ -244,6 +246,7 @@ export async function* streamMessage(
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
           ...getAuthHeader(),
+          ...getCsrfHeaders(),
         },
         body: JSON.stringify({
           userMessage: args.userMessage,

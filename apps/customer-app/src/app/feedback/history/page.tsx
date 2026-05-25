@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { MessageSquare, ChevronRight, Loader2 } from 'lucide-react';
 import { feedbackService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 /**
  * Local Feedback shape — inlined to sidestep tsup's barrel
@@ -127,7 +128,7 @@ export default function FeedbackHistoryPage() {
               <p className="text-sm text-gray-500 mt-1">
                 {t('emptyBody')}
               </p>
-              <Link href="/feedback" className="btn-primary mt-4 inline-flex">
+              <Link href={ROUTES.feedback.root} className="btn-primary mt-4 inline-flex">
                 {t('emptyCta')}
               </Link>
             </div>

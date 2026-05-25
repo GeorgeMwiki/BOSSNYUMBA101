@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useQueryClient } from '@tanstack/react-query';
 import { normalizePhoneForCountry } from '@bossnyumba/domain-models';
 import { getApiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 /**
  * Shape of a single org membership surfaced to the UI. Mirrors (a subset
@@ -184,6 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...getCsrfHeaders(),
           },
           body: JSON.stringify({ orgId }),
         });
@@ -243,6 +245,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...getCsrfHeaders(),
           },
           body: JSON.stringify({ code: code.trim() }),
         });

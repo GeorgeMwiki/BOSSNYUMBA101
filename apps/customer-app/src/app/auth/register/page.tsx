@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { getRegionConfig } from '@bossnyumba/domain-models';
 import { useAuth } from '@/contexts/AuthContext';
+import { ROUTES } from '@/lib/routes';
 
 /**
  * Resolve the phone placeholder for the deployment's default country.
@@ -67,7 +68,7 @@ export default function RegisterPage() {
       });
 
       if (result.success) {
-        router.push(`/auth/otp?phone=${encodeURIComponent(values.phone)}&mode=register`);
+        router.push(ROUTES.auth.otpWithPhone(values.phone, 'register'));
       } else {
         setError('root', { message: result.message ?? 'Something went wrong' });
       }
@@ -198,7 +199,7 @@ export default function RegisterPage() {
         </form>
 
         <div className="mt-6 text-center">
-          <Link href="/auth/login" className="text-primary-600 font-medium">
+          <Link href={ROUTES.auth.login} className="text-primary-600 font-medium">
             Already have an account? Sign in
           </Link>
         </div>

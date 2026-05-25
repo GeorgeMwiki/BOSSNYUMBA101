@@ -46,12 +46,18 @@ or `[OPTIONAL]` tag.
 
 ---
 
-## 3. Applying all 155 Drizzle migrations
+## 3. Applying all 148+ Drizzle migrations
 
-> The current migrations directory ships **155 numbered SQL files**
-> covering schema, indices, RLS, and seed data. New tenant-scoped
-> tables added in Phase D land in `0155_supabase_rls_policies.sql`
-> (the file this runbook ships alongside).
+> The current migrations directory ships **148+ numbered SQL files**
+> (max counter `0171` after the FORCE RLS / phase-2 + kill-switch /
+> tool-flag migrations) covering schema, indices, RLS, and seed data.
+> The base RLS policy file added in Phase D is
+> `0155_supabase_rls_policies.sql`; FORCE RLS plus phase-2 coverage on
+> the remaining tenant-scoped tables (CoT reservoir, sovereign action
+> ledger, agency run checkpoints, sensor call log, voice turns, doc
+> chat, memory tables) lands in `0146_cot_reservoir_rls.sql` and
+> `0156_supabase_rls_phase2.sql`. Re-verify the count before sign-off
+> with `ls packages/database/src/migrations/*.sql | wc -l`.
 
 ```bash
 # 1. Confirm DATABASE_URL points at the Supabase project (uri form,
@@ -63,7 +69,8 @@ pnpm --filter @bossnyumba/database db:migrate
 
 # 3. Verify migration table count matches expected.
 psql "$DATABASE_URL" -tAc "select count(*) from drizzle.__drizzle_migrations;"
-# Expected: 155 (after 0155_supabase_rls_policies lands).
+# Expected: matches `ls packages/database/src/migrations/*.sql | wc -l`
+# (148 at time of writing — max counter 0171; recount before sign-off).
 
 # 4. Spot-check that tenant-scoped tables have RLS enabled.
 psql "$DATABASE_URL" -tAc "
@@ -150,21 +157,28 @@ If step 4 returns 401, debug in order:
 ## 5. Open RLS policy gaps (known)
 
 The repository ships RLS policies on the top-25 tenant-scoped tables
-in `packages/database/src/migrations/0155_supabase_rls_policies.sql`.
-The following surfaces are **explicitly not yet protected** by RLS
-and rely on application-layer authorization until Phase E:
+in `packages/database/src/migrations/0155_supabase_rls_policies.sql`,
+plus FORCE RLS + a further ~13 phase-2 tables in
+`0156_supabase_rls_phase2.sql`, plus CoT reservoir isolation in
+`0146_cot_reservoir_rls.sql`. The previously-deferred surfaces
+listed below are now CLOSED — keep the table as a tombstone for the
+audit trail.
 
-| Surface | Risk class | Phase E ticket |
+| Surface | Status | Closing migration |
 |---|---|---|
-| `kernel_cot_reservoir` (chain-of-thought scratch) | LOW — append-only, no PII surfaces, opaque IDs | E-RLS-1 |
-| `sovereign_action_ledger` (HQ tool execution log) | MEDIUM — cross-tenant `executor_id` references | E-RLS-2 |
-| `agency_run_checkpoints` (workflow resumption state) | MEDIUM — JSON blobs may contain tenant secrets | E-RLS-3 |
-| `sensor_call_log` (sensor invocation traces) | LOW — no PII; trace IDs only | E-RLS-4 |
+| `kernel_cot_reservoir` (chain-of-thought scratch) | RLS-ENABLED | `0146_cot_reservoir_rls.sql` |
+| `sovereign_action_ledger` (HQ tool execution log) | RLS-ENABLED + FORCE | `0156_supabase_rls_phase2.sql` |
+| `agency_run_checkpoints` (workflow resumption state) | RLS-ENABLED + FORCE | `0156_supabase_rls_phase2.sql` |
+| `sensor_call_log` (sensor invocation traces) | RLS-ENABLED + FORCE | `0156_supabase_rls_phase2.sql` |
+| `voice_turns`, `doc_chat_*`, `kernel_memory_*`, `reflexion_buffer`, `document_embeddings`, `intelligence_history`, `tenant_financial_statements`, `tenant_litigation_history` | RLS-ENABLED + FORCE | `0156_supabase_rls_phase2.sql` |
 
-All four tables remain `service_role`-only at the Postgres layer (no
-`anon` or `authenticated` role grants). The application enforces
-tenant-scoping via the `WHERE tenant_id = current_setting('app.tenant_id')`
-guard in the corresponding repository module.
+Both `0155` (25 base tables) and `0156` (13 phase-2 tables) now run
+under `FORCE ROW LEVEL SECURITY`, so the table owner (`postgres` /
+`service_role`) is also subject to the policy unless explicitly using
+the `service_role` bypass route. The defense-in-depth remains: every
+authenticated request rebinds the `app.tenant_id` GUC on the pooled
+connection before any read, and the canonical `current_app_tenant_id()`
+helper used by the RLS predicate reads that exact GUC name.
 
 ---
 
@@ -186,9 +200,12 @@ psql "$DATABASE_URL" -c "
 
 ## 7. Sign-off checklist
 
-- [ ] All 155 migrations applied; `__drizzle_migrations` count matches.
-- [ ] RLS enabled on the top-25 tenant-scoped tables (spot-check via
-      `pg_class.relrowsecurity`).
+- [ ] All migrations applied; `__drizzle_migrations` count matches
+      `ls packages/database/src/migrations/*.sql | wc -l` (148 at time
+      of writing, max counter 0171).
+- [ ] RLS enabled on the top-25 base tables (0155) AND the phase-2
+      table set in 0156 (spot-check via `pg_class.relrowsecurity` AND
+      `pg_class.relforcerowsecurity`).
 - [ ] `supabase-auth.test.ts` passes (`pnpm --filter
       @bossnyumba/ai-copilot vitest run src/__tests__/supabase-auth.test.ts`).
 - [ ] Customer-app login → api-gateway `/api/me` returns 200 with

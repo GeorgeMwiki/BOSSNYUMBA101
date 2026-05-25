@@ -192,3 +192,95 @@ describe('createKmsAdapter — round-trip via stub client', () => {
     ).rejects.toBeInstanceOf(EncryptionAuthenticationError);
   });
 });
+
+// W1.5 / DA3 — when a `clientOverride` is supplied, the adapter must
+// honour the caller-resolved region. The composition root resolves the
+// region via `getTenantRegion(db, tenantId)` per request and passes it
+// through `selectEncryptionPortForTenant` -> `createKmsAdapter`. These
+// tests bind the contract end-to-end: the adapter accepts any region
+// string (af-south-1, eu-west-1, etc.) without baking in a default.
+describe('createKmsAdapter — region routing accepts caller-resolved region', () => {
+  it('binds to the af-south-1 region when the caller passes it (per-tenant from tenants.region)', async () => {
+    const { client } = makeStubKmsClient();
+    const port = await createKmsAdapter({
+      kmsKeyId: 'alias/za-cmk',
+      region: 'af-south-1',
+      fallbackSnapshot: makeFallbackSnapshot(),
+      clientOverride: client,
+    });
+    expect(port.kind).toBe('kms');
+    const blob = await port.encrypt({
+      plaintext: 'NID-1234',
+      classification: KRA_PIN_CLASS,
+      tenantId: 'tenant-ZA',
+    });
+    // Round-trip via the stub client proves the adapter actually used
+    // the wrappedDek emitted under the af-south-1-bound config.
+    const out = await port.decrypt({
+      blob,
+      classification: KRA_PIN_CLASS,
+      tenantId: 'tenant-ZA',
+    });
+    expect(out).toBe('NID-1234');
+  });
+
+  it('falls back to the env-supplied region when the caller passes that (resolver -> null)', async () => {
+    const { client } = makeStubKmsClient();
+    // Caller resolved a NULL tenant region; composition root supplied
+    // env.AWS_REGION='eu-west-1' as the fallback.
+    const port = await createKmsAdapter({
+      kmsKeyId: 'alias/default',
+      region: 'eu-west-1',
+      fallbackSnapshot: makeFallbackSnapshot(),
+      clientOverride: client,
+    });
+    expect(port.kind).toBe('kms');
+    const blob = await port.encrypt({
+      plaintext: 'EU-FIELD',
+      classification: KRA_PIN_CLASS,
+      tenantId: 'tenant-no-region',
+    });
+    const out = await port.decrypt({
+      blob,
+      classification: KRA_PIN_CLASS,
+      tenantId: 'tenant-no-region',
+    });
+    expect(out).toBe('EU-FIELD');
+  });
+
+  it('threads the resolved region into the constructed KMSClient when no override is supplied', async () => {
+    // Verify the region threaded through the resolution chain ACTUALLY
+    // reaches the SDK constructor. ESM module namespaces are frozen so
+    // we cannot `vi.spyOn` the live `@aws-sdk/client-kms` namespace —
+    // instead we mock the module via `vi.doMock` and capture the ctor
+    // args, then dynamic-import a fresh copy of the adapter under test
+    // so it picks up the mock.
+    const ctorCalls: Array<{ region: string }> = [];
+    class FakeKMSClient {
+      constructor(cfg: { region: string }) {
+        ctorCalls.push({ region: cfg.region });
+      }
+      // Minimal `send` so `buildAdapter`'s GenerateDataKey path could
+      // theoretically run — but the test asserts only on the ctor call,
+      // it never exercises send().
+      send() {
+        return Promise.resolve({});
+      }
+    }
+    vi.doMock('@aws-sdk/client-kms', () => ({ KMSClient: FakeKMSClient }));
+    try {
+      const fresh = await import('../kms-adapter.js');
+      await fresh.createKmsAdapter({
+        kmsKeyId: 'alias/za-cmk',
+        region: 'af-south-1',
+        fallbackSnapshot: makeFallbackSnapshot(),
+      });
+      // The first construction call MUST be { region: 'af-south-1' }.
+      expect(ctorCalls).toHaveLength(1);
+      expect(ctorCalls[0]?.region).toBe('af-south-1');
+    } finally {
+      vi.doUnmock('@aws-sdk/client-kms');
+      vi.resetModules();
+    }
+  });
+});

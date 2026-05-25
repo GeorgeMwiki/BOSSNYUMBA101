@@ -1,181 +1,170 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+/**
+ * Unit tests for the `withSecurityEvents` HOF and the Hono-style
+ * `securityEventsMiddleware`. Verifies:
+ *   - mutating verbs always emit
+ *   - idempotent verbs (GET/HEAD/OPTIONS) skip
+ *   - outcome derives from response status
+ *   - audit emission failures are non-blocking
+ *   - skip() opt-out is respected
+ */
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   withSecurityEvents,
-  withSecurityEventsNextRoute,
-  setSecurityEventSink,
-  resetSecurityEventSink,
+  securityEventsMiddleware,
   recordSecurityEvent,
-  type SecurityEvent,
+  type AuditableContext,
 } from '../with-security-events.js';
+import { initAuditLogger } from '../../audit-logger.js';
+import { MemoryAuditStore } from '../../audit/memory-audit-store.js';
+import type { IAuditStore } from '../../audit/audit-store.interface.js';
 
-function captureSink() {
-  const events: SecurityEvent[] = [];
-  return { events, sink: (e: SecurityEvent) => { events.push(e); } };
+function makeCtx(opts: {
+  method: string;
+  path: string;
+  status?: number;
+  auth?: Record<string, unknown>;
+}): AuditableContext {
+  const store = new Map<string, unknown>();
+  store.set('auth', opts.auth ?? { userId: 'u-1', roles: ['admin'] });
+  return {
+    req: {
+      method: opts.method,
+      path: opts.path,
+      header: (n: string) =>
+        n.toLowerCase() === 'user-agent' ? 'test-agent/1.0' : undefined,
+    },
+    res: { status: opts.status ?? 200 },
+    get(key: string) {
+      return store.get(key);
+    },
+  };
 }
 
-describe('withSecurityEvents (Hono)', () => {
-  let captured: ReturnType<typeof captureSink>;
+describe('withSecurityEvents', () => {
+  let auditStore: IAuditStore;
 
   beforeEach(() => {
-    captured = captureSink();
-    setSecurityEventSink(captured.sink);
-  });
-  afterEach(() => {
-    resetSecurityEventSink();
+    auditStore = new MemoryAuditStore();
+    initAuditLogger({ store: auditStore });
   });
 
-  function makeCtx(over: Partial<{ tenantId: string; actorId: string }> = {}) {
-    return {
-      req: {
-        method: 'POST',
-        path: '/leases',
-        routePath: '/leases',
-        header: (name: string) => {
-          if (name === 'x-correlation-id') return 'cid-123';
-          if (name === 'x-forwarded-for') return '203.0.113.5';
+  it('emits a SecurityEvent for POST', async () => {
+    const handler = withSecurityEvents(async (c) => {
+      (c.res as { status: number }).status = 201;
+      return { ok: true };
+    });
+    await handler(makeCtx({ method: 'POST', path: '/api/v1/properties' }));
+    const events = await auditStore.query({ limit: 10 });
+    expect(events.events.length).toBe(1);
+    expect(events.events[0].outcome).toBe('SUCCESS');
+    expect(events.events[0].action).toBe('POST');
+  });
+
+  it('does NOT emit for GET (read-only)', async () => {
+    const handler = withSecurityEvents(async () => ({ ok: true }));
+    await handler(makeCtx({ method: 'GET', path: '/api/v1/properties' }));
+    const events = await auditStore.query({ limit: 10 });
+    expect(events.events.length).toBe(0);
+  });
+
+  it('classifies 403 as DENIED', async () => {
+    const handler = withSecurityEvents(async (c) => {
+      (c.res as { status: number }).status = 403;
+      return { ok: false };
+    });
+    await handler(makeCtx({ method: 'DELETE', path: '/api/v1/users/u-9', status: 403 }));
+    const events = await auditStore.query({ limit: 10 });
+    expect(events.events[0].outcome).toBe('DENIED');
+  });
+
+  it('classifies 500 from thrown error as ERROR', async () => {
+    const handler = withSecurityEvents(async () => {
+      throw new Error('boom');
+    });
+    await expect(
+      handler(makeCtx({ method: 'PATCH', path: '/api/v1/leases/abc' })),
+    ).rejects.toThrow('boom');
+    const events = await auditStore.query({ limit: 10 });
+    expect(events.events.length).toBe(1);
+    expect(events.events[0].outcome).toBe('ERROR');
+  });
+
+  it('respects skip()', async () => {
+    const handler = withSecurityEvents(async () => ({ ok: true }), {
+      skip: () => true,
+    });
+    await handler(makeCtx({ method: 'POST', path: '/api/v1/health' }));
+    const events = await auditStore.query({ limit: 10 });
+    expect(events.events.length).toBe(0);
+  });
+
+  it('does not block on audit emission failure', async () => {
+    initAuditLogger({
+      store: {
+        async store() {
+          throw new Error('sink down');
+        },
+        async storeBatch() {
+          throw new Error('sink down');
+        },
+        async query() {
+          return { events: [], total: 0, page: 1, limit: 10, hasMore: false };
+        },
+        async getById() {
           return null;
         },
-      },
-      res: { status: 201 },
-      get(key: string) {
-        if (key === 'tenantId') return over.tenantId ?? null;
-        if (key === 'actorId') return over.actorId ?? null;
-        return null;
-      },
-    };
-  }
-
-  it('emits one event after a successful handler', async () => {
-    const handler = vi.fn(async () => ({ leaseId: 'L-1' }));
-    const wrapped = withSecurityEvents(
-      { action: 'lease.create', resource: 'lease', severity: 'info' },
-      handler,
-    );
-    const result = await wrapped(makeCtx({ tenantId: 't-1', actorId: 'u-1' }));
-    expect(handler).toHaveBeenCalledOnce();
-    expect(result).toEqual({ leaseId: 'L-1' });
-    expect(captured.events).toHaveLength(1);
-    const e = captured.events[0]!;
-    expect(e.action).toBe('lease.create');
-    expect(e.resource).toBe('lease');
-    expect(e.method).toBe('POST');
-    expect(e.tenantId).toBe('t-1');
-    expect(e.actorId).toBe('u-1');
-    expect(e.responseStatus).toBe(201);
-    expect(e.errored).toBe(false);
-    expect(e.correlationId).toBe('cid-123');
-    expect(e.clientIp).toBe('203.0.113.5');
-  });
-
-  it('emits an errored event when the handler throws', async () => {
-    const wrapped = withSecurityEvents(
-      { action: 'lease.create', resource: 'lease' },
-      async () => {
-        throw new Error('boom');
-      },
-    );
-    await expect(wrapped(makeCtx())).rejects.toThrow('boom');
-    expect(captured.events).toHaveLength(1);
-    const e = captured.events[0]!;
-    expect(e.errored).toBe(true);
-    expect(e.responseStatus).toBe(500);
-    expect((e.detail as Record<string, unknown>).errorMessage).toBe('boom');
-  });
-
-  it('runs extractDetail and merges the result into detail', async () => {
-    const wrapped = withSecurityEvents(
-      {
-        action: 'payment.create',
-        resource: 'payment',
-        extractDetail: () => ({ amount: 1500, currency: 'TZS' }),
-      },
-      async () => ({ paymentId: 'P-1' }),
-    );
-    await wrapped(makeCtx());
-    expect((captured.events[0]!.detail as Record<string, unknown>).amount).toBe(1500);
-  });
-
-  it('never lets a sink failure propagate', async () => {
-    setSecurityEventSink(() => {
-      throw new Error('sink down');
+      } as unknown as IAuditStore,
     });
-    const wrapped = withSecurityEvents(
-      { action: 'x', resource: 'y' },
-      async () => 'ok',
-    );
-    await expect(wrapped(makeCtx())).resolves.toBe('ok');
-  });
-
-  it('defaults severity to info when omitted', async () => {
-    const wrapped = withSecurityEvents(
-      { action: 'a', resource: 'r' },
-      async () => 'ok',
-    );
-    await wrapped(makeCtx());
-    expect(captured.events[0]!.severity).toBe('info');
+    const onError = vi.fn();
+    const handler = withSecurityEvents(async () => ({ ok: true }), { onError });
+    const out = await handler(makeCtx({ method: 'POST', path: '/api/v1/x' }));
+    expect(out).toEqual({ ok: true });
+    await new Promise((r) => setTimeout(r, 5));
+    expect(onError).toHaveBeenCalled();
   });
 });
 
-describe('withSecurityEventsNextRoute (Next.js)', () => {
-  let captured: ReturnType<typeof captureSink>;
+describe('securityEventsMiddleware', () => {
   beforeEach(() => {
-    captured = captureSink();
-    setSecurityEventSink(captured.sink);
-  });
-  afterEach(() => {
-    resetSecurityEventSink();
+    initAuditLogger({ store: new MemoryAuditStore() });
   });
 
-  it('emits the route path + status from a Response', async () => {
-    const wrapped = withSecurityEventsNextRoute(
-      { action: 'lease.create', resource: 'lease' },
-      async () => new Response('ok', { status: 201 }),
-    );
-    const req = new Request('https://x.test/api/leases', {
-      method: 'POST',
-      headers: { 'x-tenant-id': 't-7' },
-    });
-    const res = await wrapped(req);
-    expect(res.status).toBe(201);
-    expect(captured.events).toHaveLength(1);
-    expect(captured.events[0]!.route).toBe('/api/leases');
-    expect(captured.events[0]!.tenantId).toBe('t-7');
-    expect(captured.events[0]!.responseStatus).toBe(201);
-  });
-
-  it('records errored=true when the handler throws', async () => {
-    const wrapped = withSecurityEventsNextRoute(
-      { action: 'lease.create', resource: 'lease' },
+  it('passes through GET without emit', async () => {
+    let nextCalled = false;
+    await securityEventsMiddleware(
+      makeCtx({ method: 'GET', path: '/foo' }),
       async () => {
-        throw new Error('nope');
+        nextCalled = true;
       },
     );
-    const req = new Request('https://x.test/api/leases', { method: 'POST' });
-    await expect(wrapped(req)).rejects.toThrow('nope');
-    expect(captured.events[0]!.errored).toBe(true);
-    expect(captured.events[0]!.responseStatus).toBe(500);
+    expect(nextCalled).toBe(true);
+  });
+
+  it('emits on POST', async () => {
+    const store = new MemoryAuditStore();
+    initAuditLogger({ store });
+    await securityEventsMiddleware(
+      makeCtx({ method: 'POST', path: '/foo', status: 200 }),
+      async () => {},
+    );
+    await new Promise((r) => setTimeout(r, 5));
+    const events = await store.query({ limit: 10 });
+    expect(events.events.length).toBe(1);
   });
 });
 
-describe('recordSecurityEvent (cron/queue direct emit)', () => {
-  let captured: ReturnType<typeof captureSink>;
-  beforeEach(() => {
-    captured = captureSink();
-    setSecurityEventSink(captured.sink);
-  });
-  afterEach(() => {
-    resetSecurityEventSink();
-  });
-
-  it('emits an internal event with method=INTERNAL by default', async () => {
-    await recordSecurityEvent({
-      action: 'cron.eviction-cure-check',
-      resource: 'eviction',
-      tenantId: 't-9',
-      detail: { caseId: 'EV-1' },
-    });
-    expect(captured.events[0]!.method).toBe('INTERNAL');
-    expect(captured.events[0]!.tenantId).toBe('t-9');
-    expect((captured.events[0]!.detail as Record<string, unknown>).caseId).toBe('EV-1');
+describe('recordSecurityEvent', () => {
+  it('emits a DENIED audit row with reason', async () => {
+    const store = new MemoryAuditStore();
+    initAuditLogger({ store });
+    await recordSecurityEvent(
+      makeCtx({ method: 'POST', path: '/api/v1/admin/x' }),
+      'DENIED',
+      'webhook signature mismatch',
+    );
+    const events = await store.query({ limit: 10 });
+    expect(events.events[0].outcome).toBe('DENIED');
+    expect(events.events[0].reason).toBe('webhook signature mismatch');
   });
 });

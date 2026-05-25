@@ -138,6 +138,43 @@ let repositories: Repositories | null = null;
  * production the absence MUST be a hard failure; gateway boot wiring
  * checks that explicitly via `selectEncryptionPort`'s
  * `EncryptionKeyUnavailableError`.
+ *
+ * TODO (W1.5 / DA3 — per-tenant KMS region routing):
+ * ─────────────────────────────────────────────────────────────────────
+ * This middleware constructs the encryption port as a MODULE-LOAD
+ * SINGLETON (`encPort`, lines 84-86) — every repository instance in
+ * the process shares the same port, bound to `env.AWS_REGION`. That
+ * means tenants in a non-default region (ZA / af-south-1, NG /
+ * af-west-1, etc.) are encrypted under the platform-default region's
+ * CMK, NOT their own data-residency region's CMK.
+ *
+ * The plumbing is ready — `selectEncryptionPortForTenant` +
+ * `getTenantRegion(db, tenantId)` (both exported from `@bossnyumba/
+ * database`) compose a per-request region-bound port. Wiring it here
+ * requires lifting the encryption port from process-singleton scope
+ * to request scope: every repository would need to be constructed
+ * per-request (or accept the port as a per-call argument). Both paths
+ * touch >15 repo classes + every route that resolves repositories
+ * from `c.get('repos')`.
+ *
+ * Until that lift lands, callers that need region-bound KMS at request
+ * time MUST construct their own port via:
+ *
+ *     import {
+ *       selectEncryptionPortForTenant,
+ *       getTenantRegion,
+ *     } from '@bossnyumba/database';
+ *
+ *     const port = await selectEncryptionPortForTenant(process.env, {
+ *       tenantId: auth.tenantId,
+ *       regionResolver: (id) => getTenantRegion(db, id),
+ *       logger,
+ *     });
+ *
+ * and pass it explicitly into the call site rather than relying on the
+ * repository's default port. The OCR factory uses the same pattern
+ * (see `services/document-intelligence/src/providers/ocr-factory.ts`).
+ * ─────────────────────────────────────────────────────────────────────
  */
 async function buildEncryption(
   database: DatabaseClient,
@@ -266,6 +303,14 @@ import { sql } from 'drizzle-orm';
  * `tenant_id = current_setting('app.current_tenant_id')` predicate would
  * evaluate to NULL = NULL (FALSE) — silently zero rows or, worse, RLS bypass
  * depending on Postgres setting.
+ *
+ * GUC name canonicalisation: this middleware sets `app.current_tenant_id`.
+ * Migration 0172 unified `public.current_app_tenant_id()` (the helper used
+ * by 0155 / 0156 / 0169 policies) to read the same name, so every
+ * tenant-scoped policy now agrees on a single GUC. The legacy
+ * `app.tenant_id` name is retained as a COALESCE fallback inside the
+ * helper for out-of-band tooling — DO NOT introduce a second
+ * set_config call here for that legacy name.
  *
  * Order of operations:
  *  1. Look up the authenticated principal that `authMiddleware` already

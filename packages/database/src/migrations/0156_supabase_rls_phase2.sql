@@ -20,13 +20,15 @@
 -- not been created yet), and uses the same `current_app_tenant_id()`
 -- helper that 0155 defined.
 --
--- NOTE: `current_app_tenant_id()` reads the `app.tenant_id` GUC. The
--- gateway middleware sets `app.current_tenant_id` (a different name).
--- That cross-cutting fix lives in A2b-3 (config alignment); this
--- migration intentionally tracks 0155's existing helper name to avoid
--- making the inconsistency worse. The downstream GUC-bind invariant
--- test (`packages/database/src/__tests__/rls-guc-bind.test.ts`) uses
--- the same `app.tenant_id` name so the assertion is self-consistent.
+-- HISTORICAL NOTE (closed by migration 0172, Supabase audit F2,
+-- 2026-05-21): when this migration shipped, `current_app_tenant_id()`
+-- read the `app.tenant_id` GUC while the gateway middleware set
+-- `app.current_tenant_id` — a silent mismatch that caused every
+-- policy below to evaluate to NULL = NULL (FALSE) for authenticated
+-- requests. Migration 0172 redefines `current_app_tenant_id()` to
+-- read the gateway's canonical name (with a back-compat fallback to
+-- `app.tenant_id`), unifying both halves of the system on a single
+-- GUC name without altering this migration's policy DDL.
 
 -- ============================================================================
 -- 1. New tenant-scoped tables — enable RLS + install tenant-isolation policy

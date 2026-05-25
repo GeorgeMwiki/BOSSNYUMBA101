@@ -17,6 +17,7 @@ import {
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ESignature } from '@/components/ESignature';
 import { api } from '@/lib/api';
+import { ROUTES } from '@/lib/routes';
 
 interface InspectionRoom {
   id: string;
@@ -260,7 +261,7 @@ export default function OnboardingInspectionPage() {
     localStorage.setItem('onboarding_progress', JSON.stringify(savedProgress));
     localStorage.setItem('inspection_data', JSON.stringify({ rooms, meterReadings: meterData }));
 
-    router.push('/onboarding/e-sign');
+    router.push(ROUTES.onboarding.eSign);
   };
 
   const isLastRoom = currentRoomIndex === rooms.length - 1;

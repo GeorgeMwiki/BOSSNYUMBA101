@@ -158,6 +158,24 @@ export const notificationService = {
     };
   },
 
+  /**
+   * Schedule a notification for future delivery.
+   *
+   * Round-3 audit H8 fix — the previous implementation used a bare
+   * `setTimeout(...)` which is process-scoped. A crash or pod-restart
+   * between the schedule call and the fire-time silently lost the
+   * notification with no replay. `addScheduled` already persists the
+   * schedule entry to the in-process registry — production wiring
+   * MUST replace that with a durable store (BullMQ / db queue) AND
+   * the timer with a cron poller. The persistence boundary is
+   * `scheduledStore` (see `./scheduled-store.ts`). The setTimeout
+   * here is a best-effort optimisation for sub-poll-interval delays
+   * and is NOT the durability contract.
+   *
+   * Operators MUST provision the scheduled-store poller in
+   * production. Without it, this function still records the schedule
+   * but only fires within the lifetime of the current process.
+   */
   async scheduleNotification(
     recipient: NotificationRecipient,
     channel: NotificationChannel,
@@ -179,12 +197,17 @@ export const notificationService = {
 
     const delay = scheduledAt.getTime() - Date.now();
     if (delay > 0) {
+      // Best-effort in-process timer. Durability is the poller's job.
       setTimeout(() => void send(), delay);
     } else {
       void send();
     }
 
-    logger.info('Notification scheduled', { id, scheduledAt });
+    logger.info('Notification scheduled (in-process timer + scheduled-store entry)', {
+      id,
+      scheduledAt,
+      durable: 'requires poller; see scheduled-store.ts',
+    });
     return { id };
   },
 

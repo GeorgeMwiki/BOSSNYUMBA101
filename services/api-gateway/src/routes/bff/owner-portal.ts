@@ -8,6 +8,8 @@ import { UserRole } from '../../types/user-role';
 import { mapInvoiceRow, mapPaymentRow, mapVendorRow, mapWorkOrderRow } from '../db-mappers';
 import { conversations, inspections } from '@bossnyumba/database';
 import { and, desc, eq, inArray } from 'drizzle-orm';
+import { e400, e403, e404, e503, errorResponse } from '../../utils/error-response';
+import { getOwnerScope as resolveOwnerScope } from '../../lib/owner-scope';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
 function csvEscape(value) {
@@ -22,55 +24,22 @@ function toDataUrl(content, mimeType = 'text/plain') {
   return `data:${mimeType};charset=utf-8,${encodeURIComponent(content)}`;
 }
 
+/**
+ * Owner-portal scope resolver.
+ *
+ * Previously implemented inline as `findMany(tenantId, limit=1000) + JS
+ * .filter(propertyIds.has(...))` for every entity. That pattern
+ * materialised the entire tenant's data before filtering and would
+ * silently truncate beyond 1000 rows. It also leaked cross-property rows
+ * over the wire whenever the JS filter was bypassed.
+ *
+ * The new path delegates to `lib/owner-scope#getOwnerScope`, which
+ * issues `findByPropertyIds` queries so the DB does the filtering in a
+ * single WHERE clause (tenant + soft-delete still enforced inside each
+ * repo).
+ */
 async function getOwnerScope(auth, repos) {
-  const propertiesResult = await repos.properties.findMany(auth.tenantId, {
-    limit: 1000,
-    offset: 0,
-  });
-  const properties = auth.propertyAccess?.includes('*')
-    ? propertiesResult.items
-    : propertiesResult.items.filter((property) => auth.propertyAccess?.includes(property.id));
-  const propertyIds = new Set(properties.map((property) => property.id));
-
-  const [unitsResult, leasesResult, customersResult, invoicesResult, paymentsResult, workOrdersResult] =
-    await Promise.all([
-      repos.units.findMany(auth.tenantId, { limit: 1000, offset: 0 }),
-      repos.leases.findMany(auth.tenantId, { limit: 1000, offset: 0 }),
-      repos.customers.findMany(auth.tenantId, { limit: 1000, offset: 0 }),
-      repos.invoices.findMany(auth.tenantId, 1000, 0),
-      repos.payments.findMany(auth.tenantId, 1000, 0),
-      repos.workOrders.findMany(auth.tenantId, 1000, 0),
-    ]);
-
-  const units = unitsResult.items.filter((unit) => propertyIds.has(unit.propertyId));
-  const unitIds = new Set(units.map((unit) => unit.id));
-  const leases = leasesResult.items.filter(
-    (lease) => propertyIds.has(lease.propertyId) || unitIds.has(lease.unitId)
-  );
-  const leaseIds = new Set(leases.map((lease) => lease.id));
-  const customerIds = new Set(leases.map((lease) => lease.customerId));
-  const customers = customersResult.items.filter((customer) => customerIds.has(customer.id));
-  const invoices = invoicesResult.items.filter(
-    (invoice) =>
-      (invoice.leaseId && leaseIds.has(invoice.leaseId)) ||
-      (invoice.customerId && customerIds.has(invoice.customerId))
-  );
-  const invoiceIds = new Set(invoices.map((invoice) => invoice.id));
-  const payments = paymentsResult.items.filter(
-    (payment) =>
-      (payment.leaseId && leaseIds.has(payment.leaseId)) ||
-      (payment.customerId && customerIds.has(payment.customerId)) ||
-      (payment.invoiceId && invoiceIds.has(payment.invoiceId))
-  );
-  const workOrders = workOrdersResult.items.filter((workOrder) => propertyIds.has(workOrder.propertyId));
-  const vendorIds = Array.from(new Set(workOrders.map((workOrder) => workOrder.vendorId).filter(Boolean)));
-  // Wave 25 Agent V: batch fetch vendors with a single `IN (...)` query
-  // instead of per-id `findById` fan-out.
-  const vendors = vendorIds.length === 0
-    ? []
-    : await repos.vendors.findByIds(vendorIds, auth.tenantId);
-
-  return { properties, units, leases, customers, invoices, payments, workOrders, vendors };
+  return resolveOwnerScope(auth, repos, { limit: 1000, offset: 0 });
 }
 
 function enrichOwnerInvoices(scope) {
@@ -320,16 +289,7 @@ app.use('*', async (c, next) => {
   const auth = c.get('auth');
 
   if (![UserRole.OWNER, UserRole.TENANT_ADMIN, UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(auth.role)) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Owner portal access is not allowed for this role.',
-        },
-      },
-      403
-    );
+    return e403(c, 'FORBIDDEN', 'Owner portal access is not allowed for this role.');
   }
 
   await next();
@@ -349,7 +309,7 @@ app.post('/work-orders/:id/approve', withSecurityEvents({ action: 'owner-portal.
   const existing = await repos.workOrders.findById(id, auth.tenantId);
 
   if (!existing) {
-    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Work order not found' } }, 404);
+    return e404(c, 'NOT_FOUND', 'Work order not found');
   }
 
   const row = await repos.workOrders.update(id, auth.tenantId, {
@@ -368,7 +328,7 @@ app.post('/work-orders/:id/reject', withSecurityEvents({ action: 'owner-portal.c
   const existing = await repos.workOrders.findById(id, auth.tenantId);
 
   if (!existing) {
-    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Work order not found' } }, 404);
+    return e404(c, 'NOT_FOUND', 'Work order not found');
   }
 
   const timeline = Array.isArray(existing.timeline) ? existing.timeline : [];
@@ -477,7 +437,7 @@ app.get('/disbursements/:id/statement', async (c) => {
   const disbursement = disbursements.find((item) => item.id === c.req.param('id'));
 
   if (!disbursement) {
-    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Disbursement not found' } }, 404);
+    return e404(c, 'NOT_FOUND', 'Disbursement not found');
   }
 
   const statement = [
@@ -513,7 +473,7 @@ app.get('/messaging/conversations/:id/messages', async (c) => {
   const conversation = await repos.messaging.getConversation(c.req.param('id'), auth.tenantId);
 
   if (!conversation) {
-    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
+    return e404(c, 'NOT_FOUND', 'Conversation not found');
   }
 
   const rows = await repos.messaging.getMessages(conversation.id, { limit: 200, offset: 0 });
@@ -554,7 +514,7 @@ app.post('/messaging/conversations/:id/messages', withSecurityEvents({ action: '
   const conversation = await repos.messaging.getConversation(id, auth.tenantId);
 
   if (!conversation) {
-    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
+    return e404(c, 'NOT_FOUND', 'Conversation not found');
   }
 
   const message = await repos.messaging.createMessage({
@@ -656,7 +616,7 @@ app.post('/documents/:id/sign', withSecurityEvents({ action: 'owner-portal.creat
   const existing = await repos.documents.findById(id, auth.tenantId);
 
   if (!existing) {
-    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Document not found' } }, 404);
+    return e404(c, 'NOT_FOUND', 'Document not found');
   }
 
   const metadata = {
@@ -695,10 +655,7 @@ app.get('/co-owners', async (c) => {
       return c.json({ success: true, data: rows ?? [] });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'co-owners query failed';
-      return c.json(
-        { success: false, error: { code: 'CO_OWNERS_SERVICE_ERROR', message } },
-        503,
-      );
+      return e503(c, 'CO_OWNERS_SERVICE_ERROR', message);
     }
   }
 
@@ -711,17 +668,15 @@ app.get('/co-owners', async (c) => {
     flagOn = false;
   }
   if (!flagOn) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'NOT_IMPLEMENTED',
-          message:
-            'Co-owner list pipeline not wired. Concrete next-step: add repos.userPropertyAccess.findCoOwners(tenantId, propertyIds) and intersect with the inviter property scope.',
-          flagKey,
-        },
-      },
+    // Field name `featureFlag` (not `flagKey`) because the redactDetails
+    // helper in utils/error-response.ts strips any details key matching
+    // /key/i. Renaming preserves the public identifier on the wire.
+    return errorResponse(
+      c,
       501,
+      'NOT_IMPLEMENTED',
+      'Co-owner list pipeline not wired. Concrete next-step: add repos.userPropertyAccess.findCoOwners(tenantId, propertyIds) and intersect with the inviter property scope.',
+      { featureFlag: flagKey },
     );
   }
   return c.json({ success: true, data: [], meta: { note: 'flag-gated dev empty list; co-owner pipeline pending' } });
@@ -749,16 +704,7 @@ const INVITATIONS_NOTE =
   'invitation pipeline not yet wired — token signed for forward-compat, list reads empty';
 
 function reposUnavailable(c) {
-  return c.json(
-    {
-      success: false,
-      error: {
-        code: 'SERVICE_UNAVAILABLE',
-        message: 'Owner BFF requires repositories to be wired.',
-      },
-    },
-    503,
-  );
+  return e503(c, 'SERVICE_UNAVAILABLE', 'Owner BFF requires repositories to be wired.');
 }
 
 // ----------------------------------------------------------------------------
@@ -1000,17 +946,7 @@ app.post('/invitations/co-owner', withSecurityEvents({ action: 'owner-portal.cre
   // co-owner. We deliberately don't pull zod here to keep this stub thin.
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   if (!emailValid || role !== 'co-owner') {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message:
-            'Invitation requires a valid email and role="co-owner".',
-        },
-      },
-      400,
-    );
+    return e400(c, 'INVALID_INPUT', 'Invitation requires a valid email and role="co-owner".');
   }
 
   const invitationId = randomUUID();
@@ -1046,7 +982,7 @@ app.post('/invitations/co-owner', withSecurityEvents({ action: 'owner-portal.cre
       return c.json({ success: true, data: { ...created, token } });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'invitation create failed';
-      return c.json({ success: false, error: { code: 'INVITATION_SERVICE_ERROR', message } }, 503);
+      return e503(c, 'INVITATION_SERVICE_ERROR', message);
     }
   }
 
@@ -1058,17 +994,14 @@ app.post('/invitations/co-owner', withSecurityEvents({ action: 'owner-portal.cre
     flagOn = false;
   }
   if (!flagOn) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'NOT_IMPLEMENTED',
-          message:
-            'Invitation persistence not wired. Concrete next-step: add invitations table + InvitationService.create(...) that writes the row + enqueues notification.email.dispatch onto the outbox.',
-          flagKey,
-        },
-      },
+    // See comment in /co-owners — `featureFlag` survives redactDetails;
+    // `flagKey` would be scrubbed because of the /key/i regex.
+    return errorResponse(
+      c,
       501,
+      'NOT_IMPLEMENTED',
+      'Invitation persistence not wired. Concrete next-step: add invitations table + InvitationService.create(...) that writes the row + enqueues notification.email.dispatch onto the outbox.',
+      { featureFlag: flagKey },
     );
   }
   return c.json({

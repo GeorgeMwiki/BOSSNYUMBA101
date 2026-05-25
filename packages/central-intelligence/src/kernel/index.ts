@@ -49,6 +49,14 @@ export {
 } from './awareness-scopes.js';
 export { checkInviolable, type InviolableVerdict } from './inviolable.js';
 export {
+  NOT_YET_WIRED_REASON,
+  NotYetWiredError,
+  isNotYetWired,
+  type NotYetWiredReason,
+  type NotYetWiredErrorOptions,
+  type NotYetWiredRefusalPayload,
+} from './not-yet-wired.js';
+export {
   checkPublicInviolable,
   PUBLIC_INVIOLABLE_LIMITS,
   type PublicInviolableInput,
@@ -153,11 +161,23 @@ export {
 export {
   createSensorRouter,
   SensorFailoverError,
+  cascadeRoute,
   type SensorRouter,
   type SensorFailoverDeps,
   type SensorHealthSnapshot,
   type BreakerState,
   type SensorOutcome,
+  type DegradedState,
+  type CascadeAttempt,
+  type CascadeEscalationReason,
+  type CascadeJudgeFn,
+  type CascadeJudgeOutcome,
+  type CascadeMetricsPort,
+  type CascadeModelTier,
+  type CascadeResult,
+  type CascadeRouteDeps,
+  type CascadeRouteOptions,
+  type CascadeStakesLevel,
 } from './sensor-failover.js';
 export {
   createCotReservoir,
@@ -307,6 +327,14 @@ export {
 export {
   createDecisionTraceRecorder,
   createInMemoryDecisionTraceStore,
+  // Wave-13 F10 — process-wide default + Supabase stub adapter.
+  // Composition root binds the real Drizzle/Supabase writer in
+  // Wave-14; the stub today delegates to an injected inner store so
+  // the wire-shape is exercisable end-to-end.
+  setDefaultDecisionTraceStore,
+  getDefaultDecisionTraceStore,
+  _resetDefaultDecisionTraceStoreForTests,
+  createSupabaseDecisionTraceStore,
   type CreateDecisionTraceRecorderArgs,
   type DecisionTrace,
   type DecisionTraceRecorder,
@@ -314,6 +342,7 @@ export {
   type DecisionTraceWriter,
   type KernelStepName,
   type KernelStepRecord,
+  type SupabaseDecisionTraceStoreConfig,
 } from './decision-trace.js';
 
 /**
@@ -617,3 +646,43 @@ export * as orchestrator from './orchestrator/index.js';
  * tenant-facing persona exports above.
  */
 export * as vpPersonas from './vp-personas/index.js';
+
+/**
+ * Wave 12 — LITFIN reflexion port.
+ *
+ * Verbal RL self-critique (Shinn et al., NeurIPS 2023) plus the 4-pass
+ * nightly sleep consolidation that dedupes/clusters reflexions,
+ * extracts "when X happens, do Y" patterns, updates the persistent
+ * guidelines doc, and prunes stale rows. See
+ * `./reflexion/index.ts` for the full surface.
+ *
+ * Namespaced to avoid collision with the existing `recordReflection`
+ * + `createReflexionRetriever` exports the rest of the kernel reads
+ * directly from `./reflexion/*` siblings.
+ */
+export * as reflexion from './reflexion/index.js';
+
+/**
+ * Wave-13 — task-scoped reflexion loader (F11). The kernel reads this
+ * port at step 6 to prepend a "Recent self-critiques" section to the
+ * system prompt. Distinct from the session-scoped `reflexionRetriever`
+ * above — the loader pulls the post-4-pass consolidated bundle.
+ */
+export {
+  loadReflexions as loadReflexionsForTask,
+  renderPromptFragment as renderReflexionPromptFragment,
+  type ReflexionLoaderPort,
+  type LoadReflexionsArgs,
+  type LoadReflexionsResult,
+  type LoadedReflexion,
+  type LoadedGuideline,
+} from './reflexion/reflexion-loader.js';
+
+/**
+ * Power Tools — agent meta-capabilities sitting BETWEEN regular HQ
+ * tools and sovereign-write actions. Includes `handoff`, `sandbox`,
+ * `schedule`, `cross_tenant`, `compose`, `self_modification`, and
+ * `blackboard_stream`, plus the `PowerToolRegistry` that the
+ * orchestrator routes `power_tool.<id>` calls through.
+ */
+export * as powerTools from './power-tools/index.js';

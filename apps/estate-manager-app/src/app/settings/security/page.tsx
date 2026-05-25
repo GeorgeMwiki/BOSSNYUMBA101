@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 export default function SecuritySettingsPage() {
   const t = useTranslations('securitySettings');
@@ -16,7 +17,7 @@ export default function SecuritySettingsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    router.push('/settings');
+    router.push(ROUTES.settings.root);
   };
 
   return (

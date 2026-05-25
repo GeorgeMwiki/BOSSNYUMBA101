@@ -30,3 +30,10 @@ export {
   type EvaluationContext,
   type EvaluationResult,
 } from './abac.engine.js';
+
+// System Roles & Role Identity Helpers (Piece P)
+export {
+  SystemRoles,
+  isAdminRole,
+  type SystemRole,
+} from './system-roles.js';

@@ -20,11 +20,39 @@ const nextConfig = {
     '@bossnyumba/chat-ui',
   ],
   // Support `.js` extensions on TS source imports (NodeNext convention).
-  webpack: (config) => {
+  webpack: (config, { isServer, webpack }) => {
     config.resolve.extensionAlias = {
       ...(config.resolve.extensionAlias || {}),
       '.js': ['.ts', '.tsx', '.js', '.jsx'],
     };
+
+    // Wave-12 CI fix: `@bossnyumba/ai-copilot` transpiles to client bundle via
+    // `transpilePackages` above, and it imports `node:crypto` / `node:fs` etc.
+    // for HMAC signing + audit-chain hashing. Mark these as `false` so client
+    // bundle omits them; transitive crypto code becomes runtime-undefined
+    // (fail-clear at use site, not at build time with UnhandledSchemeError).
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...(config.resolve.fallback || {}),
+        crypto: false,
+        fs: false,
+        'fs/promises': false,
+        path: false,
+        stream: false,
+        os: false,
+        util: false,
+        net: false,
+        tls: false,
+        zlib: false,
+      };
+      config.plugins = config.plugins || [];
+      config.plugins.push(
+        new webpack.IgnorePlugin({
+          resourceRegExp: /^node:(crypto|fs|fs\/promises|path|stream|os|util|net|tls|zlib|events|buffer)$/,
+        }),
+      );
+    }
+
     return config;
   },
   async headers() {

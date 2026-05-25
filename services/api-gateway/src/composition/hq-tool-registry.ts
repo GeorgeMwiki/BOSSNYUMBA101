@@ -14,16 +14,18 @@
  *      ledger ports, and the clock.
  *
  * Today, several of these adapters are NOT yet wired to real backends.
- * We thread `NOT_YET_WIRED` stubs that surface a clear "subsystem not
- * available" refusal so the registry boots end-to-end and the admin
+ * We thread placeholder stubs (see {@link NOT_YET_WIRED_REASON} in
+ * `@bossnyumba/central-intelligence`) that surface a clear "subsystem
+ * not available" refusal so the registry boots end-to-end and the admin
  * chat receives a deterministic error instead of an internal crash.
- * Each NOT_YET_WIRED adapter is annotated with the TODO that lands the
+ * Each placeholder adapter is annotated with the follow-up that lands the
  * real Drizzle wiring.
  */
 
 import {
   createBrainToolRegistry,
   hqTools,
+  NotYetWiredError,
   type BrainToolAuditSink,
   type BrainToolRegistry,
   type HqOtelSpanRecorder,
@@ -139,7 +141,7 @@ export interface HqToolRegistryWiringDeps {
   /**
    * Concrete deps for the 12 HQ tools. The api-gateway constructs
    * each port adapter from the database service-registry and threads
-   * them through. When `null`, we fall back to NOT_YET_WIRED stubs so
+   * them through. When `null`, we fall back to placeholder stub so
    * the registry still boots.
    *
    * Prefer the `db` shortcut (below) when running against a live DB —
@@ -211,7 +213,7 @@ export interface HqToolRegistryWiringDeps {
    * (`evict_tenant`, `payout_owner`, `file_kra_mri`). The composition
    * root builds these via {@link createTemporalDispatcherFromEnv} in
    * `./temporal-dispatcher-wiring.ts`; when omitted, the registry falls
-   * back to NOT_YET_WIRED stubs that throw a deterministic refusal.
+   * back to placeholder stub that throw a deterministic refusal.
    */
   readonly evictionDispatcher?:
     | hqTools.SeedHqBrainToolsDeps['evictionDispatcher']
@@ -305,7 +307,7 @@ export function createHqToolRegistry(
   //   1. Explicit `hqDeps` wins (used by tests + advanced wiring).
   //   2. Otherwise, when `db` is supplied, B1's Drizzle adapters are
   //      composed via {@link buildHqDepsFromDb}.
-  //   3. Otherwise, fall back to NOT_YET_WIRED stubs (legacy degraded
+  //   3. Otherwise, fall back to placeholder stub (legacy degraded
   //      path — keeps the registry bootable for unit tests).
   let hqDeps:
     | Omit<
@@ -367,7 +369,7 @@ export function createHqToolRegistry(
   // produced. This lets the composition root inject the real Temporal-
   // backed dispatchers regardless of whether the rest of the bundle
   // came from explicit `hqDeps`, B1's Drizzle services, or the
-  // NOT_YET_WIRED stubs.
+  // placeholder stub.
   const mergedHqDeps = {
     ...hqDeps,
     ...(deps.evictionDispatcher
@@ -429,14 +431,14 @@ export interface BuildHqDepsFromDbOptions {
   readonly heartbeatExtraProbes?: PlatformServiceHeartbeatDeps['extraProbes'];
   /**
    * Temporal-backed workflow dispatcher adapters for the 3 sovereign
-   * tools. When omitted the bundle falls back to NOT_YET_WIRED stubs.
+   * tools. When omitted the bundle falls back to placeholder stub.
    */
   readonly evictionDispatcher?: hqTools.SeedHqBrainToolsDeps['evictionDispatcher'];
   readonly ownerPayoutDispatcher?: hqTools.SeedHqBrainToolsDeps['ownerPayoutDispatcher'];
   readonly kraMriDispatcher?: hqTools.SeedHqBrainToolsDeps['kraMriDispatcher'];
   /**
    * Optional NIDA + e-Ardhi gateway ports. When omitted, the
-   * NOT_YET_WIRED stubs surface a clean `gateway-error` refusal so
+   * placeholder stub surface a clean `gateway-error` refusal so
    * `platform.verify_nida` / `platform.verify_eardhi_title` ship even
    * before the real connector adapters are bound.
    */
@@ -511,9 +513,11 @@ export function buildHqDepsFromDb(
     ? createConsolidationRunnerService(options.consolidationWorker)
     : notYetWiredConsolidationRunner();
 
-  // Temporal-backed dispatchers. Fall back to deterministic NOT_YET_WIRED
-  // stubs when the composition root has not yet supplied real adapters
-  // (Phase C — `temporal-dispatcher-wiring.ts` provides them).
+  // Temporal-backed dispatchers. Fall back to deterministic placeholder
+  // stubs (see NOT_YET_WIRED_REASON.EVICTION_DISPATCHER /
+  // OWNER_PAYOUT_DISPATCHER / KRA_MRI_DISPATCHER) when the composition
+  // root has not yet supplied real adapters (Phase C —
+  // `temporal-dispatcher-wiring.ts` provides them).
   const evictionDispatcher =
     options.evictionDispatcher ?? notYetWiredEvictionDispatcher();
   const ownerPayoutDispatcher =
@@ -521,9 +525,10 @@ export function buildHqDepsFromDb(
   const kraMriDispatcher =
     options.kraMriDispatcher ?? notYetWiredKraMriDispatcher();
 
-  // East-Africa identity + land-registry gateway ports. NOT_YET_WIRED
-  // stubs surface a deterministic gateway-error refusal until the real
-  // connector adapters land (packages/connectors/src/adapters/).
+  // East-Africa identity + land-registry gateway ports. Placeholder
+  // stubs (see NOT_YET_WIRED_REASON.NIDA_PORT / EARDHI_PORT) surface a
+  // deterministic gateway-error refusal until the real connector
+  // adapters land (packages/connectors/src/adapters/).
   const nida = options.nida ?? notYetWiredNidaPort();
   const eardhi = options.eardhi ?? notYetWiredEardhiPort();
 
@@ -582,18 +587,14 @@ function notYetWiredConsolidationRunner(): hqTools.SeedHqBrainToolsDeps['consoli
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// NOT_YET_WIRED stubs — surface a deterministic "subsystem not yet
+// Placeholder stubs — surface a deterministic "subsystem not yet
 // available" failure rather than crashing the registry. Each stub is
 // the smallest legal implementation of its port that returns / throws
 // in a way the per-tool refusal layer can translate into a clean error.
+// The canonical NotYetWiredError + NOT_YET_WIRED_REASON tokens live in
+// @bossnyumba/central-intelligence (kernel/not-yet-wired.ts) — see the
+// import at the top of this file.
 // ─────────────────────────────────────────────────────────────────────
-
-class NotYetWiredError extends Error {
-  constructor(adapter: string) {
-    super(`hq-tool: ${adapter} adapter not yet wired in api-gateway`);
-    this.name = 'NotYetWiredError';
-  }
-}
 
 function buildNotYetWiredHqDeps(): Omit<
   hqTools.SeedHqBrainToolsDeps,
@@ -728,7 +729,7 @@ function buildNotYetWiredHqDeps(): Omit<
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// NOT_YET_WIRED dispatcher stubs — used by both the legacy stub bundle
+// placeholder dispatcher stubs — used by both the legacy stub bundle
 // and the DB-backed bundle when the composition root has not threaded
 // real Temporal dispatchers in.
 // ─────────────────────────────────────────────────────────────────────
@@ -770,7 +771,7 @@ function notYetWiredKraMriDispatcher(): hqTools.SeedHqBrainToolsDeps['kraMriDisp
 }
 
 /**
- * NOT_YET_WIRED stub for the NIDA biometric gateway port. Surfaces a
+ * placeholder stub for the NIDA biometric gateway port. Surfaces a
  * deterministic `gateway-error` refusal so `platform.verify_nida`
  * ships before the real `packages/connectors/.../nida-adapter` is bound.
  */
@@ -786,7 +787,7 @@ function notYetWiredNidaPort(): hqTools.SeedHqBrainToolsDeps['nida'] {
 }
 
 /**
- * NOT_YET_WIRED stub for the e-Ardhi title-deed gateway port. Mirrors
+ * placeholder stub for the e-Ardhi title-deed gateway port. Mirrors
  * the same gateway-error shape so `platform.verify_eardhi_title` ships
  * cleanly until the real connector adapter lands.
  */

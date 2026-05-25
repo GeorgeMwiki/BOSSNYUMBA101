@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { ROUTES } from '@/lib/routes';
 import { ArrowRight, Brain, Maximize2, ShieldCheck, Sparkles } from 'lucide-react';
 import { AgentTurn } from '../_components/AgentTurn';
 import { AuditTrailPanel } from '../_components/AuditTrailPanel';
@@ -201,7 +202,7 @@ export default function ThreadPage() {
         threads={threads}
         activeThreadId={threadId}
         degraded={null}
-        onNewConversation={() => router.push('/ask')}
+        onNewConversation={() => router.push(ROUTES.ask.root)}
       />
 
       <main className="flex-1 flex flex-col min-w-0">
@@ -233,7 +234,7 @@ export default function ThreadPage() {
             </button>
             <button
               type="button"
-              onClick={() => router.push('/ask')}
+              onClick={() => router.push(ROUTES.ask.root)}
               className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-neutral-500 transition-colors duration-fast hover:bg-surface-raised hover:text-foreground"
             >
               New conversation

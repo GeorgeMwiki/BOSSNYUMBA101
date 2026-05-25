@@ -1,7 +1,7 @@
 /**
  * VP People — orchestration.
  *
- * Note: `employee-coordinator` is a TODO stub line-worker. When the
+ * Note: `employee-coordinator` is a placeholder stub line-worker. When the
  * VP needs it and the catalogue does not have it, the gap is recorded
  * and surfaced to the MD's self-extension keystone.
  */

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Droplet, Zap, Flame, ChevronRight, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 type UtilityType = 'water' | 'electricity' | 'gas';
 type StatusKey = 'ok' | 'warning' | 'alert';
@@ -112,7 +113,7 @@ export default function UtilitiesOverviewPage() {
         <section>
           <h2 className="text-sm font-medium text-gray-500 mb-3">{t('quickActions')}</h2>
           <div className="space-y-3">
-            <Link href="/utilities/readings">
+            <Link href={ROUTES.utilities.readings}>
               <div className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
                 <div className="p-2 bg-primary-50 rounded-lg">
                   <TrendingUp className="w-5 h-5 text-primary-600" />
@@ -124,7 +125,7 @@ export default function UtilitiesOverviewPage() {
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </div>
             </Link>
-            <Link href="/utilities/bills">
+            <Link href={ROUTES.utilities.bills}>
               <div className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
                 <div className="p-2 bg-success-50 rounded-lg">
                   <Zap className="w-5 h-5 text-success-600" />
@@ -148,7 +149,7 @@ export default function UtilitiesOverviewPage() {
               <div className="text-sm text-warning-700 mt-1">
                 {t('alertDesc')}
               </div>
-              <Link href="/utilities/readings" className="text-sm text-primary-600 font-medium mt-2 inline-block">
+              <Link href={ROUTES.utilities.readings} className="text-sm text-primary-600 font-medium mt-2 inline-block">
                 {t('recordReadingsLink')}
               </Link>
             </div>

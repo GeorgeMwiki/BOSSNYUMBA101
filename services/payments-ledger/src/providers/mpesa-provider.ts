@@ -132,10 +132,18 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
     }
 
     const data = await response.json() as { access_token: string; expires_in: string };
-    
+
+    // Bug fix A-BUG-DEEP #13: `parseInt(data.expires_in)` previously
+    // missed the radix (silently broke if Safaricom ever prefixed the
+    // value with "0x"), and a malformed payload (`NaN`) would produce
+    // an "Invalid Date" expiresAt that always tested as expired. Guard
+    // both: radix-10 parse + `Number.isFinite` check, defaulting to the
+    // documented Safaricom token TTL (3600s).
+    const expiresInRaw = parseInt(String(data.expires_in), 10);
+    const expiresInSec = Number.isFinite(expiresInRaw) && expiresInRaw > 0 ? expiresInRaw : 3600;
     this.token = {
       accessToken: data.access_token,
-      expiresAt: new Date(Date.now() + parseInt(data.expires_in) * 1000 - 60000)
+      expiresAt: new Date(Date.now() + expiresInSec * 1000 - 60000)
     };
 
     return this.token.accessToken;

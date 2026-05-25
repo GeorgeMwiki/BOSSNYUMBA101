@@ -6,8 +6,16 @@
  * net cashflow before extending in-app credit / installment plans.
  */
 
+import { z } from 'zod';
 import type { OpayTool, ToolDeps } from '../types.js';
 import { OpayAdapterError } from '../types.js';
+
+const CashflowLookupInputSchema = z.object({
+  tenantId: z.string().min(1).max(128),
+  payerPhone: z.string().regex(/^\+234\d{10}$/, 'payerPhone must be Nigerian E.164'),
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'fromDate must be YYYY-MM-DD'),
+  toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'toDate must be YYYY-MM-DD'),
+}).strict();
 
 export interface CashflowLookupInput {
   readonly tenantId: string;
@@ -78,18 +86,14 @@ export const cashflowLookupTool: OpayTool<CashflowLookupOutput> = Object.freeze(
     rawInput: unknown,
     deps: ToolDeps,
   ): Promise<CashflowLookupOutput> {
-    const input = rawInput as CashflowLookupInput;
-    if (
-      !input?.tenantId ||
-      !input?.payerPhone ||
-      !input?.fromDate ||
-      !input?.toDate
-    ) {
+    const parsed = CashflowLookupInputSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      const path = parsed.error.issues[0]?.path?.join('.') ?? 'input';
       throw new OpayAdapterError(
-        'cashflow_lookup requires tenantId, payerPhone, fromDate, toDate',
+        `cashflow_lookup input validation failed at '${path}'`,
         'INVALID_INPUT',
       );
     }
-    return deps.opay.cashflowLookup(input);
+    return deps.opay.cashflowLookup(parsed.data);
   },
 });

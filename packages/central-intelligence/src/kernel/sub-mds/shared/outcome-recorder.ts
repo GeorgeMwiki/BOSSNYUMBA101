@@ -149,18 +149,53 @@ function outcomeToSloEvent(args: {
   });
 }
 
+/**
+ * H5 — Single-options signature for `createOutcomeRecorder`. The
+ * canonical recommended shape going forward is:
+ *
+ *   createOutcomeRecorder({ sink, sloEventSink, tenantId, failFast, logger })
+ *
+ * The two-arg legacy signature `(sink, options?)` remains for one
+ * release but is `@deprecated` — the discriminator is fragile because a
+ * future `OutcomeRecorderOptions` could grow a `.record` method and the
+ * structural `isSink` check would misclassify the options object as a
+ * sink. The new options interface is explicit and futureproof.
+ */
+export interface OutcomeRecorderOptionsV2 extends OutcomeRecorderOptions {
+  /** Persistence sink. Optional — when omitted, only the in-memory
+   *  history + sloEventSink (if present) is updated. */
+  readonly sink?: OutcomeRecorderSink;
+}
+
 export function createOutcomeRecorder(
-  sinkOrOptions?: OutcomeRecorderSink | OutcomeRecorderOptions,
+  sinkOrOptions?:
+    | OutcomeRecorderSink
+    | OutcomeRecorderOptions
+    | OutcomeRecorderOptionsV2,
   legacyOptions?: OutcomeRecorderOptions,
 ): OutcomeRecorder {
-  // Backwards-compatible signature:
-  //   createOutcomeRecorder()
-  //   createOutcomeRecorder(sink)
-  //   createOutcomeRecorder(sink, options)
-  //   createOutcomeRecorder(options)
+  // H5 — Discriminator hardened. The new canonical shape carries `sink`
+  // as a property; the legacy two-arg signature passes the sink as the
+  // first argument. We test for the new shape FIRST (presence of any
+  // OutcomeRecorderOptions key) so an options object that happens to
+  // expose `record` does NOT get classified as a sink.
+  //
+  // Backwards-compatible signature precedence:
+  //   createOutcomeRecorder()                       — no args
+  //   createOutcomeRecorder({ sink, ... })          — canonical (v2)
+  //   createOutcomeRecorder({ tenantId, ... })      — legacy options
+  //   createOutcomeRecorder(sink)                   — legacy sink-arg
+  //   createOutcomeRecorder(sink, options)          — legacy two-arg
   let sink: OutcomeRecorderSink | undefined;
   let options: OutcomeRecorderOptions;
-  if (isSink(sinkOrOptions)) {
+  if (sinkOrOptions === undefined) {
+    sink = undefined;
+    options = {};
+  } else if (isOptionsObject(sinkOrOptions)) {
+    const v2 = sinkOrOptions as OutcomeRecorderOptionsV2;
+    sink = v2.sink;
+    options = sinkOrOptions;
+  } else if (isSink(sinkOrOptions)) {
     sink = sinkOrOptions;
     options = legacyOptions ?? {};
   } else {
@@ -261,5 +296,29 @@ function isSink(x: unknown): x is OutcomeRecorderSink {
     x !== null &&
     typeof (x as { record?: unknown }).record === 'function' &&
     typeof (x as { emit?: unknown }).emit !== 'function'
+  );
+}
+
+/**
+ * H5 — Identify the new canonical options-object shape. The shape is
+ * recognised by the presence of ANY known options field
+ * (`sink`, `sloEventSink`, `tenantId`, `failFast`, `logger`). A sink
+ * object that has only a `.record` method does NOT match because
+ * `record` is not in the recognised key set.
+ *
+ * Note: we deliberately do NOT consider an object "options-shaped" just
+ * because it lacks `.record`; that would silently accept any random
+ * input as options. The presence of at least one named option key is
+ * required.
+ */
+function isOptionsObject(x: unknown): x is OutcomeRecorderOptionsV2 {
+  if (typeof x !== 'object' || x === null) return false;
+  const obj = x as Record<string, unknown>;
+  return (
+    'sink' in obj ||
+    'sloEventSink' in obj ||
+    'tenantId' in obj ||
+    'failFast' in obj ||
+    'logger' in obj
   );
 }

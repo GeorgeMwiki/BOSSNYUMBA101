@@ -323,6 +323,42 @@ export class UnitRepository {
     return buildPaginatedResult(items, total, { limit, offset });
   }
 
+  /**
+   * BFF aggregation hot-path: fetch all units across a set of properties
+   * with a single `WHERE property_id IN (...)`. Replaces the per-tenant
+   * `findMany + .filter` scan used by the owner-portal getOwnerScope.
+   */
+  async findByPropertyIds(
+    propertyIds: PropertyId[],
+    tenantId: TenantId,
+    pagination?: PaginationParams
+  ): Promise<PaginatedResult<UnitRow>> {
+    if (propertyIds.length === 0) {
+      return buildPaginatedResult([], 0, pagination ?? DEFAULT_PAGINATION);
+    }
+    const { limit, offset } = pagination ?? DEFAULT_PAGINATION;
+    const unique = Array.from(new Set(propertyIds));
+    const whereClause = and(
+      inArray(units.propertyId, unique),
+      eq(units.tenantId, tenantId),
+      isNull(units.deletedAt)
+    );
+
+    const [items, countResult] = await Promise.all([
+      this.db
+        .select()
+        .from(units)
+        .where(whereClause)
+        .orderBy(units.unitCode)
+        .limit(limit)
+        .offset(offset),
+      this.db.select({ count: sql<number>`count(*)::int` }).from(units).where(whereClause),
+    ]);
+
+    const total = countResult[0]?.count ?? 0;
+    return buildPaginatedResult(items, total, { limit, offset });
+  }
+
   async findByCode(
     propertyId: PropertyId,
     unitCode: string,

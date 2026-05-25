@@ -5,6 +5,7 @@
 import type { ReactNode } from 'react';
 import type { ChatMessage } from './types';
 import { renderMarkdown } from './markdown';
+import { DegradedBanner, type DegradedMarker } from '../components/DegradedBanner';
 
 interface MessageBubbleProps {
   readonly message: ChatMessage;
@@ -12,8 +13,36 @@ interface MessageBubbleProps {
   readonly blockSlot?: ReactNode;
 }
 
+/**
+ * Extract a well-formed degraded marker from an assistant turn's metadata.
+ * Returns null when the role is not assistant, metadata is absent, or the
+ * payload fails shape validation (missing reason / non-array capabilities /
+ * non-string capability entries).
+ */
+function extractDegradedMarker(message: ChatMessage): DegradedMarker | null {
+  if (message.role !== 'mwikila') return null;
+  const meta = message.metadata;
+  if (!meta || typeof meta !== 'object') return null;
+  const raw = (meta as Record<string, unknown>).degraded;
+  if (!raw || typeof raw !== 'object') return null;
+  const candidate = raw as Record<string, unknown>;
+  const reason = candidate.reason;
+  if (typeof reason !== 'string' || reason.length === 0) return null;
+  const caps = candidate.affected_capabilities;
+  if (!Array.isArray(caps)) return null;
+  if (!caps.every((entry) => typeof entry === 'string')) return null;
+  const since =
+    typeof candidate.since === 'string' ? candidate.since : undefined;
+  return {
+    reason,
+    affected_capabilities: caps as ReadonlyArray<string>,
+    since,
+  };
+}
+
 export function MessageBubble({ message, personaName, blockSlot }: MessageBubbleProps): JSX.Element {
   const isUser = message.role === 'user';
+  const degraded = extractDegradedMarker(message);
   return (
     <li
       data-testid="message-bubble"
@@ -29,6 +58,7 @@ export function MessageBubble({ message, personaName, blockSlot }: MessageBubble
       }}
     >
       <span style={{ fontSize: 11, color: '#64748b' }}>{isUser ? 'You' : personaName}</span>
+      {degraded ? <DegradedBanner degraded={degraded} compact /> : null}
       <div
         style={{
           maxWidth: '80%',

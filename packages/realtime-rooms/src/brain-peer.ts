@@ -7,7 +7,7 @@
  * Implementation status:
  *   - 2.x stable path: presence + broadcastEvent (works today)
  *   - 3.x stable path: native `room.agent({...})` once that surface
- *     stabilises (TODO at the bottom of this file)
+ *     stabilises (see the follow-up note at the bottom of this file)
  *
  * Generative-UI parts are emitted as room `customEvent`s with a
  * `kind: 'gen-ui-part'` discriminator; the chat surface listens for
@@ -16,6 +16,7 @@
  */
 
 import type { LiveblocksRoom } from './client.js';
+import { parseRoomId } from './client.js';
 
 /** Minimal kernel surface — the brain peer never reaches deeper. */
 export interface BrainKernelHandle {
@@ -72,10 +73,57 @@ export type BrainPeerEventKind =
   | 'tool-result'
   | 'chat-message';
 
+/**
+ * Round-3 audit L3 — the previous emit path accepted any `kind`
+ * string at the type level but silently broadcast typo'd events (e.g.
+ * `'gen-ui-prt'` instead of `'gen-ui-part'`) to subscribers that did
+ * not listen. The runtime validator below catches typos at the
+ * `broadcast()` boundary; mis-shaped events throw with the offending
+ * field so the caller sees the error instead of a silent no-op.
+ */
+const VALID_BRAIN_PEER_EVENT_KINDS: ReadonlySet<BrainPeerEventKind> = new Set([
+  'gen-ui-part',
+  'state-mutation',
+  'tool-result',
+  'chat-message',
+]);
+
 export interface BrainPeerEvent {
   readonly kind: BrainPeerEventKind;
   readonly payload: Record<string, unknown>;
   readonly emittedAt: string;
+}
+
+export class InvalidBrainPeerEventError extends Error {
+  constructor(field: string, value: unknown) {
+    super(
+      `brain-peer: invalid event — field "${field}" has value ${JSON.stringify(value)}`
+    );
+    this.name = 'InvalidBrainPeerEventError';
+  }
+}
+
+export function validateBrainPeerEvent(
+  event: unknown
+): asserts event is BrainPeerEvent {
+  if (!event || typeof event !== 'object') {
+    throw new InvalidBrainPeerEventError('event', event);
+  }
+  const e = event as Record<string, unknown>;
+  if (typeof e.kind !== 'string' ||
+    !VALID_BRAIN_PEER_EVENT_KINDS.has(e.kind as BrainPeerEventKind)) {
+    throw new InvalidBrainPeerEventError('kind', e.kind);
+  }
+  if (!e.payload || typeof e.payload !== 'object') {
+    throw new InvalidBrainPeerEventError('payload', e.payload);
+  }
+  if (typeof e.emittedAt !== 'string') {
+    throw new InvalidBrainPeerEventError('emittedAt', e.emittedAt);
+  }
+  // ISO-8601 sanity check — `Date.parse` returns NaN for garbage.
+  if (Number.isNaN(Date.parse(e.emittedAt))) {
+    throw new InvalidBrainPeerEventError('emittedAt', e.emittedAt);
+  }
 }
 
 /**
@@ -103,11 +151,28 @@ export function createBrainPeer(opts: CreateBrainPeerOptions): BrainPeer {
     );
   }
 
+  // Round-3 audit H18 / 6.3 fix — verify that the room's tenant
+  // segment matches the kernel's tenantId. Defense-in-depth on top
+  // of the gateway's Liveblocks auth router: if the caller passes
+  // a mismatched pair (e.g. brain configured for tenant-A attached
+  // to a room belonging to tenant-B), surface it immediately instead
+  // of relying solely on the gateway to refuse the token.
+  const parsed = parseRoomId(room.roomId);
+  if (parsed && parsed.tenantId !== kernel.tenantId) {
+    throw new Error(
+      `brain-peer: kernel tenantId "${kernel.tenantId}" does not match room tenantId "${parsed.tenantId}" in room "${room.roomId}"`,
+    );
+  }
+
   const client = room.client as unknown as BroadcastableClient;
   let attached = true;
 
   const broadcast = (event: BrainPeerEvent): boolean => {
     if (!attached) return false;
+    // Round-3 audit L3 — runtime-validate the event shape so a typo
+    // in `kind` (e.g. 'gen-ui-prt') throws here instead of silently
+    // broadcasting an event no subscriber listens for.
+    validateBrainPeerEvent(event);
     if (typeof client.broadcastEvent !== 'function') {
       // Stub client (tests). Treat as success — the test inspects via
       // the spy on the factory.
@@ -155,7 +220,7 @@ export function createBrainPeer(opts: CreateBrainPeerOptions): BrainPeer {
   };
 }
 
-// TODO(B6 follow-up): When @liveblocks/client publishes a stable 3.x
+// Follow-up B6 follow-up (Docs/TODO_BACKLOG.md): When @liveblocks/client publishes a stable 3.x
 // agent-peer surface (currently in preview as `room.agent({...})`),
 // switch `broadcastEvent`/`leave` for the native attach so the brain
 // shows up with its own cursor in the Liveblocks-managed presence

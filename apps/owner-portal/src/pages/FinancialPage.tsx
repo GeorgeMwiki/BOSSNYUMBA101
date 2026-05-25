@@ -37,7 +37,7 @@ import {
   Cell,
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState, Spinner, toast } from '@bossnyumba/design-system';
-import { api, formatCurrency, formatDate, formatPercentage, formatDateTime } from '../lib/api';
+import { api, formatDate, formatPercentage, formatDateTime } from '../lib/api';
 import {
   useFinancialStats,
   useOwnerInvoices,
@@ -45,6 +45,7 @@ import {
   type FinancialInvoice as Invoice,
   type FinancialPayment as Payment,
 } from '../lib/hooks';
+import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface IncomeStatement {
@@ -95,6 +96,11 @@ export function FinancialPage() {
   const t = useTranslations('financialPage');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  // `formatCurrency` is sourced from the tenant-bound formatter so amounts
+  // render in the active tenant's ISO-4217 code (or `'—'` when the chain
+  // is empty). Wave 4-I locked the shared helper to refuse silent
+  // mis-formatting — see `useTenantCurrency` for the resolution chain.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
 
   const statsQuery = useFinancialStats();
   const invoicesQuery = useOwnerInvoices();

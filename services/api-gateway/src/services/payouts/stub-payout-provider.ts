@@ -17,7 +17,10 @@
 import { randomUUID } from 'crypto';
 
 import { createCompositePayoutProvider } from './providers/composite';
-import { createEftStubAdapter } from './providers/eft-stub-adapter';
+import {
+  createEftStubAdapter,
+  type TenantRegionResolver,
+} from './providers/eft-stub-adapter';
 import {
   createMpesaB2CAdapter,
   type MpesaB2CConfig,
@@ -62,6 +65,18 @@ export function createStubPayoutProvider(): PayoutProvider {
 }
 
 /**
+ * Optional region-resolver wiring used by the EFT adapter.
+ *
+ * Composition root passes `(tenantId) => getTenantRegion(db, tenantId)`
+ * from `@bossnyumba/database`. We keep the dep at this seam (rather
+ * than inside the adapter) so the adapter stays free of the database
+ * package; provider tests can still construct it standalone.
+ */
+export type PayoutProviderEnvOptions = {
+  readonly regionResolver?: TenantRegionResolver;
+};
+
+/**
  * Build the composed real-rail provider from env. If the Mpesa block
  * is fully configured we wire the B2C adapter; otherwise we skip it.
  * EFT is always wired (it's a stub that fails-loudly for the brief
@@ -72,14 +87,23 @@ export function createStubPayoutProvider(): PayoutProvider {
  * that *want* the stub explicitly call `createStubPayoutProvider()`,
  * keeping the production code path safe from accidental "always
  * succeeds" semantics in production-like environments.
+ *
+ * When `options.regionResolver` is supplied, the EFT adapter routes
+ * its loud-refusal error message + future MCP-server dispatch through
+ * the resolved region (per `tenants.region`).
  */
 export function createPayoutProviderFromEnv(
   env: NodeJS.ProcessEnv = process.env,
+  options: PayoutProviderEnvOptions = {},
 ): PayoutProvider | null {
   const mpesa = readMpesaB2CConfig(env);
   const mpesaAdapter = mpesa ? createMpesaB2CAdapter(mpesa) : undefined;
   const eftEnabled = env.PAYOUTS_EFT_ENABLED === 'true' || mpesaAdapter !== undefined;
-  const eftAdapter = eftEnabled ? createEftStubAdapter() : undefined;
+  const eftAdapter = eftEnabled
+    ? createEftStubAdapter({
+        ...(options.regionResolver ? { regionResolver: options.regionResolver } : {}),
+      })
+    : undefined;
   return createCompositePayoutProvider({
     ...(mpesaAdapter ? { mpesa: mpesaAdapter } : {}),
     ...(eftAdapter ? { eft: eftAdapter } : {}),
@@ -92,13 +116,16 @@ export function createPayoutProviderFromEnv(
  *
  * Intended for use at process start-up:
  *
- *   const provider = resolvePayoutProvider();
+ *   const provider = resolvePayoutProvider(process.env, {
+ *     regionResolver: (tenantId) => getTenantRegion(db, tenantId),
+ *   });
  *   const worker = createPayoutsWorker({ db, provider, logger });
  */
 export function resolvePayoutProvider(
   env: NodeJS.ProcessEnv = process.env,
+  options: PayoutProviderEnvOptions = {},
 ): PayoutProvider {
-  return createPayoutProviderFromEnv(env) ?? createStubPayoutProvider();
+  return createPayoutProviderFromEnv(env, options) ?? createStubPayoutProvider();
 }
 
 // ---------------------------------------------------------------------------

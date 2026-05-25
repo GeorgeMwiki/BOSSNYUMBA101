@@ -2,7 +2,7 @@
  * Self-grading judge tests — Phase D / D12.6.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   createSelfGradingJudge,
   __test as selfGradingTest,
@@ -142,8 +142,4 @@ describe('self-grading judge', () => {
     expect(seen.model).toBe('claude-sonnet-4-5');
   });
 
-  // Use vi to keep import surface alive across tsc.
-  it.skip('vi imported for parity', () => {
-    expect(vi).toBeDefined();
-  });
 });

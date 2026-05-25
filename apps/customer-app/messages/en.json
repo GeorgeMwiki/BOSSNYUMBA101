@@ -806,7 +806,23 @@
     "expectedResponse": "Expected Response",
     "aimRespond": "We aim to respond within {sla}.",
     "submitting": "Submitting...",
-    "submitRequest": "Submit Request"
+    "submitRequest": "Submit Request",
+    "locations": {
+      "kitchen": "Kitchen",
+      "bathroom": "Bathroom",
+      "bedroom": "Bedroom",
+      "living_room": "Living Room",
+      "balcony": "Balcony",
+      "hallway": "Hallway",
+      "storeroom": "Storeroom",
+      "other": "Other"
+    },
+    "timeSlots": {
+      "morning": "Morning (9am - 12pm)",
+      "afternoon": "Afternoon (12pm - 5pm)",
+      "evening": "Evening (5pm - 8pm)",
+      "any": "Any time"
+    }
   },
   "leaseRenewal": {
     "title": "Lease Renewal",
@@ -1100,5 +1116,15 @@
     "sampleUnitTerm": "Unit A-204 • 12 months",
     "sampleStartDate": "June 1, 2024",
     "sampleEndDate": "May 31, 2025"
+  },
+  "tenantLeaseDetail": {
+    "title": "Lease detail",
+    "subtitle": "KPIs and recent activity for your lease.",
+    "kpiTitle": "Unit health",
+    "kpiEmpty": "Your most recent condition survey will show KPI tiles here.",
+    "activityTitle": "Recent activity",
+    "activityEmpty": "Events on this parcel will appear here as they happen.",
+    "disabledTitle": "Lease KPIs preview",
+    "disabledDescription": "Gated by the lease_kpi_panel_enabled flag."
   }
 }

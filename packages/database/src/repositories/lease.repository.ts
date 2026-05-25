@@ -31,6 +31,7 @@ import {
   type FieldEncryptionAuditSink,
 } from '../security/encryption/index.js';
 import type { RepoEncryptionDeps } from './customer.repository.js';
+import { assertLeaseStatuses } from './enum-guards.js';
 
 type LeaseRow = typeof leases.$inferSelect;
 
@@ -147,7 +148,11 @@ export class LeaseRepository {
     ];
 
     if (filters?.status) {
-      const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
+      // Bug fix A-BUG-DEEP #9: validate against the enum literal union so a
+      // bad caller value surfaces as ENUM_VALUE_INVALID instead of an empty
+      // result silently produced by drizzle's pgEnum string narrowing.
+      const rawStatuses = Array.isArray(filters.status) ? filters.status : [filters.status];
+      const statuses = assertLeaseStatuses(rawStatuses);
       conditions.push(inArray(leases.status, statuses as unknown as typeof leases.status.$inferType[]));
     }
 
@@ -203,6 +208,44 @@ export class LeaseRepository {
     pagination?: PaginationParams
   ): Promise<PaginatedResult<LeaseRow>> {
     return this.findMany(tenantId, pagination, { customerId });
+  }
+
+  /**
+   * BFF aggregation hot-path: fetch all leases for a set of properties in
+   * one query (single `WHERE property_id IN (...)`), replacing the previous
+   * `findMany(tenantId, limit=1000) + JS .filter(propertyIds.has)` pattern
+   * in `getOwnerScope`. Tenant + soft-delete are always enforced.
+   */
+  async findByPropertyIds(
+    propertyIds: PropertyId[],
+    tenantId: TenantId,
+    pagination?: PaginationParams
+  ): Promise<PaginatedResult<LeaseRow>> {
+    if (propertyIds.length === 0) {
+      return buildPaginatedResult([], 0, pagination ?? DEFAULT_PAGINATION);
+    }
+    const { limit, offset } = pagination ?? DEFAULT_PAGINATION;
+    const unique = Array.from(new Set(propertyIds));
+    const whereClause = and(
+      inArray(leases.propertyId, unique),
+      eq(leases.tenantId, tenantId),
+      isNull(leases.deletedAt)
+    );
+
+    const [items, countResult] = await Promise.all([
+      this.db
+        .select()
+        .from(leases)
+        .where(whereClause)
+        .orderBy(desc(leases.startDate))
+        .limit(limit)
+        .offset(offset),
+      this.db.select({ count: sql<number>`count(*)::int` }).from(leases).where(whereClause),
+    ]);
+
+    const total = countResult[0]?.count ?? 0;
+    const decrypted = await this.decryptMany(items, tenantId);
+    return buildPaginatedResult(decrypted, total, { limit, offset });
   }
 
   async create(

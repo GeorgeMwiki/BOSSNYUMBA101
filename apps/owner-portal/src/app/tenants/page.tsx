@@ -11,11 +11,14 @@ import {
 } from 'lucide-react';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatCurrency, formatDate } from '../../lib/api';
+import { formatDate } from '../../lib/api';
 import { useTenants } from '../../lib/hooks';
+import { useTenantCurrencyFormatter } from '../../hooks/useTenantCurrency';
 
 export default function TenantsPage() {
   const t = useTranslations('tenantsPage');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { data: tenants = [], isLoading, error, refetch } = useTenants();
   const [search, setSearch] = useState('');
 

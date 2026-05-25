@@ -24,6 +24,7 @@ import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyum
 import { useTranslations } from 'next-intl';
 import { formatDate, formatDateTime } from '../lib/api';
 import { useDocuments, type OwnerDocument as Document } from '../lib/hooks';
+import { ROUTES } from '../lib/routes';
 
 interface DocumentCategory {
   id: string;
@@ -209,7 +210,7 @@ export function DocumentsPage() {
             </div>
           </div>
           <button
-            onClick={() => navigate('/documents/e-signature')}
+            onClick={() => navigate(ROUTES.documents.eSignature)}
             className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700"
           >
             {t('reviewAndSign')}
@@ -295,7 +296,7 @@ export function DocumentsPage() {
                       )}
                       {doc.signatureStatus === 'PENDING' && (
                         <button
-                          onClick={() => navigate('/documents/e-signature')}
+                          onClick={() => navigate(ROUTES.documents.eSignature)}
                           className="p-1.5 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded"
                           title={t('signDocument')}
                         >

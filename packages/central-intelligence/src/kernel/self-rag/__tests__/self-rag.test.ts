@@ -151,12 +151,13 @@ describe('runSelfRag — blocking', () => {
 });
 
 describe('runSelfRag — failure modes', () => {
-  it('returns unknown / not blocked when the judge throws', async () => {
+  it('returns unknown / not blocked when the judge throws (dev/test env)', async () => {
     const judge: SelfRagJudge = vi.fn().mockRejectedValue(new Error('boom'));
     const out = await runSelfRag({
       userMessage: 'hi',
       responseText: 'rent is TZS 1000',
       judge,
+      nodeEnv: 'test',
     });
     expect(out.isSup).toBe('unknown');
     expect(out.blocked).toBe(false);
@@ -171,6 +172,72 @@ describe('runSelfRag — failure modes', () => {
       judge: undefined,
     });
     expect(out.isRel).toBe('unknown');
+    expect(out.blocked).toBe(false);
+  });
+});
+
+describe('runSelfRag — EP-3 CRITICAL #3 fail-closed', () => {
+  it('blocks with judge_unavailable when judge throws AND stakes=high in production', async () => {
+    const judge: SelfRagJudge = vi
+      .fn()
+      .mockRejectedValue(new Error('haiku timeout'));
+    const out = await runSelfRag({
+      userMessage: 'what is my rent?',
+      responseText: 'TZS 450,000',
+      judge,
+      stakes: 'high',
+      nodeEnv: 'production',
+    });
+    expect(out.blocked).toBe(true);
+    expect(out.blockedReason).toBe('judge_unavailable');
+    expect(out.rationale).toMatch(/judge-error/);
+  });
+
+  it('blocks with judge_unavailable when judge throws AND stakes=critical in production', async () => {
+    const judge: SelfRagJudge = vi.fn().mockRejectedValue(new Error('500'));
+    const out = await runSelfRag({
+      userMessage: 'evict the tenant',
+      responseText: 'eviction filed',
+      judge,
+      stakes: 'critical',
+      nodeEnv: 'production',
+    });
+    expect(out.blocked).toBe(true);
+    expect(out.blockedReason).toBe('judge_unavailable');
+  });
+
+  it('does NOT block when judge throws + stakes=low even in production (legacy fail-open)', async () => {
+    const judge: SelfRagJudge = vi.fn().mockRejectedValue(new Error('500'));
+    const out = await runSelfRag({
+      userMessage: 'thanks',
+      responseText: 'you are welcome',
+      judge,
+      stakes: 'low',
+      nodeEnv: 'production',
+    });
+    expect(out.blocked).toBe(false);
+  });
+
+  it('does NOT block when judge throws in dev env even at stakes=critical', async () => {
+    const judge: SelfRagJudge = vi.fn().mockRejectedValue(new Error('local'));
+    const out = await runSelfRag({
+      userMessage: 'evict',
+      responseText: 'TZS 100,000',
+      judge,
+      stakes: 'critical',
+      nodeEnv: 'development',
+    });
+    expect(out.blocked).toBe(false);
+  });
+
+  it('does NOT block when judge throws + stakes undefined (defensive: no stakes ⇒ no block)', async () => {
+    const judge: SelfRagJudge = vi.fn().mockRejectedValue(new Error('e'));
+    const out = await runSelfRag({
+      userMessage: 'x',
+      responseText: 'y',
+      judge,
+      nodeEnv: 'production',
+    });
     expect(out.blocked).toBe(false);
   });
 });

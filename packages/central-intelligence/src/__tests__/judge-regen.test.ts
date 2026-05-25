@@ -122,7 +122,9 @@ describe('Wave-K judge regen-on-low-score', () => {
       return { score: 0.1, reasonText: 'still bad', suggestedFix: 'try harder' };
     });
     const kernel = createBrainKernel({ sensors: [sensor], judge });
-    await kernel.think(makeReq({ stakes: 'high', requireJudge: true }));
+    // estimatedCostUsd=0 opts out of the default post-judge 3-agent
+    // debate so this regen-path test still sees exactly 2 sensor calls.
+    await kernel.think(makeReq({ stakes: 'high', requireJudge: true, estimatedCostUsd: 0 }));
     expect(calls.length).toBe(2); // original + 1 regen, never 3
     expect(judge).toHaveBeenCalledTimes(2); // original + re-judge of regen
   });
@@ -151,7 +153,9 @@ describe('Wave-K judge regen-on-low-score', () => {
     };
     const judge = vi.fn(async () => ({ score: 0.1, reasonText: 'bad', suggestedFix: 'try' }));
     const kernel = createBrainKernel({ sensors: [sensor], judge });
-    const decision = await kernel.think(makeReq({ stakes: 'high', requireJudge: true }));
+    // estimatedCostUsd=0 opts out of the default post-judge 3-agent
+    // debate so this regen-fault test still asserts exactly 2 calls.
+    const decision = await kernel.think(makeReq({ stakes: 'high', requireJudge: true, estimatedCostUsd: 0 }));
     expect(sensorCall).toBe(2);
     // Decision should still resolve (regen failure is swallowed).
     expect(decision.kind === 'answer' || decision.kind === 'softened' || decision.kind === 'refusal').toBe(true);
@@ -167,7 +171,9 @@ describe('Wave-K judge regen-on-low-score', () => {
         : { score: 0.9, reasonText: '' };
     });
     const kernel = createBrainKernel({ sensors: [sensor], judge });
-    await kernel.think(makeReq({ stakes: 'high', requireJudge: true }));
+    // estimatedCostUsd=0 opts out of the default post-judge 3-agent
+    // debate so the regen call count remains 2.
+    await kernel.think(makeReq({ stakes: 'high', requireJudge: true, estimatedCostUsd: 0 }));
     expect(calls.length).toBe(2);
     expect(calls[1]?.args.system).toContain('multiple issues');
   });

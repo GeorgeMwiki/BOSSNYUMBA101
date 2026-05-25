@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { workOrdersService } from '@bossnyumba/api-client';
 import { Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 export default function WorkOrdersList() {
   const t = useTranslations('lists');
@@ -23,7 +24,7 @@ export default function WorkOrdersList() {
       <PageHeader
         title={t('workOrdersTitle')}
         subtitle={t('workOrdersItems', { count: workOrders.length })}
-        action={<Link href="/work-orders/new" className="btn-primary text-sm flex items-center gap-1"><Plus className="w-4 h-4" />{t('workOrdersAdd')}</Link>}
+        action={<Link href={ROUTES.workOrders.new} className="btn-primary text-sm flex items-center gap-1"><Plus className="w-4 h-4" />{t('workOrdersAdd')}</Link>}
       />
       <div className="space-y-3 px-4 py-4 max-w-4xl mx-auto">
         {workOrdersQuery.isLoading && <div className="card p-4 text-sm text-gray-500">{t('workOrdersLoading')}</div>}
@@ -43,7 +44,7 @@ export default function WorkOrdersList() {
             title={t('workOrdersEmptyTitle')}
             description={t('workOrdersEmptyDesc')}
             action={
-              <Link href="/work-orders/new" className="btn-primary inline-block">
+              <Link href={ROUTES.workOrders.new} className="btn-primary inline-block">
                 {t('workOrdersEmptyCta')}
               </Link>
             }

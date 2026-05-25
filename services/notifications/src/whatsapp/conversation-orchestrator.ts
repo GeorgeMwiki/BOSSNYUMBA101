@@ -51,6 +51,95 @@ export class TemplateContextIncomplete extends Error {
   }
 }
 
+/**
+ * Round-3 audit C4 fix — the orchestrator previously bound
+ * `tenantId: tenant?.tenantId || ''` which let the empty string flow
+ * downstream into `findById('')` calls. Some DB layers reject the empty
+ * string with a typed error; others (legacy in-memory stores) treat it
+ * as a wildcard. Either way it's a silent cross-tenant or crash risk.
+ *
+ * Thrown by {@link assertTenantContext} when an operation that
+ * structurally requires a non-empty `tenantId` is reached. Callers
+ * MUST either route the message to a pre-onboarding "unknown sender"
+ * flow OR fail-closed with a typed error logged for ops.
+ */
+export class TenantContextMissingError extends Error {
+  readonly code = 'TENANT_CONTEXT_MISSING';
+  readonly phoneNumber: string;
+  readonly operation: string;
+  constructor(phoneNumber: string, operation: string) {
+    super(
+      `WhatsApp orchestrator: tenantId is required for "${operation}" — phone ${phoneNumber} is not bound to a tenant.`,
+    );
+    this.name = 'TenantContextMissingError';
+    this.phoneNumber = phoneNumber;
+    this.operation = operation;
+  }
+}
+
+/**
+ * Centralised tenant-id guard. Every code path that needs a tenant for
+ * DB lookup, audit log, or template rendering MUST funnel through this
+ * helper instead of `session.tenantId`. The previous codebase had ~12
+ * touch points that read `session.tenantId` directly with no guard —
+ * the cluster of bugs is the single biggest contributor to the
+ * conversation-orchestrator's bug density (12 findings of 51).
+ */
+export function assertTenantContext(
+  session: Pick<ConversationSession, 'tenantId' | 'phoneNumber'>,
+  operation: string,
+): string {
+  const tenantId = session.tenantId?.trim() ?? '';
+  if (!tenantId || isUnboundTenant(tenantId)) {
+    throw new TenantContextMissingError(session.phoneNumber, operation);
+  }
+  return tenantId;
+}
+
+const UNBOUND_TENANT_PREFIX = 'unbound:';
+
+/**
+ * True iff a session's `tenantId` is the synthetic pre-onboarding tag
+ * minted by {@link ConversationOrchestrator.createNewSession} when the
+ * phone number is not bound to a real tenant.
+ */
+export function isUnboundTenant(tenantId: string | undefined | null): boolean {
+  if (!tenantId) return true;
+  return tenantId.startsWith(UNBOUND_TENANT_PREFIX);
+}
+
+/**
+ * Round-3 audit M5 fix — `messageHistory.push` mutated the array
+ * in place AND `slice(-50)` immediately replaced it, so concurrent
+ * readers occasionally saw a half-mutated state. Immutable replace
+ * here means each save is atomic from the orchestrator's POV.
+ *
+ * Also adds an explicit "[earlier history was trimmed]" sentinel
+ * (audit 3.6) so any downstream LLM consumer can detect truncation
+ * instead of seeing a smooth window with no marker.
+ */
+function appendHistoryImmutable(
+  existing: ReadonlyArray<MessageHistoryItem>,
+  item: MessageHistoryItem,
+  windowSize: number,
+): MessageHistoryItem[] {
+  const next = [...existing, item];
+  if (next.length <= windowSize) return next;
+
+  const truncated = next.length - windowSize;
+  const sentinel: MessageHistoryItem = {
+    id: `__history_trimmed_${Date.now()}`,
+    direction: 'inbound',
+    type: 'text',
+    content: `[${truncated} earlier message(s) trimmed]`,
+    timestamp: new Date(),
+    status: 'delivered',
+  };
+  // Drop the oldest entries and prepend a single sentinel so the
+  // window always carries N items (sentinel + (N-1) most recent).
+  return [sentinel, ...next.slice(-(windowSize - 1))];
+}
+
 // ============================================================================
 // Session Store Interface
 // ============================================================================
@@ -87,7 +176,10 @@ export class InMemorySessionStore implements SessionStore {
 
   async set(session: ConversationSession): Promise<void> {
     this.sessions.set(session.phoneNumber, session);
-    if (session.tenantId) {
+    // Round-3 audit 2.8 fix: skip the tenant index when tenant is
+    // unbound (pre-onboarding synthetic id). Otherwise every unknown
+    // phone shares the same index slot.
+    if (session.tenantId && !isUnboundTenant(session.tenantId)) {
       this.tenantIndex.set(session.tenantId, session.phoneNumber);
     }
   }
@@ -271,11 +363,20 @@ export class ConversationOrchestrator {
   private async createNewSession(
     phoneNumber: string,
     tenant: TenantInfo | null,
-    senderName?: string
+    _senderName?: string
   ): Promise<ConversationSession> {
+    // Round-3 audit C4: never bind tenantId to empty string. Sessions
+    // for unrecognised phones get a tagged synthetic id
+    // (`unbound:${phoneNumber}`) so downstream guards detect the
+    // pre-onboarding state explicitly via `isUnboundTenant()` instead
+    // of misreading `''` as a wildcard.
+    const tenantId = tenant?.tenantId
+      ? tenant.tenantId.trim() || `unbound:${phoneNumber}`
+      : `unbound:${phoneNumber}`;
+
     const session: ConversationSession = {
       id: uuidv4(),
-      tenantId: tenant?.tenantId || '',
+      tenantId,
       phoneNumber,
       state: 'idle',
       language: tenant?.preferredLanguage || 'en',
@@ -286,10 +387,11 @@ export class ConversationOrchestrator {
       messageHistory: [],
     };
 
-    logger.info('Created new conversation session', { 
-      sessionId: session.id, 
+    logger.info('Created new conversation session', {
+      sessionId: session.id,
       phoneNumber,
-      tenantId: tenant?.tenantId 
+      tenantId,
+      bound: !isUnboundTenant(tenantId),
     });
 
     return session;
@@ -305,15 +407,16 @@ export class ConversationOrchestrator {
       direction: 'inbound',
       type: message.type as MessageHistoryItem['type'],
       content: this.extractTextContent(message) || `[${message.type}]`,
-      timestamp: new Date(parseInt(message.timestamp) * 1000),
+      // Bug fix A-BUG-DEEP #10: parseInt requires radix.
+      timestamp: new Date(parseInt(message.timestamp, 10) * 1000),
       status: 'delivered',
     };
-    session.messageHistory.push(historyItem);
-
-    // Keep only last 50 messages
-    if (session.messageHistory.length > 50) {
-      session.messageHistory = session.messageHistory.slice(-50);
-    }
+    // Round-3 audit M5 fix: immutable replace + truncation sentinel.
+    session.messageHistory = appendHistoryImmutable(
+      session.messageHistory,
+      historyItem,
+      50,
+    );
   }
 
   private extractTextContent(message: IncomingMessage): string | null {
@@ -528,10 +631,11 @@ export class ConversationOrchestrator {
       occupants = 1;
     } else if (replyId === 'occupants_2' || text === '2') {
       occupants = 2;
-    } else if (replyId === 'occupants_3_plus' || (text && parseInt(text) >= 3)) {
-      occupants = text ? parseInt(text) || 3 : 3;
+    // Bug fix A-BUG-DEEP #10: parseInt requires explicit radix.
+    } else if (replyId === 'occupants_3_plus' || (text && parseInt(text, 10) >= 3)) {
+      occupants = text ? parseInt(text, 10) || 3 : 3;
     } else if (text) {
-      const num = parseInt(text);
+      const num = parseInt(text, 10);
       if (!isNaN(num) && num > 0) {
         occupants = num;
       }
@@ -548,7 +652,12 @@ export class ConversationOrchestrator {
     // TZ residents see `+255 ...`, KE residents see `+254 ...`, etc.
     // When `tenant.country` is absent the helper returns a generic
     // `+CC ...` placeholder — never a misleading per-country example.
-    const tenantForExample = await this.tenantLookup.findById(session.tenantId);
+    // Round-3 audit C4: guard against the unbound-tenant case so we
+    // never accidentally query `findById('')` (which some DB layers
+    // treat as a wildcard).
+    const tenantForExample = isUnboundTenant(session.tenantId)
+      ? null
+      : await this.tenantLookup.findById(session.tenantId);
     const phoneExample = getPhoneExampleForCountry(tenantForExample?.country);
 
     // Ask for emergency contact
@@ -573,20 +682,50 @@ export class ConversationOrchestrator {
       return;
     }
 
-    // Parse name and phone (flexible format)
-    const phonePattern = /\d{9,}/;
-    const phoneMatch = text.match(phonePattern);
-    
-    if (!phoneMatch) {
+    // Round-3 audit H16 fix — the previous `\d{9,}` extracted the
+    // FIRST digit run, so input "1234567890 1234567890" silently
+    // bound the first sequence as the contact and let HTML / control
+    // chars in the residual `name` flow into outbound template
+    // substitution. We now:
+    //   1. Require a single E.164-shaped phone number per message
+    //      (with-or-without `+`, 9-15 digits).
+    //   2. Reject multi-phone inputs with a structured retry prompt.
+    //   3. Sanitise the residual name to the printable ASCII +
+    //      Unicode-letter subset so it cannot inject control chars.
+    const phoneMatches = text.match(/\+?\d{9,15}/g) ?? [];
+    if (phoneMatches.length === 0) {
       const errorMsg = session.language === 'sw'
         ? 'Sikuweza kupata nambari ya simu. Tafadhali jaribu tena kwa muundo: Jina, Simu'
         : 'I couldn\'t find a phone number. Please try again in format: Name, Phone';
       await this.whatsappClient.sendText({ to: session.phoneNumber, text: errorMsg });
       return;
     }
+    if (phoneMatches.length > 1) {
+      const errorMsg = session.language === 'sw'
+        ? 'Tafadhali toa nambari moja tu ya simu kwa mtu wa kuwasiliana naye wakati wa dharura.'
+        : 'Please provide exactly one phone number for the emergency contact.';
+      await this.whatsappClient.sendText({ to: session.phoneNumber, text: errorMsg });
+      return;
+    }
 
-    const phone = phoneMatch[0];
-    const name = text.replace(phone, '').replace(/[,-]/g, '').trim() || 'Emergency Contact';
+    const phone: string = phoneMatches[0] ?? '';
+    // Strip control chars, NULs, and zero-width chars BEFORE removing
+    // the phone segment so the residual name can't smuggle them in.
+    // The Unicode-class allow-list at the end is the safety boundary:
+    // anything that is not a letter (any script), digit, space, dot,
+    // or apostrophe is dropped. That covers ASCII controls, NUL
+    // bytes, zero-width spaces, HTML angle brackets, newlines —
+    // everything an attacker could use to smuggle markup into
+    // outbound WhatsApp template substitutions.
+    const rawName = text
+      .replace(phone, '')
+      // eslint-disable-next-line no-control-regex -- intentional: strip control chars from tenant-supplied name before template substitution.
+      .replace(/[\x00-\x1f\x7f]/g, '')
+      .replace(/\u200b/g, '').replace(/\u200c/g, '').replace(/\u200d/g, '').replace(/\ufeff/g, '')
+      .replace(/[,\-]/g, '')
+      .trim();
+    // Allow letters (any Unicode script), digits, spaces, dot and apostrophe only.
+    const name = rawName.replace(/[^\p{L}\d\s.']+/gu, '').trim() || 'Emergency Contact';
 
     // Update context
     if (session.context.onboarding) {
@@ -622,7 +761,10 @@ export class ConversationOrchestrator {
       throw new TemplateContextIncomplete('ONBOARDING_TEMPLATES.confirmationSummary', missing);
     }
 
-    const tenant = await this.tenantLookup.findById(session.tenantId);
+    // Round-3 audit C4: guard against the unbound-tenant case.
+    const tenant = isUnboundTenant(session.tenantId)
+      ? null
+      : await this.tenantLookup.findById(session.tenantId);
 
     // `ctx.moveInDate` is non-null here — the early-return above
     // throws if it is missing. Use the bang operator to satisfy the

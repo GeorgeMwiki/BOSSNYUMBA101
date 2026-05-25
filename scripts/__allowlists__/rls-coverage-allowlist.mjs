@@ -8,8 +8,9 @@
  * Most entries below are TRACKED GAPS: pre-existing tenant tables that
  * landed before the Phase-D11 RLS sweep (migrations 0155 +
  * 0156_supabase_rls_phase2.sql, which together cover 40 tables). Each
- * tracked gap is a TODO to add a RLS migration; remove the entry once
- * the migration lands so the scanner ratchets forward.
+ * tracked gap is a pending RLS-migration task (Docs/TODO_BACKLOG.md);
+ * remove the entry once the migration lands so the scanner ratchets
+ * forward.
  *
  * Architectural exemptions (NON-tracked-gap categories):
  *   1. Platform-global registries (jurisdictions, countries, currencies).
@@ -28,8 +29,8 @@ export const RLS_ALLOWLIST = new Map([
   // when a matching RLS migration lands.
   ['access_handover_records', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['ai_cost_entries', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
-  ['ai_decision_feedback', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
-  ['ai_proactive_alerts', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
+  // ai_decision_feedback — RLS landed in migration 0166. Removed from allowlist.
+  // ai_proactive_alerts  — RLS landed in migration 0166. Removed from allowlist.
   ['ai_semantic_memories', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['approval_policies', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['approval_policy_actions', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
@@ -55,7 +56,7 @@ export const RLS_ALLOWLIST = new Map([
   ['credit_rating_snapshots', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['credit_rating_weights', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['delivery_receipts', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
-  ['disbursements', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
+  // disbursements — RLS landed in migration 0166. Removed from allowlist.
   ['document_access_logs', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['document_render_jobs', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['escalation_chain_runs', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
@@ -63,7 +64,7 @@ export const RLS_ALLOWLIST = new Map([
   ['executive_briefings', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['feedback_submissions', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['field_encryption_audit', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
-  ['gdpr_deletion_requests', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
+  // gdpr_deletion_requests — RLS landed in migration 0166. Removed from allowlist.
   ['geo_assignments', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['geo_label_types', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['geo_nodes', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
@@ -102,7 +103,7 @@ export const RLS_ALLOWLIST = new Map([
   ['occupancies', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['org_memberships', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['owner_statements', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
-  ['payment_intents', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
+  // payment_intents — RLS landed in migration 0166. Removed from allowlist.
   ['payment_plan_agreements', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['payment_plans', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['persona_branding', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
@@ -125,7 +126,7 @@ export const RLS_ALLOWLIST = new Map([
   ['sensorium_event_log', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['session_replay_chunks', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['skill_registry', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
-  ['sovereign_approvals', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
+  // sovereign_approvals — RLS landed in migration 0166. Removed from allowlist.
   ['statements', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['station_master_coverage', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['sub_md_slo_events', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],

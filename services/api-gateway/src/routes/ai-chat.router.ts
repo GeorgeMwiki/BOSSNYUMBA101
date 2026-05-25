@@ -49,6 +49,7 @@ import {
   createGraphAgentToolkit,
 } from '@bossnyumba/graph-sync';
 import { getBrainExtraSkills } from '../composition/brain-extensions';
+import { rateLimiter as sharedRateLimiter } from '../middleware/rate-limiter';
 import { v4 as uuid } from 'uuid';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
@@ -126,26 +127,19 @@ const ChatBodySchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Rate limiter — token bucket per tenant+actor
+// Rate limiter — backed by the shared `rateLimiter` (same store as
+// `perUserRateLimit` in `memory-declare.router.ts`). Bug fix
+// A-BUG-DEEP #2: removes a per-router in-memory Map that drifted from the
+// canonical limiter and could be swapped to Redis in one place later.
 // ---------------------------------------------------------------------------
 
-const RATE_BUCKETS = new Map<string, { tokens: number; updatedAt: number }>();
-const RATE_REFILL_PER_SEC = 1;
-const RATE_BURST = 30;
+const CHAT_RATE_CONFIG = {
+  maxRequests: 30,
+  windowSizeSeconds: 60,
+} as const;
 
 function checkRate(key: string): boolean {
-  const now = Date.now();
-  const bucket = RATE_BUCKETS.get(key) ?? { tokens: RATE_BURST, updatedAt: now };
-  const elapsed = (now - bucket.updatedAt) / 1000;
-  bucket.tokens = Math.min(RATE_BURST, bucket.tokens + elapsed * RATE_REFILL_PER_SEC);
-  bucket.updatedAt = now;
-  if (bucket.tokens < 1) {
-    RATE_BUCKETS.set(key, bucket);
-    return false;
-  }
-  bucket.tokens -= 1;
-  RATE_BUCKETS.set(key, bucket);
-  return true;
+  return sharedRateLimiter.check(`perUser:chat:${key}`, CHAT_RATE_CONFIG).allowed;
 }
 
 // ---------------------------------------------------------------------------

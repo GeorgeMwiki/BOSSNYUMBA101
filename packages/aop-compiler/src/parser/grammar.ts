@@ -172,6 +172,18 @@ export const AOPStepSchema: z.ZodType<AOPStep> = z.lazy(() =>
   ]),
 );
 
+/**
+ * Hard upper bound on top-level step count.
+ *
+ * H5 (audit prompt: "AOP-level step-count cap"): an LLM-emitted AOP with
+ * tens of thousands of steps would pass parser/validate today. Loops have
+ * their own `exit_when.max` but the outer steps array did not. 200 steps
+ * is well above any production SOP the team has authored (the longest
+ * fixture is the arrears-chase loop with ~12 steps) and below the
+ * platform's autonomy + cost budget.
+ */
+export const AOP_MAX_STEPS = 200;
+
 export const AOPSchema = z.object({
   name: z
     .string()
@@ -181,7 +193,18 @@ export const AOPSchema = z.object({
   description: z.string().optional(),
   trigger: AOPTriggerSchema,
   input: AOPInputSchema.optional(),
-  steps: z.array(AOPStepSchema).min(1, 'AOP must declare at least one step'),
+  steps: z
+    .array(AOPStepSchema)
+    .min(1, 'AOP must declare at least one step')
+    .max(AOP_MAX_STEPS, `AOP must declare at most ${AOP_MAX_STEPS} steps`),
   /** The id of the first step to run. Defaults to steps[0].id. */
   entry: stepIdSchema.optional(),
+  /**
+   * Explicit allowlist of PII keys this AOP is permitted to pass into tool
+   * args. Without listing the key here, the permission-validator rejects
+   * the AOP at compile time. Conservative: empty by default; LLM-authored
+   * AOPs that try to ferry `kra_pin` etc. through a write-tier tool
+   * must be edited by a human reviewer to add the explicit grant.
+   */
+  grants: z.array(z.string().min(1)).optional(),
 });

@@ -38,7 +38,17 @@ export type PiiType =
   | 'ssn'
   | 'ip_address'
   | 'api_key'
-  | 'date_of_birth';
+  | 'date_of_birth'
+  // Round-3 audit H13 — Nigerian National Identification Number
+  // (11 digits, optionally prefixed by "NIN" context word).
+  | 'nin'
+  // Round-3 audit H13 — M-Pesa PIN (4-6 digit numeric, typically
+  // surrounded by "PIN yangu ni" / "my pin is" context phrasing).
+  | 'mpesa_pin'
+  // Round-3 audit C13 — base64-encoded PII detected by speculative
+  // decode + re-scan. Adds defence-in-depth against attackers who
+  // wrap a payload in base64 to bypass surface-level scans.
+  | 'base64_pii';
 
 export interface PiiMatch {
   readonly type: PiiType;
@@ -66,7 +76,10 @@ interface PiiPattern {
 }
 
 // Note: we intentionally do NOT mark patterns as /g here to avoid lastIndex
-// state bleed across calls — we rebuild a global regex inside scrubPii().
+// state bleed across calls — we precompile the global regex ONCE per
+// pattern below (round-3 audit M3 — the previous implementation
+// recompiled 14+ regexes on every `scrubPii` call, a hot path that
+// runs for every LLM turn).
 const PII_PATTERNS: readonly PiiPattern[] = [
   // Tanzania NIDA — 20 digits often dash-separated.
   {
@@ -154,7 +167,11 @@ const PII_PATTERNS: readonly PiiPattern[] = [
     regex: /\b(?:sk|pk|api[_-]?key|token)[-_][A-Za-z0-9]{16,}\b/i,
     replacement: '[API_KEY]',
   },
-  // D9: Date of birth — multiple formats.
+  // D9: Date of birth — multiple formats. The patterns are
+  // free-floating (no DOB context word) so they intentionally
+  // false-positive on calendar dates that are not birthdays —
+  // callers that need to keep property construction-year dates
+  // should pre-filter via context (audit 4.5).
   {
     type: 'date_of_birth',
     regex:
@@ -174,6 +191,19 @@ const PII_PATTERNS: readonly PiiPattern[] = [
     replacement: '[DOB]',
   },
 ];
+
+// Round-3 audit C13 / H13 — pre-compiled globals + context patterns
+// for jurisdiction-specific PII the standalone patterns can't catch.
+const NIN_CONTEXT_RX = /(?:\bNIN\b|national\s+identification\s+number|nin\s+yangu\s+ni)[\s:]*(\d{11})\b/i;
+const MPESA_PIN_CONTEXT_RX =
+  /(?:m[-\s]?pesa\s+pin|mpesa\s+pin|pin\s+ya\s+m[-\s]?pesa|pin\s+yangu\s+ya\s+m[-\s]?pesa|my\s+m[-\s]?pesa\s+pin)\s+(?:is\s+|ni\s+)?(\d{4,6})\b/i;
+
+// Round-3 audit C13 — base64 detection.
+// We deliberately require the decoded string to be valid UTF-8 AND
+// contain something that smells like a phone / email / KRA PIN before
+// flagging. This avoids false-positives on every long base64 blob
+// (e.g. JWT payloads, image data URIs).
+const BASE64_CANDIDATE_RX = /\b[A-Za-z0-9+/]{16,}={0,2}\b/g;
 
 interface ContextPattern {
   readonly regex: RegExp;
@@ -226,7 +256,26 @@ const MONETARY_PATTERNS: readonly RegExp[] = SHARED_MONETARY_PATTERNS;
 
 // Placeholders we emit — never re-scrub them.
 const PLACEHOLDER_RX =
-  /\[(?:NIDA_ID|TIN|PHONE|EMAIL|CARD|ACCOUNT|PASSPORT|SSN|IP|API_KEY|DOB)\]|<kra-pin:redacted>/;
+  /\[(?:NIDA_ID|TIN|PHONE|EMAIL|CARD|ACCOUNT|PASSPORT|SSN|IP|API_KEY|DOB|NIN|MPESA_PIN|BASE64_PII)\]|<kra-pin:redacted>/;
+
+// Round-3 audit M3 — precompile a global-flag regex for every PII
+// pattern at module load. Each `scrubPii` call now reuses the same
+// `RegExp` instance via `exec` (which is safe because we always
+// reset `lastIndex = 0` before the loop). This eliminates 14+
+// `new RegExp(...)` allocations from the hot path.
+interface CompiledPiiPattern extends PiiPattern {
+  readonly globalRegex: RegExp;
+}
+
+const COMPILED_PII_PATTERNS: readonly CompiledPiiPattern[] = PII_PATTERNS.map(
+  (p) => ({
+    ...p,
+    globalRegex: new RegExp(
+      p.regex.source,
+      p.regex.flags.includes('g') ? p.regex.flags : `${p.regex.flags}g`
+    ),
+  })
+);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -278,13 +327,13 @@ export function scrubPii(message: string): PiiScrubResult {
 
   const matches: PiiMatch[] = [];
 
-  for (const p of PII_PATTERNS) {
-    const globalRegex = new RegExp(
-      p.regex.source,
-      p.regex.flags.includes('g') ? p.regex.flags : `${p.regex.flags}g`,
-    );
+  for (const p of COMPILED_PII_PATTERNS) {
+    // Round-3 audit M3 — reuse the precompiled global regex. Reset
+    // lastIndex defensively before each scan to avoid bleed across
+    // calls (we never throw mid-loop, but a future caller might).
+    p.globalRegex.lastIndex = 0;
     let m: RegExpExecArray | null;
-    while ((m = globalRegex.exec(message)) !== null) {
+    while ((m = p.globalRegex.exec(message)) !== null) {
       const start = m.index;
       const end = m.index + m[0].length;
       if (overlapsPlaceholder(message, start, end)) continue;
@@ -329,6 +378,99 @@ export function scrubPii(message: string): PiiScrubResult {
     });
   }
 
+  // Round-3 audit H13 fix — NIN (Nigerian National Identification
+  // Number) is 11 numeric digits surrounded by an explicit context
+  // phrase. Standalone 11-digit runs are too noisy (phone numbers,
+  // order ids); we require the "NIN" or "nin yangu ni" trigger.
+  {
+    const m = NIN_CONTEXT_RX.exec(message);
+    if (m && m[1]) {
+      const start = m.index + m[0].indexOf(m[1]);
+      const end = start + m[1].length;
+      if (!overlapsPlaceholder(message, start, end)) {
+        matches.push({
+          type: 'nin',
+          value: m[1],
+          replacement: '[NIN]',
+          startIndex: start,
+          endIndex: end,
+        });
+      }
+    }
+  }
+
+  // Round-3 audit H13 fix — M-Pesa PIN (4-6 digit numeric) only
+  // detected when the input carries an explicit "M-Pesa PIN" /
+  // "PIN yangu ya M-Pesa" / "my Mpesa pin" phrase. Standalone 4-6
+  // digit numbers are far too noisy (years, quantities) to redact
+  // without context.
+  {
+    const m = MPESA_PIN_CONTEXT_RX.exec(message);
+    if (m && m[1]) {
+      const start = m.index + m[0].indexOf(m[1]);
+      const end = start + m[1].length;
+      if (!overlapsPlaceholder(message, start, end)) {
+        matches.push({
+          type: 'mpesa_pin',
+          value: m[1],
+          replacement: '[MPESA_PIN]',
+          startIndex: start,
+          endIndex: end,
+        });
+      }
+    }
+  }
+
+  // Round-3 audit C13 fix — base64 detection.
+  // We speculatively decode every base64-shaped run and re-run the
+  // scrubber against the decoded text. If the decoded text contains
+  // PII, we redact the ORIGINAL base64 (not the decoded form) so the
+  // attacker cannot inspect what the scrubber saw.
+  {
+    let m: RegExpExecArray | null;
+    BASE64_CANDIDATE_RX.lastIndex = 0;
+    while ((m = BASE64_CANDIDATE_RX.exec(message)) !== null) {
+      const candidate = m[0];
+      let decoded: string;
+      try {
+        decoded = Buffer.from(candidate, 'base64').toString('utf8');
+      } catch {
+        continue;
+      }
+      // Skip if decoded text is mostly non-printable — likely binary,
+      // not a payload an attacker is hoping the LLM reads.
+      const printable = decoded.replace(/[^\x20-\x7E\u00a0-\uffff\s]/g, '');
+      if (printable.length < decoded.length * 0.6) continue;
+      if (printable.trim().length < 4) continue;
+
+      // Re-scan decoded text with the surface patterns only (no
+      // recursion). If anything matches, flag the ORIGINAL base64
+      // candidate for redaction. Round-3 audit M3 — uses precompiled
+      // regexes, but each must reset lastIndex because a previous
+      // `test()` call may have advanced it on a different string.
+      let decodedHasPii = false;
+      for (const p of COMPILED_PII_PATTERNS) {
+        p.globalRegex.lastIndex = 0;
+        if (p.globalRegex.test(decoded)) {
+          decodedHasPii = true;
+          break;
+        }
+      }
+      if (!decodedHasPii) continue;
+
+      const start = m.index;
+      const end = start + candidate.length;
+      if (overlapsPlaceholder(message, start, end)) continue;
+      matches.push({
+        type: 'base64_pii',
+        value: candidate,
+        replacement: '[BASE64_PII]',
+        startIndex: start,
+        endIndex: end,
+      });
+    }
+  }
+
   const deduped = dedupe(matches);
   let scrubbed = message;
   const reverseOrder = [...deduped].sort((a, b) => b.startIndex - a.startIndex);
@@ -349,9 +491,17 @@ export function scrubPii(message: string): PiiScrubResult {
 
 /**
  * Audit record for compliance logs. Never contains the PII values themselves.
+ *
+ * Round-3 audit M4 fix — always returns the `piiDetected` flag so
+ * downstream graphs can distinguish "scrubber ran and found nothing"
+ * from "scrubber was never invoked". Previously the function returned
+ * `{}` on a clean message, which was indistinguishable from a missing
+ * scrubber call.
  */
 export function buildPiiAuditRecord(result: PiiScrubResult): Readonly<Record<string, unknown>> {
-  if (!result.hasPii) return {};
+  if (!result.hasPii) {
+    return { piiDetected: false, piiCount: 0 };
+  }
   const types = [...new Set(result.piiFound.map((m) => m.type))];
   return {
     piiDetected: true,

@@ -13,7 +13,7 @@ import {
   type TaxRegimePort,
 } from '../ports/tax-regime.port.js';
 import {
-  buildGenericCsvPayload,
+  buildKenyaMriXmlPayload,
   type TaxFilingPort,
 } from '../ports/tax-filing.port.js';
 import type { PaymentRailPort } from '../ports/payment-rail.port.js';
@@ -38,14 +38,18 @@ const kenyaTaxRegime: TaxRegimePort = {
 };
 
 const kenyaTaxFiling: TaxFilingPort = {
-  prepareFiling(run, _tenantProfile, _period) {
+  prepareFiling(run, tenantProfile, period) {
+    // Round-3 audit H21 fix — KRA iTax accepts a structured upload,
+    // not free-form CSV. We produce a canonical XML payload that
+    // matches the KRA MRI return shape. The submission service still
+    // signs + envelopes; this is the data layer.
     return {
-      filingFormat: 'csv',
-      payload: buildGenericCsvPayload(run),
+      filingFormat: 'xml',
+      payload: buildKenyaMriXmlPayload(run, tenantProfile, period),
       targetRegulator: 'KRA',
       submitEndpointHint: 'https://itax.kra.go.ke',
       instructions:
-        'Upload the CSV under the KRA iTax Monthly Rental Income return. ' +
+        'Upload the signed XML envelope to the KRA iTax Monthly Rental Income return. ' +
         'File by the 20th of the month following the period.',
     };
   },
@@ -108,11 +112,19 @@ const kenyaTenantScreening: TenantScreeningPort = {
     if (!consentToken) {
       return buildStubBureauResult('CRB_KE', ['CONSENT_TOKEN_INVALID']);
     }
-    if (process.env.CRB_KE_KEY) {
-      // TODO(ph-Z-global): wire real CRB KE adapter — see services/identity
+    // Round-3 audit H19 fix — the previous `if (process.env.CRB_KE_KEY)`
+    // branch was INVERTED. Setting the env var (production config)
+    // dropped callers into `BUREAU_NOT_CONFIGURED`; missing the env
+    // var returned a clean stub. We now fire the
+    // BUREAU_NOT_CONFIGURED reason when the env is missing — surfacing
+    // the configuration gap — and reserve the empty branch for the
+    // real adapter wire-up.
+    if (!process.env.CRB_KE_KEY) {
+      // Touch the argument so linters do not flag it unused.
+      void identityDocument;
       return buildStubBureauResult('CRB_KE', ['BUREAU_NOT_CONFIGURED']);
     }
-    // Touch the argument so linters do not flag it unused.
+    // Follow-up ph-Z-global (Docs/TODO_BACKLOG.md): wire real CRB KE adapter — see services/identity
     void identityDocument;
     return buildStubBureauResult('CRB_KE');
   },

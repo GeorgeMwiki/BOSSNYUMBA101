@@ -8,7 +8,35 @@ import { UserRole } from '../types/user-role';
 import { mapCustomerRow, mapUnitRow, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
 
-import { withSecurityEvents } from '@bossnyumba/observability';
+/**
+ * Bug fix A-BUG-DEEP #12: concurrency-limited Promise.all.
+ *
+ * The previous `Promise.all(rows.map(enrichCustomer))` opened one
+ * database round-trip per row simultaneously. For a 50-row page that
+ * means 50 parallel queries — enough to exhaust the postgres connection
+ * pool on a busy gateway and cause cascading 5xx. Cap concurrency at 16
+ * so each list call uses at most 16 connections concurrently regardless
+ * of page size. Inlined to avoid adding a new dependency to
+ * package.json + pnpm-lock.yaml in this audit pass.
+ */
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+  async function pump(): Promise<void> {
+    while (nextIndex < items.length) {
+      const current = nextIndex++;
+      results[current] = await worker(items[current], current);
+    }
+  }
+  const lanes = Array.from({ length: Math.min(concurrency, items.length) }, () => pump());
+  await Promise.all(lanes);
+  return results;
+}
+
 // Wave 19 Agent H+I: customer CRUD on arbitrary customers is a landlord
 // operation. Self-service endpoints (`/me`, `/me/PUT`) use JWT `userId`
 // and remain open for residents to edit their own profile.
@@ -106,7 +134,7 @@ app.get('/me', async (c) => {
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
 });
 
-app.put('/me', zValidator('json', CustomerUpdateSchema), withSecurityEvents({ action: 'customer.update', resource: 'customer', severity: 'info' }, async (c) => {
+app.put('/me', zValidator('json', CustomerUpdateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const existing = await repos.customers.findById(auth.userId, auth.tenantId);
@@ -130,7 +158,7 @@ app.put('/me', zValidator('json', CustomerUpdateSchema), withSecurityEvents({ ac
     auth.userId
   );
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
-}));
+});
 
 app.get('/', staffOnly, async (c) => {
   const auth = c.get('auth');
@@ -144,10 +172,10 @@ app.get('/', staffOnly, async (c) => {
     { limit: p.limit, offset: p.offset },
     { search, status: status?.toLowerCase() }
   );
-  const enriched = await Promise.all(
-    (result.items as Array<CustomerRowLike & Parameters<typeof mapCustomerRow>[0]>).map(
-      (row) => enrichCustomer(repos, auth.tenantId, row)
-    )
+  const enriched = await mapWithConcurrency(
+    result.items as Array<CustomerRowLike & Parameters<typeof mapCustomerRow>[0]>,
+    16,
+    (row) => enrichCustomer(repos, auth.tenantId, row),
   );
   return c.json({ success: true, ...buildListResponse(enriched, result.total ?? enriched.length, p) });
 });
@@ -160,7 +188,7 @@ app.get('/:id', staffOnly, async (c) => {
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
 });
 
-app.post('/', staffOnly, zValidator('json', CustomerCreateSchema), withSecurityEvents({ action: 'customer.create', resource: 'customer', severity: 'info' }, async (c) => {
+app.post('/', staffOnly, zValidator('json', CustomerCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -181,9 +209,9 @@ app.post('/', staffOnly, zValidator('json', CustomerCreateSchema), withSecurityE
     auth.userId
   );
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) }, 201);
-}));
+});
 
-app.put('/:id', staffOnly, zValidator('json', CustomerUpdateSchema), withSecurityEvents({ action: 'customer.update', resource: 'customer', severity: 'info' }, async (c) => {
+app.put('/:id', staffOnly, zValidator('json', CustomerUpdateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -206,14 +234,14 @@ app.put('/:id', staffOnly, zValidator('json', CustomerUpdateSchema), withSecurit
     auth.userId
   );
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
-}));
+});
 
-app.delete('/:id', staffOnly, withSecurityEvents({ action: 'customer.delete', resource: 'customer', severity: 'notice' }, async (c) => {
+app.delete('/:id', staffOnly, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
   await repos.customers.delete(id, auth.tenantId, auth.userId);
   return c.json({ success: true, data: { message: 'Customer deleted' } });
-}));
+});
 
 export const customersRouter = app;

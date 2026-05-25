@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { createBossnyumbaClient, createJarvisClient } from '@bossnyumba/api-sdk';
 import {
   MicButton,
@@ -26,6 +27,7 @@ import {
 } from '@bossnyumba/chat-ui';
 import { AdaptiveRenderer, type AgUiUiPart } from '@bossnyumba/genui';
 import { FeedbackThumbs, type FeedbackVerdict } from '@/components/FeedbackThumbs';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 // Build-time guard: production deployments MUST set
 // NEXT_PUBLIC_API_GATEWAY_URL. The localhost fallback exists only so a
@@ -63,6 +65,7 @@ function readStoredMode(): JarvisMode {
 }
 
 export function JarvisConsole(): JSX.Element {
+  const t = useTranslations('chatComposer');
   const [draft, setDraft] = useState('');
   const [threadId] = useState(() => `cust_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   const [pendingImages, setPendingImages] = useState<ReadonlyArray<File>>([]);
@@ -183,7 +186,7 @@ export function JarvisConsole(): JSX.Element {
     async (turnId: string, verdict: FeedbackVerdict, reason?: string): Promise<void> => {
       const response = await fetch('/api/v1/feedback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({
           turnId,
           threadId,
@@ -384,13 +387,13 @@ export function JarvisConsole(): JSX.Element {
           multiple
           onChange={onPickImages}
           className="hidden"
-          aria-label="Attach images"
+          aria-label={t('attachImages')}
         />
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isThinking || pendingImages.length >= MAX_IMAGES_PER_TURN}
-          aria-label="Attach images"
+          aria-label={t('attachImages')}
           title={
             pendingImages.length >= MAX_IMAGES_PER_TURN
               ? `Up to ${MAX_IMAGES_PER_TURN} images per turn`

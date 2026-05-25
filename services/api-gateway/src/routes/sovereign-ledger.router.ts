@@ -44,6 +44,7 @@ import { z } from 'zod';
 import { createSovereignActionLedgerService } from '@bossnyumba/database';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
+import { routeCatch } from '../utils/safe-error';
 
 const TailQuerySchema = z
   .object({
@@ -116,17 +117,16 @@ app.get('/tail', zValidator('query', TailQuerySchema), async (c: any) => {
         rows,
       },
     });
-  } catch (err: any) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'SOVEREIGN_LEDGER_TAIL_FAILED',
-          message: err?.message ?? 'sovereign-ledger tail read failed',
-        },
-      },
-      500,
-    );
+  } catch (err) {
+    // HIGH-9 (audit .audit/post-pr90-api-mcp-bug-sweep.md): do NOT echo
+    // raw db err.message — it leaks column names, constraint identifiers
+    // and SQL-state codes even to SUPER_ADMIN callers. Route through
+    // routeCatch which sanitises into a generic message + correlation id.
+    return routeCatch(c, err, {
+      code: 'SOVEREIGN_LEDGER_TAIL_FAILED',
+      status: 500,
+      fallback: 'sovereign-ledger tail read failed',
+    });
   }
 });
 
@@ -179,17 +179,13 @@ app.post('/verify', zValidator('json', VerifyBodySchema), async (c: any) => {
     // with "verify itself failed", which the regulator-export
     // consumers conflate at their peril.
     return c.json({ success: true, data: result });
-  } catch (err: any) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'SOVEREIGN_LEDGER_VERIFY_FAILED',
-          message: err?.message ?? 'sovereign-ledger verify failed',
-        },
-      },
-      500,
-    );
+  } catch (err) {
+    // HIGH-9: sanitise the response — never expose raw db error details.
+    return routeCatch(c, err, {
+      code: 'SOVEREIGN_LEDGER_VERIFY_FAILED',
+      status: 500,
+      fallback: 'sovereign-ledger verify failed',
+    });
   }
 });
 

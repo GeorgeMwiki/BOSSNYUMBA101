@@ -1,0 +1,38 @@
+{
+  "name": "@bossnyumba/module-templates",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Piece B — Ten platform-built-in module template bundles (ESTATE / HR / FLEET / PROCUREMENT / LEGAL / FINANCE / STRATEGY / COMPLIANCE / CRM / INVENTORY). Each bundle ships a Zod-validated spec + handler stubs.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --no-error-on-unmatched-pattern",
+    "lint:fix": "eslint src --fix"
+  },
+  "dependencies": {
+    "@bossnyumba/dispatch-router": "workspace:*",
+    "@bossnyumba/module-spec-engine": "workspace:*",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6",
+    "@vitest/coverage-v8": "^4.1.6",
+    "@types/node": "^25.8.0"
+  }
+}

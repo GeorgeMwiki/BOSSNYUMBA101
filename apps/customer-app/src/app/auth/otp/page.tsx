@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, KeyRound } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
+import { ROUTES } from '@/lib/routes';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
@@ -95,7 +96,7 @@ function OTPVerifyPageInner() {
       <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
         <div className="text-center">
           <p className="text-gray-600">{t('missingPhone')}</p>
-          <Link href="/auth/login" className="text-primary-600 font-medium mt-4 inline-block">
+          <Link href={ROUTES.auth.login} className="text-primary-600 font-medium mt-4 inline-block">
             {t('backToLogin')}
           </Link>
         </div>
@@ -107,7 +108,7 @@ function OTPVerifyPageInner() {
     <main className="min-h-screen bg-gray-50 flex flex-col">
       <div className="flex-1 flex flex-col justify-center px-6 py-12 max-w-md mx-auto w-full">
         <Link
-          href="/auth/login"
+          href={ROUTES.auth.login}
           className="flex items-center gap-2 text-gray-600 mb-6 -ml-2 w-fit"
         >
           <ArrowLeft className="w-5 h-5" />

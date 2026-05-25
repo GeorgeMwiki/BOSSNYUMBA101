@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Send } from 'lucide-react';
 import { feedbackService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 /**
  * Local FeedbackType union — inlined to sidestep tsup's barrel
@@ -79,7 +80,7 @@ export default function FeedbackPage() {
               {t('appreciation')}
             </p>
             <div className="flex gap-3 mt-6 justify-center">
-              <Link href="/feedback/history" className="btn-secondary">
+              <Link href={ROUTES.feedback.history} className="btn-secondary">
                 {t('viewHistory')}
               </Link>
               <button

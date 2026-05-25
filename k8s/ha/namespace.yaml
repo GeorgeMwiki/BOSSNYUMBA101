@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bossnyumba-data
+  labels:
+    app.kubernetes.io/part-of: bossnyumba
+    app.kubernetes.io/component: data-plane

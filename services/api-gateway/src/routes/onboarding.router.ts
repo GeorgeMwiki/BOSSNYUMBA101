@@ -25,7 +25,18 @@
  *
  * Storage is in-memory pilot-grade. The shape matches the final HTTP
  * contract so mobile/web can dev against it; swapping to Drizzle is a
- * follow-up.
+ * follow-up (tracked at KI-013, see Docs/KNOWN_ISSUES.md).
+ *
+ * HIGH-1 (audit .audit/post-pr90-api-mcp-bug-sweep.md): For single-pod
+ * deploys this is correct. For multi-pod deploys email-verification
+ * links routed to a different pod cannot resolve. The audit-recommended
+ * fix is a `onboarding_sessions` + `onboarding_verifications` drizzle
+ * migration; until that lands, callers must scale to exactly one
+ * onboarding pod OR enable sticky sessions on the load-balancer for
+ * `/onboarding/*` paths. The one immediate hardening shipped here is
+ * to NOT burn the verification token before the credential lookup
+ * succeeds — that bug compounded the multi-pod failure by stranding
+ * the user with no retry option.
  *
  * Mounted in index.ts BEFORE the existing /onboarding (customer move-in)
  * router so the specific paths above match first. Anything that doesn't
@@ -398,9 +409,11 @@ app.post('/verify-email', zValidator('json', VerifyEmailSchema), withSecurityEve
       400,
     );
   }
-  // One-shot — burn the token.
-  pendingEmailVerifications.delete(body.verificationToken);
-
+  // HIGH-1 fix: do NOT burn the token before the credential lookup.
+  // If the lookup misses (e.g. the user signed up on pod A and verified
+  // on pod B in a multi-replica deploy where the in-memory store is
+  // process-local), burning here strands the user — they cannot retry.
+  // We burn ONLY AFTER we know the lookup will succeed.
   const credential = credentials.tenantIdToCredential.get(pending.tenantId);
   if (!credential) {
     return c.json(
@@ -414,6 +427,8 @@ app.post('/verify-email', zValidator('json', VerifyEmailSchema), withSecurityEve
       404,
     );
   }
+  // One-shot — burn the token only after we have committed to using it.
+  pendingEmailVerifications.delete(body.verificationToken);
   // Immutable update — replace the credential row with verifiedAt set.
   credentials.tenantIdToCredential.set(pending.tenantId, {
     ...credential,

@@ -20,11 +20,14 @@ import {
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatCurrency, formatPercentage } from '../../lib/api';
+import { formatPercentage } from '../../lib/api';
 import { useAnalyticsSummary } from '../../lib/hooks';
+import { useTenantCurrencyFormatter } from '../../hooks/useTenantCurrency';
 
 export default function AnalyticsPage() {
   const t = useTranslations('analyticsPage');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { data: stats, isLoading, error, refetch } = useAnalyticsSummary();
 
   const revenueData = [

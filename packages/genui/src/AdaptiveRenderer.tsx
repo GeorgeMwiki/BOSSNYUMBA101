@@ -19,9 +19,28 @@
  *
  *   <AdaptiveRenderer uiPart={part} />          // single
  *   <AdaptiveRenderer parts={uiParts} />        // list
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * H10 — Defense-in-depth schema re-validation at the dispatcher:
+ * ════════════════════════════════════════════════════════════════════
+ * Each primitive component runs its own `safeParse` against its zod
+ * schema before rendering, but a future component that forgets to do
+ * this would be silently unsafe. The dispatcher now does a SECOND
+ * safeParse via PART_SCHEMAS[kind] BEFORE the switch fires. Malformed
+ * payloads route to UnknownKindCard with a `malformed: true` flag.
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * H11 — Telemetry on unknown-kind / malformed fallback:
+ * ════════════════════════════════════════════════════════════════════
+ * The dispatcher now dispatches a `genui:unknown-kind` CustomEvent on
+ * window when it falls back to UnknownKindCard, AND invokes an optional
+ * `onUnknownKind` callback prop. The host portal can hook this into its
+ * telemetry pipeline (Sentry, Datadog, internal metrics) without
+ * patching this file.
  */
 
 import type { AgUiUiPart } from './types';
+import { PART_SCHEMAS, type PartKind } from './schemas';
 import { VegaChart } from './components/VegaChart';
 import { DataTable } from './components/DataTable';
 import { Timeline } from './components/Timeline';
@@ -61,21 +80,98 @@ import { DecisionTrace } from './components/DecisionTrace';
 import { CodeBlock } from './components/CodeBlock';
 import { DataflowDiagram } from './components/DataflowDiagram';
 
+/**
+ * H11 — payload that ships on the `genui:unknown-kind` CustomEvent.
+ * Host portals can listen on `window.addEventListener('genui:unknown-kind', …)`
+ * to wire into their telemetry pipeline without patching this package.
+ */
+export interface GenUiUnknownKindEventDetail {
+  readonly kind: string;
+  readonly reason: 'unknown-kind' | 'schema-validation-failed';
+  /** Human-readable summary; for `schema-validation-failed` includes zod issues. */
+  readonly message: string;
+  readonly payload: unknown;
+}
+
+const UNKNOWN_KIND_EVENT = 'genui:unknown-kind' as const;
+
 export interface AdaptiveRendererSingleProps {
   readonly uiPart: AgUiUiPart;
   readonly parts?: undefined;
+  /** H11 — optional telemetry callback when the dispatcher falls back. */
+  readonly onUnknownKind?: (detail: GenUiUnknownKindEventDetail) => void;
 }
 
 export interface AdaptiveRendererListProps {
   readonly parts: ReadonlyArray<AgUiUiPart>;
   readonly uiPart?: undefined;
+  /** H11 — optional telemetry callback when the dispatcher falls back. */
+  readonly onUnknownKind?: (detail: GenUiUnknownKindEventDetail) => void;
 }
 
 export type AdaptiveRendererProps =
   | AdaptiveRendererSingleProps
   | AdaptiveRendererListProps;
 
-function renderOne(uiPart: AgUiUiPart): JSX.Element {
+/**
+ * H11 — emit telemetry for an unknown-kind / malformed fallback. Fires
+ * a CustomEvent on window AND invokes the optional callback. Guarded
+ * for SSR (no `window` on the server).
+ */
+function emitUnknownKind(
+  detail: GenUiUnknownKindEventDetail,
+  callback: ((detail: GenUiUnknownKindEventDetail) => void) | undefined,
+): void {
+  if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+    try {
+      window.dispatchEvent(new CustomEvent(UNKNOWN_KIND_EVENT, { detail }));
+    } catch {
+      // Defensive — never let telemetry interrupt the render.
+    }
+  }
+  if (callback) {
+    try {
+      callback(detail);
+    } catch {
+      // Defensive — host callback errors must not break the renderer.
+    }
+  }
+}
+
+function renderOne(
+  uiPart: AgUiUiPart,
+  onUnknownKind?: (detail: GenUiUnknownKindEventDetail) => void,
+): JSX.Element {
+  // H10 — defense-in-depth: re-validate the payload against the registry
+  // schema before dispatch. Individual components also safeParse but a
+  // future primitive that forgets to do so would land here.
+  const kind = (uiPart as { kind?: string }).kind;
+  if (typeof kind === 'string' && kind in PART_SCHEMAS) {
+    const schema = PART_SCHEMAS[kind as PartKind];
+    const parsed = schema.safeParse(uiPart);
+    if (!parsed.success) {
+      const message = parsed.error.issues
+        .slice(0, 3)
+        .map((i) => `${i.path.join('.')}: ${i.message}`)
+        .join('; ');
+      emitUnknownKind(
+        {
+          kind,
+          reason: 'schema-validation-failed',
+          message,
+          payload: uiPart,
+        },
+        onUnknownKind,
+      );
+      return (
+        <UnknownKindCard
+          kind={`${kind} (malformed)`}
+          payload={{ ...uiPart, _validationErrors: message }}
+        />
+      );
+    }
+  }
+
   switch (uiPart.kind) {
     case 'chart-vega':
       return <VegaChart {...uiPart} />;
@@ -101,7 +197,12 @@ function renderOne(uiPart: AgUiUiPart): JSX.Element {
     case 'kanban':
       return <Kanban {...uiPart} />;
     case 'dashboard-grid':
-      return <DashboardGrid {...uiPart} renderChild={renderOne} />;
+      return (
+        <DashboardGrid
+          {...uiPart}
+          renderChild={(child) => renderOne(child, onUnknownKind)}
+        />
+      );
     case 'heatmap':
       return <Heatmap {...uiPart} />;
     case 'markdown-card':
@@ -154,24 +255,35 @@ function renderOne(uiPart: AgUiUiPart): JSX.Element {
       // Defensive: a future brain version might emit a kind this
       // client doesn't yet know. Renders an obvious unknown-kind card
       // so the user knows it's missing without crashing the console.
+      // H11 — also emits telemetry so monitors can alert on a stale
+      // client build OR an adversarial brain flooding unknown kinds.
       const unknown = uiPart as { kind?: string };
-      return (
-        <UnknownKindCard kind={unknown.kind ?? '(missing)'} payload={uiPart} />
+      const kindName = unknown.kind ?? '(missing)';
+      emitUnknownKind(
+        {
+          kind: kindName,
+          reason: 'unknown-kind',
+          message: `client does not know how to render kind="${kindName}"`,
+          payload: uiPart,
+        },
+        onUnknownKind,
       );
+      return <UnknownKindCard kind={kindName} payload={uiPart} />;
     }
   }
 }
 
 export function AdaptiveRenderer(props: AdaptiveRendererProps): JSX.Element {
+  const onUnknownKind = props.onUnknownKind;
   if ('parts' in props && props.parts) {
     return (
       <div className="flex flex-col gap-2">
         {props.parts.map((p, i) => (
-          <div key={i}>{renderOne(p)}</div>
+          <div key={i}>{renderOne(p, onUnknownKind)}</div>
         ))}
       </div>
     );
   }
   // Single-uiPart legacy shape.
-  return renderOne(props.uiPart as AgUiUiPart);
+  return renderOne(props.uiPart as AgUiUiPart, onUnknownKind);
 }

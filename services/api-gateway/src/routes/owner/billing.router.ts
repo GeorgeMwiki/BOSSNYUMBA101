@@ -14,7 +14,7 @@
  * the `X-Backend-Status: degraded` header so the UI can render the
  * placeholder state instead of 404'ing.
  *
- * TODO(api-gateway, BILLING-001): wire platform billing.
+ * Follow-up api-gateway, BILLING-001 (Docs/TODO_BACKLOG.md): wire platform billing.
  *   Concrete next-step:
  *     1. Add `tenant_subscriptions` migration ({ tenantId, externalId,
  *        plan, status, renewalAt, currency, mrrMinor }).

@@ -195,7 +195,22 @@ export interface AdaptiveMessageMetadata {
   readonly complexityLevel?: 'simplified' | 'standard' | 'advanced';
 }
 
-/** Generate a unique block ID */
+/**
+ * Generate a unique block ID.
+ *
+ * Bug fix A-BUG-DEEP #11: prefer `crypto.randomUUID()` over
+ * `Math.random()` for ID generation. Math.random produces predictable
+ * sequences that observers can correlate; the WebCrypto / Node crypto
+ * RNG is unguessable.
+ */
 export function generateBlockId(): string {
+  const cryptoApi =
+    (typeof globalThis !== 'undefined' &&
+      (globalThis as { crypto?: { randomUUID?: () => string } }).crypto) ||
+    undefined;
+  if (cryptoApi?.randomUUID) {
+    return `block-${cryptoApi.randomUUID()}`;
+  }
+  // eslint-disable-next-line no-restricted-syntax
   return `block-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }

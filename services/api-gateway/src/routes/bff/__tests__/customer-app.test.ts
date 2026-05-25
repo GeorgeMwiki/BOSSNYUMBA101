@@ -539,3 +539,107 @@ describe('GET /customer/community', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// /me/dashboard — P0 SECURITY FIX regression test
+//
+// The previous implementation fetched whole-tenant leases / invoices /
+// payments then JS-filtered by customerId. That meant other customers'
+// rows were materialised on every dashboard hit. This suite locks in
+// the new behaviour: the BFF MUST call the customer-scoped repo
+// methods, NOT findMany.
+// ---------------------------------------------------------------------------
+
+describe('GET /customer/me/dashboard (P0 customer-scoping)', () => {
+  it('rejects anonymous callers (401)', async () => {
+    const app = mountWithContext();
+    const res = await app.request('/customer/me/dashboard');
+    expect(res.status).toBe(401);
+  });
+
+  it('uses findByCustomer on leases / invoices / payments (not findMany)', async () => {
+    const calls: string[] = [];
+    const repos = {
+      leases: {
+        findByCustomer: async (cid: string) => {
+          calls.push(`leases.findByCustomer(${cid})`);
+          return {
+            items: [
+              {
+                id: 'lease-1',
+                customerId: cid,
+                status: 'active',
+              },
+            ],
+            total: 1,
+          };
+        },
+        findMany: async () => {
+          calls.push('leases.findMany');
+          return { items: [], total: 0 };
+        },
+      },
+      invoices: {
+        findByCustomer: async (cid: string) => {
+          calls.push(`invoices.findByCustomer(${cid})`);
+          return {
+            items: [
+              { id: 'inv-1', customerId: cid, status: 'sent', amountDue: 1000 },
+            ],
+            total: 1,
+          };
+        },
+        findMany: async () => {
+          calls.push('invoices.findMany');
+          return { items: [], total: 0 };
+        },
+      },
+      payments: {
+        findByCustomer: async (cid: string) => {
+          calls.push(`payments.findByCustomer(${cid})`);
+          return {
+            items: [{ id: 'pay-1', customerId: cid, amount: 500 }],
+            total: 1,
+          };
+        },
+        findMany: async () => {
+          calls.push('payments.findMany');
+          return { items: [], total: 0 };
+        },
+      },
+    };
+    const app = mountWithContext({ repos });
+
+    const res = await app.request('/customer/me/dashboard', {
+      headers: { Authorization: bearer() },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.activeLease).toMatchObject({ id: 'lease-1', status: 'active' });
+    expect(body.data.openBalance).toBe(1000);
+    expect(body.data.recentInvoices).toHaveLength(1);
+    expect(body.data.recentPayments).toHaveLength(1);
+
+    // The P0 contract: findByCustomer MUST be called on all three
+    // repos, and findMany MUST NEVER be reached.
+    expect(calls).toEqual(
+      expect.arrayContaining([
+        `leases.findByCustomer(${TEST_USER})`,
+        `invoices.findByCustomer(${TEST_USER})`,
+        `payments.findByCustomer(${TEST_USER})`,
+      ]),
+    );
+    expect(calls).not.toContain('leases.findMany');
+    expect(calls).not.toContain('invoices.findMany');
+    expect(calls).not.toContain('payments.findMany');
+  });
+
+  it('returns 503 when repos are unavailable', async () => {
+    const app = mountWithContext({ repos: null });
+    const res = await app.request('/customer/me/dashboard', {
+      headers: { Authorization: bearer() },
+    });
+    expect(res.status).toBe(503);
+  });
+});

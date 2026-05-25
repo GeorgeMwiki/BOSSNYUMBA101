@@ -143,6 +143,25 @@ export default [
       'no-new-func': 'error',
       'no-script-url': 'error',
 
+      // ---- Numeric-parsing discipline (A-BUG-DEEP #10) ----
+      // `parseInt` without radix is a recurring source of bugs (e.g.
+      // octal interpretation of leading-zero strings on Node <22). Force
+      // an explicit radix everywhere.
+      radix: ['error', 'always'],
+
+      // ---- Insecure randomness (A-BUG-DEEP #11) ----
+      // Math.random() is fast but not unguessable; ID-generation paths
+      // must use crypto.randomUUID() or nanoid. Surface every call site
+      // as a warning — legitimate uses (jitter sleeps, mock fixtures)
+      // can suppress per-line; the security review picks up the rest.
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: "CallExpression[callee.object.name='Math'][callee.property.name='random']",
+          message: 'Math.random() is not unguessable. Use crypto.randomUUID() or nanoid for IDs.',
+        },
+      ],
+
       // ---- Console discipline ----
       // Allow warn/error (operational signals) but flag info/log/debug so they
       // get routed through @bossnyumba/observability instead.
@@ -158,6 +177,15 @@ export default [
       // violation site as a worklist for the Phase E.0.4 rebind pass;
       // once that pass lands the severity will flip to `error`.
       'bossnyumba/no-jurisdictional-literal': 'warn',
+
+      // ---- CSRF protection on client-side mutating fetch() ----
+      // Errors when a file under apps/*/src/{app,components,contexts,
+      // screens,features,hooks} makes a `fetch(url, { method: POST|PUT|
+      // PATCH|DELETE })` call without importing `getCsrfHeaders` from a
+      // local `lib/csrf` helper (or using @bossnyumba/api-client, which
+      // threads CSRF via interceptor). Severity was promoted from `warn`
+      // to `error` after the F1 migration pass closed all 32 call-sites.
+      'bossnyumba/require-csrf-headers': 'error',
 
       // ---- Security plugin tuning ----
       // Object-injection is noisy on TS with typed keys; keep as warn so CI

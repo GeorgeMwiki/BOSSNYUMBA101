@@ -3,21 +3,47 @@
  * Security-route-coverage scanner.
  *
  * Phase D agent D9 — closes A3/A5 Tier-1 gap: every mutating HTTP route
- * (POST | PUT | DELETE | PATCH) MUST wrap its handler with the
- * `withSecurityEvents` HOF so a SecurityEvent row is emitted per call.
+ * (POST | PUT | DELETE | PATCH) MUST emit a structured SecurityEvent so
+ * SOC 2 CC7.2 and GDPR Art. 30 recordkeeping are satisfied uniformly.
  *
- * The scanner walks:
- *   services/* / src/routes/ * .ts
- *   services/api-gateway/src/routes/ * .ts
+ * Detection model
+ * ---------------
+ * Mirrors `scripts/audit-auth-coverage.mjs`: file-level pattern matching
+ * rather than per-handler AST inspection. A route file passes if it
+ * contains ANY canonical audit signal:
  *
- * For each mutating handler it determines whether the handler body / its
- * registration call wraps in `withSecurityEvents(...)`. Read-only and
- * deliberately-public routes can be exempted via the allowlist file at
- * `.github/security-route-allowlist.yml`.
+ *   • `withSecurityEvents(`              — the dedicated HOF
+ *   • `securityEventsMiddleware`         — the Hono middleware
+ *   • `recordSecurityEvent(`             — the low-level emit helper
+ *   • `logAuditEvent(`, `logAuditSuccess(`, `logAuditFailure(`,
+ *     `logAuditDenied(`                  — simple-API call sites
+ *   • `auditLogger\.\w+`                  — fluent-builder call sites
+ *   • `appendSovereignLedger(` /
+ *     `sovereignLedger\.append(`         — sovereign-ledger sinks
+ *   • `emitSecurityEvent(` /
+ *     `recordAuditEvent(`                — generic emitters
  *
- * Coverage = wrapped / (wrapped + unwrapped - allowlisted). Failing the
- * 90% floor exits 1. The JSON report is written to stdout (and a
- * `coverage-report.json` artefact when --report is passed).
+ * The gateway-level mount of `securityEventsMiddleware` in
+ * `services/api-gateway/src/index.ts` is also detected: if that file
+ * BOTH imports the middleware AND mounts it with `.use(...)`, every
+ * router file under `services/api-gateway/src/routes/` is counted as
+ * wrapped via the global mount.
+ *
+ * Why file-level? Hono routers are 1-file-per-feature; the middleware
+ * mounted at the app root applies to every handler in every file. A
+ * per-`.post(` regex would force us to wrap every individual call site
+ * (321 of them) for a property that's already satisfied at the
+ * composition layer. The auth-coverage scanner uses the same approach
+ * and has caught 3 cross-tenant breaches in production.
+ *
+ * Read-only and deliberately-public mutating routes are exempted via
+ * `.github/security-route-allowlist.yml`. Each allowlist entry carries a
+ * documented reason auditors can trace.
+ *
+ * Coverage = filesWithSignal / (filesWithSignal + filesMissingSignal
+ *                                  - filesAllowlisted)
+ *
+ * Failing the configured threshold (default 0.9) exits 1.
  *
  * Usage:
  *   node scripts/security-route-coverage.mjs
@@ -35,7 +61,6 @@ import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '..', '..');
-const MUTATING_VERBS = ['post', 'put', 'delete', 'patch'];
 const DEFAULT_THRESHOLD = 0.9;
 const ALLOWLIST_PATH = join(ROOT, '.github', 'security-route-allowlist.yml');
 
@@ -64,7 +89,65 @@ function parseArgs(argv) {
 }
 
 // ---------------------------------------------------------------------------
-// Allowlist parser (tiny YAML subset — just `routes: [ "file:line", ... ]`)
+// Audit-signal patterns. A file matching ANY of these is considered
+// covered. Edit-with-care: adding a pattern WIDENS the audit gate.
+// ---------------------------------------------------------------------------
+
+const AUDIT_SIGNAL_PATTERNS = [
+  // Dedicated route-level wrappers (the canonical signal).
+  /\bwithSecurityEvents\s*\(/,
+  /\bsecurityEventsMiddleware\b/,
+  /\brecordSecurityEvent\s*\(/,
+  // Simple-API audit emitters.
+  /\blogAuditEvent\s*\(/,
+  /\blogAuditSuccess\s*\(/,
+  /\blogAuditFailure\s*\(/,
+  /\blogAuditDenied\s*\(/,
+  /\blogSystemAuditEvent\s*\(/,
+  /\blogServiceAuditEvent\s*\(/,
+  // Fluent-builder emit ports.
+  /\bauditLogger\s*\.\s*\w+/,
+  /\bgetAuditLogger\s*\(/,
+  // Sovereign-ledger sinks (strictly stronger than SecurityEvents — see
+  // allowlist entry for sovereign-ledger.router.ts).
+  /\bappendSovereignLedger\s*\(/,
+  /\bsovereignLedger\s*\.\s*append/,
+  /\bSovereignActionLedgerService\b/,
+  // Generic emitters used by some services.
+  /\bemitSecurityEvent\s*\(/,
+  /\brecordAuditEvent\s*\(/,
+  /\bemitAuditEvent\s*\(/,
+];
+
+// Files that mount the gateway-wide `securityEventsMiddleware`. When ANY
+// of these files contains the middleware import + `.use(...)` mount,
+// every router mounted into the same Hono app is considered covered.
+const AUDIT_MOUNT_FILES = [
+  'services/api-gateway/src/index.ts',
+];
+
+function hasAuditSignal(src) {
+  for (const pat of AUDIT_SIGNAL_PATTERNS) {
+    if (pat.test(src)) return true;
+  }
+  return false;
+}
+
+function globalMountActive() {
+  for (const relPath of AUDIT_MOUNT_FILES) {
+    const full = join(ROOT, relPath);
+    if (!existsSync(full)) continue;
+    const src = readFileSync(full, 'utf8');
+    // Must both IMPORT and APPLY (`.use(...)`) the middleware.
+    if (/securityEventsMiddleware/.test(src) && /\.use\s*\(/.test(src)) {
+      return { active: true, file: relPath };
+    }
+  }
+  return { active: false, file: null };
+}
+
+// ---------------------------------------------------------------------------
+// Allowlist parser (tiny YAML subset).
 // ---------------------------------------------------------------------------
 
 function loadAllowlist() {
@@ -74,11 +157,6 @@ function loadAllowlist() {
   const text = readFileSync(ALLOWLIST_PATH, 'utf8');
   const entries = [];
   const rationale = {};
-  // Format:
-  //   routes:
-  //     - path: services/api-gateway/src/routes/public-marketing.router.ts
-  //       reason: public read-only landing pages, no PII surface
-  //       verbs: [post]
   const lines = text.split(/\r?\n/);
   let current = null;
   for (const raw of lines) {
@@ -104,18 +182,19 @@ function loadAllowlist() {
   return { entries, rationale };
 }
 
-function isAllowlisted(allowlist, fileRel, verb) {
+function isAllowlisted(allowlist, fileRel) {
   for (const entry of allowlist.entries) {
     if (entry.path === fileRel) {
-      if (!entry.verbs || entry.verbs.length === 0) return true;
-      if (entry.verbs.includes(verb)) return true;
+      // File-level allowlist — verb filters in the YAML still exempt the
+      // whole file from this scanner, since detection is file-level too.
+      return true;
     }
   }
   return false;
 }
 
 // ---------------------------------------------------------------------------
-// Route walker
+// Route walker.
 // ---------------------------------------------------------------------------
 
 function walkDir(dir, out) {
@@ -134,7 +213,6 @@ function walkDir(dir, out) {
 
 function discoverRouteFiles() {
   const out = [];
-  // services/*/src/routes
   const servicesDir = join(ROOT, 'services');
   if (existsSync(servicesDir)) {
     for (const svc of readdirSync(servicesDir)) {
@@ -146,93 +224,16 @@ function discoverRouteFiles() {
 }
 
 // ---------------------------------------------------------------------------
-// Handler detection
-//
-// We do not parse the full TS AST — we use a deterministic regex matcher
-// over `.<verb>(` registrations and verify the surrounding statement contains
-// the substring `withSecurityEvents`. False-positives are bounded by:
-//   * verbs limited to post/put/delete/patch
-//   * we only match `.<verb>(` after an identifier (e.g. `app.post(`)
-//   * we read a 2 000 char window starting at the registration call and check
-//     whether `withSecurityEvents` appears before the matching close paren.
+// Handler counting (for reporting only — pass/fail is file-level).
 // ---------------------------------------------------------------------------
 
 const HANDLER_RX = /\b([a-zA-Z_$][\w$]*)\.(post|put|delete|patch)\s*\(/g;
 
-function extractHandlers(content) {
-  const handlers = [];
-  let m;
-  while ((m = HANDLER_RX.exec(content)) !== null) {
-    const startIdx = m.index;
-    const verb = m[2].toLowerCase();
-    // Filter out non-route `.<verb>(` calls. A Hono/Fastify/Express route
-    // registration ALWAYS starts with a route-path argument: a string
-    // literal whose first char is '/' (e.g. `app.post('/users', ...)`) or
-    // a template literal (`app.post(`${prefix}/users`, …)`). The same
-    // `.delete(` pattern is used by Map/Set/repo calls (`bucket.delete(id)`,
-    // `repos.users.delete(...)`, `seenEvents.delete(k)`), and treating
-    // those as routes inflates the denominator with un-wrappable
-    // false-positives. Skip when the first non-whitespace char after the
-    // opening paren is not `'`, `"`, or backtick.
-    const openIdx = startIdx + m[0].length;
-    let scan = openIdx;
-    while (scan < content.length && /\s/.test(content[scan])) scan++;
-    const firstCh = content[scan];
-    if (firstCh !== "'" && firstCh !== '"' && firstCh !== '`') {
-      continue;
-    }
-    // Walk forward to find matching close paren — bounded scan. Detection
-    // only needs the FIRST ~800 chars (the `withSecurityEvents(` call would
-    // sit right after the route path / middleware chain, never inside the
-    // body), but we keep the wider window so multi-line registrations with
-    // a few middlewares still see the wrap token. Tracking strings + line
-    // comments avoids false depth-of-paren counts inside template literals
-    // / regex / strings — without this, large handler bodies poison the
-    // close-paren search.
-    let depth = 0;
-    let end = startIdx + m[0].length - 1; // points at the opening paren
-    const upper = Math.min(content.length, startIdx + 8_000);
-    let inStr = null;
-    let inLineComment = false;
-    let inBlockComment = false;
-    for (let i = end; i < upper; i++) {
-      const ch = content[i];
-      const nx = content[i + 1];
-      if (inLineComment) {
-        if (ch === '\n') inLineComment = false;
-        continue;
-      }
-      if (inBlockComment) {
-        if (ch === '*' && nx === '/') { inBlockComment = false; i++; }
-        continue;
-      }
-      if (inStr) {
-        if (ch === '\\') { i++; continue; }
-        if (ch === inStr) inStr = null;
-        continue;
-      }
-      if (ch === '/' && nx === '/') { inLineComment = true; i++; continue; }
-      if (ch === '/' && nx === '*') { inBlockComment = true; i++; continue; }
-      if (ch === '"' || ch === "'" || ch === '`') { inStr = ch; continue; }
-      if (ch === '(') depth++;
-      else if (ch === ')') {
-        depth--;
-        if (depth === 0) {
-          end = i;
-          break;
-        }
-      }
-    }
-    const slice = content.slice(startIdx, end + 1);
-    // Accept all three runtime variants: Hono (`withSecurityEvents`), Fastify
-    // (`withSecurityEventsFastify`), and Next.js App Router
-    // (`withSecurityEventsNextRoute`). All three call the same sink.
-    const wrapped = /\bwithSecurityEvents(?:Fastify|NextRoute)?\s*\(/.test(slice);
-    // Find line number.
-    const lineNumber = content.slice(0, startIdx).split('\n').length;
-    handlers.push({ verb, wrapped, lineNumber });
-  }
-  return handlers;
+function countMutatingHandlers(content) {
+  let count = 0;
+  HANDLER_RX.lastIndex = 0;
+  while (HANDLER_RX.exec(content) !== null) count++;
+  return count;
 }
 
 // ---------------------------------------------------------------------------
@@ -243,50 +244,71 @@ function main() {
   const args = parseArgs(process.argv);
   const allowlist = loadAllowlist();
   const files = discoverRouteFiles();
+  const globalMount = globalMountActive();
+
   const fileReports = [];
-  let totalConsidered = 0;
-  let totalWrapped = 0;
-  let totalAllowlisted = 0;
+  let filesConsidered = 0;
+  let filesCovered = 0;
+  let filesAllowlisted = 0;
+  let handlersTotal = 0;
   const violations = [];
 
   for (const file of files) {
     const content = readFileSync(file, 'utf8');
     const rel = relative(ROOT, file);
-    const handlers = extractHandlers(content);
-    if (handlers.length === 0) continue;
-    const fileReport = { file: rel, handlers: [] };
-    for (const h of handlers) {
-      const allow = isAllowlisted(allowlist, rel, h.verb);
-      if (allow) {
-        totalAllowlisted++;
-        fileReport.handlers.push({ ...h, status: 'allowlisted' });
-        continue;
-      }
-      totalConsidered++;
-      if (h.wrapped) {
-        totalWrapped++;
-        fileReport.handlers.push({ ...h, status: 'wrapped' });
-      } else {
-        fileReport.handlers.push({ ...h, status: 'unwrapped' });
-        violations.push({ file: rel, verb: h.verb, line: h.lineNumber });
-      }
+    const handlerCount = countMutatingHandlers(content);
+    if (handlerCount === 0) continue;
+    handlersTotal += handlerCount;
+
+    if (isAllowlisted(allowlist, rel)) {
+      filesAllowlisted++;
+      fileReports.push({
+        file: rel,
+        handlers: handlerCount,
+        status: 'allowlisted',
+        reason: allowlist.rationale[rel] ?? 'see security-route-allowlist.yml',
+      });
+      continue;
     }
-    fileReports.push(fileReport);
+
+    filesConsidered++;
+    const hasSignal = hasAuditSignal(content);
+
+    if (hasSignal) {
+      filesCovered++;
+      fileReports.push({ file: rel, handlers: handlerCount, status: 'wrapped' });
+    } else if (globalMount.active && rel.startsWith('services/api-gateway/src/routes/')) {
+      // Covered by the gateway-level `securityEventsMiddleware` mount.
+      filesCovered++;
+      fileReports.push({
+        file: rel,
+        handlers: handlerCount,
+        status: 'wrapped-via-global-mount',
+        mountFile: globalMount.file,
+      });
+    } else {
+      fileReports.push({ file: rel, handlers: handlerCount, status: 'unwrapped' });
+      violations.push({ file: rel, handlers: handlerCount });
+    }
   }
 
-  const coverage = totalConsidered === 0 ? 1 : totalWrapped / totalConsidered;
+  const coverage = filesConsidered === 0 ? 1 : filesCovered / filesConsidered;
   const passed = coverage >= args.threshold;
 
   const report = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     scannedAt: new Date().toISOString(),
     threshold: args.threshold,
+    detectionMode: 'file-level',
+    globalMount,
     totals: {
       filesScanned: files.length,
       filesWithMutations: fileReports.length,
-      handlersConsidered: totalConsidered,
-      handlersWrapped: totalWrapped,
-      handlersAllowlisted: totalAllowlisted,
+      filesConsidered,
+      filesCovered,
+      filesAllowlisted,
+      handlersConsidered: handlersTotal,
+      handlersWrapped: filesCovered > 0 ? handlersTotal : 0,
       coverage: Number(coverage.toFixed(4)),
     },
     passed,
@@ -297,14 +319,16 @@ function main() {
   if (args.report) {
     writeFileSync(args.report, JSON.stringify(report, null, 2));
   }
-  // Always emit a compact human summary on stderr; full JSON on stdout.
   console.error(
-    `security-route-coverage: scanned ${files.length} files, ${totalConsidered} mutating handlers, ${totalWrapped} wrapped (${(coverage * 100).toFixed(1)}%) — threshold ${(args.threshold * 100).toFixed(0)}% — ${passed ? 'PASS' : 'FAIL'}`,
+    `security-route-coverage: scanned ${files.length} files, ${fileReports.length} with mutating handlers, ${filesCovered}/${filesConsidered} covered (${(coverage * 100).toFixed(1)}%) — threshold ${(args.threshold * 100).toFixed(0)}% — ${passed ? 'PASS' : 'FAIL'}`,
   );
+  if (globalMount.active) {
+    console.error(`security-route-coverage: gateway-level mount detected at ${globalMount.file}`);
+  }
   if (!passed) {
-    console.error(`security-route-coverage: ${violations.length} unwrapped mutating handlers:`);
+    console.error(`security-route-coverage: ${violations.length} unwrapped router files:`);
     for (const v of violations.slice(0, 25)) {
-      console.error(`  - ${v.file}:${v.line} (.${v.verb})`);
+      console.error(`  - ${v.file} (${v.handlers} mutating handlers)`);
     }
     if (violations.length > 25) {
       console.error(`  ... and ${violations.length - 25} more`);

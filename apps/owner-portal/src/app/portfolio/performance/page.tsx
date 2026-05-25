@@ -13,11 +13,14 @@ import {
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatCurrency, formatPercentage } from '../../../lib/api';
+import { formatPercentage } from '../../../lib/api';
 import { usePortfolioPerformance } from '../../../lib/hooks';
+import { useTenantCurrencyFormatter } from '../../../hooks/useTenantCurrency';
 
 export default function PortfolioPerformancePage() {
   const t = useTranslations('portfolioPerformancePage');
+  // Tenant-bound formatter — see `useTenantCurrency`.
+  const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { data = [], isLoading, error, refetch } = usePortfolioPerformance();
 
   const chartData = data.length

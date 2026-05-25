@@ -33,6 +33,21 @@ const perSubMdCapsSchema = z
   .default({});
 
 /**
+ * H8 — IANA timezone name (Area/Location form). We do not enumerate all
+ * 350+ entries; we accept any string matching the IANA Area/Location
+ * pattern. Continents include Africa, America, Asia, Australia, Europe,
+ * Pacific, Indian, Atlantic. The regex is intentionally permissive so a
+ * Nigerian tenant can set `Africa/Lagos`, a Tanzanian `Africa/Dar_es_Salaam`,
+ * a Kenyan `Africa/Nairobi`, etc.
+ */
+const ianaTimezoneSchema = z
+  .string()
+  .regex(
+    /^[A-Z][A-Za-z_]+\/[A-Z][A-Za-z_/-]+$/,
+    'must be an IANA timezone name like Africa/Nairobi',
+  );
+
+/**
  * Public schema. Used by the cap-policy CLI / admin UI to validate writes
  * before they hit the `tenant_autonomy_caps` row.
  */
@@ -45,6 +60,12 @@ export const capPolicySchema = z
     perSubMdCaps: perSubMdCapsSchema,
     slowdownAt: z.number().gt(0).lte(1).default(0.8),
     hardStopAt: z.number().gt(0).lte(1).default(1.0),
+    /**
+     * H8 — IANA timezone for the rolling-state adapter's "today" boundary.
+     * Optional for backwards compatibility; new tenants SHOULD specify it.
+     * See cap-evaluator.ts JSDoc for the full timezone contract.
+     */
+    timezone: ianaTimezoneSchema.optional(),
     updatedAt: z.string().datetime().default(() => new Date().toISOString()),
     updatedBy: z.string().min(1),
   })
@@ -71,6 +92,7 @@ export function parseCapPolicy(input: CapPolicyInput): TenantAutonomyCap {
     perSubMdCaps: Object.freeze({ ...parsed.perSubMdCaps }),
     slowdownAt: parsed.slowdownAt,
     hardStopAt: parsed.hardStopAt,
+    ...(parsed.timezone !== undefined ? { timezone: parsed.timezone } : {}),
     updatedAt: parsed.updatedAt,
     updatedBy: parsed.updatedBy,
   };

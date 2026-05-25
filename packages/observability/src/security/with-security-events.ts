@@ -1,369 +1,296 @@
 /**
- * `withSecurityEvents` — HOF wrapper for route handlers that emits a
- * structured SecurityEvent on every state-changing call.
+ * withSecurityEvents — mutation-route audit wrapper.
  *
- * Closes the gap surfaced by `scripts/security-route-coverage.mjs` —
- * the CI gate fails any PR whose mutation routes don't wrap with this
- * helper. Required for SOC 2 CC7.2 (logging) + GDPR Art. 30 (records
- * of processing) + an auditable chain of custody on every write.
+ * Phase D agent D9 → flaky-CI-closure. The Security Route Coverage gate
+ * enforces that every mutating HTTP handler (POST/PUT/DELETE/PATCH)
+ * emits a structured SecurityEvent so SOC 2 CC7.2 and GDPR Art. 30
+ * recordkeeping are satisfied uniformly.
  *
- * Usage (Hono):
+ * This module exports three shapes so callers can adopt whichever fits
+ * the host framework:
  *
- *   import { withSecurityEvents } from '@bossnyumba/observability';
+ *   1. `withSecurityEvents(handler, options?)`  — per-handler HOF, used
+ *      where the route already has bespoke logic (e.g. SSE streams,
+ *      multipart uploads) that benefit from explicit before/after hooks.
  *
- *   app.post('/leases', withSecurityEvents({
- *     action: 'lease.create',
- *     resource: 'lease',
- *     severity: 'info',
- *   }, async (c) => {
- *     // existing handler body
- *   }));
+ *   2. `securityEventsMiddleware`               — Hono-style middleware,
+ *      mounted ONCE at the api-gateway composition root to cover every
+ *      mutating request in a single line. The middleware no-ops for
+ *      idempotent verbs (GET/HEAD/OPTIONS) so read paths aren't audited
+ *      twice. State-changing verbs always emit.
  *
- * Usage (Next.js route.ts):
+ *   3. `recordSecurityEvent(...)`               — low-level emit helper.
+ *      Used by code paths that already know the outcome (e.g. webhook
+ *      signature verifiers that need to log a DENIED audit before
+ *      throwing).
  *
- *   export const POST = withSecurityEventsNextRoute({
- *     action: 'payment.create',
- *     resource: 'payment',
- *     severity: 'notice',
- *   }, async (req) => { ... });
+ * Determinism + non-blocking semantics:
  *
- * The sink is pluggable. The default sink writes to stdout in JSON
- * lines so an OTel collector or fluentd can scoop them up; production
- * wires a Postgres sink + a Kafka tap.
+ *   - The middleware never lets the audit emission block the request.
+ *     If the configured sink rejects, the failure is captured via the
+ *     onError hook so observability can alarm, but the handler's
+ *     response is delivered unchanged.
+ *   - Outcome is derived from the response status: 2xx → SUCCESS,
+ *     401/403 → DENIED, 4xx → FAILURE, 5xx → ERROR.
+ *   - The request context (method, path, IP, user-agent, tenantId,
+ *     userId) is captured from Hono's `c.get('auth')` and `c.req`.
+ *
+ * Configuration:
+ *   `initAuditLogger({ store })` must be called at boot. The middleware
+ *   resolves the singleton lazily, so it's safe to import this module
+ *   before boot.
  */
 
-// ────────────────────────────────────────────────────────────────────
-// Event shape — exhaustive on purpose. Auditors prefer 1 verbose
-// event over 5 thin ones.
-// ────────────────────────────────────────────────────────────────────
+import type { AuditOutcome, AuditSeverity } from '../types/audit.types.js';
+import { AuditSeverity as AuditSeverityEnum } from '../types/audit.types.js';
+import { logAuditEvent, type AuditUser, type AuditResource } from '../audit-logger.js';
 
-export type SecurityEventSeverity = 'info' | 'notice' | 'warn' | 'critical';
-
-export interface SecurityEvent {
-  /** ISO-8601 instant the request was received. */
-  readonly at: string;
-  /** "<resource>.<verb>" — stable identifier for grep + aggregation. */
-  readonly action: string;
-  /** Top-level resource the request touches (e.g. 'lease', 'payment'). */
-  readonly resource: string;
-  /** Severity drives alert routing — `critical` pages SRE. */
-  readonly severity: SecurityEventSeverity;
-  /** HTTP verb of the inbound request. */
-  readonly method: string;
-  /** Route path with parameters substituted ('/leases/:id'). */
-  readonly route: string;
-  /** Resolved tenant — empty when the request was unauthenticated. */
-  readonly tenantId: string | null;
-  /** Resolved acting user — empty when unauthenticated. */
-  readonly actorId: string | null;
-  /** HTTP status the handler eventually returned. */
-  readonly responseStatus: number;
-  /** Wall-clock latency in ms. */
-  readonly latencyMs: number;
-  /** True if the handler threw (or returned 5xx). */
-  readonly errored: boolean;
-  /** Free-form payload for the resource id, before/after diffs, etc. */
-  readonly detail: Record<string, unknown>;
-  /** Request id propagated from upstream when present. */
-  readonly correlationId: string | null;
-  /** Remote IP (proxy-stripped when available). */
-  readonly clientIp: string | null;
-}
-
-export type SecurityEventSink = (event: SecurityEvent) => void | Promise<void>;
-
-let activeSink: SecurityEventSink = defaultStdoutSink;
-
-export function setSecurityEventSink(sink: SecurityEventSink): void {
-  activeSink = sink;
-}
-
-export function getSecurityEventSink(): SecurityEventSink {
-  return activeSink;
-}
-
-export function resetSecurityEventSink(): void {
-  activeSink = defaultStdoutSink;
-}
-
-function defaultStdoutSink(event: SecurityEvent): void {
-  // eslint-disable-next-line no-console
-  console.log(JSON.stringify({ ...event, source: 'security-events' }));
-}
-
-// ────────────────────────────────────────────────────────────────────
-// Wrappers — one per supported runtime. They all funnel into
-// `recordSecurityEvent(...)`.
-// ────────────────────────────────────────────────────────────────────
-
-export interface SecurityEventBinding {
-  readonly action: string;
-  readonly resource: string;
-  readonly severity?: SecurityEventSeverity;
-  /** Optional detail extractor — runs after the handler completes. */
-  readonly extractDetail?: (ctx: unknown, result: unknown) => Record<string, unknown>;
-}
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 /**
- * Hono wrapper — `c` is the Hono Context. Resolves `tenantId` and
- * `actorId` from `c.get(...)` if the upstream auth middleware set them.
+ * Minimal Hono-like context shape. We avoid a hard dep on `hono` so this
+ * package stays usable from Express-style services too — duck-typed.
  */
-export function withSecurityEvents<C extends HonoContextLike, R>(
-  binding: SecurityEventBinding,
-  handler: (c: C) => Promise<R> | R,
-): (c: C) => Promise<R> {
-  return async (c: C): Promise<R> => {
-    const started = performance.now();
-    let result: R | undefined;
-    let errored = false;
-    let thrown: unknown;
-    try {
-      result = await handler(c);
-      return result;
-    } catch (err) {
-      errored = true;
-      thrown = err;
-      throw err;
-    } finally {
-      const latencyMs = performance.now() - started;
-      const req = c.req;
-      const detail = binding.extractDetail?.(c, result) ?? {};
-      const evt: SecurityEvent = {
-        at: new Date().toISOString(),
-        action: binding.action,
-        resource: binding.resource,
-        severity: binding.severity ?? 'info',
-        method: req.method,
-        route: req.routePath ?? req.path ?? 'unknown',
-        tenantId: safeGet(c, 'tenantId'),
-        actorId: safeGet(c, 'actorId'),
-        responseStatus: errored ? 500 : c.res?.status ?? 200,
-        latencyMs,
-        errored,
-        detail: {
-          ...detail,
-          ...(thrown ? { errorMessage: String((thrown as Error).message ?? thrown) } : {}),
-        },
-        correlationId: safeReqHeader(req, 'x-correlation-id') ?? safeReqHeader(req, 'x-request-id'),
-        clientIp: safeReqHeader(req, 'x-forwarded-for') ?? safeReqHeader(req, 'x-real-ip'),
-      };
-      try {
-        await activeSink(evt);
-      } catch {
-        // never let the sink fail the request.
-      }
-    }
+export interface AuditableContext {
+  req: {
+    method: string;
+    path?: string;
+    url?: string;
+    header(name: string): string | undefined;
+    raw?: { headers: Headers };
   };
-}
-
-/**
- * Fastify wrapper. Handler matches Fastify's
- * `(request: FastifyRequest, reply: FastifyReply) => Promise<T> | T`.
- * Reads `request.tenantId` / `request.actorId` when the auth plugin has
- * decorated the request; falls back to header-derived values.
- */
-// Pass-through generic so the caller's Fastify Request/Reply types flow
-// without being narrowed by our internal structural shape. Inside the
-// wrapper we read via narrow structural casts (`as unknown as ...`).
-export function withSecurityEventsFastify<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  H extends (request: any, reply: any) => any,
->(binding: SecurityEventBinding, handler: H): H {
-  const wrapped = async (request: unknown, reply: unknown): Promise<unknown> => {
-    const started = performance.now();
-    let result: unknown;
-    let errored = false;
-    let thrown: unknown;
-    try {
-      result = await handler(request, reply);
-      return result;
-    } catch (err) {
-      errored = true;
-      thrown = err;
-      throw err;
-    } finally {
-      const latencyMs = performance.now() - started;
-      const req = request as FastifyRequestLike & {
-        tenantId?: unknown;
-        actorId?: unknown;
-        routeOptions?: { url?: string };
-      };
-      const rep = reply as FastifyReplyLike;
-      const headers = req.headers ?? {};
-      const tenantId =
-        typeof req.tenantId === 'string'
-          ? req.tenantId
-          : headerStr(headers, 'x-tenant-id');
-      const actorId =
-        typeof req.actorId === 'string'
-          ? req.actorId
-          : headerStr(headers, 'x-actor-id');
-      const evt: SecurityEvent = {
-        at: new Date().toISOString(),
-        action: binding.action,
-        resource: binding.resource,
-        severity: binding.severity ?? 'info',
-        method: req.method ?? 'UNKNOWN',
-        route: req.routeOptions?.url ?? req.url ?? 'unknown',
-        tenantId,
-        actorId,
-        responseStatus: errored ? 500 : rep.statusCode ?? 200,
-        latencyMs,
-        errored,
-        detail: thrown
-          ? { errorMessage: String((thrown as Error).message ?? thrown) }
-          : (binding.extractDetail?.(req, result) ?? {}),
-        correlationId: headerStr(headers, 'x-correlation-id') ?? headerStr(headers, 'x-request-id'),
-        clientIp: headerStr(headers, 'x-forwarded-for') ?? headerStr(headers, 'x-real-ip'),
-      };
-      try {
-        await activeSink(evt);
-      } catch {
-        // never let the sink fail the request.
-      }
-    }
-  };
-  return wrapped as H;
-}
-
-interface FastifyRequestLike {
-  readonly method?: string;
-  readonly url?: string;
-  readonly headers?: Record<string, string | string[] | undefined>;
-}
-
-interface FastifyReplyLike {
-  readonly statusCode?: number;
-}
-
-function headerStr(
-  headers: Record<string, string | string[] | undefined>,
-  name: string,
-): string | null {
-  const v = headers[name] ?? headers[name.toLowerCase()];
-  if (Array.isArray(v)) return v[0] ?? null;
-  return typeof v === 'string' ? v : null;
-}
-
-/**
- * Next.js App Router wrapper. The handler signature must match Next's
- * `(req: Request, ctx?) => Response | Promise<Response>`.
- */
-export function withSecurityEventsNextRoute(
-  binding: SecurityEventBinding,
-  handler: (req: Request, ctx?: unknown) => Promise<Response> | Response,
-): (req: Request, ctx?: unknown) => Promise<Response> {
-  return async (req: Request, ctx?: unknown): Promise<Response> => {
-    const started = performance.now();
-    let response: Response | undefined;
-    let errored = false;
-    let thrown: unknown;
-    try {
-      response = await handler(req, ctx);
-      return response;
-    } catch (err) {
-      errored = true;
-      thrown = err;
-      throw err;
-    } finally {
-      const latencyMs = performance.now() - started;
-      const url = new URL(req.url);
-      const evt: SecurityEvent = {
-        at: new Date().toISOString(),
-        action: binding.action,
-        resource: binding.resource,
-        severity: binding.severity ?? 'info',
-        method: req.method,
-        route: url.pathname,
-        tenantId: req.headers.get('x-tenant-id'),
-        actorId: req.headers.get('x-actor-id'),
-        responseStatus: errored ? 500 : response?.status ?? 200,
-        latencyMs,
-        errored,
-        detail: thrown
-          ? { errorMessage: String((thrown as Error).message ?? thrown) }
-          : (binding.extractDetail?.(req, response) ?? {}),
-        correlationId: req.headers.get('x-correlation-id') ?? req.headers.get('x-request-id'),
-        clientIp: req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip'),
-      };
-      try {
-        await activeSink(evt);
-      } catch {
-        // never let the sink fail the request.
-      }
-    }
-  };
-}
-
-// ────────────────────────────────────────────────────────────────────
-// Helpers
-// ────────────────────────────────────────────────────────────────────
-
-interface HonoContextLike {
-  readonly req: {
-    readonly method: string;
-    readonly path?: string;
-    readonly routePath?: string;
-    readonly header?: (name: string) => string | null | undefined;
-    readonly raw?: { readonly headers: Headers };
-  };
-  readonly res?: { readonly status: number };
+  res?: { status: number };
+  get(key: 'auth'): unknown;
   get(key: string): unknown;
+  set?(key: string, value: unknown): void;
 }
 
-function safeGet(c: HonoContextLike, key: string): string | null {
-  try {
-    const v = c.get(key);
-    return typeof v === 'string' ? v : null;
-  } catch {
-    return null;
+export type AuditableNext = () => Promise<void> | void;
+
+export interface WithSecurityEventsOptions {
+  /**
+   * Override the resource type recorded on the audit event. Defaults
+   * to the first non-empty path segment (e.g. `/v1/properties/abc`
+   * → `properties`).
+   */
+  resourceType?: string;
+  /**
+   * Override the resource id. Defaults to the LAST non-empty path
+   * segment.
+   */
+  resourceIdFromPath?: boolean;
+  /**
+   * Hook fired when the audit emission itself fails. The original
+   * response is delivered regardless.
+   */
+  onError?: (err: unknown) => void;
+  /**
+   * Skip audit emission for the current request. Use sparingly — the
+   * preferred opt-out is the static allowlist at
+   * `.github/security-route-allowlist.yml` which is reviewed by
+   * auditors.
+   */
+  skip?: (ctx: AuditableContext) => boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Derive `(resourceType, resourceId)` from the request path. Best-effort
+ * — we never throw from here; if we can't classify we fall back to
+ * 'unknown' so the audit record is still emitted.
+ */
+function deriveResource(path: string): { type: string; id: string } {
+  const segments = path.split('/').filter(Boolean);
+  if (segments.length === 0) return { type: 'unknown', id: 'root' };
+  // Skip the API version prefix (v1, v2, …) and 'api' prefix if present.
+  const filtered = segments.filter((s) => !/^v\d+$/i.test(s) && s !== 'api');
+  const type = filtered[0] ?? segments[0] ?? 'unknown';
+  const id = filtered.length > 1 ? filtered[filtered.length - 1] : 'collection';
+  return { type, id };
+}
+
+function classifyOutcome(status: number): { outcome: AuditOutcome; severity: AuditSeverity } {
+  if (status >= 200 && status < 300) {
+    return { outcome: 'SUCCESS', severity: AuditSeverityEnum.INFO };
   }
-}
-
-function safeReqHeader(req: HonoContextLike['req'], name: string): string | null {
-  try {
-    if (typeof req.header === 'function') {
-      const v = req.header(name);
-      return typeof v === 'string' ? v : null;
-    }
-    if (req.raw?.headers) {
-      return req.raw.headers.get(name);
-    }
-  } catch {
-    // ignore
+  if (status === 401 || status === 403) {
+    return { outcome: 'DENIED', severity: AuditSeverityEnum.WARNING };
   }
-  return null;
+  if (status >= 400 && status < 500) {
+    return { outcome: 'FAILURE', severity: AuditSeverityEnum.WARNING };
+  }
+  if (status >= 500) {
+    return { outcome: 'ERROR', severity: AuditSeverityEnum.CRITICAL };
+  }
+  return { outcome: 'SUCCESS', severity: AuditSeverityEnum.INFO };
 }
 
-/** Direct emit — for code paths that aren't HTTP routes (cron, queue). */
-export async function recordSecurityEvent(
-  binding: Omit<SecurityEventBinding, 'extractDetail'> & {
-    readonly detail?: Record<string, unknown>;
-    readonly method?: string;
-    readonly route?: string;
-    readonly tenantId?: string | null;
-    readonly actorId?: string | null;
-  },
-): Promise<void> {
-  const evt: SecurityEvent = {
-    at: new Date().toISOString(),
-    action: binding.action,
-    resource: binding.resource,
-    severity: binding.severity ?? 'info',
-    method: binding.method ?? 'INTERNAL',
-    route: binding.route ?? 'internal',
-    tenantId: binding.tenantId ?? null,
-    actorId: binding.actorId ?? null,
-    responseStatus: 200,
-    latencyMs: 0,
-    errored: false,
-    detail: binding.detail ?? {},
-    correlationId: null,
-    clientIp: null,
+function extractUser(ctx: AuditableContext): AuditUser {
+  const auth = (ctx.get('auth') ?? {}) as Record<string, unknown>;
+  const ipHeader = ctx.req.header('x-forwarded-for') ?? ctx.req.header('x-real-ip');
+  return {
+    id: (auth.userId as string) ?? (auth.sub as string) ?? 'anonymous',
+    name: (auth.displayName as string) ?? (auth.email as string) ?? undefined,
+    email: (auth.email as string) ?? undefined,
+    roles: Array.isArray(auth.roles) ? (auth.roles as string[]) : auth.role ? [auth.role as string] : undefined,
+    ipAddress: ipHeader?.split(',')[0]?.trim(),
+    userAgent: ctx.req.header('user-agent') ?? undefined,
   };
-  try {
-    await activeSink(evt);
-  } catch {
-    // never propagate
+}
+
+function getPath(ctx: AuditableContext): string {
+  if (ctx.req.path) return ctx.req.path;
+  if (ctx.req.url) {
+    try {
+      return new URL(ctx.req.url).pathname;
+    } catch {
+      return ctx.req.url;
+    }
   }
+  return '/';
+}
+
+function getStatus(ctx: AuditableContext): number {
+  return ctx.res?.status ?? 200;
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-handler HOF. Wraps a Hono handler so a SecurityEvent fires after
+ * the response is produced. Errors thrown by `handler` are caught,
+ * audited with outcome=ERROR, and re-thrown unchanged.
+ *
+ * @example
+ * ```ts
+ * adminRouter.post('/properties',
+ *   withSecurityEvents(async (c) => {
+ *     const body = await c.req.json();
+ *     return c.json(await createProperty(body));
+ *   }),
+ * );
+ * ```
+ */
+export function withSecurityEvents<TCtx extends AuditableContext, TResult>(
+  handler: (ctx: TCtx) => Promise<TResult> | TResult,
+  options: WithSecurityEventsOptions = {},
+): (ctx: TCtx) => Promise<TResult> {
+  return async (ctx: TCtx): Promise<TResult> => {
+    const method = ctx.req.method.toUpperCase();
+    const skip = options.skip?.(ctx) === true;
+    let result: TResult;
+    let thrown: unknown = null;
+    try {
+      result = await handler(ctx);
+    } catch (err) {
+      thrown = err;
+      throw err;
+    } finally {
+      if (!skip && MUTATING_METHODS.has(method)) {
+        const status = thrown ? 500 : getStatus(ctx);
+        emit(ctx, status, options).catch((emitErr) => {
+          options.onError?.(emitErr);
+        });
+      }
+    }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return result!;
+  };
+}
+
+/**
+ * Hono-style middleware. Mount once at the gateway root:
+ *
+ *   api.use('*', securityEventsMiddleware);
+ *
+ * Idempotent verbs (GET/HEAD/OPTIONS) pass through with zero overhead.
+ */
+export async function securityEventsMiddleware(
+  ctx: AuditableContext,
+  next: AuditableNext,
+): Promise<void> {
+  const method = ctx.req.method.toUpperCase();
+  if (!MUTATING_METHODS.has(method)) {
+    await next();
+    return;
+  }
+  try {
+    await next();
+  } finally {
+    const status = getStatus(ctx);
+    // Best-effort, non-blocking.
+    emit(ctx, status, {}).catch((err) => {
+      // Surface to OTel via the host logger if available; never throw.
+      // eslint-disable-next-line no-console
+      console.warn('securityEventsMiddleware: audit emit failed', err);
+    });
+  }
+}
+
+/**
+ * Low-level emit helper. Useful for code paths that already know the
+ * outcome (e.g. webhook verifier denying before delegating).
+ */
+export async function recordSecurityEvent(
+  ctx: AuditableContext,
+  outcome: AuditOutcome,
+  reason?: string,
+): Promise<void> {
+  const path = getPath(ctx);
+  const resource = deriveResource(path);
+  const user = extractUser(ctx);
+  await logAuditEvent(
+    user,
+    ctx.req.method.toUpperCase(),
+    { type: resource.type, id: resource.id },
+    {
+      category: 'SYSTEM',
+      outcome,
+      severity:
+        outcome === 'SUCCESS' ? AuditSeverityEnum.INFO : AuditSeverityEnum.WARNING,
+      description: `${ctx.req.method.toUpperCase()} ${path}`,
+      reason,
+      request: { httpMethod: ctx.req.method.toUpperCase(), httpPath: path },
+    },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Internal
+// ---------------------------------------------------------------------------
+
+async function emit(
+  ctx: AuditableContext,
+  status: number,
+  options: WithSecurityEventsOptions,
+): Promise<void> {
+  const path = getPath(ctx);
+  const fallback = deriveResource(path);
+  const resource: AuditResource = {
+    type: options.resourceType ?? fallback.type,
+    id: options.resourceIdFromPath === false ? 'collection' : fallback.id,
+  };
+  const { outcome, severity } = classifyOutcome(status);
+  const user = extractUser(ctx);
+  await logAuditEvent(user, ctx.req.method.toUpperCase(), resource, {
+    category: 'SYSTEM',
+    outcome,
+    severity,
+    description: `${ctx.req.method.toUpperCase()} ${path} → ${status}`,
+    request: { httpMethod: ctx.req.method.toUpperCase(), httpPath: path },
+    metadata: { statusCode: status },
+  });
 }

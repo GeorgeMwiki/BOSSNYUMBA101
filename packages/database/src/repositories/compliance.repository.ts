@@ -23,6 +23,7 @@ import {
 } from '../schemas/index.js';
 import type { TenantId } from '@bossnyumba/domain-models';
 import { buildPaginatedResult } from './base.repository.js';
+import { assertDocumentType, assertDocumentStatus } from './enum-guards.js';
 
 export class ComplianceRepository {
   constructor(private db: DatabaseClient) {}
@@ -110,8 +111,12 @@ export class ComplianceRepository {
     limit = 50,
     offset = 0
   ) {
-    const endDate = new Date(asOfDate);
-    endDate.setDate(endDate.getDate() + daysAhead);
+    // Bug fix A-BUG-DEEP #7: `Date.setDate(d.getDate() + n)` is
+    // local-TZ-aware (it pivots around the host's clock) and mutates
+    // the source Date. Compute the offset in pure UTC milliseconds so
+    // the window is exactly `daysAhead * 86_400_000` regardless of the
+    // server's timezone.
+    const endDate = new Date(asOfDate.getTime() + daysAhead * 86_400_000);
 
     const rows = await this.db
       .select()
@@ -344,10 +349,15 @@ export class DocumentRepository {
     ];
 
     if (options?.documentType) {
-      conditions.push(eq(documentUploads.documentType, options.documentType as unknown as typeof documentUploads.documentType.$inferType));
+      // Bug fix A-BUG-DEEP #9: validate inputs against the literal union so
+      // an invalid documentType / status surfaces as ENUM_VALUE_INVALID
+      // instead of producing a silently-empty page.
+      const docType = assertDocumentType(options.documentType);
+      conditions.push(eq(documentUploads.documentType, docType as unknown as typeof documentUploads.documentType.$inferType));
     }
     if (options?.status) {
-      conditions.push(eq(documentUploads.status, options.status as unknown as typeof documentUploads.status.$inferType));
+      const status = assertDocumentStatus(options.status);
+      conditions.push(eq(documentUploads.status, status as unknown as typeof documentUploads.status.$inferType));
     }
     if (options?.entityType) {
       conditions.push(eq(documentUploads.entityType, options.entityType));

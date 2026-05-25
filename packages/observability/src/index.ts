@@ -137,6 +137,22 @@ export {
 } from './audit-logger.js';
 
 // ============================================================================
+// Audit - Route-level Security Events
+// ============================================================================
+
+export type {
+  AuditableContext,
+  AuditableNext,
+  WithSecurityEventsOptions,
+} from './security/with-security-events.js';
+
+export {
+  withSecurityEvents,
+  securityEventsMiddleware,
+  recordSecurityEvent,
+} from './security/with-security-events.js';
+
+// ============================================================================
 // Event Bus
 // ============================================================================
 
@@ -254,6 +270,46 @@ export {
 // ============================================================================
 
 export { requireEnv, optionalEnv, envFlag } from './env.js';
+
+// ============================================================================
+// Eval — online LLM-judge sampling + R-MOAT-6 dimensions
+// ============================================================================
+
+export type {
+  EvalScoreScale,
+  EvalSeverity,
+  EvalDimensionId,
+  EvalDimension,
+} from './eval/dimensions.js';
+
+export {
+  EVAL_DIMENSIONS,
+  EVAL_DIMENSION_COUNT,
+  getEvalDimension,
+} from './eval/dimensions.js';
+
+export type {
+  DimensionScore,
+  JudgeScore,
+  TraceForJudging,
+  JudgeFn,
+  ScoreSink,
+  OnlineJudgeOptions,
+  OnlineJudgeStats,
+  OnlineJudge,
+} from './eval/online-judge.js';
+
+export {
+  createOnlineJudge,
+  isTraceSampled,
+  traceIdToSampleValue,
+} from './eval/online-judge.js';
+
+// ============================================================================
+// Decision Trace — structured per-decision audit traces (LITFIN port)
+// ============================================================================
+
+export * from './decision-trace/index.js';
 
 // ============================================================================
 // Re-exports

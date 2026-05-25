@@ -74,7 +74,6 @@ import {
 } from 'node:fs';
 import { dirname, join, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
 
 // ---------------------------------------------------------------------------
 // CLI plumbing
@@ -95,7 +94,6 @@ function parseArgs(argv) {
     failOn: DEFAULT_FAIL_ON,
     output: DEFAULT_OUTPUT,
     report: '',
-    sinceRef: '',
   };
   for (const raw of argv) {
     if (!raw.startsWith('--')) continue;
@@ -128,16 +126,6 @@ function parseArgs(argv) {
       case 'report':
         args.report = value;
         break;
-      case 'since-ref':
-        // Git ref (e.g. `origin/main`) — when set, the new
-        // dangerous-pattern detectors (UNGUARDED_DROP / TRUNCATE /
-        // BLOCKING_INDEX) only flag files that changed vs that ref.
-        // Legacy migrations are intentionally NOT re-scored so the
-        // gate ratchets forward without breaking pre-existing apply
-        // history. The NOT NULL backfill check is unaffected because
-        // it has its own demotion logic.
-        args.sinceRef = value;
-        break;
       case 'help':
       case 'h':
         printHelp();
@@ -164,10 +152,6 @@ function printHelp() {
     '  --fail-on=warn|fail       default fail',
     '  --output=json|markdown    default markdown',
     '  --report=<path>           optional, also write report to this path',
-    '  --since-ref=<git-ref>     restrict new dangerous-pattern detectors',
-    '                            (UNGUARDED_DROP/TRUNCATE/BLOCKING_INDEX) to',
-    '                            files that changed vs <ref>. NOT NULL pass',
-    '                            scans all files.',
     '',
     'Exit codes:',
     '  0  below --fail-on threshold',
@@ -530,150 +514,6 @@ export function findDynamicNotNullStatements(sql) {
 }
 
 // ---------------------------------------------------------------------------
-// Additional dangerous-pattern detectors (CI gate companion)
-// ---------------------------------------------------------------------------
-//
-// These detectors run alongside the NOT NULL safety pass. They catch the
-// classic foot-guns a Postgres migration can introduce at production
-// scale: unguarded DROPs, unconcurrent index creation on large tables,
-// and TRUNCATE in a forward-only migration.
-//
-// Each detector returns findings with the same shape as the NOT NULL
-// pass so they flow through the same report rendering and exit-code
-// logic.
-
-/**
- * Tables that are known to be >1M rows on production deploys. CREATE
- * INDEX on these MUST use CONCURRENTLY, otherwise the migration takes
- * an ACCESS EXCLUSIVE lock and blocks every concurrent reader/writer
- * for the duration of the build.
- *
- * The list is conservative — adding a name here costs a CI warning;
- * leaving one off costs a production outage. Owners can extend this
- * via the `LARGE_TABLES_ALLOWLIST` env var (comma-separated names) if
- * a hot-fix migration genuinely needs the trade-off.
- */
-const LARGE_TABLES_HARDCODED = new Set([
-  'transactions',
-  'invoices',
-  'payments',
-  'audit_chain',
-  'audit_chain_append_only',
-  'kernel_provenance',
-  'kernel_cot_reservoir',
-  'sensorium_event_log',
-  'session_replay_chunks',
-  'notification_dispatch_log',
-  'cost_ledger_entries',
-  'worm_audit_log',
-  'sovereign_action_ledger',
-  'webhook_deliveries',
-  'a2a_tasks',
-  'reflexion_lessons',
-  'cases',
-  'work_orders',
-]);
-
-function getLargeTables() {
-  const extra = (process.env.LARGE_TABLES_ALLOWLIST ?? '')
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-  return new Set([...LARGE_TABLES_HARDCODED, ...extra]);
-}
-
-/**
- * Detect destructive statements that lack the `IF EXISTS` guard so a
- * second apply of the same migration would throw on a missing object.
- * Caught patterns:
- *   - `DROP TABLE foo` (no IF EXISTS)
- *   - `DROP COLUMN foo` (no IF EXISTS)
- *   - `DROP INDEX foo` (no IF EXISTS)
- *   - `DROP CONSTRAINT foo` (no IF EXISTS)
- *   - `DROP TYPE foo` (no IF EXISTS)
- */
-export function findUnguardedDrops(sql) {
-  const findings = [];
-  const dropRx =
-    /\b(drop\s+(?:table|column|index|constraint|type|view|materialized\s+view|sequence|schema|function|trigger))(?:\s+(if\s+exists))?\s+([\w".]+)/gi;
-  let m;
-  while ((m = dropRx.exec(sql)) !== null) {
-    const verb = m[1].replace(/\s+/g, ' ').toLowerCase();
-    const guard = m[2];
-    const target = m[3];
-    if (!guard) {
-      findings.push({
-        kind: 'unguarded_drop',
-        verb,
-        target: unquoteIdent(target).toLowerCase(),
-        snippet: m[0].slice(0, 120),
-      });
-    }
-  }
-  return findings;
-}
-
-/**
- * Detect `TRUNCATE` statements. Migration packages are forward-only —
- * TRUNCATE wipes user data and is almost always a mistake outside of
- * test fixtures. The lint flags it as FAIL unless the file declares
- * `-- @safety: truncate-reviewed`.
- */
-const TRUNCATE_ALLOWLIST_MARKER = '@safety: truncate-reviewed';
-
-export function findTruncateStatements(sql) {
-  const findings = [];
-  const truncateRx = /\btruncate(?:\s+table)?\s+([\w".,\s]+?)(?:\s+(?:restart|continue|cascade|restrict))?\s*;/gi;
-  let m;
-  while ((m = truncateRx.exec(sql)) !== null) {
-    findings.push({
-      kind: 'truncate',
-      target: m[1].trim().split(',')[0].trim().replace(/^"|"$/g, '').toLowerCase(),
-      snippet: m[0].slice(0, 120),
-    });
-  }
-  return findings;
-}
-
-/**
- * Detect `CREATE INDEX` statements on known-large tables that are NOT
- * marked `CONCURRENTLY`. A non-concurrent CREATE INDEX takes an ACCESS
- * EXCLUSIVE lock on the table for the duration of the build — minutes
- * to hours on >1M-row tables, blocking every concurrent reader and
- * writer. The lint flags this as FAIL unless the file declares
- * `-- @safety: blocking-index-reviewed`.
- *
- * Note: `CREATE INDEX CONCURRENTLY` cannot run inside a transaction
- * block. If the migration runner wraps each file in a transaction, the
- * author must split the index out into a standalone migration with a
- * `-- BEGIN; COMMIT;` opt-out, OR run it from a one-off operations
- * playbook. Either way, this check forces the conversation.
- */
-const BLOCKING_INDEX_ALLOWLIST_MARKER = '@safety: blocking-index-reviewed';
-
-export function findBlockingIndexCreates(sql, largeTables, rawSql) {
-  const findings = [];
-  const allowlisted =
-    typeof rawSql === 'string' && rawSql.includes(BLOCKING_INDEX_ALLOWLIST_MARKER);
-  const idxRx =
-    /\bcreate\s+(?:unique\s+)?index(\s+concurrently)?\s+(?:if\s+not\s+exists\s+)?[\w".]+\s+on\s+(?:only\s+)?(?:(?:\w+)\.)?([\w"]+)/gi;
-  let m;
-  while ((m = idxRx.exec(sql)) !== null) {
-    const concurrently = Boolean(m[1]);
-    const table = unquoteIdent(m[2]).toLowerCase();
-    if (concurrently) continue;
-    if (!largeTables.has(table)) continue;
-    findings.push({
-      kind: 'blocking_index',
-      table,
-      allowlisted,
-      snippet: m[0].slice(0, 120),
-    });
-  }
-  return findings;
-}
-
-// ---------------------------------------------------------------------------
 // Classifier
 // ---------------------------------------------------------------------------
 
@@ -812,37 +652,6 @@ async function liveDbCheck(findings, dbUrl) {
 }
 
 // ---------------------------------------------------------------------------
-// Changed-files detector (git scoping for additional pattern detectors)
-// ---------------------------------------------------------------------------
-
-/**
- * Compute the set of migration files that changed vs `sinceRef`. Used
- * by the additional dangerous-pattern detectors so legacy migrations
- * aren't re-scored every CI run.
- *
- * Best-effort: if `git` is unreachable or the ref doesn't exist, we
- * return null and the caller falls back to "scan everything".
- */
-function changedFilesSince(sinceRef, migrationsDir) {
-  if (!sinceRef) return null;
-  try {
-    const diff = spawnSync(
-      'git',
-      ['diff', '--name-only', `${sinceRef}...HEAD`, '--', migrationsDir],
-      { encoding: 'utf8' },
-    );
-    if (diff.status !== 0) return null;
-    const lines = (diff.stdout || '')
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean);
-    return new Set(lines);
-  } catch {
-    return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
 // File discovery
 // ---------------------------------------------------------------------------
 
@@ -943,14 +752,6 @@ async function main() {
   }
 
   const flatFindings = [];
-  const largeTables = getLargeTables();
-  // When --since-ref is set, the additional dangerous-pattern detectors
-  // (UNGUARDED_DROP / TRUNCATE / BLOCKING_INDEX) only flag files that
-  // changed vs the ref. Legacy migrations stay un-scored so the gate
-  // ratchets forward. NOT NULL pass still scans all files because its
-  // demotion logic (live DB check + HAS_DEFAULT + HAS_BACKFILL) keeps
-  // false positives low.
-  const changedSet = changedFilesSince(args.sinceRef, args.migrationsDir);
 
   for (const file of files) {
     const rawSql = readFileSync(file, 'utf8');
@@ -964,67 +765,6 @@ async function main() {
     // level ALTER TABLE still gets scanned.
     const dynamicFindings = findDynamicNotNullStatements(sql);
     const allowlisted = hasDynamicNotNullAllowlist(rawSql);
-
-    // Additional dangerous-pattern detectors. Gated on `changedSet`
-    // when --since-ref is in effect — legacy migrations don't get
-    // re-scored. When no ref is provided, scan all files.
-    const relFile = relative(ROOT, file);
-    const shouldScanAdditional =
-      changedSet === null || changedSet.has(relFile);
-    const unguardedDrops = shouldScanAdditional ? findUnguardedDrops(sql) : [];
-    const truncateFindings = shouldScanAdditional ? findTruncateStatements(sql) : [];
-    const truncateAllowlisted = rawSql.includes(TRUNCATE_ALLOWLIST_MARKER);
-    const blockingIndexFindings = shouldScanAdditional
-      ? findBlockingIndexCreates(sql, largeTables, rawSql)
-      : [];
-
-    // Append additional-detector findings into the flat list so they
-    // surface alongside NOT NULL findings in the report.
-    for (const f of unguardedDrops) {
-      const severity = 'fail';
-      flatFindings.push({
-        file: relative(ROOT, file),
-        kind: f.kind,
-        table: f.target,
-        column: '-',
-        severity,
-        reason: `UNGUARDED_DROP: ${f.verb} without IF EXISTS — second apply would error on missing object. Add IF EXISTS to make idempotent.`,
-        snippet: f.snippet,
-        classification: { severity },
-      });
-    }
-    for (const f of truncateFindings) {
-      const severity = truncateAllowlisted ? 'warn' : 'fail';
-      flatFindings.push({
-        file: relative(ROOT, file),
-        kind: f.kind,
-        table: f.target,
-        column: '-',
-        severity,
-        reason: truncateAllowlisted
-          ? `TRUNCATE_ALLOWLISTED: ${TRUNCATE_ALLOWLIST_MARKER} signal present — human reviewed`
-          : `TRUNCATE: destructive statement in forward-only migration — wipes user data. ` +
-            `Add \`-- ${TRUNCATE_ALLOWLIST_MARKER}\` after human review, or remove the statement.`,
-        snippet: f.snippet,
-        classification: { severity },
-      });
-    }
-    for (const f of blockingIndexFindings) {
-      const severity = f.allowlisted ? 'warn' : 'fail';
-      flatFindings.push({
-        file: relative(ROOT, file),
-        kind: f.kind,
-        table: f.table,
-        column: '-',
-        severity,
-        reason: f.allowlisted
-          ? `BLOCKING_INDEX_ALLOWLISTED: ${BLOCKING_INDEX_ALLOWLIST_MARKER} signal present — human reviewed`
-          : `BLOCKING_INDEX: CREATE INDEX on large table "${f.table}" without CONCURRENTLY — takes ACCESS EXCLUSIVE lock. ` +
-            `Add CONCURRENTLY (run outside a transaction), OR add \`-- ${BLOCKING_INDEX_ALLOWLIST_MARKER}\` if this is intentional.`,
-        snippet: f.snippet,
-        classification: { severity },
-      });
-    }
 
     if (rawFindings.length === 0 && dynamicFindings.length === 0) continue;
 

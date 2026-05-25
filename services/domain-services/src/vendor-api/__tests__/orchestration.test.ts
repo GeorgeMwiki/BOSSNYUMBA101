@@ -182,20 +182,19 @@ describe('VendorDispatchOrchestrator', () => {
     expect(bus.events[0].eventType).toBe('VendorDispatchFailed');
   });
 
-  // SKIPPED: This test asserts that the orchestrator detects timed-out
-  // manual-queue items awaiting on-site confirmation. The detection
-  // path appears to depend on test-environment timing (the assertion
-  // expects an item in the timed-out array but receives []). Pre-
-  // existing failure flagged in wave-3 C6 + wave-4 D1 and intentionally
-  // left untouched while the orchestrator's timeout-detection contract
-  // stabilises. Tracked as a separate follow-up; unrelated to the
-  // wave-1-4 deep-scrub work shipped on this branch.
-  it.skip('detects timed-out dispatches awaiting on-site confirmation', async () => {
+  // Wave-12: previously skipped (wave-3 C6 / wave-4 D1) because the
+  // assertion expected an item in the timed-out array but received [].
+  // Root cause: `ManualQueueAdapter` accepts a `now` config but the test
+  // didn't wire it — adapter used real `new Date()` while orchestrator
+  // used the mock clock, so the adapter's `enqueuedAt` ended up well
+  // past any test cutoff. Fixed by sharing the mock clock with both.
+  it('detects timed-out dispatches awaiting on-site confirmation', async () => {
+    const now = { value: new Date('2026-05-05T09:00:00Z') };
     const fallback = new ManualQueueAdapter({
       store: createInMemoryManualQueueStore(),
+      now: () => now.value,
     });
     const registry = createVendorAdapterRegistry({ adapters: [fallback], fallback });
-    const now = { value: new Date('2026-05-05T09:00:00Z') };
     const orch = new VendorDispatchOrchestrator({
       registry,
       vendorSelector: makeSelector([makeCandidate('v1', 'manual-queue')]),

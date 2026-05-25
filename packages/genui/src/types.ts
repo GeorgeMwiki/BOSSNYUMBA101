@@ -13,12 +13,21 @@
 
 export type VegaLiteSpec = Readonly<Record<string, unknown>>;
 
+/**
+ * Any ISO-4217 3-letter currency code (H13). The schema validates the
+ * regex `^[A-Z]{3}$` at parse time; the types accept `string` so a
+ * Nigerian NGN, Ugandan UGX, Rwandan RWF, Ghanaian GHS, etc. all flow
+ * through without recompiling the genui package. Built for the world
+ * starting with TZ — never hard-code jurisdiction in the type surface.
+ */
+export type Iso4217 = string;
+
 export interface DataTableColumn {
   readonly id: string;
   readonly header: string;
   readonly accessorKey: string;
   readonly format?: 'text' | 'currency' | 'percent' | 'number' | 'date';
-  readonly currency?: 'KES' | 'TZS' | 'USD';
+  readonly currency?: Iso4217;
   readonly enableSorting?: boolean;
 }
 
@@ -36,7 +45,7 @@ export interface KpiTile {
   readonly delta?: number;
   readonly deltaDirection?: 'up' | 'down' | 'flat';
   readonly format: 'currency' | 'percent' | 'number';
-  readonly currency?: 'KES' | 'TZS' | 'USD';
+  readonly currency?: Iso4217;
 }
 
 export interface WorkflowStep {
@@ -123,7 +132,7 @@ export interface SignatureAction {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Phase E.7 — 13 new kinds (deferred from ProdFix-7's TODO: ProdFix-8)
+// Phase E.7 — 13 new kinds (landed in ProdFix-8)
 // ─────────────────────────────────────────────────────────────────────
 
 export interface WizardStep {

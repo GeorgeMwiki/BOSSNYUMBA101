@@ -1,7 +1,7 @@
 /**
  * Cross-portal killswitch fan-out publisher (Central Command Phase C — C2).
  *
- * Closes B1 TODO #2: the platform `killswitch-write.service.ts` adapter
+ * Implements B1 wiring #2: the platform `killswitch-write.service.ts` adapter
  * accepts an optional `publishCrossPortalEvent` callback; this module
  * provides the concrete wiring that bridges that callback onto the
  * composition-root `CrossPortalBus`. When a HQ operator flips the

@@ -83,13 +83,24 @@ app.get('/history', async (c) => {
 app.get('/balance', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const invoices = await repos.invoices.findByCustomer(auth.userId, auth.tenantId, 1000, 0);
-  const totalDueMinor = invoices.items.reduce((sum: number, invoice: any) => sum + Number(invoice.balanceAmount || 0), 0);
+
+  // Total due now comes from a single SUM query in the repository
+  // (`sumBalanceByCustomer`) — previously this endpoint fetched up to
+  // 1000 invoices and summed in JS, which was O(n) in tenant-wide
+  // invoice rows. The breakdown still uses per-invoice rows (small,
+  // capped at 100) so the UI can render a line-item view.
+  const [totalDueMinor, recentInvoices] = await Promise.all([
+    repos.invoices.sumBalanceByCustomer(auth.userId, auth.tenantId),
+    repos.invoices.findByCustomer(auth.userId, auth.tenantId, 100, 0),
+  ]);
   return c.json({
     success: true,
     data: {
-      totalDue: { amount: minorToMajor(totalDueMinor), currency: invoices.items[0]?.currency || 'USD' },
-      breakdown: invoices.items.map((invoice: any) => ({
+      totalDue: {
+        amount: minorToMajor(totalDueMinor),
+        currency: recentInvoices.items[0]?.currency || 'USD',
+      },
+      breakdown: recentInvoices.items.map((invoice: any) => ({
         type: String(invoice.invoiceType || 'rent').toUpperCase(),
         amount: { amount: minorToMajor(invoice.balanceAmount), currency: invoice.currency || 'USD' },
       })),

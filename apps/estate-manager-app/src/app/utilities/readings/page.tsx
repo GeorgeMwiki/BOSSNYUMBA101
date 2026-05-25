@@ -6,6 +6,7 @@ import { Plus, TrendingUp, Droplet, Zap, Flame } from 'lucide-react';
 import { EmptyState } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 
 type UtilityType = 'water' | 'electricity' | 'gas';
 
@@ -59,7 +60,7 @@ export default function MeterReadingsPage() {
         subtitle={pendingCount > 0 ? `${pendingCount} pending` : 'All recorded'}
         showBack
         action={
-          <Link href="/utilities/readings/record" className="btn-primary text-sm flex items-center gap-1">
+          <Link href={ROUTES.utilities.readingsRecord} className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
             Record
           </Link>
@@ -139,7 +140,7 @@ export default function MeterReadingsPage() {
             title={tSimple('noReadingsFound')}
             description={filter === 'pending' ? 'All readings have been recorded.' : 'Record meter readings to get started.'}
             action={
-              <Link href="/utilities/readings/record" className="btn-primary inline-block">
+              <Link href={ROUTES.utilities.readingsRecord} className="btn-primary inline-block">
                 Record Reading
               </Link>
             }

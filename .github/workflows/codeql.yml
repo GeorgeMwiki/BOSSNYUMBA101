@@ -36,6 +36,10 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
+          # Custom BOSSNYUMBA queries on top of the default security-extended
+          # suite. Each `.ql` file under `.github/codeql/queries/` is added as
+          # an extra check — see `.github/codeql/queries/qlpack.yml`.
+          queries: security-extended,./.github/codeql/queries
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4

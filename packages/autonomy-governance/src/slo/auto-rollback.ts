@@ -148,8 +148,55 @@ export async function executeAutoRollback(
   }
 
   // kill-and-rollback — terminal
+  //
+  // H9 — saga compensation. The pre-fix sequence was non-transactional:
+  //   1. canaryStore.update(... 'shadow')
+  //   2. revertPort.revert(...)
+  // If step 2 threw, the sub-MD was quarantined-by-canary BUT the
+  // version revert never happened — a broken intermediate state where
+  // a subsequent flag flip would re-enable the broken version, with no
+  // compensating rollback. The audit asked for a reversible rollback.
+  //
+  // Fix: wrap the two side-effects in a saga. `fromStage` captured at
+  // the top of executeAutoRollback is the stage we restore on failure.
+  // If revert throws, we restore the canary stage to `fromStage` and
+  // propagate the error so the caller (and the operator-on-call) sees
+  // the failure clearly. If the compensation itself throws we surface
+  // BOTH errors as one wrapped Error.
   await deps.canaryStore.update(input.slo.subMd, input.slo.tenantId, 'shadow');
-  await deps.revertPort.revert(input.slo.subMd, input.slo.tenantId, input.verdict.reason);
+  try {
+    await deps.revertPort.revert(
+      input.slo.subMd,
+      input.slo.tenantId,
+      input.verdict.reason,
+    );
+  } catch (revertErr) {
+    // Compensating action: restore the canary stage. The next SLO
+    // breach will re-trigger the rollback path with fresh state.
+    try {
+      await deps.canaryStore.update(
+        input.slo.subMd,
+        input.slo.tenantId,
+        fromStage,
+      );
+    } catch (compErr) {
+      const compMsg =
+        compErr instanceof Error ? compErr.message : String(compErr);
+      const revertMsg =
+        revertErr instanceof Error ? revertErr.message : String(revertErr);
+      throw new Error(
+        `auto-rollback kill-and-rollback failed and compensating canary-restore ALSO failed. ` +
+          `revert: ${revertMsg} ; restore: ${compMsg} . ` +
+          `Sub-MD ${input.slo.subMd}/${input.slo.tenantId ?? 'platform'} ` +
+          `is in an inconsistent state — operator intervention required.`,
+      );
+    }
+    throw new Error(
+      `auto-rollback kill-and-rollback failed (canary stage restored to ${fromStage}): ${
+        revertErr instanceof Error ? revertErr.message : String(revertErr)
+      }`,
+    );
+  }
 
   let queued = false;
   if (input.inFlightRequest) {

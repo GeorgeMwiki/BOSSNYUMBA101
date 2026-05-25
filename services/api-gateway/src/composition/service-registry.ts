@@ -232,10 +232,6 @@ import {
   createBrainKernelWiring,
   type BrainKernelWiring as BrainKernelWiringSlot,
 } from './brain-kernel-wiring.js';
-import {
-  createMultiLLMSynthesizerWiring,
-  type MultiLLMSynthesizerWiring,
-} from './multi-llm-synthesizer-wiring.js';
 // ProdFix-1 wires 4 + 5 — NIDA + e-Ardhi adapters + lazy Temporal
 // dispatchers + HQ tool registry composition. Encapsulated so the
 // service-registry stays thin.
@@ -280,31 +276,8 @@ import {
   createCrossPortalBus,
   type CrossPortalBus,
 } from './cross-portal-bus.js';
-// Persistent-stores wiring (5-port composition) — `createPersistentStores`
-// glues the in-memory ports shipped by ai-copilot / agent-platform /
-// central-intelligence to the Drizzle-backed adapters in
-// `@bossnyumba/database`. The factory is env-gated (per-port feature
-// flags) and returns ALL in-memory stores when db is null, which is the
-// dev/CI/test default. Production boots into the persistent path
-// automatically when DATABASE_URL is set.
-import {
-  createPersistentStores,
-  type PersistentStores,
-} from './persistent-stores-wiring.js';
-// P40 composition-root flip — activates `createStorageAdapterProvider`
-// (the bridge that delegates the legacy `StorageProvider` interface to
-// the shared `@bossnyumba/storage-adapter` port) on a Supabase backend
-// when env vars are present; falls back to `LocalStorageProvider` for
-// dev/CI parity. Surfaces the wired `StorageProvider` on
-// `registry.documentStorage.provider` so `DocumentService`,
-// `EvidencePackBuilderService`, and every other consumer inherits the
-// same `tenantScopedPath(tenantId, key)` enforcement on every call.
-import {
-  createDocumentStorageWiring,
-  type DocumentStorageWiring,
-} from './document-storage-wiring.js';
 // Central Command Phase C C2 — closes B1's `publishCrossPortalEvent` +
-// `dispatcher` + `recipientResolver` wiring TODOs.
+// `dispatcher` + `recipientResolver` wiring follow-ups.
 import {
   createKillswitchFanoutPublisher,
   type KillswitchFanoutPublisher,
@@ -387,7 +360,7 @@ import {
 // router returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE. Memory is always
 // wired to the in-memory default so threads work in-session; a
 // pgvector-backed adapter will replace it for production.
-// DEFERRED(wave-30): swap in pgvector-backed ConversationMemory for prod.
+// Follow-up wave-30 (Docs/TODO_BACKLOG.md): swap in pgvector-backed ConversationMemory for prod.
 import {
   createInMemoryConversationMemory,
   createInMemoryAuditSinkAndReader,
@@ -620,7 +593,7 @@ export interface ServiceRegistry {
    *  been wired (follow-up PR). `memory` is always wired to the
    *  in-memory default so threads survive in-session — a pgvector-
    *  backed adapter will replace it for production persistence.
-   *  DEFERRED(wave-30): swap `memory` to pgvector-backed adapter.
+   *  Follow-up wave-30 (Docs/TODO_BACKLOG.md): swap `memory` to pgvector-backed adapter.
    */
   readonly centralIntelligence: {
     readonly agent: CentralIntelligenceAgent | null;
@@ -792,7 +765,7 @@ export interface ServiceRegistry {
 
   /**
    * Central Command Phase C C2 — cross-portal killswitch fan-out
-   * publisher. Closes B1's `publishCrossPortalEvent` TODO on the
+   * publisher. Implements B1's `publishCrossPortalEvent` hook on the
    * `killswitch-write.service.ts` adapter so every state change is
    * broadcast onto the global topic for live brain re-reads.
    *
@@ -817,43 +790,6 @@ export interface ServiceRegistry {
    * stamping `recipientCount = 0` and proceeding.
    */
   readonly recipientResolverAdapter: RecipientResolverLike | null;
-
-  /**
-   * Persistent-store composition (5 ports):
-   *   - lessonStore         (Reflexion lessons, migration 0166)
-   *   - wormAuditStore      (WORM document audit, migration 0165)
-   *   - skillRegistryWriter (skill promotion, migration 0162)
-   *   - aopRegistryStore    (autonomous-operating-procedures, migration 0167)
-   *   - getA2aTaskStore     (A2A task state, migration 0168) — tenant-pinned
-   *
-   * ALWAYS wired (the factory returns in-memory adapters when db is null,
-   * Drizzle-backed adapters when db is set + the per-port feature flag is
-   * NOT enabled). `modeByStore` records which path each store took at
-   * boot so operators can see the live posture in a single log line.
-   *
-   * Per-port opt-out env flags (all default-on once DATABASE_URL is set):
-   *   - PERSISTENT_LESSON_STORE_DISABLED
-   *   - PERSISTENT_WORM_AUDIT_DISABLED
-   *   - PERSISTENT_SKILL_REGISTRY_DISABLED
-   *   - PERSISTENT_AOP_REGISTRY_DISABLED
-   *   - PERSISTENT_A2A_TASKS_DISABLED
-   */
-  readonly persistentStores: PersistentStores;
-
-  /**
-   * P40 composition-root flip — wired StorageProvider for the document
-   * pipeline (DocumentService + EvidencePackBuilderService). When the
-   * Supabase env vars are present (`NEXT_PUBLIC_SUPABASE_URL` +
-   * `SUPABASE_SERVICE_ROLE_KEY`) we bind `createStorageAdapterProvider`
-   * to a `createSupabaseStorageAdapter` so every upload/read/delete
-   * passes through `tenantScopedPath(tenantId, key)` — matching the
-   * Supabase Storage RLS policy on the first path segment.
-   *
-   * Backward-compat: when Supabase env is unset we fall back to
-   * `LocalStorageProvider`, the existing dev/CI default. The gateway
-   * boots either way. Mode + bucket are surfaced for ops dashboards.
-   */
-  readonly documentStorage: DocumentStorageWiring;
 
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
@@ -1134,7 +1070,7 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // Central Intelligence — no concrete LLM adapter ships here (it
     // lives in a separate service). In degraded mode we still wire the
     // in-memory memory so thread listing works locally.
-    // DEFERRED(wave-30): replace with pgvector-backed ConversationMemory.
+    // Follow-up wave-30 (Docs/TODO_BACKLOG.md): replace with pgvector-backed ConversationMemory.
     centralIntelligence: (() => {
       const { sink, reader } = createInMemoryAuditSinkAndReader();
       return {
@@ -1202,7 +1138,7 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // to purge; `index.ts` skips `.start()`.
     sessionReplayRetention: null,
     // Central Command Phase C C2 — closes B1's killswitch fan-out +
-    // announcement-dispatch + recipient-resolver TODOs. The publisher
+    // announcement-dispatch + recipient-resolver ports. The publisher
     // and dispatcher are always wired (they bridge onto the always-
     // present bus + event-bus surfaces). The resolver is null because
     // it needs a DB to count active users; the announcement service
@@ -1215,16 +1151,6 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
       crossPortalBus: degradedCrossPortalBus,
     }),
     recipientResolverAdapter: null,
-    // Persistent stores — degraded mode wires the in-memory fallback for
-    // every port (db=null). Same surface as the live path so routes
-    // never have to branch on isLive; they just call into the wired
-    // adapter and the store decides where the data lives.
-    persistentStores: createPersistentStores({ db: null }),
-    // P40 — document-storage wiring. Reads Supabase env vars at boot;
-    // falls back to LocalStorageProvider so the gateway always has a
-    // functional StorageProvider for downstream DocumentService /
-    // EvidencePackBuilderService consumers regardless of DB state.
-    documentStorage: createDocumentStorageWiring(),
     eventBus,
     db: null,
     isLive: false,
@@ -1634,18 +1560,9 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
       openai?: OpenAIVoiceProvider;
     } = {};
     if (elevenKey) {
-      // ELEVENLABS_DEFAULT_VOICE_ID MUST be set explicitly when ElevenLabs
-      // is configured — a silent "rachel" default hides per-tenant brand-
-      // voice misconfiguration and locks in a deprecated voice id.
-      const defaultVoiceId = process.env.ELEVENLABS_DEFAULT_VOICE_ID?.trim();
-      if (!defaultVoiceId) {
-        throw new Error(
-          'ELEVENLABS_DEFAULT_VOICE_ID must be set when ELEVENLABS_API_KEY is configured',
-        );
-      }
       providers.elevenlabs = new ElevenLabsProvider({
         apiKey: elevenKey,
-        defaultVoiceId,
+        defaultVoiceId: process.env.ELEVENLABS_DEFAULT_VOICE_ID ?? 'rachel',
       });
     }
     if (openaiKey) {
@@ -1663,7 +1580,7 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     redisUrl: process.env.REDIS_URL ?? null,
   });
 
-  // Central Command Phase C C2 — closes B1's wiring TODOs (#2 + #3 + #4).
+  // Central Command Phase C C2 — wires B1's adapters (#2 + #3 + #4).
   // Each adapter is wired against the live cross-portal bus + the
   // shared in-process event bus + the Drizzle client.
   const killswitchFanoutPublisher = createKillswitchFanoutPublisher({
@@ -1806,7 +1723,7 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // env var is set AND the adapter is wired (follow-up PR); until
     // then the router returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE.
     // Memory uses the in-memory default so in-session threads work.
-    // DEFERRED(wave-30): pgvector-backed ConversationMemory for prod.
+    // Follow-up wave-30 (Docs/TODO_BACKLOG.md): pgvector-backed ConversationMemory for prod.
     centralIntelligence: (() => {
       const memory = createInMemoryConversationMemory();
       const { sink, reader } = createInMemoryAuditSinkAndReader();
@@ -1822,7 +1739,8 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
       // every `platform.verify_nida` / `platform.evict_tenant` /
       // `platform.payout_owner` / `platform.file_kra_mri` call routes
       // through the real adapter when bound (and through the existing
-      // deterministic NOT_YET_WIRED refusal otherwise).
+      // deterministic placeholder refusal otherwise — see
+      // NOT_YET_WIRED_REASON in @bossnyumba/central-intelligence).
       const hqPortBindings: HqToolPortBindings = createHqToolPortBindings({
         db,
         callerResolver: {
@@ -1856,25 +1774,11 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
       // routing service so the kernel's four-eye gate consults real
       // per-action policies and sensor adapters can later record per-
       // call telemetry to `sensor_call_log`.
-      //
-      // Multi-LLM synthesizer wiring — null when fewer than 2
-      // vendors are configured (Anthropic + at least one of OpenAI
-      // / DeepSeek). When non-null, threads the port into the kernel
-      // so `req.requireSynthesis === true` turns route through the
-      // mixture-of-agents fan-out + Claude-Opus synthesis pass.
-      const synthesizerWiring: MultiLLMSynthesizerWiring | null =
-        createMultiLLMSynthesizerWiring({
-          logger: {
-            info: (obj, msg) => console.info('synth-wiring:', msg, obj),
-            warn: (obj, msg) => console.warn('synth-wiring:', msg, obj),
-          },
-        });
       const brainKernel = createBrainKernelWiring({
         buildBudgetGuardedAnthropicClient,
         approvalPolicyResolver: createApprovalPolicyService(db),
         sensorRoutingService: createSensorRoutingService(db),
         hqToolRegistry: hqPortBindings.hqToolRegistry,
-        synthesizer: synthesizerWiring?.port ?? null,
         // Phase F.3 — production-grade orchestrator hook chain. The
         // 9-hook PreToolUse / PostToolUse / Stop chain binds to real
         // Drizzle / `scrubPii` / approval-gate / sovereign-ledger
@@ -2123,30 +2027,6 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     killswitchFanoutPublisher,
     notificationDispatcherAdapter,
     recipientResolverAdapter,
-    // Persistent stores — LIVE path wires the Drizzle-backed adapters
-    // for all 5 ports (LessonStore -> 0166, WormAuditStore -> 0165,
-    // SkillRegistryWriter -> 0162, AOPRegistryStore -> 0167, A2A
-    // TaskStore -> 0168). Per-port env flags can force memory mode
-    // for individual stores (see `persistent-stores-wiring.ts`).
-    persistentStores: createPersistentStores({
-      db,
-      logger: {
-        info: (obj, msg) => console.info('persistent-stores:', msg ?? '', obj),
-        warn: (obj, msg) => console.warn('persistent-stores:', msg ?? '', obj),
-      },
-    }),
-    // P40 composition-root flip — Supabase-backed StorageProvider for
-    // DocumentService / EvidencePackBuilderService. Falls back to
-    // LocalStorageProvider when Supabase env is unset so live-mode
-    // gateways without a Supabase project still boot.
-    documentStorage: createDocumentStorageWiring({
-      logger: {
-        info: (obj, msg) =>
-          console.info('document-storage-wiring:', msg ?? '', obj),
-        warn: (obj, msg) =>
-          console.warn('document-storage-wiring:', msg ?? '', obj),
-      },
-    }),
     eventBus,
     db,
     isLive: true,
@@ -2169,8 +2049,9 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
  *   inspection-as-major-damage), the executor flips the step
  *   outcome to `failed` with reason `sovereign-audit-write-failed`.
  *   The tool's external side-effects are NOT un-executed — a
- *   compensating-action workflow (out of scope here; see TODOs in
- *   the wave-K plan) must reconcile them.
+ *   compensating-action workflow (out of scope here; tracked in
+ *   Docs/TODO_BACKLOG.md — "Sovereign-ledger reconciliation") must
+ *   reconcile them.
  * - Anything else (unset / `false` / `0` / `no` / `off` / empty) →
  *   fail-open (legacy W-Agency behaviour: log-and-continue).
  *

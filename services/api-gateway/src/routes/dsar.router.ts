@@ -21,7 +21,7 @@
  * NOT rate-limited (preview is the read-mostly admin path; RTBF is a
  * legal channel that shouldn't be rate-limited at all). Distributed
  * deployments should swap the in-memory bucket for the Redis limiter
- * in a follow-up — see the TODO marker below.
+ * in a follow-up (tracked in Docs/TODO_BACKLOG.md).
  *
  * Audit
  * ─────
@@ -47,11 +47,17 @@ import {
 import { authMiddleware } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
+import {
+  rateLimiter as sharedRateLimiter,
+  rateLimitStore as sharedRateLimitStore,
+} from '../middleware/rate-limiter';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
 // ─────────────────────────────────────────────────────────────────────
-// Rate-limit bucket — 3 exports per tenant per hour. In-memory; replace
-// with the Redis limiter for cluster-wide enforcement.
+// Rate-limit bucket — 3 exports per tenant per hour. Bug fix
+// A-BUG-DEEP #2: previously held in a router-local Map; now backed by
+// the shared `rateLimiter` (same store as `perUserRateLimit`) so the
+// Redis adapter swap-in lands in one place.
 // ─────────────────────────────────────────────────────────────────────
 
 const EXPORT_RATE_LIMIT = Object.freeze({
@@ -59,39 +65,44 @@ const EXPORT_RATE_LIMIT = Object.freeze({
   maxRequests: 3,
 });
 
-interface RateBucket {
-  count: number;
-  resetAt: number;
-}
+const EXPORT_RATE_CONFIG = {
+  maxRequests: EXPORT_RATE_LIMIT.maxRequests,
+  windowSizeSeconds: Math.floor(EXPORT_RATE_LIMIT.windowMs / 1000),
+} as const;
 
-const exportBucket = new Map<string, RateBucket>();
+function exportRateKey(tenantId: string): string {
+  return `dsar:export:${tenantId}`;
+}
 
 function rateLimitExport(tenantId: string): {
   ok: boolean;
   remaining: number;
   resetAt: number;
 } {
-  const now = Date.now();
-  const existing = exportBucket.get(tenantId);
-  if (!existing || now >= existing.resetAt) {
-    const fresh: RateBucket = { count: 1, resetAt: now + EXPORT_RATE_LIMIT.windowMs };
-    exportBucket.set(tenantId, fresh);
-    return { ok: true, remaining: EXPORT_RATE_LIMIT.maxRequests - 1, resetAt: fresh.resetAt };
-  }
-  // Replace (immutability discipline) rather than mutate the bucket.
-  const next: RateBucket = { count: existing.count + 1, resetAt: existing.resetAt };
-  exportBucket.set(tenantId, next);
-  const remaining = Math.max(0, EXPORT_RATE_LIMIT.maxRequests - next.count);
+  const result = sharedRateLimiter.check(exportRateKey(tenantId), EXPORT_RATE_CONFIG);
   return {
-    ok: next.count <= EXPORT_RATE_LIMIT.maxRequests,
-    remaining,
-    resetAt: next.resetAt,
+    ok: result.allowed,
+    remaining: result.remaining,
+    resetAt: result.reset,
   };
 }
 
 /** Test seam — empties the bucket between tests. */
 export function _resetExportRateBucketForTests(): void {
-  exportBucket.clear();
+  // The shared store is keyed; clear our slice rather than the whole map.
+  // Iterate over store keys via the delete API to avoid leaking access
+  // to unrelated test fixtures.
+  // We don't have a prefix-scan; rely on the well-known key shape.
+  // Tests only ever rate-limit one or two tenants per case.
+  // The `_storeForTests` accessor isn't exported, so we just delete the
+  // common test tenants we know about + a wildcard clear via internal API:
+  (sharedRateLimitStore as unknown as { store: Map<string, unknown> }).store.forEach(
+    (_value, key) => {
+      if (key.startsWith('dsar:export:')) {
+        (sharedRateLimitStore as unknown as { store: Map<string, unknown> }).store.delete(key);
+      }
+    },
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -203,9 +214,19 @@ async function emitAudit(
     };
     const bus = services.eventBus;
     if (!bus || typeof bus.publish !== 'function') return;
+    // Bug fix A-BUG-DEEP #11: prefer crypto.randomUUID for event IDs.
+    const safeId = (() => {
+      const cryptoApi =
+        (typeof globalThis !== 'undefined' &&
+          (globalThis as { crypto?: { randomUUID?: () => string } }).crypto) ||
+        undefined;
+      if (cryptoApi?.randomUUID) return cryptoApi.randomUUID();
+      // eslint-disable-next-line no-restricted-syntax
+      return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    })();
     await bus.publish({
       event: {
-        eventId: `dsar_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        eventId: `dsar_${safeId}`,
         eventType,
         timestamp: new Date().toISOString(),
         tenantId: payload.tenantId ?? 'unknown',

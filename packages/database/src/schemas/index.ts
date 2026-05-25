@@ -70,6 +70,23 @@ export {
   paymentIntentsRelations,
 } from './ledger.schema.js';
 export * as Ledger from './ledger.schema.js';
+// Row-shape type aliases (Prisma-parity names) used by
+// services/payments-ledger/src/repositories/drizzle-*.repository.ts. The
+// tables themselves are already exported above from ledger.schema.js;
+// here we re-export only the inferred Row/Insert types to avoid
+// duplicate runtime exports.
+export type {
+  PaymentIntentRow,
+  PaymentIntentInsert,
+  AccountRow,
+  AccountInsert,
+  LedgerEntryRow,
+  LedgerEntryInsert,
+  StatementRow,
+  StatementInsert,
+  DisbursementRow,
+  DisbursementInsert,
+} from './payments-ledger.schema.js';
 export * from './documents.schema.js';
 export * from './occupancy.schema.js';
 export * from './cases.schema.js';
@@ -439,3 +456,47 @@ export * from './a2a-tasks.schema.js';
 // package re-exports a `createPostgresBookRepository({ db })` helper
 // that closes over this service.
 export * from './carbon-market-book.schema.js';
+
+// Persistent memory layer (migration 0181) — three tables backing the
+// kernel's A-Mem / Letta-style memory:
+//   - memory_blocks    : per-(tenant, session) Letta blocks injected
+//                        at the top of every system prompt.
+//   - episodic_notes   : A-Mem note ledger with importance score,
+//                        embedding, parents links, FadeMem access
+//                        counters.
+//   - anchor_summaries : auto-condensed transcripts when the prompt
+//                        window approaches ~70% context budget.
+// Tenant-scoped, RLS-protected via `app.current_tenant_id` GUC.
+export * from './memory.schema.js';
+
+// Wave 12 — adaptive MD persistence:
+//   - section_layouts      : per-(tenant, user, route) saved layout
+//                            decisions for the adaptive layout engine
+//                            (UI-1).
+//   - user_action_tracker  : per-(tenant, user, action) frequency +
+//                            confirm-rate ledger powering mastery tiers
+//                            (UI-3) and learned shortcuts (UI-5).
+// Both tables are RLS-protected via `app.current_tenant_id` GUC; see
+// migrations 0182_section_layouts.sql and 0183_user_action_tracker.sql.
+export * from './section-layouts.schema.js';
+export * from './user-action-tracker.schema.js';
+
+// Decision traces (migration 0185) — F10 DecisionTrace persistence.
+// One row per finalised trace from `@bossnyumba/observability`. Tenant-
+// scoped via RLS; service-role bypass for the admin replay UI. See
+// migration `0185_decision_traces.sql` for the gold-standard ENABLE +
+// FORCE + REVOKE FROM anon + canonical helper + FOR ALL policy.
+export * from './decision-traces.schema.js';
+
+// Piece L — brain↔tab loop (migrations 0229-0232):
+//   - conversation_capture     : per-exchange capture (entities + intent +
+//                                 confidence)
+//   - module_update_proposals  : dispatcher output, HITL-gated
+//   - tab_subscriptions        : persona × module → realtime channel
+//   - tab_event_log            : append-only state-transition audit
+// All tenant-scoped via RLS (`app.current_tenant_id` GUC); see migrations
+// 0229_conversation_capture.sql ... 0232_tab_event_log.sql.
+export * from './conversation-capture.schema.js';
+export * from './module-update-proposals.schema.js';
+export * from './tab-subscriptions.schema.js';
+export * from './tab-event-log.schema.js';

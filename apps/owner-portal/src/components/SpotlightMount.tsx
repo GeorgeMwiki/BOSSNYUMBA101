@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Spotlight } from '@bossnyumba/spotlight/react';
+import { ROUTES } from '../lib/routes';
 
 export function SpotlightMount(): JSX.Element {
   const navigate = useNavigate();
@@ -10,7 +11,7 @@ export function SpotlightMount(): JSX.Element {
         if (action.route) navigate(action.route);
       }}
       onPersonaHandoff={(query) => {
-        navigate(`/portfolio/ask?q=${encodeURIComponent(query)}`);
+        navigate(ROUTES.portfolio.askWithQuery(query));
       }}
     />
   );

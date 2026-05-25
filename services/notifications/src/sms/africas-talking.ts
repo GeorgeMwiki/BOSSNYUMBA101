@@ -133,6 +133,7 @@ export class AfricasTalkingSms {
           status === 429 ||
           (status >= 500 && status < 600);
         if (!retryable || attempt === maxAttempts - 1) throw err;
+        // eslint-disable-next-line no-restricted-syntax -- Math.random for jitter is fine (no security boundary; bounded by baseMs).
         const backoff = baseMs * 2 ** attempt + Math.floor(Math.random() * baseMs);
         await new Promise((resolve) => setTimeout(resolve, backoff));
       }
@@ -153,6 +154,18 @@ export class AfricasTalkingSms {
   private formatPhoneNumber(phone: string): string {
     const trimmed = phone.trim();
     const cleaned = trimmed.replace(/\D/g, '');
+    // Round-3 audit L4 — the previous implementation returned `+`
+    // (literally just a plus sign) when the input contained no digits.
+    // Africa's Talking would then reject the entire batch with an
+    // opaque 4xx, surfacing the validation gap as a delivery failure
+    // instead of an input-validation error. Validate length here so
+    // the caller gets a clear boundary error before any HTTP hop.
+    // Valid E.164 numbers are 8–15 digits (ITU E.164).
+    if (cleaned.length < 8 || cleaned.length > 15) {
+      throw new Error(
+        `africas-talking: invalid phone number — got ${cleaned.length} digits, need 8-15 (E.164)`
+      );
+    }
     if (trimmed.startsWith('+')) return `+${cleaned}`;
     // Preserve caller input; no 254 injection.
     return `+${cleaned}`;
@@ -354,7 +367,7 @@ export class AfricasTalkingSms {
       phoneNumber: body.phoneNumber ?? '',
       networkCode: body.networkCode ?? '',
       failureReason: body.failureReason,
-      retryCount: body.retryCount ? parseInt(body.retryCount) : undefined,
+      retryCount: body.retryCount ? parseInt(body.retryCount, 10) : undefined,
     };
   }
 
@@ -366,12 +379,19 @@ export class AfricasTalkingSms {
   }
 
   /**
-   * Get total cost from response
+   * Get total cost from response in integer minor units.
+   *
+   * Bug fix A-BUG-DEEP #5: previously summed `parseFloat` costs which
+   * accumulated IEEE-754 drift across many recipients (e.g.
+   * 0.1 + 0.2 != 0.3). Convert each cost to integer cents
+   * (`Math.round(x * 100)`) and sum in integer space so the ledger sees
+   * an exact integer.
    */
   getTotalCost(response: SmsResponse): number {
     return response.SMSMessageData.Recipients.reduce((total, r) => {
-      const cost = parseFloat(r.cost.replace(/[^0-9.]/g, ''));
-      return total + (isNaN(cost) ? 0 : cost);
+      const decimal = Number(r.cost.replace(/[^0-9.]/g, ''));
+      if (!Number.isFinite(decimal)) return total;
+      return total + Math.round(decimal * 100);
     }, 0);
   }
 }

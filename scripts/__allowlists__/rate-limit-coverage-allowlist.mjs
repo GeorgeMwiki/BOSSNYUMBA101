@@ -11,10 +11,10 @@
  *      is bounded by the cron schedule itself, not per-request.
  *
  * TRACKED GAPS: 109 mutating routes flagged by the 2026-05-18 scanner
- * pass. Each TODO entry should be removed when the route adds
+ * pass. Each pending entry should be removed when the route adds
  * `perTenantRateBudget`, `withSecurityEvents`, or
  * `createRateLimitMiddleware`. This list is the concrete worklist for
- * incremental rate-limit-coverage remediation.
+ * incremental rate-limit-coverage remediation (Docs/TODO_BACKLOG.md).
  *
  * Keys are paths RELATIVE to the repo root.
  */
@@ -129,5 +129,8 @@ export const RATE_LIMIT_ALLOWLIST = new Map([
   ['services/api-gateway/src/routes/work-orders.hono.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
   ['services/api-gateway/src/routes/workflows.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
   ['services/document-intelligence/src/routes/documents.routes.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
+  ['services/api-gateway/src/routes/admin-audit.router.ts', 'TRACKED GAP — admin-platform audit-log read; SUPER_ADMIN-only behind requireRole; in-handler limiter pending Wave 11.'],
+  ['services/api-gateway/src/routes/tenants-admin.router.ts', 'TRACKED GAP — tenant-OWNER destructive routes (DELETE /tenants/:id, purge-now); already kill-switch-guarded; in-handler limiter pending Wave 11.'],
+  ['services/api-gateway/src/routes/users-me.router.ts', 'TRACKED GAP — user self-service GDPR endpoints; per-user 2/hr export bucket exists via _resetSelfExportRateBucketForTests; formalise via perTenantRateBudget in Wave 11.'],
 ]);
 

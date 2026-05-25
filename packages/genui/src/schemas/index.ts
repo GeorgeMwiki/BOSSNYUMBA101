@@ -12,7 +12,24 @@
 
 import { z } from 'zod';
 
-const CurrencySchema = z.enum(['KES', 'TZS', 'USD']);
+/**
+ * Currency contract (H13 + user memory rule against jurisdiction-hardcoding):
+ *
+ * Replaces the legacy `z.enum(['KES', 'TZS', 'USD'])` which rejected every
+ * other ISO-4217 code (NGN, UGX, RWF, ZAR, GHS, EGP …). The platform is
+ * built for the world starting with TZ; the schema must not gate the
+ * currencies. We accept any 3-letter upper-case ISO-4217 code at parse
+ * time. The format.ts formatter already gracefully falls back to
+ * `${currency} ${value}` for any code Intl.NumberFormat doesn't recognise,
+ * so widening the schema is safe.
+ *
+ * The ProdFix-7 Iso4217Schema (defined later in this file) used the same
+ * regex; both names now point at the same constraint.
+ */
+const CurrencySchema = z
+  .string()
+  .length(3)
+  .regex(/^[A-Z]{3}$/, 'ISO-4217 currency code (3 upper-case letters)');
 
 const Iso8601Schema = z
   .string()
@@ -95,6 +112,42 @@ export const KpiGridPartSchema = z
   })
   .strict();
 
+/**
+ * CRITICAL (C4) — PrefillForm action-URL allowlist.
+ *
+ * The PrefillForm component issues `fetch(action, { credentials: 'include' })`
+ * on submit. The `action` URL is LLM-emitted. Pre-fix the schema only
+ * checked length, so an LLM could emit
+ *   `action: '/api/internal/admin-revoke-grant?u=ALL'`
+ * and the admin's authenticated browser would POST to that endpoint with
+ * full session cookies attached. Effective LLM-driven CSRF against any
+ * same-origin destructive endpoint.
+ *
+ * Fix: the action URL MUST match one of the allowed api-gateway patterns:
+ *
+ *   1. `/api/gateway/forms/<form-id>`  — the canonical form-submit route
+ *   2. `/api/gateway/forms/<form-id>/<sub-action>` — variants like /draft
+ *   3. `https://<our-domain>/api/gateway/forms/...` (absolute form)
+ *
+ * Any other shape (cross-path, query-string injection, alternative API
+ * surface, javascript:, data:, file://) is rejected at parse time. The
+ * host portal MAY further constrain via runtime origin matching, but
+ * the schema enforces the lowest-common floor.
+ */
+const FORM_ACTION_ALLOWED_PATH =
+  /^\/api\/gateway\/forms\/[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)?\/?$/;
+const FORM_ACTION_ALLOWED_ABS =
+  /^https:\/\/[a-zA-Z0-9._-]+\/api\/gateway\/forms\/[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)?\/?$/;
+
+export const PrefillFormActionSchema = z
+  .string()
+  .min(1)
+  .max(500)
+  .refine(
+    (s) => FORM_ACTION_ALLOWED_PATH.test(s) || FORM_ACTION_ALLOWED_ABS.test(s),
+    'action must match /api/gateway/forms/<form-id>[/<sub-action>] — see C4 in audit',
+  );
+
 // prefill-form
 export const PrefillFormPartSchema = z
   .object({
@@ -103,7 +156,7 @@ export const PrefillFormPartSchema = z
     formId: z.string().min(1).max(120),
     schemaJson: z.record(z.unknown()),
     values: z.record(z.unknown()),
-    action: z.string().min(1).max(500),
+    action: PrefillFormActionSchema,
     diffMode: z.boolean().optional(),
   })
   .strict();

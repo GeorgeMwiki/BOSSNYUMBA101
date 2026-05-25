@@ -57,11 +57,46 @@ const nextConfig = {
   // `.js` must be first so third-party ESM packages (e.g. @opentelemetry/api)
   // that reference relative `.js` paths resolve correctly before we fall back
   // to TS source imports.
-  webpack: (config) => {
+  webpack: (config, { isServer, webpack }) => {
     config.resolve.extensionAlias = {
       ...(config.resolve.extensionAlias || {}),
       '.js': ['.js', '.ts', '.tsx', '.jsx'],
     };
+
+    // Wave-12 CI fix: `@bossnyumba/ai-copilot` and `@bossnyumba/central-intelligence`
+    // import `node:crypto`, `node:fs/promises`, etc. for HMAC signing, audit-chain
+    // hashing, and Ed25519 tool-registry signatures. These modules MUST only run
+    // server-side. On the client bundle:
+    //   1. `resolve.fallback: { crypto: false, ... }` covers bare imports like
+    //      `import crypto from 'crypto'` (webpack 5 standard pattern).
+    //   2. `IgnorePlugin` with the `node:` scheme regex strips the scheme-style
+    //      imports (`import crypto from 'node:crypto'`) which webpack 5's
+    //      `UnhandledSchemeError` would otherwise raise at build time.
+    // Any client component that transitively imports server-only crypto code
+    // will fail with a clear runtime error (not a confusing build-time error).
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...(config.resolve.fallback || {}),
+        crypto: false,
+        fs: false,
+        'fs/promises': false,
+        path: false,
+        stream: false,
+        os: false,
+        util: false,
+        net: false,
+        tls: false,
+        zlib: false,
+      };
+
+      config.plugins = config.plugins || [];
+      config.plugins.push(
+        new webpack.IgnorePlugin({
+          resourceRegExp: /^node:(crypto|fs|fs\/promises|path|stream|os|util|net|tls|zlib|events|buffer)$/,
+        }),
+      );
+    }
+
     return config;
   },
 };

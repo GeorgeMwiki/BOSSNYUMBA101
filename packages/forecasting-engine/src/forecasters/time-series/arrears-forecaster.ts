@@ -4,17 +4,33 @@
  * Cumulative arrears typically saturate (max ~ tenant rent × tenure).
  * Logistic curve: y(t) = K / (1 + exp(-r*(t - t0))). We fit (K, r, t0)
  * via grid + local refinement — no external optimisation library.
+ *
+ * H1 (audit): pre-fix, `forecastArrears` and `updateArrears` computed
+ * `(t - t)/dayMs` which collapses to 0 — every projection used x=0 and
+ * the residual was always `actual - logistic(0, …)`. We now persist
+ * `t0Anchor` (the wall-clock t of `history[0]`) on the fitted model so
+ * both forecast and update map t → days correctly.
  */
 
 import type { TimePoint, ForecastBand, FittedModel } from '../../types.js';
 
 export interface LogisticParams {
   readonly K: number; // carrying capacity
-  readonly r: number; // growth rate
-  readonly t0: number; // inflection time
-  readonly lastT: number;
-  readonly dtMs: number;
+  readonly r: number; // growth rate (per day)
+  readonly t0: number; // inflection time (days since `t0Anchor`)
+  readonly lastT: number; // unix ms of the last observed point
+  readonly dtMs: number; // mean inter-sample spacing in ms
+  /**
+   * H1 — the wall-clock timestamp of `history[0]` used as the origin of
+   * the day-scale x-axis during fit. forecastArrears + updateArrears
+   * need this to project forward in the SAME x-scale used by `t0`/`r`.
+   * Pre-fix this was lost and `(t - t)/dayMs` collapsed every projection
+   * to x=0 → the forecaster returned a flat band at `logistic(0, …)`.
+   */
+  readonly t0Anchor: number;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function logistic(t: number, K: number, r: number, t0: number): number {
   // numerically stable: clamp the exponent
@@ -44,7 +60,7 @@ export function fitArrears(
   }
   const t0Anchor = history[0]?.t ?? 0;
   const points = history.map((p) => ({
-    x: (p.t - t0Anchor) / (24 * 60 * 60 * 1000),
+    x: (p.t - t0Anchor) / DAY_MS,
     y: Math.max(0, p.v),
   }));
 
@@ -103,7 +119,7 @@ export function fitArrears(
   const dtMs =
     history.length >= 2 && history[1] !== undefined && history[0] !== undefined
       ? history[1].t - history[0].t
-      : 24 * 60 * 60 * 1000;
+      : DAY_MS;
 
   return {
     params: {
@@ -112,6 +128,7 @@ export function fitArrears(
       t0: best.t0,
       lastT: history[history.length - 1]?.t ?? Date.now(),
       dtMs,
+      t0Anchor,
     },
     residualStd: Math.sqrt(variance),
     sampleSize: history.length,
@@ -122,23 +139,20 @@ export function forecastArrears(
   model: FittedModel<LogisticParams>,
   horizonDays: number,
 ): ReadonlyArray<ForecastBand> {
-  const dayMs = 24 * 60 * 60 * 1000;
   const Z = 1.2816;
-  const baseX = (model.params.lastT - (model.params.lastT - 0)) / dayMs;
-  // We parameterised x in days relative to start; map horizon to same scale.
-  const lastDays = model.params.lastT / dayMs;
+  // H1 — anchor the x-axis to the SAME origin used at fit-time. `t0` is
+  // measured in days-since-t0Anchor; the last observed point sits at
+  // `(lastT - t0Anchor) / DAY_MS` on that axis. Each forecast horizon
+  // step adds `h` days to that anchor — projections sit on the actual
+  // logistic curve, not at x=0.
+  const baseX = (model.params.lastT - model.params.t0Anchor) / DAY_MS;
   const out: ForecastBand[] = [];
   for (let h = 1; h <= horizonDays; h += 1) {
-    const x = baseX + h; // h days forward in the same x-scale as fit
-    const p50 = logistic(
-      x,
-      model.params.K,
-      model.params.r,
-      model.params.t0 - (lastDays - baseX),
-    );
+    const x = baseX + h;
+    const p50 = logistic(x, model.params.K, model.params.r, model.params.t0);
     const sigma = model.residualStd * Math.sqrt(h);
     out.push({
-      t: model.params.lastT + h * dayMs,
+      t: model.params.lastT + h * DAY_MS,
       p10: Math.max(0, p50 - Z * sigma),
       p50,
       p90: p50 + Z * sigma,
@@ -151,10 +165,12 @@ export function updateArrears(
   model: FittedModel<LogisticParams>,
   actual: TimePoint,
 ): FittedModel<LogisticParams> {
-  // Quick refit: extend history-by-one, redo grid. We approximate by
-  // updating residual stddev only (full refit happens on next batch).
-  const dayMs = 24 * 60 * 60 * 1000;
-  const xAct = (actual.t - (actual.t - 0)) / dayMs;
+  // H1 — compute the actual point's x-coordinate on the SAME day-scale
+  // axis used at fit-time, not against itself. Pre-fix `(actual.t -
+  // actual.t)/DAY_MS` always yielded 0 — residual was just
+  // `actual.v - logistic(0, …)` regardless of how far the observation
+  // landed past the last fitted point.
+  const xAct = (actual.t - model.params.t0Anchor) / DAY_MS;
   const f = logistic(xAct, model.params.K, model.params.r, model.params.t0);
   const residual = actual.v - f;
   const lambda = 0.1;

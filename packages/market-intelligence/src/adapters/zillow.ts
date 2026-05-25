@@ -7,7 +7,7 @@
  * adapter never throws, and the kernel tool downstream renders a
  * friendly hint to the operator.
  *
- * The actual upstream HTTP call is left as a TODO. Until a real
+ * The actual upstream HTTP call is tracked in Docs/TODO_BACKLOG.md. Until a real
  * Zillow endpoint integration lands, callers can supply a custom
  * `fetch` impl that honours the `X-MOCK-MARKET-DATA: zillow` header
  * to deliver a deterministic, typed mock — useful for tests and for
@@ -42,7 +42,7 @@ const DEFAULT_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const MOCK_HEADER = 'X-MOCK-MARKET-DATA';
 
 // ─────────────────────────────────────────────────────────────────────
-// Shape we expect from the (TODO) Zillow endpoint. Documented here so
+// Shape we expect from the (pending) Zillow endpoint. Documented here so
 // future-us can map the real response into our typed comparables /
 // vacancy trends without scattering knowledge across the file.
 // Schema lifted from Zillow's listing-by-jurisdiction shape (Bridge
@@ -197,8 +197,8 @@ export function createZillowMarketDataAdapter(
 // URL builders — placeholders. The real Zillow integration lands
 // behind these.
 //
-// TODO(zillow): map zillow/listing-by-jurisdiction endpoint
-// TODO(zillow): map zillow/vacancy-trend endpoint
+// Follow-up zillow (Docs/TODO_BACKLOG.md): map zillow/listing-by-jurisdiction endpoint
+// Follow-up zillow (Docs/TODO_BACKLOG.md): map zillow/vacancy-trend endpoint
 // ─────────────────────────────────────────────────────────────────────
 
 function buildComparableUrl(args: ComparableRentsArgs): string {

@@ -52,6 +52,11 @@ import { feedbackRouter } from './routes/feedback';
 import { complaintsRouter } from './routes/complaints';
 import { inspectionsRouter } from './routes/inspections';
 import { documentsHonoRouter } from './routes/documents.hono';
+// Piece C — MD Executive Brief routes (briefs + briefing subscriptions).
+import {
+  executiveBriefRouter,
+  briefingSubscriptionRouter,
+} from './routes/executive-brief.hono';
 import { schedulingRouter } from './routes/scheduling';
 import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
@@ -226,7 +231,7 @@ import intelligenceRouter from './routes/intelligence.router';
 // for the analytics + portfolio dashboards. Until dedicated aggregator
 // services are wired, both routers return "honest empty" shapes so the
 // owner-portal renders an empty state instead of stalling on a never-
-// resolving fetch. See each router's TODO marker for the followup.
+// resolving fetch. Follow-ups tracked in Docs/TODO_BACKLOG.md.
 import analyticsRouter from './routes/analytics.router';
 import portfolioRouter from './routes/portfolio.router';
 // Estate-manager-app dependency — list/create unit subdivision children,
@@ -243,6 +248,11 @@ import {
   type OutboxRunnerLike,
 } from './workers/outbox-worker';
 import { createCaseSLASupervisor } from './workers/cases-sla-supervisor';
+import { createLeaseExpiryAlertCron } from './workers/lease-expiry-alert-cron';
+import type {
+  NotificationSender as LeaseExpiryNotificationSender,
+} from './workers/lease-expiry-alert-cron';
+import { createExecutiveBriefCron } from './workers/executive-brief-cron';
 import {
   registerDomainEventSubscribers,
   type SubscribableBus,
@@ -276,6 +286,12 @@ import {
   createIntelligenceHistorySupervisor,
 } from './composition/background-wiring';
 import { setBrainExtraSkills } from './composition/brain-extensions';
+// Wave-3-int2 — brain↔tab loop composition (Piece L → Piece B handlers).
+import {
+  createDispatchRouterWiring,
+  createStubEstateHandlerDeps,
+} from './composition/dispatch-router-wiring';
+import { installJarvisCaptureHook } from './routes/jarvis-router-factory';
 import { buildQueryOrganizationTool } from '@bossnyumba/ai-copilot';
 import { createAmbientBrainMiddleware } from './middleware/ambient-brain.middleware';
 import { createWebhookDlqRouter } from './routes/webhook-dlq.router';
@@ -290,6 +306,7 @@ import {
   gepgProbe,
 } from './health/deep-health';
 import { validateEnv } from './config/validate-env';
+import { securityEventsMiddleware } from '@bossnyumba/observability';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -501,6 +518,38 @@ const heartbeatSupervisor = createHeartbeatSupervisor(
   30_000,
 );
 
+// ----------------------------------------------------------------------------
+// Wave-3-int2 — Brain↔Tab loop composition.
+//
+// Wires the dispatch-router (Piece L) + ESTATE 5-handler set (Piece B) +
+// tenant-override routing-rules loader. Returns a `postThinkCaptureHook`
+// we install on every Jarvis router so `/think` + `/stream` fire the
+// hook fire-and-forget after each turn.
+//
+// Stubbed ports today (createStubEstateHandlerDeps) — Wave-3-int3 will
+// swap in the Drizzle-backed CoreEntityRepository, LedgerService, and
+// Piece M work-assignments port.
+// ----------------------------------------------------------------------------
+const dispatchRouterWiring = createDispatchRouterWiring({
+  estate: createStubEstateHandlerDeps(),
+  logger: {
+    info: (meta, msg) => logger.info(meta, msg),
+    warn: (meta, msg) => logger.warn(meta, msg),
+    error: (meta, msg) => logger.error(meta, msg),
+  },
+});
+installJarvisCaptureHook(async (input) => {
+  await dispatchRouterWiring.postThinkCaptureHook(input);
+});
+logger.info(
+  {
+    handlerRegistry: (dispatchRouterWiring.handlerRegistry as {
+      listRegistered?: () => unknown;
+    }).listRegistered?.(),
+  },
+  'dispatch-router-wiring: live (brain↔tab loop wired)'
+);
+
 // Wave 26 Agent Z4 — boot-time observability for the three AI-brain
 // utilities. Each line tells operators at a glance whether the feature
 // is active without hunting through a tenant-request log.
@@ -635,6 +684,13 @@ api.use('*', createServiceContextMiddleware(serviceRegistry));
 // subscribers persist across requests.
 const behaviorObserver = createAmbientBehaviorObserver();
 api.use('*', createAmbientBrainMiddleware(behaviorObserver, logger));
+// Flaky-CI-closure — apply `securityEventsMiddleware` globally so every
+// mutating request (POST/PUT/DELETE/PATCH) auto-emits a structured
+// SecurityEvent row (SOC 2 CC7.2, GDPR Art. 30). Idempotent verbs are
+// passed through with zero overhead. The Security Route Coverage gate
+// at `.github/workflows/security-route-coverage.yml` detects this mount
+// and counts every router under `/api/v1/*` as wrapped.
+api.use('*', securityEventsMiddleware);
 api.route('/auth', authRouter);
 api.route('/auth/mfa', authMfaRouter);
 api.route('/tenants', tenantsRouter);
@@ -659,6 +715,9 @@ api.route('/feedback', feedbackRouter);
 api.route('/complaints', complaintsRouter);
 api.route('/inspections', inspectionsRouter);
 api.route('/documents', documentsHonoRouter);
+// Piece C — Executive briefs (T1-T3 only) + subscription cadence registry.
+api.route('/briefs', executiveBriefRouter);
+api.route('/briefing-subscriptions', briefingSubscriptionRouter);
 api.route('/scheduling', schedulingRouter);
 api.route('/messaging', messagingRouter);
 api.route('/cases', casesRouter);
@@ -913,7 +972,7 @@ api.route(
 // `/analytics/summary`, `/portfolio/{summary,performance,growth}`. Until
 // dedicated aggregators land, each returns an "honest empty" shape so
 // the dashboard pages render the empty state cleanly. See each router
-// for the TODO marker pointing at the followup work.
+// Aggregator follow-ups are tracked in Docs/TODO_BACKLOG.md.
 api.route('/analytics', analyticsRouter);
 api.route('/portfolio', portfolioRouter);
 // Wave-4 D6 — owner-portal placeholder-page skeletons. Each line
@@ -1138,6 +1197,53 @@ const intelligenceHistorySupervisor = createIntelligenceHistorySupervisor(
 // hit. No-op in degraded mode.
 const casesSlaSupervisor = createCaseSLASupervisor(serviceRegistry, logger);
 
+// Wave 15 — TRC pilot. Daily scan of `leases.end_date` against the
+// 60/30/7/1-day warning windows. Dispatches via the existing notifications
+// infrastructure (whatsapp → sms → email → in_app priority). Skipped in
+// degraded mode (no DB) and in tests.
+const leaseExpiryNotificationSender: LeaseExpiryNotificationSender = {
+  // Pino-friendly placeholder sender — once the WhatsApp/SMS providers
+  // have tenant-scoped credentials wired, swap this for a thin adapter
+  // around `notificationService.sendNotification(recipient, channel, ...)`
+  // (services/notifications/src/services/notification.service.ts).
+  // Wave 15 deliberately leaves this stub-shaped so the cron is testable
+  // and the dispatch_log row is written even when no provider is reachable.
+  async send(args) {
+    logger.info(
+      {
+        tenantId: args.tenantId,
+        leaseId: args.lease.id,
+        leaseNumber: args.lease.leaseNumber,
+        window: args.window,
+        channel: args.channel,
+        idempotencyKey: args.idempotencyKey,
+      },
+      'lease-expiry-cron: dispatch (stub provider — Wave 15)',
+    );
+    return { delivered: true, providerMessageId: `stub-${args.idempotencyKey}` };
+  },
+};
+
+const leaseExpiryCron = serviceRegistry.db
+  ? createLeaseExpiryAlertCron({
+      db: serviceRegistry.db as unknown as { execute(q: unknown): Promise<unknown> },
+      sender: leaseExpiryNotificationSender,
+      logger,
+    })
+  : { start() {}, stop() {}, async tickOnce() { return { scanned: 0, dispatched: 0, skippedAlreadySent: 0, failed: 0, byWindow: {} }; } };
+
+// Piece C — executive brief cron. Scans `briefing_subscriptions` every
+// EXECUTIVE_BRIEF_CRON_INTERVAL_MS (default 5 min) and generates briefs
+// for any DAILY / WEEKLY / MONTHLY subscription whose next_due_at has
+// passed. ON_DEMAND subscriptions are skipped — they fire via the
+// POST /briefs/generate route.
+const executiveBriefCron = serviceRegistry.db
+  ? createExecutiveBriefCron({
+      db: serviceRegistry.db as unknown as { execute(q: unknown): Promise<unknown> },
+      logger,
+    })
+  : { start() {}, stop() {}, async tickOnce() { return { scanned: 0, generated: 0, degraded: 0, refused: 0, failed: 0 }; } };
+
 // Graceful shutdown — documented and tested step-by-step:
 //  1. Flip a "shutting down" flag so the /health probe returns 503.
 //  2. Tell the HTTP server to stop accepting NEW connections.
@@ -1190,6 +1296,18 @@ async function gracefulShutdown(signal: string): Promise<void> {
     logger.info('shutdown: cases SLA supervisor stopped');
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: cases SLA stop failed');
+  }
+  try {
+    leaseExpiryCron.stop();
+    logger.info('shutdown: lease-expiry cron stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: lease-expiry cron stop failed');
+  }
+  try {
+    executiveBriefCron.stop();
+    logger.info('shutdown: executive-brief cron stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: executive-brief cron stop failed');
   }
   try {
     serviceRegistry.wakeLoopCron?.stop();
@@ -1284,6 +1402,14 @@ if (require.main === module) {
   // Wave 26 — start the Cases SLA supervisor alongside the other
   // background workers. Skipped in tests + when disabled by env.
   casesSlaSupervisor.start();
+  // Wave 15 — start the lease-expiry alert cron. Ticks daily, scans
+  // for leases at 60/30/7/1-day expiry windows, idempotent via
+  // notification_dispatch_log.idempotency_key.
+  leaseExpiryCron.start();
+  // Piece C — executive brief cron. Daily / weekly / monthly subscriptions
+  // get briefs generated at their local_time + cadence. ON_DEMAND
+  // subscriptions are never auto-fired.
+  executiveBriefCron.start();
   // K7 parity-litfin Gap H — wake-loop cron. Until this start() call the
   // supervisor was inert: the brain only woke when an out-of-band k8s
   // CronJob fired. In-process start arms an advisory-lock-guarded interval

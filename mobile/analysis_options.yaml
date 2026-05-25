@@ -1,0 +1,15 @@
+# Workspace-root analysis_options.yaml.
+#
+# Each package below this root has its own analysis_options.yaml that
+# includes `package:flutter_lints/flutter.yaml` because they're Flutter
+# packages. This root file exists so a top-level `dart analyze` of the
+# workspace pubspec (no Flutter sources) finds an explicit config and
+# doesn't fall back to no-lint defaults.
+
+include: package:lints/recommended.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true

@@ -30,6 +30,7 @@ import {
   type FieldEncryptionAuditSink,
 } from '../security/encryption/index.js';
 import type { RepoEncryptionDeps } from './customer.repository.js';
+import { assertUserStatus } from './enum-guards.js';
 
 type TenantRow = typeof tenants.$inferSelect;
 
@@ -247,7 +248,11 @@ export class UserRepository {
     ];
 
     if (filters?.status) {
-      conditions.push(eq(users.status, filters.status as unknown as typeof users.status.$inferType));
+      // Bug fix A-BUG-DEEP #9: validate against the literal union so an
+      // invalid status surfaces as ENUM_VALUE_INVALID rather than a
+      // silently empty list.
+      const status = assertUserStatus(filters.status);
+      conditions.push(eq(users.status, status as unknown as typeof users.status.$inferType));
     }
 
     if (filters?.search) {
@@ -329,7 +334,9 @@ export class UserRepository {
     await this.db
       .update(users)
       .set({
-        status: 'deactivated' as unknown as typeof users.status.$inferType,
+        // Bug fix A-BUG-DEEP #9: 'deactivated' validated via the literal
+        // union; the cast remains only to satisfy drizzle's pgEnum narrowing.
+        status: assertUserStatus('deactivated') as unknown as typeof users.status.$inferType,
         deletedAt: new Date(),
         deletedBy,
         updatedAt: new Date(),

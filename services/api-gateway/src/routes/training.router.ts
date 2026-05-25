@@ -19,6 +19,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/hono-auth';
 import type { TrainingAdminEndpoints } from '@bossnyumba/ai-copilot/training';
+import { safeJsonBody, JsonBodyError } from '../utils/safe-json-body';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
 function getEndpoints(c: any): TrainingAdminEndpoints | null {
@@ -40,6 +41,14 @@ function notImplemented(c: any) {
 }
 
 function mapErr(c: any, err: unknown, fallback = 400) {
+  // Bug fix A-BUG-DEEP #15: surface malformed-JSON as a 400 INVALID_JSON
+  // instead of the prior `{}`-fallback silent swallow.
+  if (err instanceof JsonBodyError) {
+    return c.json(
+      { success: false, error: { code: err.code, message: err.message } },
+      400,
+    );
+  }
   const e = err as { code?: string; message?: string } | undefined;
   const code = e?.code ?? 'INTERNAL_ERROR';
   const status =
@@ -65,10 +74,10 @@ app.use('*', authMiddleware);
 
 app.post('/generate', withSecurityEvents({ action: 'training.create', resource: 'training', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
-  const body = await c.req.json().catch(() => ({}));
   const ep = getEndpoints(c);
   if (!ep) return notImplemented(c);
   try {
+    const body = await safeJsonBody(c);
     const path = await ep.generate(auth.tenantId, auth.userId, body);
     return c.json({ success: true, data: path }, 200);
   } catch (e: unknown) {
@@ -78,10 +87,10 @@ app.post('/generate', withSecurityEvents({ action: 'training.create', resource: 
 
 app.post('/paths', withSecurityEvents({ action: 'training.create', resource: 'training', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
-  const body = await c.req.json().catch(() => ({}));
   const ep = getEndpoints(c);
   if (!ep) return notImplemented(c);
   try {
+    const body = await safeJsonBody(c);
     const path = await ep.persistPath(auth.tenantId, auth.userId, body);
     return c.json({ success: true, data: path }, 201);
   } catch (e: unknown) {
@@ -104,10 +113,10 @@ app.get('/paths', async (c: any) => {
 app.patch('/paths/:id', withSecurityEvents({ action: 'training.update', resource: 'training', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const id = c.req.param('id');
-  const body = await c.req.json().catch(() => ({}));
   const ep = getEndpoints(c);
   if (!ep) return notImplemented(c);
   try {
+    const body = await safeJsonBody(c);
     const path = await ep.editPath(auth.tenantId, id, body);
     return c.json({ success: true, data: path });
   } catch (e: unknown) {
@@ -118,10 +127,10 @@ app.patch('/paths/:id', withSecurityEvents({ action: 'training.update', resource
 app.post('/paths/:id/assign', withSecurityEvents({ action: 'training.create', resource: 'training', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const id = c.req.param('id');
-  const body = await c.req.json().catch(() => ({}));
   const ep = getEndpoints(c);
   if (!ep) return notImplemented(c);
   try {
+    const body = await safeJsonBody(c);
     const data = await ep.assign(auth.tenantId, id, auth.userId, body);
     return c.json({ success: true, data }, 201);
   } catch (e: unknown) {

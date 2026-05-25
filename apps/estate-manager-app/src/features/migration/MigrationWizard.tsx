@@ -7,6 +7,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { getCsrfHeaders } from '@/lib/csrf';
 
 type Counts = {
   properties: number;
@@ -75,6 +76,7 @@ export function MigrationWizard(): JSX.Element {
         method: 'POST',
         body: fd,
         credentials: 'include',
+        headers: { ...getCsrfHeaders() },
       });
       if (!res.ok) throw new Error(`upload failed: ${res.status}`);
       const data = (await res.json()) as UploadResponse;
@@ -100,6 +102,7 @@ export function MigrationWizard(): JSX.Element {
       const res = await fetch(`${API_BASE}/${encodeURIComponent(runId)}/commit`, {
         method: 'POST',
         credentials: 'include',
+        headers: { ...getCsrfHeaders() },
       });
       const data = (await res.json()) as CommitResponse;
       setCommitResult(data);

@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
 import { LocaleSwitcher } from '../components/LocaleSwitcher';
+import { ROUTES } from '../lib/routes';
 
 type LoginStep = 'credentials' | 'mfa_verify' | 'mfa_setup';
 
@@ -60,7 +61,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate(ROUTES.dashboard);
     }
   }, [isAuthenticated, navigate]);
 
@@ -87,7 +88,7 @@ export function LoginPage() {
           setStep('mfa_setup');
         } else {
           await login(email, password);
-          navigate('/dashboard');
+          navigate(ROUTES.dashboard);
         }
       }
     } catch (err) {
@@ -102,7 +103,7 @@ export function LoginPage() {
       if (response.success) {
         const { email, password } = getCreds();
         await login(email, password);
-        navigate('/dashboard');
+        navigate(ROUTES.dashboard);
       } else {
         setServerError(t('invalidVerificationCode'));
       }
@@ -122,7 +123,7 @@ export function LoginPage() {
       if (response.success) {
         const { email, password } = getCreds();
         await login(email, password);
-        navigate('/dashboard');
+        navigate(ROUTES.dashboard);
       } else {
         setServerError(t('invalidVerificationCodeRetry'));
       }
@@ -136,7 +137,7 @@ export function LoginPage() {
     try {
       const { email, password } = getCreds();
       await login(email, password);
-      navigate('/dashboard');
+      navigate(ROUTES.dashboard);
     } catch (err) {
       setServerError(err instanceof Error ? err.message : t('loginFailed'));
     } finally {

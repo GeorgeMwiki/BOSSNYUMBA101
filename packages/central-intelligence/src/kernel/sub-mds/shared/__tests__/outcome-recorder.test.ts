@@ -114,3 +114,68 @@ describe('OutcomeRecorder — HIGH-B partial-failure handling', () => {
     ).rejects.toThrow(/slo-stream down/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// H5 regression — canonical single-options signature.
+// ─────────────────────────────────────────────────────────────────────
+
+describe('OutcomeRecorder — H5 single-options signature', () => {
+  it('honours the canonical { sink, tenantId, sloEventSink } options shape', async () => {
+    const persisted: Array<{ subMdName: string }> = [];
+    const events: SubMdSloEvent[] = [];
+    const sink: OutcomeRecorderSink = {
+      async record(rec) {
+        persisted.push({ subMdName: rec.subMdName });
+      },
+    };
+    const sloSink: SloEventSink = {
+      async emit(e) {
+        events.push(e);
+      },
+    };
+    const rec = createOutcomeRecorder({
+      sink,
+      sloEventSink: sloSink,
+      tenantId: 't_1',
+    });
+    await rec.record({
+      subMdName: 'sm',
+      predicted: predicted(),
+      actual: actual(),
+    });
+    expect(persisted.length).toBe(1);
+    expect(events.length).toBe(1);
+    expect(events[0]?.tenantId).toBe('t_1');
+  });
+
+  it('routes the canonical options shape without misclassifying as a sink (H5)', async () => {
+    const persisted: Array<{ subMdName: string }> = [];
+    const sink: OutcomeRecorderSink = {
+      async record(rec) {
+        persisted.push({ subMdName: rec.subMdName });
+      },
+    };
+    const events: SubMdSloEvent[] = [];
+    const sloSink: SloEventSink = {
+      async emit(e) {
+        events.push(e);
+      },
+    };
+    // The presence of any options key (`sink`, `sloEventSink`, etc.)
+    // signals the canonical path. Critically, the embedded sink must
+    // NOT cause the OPTIONS object to be reclassified as a bare sink.
+    const rec = createOutcomeRecorder({
+      sink,
+      sloEventSink: sloSink,
+      tenantId: 't_2',
+    });
+    await rec.record({
+      subMdName: 'sm',
+      predicted: predicted(),
+      actual: actual(),
+    });
+    // sloEventSink was NOT silently dropped (the latent H5 footgun).
+    expect(events.length).toBe(1);
+    expect(persisted.length).toBe(1);
+  });
+});

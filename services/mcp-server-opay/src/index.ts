@@ -83,15 +83,35 @@ export function createOpayServer(config: OpayServerConfig = {}): {
         ],
       };
     }
+    // CRITICAL-5 — prefer transport-injected verifiedTenantId; refuse
+    // if args.tenantId disagrees with verified context.
     const argsObj = (args ?? {}) as Record<string, unknown>;
+    const metaVerified = (_meta as { verifiedTenantId?: unknown } | undefined)
+      ?.verifiedTenantId;
     const metaTenantId =
       (_meta as { tenantId?: unknown } | undefined)?.tenantId;
+    const argsTenantId =
+      typeof argsObj.tenantId === 'string' ? argsObj.tenantId : '';
+    if (
+      typeof metaVerified === 'string' &&
+      argsTenantId &&
+      metaVerified !== argsTenantId
+    ) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: 'opay: args.tenantId does not match verified _meta.verifiedTenantId',
+          },
+        ],
+      };
+    }
     const tenantId =
-      typeof argsObj.tenantId === 'string'
-        ? argsObj.tenantId
-        : typeof metaTenantId === 'string'
-          ? metaTenantId
-          : '';
+      typeof metaVerified === 'string' && metaVerified
+        ? metaVerified
+        : argsTenantId ||
+          (typeof metaTenantId === 'string' ? metaTenantId : '');
     if (!tenantId) {
       return {
         isError: true,

@@ -12,8 +12,13 @@
 import { createMiddleware } from 'hono/factory';
 import type { Context } from 'hono';
 import jwt from 'jsonwebtoken';
-import type { UserRole } from '../types/user-role';
+import { UserRole } from '../types/user-role';
 import { resolveApiKeyLegacyOrRegistry } from './api-key-registry';
+import { tokenBlocklist } from './token-blocklist';
+import {
+  verifySupabaseJwt,
+  SupabaseAuthError,
+} from '@bossnyumba/ai-copilot';
 
 // ============================================================================
 // Configuration
@@ -27,24 +32,88 @@ function requireEnv(name: string): string {
   return value || '';
 }
 
-const JWT_ACCESS_SECRET =
-  process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || requireEnv('JWT_SECRET');
-const JWT_REFRESH_SECRET =
-  process.env.JWT_REFRESH_SECRET || requireEnv('JWT_REFRESH_SECRET');
-// JWT_ISSUER / JWT_AUDIENCE form the trust boundary for token validation.
-// In production they MUST be set explicitly — a silent default would
-// silently accept tokens minted for any other deployment that shared
-// the JWT secret.
-const JWT_ISSUER =
-  process.env.JWT_ISSUER ||
-  (process.env.NODE_ENV === 'production'
-    ? requireEnv('JWT_ISSUER')
-    : 'bossnyumba');
-const JWT_AUDIENCE =
-  process.env.JWT_AUDIENCE ||
-  (process.env.NODE_ENV === 'production'
-    ? requireEnv('JWT_AUDIENCE')
-    : 'bossnyumba-api');
+// JWT secrets are read LAZILY (not at module load) so vitest test suites that
+// mutate `process.env.*` between imports observe the right value at verify
+// time. Production composition roots set these at boot, so the lazy read is
+// effectively memoized after first call.
+function getJwtAccessSecret(): string {
+  return (
+    process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || requireEnv('JWT_SECRET')
+  );
+}
+function getJwtRefreshSecret(): string {
+  return process.env.JWT_REFRESH_SECRET || requireEnv('JWT_REFRESH_SECRET');
+}
+function getJwtIssuer(): string {
+  return process.env.JWT_ISSUER || 'bossnyumba';
+}
+function getJwtAudience(): string {
+  return process.env.JWT_AUDIENCE || 'bossnyumba-api';
+}
+
+/**
+ * Supabase JWT secret — read lazily so dev/test environments without the
+ * variable still boot. When unset and a Supabase-issued token arrives, the
+ * Supabase path returns INVALID_TOKEN rather than crashing the gateway.
+ *
+ * MAY-2026 NOTE: modern Supabase projects rotated to ES256 (asymmetric)
+ * and no longer expose an HS256 secret. The verifier now prefers the
+ * JWKS path when `SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_URL` is set; the
+ * HS256 secret is only used as a fallback for legacy/self-hosted projects.
+ */
+function getSupabaseJwtSecret(): string | null {
+  return process.env.SUPABASE_JWT_SECRET || null;
+}
+
+/**
+ * Derive the Supabase Auth JWKS URL from `SUPABASE_URL` (or its
+ * `NEXT_PUBLIC_` mirror). Returns `null` when no URL is configured.
+ */
+function getSupabaseJwksUrl(): string | null {
+  const base =
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    null;
+  if (!base) return null;
+  // Tolerate trailing slash — `new URL` would carry it through.
+  const trimmed = base.replace(/\/+$/, '');
+  return `${trimmed}/auth/v1/.well-known/jwks.json`;
+}
+
+// ============================================================================
+// Audit logging — structured JSON for SOC visibility (per audit F1)
+// ============================================================================
+
+type AuthPath = 'supabase' | 'gateway';
+
+/**
+ * Emit a structured audit-log line for a resolved principal. The
+ * `auth_path` field is the trust domain that authorized the request so
+ * SOC dashboards can split Supabase-origin traffic from gateway-origin
+ * traffic when investigating incidents. Failures (non-authorized) are
+ * logged at warn level with `outcome: 'reject'`.
+ */
+function auditAuthResolution(args: {
+  outcome: 'allow' | 'reject';
+  authPath: AuthPath;
+  userId?: string;
+  tenantId?: string;
+  reason?: string;
+}): void {
+  const line = JSON.stringify({
+    event: 'auth_principal_resolved',
+    auth_path: args.authPath,
+    outcome: args.outcome,
+    user_id: args.userId,
+    tenant_id: args.tenantId,
+    reason: args.reason,
+    ts: new Date().toISOString(),
+  });
+  // eslint-disable-next-line no-console
+  if (args.outcome === 'allow') console.info(line);
+  // eslint-disable-next-line no-console
+  else console.warn(line);
+}
 
 // ============================================================================
 // Types
@@ -105,15 +174,193 @@ export function extractBearerToken(authHeader: string | undefined): string | nul
   return authHeader.slice(7).trim();
 }
 
+// ============================================================================
+// Dual-Path Token Detection (Supabase vs Gateway)
+// ============================================================================
+
 /**
- * Validate JWT access token
+ * Peek at a JWT's claims WITHOUT verifying its signature. Used only to
+ * route to the right verifier — never to trust the values. The chosen
+ * verifier still has to confirm the signature with its own secret.
+ *
+ * Returns `null` if the token cannot be decoded at all (malformed input).
+ */
+export function peekJwtClaims(
+  token: string
+): {
+  iss?: string;
+  hasAppMetadata: boolean;
+} | null {
+  try {
+    const decoded = jwt.decode(token);
+    if (!decoded || typeof decoded !== 'object') return null;
+    const obj = decoded as Record<string, unknown>;
+    return {
+      iss: typeof obj.iss === 'string' ? obj.iss : undefined,
+      hasAppMetadata:
+        typeof obj.app_metadata === 'object' && obj.app_metadata !== null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Heuristic: does this token look like a Supabase-issued access token?
+ *
+ * - Supabase issues `iss` claims containing `supabase.co`, `supabase.in`,
+ *   or the literal string `supabase` (self-hosted) — the GoTrue server
+ *   sets `iss` to its own URL.
+ * - Customer-app / estate-manager-app pass Supabase tokens that carry
+ *   `app_metadata` (server-managed tenant assignment); the gateway-issued
+ *   JWTs do not use that shape.
+ *
+ * We accept EITHER signal so we route correctly even when Supabase
+ * truncates the `iss` or a self-hosted Supabase has a non-supabase.co
+ * hostname.
+ */
+export function looksLikeSupabaseToken(
+  claims: { iss?: string; hasAppMetadata: boolean } | null
+): boolean {
+  if (!claims) return false;
+  const iss = claims.iss?.toLowerCase() ?? '';
+  if (iss.includes('supabase')) return true;
+  // Self-hosted Supabase often sets iss to its own GoTrue URL. Fall back
+  // to the shape check so we don't misroute to the gateway verifier and
+  // produce a misleading "JsonWebTokenError: invalid signature".
+  if (claims.hasAppMetadata && !iss.includes(getJwtIssuer())) return true;
+  return false;
+}
+
+/**
+ * Map a Supabase `roles: string[]` claim onto the gateway's single
+ * `UserRole` enum. The first matching role wins; an unknown role
+ * defaults to RESIDENT (the customer-app default) because customer-app
+ * is the primary Supabase-token issuer.
+ */
+function mapSupabaseRoleToUserRole(roles: string[]): UserRole {
+  const upper = roles.map((r) => r.toUpperCase());
+  for (const role of upper) {
+    if (role in UserRole) {
+      return UserRole[role as keyof typeof UserRole];
+    }
+  }
+  return UserRole.RESIDENT;
+}
+
+/**
+ * Verify a Supabase-issued token and project it onto the gateway's
+ * AuthContext. Returns `{ valid: false, error }` on any failure so the
+ * caller can convert it to a 401 response identical to the gateway path.
+ *
+ * Audit F6 hardening: even though the underlying `verifySupabaseJwt`
+ * accepts a tenant_id from `user_metadata` when `app_metadata` is
+ * missing, we REJECT that case at the gateway boundary. `user_metadata`
+ * is client-modifiable in Supabase; only `app_metadata` is server-
+ * managed and trustworthy for tenant assignment.
+ */
+async function verifyAndProjectSupabaseToken(token: string): Promise<{
+  valid: boolean;
+  error?: string;
+  context?: AuthContext;
+}> {
+  const secret = getSupabaseJwtSecret();
+  const jwksUrl = getSupabaseJwksUrl();
+  if (!secret && !jwksUrl) {
+    return { valid: false, error: 'Supabase auth not configured' };
+  }
+  try {
+    // Prefer JWKS/ES256 when SUPABASE_URL is available (modern projects).
+    // Fall back to HS256 only when no JWKS URL is configured — legacy /
+    // self-hosted Supabase installations.
+    const principal = await verifySupabaseJwt(
+      token,
+      jwksUrl
+        ? { jwksUrl, jwtSecret: secret ?? undefined }
+        : { jwtSecret: secret! }
+    );
+
+    // F6 protection: re-check the raw JWT to ensure tenant_id came from
+    // `app_metadata`, NOT `user_metadata`. The ai-copilot helper merges
+    // them with app_metadata winning, but does not REJECT a token that
+    // only has user_metadata.tenant_id — we do that here.
+    const raw = principal.raw as Record<string, unknown>;
+    const appMd =
+      typeof raw.app_metadata === 'object' && raw.app_metadata !== null
+        ? (raw.app_metadata as Record<string, unknown>)
+        : {};
+    const appTenant =
+      typeof appMd.tenant_id === 'string' ? appMd.tenant_id : null;
+    if (!appTenant) {
+      return {
+        valid: false,
+        error:
+          'tenant_id must be in app_metadata (server-managed); user_metadata is not trusted',
+      };
+    }
+    if (appTenant !== principal.tenantId) {
+      // Defensive: the projected tenantId disagrees with app_metadata.
+      // Refuse rather than fall through with the lower-trust value.
+      return {
+        valid: false,
+        error: 'tenant_id mismatch between app_metadata and projected principal',
+      };
+    }
+
+    const context: AuthContext = {
+      userId: principal.userId,
+      tenantId: appTenant,
+      role: mapSupabaseRoleToUserRole(principal.roles),
+      permissions: principal.roles,
+      propertyAccess: [],
+      email: principal.email,
+      sessionId: undefined,
+      tokenExp:
+        typeof raw.exp === 'number' ? (raw.exp as number) : undefined,
+      tokenIat:
+        typeof raw.iat === 'number' ? (raw.iat as number) : undefined,
+    };
+    return { valid: true, context };
+  } catch (err) {
+    if (err instanceof SupabaseAuthError) {
+      return { valid: false, error: err.message };
+    }
+    return {
+      valid: false,
+      error: err instanceof Error ? err.message : 'Supabase token validation failed',
+    };
+  }
+}
+
+/**
+ * Validate JWT access token.
+ *
+ * HIGH-11 (audit .audit/post-pr90-api-mcp-bug-sweep.md): the two
+ * gateway auth middlewares had divergent security properties.
+ * `hono-auth.ts` pinned algorithm HS256 and consulted the token
+ * blocklist; this file did neither. Routes mounting THIS flavor were
+ * vulnerable to (a) algorithm-confusion / alg=none attacks and
+ * (b) revoked-token reuse. The blocklist is the only thing that makes
+ * `/auth/logout` actually invalidate a token. Both checks added here.
  */
 export function validateAccessToken(token: string): TokenValidationResult {
   try {
-    const payload = jwt.verify(token, JWT_ACCESS_SECRET, {
-      issuer: JWT_ISSUER,
-      audience: JWT_AUDIENCE,
-    }) as JWTPayload;
+    const payload = jwt.verify(token, getJwtAccessSecret(), {
+      issuer: getJwtIssuer(),
+      audience: getJwtAudience(),
+      // HIGH-11: pin algorithm to prevent alg=none / RS256-vs-HS256.
+      algorithms: ['HS256'],
+    }) as JWTPayload & { jti?: string };
+
+    // HIGH-11: reject tokens that have been explicitly revoked
+    // (e.g. via /auth/logout). The blocklist is keyed by jti.
+    if (payload.jti && tokenBlocklist.isRevoked(payload.jti)) {
+      return {
+        valid: false,
+        expired: false,
+        error: 'Token has been revoked',
+      };
+    }
 
     return {
       valid: true,
@@ -153,9 +400,9 @@ export function validateAccessToken(token: string): TokenValidationResult {
  */
 export function validateRefreshToken(token: string): TokenValidationResult {
   try {
-    const payload = jwt.verify(token, JWT_REFRESH_SECRET, {
-      issuer: JWT_ISSUER,
-      audience: JWT_AUDIENCE,
+    const payload = jwt.verify(token, getJwtRefreshSecret(), {
+      issuer: getJwtIssuer(),
+      audience: getJwtAudience(),
     }) as RefreshTokenPayload;
 
     return {
@@ -194,11 +441,11 @@ export function generateAccessToken(payload: Omit<JWTPayload, 'exp' | 'iat' | 'i
       propertyAccess: payload.propertyAccess,
       sessionId: payload.sessionId,
     },
-    JWT_ACCESS_SECRET,
+    getJwtAccessSecret(),
     {
       expiresIn: '15m',
-      issuer: JWT_ISSUER,
-      audience: JWT_AUDIENCE,
+      issuer: getJwtIssuer(),
+      audience: getJwtAudience(),
       subject: payload.sub || payload.userId,
     }
   );
@@ -210,11 +457,11 @@ export function generateAccessToken(payload: Omit<JWTPayload, 'exp' | 'iat' | 'i
 export function generateRefreshToken(userId: string, sessionId?: string): string {
   return jwt.sign(
     { sessionId },
-    JWT_REFRESH_SECRET,
+    getJwtRefreshSecret(),
     {
       expiresIn: '7d',
-      issuer: JWT_ISSUER,
-      audience: JWT_AUDIENCE,
+      issuer: getJwtIssuer(),
+      audience: getJwtAudience(),
       subject: userId,
     }
   );
@@ -254,7 +501,16 @@ function extractTenantId(_c: Context, payload?: JWTPayload): string | null {
 
 /**
  * Main authentication middleware
- * Validates JWT and extracts auth context
+ * Validates JWT and extracts auth context.
+ *
+ * AUDIT F1: dual-path verification.
+ *  - Supabase-issued tokens (customer-app, estate-manager-app) are
+ *    verified against `SUPABASE_JWT_SECRET` with F6 protection
+ *    (tenant_id MUST come from app_metadata, not user_metadata).
+ *  - Gateway-issued tokens are verified against `JWT_ACCESS_SECRET`
+ *    with algorithm pinned to HS256 and blocklist enforcement.
+ * After either path, downstream middleware sees the SAME AuthContext —
+ * trust-domain attribution is preserved in the audit log.
  */
 export const authMiddleware = createMiddleware(async (c, next) => {
   const authHeader = c.req.header('Authorization');
@@ -273,10 +529,71 @@ export const authMiddleware = createMiddleware(async (c, next) => {
     );
   }
 
+  // Peek at claims to choose the verifier. The peek itself does not
+  // grant any trust — both verifiers do their own signature checks.
+  const claims = peekJwtClaims(token);
+  if (!claims) {
+    auditAuthResolution({
+      outcome: 'reject',
+      authPath: 'gateway',
+      reason: 'malformed_token',
+    });
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'INVALID_TOKEN',
+          message: 'Malformed authentication token',
+        },
+      },
+      401
+    );
+  }
+
+  const authPath: AuthPath = looksLikeSupabaseToken(claims)
+    ? 'supabase'
+    : 'gateway';
+
+  if (authPath === 'supabase') {
+    const result = await verifyAndProjectSupabaseToken(token);
+    if (!result.valid || !result.context) {
+      auditAuthResolution({
+        outcome: 'reject',
+        authPath: 'supabase',
+        reason: result.error,
+      });
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_TOKEN',
+            message: result.error || 'Invalid Supabase token',
+          },
+        },
+        401
+      );
+    }
+    auditAuthResolution({
+      outcome: 'allow',
+      authPath: 'supabase',
+      userId: result.context.userId,
+      tenantId: result.context.tenantId,
+    });
+    c.set('auth', result.context);
+    await next();
+    return;
+  }
+
+  // Gateway path (existing behavior, unchanged).
   const validation = validateAccessToken(token);
 
   if (!validation.valid) {
     if (validation.expired) {
+      auditAuthResolution({
+        outcome: 'reject',
+        authPath: 'gateway',
+        reason: 'token_expired',
+      });
       return c.json(
         {
           success: false,
@@ -290,6 +607,11 @@ export const authMiddleware = createMiddleware(async (c, next) => {
       );
     }
 
+    auditAuthResolution({
+      outcome: 'reject',
+      authPath: 'gateway',
+      reason: validation.error,
+    });
     return c.json(
       {
         success: false,
@@ -306,6 +628,11 @@ export const authMiddleware = createMiddleware(async (c, next) => {
   const tenantId = extractTenantId(c, payload);
 
   if (!tenantId) {
+    auditAuthResolution({
+      outcome: 'reject',
+      authPath: 'gateway',
+      reason: 'missing_tenant',
+    });
     return c.json(
       {
         success: false,
@@ -330,6 +657,13 @@ export const authMiddleware = createMiddleware(async (c, next) => {
     tokenExp: payload.exp,
     tokenIat: payload.iat,
   };
+
+  auditAuthResolution({
+    outcome: 'allow',
+    authPath: 'gateway',
+    userId: authContext.userId,
+    tenantId: authContext.tenantId,
+  });
 
   c.set('auth', authContext);
 

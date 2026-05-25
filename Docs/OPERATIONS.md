@@ -211,24 +211,41 @@ links in `Docs/OPERATIONS.md` so the on-call reference is one search away.
 
 ## 6. Emergency Contacts
 
-Keep this block in a **secrets store** (1Password / Vault) and re-render into
-this doc on release. Template:
+The authoritative copy of phone numbers and personal emails lives in the
+**secrets store** (1Password vault `bossnyumba-ops`). The table below is the
+public-facing skeleton — every cell marked `TBD` carries an HTML comment
+`<!-- FILL BEFORE LAUNCH -->` so it can be grepped at release-readiness time:
 
 ```
-Engineering Lead:  <name> / <phone> / <email>
-CTO:               <name> / <phone> / <email>
-CEO:               <name> / <phone> / <email>
-AWS TAM:           <name> / <phone> / <email>
-Anthropic Support: <email> (24/7 priority for Scale tier)
-DB Ops:            <name> / <phone> / <email>
-Security Officer:  <name> / <phone> / <email>
-Legal / DPO:       <name> / <phone> / <email>
+grep -n 'FILL BEFORE LAUNCH' Docs/OPERATIONS.md
 ```
 
-PagerDuty service keys:
-- `api-gateway`  — P0 paging path
-- `background-jobs` — P1
-- `infrastructure` — P0
+If that command returns any rows, the launch checklist is not complete.
+
+| Role | Name | Phone | Email | PagerDuty schedule |
+|---|---|---|---|---|
+| Engineering Lead (Primary) | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | `eng-primary` <!-- FILL BEFORE LAUNCH --> |
+| Engineering Lead (Secondary) | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | `eng-secondary` <!-- FILL BEFORE LAUNCH --> |
+| CTO | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | `exec-escalation` <!-- FILL BEFORE LAUNCH --> |
+| CEO | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | `exec-escalation` <!-- FILL BEFORE LAUNCH --> |
+| Payments SME | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | `payments-oncall` <!-- FILL BEFORE LAUNCH --> |
+| AI / Doc-Intel SME | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | `ai-oncall` <!-- FILL BEFORE LAUNCH --> |
+| DB Ops | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | `db-oncall` <!-- FILL BEFORE LAUNCH --> |
+| Security Officer | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | `security-oncall` <!-- FILL BEFORE LAUNCH --> |
+| Legal / DPO | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | `legal-escalation` <!-- FILL BEFORE LAUNCH --> |
+| AWS TAM | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | TBD <!-- FILL BEFORE LAUNCH --> | n/a (external) |
+| Anthropic Support (Scale tier, 24/7) | n/a | n/a | support@anthropic.com | n/a (external) |
+
+PagerDuty service routing (full YAML lives in `infra/pagerduty/services.yaml`,
+escalation policies in `infra/pagerduty/escalation-policies.yaml`):
+
+- `api-gateway` — P0 paging path (critical), routes to `eng-primary` then
+  `eng-secondary` then `exec-escalation`.
+- `payments-ledger` — P0 paging path, routes to `payments-oncall` then
+  `eng-primary`.
+- `brain` (AI orchestration) — P1 paging path, routes to `ai-oncall`.
+- `background-jobs` — P1, routes to `eng-primary`.
+- `infrastructure` — P0, routes to `db-oncall` then `eng-primary`.
 
 ---
 

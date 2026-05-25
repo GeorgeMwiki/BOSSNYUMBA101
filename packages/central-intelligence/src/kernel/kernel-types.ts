@@ -163,6 +163,14 @@ export interface ThoughtRequest {
    *     to escalate when proposers diverge.
    */
   readonly requireSynthesis?: boolean;
+  /**
+   * Wave-13 F2 — optional intended action namespace string (e.g.
+   * `md:create-lease`, `md:adjust-invoice`, `md:read-tenant`). When
+   * the kernel is wired with `BrainKernelDeps.tierPolicy`, this
+   * field is fed to `assertTierPolicy(role, action)` BEFORE the
+   * sensor call. Absent action ⇒ tier-policy gate is a no-op.
+   */
+  readonly action?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -312,6 +320,19 @@ export interface ProvenanceRecord {
 // callers can pattern-match without ambiguity.
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Marker attached to a `BrainDecision` when the kernel is operating in a
+ * degraded mode — sensor failover, breaker open, or a not-yet-wired tool
+ * surfaced an error. Propagates through the gateway → SDK → chat UI so
+ * the operator and the end user see the same fallback signal.
+ */
+export interface DegradedDecisionMarker {
+  readonly reason: string;
+  readonly affected_capabilities: ReadonlyArray<string>;
+  /** ISO timestamp of the entry into degraded mode. */
+  readonly since?: string;
+}
+
 export type BrainDecision =
   | {
       readonly kind: 'answer';
@@ -321,12 +342,14 @@ export type BrainDecision =
       readonly confidence: ConfidenceVector;
       readonly gates: GateOutcome;
       readonly provenance: ProvenanceRecord;
+      readonly degraded?: DegradedDecisionMarker;
     }
   | {
       readonly kind: 'refusal';
       readonly reason: string;
       readonly gateThatRefused: 'inviolable' | 'policy' | 'drift';
       readonly provenance: ProvenanceRecord;
+      readonly degraded?: DegradedDecisionMarker;
     }
   | {
       readonly kind: 'softened';
@@ -336,6 +359,7 @@ export type BrainDecision =
       readonly confidence: ConfidenceVector;
       readonly gates: GateOutcome;
       readonly provenance: ProvenanceRecord;
+      readonly degraded?: DegradedDecisionMarker;
     };
 
 // ─────────────────────────────────────────────────────────────────────

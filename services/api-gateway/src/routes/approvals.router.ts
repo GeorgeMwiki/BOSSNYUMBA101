@@ -29,22 +29,21 @@ import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 import { routeCatch } from '../utils/safe-error';
 import { asApprovalRequestId } from '@bossnyumba/domain-services/approvals';
+import { e400, e404, e503, errorResponse } from '../utils/error-response';
+// F10 DecisionTrace — record the approve/reject decision (inputs,
+// rule that fired, outcome) so the admin replay UI can audit the
+// four-eye gate. Fire-and-forget persistence; never blocks the request.
+import { startDecisionTrace } from '@bossnyumba/observability';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
 
 function notConfigured(c: any) {
-  return c.json(
-    {
-      success: false,
-      error: {
-        code: 'APPROVAL_SERVICE_UNAVAILABLE',
-        message:
-          'ApprovalWorkflowService not configured — DATABASE_URL unset.',
-      },
-    },
-    503,
+  return e503(
+    c,
+    'APPROVAL_SERVICE_UNAVAILABLE',
+    'ApprovalWorkflowService not configured — DATABASE_URL unset.',
   );
 }
 
@@ -136,7 +135,7 @@ app.post('/', zValidator('json', CreateRequestSchema), withSecurityEvents({ acti
       userId,
     );
     if (!result.success) {
-      return c.json({ success: false, error: result.error }, 400);
+      return e400(c, result.error.code, result.error.message);
     }
     return c.json({ success: true, data: result.data }, 201);
   } catch (err) {
@@ -159,7 +158,7 @@ app.get('/', async (c: any) => {
   try {
     const result = await service.getPendingApprovals(userId, tenantId);
     if (!result.success) {
-      return c.json({ success: false, error: result.error }, 400);
+      return e400(c, result.error.code, result.error.message);
     }
     return c.json({ success: true, data: result.data });
   } catch (err) {
@@ -205,7 +204,7 @@ app.get(
         { page: q.page, pageSize: q.pageSize },
       );
       if (!result.success) {
-        return c.json({ success: false, error: result.error }, 400);
+        return e400(c, result.error.code, result.error.message);
       }
       return c.json({ success: true, ...result.data });
     } catch (err) {
@@ -233,13 +232,7 @@ app.get('/:id', async (c: any) => {
     if (!repo?.findById) return notConfigured(c);
     const row = await repo.findById(id, tenantId);
     if (!row) {
-      return c.json(
-        {
-          success: false,
-          error: { code: 'REQUEST_NOT_FOUND', message: 'Approval request not found' },
-        },
-        404,
-      );
+      return e404(c, 'REQUEST_NOT_FOUND', 'Approval request not found');
     }
     return c.json({ success: true, data: row });
   } catch (err) {
@@ -272,6 +265,29 @@ app.post(
     const userId = c.get('userId');
     const id = asApprovalRequestId(c.req.param('id'));
     const body = c.req.valid('json');
+    // F10 DecisionTrace — bracket the approval decision. We add two
+    // alternative branches (approve / reject) so the admin replay UI can
+    // surface counterfactuals; we then call `choose('approve')` because
+    // this is the approve handler.
+    const trace = startDecisionTrace('approvals.approve', {
+      inputs: { approvalId: id, comments: body.comments ?? null },
+      context: {
+        tenantId,
+        userId,
+        requestId: correlationIdOf(c),
+      },
+    });
+    trace.addBranch({
+      id: 'approve',
+      label: 'Approve the request',
+      rationale: 'four-eye approver explicitly chose approve',
+    });
+    trace.addBranch({
+      id: 'reject',
+      label: 'Reject the request',
+      rationale: 'counterfactual — not chosen on this path',
+    });
+    trace.choose('approve', 'approver clicked approve');
     try {
       const result = await service.approveRequest(
         id,
@@ -287,10 +303,21 @@ app.post(
             : result.error.code === 'UNAUTHORIZED_APPROVER'
               ? 403
               : 409;
-        return c.json({ success: false, error: result.error }, status);
+        trace.finalize({
+          outcome: 'rejected',
+          output: { code: result.error.code, status },
+        });
+        return errorResponse(c, status, result.error.code, result.error.message);
       }
+      trace.finalize({ outcome: 'approved', output: result.data });
       return c.json({ success: true, data: result.data });
     } catch (err) {
+      if (!trace.isFinalised()) {
+        trace.finalize({
+          outcome: 'failed',
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
       return routeCatch(c, err, {
         code: 'APPROVAL_APPROVE_FAILED',
         status: 500,
@@ -321,6 +348,27 @@ app.post(
     const userId = c.get('userId');
     const id = asApprovalRequestId(c.req.param('id'));
     const body = c.req.valid('json');
+    // F10 DecisionTrace — same bracket as the approve handler but
+    // `choose('reject')`. Reason text is the rule-that-fired.
+    const trace = startDecisionTrace('approvals.reject', {
+      inputs: { approvalId: id, reason: body.reason },
+      context: {
+        tenantId,
+        userId,
+        requestId: correlationIdOf(c),
+      },
+    });
+    trace.addBranch({
+      id: 'approve',
+      label: 'Approve the request',
+      rationale: 'counterfactual — not chosen on this path',
+    });
+    trace.addBranch({
+      id: 'reject',
+      label: 'Reject the request',
+      rationale: body.reason,
+    });
+    trace.choose('reject', body.reason);
     try {
       const result = await service.rejectRequest(
         id,
@@ -336,10 +384,21 @@ app.post(
             : result.error.code === 'UNAUTHORIZED_APPROVER'
               ? 403
               : 409;
-        return c.json({ success: false, error: result.error }, status);
+        trace.finalize({
+          outcome: 'failed',
+          output: { code: result.error.code, status },
+        });
+        return errorResponse(c, status, result.error.code, result.error.message);
       }
+      trace.finalize({ outcome: 'rejected', output: result.data });
       return c.json({ success: true, data: result.data });
     } catch (err) {
+      if (!trace.isFinalised()) {
+        trace.finalize({
+          outcome: 'failed',
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
       return routeCatch(c, err, {
         code: 'APPROVAL_REJECT_FAILED',
         status: 500,
@@ -385,7 +444,7 @@ app.post(
             : result.error.code === 'UNAUTHORIZED_APPROVER'
               ? 403
               : 409;
-        return c.json({ success: false, error: result.error }, status);
+        return errorResponse(c, status, result.error.code, result.error.message);
       }
       return c.json({ success: true, data: result.data });
     } catch (err) {
@@ -409,7 +468,7 @@ app.get('/policies/:type', async (c: any) => {
   try {
     const result = await service.getApprovalPolicy(tenantId, type as any);
     if (!result.success) {
-      return c.json({ success: false, error: result.error }, 400);
+      return e400(c, result.error.code, result.error.message);
     }
     return c.json({ success: true, data: result.data });
   } catch (err) {
@@ -443,7 +502,7 @@ app.put(
         userId,
       );
       if (!result.success) {
-        return c.json({ success: false, error: result.error }, 400);
+        return e400(c, result.error.code, result.error.message);
       }
       return c.json({ success: true, data: result.data });
     } catch (err) {

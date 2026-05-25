@@ -3,6 +3,11 @@
  *
  * Validates the core TOTP primitives (RFC 6238) + challenge lifecycle.
  * Uses a fake bus/dispatcher since these tests run without a live server.
+ *
+ * Post-CRITICAL-1 fix: the /verify schema no longer accepts a client-
+ * supplied secret. The /challenge schema is now empty (identity derives
+ * from the auth context). The /confirm schema persists the secret
+ * server-side after the user confirms enrollment.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -12,18 +17,11 @@ import { describe, it, expect } from 'vitest';
 // Zod schemas + basic contract.
 import { z } from 'zod';
 
-const ChallengeSchema = z.object({
-  userId: z.string().min(1),
-  tenantId: z.string().min(1),
-  role: z.string().min(1),
-  permissions: z.array(z.string()).optional(),
-  propertyAccess: z.array(z.string()).optional(),
-});
+// /challenge has no body — identity comes from c.get('auth').
 
 const VerifySchema = z.object({
   challengeId: z.string().min(1),
   code: z.string().regex(/^\d{6}$/, '6-digit TOTP code required'),
-  secret: z.string().min(16),
 });
 
 const EnrollSchema = z.object({
@@ -37,31 +35,27 @@ const ConfirmSchema = z.object({
 });
 
 describe('MFA Zod schemas', () => {
-  describe('ChallengeSchema', () => {
-    it('accepts valid input', () => {
-      const result = ChallengeSchema.safeParse({
-        userId: 'usr_1',
-        tenantId: 'tnt_1',
-        role: 'TENANT_ADMIN',
+  describe('VerifySchema (post-CRITICAL-1 fix)', () => {
+    it('accepts a valid 6-digit code without a secret', () => {
+      const result = VerifySchema.safeParse({
+        challengeId: 'ch_123',
+        code: '123456',
       });
       expect(result.success).toBe(true);
     });
 
-    it('rejects empty userId', () => {
-      expect(
-        ChallengeSchema.safeParse({ userId: '', tenantId: 't', role: 'r' }).success
-      ).toBe(false);
-    });
-  });
-
-  describe('VerifySchema', () => {
-    it('accepts a valid 6-digit code + secret', () => {
+    it('the parsed data never exposes a client-supplied secret', () => {
+      // Even if a client tries to inject `secret`, the parsed shape
+      // does not include it — the handler can only see {challengeId, code}.
       const result = VerifySchema.safeParse({
-        challengeId: 'ch_123',
+        challengeId: 'ch_1',
         code: '123456',
         secret: 'JBSWY3DPEHPK3PXP',
       });
       expect(result.success).toBe(true);
+      if (result.success) {
+        expect((result.data as Record<string, unknown>).secret).toBeUndefined();
+      }
     });
 
     it('rejects a 5-digit code', () => {
@@ -69,7 +63,6 @@ describe('MFA Zod schemas', () => {
         VerifySchema.safeParse({
           challengeId: 'ch_1',
           code: '12345',
-          secret: 'JBSWY3DPEHPK3PXP',
         }).success
       ).toBe(false);
     });
@@ -79,17 +72,6 @@ describe('MFA Zod schemas', () => {
         VerifySchema.safeParse({
           challengeId: 'ch_1',
           code: 'abcdef',
-          secret: 'JBSWY3DPEHPK3PXP',
-        }).success
-      ).toBe(false);
-    });
-
-    it('rejects a short secret', () => {
-      expect(
-        VerifySchema.safeParse({
-          challengeId: 'ch_1',
-          code: '123456',
-          secret: 'SHORT',
         }).success
       ).toBe(false);
     });

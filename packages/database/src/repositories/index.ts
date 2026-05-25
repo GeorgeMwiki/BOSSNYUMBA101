@@ -76,3 +76,46 @@ export {
   type PgApprovalStoreScope,
   type ProposedAction as PgProposedAction,
 } from './sovereign-approvals.repository.js';
+
+// Piece A (Universal Asset & Entity Model) — polymorphic root + per-type
+// extension repositories. Single public class CoreEntityRepository covers
+// insert / find / recursive descent / custom-field validation / hybrid
+// BM25 + dense + geo search with MMR rerank.
+export {
+  CoreEntityRepository,
+  mmrRerank,
+  type CoreEntityInput,
+  type CoreEntityCommon,
+  type LandEntityInput,
+  type BuildingEntityInput,
+  type SubUnitEntityInput,
+  type VehicleEntityInput,
+  type MachineryEntityInput,
+  type ItAssetEntityInput,
+  type PersonEntityInput,
+  type IntangibleEntityInput,
+  type SearchHybridParams,
+  type SearchHit,
+  type AddCustomFieldParams,
+} from './core-entity.repository.js';
+
+// Enum guards — bug fix A-BUG-DEEP #9.
+export {
+  assertLeaseStatus,
+  assertLeaseStatuses,
+  assertCustomerStatus,
+  assertCustomerStatuses,
+  assertUserStatus,
+  assertDocumentStatus,
+  assertDocumentType,
+  LEASE_STATUS_VALUES,
+  CUSTOMER_STATUS_VALUES,
+  USER_STATUS_VALUES,
+  DOCUMENT_STATUS_VALUES,
+  DOCUMENT_TYPE_VALUES,
+  type LeaseStatus,
+  type CustomerStatus,
+  type UserStatus,
+  type DocumentStatus,
+  type DocumentType,
+} from './enum-guards.js';

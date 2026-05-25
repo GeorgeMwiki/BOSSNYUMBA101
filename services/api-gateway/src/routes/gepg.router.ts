@@ -21,6 +21,7 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 import {
   createGepgProvider,
+  verifyGepgSignature,
   type GepgConfig,
   type GepgProvider,
 } from '@bossnyumba/payments-service/providers/gepg';
@@ -111,6 +112,15 @@ const CallbackSchema = z.object({
 
 // ----------------------------------------------------------------------------
 // Signature verification middleware (callback only)
+//
+// HIGH-6 (audit .audit/post-pr90-api-mcp-bug-sweep.md): The old middleware
+// only CHECKED that an `X-GePG-Signature` header existed; it didn't
+// actually verify the signature. Verification was deferred to the
+// provider AFTER the body was JSON-parsed. The file's own header comment
+// (line 10) claimed "verifies the signature BEFORE parsing the body" —
+// the implementation did the opposite. We now perform the cryptographic
+// verification HERE so a forged callback is rejected before any side
+// effect. Error details stay server-side; the response is a generic 401.
 // ----------------------------------------------------------------------------
 
 const signatureMiddleware = createMiddleware(async (c, next) => {
@@ -123,6 +133,31 @@ const signatureMiddleware = createMiddleware(async (c, next) => {
       {
         success: false,
         error: { code: 'MISSING_SIGNATURE', message: 'X-GePG-Signature header required' },
+      },
+      401
+    );
+  }
+  // HIGH-6: verify signature BEFORE the body is parsed. We construct a
+  // signature-only verifier from the same config the provider uses.
+  try {
+    const verification = verifyGepgSignature(raw, signature, loadSignatureConfig());
+    if (!verification.valid) {
+      // Detailed reason stays server-side; response is generic.
+      console.warn('[gepg] signature rejected', verification.reason ?? 'unknown');
+      return c.json(
+        {
+          success: false,
+          error: { code: 'INVALID_SIGNATURE', message: 'signature verification failed' },
+        },
+        401
+      );
+    }
+  } catch (err) {
+    console.warn('[gepg] signature verification threw', err instanceof Error ? err.message : 'unknown');
+    return c.json(
+      {
+        success: false,
+        error: { code: 'INVALID_SIGNATURE', message: 'signature verification failed' },
       },
       401
     );
@@ -219,9 +254,15 @@ app.post('/callback', signatureMiddleware, withSecurityEvents({ action: 'gepg.cr
     const result = await provider.handleCallback(raw, signature, parsed);
     return c.json({ success: true, data: result });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'unknown';
+    // HIGH-6: do NOT echo provider err.message — it leaks signature
+    // internals, key-fingerprint hints, malformed-XML details. Log
+    // detailed reason server-side only.
+    console.warn(
+      '[gepg] callback rejected:',
+      err instanceof Error ? err.message : 'unknown'
+    );
     return c.json(
-      { success: false, error: { code: 'CALLBACK_REJECTED', message } },
+      { success: false, error: { code: 'CALLBACK_REJECTED', message: 'callback processing failed' } },
       400
     );
   }

@@ -54,3 +54,19 @@ export function createDatabaseClient(connectionString: string) {
 }
 
 export type DatabaseClient = ReturnType<typeof createDatabaseClient>;
+
+/**
+ * Z5 HA wire — opens a Drizzle client against a read replica.
+ *
+ * Functionally identical to `createDatabaseClient` today (same Drizzle
+ * surface, same schema). Exposed as a distinct factory so the
+ * composition root can wire a separate connection pool whose lifetime
+ * matches the replica — and so we can later attach replica-specific
+ * options (statement_timeout, lower max-pool, etc.) without breaking
+ * primary writes.
+ */
+export function createReadonlyDatabaseClient(connectionString: string) {
+  const client = postgres(connectionString);
+  const schema = filterSchema(rawSchema as Record<string, unknown>);
+  return drizzle(client, { schema });
+}

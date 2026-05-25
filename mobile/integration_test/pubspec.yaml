@@ -1,0 +1,25 @@
+name: bossnyumba_workspace_integration_tests
+description: >
+  Workspace-level Flutter integration tests for BOSSNYUMBA mobile.
+  Mirrors per-app integration_test/ directories so each app target can
+  pick up its own runnable test, while this catalogue keeps the suite
+  visible from the workspace root.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  bossnyumba_core:
+    path: ../packages/bossnyumba_core
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0

@@ -17,6 +17,7 @@ export type {
   AdaptiveRendererProps,
   AdaptiveRendererSingleProps,
   AdaptiveRendererListProps,
+  GenUiUnknownKindEventDetail,
 } from './AdaptiveRenderer';
 
 export { GENUI_REGISTRY, GENUI_KINDS } from './registry';
@@ -47,7 +48,7 @@ export { Gauge, type GaugeProps } from './components/Gauge';
 export { MetricSparkline, type MetricSparklineProps } from './components/MetricSparkline';
 export { ImageAnnotation, type ImageAnnotationProps } from './components/ImageAnnotation';
 export { SignaturePad, type SignaturePadProps } from './components/SignaturePad';
-// Phase E.7 — 13 new primitives (formerly TODO: ProdFix-8)
+// Phase E.7 — 13 new primitives (landed in ProdFix-8)
 export { PdfViewer, type PdfViewerProps } from './components/PdfViewer';
 export { SliderInput, type SliderInputProps } from './components/SliderInput';
 export { MultistepWizard, type MultistepWizardProps } from './components/MultistepWizard';
@@ -94,6 +95,7 @@ export type {
   DataflowNode,
   DataflowEdge,
   DecisionTraceStep,
+  Iso4217,
 } from './types';
 
 export {
@@ -102,6 +104,7 @@ export {
   TimelinePartSchema,
   KpiGridPartSchema,
   PrefillFormPartSchema,
+  PrefillFormActionSchema,
   ApprovalPartSchema,
   WorkflowPartSchema,
   MapPartSchema,
@@ -155,7 +158,23 @@ export {
   type PartKind,
 } from './schemas';
 
-export { validateVegaSpec, quickVegaShapeCheck } from './validate';
+export {
+  validateVegaSpec,
+  quickVegaShapeCheck,
+  stripVegaExpressions,
+  VEGA_EXPRESSION_KEYS,
+} from './validate';
+
+// H12 — host-action dispatcher contract (see genui-host-actions.ts JSDoc).
+export {
+  createGenUiActionDispatcher,
+  GENUI_ACTION_EVENTS,
+} from './genui-host-actions';
+export type {
+  GenUiActionEventName,
+  GenUiActionPayload,
+  GenUiActionDispatcherOptions,
+} from './genui-host-actions';
 export {
   formatCurrency,
   formatPercent,
@@ -216,3 +235,57 @@ export {
   PORTAL_LAYOUT_DEFAULT_SEED,
   getPortalLayoutSeed,
 } from './seeds';
+
+// Piece-G — inline UI artifact catalog + renderer.
+export {
+  ARTIFACT_CATALOG,
+  ARTIFACT_CATALOG_BY_KEY,
+  ARTIFACT_COMPONENT_TYPES,
+  listArtifactTypes,
+  type ArtifactComponentType,
+  type ArtifactCatalogEntry,
+  type ArtifactCatalogSummary,
+  KpiTileArtifactSchema,
+  BarChartArtifactSchema,
+  LineChartArtifactSchema,
+  PieChartArtifactSchema,
+  DataTableArtifactSchema,
+  FormArtifactSchema,
+  DeckSlideArtifactSchema,
+  DocSectionArtifactSchema,
+  MapViewArtifactSchema,
+  HeatmapArtifactSchema,
+  TimelineArtifactSchema,
+  KanbanArtifactSchema,
+  GanttArtifactSchema,
+  FunnelArtifactSchema,
+  MetricGridArtifactSchema,
+  ImageArtifactSchema,
+  VideoArtifactSchema,
+  CodeBlockArtifactSchema,
+  MarkdownArtifactSchema,
+  CalloutArtifactSchema,
+  ComparisonArtifactSchema,
+  PivotTableArtifactSchema,
+  SparklineArtifactSchema,
+  TreemapArtifactSchema,
+  SankeyArtifactSchema,
+  ScatterArtifactSchema,
+  GaugeArtifactSchema,
+  RadarArtifactSchema,
+  BoxPlotArtifactSchema,
+  HistogramArtifactSchema,
+  OrgChartArtifactSchema,
+  WorkflowArtifactSchema,
+} from './catalog';
+
+export {
+  UiArtifact,
+  validateAndRender,
+  type UiArtifactProps,
+  type UiArtifactRow,
+  type ArtifactValidationFailure,
+  type ValidateAndRenderResult,
+} from './UiArtifact';
+
+export { projectArtifactToUiPart } from './projector';

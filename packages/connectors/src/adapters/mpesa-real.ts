@@ -267,20 +267,45 @@ export function createMpesaRealAdapter(deps: MpesaRealAdapterDeps): MpesaRealAda
 
   const tokenCache: TokenCacheState = { token: null, expiresAtMs: 0 };
 
+  // HIGH-4 (audit .audit/post-pr90-api-mcp-bug-sweep.md): The OAuth
+  // fetch used to bypass connector.call() — no audit on token-issuance,
+  // making the "which tenant's OAuth was active when" trail invisible.
+  // Route /oauth/v1/generate through a dedicated no-auth connector so
+  // the rate-limit/circuit-breaker/audit apply.
+  const oauthConnector = createBaseConnector({
+    config: {
+      id: 'mpesa-real-oauth',
+      displayName: `M-Pesa Daraja oauth (${env})`,
+      baseUrl,
+      rateLimit: { rpm: 30, burst: 5 },
+      circuitBreaker: { errorThreshold: 4, halfOpenAfterMs: 60_000 },
+      retry: { maxAttempts: 1, initialDelayMs: 250 },
+      timeoutMs: 12_000,
+    },
+    fetch: fetchImpl,
+    ...(deps.events ? { events: deps.events } : {}),
+    ...(deps.audit ? { audit: deps.audit } : {}),
+    ...(deps.clock ? { clock: deps.clock } : {}),
+  });
+
   async function fetchToken(): Promise<string> {
     const credPair = base64(`${credentials.consumerKey}:${credentials.consumerSecret}`);
-    const url = `${baseUrl}/oauth/v1/generate?grant_type=client_credentials`;
-    const res = await fetchImpl(url, {
+    const outcome = await oauthConnector.call<
+      undefined,
+      { access_token?: string; expires_in?: string | number }
+    >({
+      path: '/oauth/v1/generate',
       method: 'GET',
+      query: { grant_type: 'client_credentials' },
       headers: {
         Authorization: `Basic ${credPair}`,
         Accept: 'application/json',
       },
     });
-    if (!res.ok) {
-      throw new Error(`mpesa-real: oauth ${res.status}`);
+    if (outcome.kind !== 'ok') {
+      throw new Error(`mpesa-real: oauth ${outcome.kind}`);
     }
-    const body = (await res.json()) as { access_token?: string; expires_in?: string | number };
+    const body = outcome.data;
     if (!body.access_token) {
       throw new Error('mpesa-real: oauth response missing access_token');
     }
