@@ -137,7 +137,14 @@ export {
 } from './audit-logger.js';
 
 // ============================================================================
-// Audit - Route-level Security Events
+// Audit - Route-level Security Events (legacy type aliases)
+//
+// `withSecurityEvents`/`recordSecurityEvent` are exported once at the
+// top of this barrel (lines 16-29). The `AuditableContext`/`AuditableNext`/
+// `WithSecurityEventsOptions` types are kept here for in-package tests
+// and the `securityEventsMiddleware` Hono signature. `securityEventsMiddleware`
+// is the only function added in this block; the function exports above
+// already cover the binding-shaped Hono + Fastify + Next wrappers.
 // ============================================================================
 
 export type {
@@ -146,11 +153,7 @@ export type {
   WithSecurityEventsOptions,
 } from './security/with-security-events.js';
 
-export {
-  withSecurityEvents,
-  securityEventsMiddleware,
-  recordSecurityEvent,
-} from './security/with-security-events.js';
+export { securityEventsMiddleware } from './security/with-security-events.js';
 
 // ============================================================================
 // Event Bus
