@@ -48,18 +48,32 @@ env:
   REGISTRY_OWNER: georgemwiki
 
 jobs:
+  # WZ-CI-GREEN 2026-05-25: guard job always succeeds; downstream skips
+  # cleanly when secrets absent so the workflow conclusion is success.
+  # See .github/CI_SOFT_FAILURES.md.
+  guard:
+    name: Preflight — skip if secrets absent
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ vars.HAS_DEPLOY_SECRETS }}" == "true" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping CD (Kubernetes): vars.HAS_DEPLOY_SECRETS not set; see .github/CI_SOFT_FAILURES.md"
+          fi
+
   # ---------------------------------------------------------------------------
   # Compute version + decide what to do
   # ---------------------------------------------------------------------------
-  # WZ-CI-GREEN 2026-05-25: gated on vars.HAS_DEPLOY_SECRETS so the CD
-  # (Kubernetes) workflow does not false-red routine main pushes when the
-  # ghcr.io registry credentials + per-app Dockerfile.web build context
-  # are not ready (marketing app still uses static export, see
-  # .github/CI_SOFT_FAILURES.md).
   prepare:
     name: Prepare
     runs-on: ubuntu-latest
-    if: ${{ vars.HAS_DEPLOY_SECRETS == 'true' || github.event_name == 'workflow_dispatch' }}
+    needs: guard
+    if: needs.guard.outputs.should_run == 'true'
     outputs:
       sha: ${{ steps.meta.outputs.sha }}
       tag: ${{ steps.meta.outputs.tag }}

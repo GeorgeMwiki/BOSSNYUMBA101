@@ -17,16 +17,33 @@ env:
   PNPM_VERSION: '8'
 
 jobs:
+  # WZ-CI-GREEN 2026-05-25: guard job always succeeds; downstream skips
+  # cleanly when secrets absent so the workflow conclusion is success
+  # (not failure). See .github/CI_SOFT_FAILURES.md.
+  guard:
+    name: Preflight — skip if secrets absent
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ vars.HAS_DEPLOY_SECRETS }}" == "true" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Deploy enabled: vars.HAS_DEPLOY_SECRETS=${{ vars.HAS_DEPLOY_SECRETS }}, event=${{ github.event_name }}"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping deploy: vars.HAS_DEPLOY_SECRETS not set; see .github/CI_SOFT_FAILURES.md"
+          fi
+
   # ============================================
   # Preflight: wait for Strict CI to pass
   # ============================================
-  # WZ-CI-GREEN 2026-05-25: gated on vars.HAS_DEPLOY_SECRETS so the
-  # workflow stops false-red'ing routine pushes when AWS OIDC / ECR
-  # creds are not configured. See .github/CI_SOFT_FAILURES.md.
   ci-preflight:
     name: Preflight — Strict CI must pass
     runs-on: ubuntu-latest
-    if: ${{ vars.HAS_DEPLOY_SECRETS == 'true' || github.event_name == 'workflow_dispatch' }}
+    needs: guard
+    if: needs.guard.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@v6
       - name: Wait for Strict CI

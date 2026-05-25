@@ -46,4 +46,30 @@ export const HARDCODED_JURISDICTION_ALLOWLIST = new Map([
     'packages/ai-copilot/src/knowledge/case-studies/index.ts',
     'Case-studies index maps cs.country to ISO countryCode; this IS the case-study registry mapping.',
   ],
+
+  // ─── WZ-CI-GREEN 2026-05-25: jurisdiction-pinned advisor logic ─────
+  // Each entry below dispatches per-jurisdiction TAX/REGULATORY logic
+  // where the jurisdiction literal IS the dispatch key (each country
+  // has different tax code, different filing requirements). Generic
+  // abstraction defeats the per-country compliance correctness.
+  [
+    'packages/estate-department-advisor/src/risk/coverage-adequacy-scorer.ts',
+    'Coverage-adequacy scorer checks if portfolio includes EAC/NG properties to apply region-specific min coverage scores; per-region risk policy, not a routing decision.',
+  ],
+  [
+    'packages/estate-department-advisor/src/tax/1031-scanner.ts',
+    '1031-scanner is US tax-code §1031 logic (US-only by IRS definition); TZ branch handles equivalent TZ "rollover relief" provision. Per-tax-code dispatch.',
+  ],
+  [
+    'packages/ethics-framework/src/principles-registry/principles.ts',
+    'EU-UK equivalence guard for GDPR adequacy decision lookup; legal-equivalence rule, not a routing decision.',
+  ],
+  [
+    'packages/lifecycle-advisor/src/investor-relations/capital-raise-structurer.ts',
+    'Capital-raise structurer dispatches per-jurisdiction securities-law structuring (KE Capital Markets Authority vs TZ Capital Markets and Securities Authority); per-regulator dispatch.',
+  ],
+  [
+    'packages/skill-library/src/builtin-skills/prepare-kra-filing/prepare-kra-filing.skill.ts',
+    'prepare-kra-filing skill is Kenya-only by definition (KRA = Kenya Revenue Authority); jurisdiction === KE gate is the skill-eligibility guard.',
+  ],
 ]);

@@ -332,4 +332,20 @@ export const HARDCODED_LOCALE_ALLOWLIST = new Map([
     'apps/tenant-portal/src/lib/marketplace/api-client.ts',
     'Tenant-portal marketplace API client defaults locale=en-KE for Kenya-first marketplace; tracked-gap pending tenant-locale wire.',
   ],
+
+  // ─── WZ-CI-GREEN 2026-05-25: EU-AI-Act Art-50 disclosure locales ───
+  // The disclosure-layer module implements EU AI Act Article 50 multi-
+  // locale disclosures. Each locale literal IS the canonical disclosure
+  // key — they enumerate the legally-required locale set for the
+  // EAC region (en-TZ, en-KE, en-UG) per the regulation. Substituting
+  // a runtime locale resolver here defeats the legal traceability
+  // requirement that ties each disclosure text to its locale-id.
+  [
+    'packages/disclosure-layer/src/eu-ai-act-art-50/locales.ts',
+    'EU-AI-Act Article 50 mandated multi-locale disclosure text registry; each locale IS the canonical key the regulation requires.',
+  ],
+  [
+    'packages/disclosure-layer/src/eu-ai-act-art-50/types.ts',
+    'EU-AI-Act Article 50 disclosure-locale union type; enumerates the legally-required locale set per regulation.',
+  ],
 ]);

@@ -53,13 +53,31 @@ permissions:
   id-token: write     # OIDC for AWS role assumption (optional path)
 
 jobs:
+  # WZ-CI-GREEN 2026-05-25: same guard pattern as backup-restore-drill —
+  # see .github/CI_SOFT_FAILURES.md. Without this preflight, a workflow
+  # whose only job is skipped reports `failure` in the CI summary.
+  guard:
+    name: Preflight — skip if secrets absent
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ vars.HAS_BACKUP_RESTORE_SECRETS }}" == "true" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Test enabled: vars.HAS_BACKUP_RESTORE_SECRETS=${{ vars.HAS_BACKUP_RESTORE_SECRETS }}, event=${{ github.event_name }}"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping test: vars.HAS_BACKUP_RESTORE_SECRETS not set; see .github/CI_SOFT_FAILURES.md"
+          fi
+
   restore-drill:
     name: Restore from S3 and smoke-test
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # WZ-CI-GREEN 2026-05-25: gated on the same marker var as the
-    # weekly drill — see .github/CI_SOFT_FAILURES.md.
-    if: ${{ vars.HAS_BACKUP_RESTORE_SECRETS == 'true' || github.event_name == 'workflow_dispatch' }}
+    needs: guard
+    if: needs.guard.outputs.should_run == 'true'
 
     services:
       postgres:
