@@ -18,10 +18,26 @@ spec:
         app: owner-portal
         app.kubernetes.io/name: owner-portal
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101            # nginx:alpine default UID
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: owner-portal
           image: bossnyumba/owner-portal:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 80
               name: http

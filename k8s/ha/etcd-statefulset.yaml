@@ -75,10 +75,29 @@ spec:
                   matchLabels:
                     app.kubernetes.io/name: etcd
                 topologyKey: kubernetes.io/hostname
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 0            # NB: etcd image ships only `root` — UID is hardcoded; we cannot drop it without rebuilding.
+        # ↑ Intentional: quay.io/coreos/etcd:v3.5.12 does not include a
+        # non-root user in /etc/passwd; runAsUser: 0 + container-level
+        # caps.drop is the safest pod-spec-level mitigation today. To
+        # truly run non-root, switch to gcr.io/etcd-development/etcd or
+        # bake a wrapper image that adds the `etcd` user.
+        fsGroup: 0
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: etcd
           image: quay.io/coreos/etcd:v3.5.12
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false   # etcd writes WAL/snapshots to /var/lib/etcd (volume) AND log to /tmp.
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           command:
             - /usr/local/bin/etcd
           args:

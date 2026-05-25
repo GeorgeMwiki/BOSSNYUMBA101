@@ -99,10 +99,29 @@ spec:
                   matchLabels:
                     app.kubernetes.io/name: postgres-patroni
                 topologyKey: kubernetes.io/hostname
+      securityContext:
+        # Spilo bootstrap runs as root briefly to chown PGDATA, then drops
+        # to UID 101 (postgres). Postgres needs RW root for /tmp lockfiles
+        # + WAL, so we cannot enforce readOnlyRootFilesystem at pod-level.
+        # We do drop privilege-escalation + caps at container-level below.
+        fsGroup: 103            # spilo's postgres group GID inside image
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgres
           image: ghcr.io/zalando/spilo-16:3.2-p2
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            # NB: readOnlyRootFilesystem cannot be enforced — Spilo writes
+            # bootstrap scripts to /tmp and Patroni reloads pg config in-
+            # place. Mitigated by capabilities.drop + non-root user inside
+            # the image (Spilo drops to postgres:101 after init).
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 5432
               name: postgres

@@ -16,9 +16,25 @@ spec:
       labels:
         app: redis
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999            # redis:7-alpine ships UID 999 for `redis`
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: redis
           image: redis:7-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 6379
               name: redis

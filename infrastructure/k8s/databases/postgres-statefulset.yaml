@@ -32,9 +32,27 @@ spec:
       labels:
         app: postgres
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70             # postgres:15-alpine ships UID 70 for `postgres`
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgres
           image: postgres:15-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            # readOnlyRootFilesystem: postgres writes to /var/lib/postgresql/data
+            # (volume) AND /tmp lockfiles; keep RW root.
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 5432
               name: postgres

@@ -18,10 +18,28 @@ spec:
         app: customer-app
         app.kubernetes.io/name: customer-app
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000           # matches Next.js standalone runner `nextjs` user
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: customer-app
           image: bossnyumba/customer-app:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            # readOnlyRootFilesystem: Next.js writes .next/cache to disk
+            # for ISR; keep RW root.
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 3000
               name: http

@@ -18,10 +18,26 @@ spec:
         app: admin-portal
         app.kubernetes.io/name: admin-portal
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101            # nginx:alpine default UID
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: admin-portal
           image: bossnyumba/admin-portal:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 80
               name: http
