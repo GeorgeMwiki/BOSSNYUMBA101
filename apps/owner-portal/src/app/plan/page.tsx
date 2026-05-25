@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Calendar, Plus, MessageSquare, CheckCircle2, XCircle } from 'lucide-react';
 import { PlanTree, type PlanItem, type PlanTreeAction, type MdrPlanHorizon } from '../../components/PlanTree';
 import { MissingBackendNotice } from '../../components/MissingBackendNotice';
@@ -82,6 +83,7 @@ interface PlanApiState {
 }
 
 export default function PlanPage(): JSX.Element {
+  const t = useTranslations('p89.plan');
   const [state, setState] = useState<PlanApiState>({ status: 'loading', items: [] });
   const [horizonFilter, setHorizonFilter] = useState<MdrPlanHorizon | 'all'>('all');
 
@@ -181,7 +183,7 @@ export default function PlanPage(): JSX.Element {
   if (state.status === 'missing') {
     return (
       <MissingBackendNotice
-        title="MDR plan"
+        title={t('mdrTitle')}
         endpoint={ENDPOINT}
         description="The MDR plan endpoint has not been wired in api-gateway yet."
       />

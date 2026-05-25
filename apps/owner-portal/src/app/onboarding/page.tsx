@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   CheckCircle2,
   Circle,
@@ -76,63 +77,69 @@ interface PageState {
   readonly errorMessage?: string;
 }
 
-const FALLBACK_CHECKLIST: ChecklistResponse = {
-  tenantId: 'pending',
-  businessName: 'Your portfolio',
-  progress: { completed: 1, total: 8, percent: 13 },
-  steps: [
-    {
-      id: 'account_created',
-      label: 'Account created',
-      description: 'Your tenant + owner account are live.',
-      completed: true,
-    },
-    {
-      id: 'verify_email',
-      label: 'Verify your email',
-      description: 'Click the link we sent to confirm the address.',
-      completed: false,
-    },
-    {
-      id: 'first_property',
-      label: 'Add your first property',
-      description: 'Tell us the address, unit count, and rent estimate.',
-      completed: false,
-    },
-    {
-      id: 'first_tenant_import',
-      label: 'Import your tenants',
-      description: 'CSV upload or add one tenant manually.',
-      completed: false,
-    },
-    {
-      id: 'first_md_chat',
-      label: 'Chat with the MD for the first time',
-      description: 'Meet Mr. Mwikila — your portfolio concierge.',
-      completed: false,
-    },
-    {
-      id: 'owner_intent',
-      label: 'Pick your owner intent',
-      description: 'Cashflow-first, growth, or exit-prep — pick one.',
-      completed: false,
-    },
-    {
-      id: 'install_starter_skills',
-      label: 'Install 3 starter Skills',
-      description: 'Curated by Mr. Mwikila based on your intent.',
-      completed: false,
-    },
-    {
-      id: 'schedule_daily_briefing',
-      label: 'Schedule your first daily briefing',
-      description: 'A 5-minute morning brief delivered however you like.',
-      completed: false,
-    },
-  ],
-  intent: null,
-  suggestedSkills: [],
-};
+function useFallbackChecklist(): ChecklistResponse {
+  const t = useTranslations('p89.onboarding');
+  return useMemo(
+    () => ({
+      tenantId: 'pending',
+      businessName: 'Your portfolio',
+      progress: { completed: 1, total: 8, percent: 13 },
+      steps: [
+        {
+          id: 'account_created',
+          label: t('accountCreated'),
+          description: 'Your tenant + owner account are live.',
+          completed: true,
+        },
+        {
+          id: 'verify_email',
+          label: t('verifyEmail'),
+          description: 'Click the link we sent to confirm the address.',
+          completed: false,
+        },
+        {
+          id: 'first_property',
+          label: t('addFirstProperty'),
+          description: 'Tell us the address, unit count, and rent estimate.',
+          completed: false,
+        },
+        {
+          id: 'first_tenant_import',
+          label: t('importTenants'),
+          description: 'CSV upload or add one tenant manually.',
+          completed: false,
+        },
+        {
+          id: 'first_md_chat',
+          label: t('chatFirstTime'),
+          description: 'Meet Mr. Mwikila — your portfolio concierge.',
+          completed: false,
+        },
+        {
+          id: 'owner_intent',
+          label: t('pickOwnerIntent'),
+          description: 'Cashflow-first, growth, or exit-prep — pick one.',
+          completed: false,
+        },
+        {
+          id: 'install_starter_skills',
+          label: t('installStarterSkills'),
+          description: 'Curated by Mr. Mwikila based on your intent.',
+          completed: false,
+        },
+        {
+          id: 'schedule_daily_briefing',
+          label: t('scheduleBriefing'),
+          description: 'A 5-minute morning brief delivered however you like.',
+          completed: false,
+        },
+      ],
+      intent: null,
+      suggestedSkills: [],
+    }),
+    [t],
+  );
+}
 
 const STEP_ICONS: Readonly<Record<StepId, React.ComponentType<{ className?: string }>>> = {
   account_created: CheckCircle2,
@@ -177,6 +184,8 @@ function readSessionToken(): string {
 }
 
 export default function OnboardingPage(): JSX.Element {
+  const tP89 = useTranslations('p89.onboarding');
+  const FALLBACK_CHECKLIST = useFallbackChecklist();
   const [state, setState] = useState<PageState>({ status: 'loading', data: null });
 
   useEffect(() => {
@@ -215,7 +224,7 @@ export default function OnboardingPage(): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [FALLBACK_CHECKLIST]);
 
   function handleContinue(step: Step): void {
     if (step.completed) return;
@@ -247,7 +256,7 @@ export default function OnboardingPage(): JSX.Element {
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Welcome aboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{tP89('welcomeAboard')}</h1>
           <p className="text-sm text-gray-500">
             Eight quick steps and Mr. Mwikila is fully onboarded for{' '}
             <span className="font-medium text-gray-900">{data.businessName}</span>.

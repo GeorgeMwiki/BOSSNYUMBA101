@@ -3148,5 +3148,48 @@
     },
     "disabledTitle": "Onyesho la usimamizi wa moduli",
     "disabledDescription": "Sehemu hii imefungwa na bendera. Muulize msimamizi awashe modules_admin_enabled."
+  },
+  "p89": {
+    "onboarding": {
+      "accountCreated": "Akaunti imeundwa",
+      "verifyEmail": "Thibitisha barua pepe yako",
+      "addFirstProperty": "Ongeza mali yako ya kwanza",
+      "importTenants": "Leta wapangaji wako",
+      "chatFirstTime": "Ongea na MD kwa mara ya kwanza",
+      "pickOwnerIntent": "Chagua nia yako ya umiliki",
+      "installStarterSkills": "Sakinisha Ujuzi 3 wa mwanzo",
+      "scheduleBriefing": "Panga muhtasari wako wa kwanza wa kila siku",
+      "welcomeAboard": "Karibu"
+    },
+    "plan": {
+      "mdrTitle": "Mpango wa MDR"
+    },
+    "skills": {
+      "marketplaceTitle": "Soko la Ujuzi"
+    },
+    "feedbackThumbs": {
+      "prompt": "Je, hii ilisaidia?",
+      "thumbsUpAria": "Kidole gumba juu",
+      "thumbsDownAria": "Kidole gumba chini",
+      "reasonPlaceholder": "Niambie kilichoenda vibaya (si lazima)",
+      "reasonAriaLabel": "Sababu ya maoni"
+    },
+    "jarvisShell": {
+      "inputAria": "Ingizo la Owner Jarvis"
+    },
+    "quickActions": {
+      "viewStatements": "Tazama Taarifa",
+      "exportReport": "Hamisha Ripoti",
+      "reviewApprovals": "Kagua Idhini",
+      "messageManager": "Tuma Ujumbe Msimamizi",
+      "maintenanceStatus": "Hali ya Matengenezo"
+    },
+    "skillCard": {
+      "noRunsYet": "Hakuna mzunguko bado"
+    },
+    "jarvis": {
+      "portfolioConcierge": "Msimamizi wa Mali",
+      "attachImagesAria": "Ambatisha picha"
+    }
   }
 }

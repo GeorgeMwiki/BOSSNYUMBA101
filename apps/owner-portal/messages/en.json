@@ -3148,5 +3148,48 @@
     },
     "disabledTitle": "Modules admin preview",
     "disabledDescription": "This surface is gated by a feature flag. Ask your admin to enable modules_admin_enabled."
+  },
+  "p89": {
+    "onboarding": {
+      "accountCreated": "Account created",
+      "verifyEmail": "Verify your email",
+      "addFirstProperty": "Add your first property",
+      "importTenants": "Import your tenants",
+      "chatFirstTime": "Chat with the MD for the first time",
+      "pickOwnerIntent": "Pick your owner intent",
+      "installStarterSkills": "Install 3 starter Skills",
+      "scheduleBriefing": "Schedule your first daily briefing",
+      "welcomeAboard": "Welcome aboard"
+    },
+    "plan": {
+      "mdrTitle": "MDR plan"
+    },
+    "skills": {
+      "marketplaceTitle": "Skills marketplace"
+    },
+    "feedbackThumbs": {
+      "prompt": "Was this helpful?",
+      "thumbsUpAria": "Thumbs up",
+      "thumbsDownAria": "Thumbs down",
+      "reasonPlaceholder": "Tell me what was wrong (optional)",
+      "reasonAriaLabel": "Feedback reason"
+    },
+    "jarvisShell": {
+      "inputAria": "Owner Jarvis input"
+    },
+    "quickActions": {
+      "viewStatements": "View Statements",
+      "exportReport": "Export Report",
+      "reviewApprovals": "Review Approvals",
+      "messageManager": "Message Manager",
+      "maintenanceStatus": "Maintenance Status"
+    },
+    "skillCard": {
+      "noRunsYet": "No runs yet"
+    },
+    "jarvis": {
+      "portfolioConcierge": "Portfolio Concierge",
+      "attachImagesAria": "Attach images"
+    }
   }
 }

@@ -70,39 +70,7 @@ export const HARDCODED_STRINGS_ALLOWLIST = new Map([
     'AttachmentUpload default label="Add photos" — pending i18n extraction in P89 (tracked-gap).',
   ],
 
-  // ─── owner-portal — MVP scaffold pages pending i18n extraction ────
-  [
-    'apps/owner-portal/src/app/onboarding/page.tsx',
-    'Owner-portal onboarding step labels pending i18n extraction in P89 (tracked-gap).',
-  ],
-  [
-    'apps/owner-portal/src/app/plan/page.tsx',
-    'Owner-portal plan-page PageHeader title pending i18n extraction in P89 (tracked-gap).',
-  ],
-  [
-    'apps/owner-portal/src/app/skills/page.tsx',
-    'Owner-portal skills marketplace title pending i18n extraction in P89 (tracked-gap).',
-  ],
-  [
-    'apps/owner-portal/src/components/FeedbackThumbs.tsx',
-    'Owner-portal FeedbackThumbs aria-labels pending i18n extraction in P89 (tracked-gap).',
-  ],
-  [
-    'apps/owner-portal/src/components/OwnerJarvisShell.tsx',
-    'OwnerJarvisShell aria-label — accessibility-only string pending i18n extraction in P89.',
-  ],
-  [
-    'apps/owner-portal/src/components/QuickActions.tsx',
-    'Owner-portal QuickActions option labels pending i18n extraction in P89 (tracked-gap).',
-  ],
-  [
-    'apps/owner-portal/src/components/SkillCard.tsx',
-    'SkillCard empty-state copy pending i18n extraction in P89 (tracked-gap).',
-  ],
-  [
-    'apps/owner-portal/src/pages/Jarvis.tsx',
-    'Owner-portal Jarvis page aria-labels + heading pending i18n extraction in P89.',
-  ],
+  // ─── owner-portal — P89 extracted (8 entries removed 2026-05-25) ────
 
   // ─── tenant-portal — MVP marketplace pages pending i18n extraction ─
   [

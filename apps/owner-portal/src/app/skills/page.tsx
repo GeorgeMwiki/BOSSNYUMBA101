@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Sparkles, Plus } from 'lucide-react';
 import { SkillLibraryGrid } from '../../components/SkillLibraryGrid';
 import type { SkillSummary, SkillCategory, SkillTrigger } from '../../components/SkillCard';
@@ -135,6 +136,7 @@ const ALL_CATEGORIES: ReadonlyArray<SkillCategory | 'all'> = [
 const ALL_TRIGGERS: ReadonlyArray<SkillTrigger | 'all'> = ['all', 'cron', 'event', 'manual'];
 
 export default function SkillsPage(): JSX.Element {
+  const t = useTranslations('p89.skills');
   const [state, setState] = useState<SkillsApiState>({ status: 'loading', skills: [] });
   const [categoryFilter, setCategoryFilter] = useState<SkillCategory | 'all'>('all');
   const [triggerFilter, setTriggerFilter] = useState<SkillTrigger | 'all'>('all');
@@ -239,7 +241,7 @@ export default function SkillsPage(): JSX.Element {
   if (state.status === 'missing') {
     return (
       <MissingBackendNotice
-        title="Skills marketplace"
+        title={t('marketplaceTitle')}
         endpoint={ENDPOINT}
         description="The owner-skills API has not been wired in api-gateway yet."
       />
