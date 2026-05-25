@@ -44,11 +44,28 @@ function getJwtAccessSecret(): string {
 function getJwtRefreshSecret(): string {
   return process.env.JWT_REFRESH_SECRET || requireEnv('JWT_REFRESH_SECRET');
 }
+/**
+ * JWT issuer/audience. P84 audit BUG-HI-4: silent fallback `'bossnyumba'`/
+ * `'bossnyumba-api'` is dangerous in production — if the deployer forgets
+ * to set the env var, tokens issued in one environment will validate in
+ * another that shares the JWT secret (cross-env token leakage risk).
+ *
+ * - In production: fail-fast via `requireEnv` if unset.
+ * - In dev/test: fall through to the legacy hardcoded value so existing
+ *   workflows keep booting; the hardcoded value is documented and stable
+ *   so test fixtures can sign tokens against it.
+ */
 function getJwtIssuer(): string {
-  return process.env.JWT_ISSUER || 'bossnyumba';
+  const v = process.env.JWT_ISSUER;
+  if (v && v.length > 0) return v;
+  if (process.env.NODE_ENV === 'production') return requireEnv('JWT_ISSUER');
+  return 'bossnyumba';
 }
 function getJwtAudience(): string {
-  return process.env.JWT_AUDIENCE || 'bossnyumba-api';
+  const v = process.env.JWT_AUDIENCE;
+  if (v && v.length > 0) return v;
+  if (process.env.NODE_ENV === 'production') return requireEnv('JWT_AUDIENCE');
+  return 'bossnyumba-api';
 }
 
 /**
