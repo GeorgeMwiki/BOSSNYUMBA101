@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Plus, Search, Users, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { prefetchOnHover } from '@bossnyumba/performance-toolkit/lazy-load';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
@@ -35,7 +36,11 @@ export default function CustomersListPage() {
         title={t('title')}
         subtitle={t('totalCount', { count: pagination?.totalItems ?? customers.length })}
         action={
-          <Link href={ROUTES.customers.new} className="btn-primary text-sm flex items-center gap-1">
+          <Link
+            href={ROUTES.customers.new}
+            className="btn-primary text-sm flex items-center gap-1"
+            {...prefetchOnHover(ROUTES.customers.new)}
+          >
             <Plus className="w-4 h-4" />
             {t('add')}
           </Link>
@@ -90,7 +95,11 @@ export default function CustomersListPage() {
                 verificationStatus?: string;
                 currentLease?: { unitNumber?: string };
               }) => (
-                <Link key={customer.id} href={`/customers/${customer.id}`}>
+                <Link
+                  key={customer.id}
+                  href={`/customers/${customer.id}`}
+                  {...prefetchOnHover(`/customers/${customer.id}`)}
+                >
                   <div className="card p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">

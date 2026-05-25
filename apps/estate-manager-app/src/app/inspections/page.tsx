@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ClipboardCheck } from 'lucide-react';
 import { inspectionsService } from '@bossnyumba/api-client';
 import { Empty, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { prefetchOnHover } from '@bossnyumba/performance-toolkit/lazy-load';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -78,11 +79,13 @@ export default function InspectionsPage() {
           const unitNumber =
             (inspection as { unit?: { unitNumber?: string } }).unit?.unitNumber ?? '';
 
+          const detailHref = `/inspections/${id}`;
           return (
             <Link
               key={id}
-              href={`/inspections/${id}`}
+              href={detailHref}
               className="card block p-4 hover:shadow-md transition-shadow"
+              {...prefetchOnHover(detailHref)}
             >
               <div className="flex items-center justify-between">
                 <div>

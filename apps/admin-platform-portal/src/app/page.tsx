@@ -4,6 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import { StaffNav } from '@/components/StaffNav';
 import { StaffIdentityStrip } from '@/components/StaffIdentityStrip';
 import { DegradedCard } from '@/components/DegradedCard';
+import { PrefetchNavLink } from '@/components/PrefetchNavLink';
 import { PLATFORM_SESSION_COOKIE } from '@/lib/session';
 import { requirePublicBaseUrl } from '@/lib/env-guard';
 
@@ -86,7 +87,7 @@ export default async function HomePage() {
 
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
           {HERO_CARDS.map((card) => (
-            <Link
+            <PrefetchNavLink
               key={card.href}
               href={card.href}
               className="platform-card hover:border-signal-500/40 transition-colors group"
@@ -98,7 +99,7 @@ export default async function HomePage() {
                 <ArrowRight className="w-4 h-4 text-neutral-500 group-hover:text-signal-500 transition-colors" />
               </div>
               <p className="text-sm text-neutral-400">{card.description}</p>
-            </Link>
+            </PrefetchNavLink>
           ))}
         </section>
 

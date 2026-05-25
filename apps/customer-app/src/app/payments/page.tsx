@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { AlertCircle, ChevronRight, CreditCard, Receipt } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { prefetchOnHover } from '@bossnyumba/performance-toolkit/lazy-load';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 import { ROUTES } from '@/lib/routes';
@@ -63,12 +64,20 @@ export default function PaymentsPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Link href={ROUTES.payments.history} className="card p-4">
+          <Link
+            href={ROUTES.payments.history}
+            className="card p-4"
+            {...prefetchOnHover(ROUTES.payments.history)}
+          >
             <Receipt className="mb-2 h-5 w-5 text-white" />
             <div className="font-medium text-white">{t('paymentHistory')}</div>
             <div className="text-sm text-gray-400">{t('reviewLedger')}</div>
           </Link>
-          <Link href={ROUTES.payments.mpesa} className="card p-4">
+          <Link
+            href={ROUTES.payments.mpesa}
+            className="card p-4"
+            {...prefetchOnHover(ROUTES.payments.mpesa)}
+          >
             <CreditCard className="mb-2 h-5 w-5 text-white" />
             <div className="font-medium text-white">{t('payNow')}</div>
             <div className="text-sm text-gray-400">{t('mpesaAndMore')}</div>

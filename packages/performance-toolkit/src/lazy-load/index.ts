@@ -24,3 +24,9 @@ export type {
   LazyImageDescriptor,
   PictureSource,
 } from './lazy-image.js';
+
+export {
+  preloadOnHover,
+  preloadManyOnHover,
+} from './preload-on-hover.js';
+export type { PreloadHandlers } from './preload-on-hover.js';

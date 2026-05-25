@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { MessageSquare, AlertTriangle } from 'lucide-react';
 
 import { PLATFORM_SESSION_COOKIE } from '@/lib/session';
+import { PrefetchNavLink } from '@/components/PrefetchNavLink';
 
 /**
  * ThreadList — left column of the /ask surface.
@@ -116,7 +117,7 @@ export async function ThreadList({
               const active = t.id === activeThreadId;
               return (
                 <li key={t.id}>
-                  <Link
+                  <PrefetchNavLink
                     href={`/ask/${t.id}`}
                     className={
                       active
@@ -126,7 +127,7 @@ export async function ThreadList({
                   >
                     <div className="truncate">{t.title}</div>
                     <div className="text-neutral-500 mt-0.5">{t.updatedAt}</div>
-                  </Link>
+                  </PrefetchNavLink>
                 </li>
               );
             })}

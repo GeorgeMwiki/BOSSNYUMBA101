@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+// Warm the /chat route bundle on hover/touch so the deep chat surface
+// is cache-ready before the user clicks "Open full chat".
+import { prefetchOnHover } from '@bossnyumba/performance-toolkit/lazy-load';
 
 /**
  * Tenant-portal landing — the chat panel IS the page. Everything else
@@ -47,6 +50,7 @@ export default function Home() {
         <Link
           href="/chat"
           className="text-sm text-ink-muted hover:text-brand"
+          {...prefetchOnHover('/chat')}
         >
           Open full chat →
         </Link>

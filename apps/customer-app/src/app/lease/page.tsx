@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { Calendar, FileText, Home } from 'lucide-react';
 import { EmptyState } from '@bossnyumba/design-system';
+import { prefetchOnHover } from '@bossnyumba/performance-toolkit/lazy-load';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
@@ -89,12 +90,20 @@ export default function LeasePage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <Link href={ROUTES.lease.renewal} className="card p-4">
+              <Link
+                href={ROUTES.lease.renewal}
+                className="card p-4"
+                {...prefetchOnHover(ROUTES.lease.renewal)}
+              >
                 <Calendar className="mb-2 h-5 w-5 text-white" />
                 <div className="font-medium text-white">{t('renewal')}</div>
                 <div className="text-sm text-gray-400">{t('renewalDesc')}</div>
               </Link>
-              <Link href={ROUTES.lease.moveOut} className="card p-4">
+              <Link
+                href={ROUTES.lease.moveOut}
+                className="card p-4"
+                {...prefetchOnHover(ROUTES.lease.moveOut)}
+              >
                 <FileText className="mb-2 h-5 w-5 text-white" />
                 <div className="font-medium text-white">{t('moveOut')}</div>
                 <div className="text-sm text-gray-400">{t('moveOutDesc')}</div>
