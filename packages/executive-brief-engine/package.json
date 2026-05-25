@@ -6,10 +6,10 @@
   "description": "Piece C — MD-level executive brief engine. Sensors → hypothesis generation → ToT/LATS verification → debate at HIGH stakes → recommended actions with citations. Reuses kernel primitives.",
   "type": "module",
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     }
