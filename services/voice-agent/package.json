@@ -25,7 +25,7 @@
   "dependencies": {
     "@bossnyumba/enterprise-hardening": "workspace:*",
     "@bossnyumba/observability": "workspace:*",
-    "fastify": "^4.27.0",
+    "fastify": "^5.8.3",
     "jose": "^5.2.0",
     "pino": "^8.21.0",
     "uuid": "^14.0.0",
