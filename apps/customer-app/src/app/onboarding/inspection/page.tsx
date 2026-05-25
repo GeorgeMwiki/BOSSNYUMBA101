@@ -14,10 +14,33 @@ import {
   Droplets,
   Zap,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { ESignature } from '@/components/ESignature';
 import { api } from '@/lib/api';
 import { ROUTES } from '@/lib/routes';
+
+// `ESignature` is a canvas-backed signature pad — only rendered on the
+// final move-in inspection step. Deferring it keeps the multi-room
+// checklist + meter-readings phases out of the heavy canvas/pointer
+// bundle. `ssr: false` because the canvas requires browser APIs.
+const ESignature = dynamic(
+  () =>
+    import('../../../components/ESignature.js').then((m) => ({
+      default: m.ESignature,
+    })),
+  { ssr: false, loading: () => <ESignatureSkeleton /> },
+);
+
+function ESignatureSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Loading signature pad"
+      className="h-[150px] w-full animate-pulse rounded bg-gray-100"
+    />
+  );
+}
 
 interface InspectionRoom {
   id: string;

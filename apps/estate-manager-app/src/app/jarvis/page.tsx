@@ -6,10 +6,35 @@
  * manager's daily chat surface — sends thoughts to the manager Jarvis
  * surface and renders the typed decision (citations, confidence,
  * persona greeting).
+ *
+ * Performance: `JarvisConsole` (414 LOC + chat-ui + GenUI deps) is
+ * deferred via `next/dynamic` so the page header paints immediately.
  */
 
 import { useTranslations } from 'next-intl';
-import { JarvisConsole } from './JarvisConsole';
+import dynamic from 'next/dynamic';
+
+const JarvisConsole = dynamic(
+  () => import('./JarvisConsole.js').then((m) => ({ default: m.JarvisConsole })),
+  {
+    loading: () => <JarvisConsoleSkeleton />,
+  },
+);
+
+function JarvisConsoleSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Loading Property Concierge"
+      className="flex h-[60vh] w-full flex-col gap-3 rounded-lg border border-border bg-surface p-6"
+    >
+      <div className="h-6 w-2/3 animate-pulse rounded bg-gray-200" />
+      <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200" />
+      <div className="mt-auto h-12 w-full animate-pulse rounded bg-gray-200" />
+    </div>
+  );
+}
 
 export const metadata = {
   title: 'Property Concierge · BossNyumba Estate Manager',

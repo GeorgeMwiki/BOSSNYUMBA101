@@ -5,12 +5,61 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { PenLine } from 'lucide-react';
 
-import {
-  InspectionChecklist,
-  type ChecklistItemSeed,
-  type ChecklistItemState,
+import dynamic from 'next/dynamic';
+import type {
+  ChecklistItemSeed,
+  ChecklistItemState,
 } from '@/components/onboarding/InspectionChecklist';
-import { SignaturePad } from '@/components/onboarding/SignaturePad';
+
+// `InspectionChecklist` is a multi-room, multi-item walk-through with
+// per-item state machines (269 lines + photo capture). Defer it so the
+// page shell + intro paint immediately. `ssr: false` because the
+// checklist uses the camera capture API + local-state hooks that
+// only run on the client.
+const InspectionChecklist = dynamic(
+  () =>
+    import('../../components/onboarding/InspectionChecklist.js').then((m) => ({
+      default: m.InspectionChecklist,
+    })),
+  { ssr: false, loading: () => <ChecklistSkeleton /> },
+);
+
+// `SignaturePad` is a canvas-backed signature pad. Same rationale as
+// other ESignature wrappers — only render on the inspection page after
+// the user has worked through the checklist.
+const SignaturePad = dynamic(
+  () =>
+    import('../../components/onboarding/SignaturePad.js').then((m) => ({
+      default: m.SignaturePad,
+    })),
+  { ssr: false, loading: () => <SignaturePadSkeleton /> },
+);
+
+function ChecklistSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Loading inspection checklist"
+      className="space-y-3"
+    >
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="h-20 w-full animate-pulse rounded bg-gray-100" />
+      ))}
+    </div>
+  );
+}
+
+function SignaturePadSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Loading signature pad"
+      className="h-[180px] w-full animate-pulse rounded bg-gray-100"
+    />
+  );
+}
 import { getApiBaseUrl } from '@/lib/api';
 import { getCsrfHeaders } from '@/lib/csrf';
 import { ROUTES } from '@/lib/routes';

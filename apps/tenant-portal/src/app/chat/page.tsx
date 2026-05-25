@@ -1,10 +1,34 @@
 import Link from 'next/link';
-import { AskPanel } from '@/components/AskPanel';
+import dynamic from 'next/dynamic';
 
 /**
  * Full-screen chat — for tenants who want the panel maximised. Same
  * AskPanel component, no header chrome.
+ *
+ * Performance: dynamic-imported `AskPanel` — see /page.tsx for rationale.
  */
+const AskPanel = dynamic(
+  () => import('@/components/AskPanel').then((m) => ({ default: m.AskPanel })),
+  {
+    ssr: false,
+    loading: () => <AskPanelSkeleton />,
+  },
+);
+
+function AskPanelSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Loading chat panel"
+      className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6"
+    >
+      <div className="h-12 w-full animate-pulse rounded-chat bg-ink-muted/20" />
+      <div className="h-72 w-full animate-pulse rounded-chat bg-ink-muted/10" />
+    </div>
+  );
+}
+
 export default function ChatPage() {
   return (
     <main className="flex min-h-screen flex-col bg-surface-subtle">

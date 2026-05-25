@@ -12,10 +12,23 @@ import {
   AlertCircle,
   Eye,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { ESignature } from '@/components/ESignature';
 import { api } from '@/lib/api';
 import { ROUTES } from '@/lib/routes';
+
+// `ESignature` is a canvas-backed signature pad — heavy because it
+// owns pointer + touch event handling and rasterises to PNG. It is
+// modal-only (rendered only when the user taps Sign), so we keep it
+// out of the e-sign route's initial bundle. `ssr: false` because the
+// canvas relies on browser-only APIs.
+const ESignature = dynamic(
+  () =>
+    import('../../../components/ESignature.js').then((m) => ({
+      default: m.ESignature,
+    })),
+  { ssr: false, loading: () => null },
+);
 
 interface Document {
   id: string;

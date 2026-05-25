@@ -24,7 +24,31 @@
  */
 
 import type { Metadata } from 'next';
-import { GraphExplorer } from './GraphExplorer';
+import nextDynamic from 'next/dynamic';
+
+// `GraphExplorer` (995 LOC) owns the entire force-layout + SVG canvas
+// + neighbourhood fetcher + keyboard nav. Defer it via next/dynamic so
+// the page header + intro paint immediately and the client bundle
+// hydrates after first paint. SSR remains enabled (the page is a
+// server component) — `ssr: false` is not supported here in Next 15,
+// but code-splitting still ships the client bundle in its own chunk.
+const GraphExplorer = nextDynamic(
+  () => import('./GraphExplorer.js').then((m) => ({ default: m.GraphExplorer })),
+  {
+    loading: () => <GraphExplorerSkeleton />,
+  },
+);
+
+function GraphExplorerSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Loading relationship explorer"
+      className="mt-8 h-[60vh] w-full animate-pulse rounded-2xl bg-neutral-100"
+    />
+  );
+}
 
 export const metadata: Metadata = {
   title: 'Relationship explorer · BossNyumba',
