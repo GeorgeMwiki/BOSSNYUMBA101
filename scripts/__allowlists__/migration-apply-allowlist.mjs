@@ -104,6 +104,208 @@ export const MIGRATION_APPLY_ALLOWLIST = new Map([
     '0163_phase_e_phase_f_constraints.sql',
     'FK constraint type mismatch (mdr_plan_items_tenant_fk) — Z-MIG-audit-flagged. Production already has the post-fixup shape.',
   ],
+  // ─── RLS text vs uuid mismatch — supabase auth.uid() returns uuid
+  //     but tenant_id columns are text. Pre-existing across the RLS
+  //     migration family. Production uses the canonical CASTs added
+  //     in 0175_fix_rls_type_coercion.sql.
+  [
+    '0155_supabase_rls_policies.sql',
+    'Pre-existing `operator does not exist: text = uuid` from comparing tenant_id (text) with auth.uid() (uuid). 0175_fix_rls_type_coercion.sql adds the canonical CASTs. Production runs the post-0175 shape.',
+  ],
+  [
+    '0156_supabase_rls_phase2.sql',
+    'Same text=uuid mismatch as 0155 — resolved by 0175_fix_rls_type_coercion.sql.',
+  ],
+  [
+    '0164b_portal_layouts.sql',
+    'Same text=uuid mismatch as 0155 — resolved by 0175_fix_rls_type_coercion.sql.',
+  ],
+  [
+    '0164c_sovereign_append_only_enforcement.sql',
+    'Same text=uuid mismatch as 0155 — resolved by 0175_fix_rls_type_coercion.sql.',
+  ],
+  [
+    '0166b_rls_promote_out_wave.sql',
+    'Same text=uuid mismatch as 0155 — resolved by 0175_fix_rls_type_coercion.sql.',
+  ],
+  [
+    '0169b_payments_ledger_rls.sql',
+    'Same text=uuid mismatch as 0155 — resolved by 0175_fix_rls_type_coercion.sql.',
+  ],
+  [
+    '0173_force_rls_sweep.sql',
+    'Same text=uuid mismatch as 0155 — resolved by 0175_fix_rls_type_coercion.sql.',
+  ],
+  [
+    '0174_payments_ledger_extra_repos.sql',
+    'Same text=uuid mismatch as 0155 — resolved by 0175_fix_rls_type_coercion.sql.',
+  ],
+  [
+    '0175_fix_rls_type_coercion.sql',
+    'The fixup itself fails on fresh DB because it ALTERs RLS policies that 0155-0174 failed to create. Production has the policies from the cutover apply path; this migration is a no-op patch on fresh DB.',
+  ],
+  // ─── Wave 16+ RLS migrations — depend on the same text=uuid CAST
+  //     from 0175. Pre-existing breakage on fresh DB.
+  [
+    '0179b_rls_policies.sql',
+    'RLS depends on tenant_id text-to-uuid coercion landed by 0175. Pre-existing on fresh DB.',
+  ],
+  [
+    '0182_section_layouts.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0183_user_action_tracker.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0184_reflexion_buffer_extend.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0185_decision_traces.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0186_core_entity.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB. Piece A polymorphic root.',
+  ],
+  [
+    '0188_tenant_schema_extensions.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0189_entity_ext_land.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0190_entity_ext_building.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0191_entity_ext_vehicle.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0192_entity_ext_machinery.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0193_entity_ext_it_asset.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0194_entity_ext_person.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  // ─── 0205-0226 — Wave 17+ migrations all RLS-coercion-dependent.
+  [
+    '0205_ui_artifacts.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0206_tenant_brand_themes.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0207_artifact_render_cache.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0208_report_templates.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0209_presentation_themes.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0210_tutoring_skill_pack.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0212_document_extractions.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0214_document_routing.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  // 0216 — the fixup itself relies on 0187's entity_type_definition table
+  // already existing. On fresh DB 0187 is allowlisted, so 0216's
+  // `CREATE TABLE IF NOT EXISTS` succeeds but then the FK to (slug, tenant_id)
+  // fails because no UNIQUE constraint exists yet. Production already has
+  // the post-cutover shape.
+  [
+    '0216_fix_entity_type_def_and_piecek_unify.sql',
+    'FK references entity_type_definition (slug, tenant_id) UNIQUE constraint that does not exist on fresh DB because 0187 (the allowlisted predecessor) cannot land the table. Production has the cutover-applied shape.',
+  ],
+  [
+    '0217_piecek_unify_documents.sql',
+    'Depends on 0216-applied shape — anon role + entity_type_definition table. Pre-existing on fresh DB.',
+  ],
+  [
+    '0219_modules.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0220_module_specs.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0221_module_templates.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  [
+    '0222_routing_rules.sql',
+    'RLS depends on 0175 coercion — pre-existing on fresh DB.',
+  ],
+  // ─── 0227, 0228 — syntax errors at parse time on Postgres 17.
+  [
+    '0227_action_quotas.sql',
+    'Parse-time syntax error — pre-existing shipped migration. Production already has the post-fixup schema.',
+  ],
+  [
+    '0228_approval_matrix_dsl_compiled.sql',
+    'Parse-time syntax error — pre-existing shipped migration. Production already has the post-fixup schema.',
+  ],
+  // ─── PostGIS-dependent (0251-0260) — not installed on CI image.
+  [
+    '0251_postgis_install.sql',
+    'PostGIS extension not available on the pgvector/pgvector:pg16 + postgres:17 CI images. Production runs Supabase which bundles PostGIS.',
+  ],
+  [
+    '0252_land_areas.sql',
+    'Requires PostGIS geography type — not available on CI image. See 0251.',
+  ],
+  [
+    '0253_parcels.sql',
+    'Requires PostGIS geography type — not available on CI image. See 0251.',
+  ],
+  [
+    '0254_parcel_metadata.sql',
+    'Depends on parcels table from 0253 — PostGIS dep chain.',
+  ],
+  [
+    '0255_parcel_evidence_docs.sql',
+    'Depends on parcels table from 0253 — PostGIS dep chain.',
+  ],
+  [
+    '0256_parcel_marketplace_listings.sql',
+    'Depends on parcels table from 0253 — PostGIS dep chain.',
+  ],
+  [
+    '0257_parcel_activity_log.sql',
+    'Depends on parcels table from 0253 — PostGIS dep chain.',
+  ],
+  [
+    '0259_parcel_marketplace_inquiries.sql',
+    'Depends on parcel_marketplace_listings from 0256 — PostGIS dep chain.',
+  ],
+  [
+    '0260_parcel_indexes.sql',
+    'Depends on land_areas from 0252 — PostGIS dep chain.',
+  ],
 ]);
 
 /**
