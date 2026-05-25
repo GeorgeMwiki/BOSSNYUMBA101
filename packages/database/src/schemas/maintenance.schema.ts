@@ -15,7 +15,7 @@ import {
   decimal,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { tenants } from './tenant.schema.js';
+import { tenants, users } from './tenant.schema.js';
 import { properties, units } from './property.schema.js';
 import { customers } from './customer.schema.js';
 
@@ -465,11 +465,14 @@ export const dispatchEvents = pgTable(
     respondedAt: timestamp('responded_at', { withTimezone: true }),
     responseType: text('response_type'),
     declineReason: text('decline_reason'),
-    
+    acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }),
+
     // Tracking
     enRouteAt: timestamp('en_route_at', { withTimezone: true }),
     arrivedAt: timestamp('arrived_at', { withTimezone: true }),
+    onSiteAt: timestamp('on_site_at', { withTimezone: true }),
     completedAt: timestamp('completed_at', { withTimezone: true }),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
     
     // Location tracking
     lastKnownLocation: jsonb('last_known_location').default({}),
@@ -537,7 +540,15 @@ export const completionProofs = pgTable(
     
     // Location verification
     completionLocation: jsonb('completion_location').default({}),
-    
+
+    // Verification (set by CompletionProofRepository.verify)
+    verifiedBy: text('verified_by').references(() => users.id, { onDelete: 'set null' }),
+    verifiedAt: timestamp('verified_at', { withTimezone: true }),
+
+    // Rejection (set by CompletionProofRepository.reject)
+    rejectedReason: text('rejected_reason'),
+    rejectedAt: timestamp('rejected_at', { withTimezone: true }),
+
     // Timestamps
     submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -547,6 +558,7 @@ export const completionProofs = pgTable(
     tenantIdx: index('completion_proofs_tenant_idx').on(table.tenantId),
     workOrderIdx: uniqueIndex('completion_proofs_work_order_idx').on(table.workOrderId),
     submittedAtIdx: index('completion_proofs_submitted_at_idx').on(table.submittedAt),
+    verifiedByIdx: index('completion_proofs_verified_by_idx').on(table.verifiedBy),
   })
 );
 
@@ -730,7 +742,10 @@ export const vendorAssignments = pgTable(
     // Contract
     contractStart: timestamp('contract_start', { withTimezone: true }),
     contractEnd: timestamp('contract_end', { withTimezone: true }),
-    
+
+    // Deactivation (set by VendorAssignmentRepository.deactivate)
+    endsAt: timestamp('ends_at', { withTimezone: true }),
+
     // Performance
     jobsCompleted: integer('jobs_completed').default(0),
     avgRating: decimal('avg_rating', { precision: 3, scale: 2 }),
