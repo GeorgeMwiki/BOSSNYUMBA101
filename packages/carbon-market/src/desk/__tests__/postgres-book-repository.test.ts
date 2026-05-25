@@ -159,6 +159,7 @@ describe('createPostgresBookRepository — save + read', () => {
     };
     await repo.save(entry);
     expect(stub.calls.save).toBe(1);
+    // nosemgrep: missing-tenant-id-arg reason: test of repo.findById's globally-unique-id lookup contract.
     const found = await repo.findById('BE-001');
     expect(found).not.toBeNull();
     expect(found!).toEqual(entry);
@@ -191,6 +192,7 @@ describe('createPostgresBookRepository — save + read', () => {
   it('findById returns null when the service has nothing', async () => {
     const stub = makeStubService();
     const repo = createPostgresBookRepository({ service: stub.service });
+    // nosemgrep: missing-tenant-id-arg reason: test of repo.findById's globally-unique-id lookup contract (negative case).
     const result = await repo.findById('NOPE');
     expect(result).toBeNull();
     expect(stub.calls.findById).toBe(1);
@@ -298,6 +300,7 @@ describe('createPostgresBookRepository — state transitions', () => {
     const stub = makeStubService();
     stub.saved.push(makeShape({ id: 'FREEZE' }));
     const repo = createPostgresBookRepository({ service: stub.service });
+    // nosemgrep: missing-tenant-id-arg reason: test of repo.findById's globally-unique-id lookup contract (frozen-result invariant).
     const found = await repo.findById('FREEZE');
     expect(found).not.toBeNull();
     expect(Object.isFrozen(found)).toBe(true);
@@ -342,6 +345,7 @@ describe('test stub self-check', () => {
     const stub = makeStubService();
     const repo = createPostgresBookRepository({ service: stub.service });
     await repo.save(makeShape({ id: 'A' }) as unknown as BookEntry);
+    // nosemgrep: missing-tenant-id-arg reason: test of repo.findById's globally-unique-id lookup contract (stub self-check).
     await repo.findById('A');
     await repo.findByTenant('t-1');
     await repo.findOpenByTenant('t-1');

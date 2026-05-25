@@ -128,6 +128,7 @@ export async function runProposalThroughSimulator(
 ): Promise<DryRunReport> {
   const proposal =
     typeof proposalOrId === 'string'
+      // nosemgrep: missing-tenant-id-arg reason: proposals are globally-unique; downstream code reads `proposal.tenantId` from the returned record (see line 140).
       ? await deps.proposals.findById(proposalOrId)
       : proposalOrId;
   if (!proposal) {

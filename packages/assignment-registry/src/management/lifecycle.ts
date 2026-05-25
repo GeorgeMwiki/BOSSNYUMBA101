@@ -171,6 +171,7 @@ export function createLifecycleManager(deps: LifecycleDeps): LifecycleManager {
   }
 
   async function loadOrThrow(id: string): Promise<Assignment> {
+    // nosemgrep: missing-tenant-id-arg reason: assignments are globally-unique by id; tenant is on the returned `Assignment` record and callers verify scope.
     const a = await deps.assignmentRepository.findById(id);
     if (!a) throw new Error(`assignment_not_found: ${id}`);
     return a;

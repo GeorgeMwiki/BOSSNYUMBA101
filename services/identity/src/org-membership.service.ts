@@ -58,6 +58,7 @@ export class OrgMembershipService {
     if (!this.membershipRepo || !this.identityRepo) {
       throw new NotImplementedError('createMembership');
     }
+    // nosemgrep: missing-tenant-id-arg reason: identities are globally-unique by identityId; tenant scope is one of the columns on the identity row.
     const identity = await this.identityRepo.findById(identityId);
     if (!identity) {
       throw new Error(

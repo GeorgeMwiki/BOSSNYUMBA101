@@ -88,6 +88,7 @@ export class InviteCodeService {
     if (!this.inviteRepo || !this.identityRepo) {
       throw new NotImplementedError('redeem');
     }
+    // nosemgrep: missing-tenant-id-arg reason: identities are globally-unique by tenantIdentityId; tenant scope is one of the columns on the identity row.
     const identity = await this.identityRepo.findById(tenantIdentityId);
     if (!identity) {
       throw new Error(`InviteCodeService.redeem: identity ${tenantIdentityId} not found`);

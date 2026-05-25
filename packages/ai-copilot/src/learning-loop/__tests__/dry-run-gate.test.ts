@@ -95,6 +95,7 @@ describe('createInMemoryProposalRepository', () => {
     const repo = createInMemoryProposalRepository();
     const proposal = buildProposal();
     await repo.insert(proposal);
+    // nosemgrep: missing-tenant-id-arg reason: test of repo's by-globally-unique-id lookup.
     const fetched = await repo.findById(proposal.id);
     expect(fetched).toEqual(proposal);
   });
@@ -158,6 +159,7 @@ describe('runProposalThroughSimulator', () => {
     const proposal = buildProposal();
     await deps.proposals.insert(proposal);
     await runProposalThroughSimulator(proposal, deps);
+    // nosemgrep: missing-tenant-id-arg reason: test of repo's by-globally-unique-id lookup (post-simulator verification).
     const final = await deps.proposals.findById(proposal.id);
     expect(final?.status).toBe('awaiting_human_review');
   });

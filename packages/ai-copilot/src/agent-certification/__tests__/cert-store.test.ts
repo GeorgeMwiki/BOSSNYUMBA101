@@ -45,12 +45,14 @@ describe('InMemoryCertStore', () => {
   it('stores a certificate and finds it by id', async () => {
     const store = new InMemoryCertStore();
     await store.insert(cert());
+    // nosemgrep: missing-tenant-id-arg reason: test of store's by-globally-unique-id lookup.
     const found = await store.findById('cert-1');
     expect(found?.id).toBe('cert-1');
   });
 
   it('returns null for an unknown cert id', async () => {
     const store = new InMemoryCertStore();
+    // nosemgrep: missing-tenant-id-arg reason: test of store's by-globally-unique-id lookup (negative case).
     expect(await store.findById('missing')).toBeNull();
   });
 
@@ -67,6 +69,7 @@ describe('InMemoryCertStore', () => {
     const original = cert();
     await store.insert(original);
     Object.assign(original as { id: string }, { id: 'mutated' });
+    // nosemgrep: missing-tenant-id-arg reason: test of store's by-globally-unique-id lookup (immutability check).
     const stored = await store.findById('cert-1');
     expect(stored?.id).toBe('cert-1');
   });
@@ -75,6 +78,7 @@ describe('InMemoryCertStore', () => {
     const store = new InMemoryCertStore();
     await store.insert(cert());
     await store.markRevoked('cert-1', '2026-04-15T00:00:00.000Z', 'compromised');
+    // nosemgrep: missing-tenant-id-arg reason: test of store's by-globally-unique-id lookup (post-revoke verification).
     const found = await store.findById('cert-1');
     expect(found?.revoked).toBe(true);
     expect(found?.revokedAt).toBe('2026-04-15T00:00:00.000Z');

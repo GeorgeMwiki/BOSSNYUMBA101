@@ -657,6 +657,7 @@ export class ConversationOrchestrator {
     // treat as a wildcard).
     const tenantForExample = isUnboundTenant(session.tenantId)
       ? null
+      // nosemgrep: missing-tenant-id-arg reason: `tenantLookup` is the tenants table — the lookup IS the tenant; `session.tenantId` is the key.
       : await this.tenantLookup.findById(session.tenantId);
     const phoneExample = getPhoneExampleForCountry(tenantForExample?.country);
 
@@ -764,6 +765,7 @@ export class ConversationOrchestrator {
     // Round-3 audit C4: guard against the unbound-tenant case.
     const tenant = isUnboundTenant(session.tenantId)
       ? null
+      // nosemgrep: missing-tenant-id-arg reason: `tenantLookup` is the tenants table — the lookup IS the tenant; `session.tenantId` is the key.
       : await this.tenantLookup.findById(session.tenantId);
 
     // `ctx.moveInDate` is non-null here — the early-return above

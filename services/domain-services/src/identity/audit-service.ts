@@ -173,6 +173,7 @@ export class AuditService {
    * Get an audit event by ID.
    */
   async getEvent(eventId: AuditEventId): Promise<AuditEvent | null> {
+    // nosemgrep: missing-tenant-id-arg reason: audit events are looked up by globally-unique event ID; tenant-scoping happens in the repo via RLS GUC (app.current_tenant_id).
     return this.uow.auditEvents.findById(eventId);
   }
   

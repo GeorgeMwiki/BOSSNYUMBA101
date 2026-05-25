@@ -192,6 +192,7 @@ export async function verifyAgentRequest(
     };
   }
 
+  // nosemgrep: missing-tenant-id-arg reason: agent registry is keyed by globally-unique agentId (similar to API keys); cross-tenant agent-id collision is rejected by the registry itself, and downstream authz checks `agent.tenantId` against the request.
   const agent = await deps.registry.findById(agentId);
   if (!agent) {
     return {

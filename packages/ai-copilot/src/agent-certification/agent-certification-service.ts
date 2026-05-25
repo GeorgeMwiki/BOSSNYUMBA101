@@ -82,6 +82,7 @@ export class AgentCertificationService {
     tenantId: string,
     requiredScope: AgentScope,
   ): Promise<VerifyResult> {
+    // nosemgrep: missing-tenant-id-arg reason: certs are globally-unique by certId; cross-tenant access is explicitly rejected on the next line via `cert.tenantId !== tenantId`.
     const cert = await this.store.findById(certId);
     if (!cert) return { ok: false, reason: 'not_found' };
     if (cert.tenantId !== tenantId) {
@@ -110,6 +111,7 @@ export class AgentCertificationService {
     revokedBy: string,
     reason: string,
   ): Promise<void> {
+    // nosemgrep: missing-tenant-id-arg reason: certs are globally-unique by certId; cross-tenant revoke is explicitly rejected on the next lines via `cert.tenantId !== tenantId`.
     const cert = await this.store.findById(certId);
     if (!cert) throw new Error(`Certificate ${certId} not found`);
     if (cert.tenantId !== tenantId) {

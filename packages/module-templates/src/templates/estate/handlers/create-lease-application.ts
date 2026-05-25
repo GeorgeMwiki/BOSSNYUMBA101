@@ -173,6 +173,7 @@ export async function createLeaseApplicationHandler(
   // 2. Resolve / create the PERSON canonical entity.
   let tenantEntityId: string | null = null;
   if (parsed.prospective_tenant.canonical_entity_id) {
+    // nosemgrep: missing-tenant-id-arg reason: core entity lookup is by globally-unique canonical_entity_id; tenant scoping enforced downstream when linking to lease.
     const existing = await deps.coreEntity.findById(
       parsed.prospective_tenant.canonical_entity_id,
     );

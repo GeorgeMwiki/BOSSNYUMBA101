@@ -625,6 +625,7 @@ export function createWebhookRouter(options: WebhookRouterOptions): Router {
         return;
       }
 
+      // nosemgrep: missing-tenant-id-arg reason: `tenantLookup` is the tenants table — the lookup IS the tenant; the local `tenantId` IS the key.
       const tenant = await tenantLookup.findById(tenantId);
       if (!tenant) {
         res.status(404).json({ error: 'Tenant not found' });
