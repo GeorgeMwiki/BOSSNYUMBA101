@@ -28,6 +28,7 @@
  */
 
 import { sql } from 'drizzle-orm';
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import {
   runConsolidationCycle,
   type ConsolidationConfig,
@@ -76,7 +77,7 @@ export interface ConsolidationRunnerOptions {
   readonly discoverScopes?: () => Promise<ReadonlyArray<ActiveScope>>;
   /** Override per-cycle config (windowDays, decay, thresholds). */
   readonly cycleConfig?: Partial<ConsolidationConfig>;
-  /** Haiku model id; defaults to claude-haiku-4-5-20251001. */
+  /** Haiku model id; defaults to the dynamic-registry's "haiku" family. */
   readonly modelId?: string;
 }
 
@@ -228,7 +229,9 @@ function buildAnthropicJudge(
   client: AnthropicLikeClient,
   modelId?: string,
 ): ConsolidationJudgePort {
-  const model = modelId ?? 'claude-haiku-4-5-20251001';
+  // Dynamic resolve — pick up newest haiku id auto-discovered by L2
+  // refresh; baseline fallback ensures we never pass `undefined`.
+  const model = modelId ?? getModelLatest('haiku');
   return {
     async call({ system, userPrompt, maxTokens }) {
       try {

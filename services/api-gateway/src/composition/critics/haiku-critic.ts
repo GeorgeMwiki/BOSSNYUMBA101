@@ -148,7 +148,16 @@ export interface HaikuReflectionTriple {
 // Factory
 // ─────────────────────────────────────────────────────────────────────
 
-const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
+// Dynamic model resolver — auto-picks the newest haiku id every hour
+// via L2 provider query; falls back to baseline (`claude-haiku-4-5-...`)
+// when the provider is unreachable. See
+// `@bossnyumba/brain-llm-router/dynamic-registry`.
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
+// Resolved per-`reflect()` call (not at module init) so cache warmup
+// from `wireDynamicModelRegistry` is observed.
+function resolveDefaultModel(): string {
+  return getModelLatest('haiku');
+}
 const DEFAULT_MAX_TOKENS = 500;
 const DEFAULT_SAMPLE_CAP = 50;
 const TRACE_SUMMARY_MAX_CHARS = 300;
@@ -187,7 +196,7 @@ export function createHaikuConsolidationCritic(
       'createHaikuConsolidationCritic: anthropicClient is required',
     );
   }
-  const model = deps.modelId ?? DEFAULT_MODEL;
+  const model = deps.modelId ?? resolveDefaultModel();
   const maxTokens = clampInt(deps.maxTokens, DEFAULT_MAX_TOKENS, 1, 4_000);
   const sampleCap = clampInt(deps.sampleCap, DEFAULT_SAMPLE_CAP, 1, 1_000);
   const fallback = deps.fallbackCritic ?? createDeterministicFallback();

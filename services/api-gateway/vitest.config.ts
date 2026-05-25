@@ -53,6 +53,13 @@ export default defineConfig({
         find: /^@bossnyumba\/central-intelligence$/,
         replacement: path.resolve(__dirname, '../../packages/central-intelligence/src/index.ts'),
       },
+      // Dynamic model registry — brain-llm-router subpath export.
+      // Tests pull from source so they don't need a `pnpm build`
+      // round-trip on brain-llm-router (which is zero-dep itself).
+      {
+        find: /^@bossnyumba\/brain-llm-router\/dynamic-registry$/,
+        replacement: path.resolve(__dirname, '../../packages/brain-llm-router/src/dynamic-registry/index.ts'),
+      },
     ],
   },
   test: {
