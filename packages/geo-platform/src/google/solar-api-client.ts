@@ -18,7 +18,7 @@ import type {
   SolarBuildingInsights,
   SolarRoofSegment,
 } from '../types.js';
-import { fetchJson, missingKeyError, readApiKey, withKey } from './http.js';
+import { asError, fetchJson, missingKeyError, readApiKey, withKey } from './http.js';
 
 const BASE_URL = 'https://solar.googleapis.com/v1/buildingInsights:findClosest';
 
@@ -120,7 +120,8 @@ export async function fetchBuildingInsights(
   });
   if (!result.ok) {
     // Solar 404 = no imagery for this region. Reshape to unsupported_region.
-    if (result.error.status === 404) {
+    const err = asError(result).error;
+    if (err.status === 404) {
       return {
         ok: false,
         error: {
@@ -130,7 +131,7 @@ export async function fetchBuildingInsights(
         },
       };
     }
-    return result;
+    return asError(result);
   }
   return { ok: true, data: normalize(result.data) };
 }

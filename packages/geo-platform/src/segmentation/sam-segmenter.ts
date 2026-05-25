@@ -16,7 +16,7 @@ import type {
   SamMaskPolygon,
   SamSegmentationInput,
 } from '../types.js';
-import { fetchJson } from '../google/http.js';
+import { asError, fetchJson } from '../google/http.js';
 
 export const SAM_TOKEN_ENV = 'SAM_REPLICATE_TOKEN';
 export const SAM_ENDPOINT_ENV = 'SAM_REPLICATE_ENDPOINT';
@@ -93,7 +93,7 @@ export async function segmentClick(
     headers: { authorization: `Bearer ${token}` },
     options,
   });
-  if (!result.ok) return result;
+  if (!result.ok) return asError(result);
   const polygon = result.data.polygon ?? [];
   if (polygon.length < 3) {
     return {

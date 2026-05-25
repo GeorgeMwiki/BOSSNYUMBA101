@@ -17,7 +17,7 @@ import type {
   RouteSummary,
   RoutesComputeInput,
 } from '../types.js';
-import { fetchJson, missingKeyError, readApiKey, withKey } from './http.js';
+import { asError, fetchJson, missingKeyError, readApiKey, withKey } from './http.js';
 
 const BASE_URL = 'https://routes.googleapis.com/directions/v2:computeRoutes';
 
@@ -82,7 +82,7 @@ export async function computeRoute(
     headers: { 'x-goog-fieldmask': FIELD_MASK },
     options,
   });
-  if (!result.ok) return result;
+  if (!result.ok) return asError(result);
 
   const first = result.data.routes?.[0];
   if (!first) {

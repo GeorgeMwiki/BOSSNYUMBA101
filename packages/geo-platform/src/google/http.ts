@@ -173,3 +173,30 @@ export function withKey(baseUrl: string, key: string): string {
   const sep = baseUrl.includes('?') ? '&' : '?';
   return `${baseUrl}${sep}key=${encodeURIComponent(key)}`;
 }
+
+/**
+ * Coerce a `GeoResult<T>` known to be in its error branch into the
+ * `ErrorResult` member of the union.
+ *
+ * Background: this package compiles with `strict: true` so the
+ * `if (!r.ok) ... r.error` discriminated-union narrow works at home.
+ * But `services/api-gateway` consumes the source files directly via
+ * `exports.types` and its tsconfig has `strict: false`, which turns
+ * off `strictNullChecks` and weakens discriminated-union narrowing.
+ * Under that setting `result.error` after a `!result.ok` guard is
+ * unsound and an attempt to `return result` from a function whose
+ * return type is `GeoResult<Domain>` (where Domain != T) fails because
+ * the OK branch's covariance is checked against an incompatible
+ * Domain payload.
+ *
+ * `asError` is the single covariance-safe escape hatch we use at the
+ * call sites that propagate an upstream error as-is. It is sound: the
+ * caller has already established `!r.ok` via runtime check, so the
+ * payload is structurally an `ErrorResult`. The cast removes the OK
+ * branch from the static type so the surrounding function's
+ * `GeoResult<Domain>` return signature is satisfied without forcing
+ * every consumer to enable strict mode.
+ */
+export function asError<T>(r: GeoResult<T>): ErrorResult {
+  return r as ErrorResult;
+}

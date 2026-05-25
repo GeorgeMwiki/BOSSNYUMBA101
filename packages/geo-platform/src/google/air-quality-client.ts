@@ -15,7 +15,7 @@ import type {
   ClientCallOptions,
   GeoResult,
 } from '../types.js';
-import { fetchJson, missingKeyError, readApiKey, withKey } from './http.js';
+import { asError, fetchJson, missingKeyError, readApiKey, withKey } from './http.js';
 
 const BASE_URL = 'https://airquality.googleapis.com/v1/currentConditions:lookup';
 
@@ -113,6 +113,6 @@ export async function fetchCurrentConditions(
     body,
     options,
   });
-  if (!result.ok) return result;
+  if (!result.ok) return asError(result);
   return { ok: true, data: normalize(result.data) };
 }

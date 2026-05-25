@@ -17,7 +17,7 @@ import type {
   ClientCallOptions,
   GeoResult,
 } from '../types.js';
-import { fetchJson, missingKeyError, readApiKey, withKey } from './http.js';
+import { asError, fetchJson, missingKeyError, readApiKey, withKey } from './http.js';
 
 const BASE_URL = 'https://aerialview.googleapis.com/v1/videos:lookupVideo';
 
@@ -61,6 +61,6 @@ export async function lookupAerialView(
     options,
   });
 
-  if (!result.ok) return result;
+  if (!result.ok) return asError(result);
   return { ok: true, data: normalize(result.data) };
 }

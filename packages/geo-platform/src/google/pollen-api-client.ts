@@ -16,7 +16,7 @@ import type {
   PollenType,
   PollenTypeInfo,
 } from '../types.js';
-import { fetchJson, missingKeyError, readApiKey, withKey } from './http.js';
+import { asError, fetchJson, missingKeyError, readApiKey, withKey } from './http.js';
 
 const BASE_URL = 'https://pollen.googleapis.com/v1/forecast:lookup';
 
@@ -92,7 +92,7 @@ export async function fetchPollenForecast(
     method: 'GET',
     options,
   });
-  if (!result.ok) return result;
+  if (!result.ok) return asError(result);
 
   const raw = result.data;
   return {

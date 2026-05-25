@@ -18,6 +18,7 @@ import type {
   GeoResult,
   RouteWaypoint,
 } from '../types.js';
+import { asError } from '../google/http.js';
 import { fetchBuildingInsights } from '../google/solar-api-client.js';
 import { fetchCurrentConditions } from '../google/air-quality-client.js';
 import { fetchPollenForecast } from '../google/pollen-api-client.js';
@@ -41,7 +42,7 @@ export interface AreaInsightsInput {
 }
 
 function pickErr<T>(r: GeoResult<T>): ErrorResult['error'] | undefined {
-  return r.ok ? undefined : r.error;
+  return r.ok ? undefined : asError(r).error;
 }
 
 export async function fetchAreaInsights(
@@ -102,7 +103,7 @@ export async function fetchAreaInsights(
   for (const row of routeRows) {
     if (!row.r.ok) {
       // Keep the first error we see; surface partial data for the rest.
-      if (!routesErr) routesErr = row.r.error;
+      if (!routesErr) routesErr = asError(row.r).error;
       continue;
     }
     driveTimes.push({
