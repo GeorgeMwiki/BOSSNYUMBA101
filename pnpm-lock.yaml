@@ -3277,6 +3277,9 @@ importers:
       '@bossnyumba/payments-service':
         specifier: workspace:*
         version: link:../payments
+      '@bossnyumba/performance-toolkit':
+        specifier: workspace:*
+        version: link:../../packages/performance-toolkit
       '@bossnyumba/persona-runtime':
         specifier: workspace:*
         version: link:../../packages/persona-runtime
