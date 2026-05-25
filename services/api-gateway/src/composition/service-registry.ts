@@ -313,6 +313,22 @@ import {
 // shape. Drizzle-backed; lives behind a `null`-tolerant runtime check
 // inside the supervisor when the DB is unavailable.
 import { createReflexionBufferService } from '@bossnyumba/database';
+
+// P38 + P54 wiring (re-added after P66 main-merge clobbered them).
+// `persistent-stores-wiring.ts` glues the 5 persistent-store ports
+// (LessonStore / WormAuditStore / SkillRegistryWriter / AOPRegistryStore /
+// A2A TaskStore) to their Drizzle-backed adapters; `document-storage-wiring.ts`
+// returns the `StorageProvider` consumed by DocumentService / EvidencePackBuilder.
+// Both are read by `service-context.middleware.ts` (flat per-request keys)
+// and by `index.ts:579` (boot-time `modeByStore` log).
+import {
+  createPersistentStores,
+  type PersistentStores,
+} from './persistent-stores-wiring.js';
+import {
+  createDocumentStorageWiring,
+  type DocumentStorageWiring,
+} from './document-storage-wiring.js';
 import {
   createTrainingAdminEndpoints,
   createTrainingGenerator,
@@ -799,6 +815,25 @@ export interface ServiceRegistry {
 
   /** True when DATABASE_URL was set and services were constructed. */
   readonly isLive: boolean;
+
+  /**
+   * P38 — persistent-store ports. Wires LessonStore / WormAuditStore /
+   * SkillRegistryWriter / AOPRegistryStore + per-tenant A2A TaskStore
+   * factory. In degraded mode the in-memory ports are wired; in live mode
+   * the Drizzle-backed adapters from `@bossnyumba/database`. Per-port
+   * `PERSISTENT_*_DISABLED` env flags force the in-memory path even when
+   * `db` is set. Read by `service-context.middleware.ts` (every request)
+   * and the boot-time `modeByStore` log in `index.ts:579`.
+   */
+  readonly persistentStores: PersistentStores;
+
+  /**
+   * P54 — document StorageProvider bridge. Routes DocumentService +
+   * EvidencePackBuilder uploads through the shared `@bossnyumba/storage-
+   * adapter` (Supabase backend) via the tenant-scoped-path bridge. Falls
+   * back to `LocalStorageProvider` when Supabase env is unset.
+   */
+  readonly documentStorage: DocumentStorageWiring;
 }
 
 export interface BuildServicesInput {
@@ -1154,6 +1189,13 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     eventBus,
     db: null,
     isLive: false,
+    // P38 — degraded mode: `db: null` forces the in-memory ports for
+    // every store. The middleware reads the same shape either way.
+    persistentStores: createPersistentStores({ db: null }),
+    // P54 — degraded mode: no Supabase env => LocalStorageProvider falls
+    // back. The wiring stays a real `DocumentStorageWiring` so consumers
+    // can switch on `mode` without null-checks.
+    documentStorage: createDocumentStorageWiring(),
   };
 }
 
@@ -2030,6 +2072,14 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     eventBus,
     db,
     isLive: true,
+    // P38 — live mode: Drizzle-backed adapters wired by default (each
+    // port can be forced back to in-memory via its
+    // `PERSISTENT_*_DISABLED` env flag). The middleware reads the same
+    // shape as degraded mode so `c.set('lessonStore', ...)` is uniform.
+    persistentStores: createPersistentStores({ db }),
+    // P54 — live mode: production path picks up Supabase env when set,
+    // otherwise falls back to LocalStorageProvider transparently.
+    documentStorage: createDocumentStorageWiring(),
   };
 }
 
