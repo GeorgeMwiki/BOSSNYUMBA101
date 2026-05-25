@@ -315,6 +315,13 @@ const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
 });
 
+// Dynamic model registry — bind the SSRF-guarded fetch port and Pino
+// logger, then kick off a fire-and-forget L1 cache warm. `getModelLatest`
+// is safe to call immediately via L3 baselines; warm just hot-loads L1
+// so the first brain-call doesn't see the baseline fallback path.
+import { wireDynamicModelRegistry } from './composition/dynamic-model-registry-wiring';
+wireDynamicModelRegistry({ logger });
+
 // Fail-fast env validation — throws with a precise error message if required
 // vars (DATABASE_URL, JWT_SECRET) are missing or malformed. Warnings are
 // logged but do not block boot. Skipped in test environments where vitest

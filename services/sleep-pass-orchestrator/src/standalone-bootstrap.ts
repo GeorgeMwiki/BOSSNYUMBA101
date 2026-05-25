@@ -37,6 +37,7 @@ import {
   createExpiredTokenCleanupPass,
   createIndexMaintenancePass,
   createMetricsRollupPass,
+  createModelRegistryWarmPass,
 } from './passes/index.js';
 import {
   createOrchestrator,
@@ -94,6 +95,10 @@ export function buildStandaloneOrchestrator(
     createExpiredTokenCleanupPass(createInMemoryTokenAdapter()),
     createMetricsRollupPass(createInMemoryMetricsAdapter()),
     createDormantTenantDetectorPass(createInMemoryTenantAdapter()),
+    // No-op warmer in standalone mode — api-gateway composition root
+    // wires the real `warmAllFamilies` from
+    // `@bossnyumba/brain-llm-router/dynamic-registry`.
+    createModelRegistryWarmPass({ warmAllFamilies: async () => {} }),
   ];
 
   // Bounded ring buffers (oldest entries roll off) so `/admin/passes/status`

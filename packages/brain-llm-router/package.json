@@ -49,6 +49,10 @@
     "./brain-call-orchestrator": {
       "types": "./src/brain-call-orchestrator/index.ts",
       "default": "./dist/brain-call-orchestrator/index.js"
+    },
+    "./dynamic-registry": {
+      "types": "./src/dynamic-registry/index.ts",
+      "default": "./dist/dynamic-registry/index.js"
     }
   },
   "scripts": {
