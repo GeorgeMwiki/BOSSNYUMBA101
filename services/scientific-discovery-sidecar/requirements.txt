@@ -45,6 +45,9 @@ pyarrow==18.1.0  # parquet support
 prometheus-fastapi-instrumentator==7.1.0
 
 # --- testing --------------------------------------------------------------
-pytest==8.3.4
+pytest==9.0.3
+# Bumped 2026-05-25 from 8.3.4 to clear GHSA-6w46-j5rx-g56g (pytest path
+# traversal in test report paths). Patch-only; tests on this codebase do
+# not rely on pytest 8.x-only behaviors.
 httpx==0.28.1  # FastAPI TestClient transport
 anyio==4.7.0
