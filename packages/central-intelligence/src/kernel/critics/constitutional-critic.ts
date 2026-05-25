@@ -37,6 +37,7 @@
  * remains import-safe whether `@anthropic-ai/sdk` is installed or not.
  */
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import { logger } from '../../logger.js';
 export interface ConstitutionRule {
   readonly id: string;
@@ -146,7 +147,7 @@ export const BOSSNYUMBA_CONSTITUTION: ReadonlyArray<ConstitutionRule> =
   ]);
 
 const DEFAULT_PASS_THRESHOLD = 0.7;
-const DEFAULT_MODEL = 'claude-haiku-4-5';
+const DEFAULT_MODEL = getModelLatest('haiku');
 
 /**
  * Compose a Constitutional critic. Two implementations:

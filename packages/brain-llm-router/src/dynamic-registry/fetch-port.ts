@@ -63,11 +63,14 @@ async function defaultPort(
   const timeoutMs = options?.timeoutMs ?? 5_000;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, {
+    const init: RequestInit = {
       method: options?.method ?? 'GET',
-      headers: options?.headers as Record<string, string> | undefined,
       signal: controller.signal,
-    });
+    };
+    if (options?.headers) {
+      init.headers = options.headers as Record<string, string>;
+    }
+    const res = await fetch(url, init);
     const headers: Record<string, string> = {};
     res.headers.forEach((value, key) => {
       headers[key] = value;

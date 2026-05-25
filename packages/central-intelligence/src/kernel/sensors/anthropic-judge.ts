@@ -15,6 +15,7 @@
  * Pure adapter; the kernel itself stays provider-agnostic.
  */
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import type { AnthropicMessagesClient } from './anthropic-sensor.js';
 
 export interface AnthropicJudgeConfig {
@@ -54,7 +55,7 @@ export interface JudgeVerdict {
   readonly weakestAxis?: JudgeRubricAxis;
 }
 
-const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
+const DEFAULT_MODEL = getModelLatest('haiku');
 
 const SYSTEM_PROMPT = `You are a quality judge for property-management AI answers. You read a draft answer and return a single JSON object: {"score": NUMBER, "reasonText": STRING, "suggestedFix": STRING, "rubric": {"completeness": NUMBER, "correctness": NUMBER, "citations": NUMBER, "consistency": NUMBER, "candor": NUMBER}}.
 

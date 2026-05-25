@@ -18,6 +18,7 @@
  * Pure adapter; provider-agnostic; the kernel never touches the SDK.
  */
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import type { AnthropicMessagesClient } from './anthropic-sensor.js';
 
 export type SelfGradeVerdict =
@@ -40,7 +41,7 @@ export interface SelfGradingJudgeConfig {
   readonly maxTokens?: number;
 }
 
-const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
+const DEFAULT_MODEL = getModelLatest('haiku');
 
 const SELF_GRADING_SYSTEM_PROMPT = `You are reviewing YOUR OWN previous answer for a property-management AI. Ask yourself: "Would I be comfortable shipping this to a regulator?"
 

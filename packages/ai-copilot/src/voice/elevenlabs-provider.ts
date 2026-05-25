@@ -9,6 +9,7 @@
  * (see `voice-session.ts` for the conversational loop).
  */
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import type {
   VoiceProvider,
   VoiceLanguage,
@@ -69,7 +70,7 @@ export class ElevenLabsProvider implements VoiceProvider {
         retryable: false,
       });
     }
-    const sttModel = this.config.sttModelId ?? 'scribe_v2';
+    const sttModel = this.config.sttModelId ?? getModelLatest('eleven-stt');
     const timeoutMs = this.config.timeoutMs ?? 60_000;
     const base = this.config.baseUrl ?? 'https://api.elevenlabs.io';
 
@@ -129,7 +130,7 @@ export class ElevenLabsProvider implements VoiceProvider {
         retryable: false,
       });
     }
-    const ttsModel = this.config.ttsModelId ?? 'eleven_v3';
+    const ttsModel = this.config.ttsModelId ?? getModelLatest('eleven-tts');
     const voiceId = request.voiceId ?? this.config.defaultVoiceId;
     const timeoutMs = this.config.timeoutMs ?? 60_000;
     const base = this.config.baseUrl ?? 'https://api.elevenlabs.io';

@@ -24,6 +24,8 @@
 
 import { Buffer } from 'node:buffer';
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
+
 import {
   AsyncQueue,
   readEnv,
@@ -115,7 +117,7 @@ export function createGptRealtime2Provider(): GptRealtime2Provider {
             modalities: ['text', 'audio'],
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
-            input_audio_transcription: { model: 'whisper-1' },
+            input_audio_transcription: { model: getModelLatest('whisper') },
             voice: options.voiceId ?? 'alloy',
           },
         });

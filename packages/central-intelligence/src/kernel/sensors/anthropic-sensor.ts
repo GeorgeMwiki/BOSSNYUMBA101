@@ -16,6 +16,7 @@
  * their own version.
  */
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import type {
   Sensor,
   SensorCallArgs,
@@ -425,7 +426,7 @@ export const ANTHROPIC_SENSOR_PRESETS = {
   opus47: (client: AnthropicMessagesClient): Sensor =>
     createAnthropicSensor(client, {
       id: 'anthropic-opus-4-7',
-      modelId: 'claude-opus-4-7',
+      modelId: getModelLatest('opus'),
       priority: 1,
       capabilities: ['thinking', 'fast', 'vision'],
       maxTokens: 1024,
@@ -434,7 +435,7 @@ export const ANTHROPIC_SENSOR_PRESETS = {
   sonnet46: (client: AnthropicMessagesClient): Sensor =>
     createAnthropicSensor(client, {
       id: 'anthropic-sonnet-4-6',
-      modelId: 'claude-sonnet-4-6',
+      modelId: getModelLatest('sonnet'),
       priority: 2,
       capabilities: ['fast', 'thinking', 'vision'],
       maxTokens: 1024,
@@ -442,7 +443,7 @@ export const ANTHROPIC_SENSOR_PRESETS = {
   haiku45: (client: AnthropicMessagesClient): Sensor =>
     createAnthropicSensor(client, {
       id: 'anthropic-haiku-4-5',
-      modelId: 'claude-haiku-4-5-20251001',
+      modelId: getModelLatest('haiku'),
       priority: 3,
       capabilities: ['fast', 'batch', 'vision'],
       maxTokens: 1024,

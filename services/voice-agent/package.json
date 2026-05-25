@@ -23,6 +23,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@bossnyumba/brain-llm-router": "workspace:*",
     "@bossnyumba/enterprise-hardening": "workspace:*",
     "@bossnyumba/observability": "workspace:*",
     "fastify": "^5.8.3",
