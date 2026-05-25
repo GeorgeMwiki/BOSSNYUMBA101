@@ -774,9 +774,6 @@ importers:
       '@bossnyumba/observability':
         specifier: '*'
         version: link:../observability
-      isolated-vm:
-        specifier: ^6.1.2
-        version: 6.1.2
       jose:
         specifier: ^5.2.0
         version: 5.10.0
@@ -789,6 +786,10 @@ importers:
       zod:
         specifier: ^3.22.4
         version: 3.25.76
+    optionalDependencies:
+      isolated-vm:
+        specifier: ^6.1.2
+        version: 6.1.2
     devDependencies:
       '@types/node':
         specifier: ^25.8.0
