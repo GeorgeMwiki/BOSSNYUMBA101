@@ -471,6 +471,18 @@ import {
   createLitfinAgentStackBundle,
   type LitfinAgentStackBundle,
 } from './litfin-agent-stack-wiring.js';
+// P75 follow-up — per-tenant brain-dependent agent-stack assembly. The
+// LITFIN bundle exposes namespaces only because the brain port must be
+// tenant-scoped (every Anthropic call debits the correct tenant's
+// budget cap). This factory + LRU+TTL cache resolves a fully-wired
+// AgentStack (brain + orchestrator + open-coding + agent-runtime
+// factory) per tenant on demand.
+import {
+  createAgentStackBundle,
+  type AgentStack,
+  type AgentStackBundle,
+  type BudgetGuardedAnthropicFactory as AgentStackBudgetGuardedAnthropicFactory,
+} from './agent-stack-brain-wiring.js';
 // Canonical Property Graph (CPG) — Neo4j query service. Constructed
 // lazily so the gateway still boots when NEO4J_URI is unset; the graph
 // router returns 503 GRAPH_SERVICE_UNAVAILABLE when this slot is null.
@@ -882,6 +894,30 @@ export interface ServiceRegistry {
    *     concrete ports; namespace-only until those converge.
    */
   readonly litfinAgentStack: LitfinAgentStackBundle;
+
+  /**
+   * P75 follow-up — per-tenant brain-dependent agent-stack factory.
+   *
+   * Resolves a fully-wired `AgentStack` per tenant from a bounded
+   * LRU+TTL cache (100 tenants × 5 min). Each stack carries:
+   *
+   *   - `brain` — Anthropic-backed `BrainPort` (agent-orchestrator
+   *     shape; budget-guarded so every call debits the tenant's cap).
+   *   - `orchestrator` — `createOrchestrator({ brain })` pre-built.
+   *   - `openCodingAgent` — opt-in via `enableOpenCodingAgent: true`
+   *     (heavy: repo-map + sandbox + browser).
+   *   - `agentRuntimeFactory` — async lazy factory with the tenant
+   *     brain pre-bound; callers supply only `projectPath`.
+   *   - `agenticOs: null` — until the agent-registry + constitution +
+   *     kg ports converge under a single namespace (follow-up).
+   *
+   * Returns `brain: null` when no `ANTHROPIC_API_KEY` is set;
+   * consumers fall back to their degraded paths.
+   *
+   * Access pattern: `registry.agentStack.getAgentStackForTenant(tenantId)`.
+   * The `cache` slot is exposed for ops introspection (size / clear).
+   */
+  readonly agentStack: AgentStackBundle;
 
   /** Wave 29 — Forecasting (TGN + conformal prediction intervals).
    *  Every member is `null` until BOTH `TGN_INFERENCE_URL` and
@@ -1392,6 +1428,15 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // members are namespace-only; openclaw ships an async pre-wired
     // facade with auto-seeded shipped domains.
     litfinAgentStack: createLitfinAgentStackBundle(),
+    // P75 follow-up — per-tenant brain-dependent agent-stack factory.
+    // Degraded mode has no Anthropic key wiring, so the bundle hands
+    // back a stack with `brain: null`. The factory still exposes the
+    // bound `agentRuntimeFactory` so projects that only need filesystem
+    // discovery (slash + sub-agents + skills) keep working.
+    agentStack: createAgentStackBundle({
+      buildBudgetGuardedAnthropicClient: null,
+      logger: { warn: (meta, msg) => console.warn('agent-stack:', msg ?? '', meta) },
+    }),
     // Central Intelligence — no concrete LLM adapter ships here (it
     // lives in a separate service). In degraded mode we still wire the
     // in-memory memory so thread listing works locally.
@@ -2095,6 +2140,16 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // consumers (brain port resolves at request time via the per-tenant
     // budget-guarded Anthropic client).
     litfinAgentStack: createLitfinAgentStackBundle(),
+    // P75 follow-up — per-tenant brain-dependent agent-stack factory.
+    // Live mode threads the budget-guarded Anthropic factory through
+    // the bundle so every per-tenant brain call debits the right
+    // tenant's cap. Cached LRU (100 tenants × 5 min TTL) so a single
+    // assembly is reused across the brain's request lifetime.
+    agentStack: createAgentStackBundle({
+      buildBudgetGuardedAnthropicClient:
+        (buildBudgetGuardedAnthropicClient as AgentStackBudgetGuardedAnthropicFactory | null),
+      logger: { warn: (meta, msg) => console.warn('agent-stack:', msg ?? '', meta) },
+    }),
     // Central Intelligence — the concrete LLM adapter lives in a
     // separate service. `agent` is only populated when `CI_LLM_URL`
     // env var is set AND the adapter is wired (follow-up PR); until
