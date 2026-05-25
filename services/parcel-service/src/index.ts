@@ -92,8 +92,14 @@ export async function buildApp(deps: BuildAppDeps = {}): Promise<FastifyInstance
       ? { allowHeaderFallback: deps.allowHeaderFallback }
       : {}),
   });
-  await registerGeocodeRoutes(app, { chain });
-  await registerSnapRoutes(app, { source: snapSource });
+  await registerGeocodeRoutes(app, {
+    chain,
+    ...(deps.tenantResolver ? { tenantResolver: deps.tenantResolver } : {}),
+  });
+  await registerSnapRoutes(app, {
+    source: snapSource,
+    ...(deps.tenantResolver ? { tenantResolver: deps.tenantResolver } : {}),
+  });
 
   return app;
 }

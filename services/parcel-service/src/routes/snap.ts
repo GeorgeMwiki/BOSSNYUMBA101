@@ -17,10 +17,17 @@
 import type { FastifyInstance } from 'fastify';
 import { snapNearest } from '../snap/nearest-building.js';
 import type { SnapCandidateSource } from '../snap/nearest-building.js';
+import type { TenantResolver } from './parcels.js';
 
 import { withSecurityEventsFastify } from '@bossnyumba/observability';
 export interface SnapRouteDeps {
   readonly source: SnapCandidateSource;
+  /**
+   * Authenticates the inbound request. REQUIRED in production. Same
+   * pattern as `parcels.ts` so a single composition root can wire one
+   * JWT-derived resolver across every parcel-service route.
+   */
+  readonly tenantResolver?: TenantResolver;
 }
 
 interface SnapBody {
@@ -33,7 +40,25 @@ export async function registerSnapRoutes(
   app: FastifyInstance,
   deps: SnapRouteDeps,
 ): Promise<void> {
+  const { tenantResolver } = deps;
+
   app.post('/snap-to-nearest-building', withSecurityEventsFastify({ action: 'parcel-snap.create', resource: 'parcel-snap', severity: 'info' }, async (request, reply) => {
+    // Auth gate — same pattern as parcels.ts.
+    if (tenantResolver) {
+      try {
+        const resolved = await tenantResolver.resolve(request);
+        if (typeof resolved !== 'string' || resolved.length === 0) {
+          reply.code(401);
+          return { error: 'unauthorised' };
+        }
+      } catch {
+        reply.code(401);
+        return { error: 'unauthorised' };
+      }
+    } else if (process.env.NODE_ENV === 'production') {
+      reply.code(401);
+      return { error: 'unauthorised: no resolver wired' };
+    }
     const body = (request.body ?? {}) as SnapBody;
     const lat = typeof body.lat === 'number' ? body.lat : NaN;
     const lng = typeof body.lng === 'number' ? body.lng : NaN;

@@ -12,10 +12,18 @@
  */
 import type { FastifyInstance } from 'fastify';
 import type { GeocoderChain } from '../geocoder/chain.js';
+import type { TenantResolver } from './parcels.js';
 
 import { withSecurityEventsFastify } from '@bossnyumba/observability';
 export interface GeocodeRouteDeps {
   readonly chain: GeocoderChain;
+  /**
+   * Authenticates the inbound request. REQUIRED in production. When
+   * omitted, the route trusts the caller — DEV/TEST ONLY. Mirrors the
+   * pattern used by `parcels.ts` so a single composition root can wire
+   * the same JWT-derived resolver across every parcel-service route.
+   */
+  readonly tenantResolver?: TenantResolver;
 }
 
 interface GeocodeBody {
@@ -40,7 +48,27 @@ export async function registerGeocodeRoutes(
   app: FastifyInstance,
   deps: GeocodeRouteDeps,
 ): Promise<void> {
+  const { tenantResolver } = deps;
+
   app.post('/geocode', withSecurityEventsFastify({ action: 'geocode.create', resource: 'geocode', severity: 'info' }, async (request, reply) => {
+    // Auth gate — same pattern as parcels.ts. Geocode itself is
+    // stateless but we still require an authenticated principal so
+    // the upstream provider quota isn't burned by anonymous callers.
+    if (tenantResolver) {
+      try {
+        const resolved = await tenantResolver.resolve(request);
+        if (typeof resolved !== 'string' || resolved.length === 0) {
+          reply.code(401);
+          return { error: 'unauthorised' };
+        }
+      } catch {
+        reply.code(401);
+        return { error: 'unauthorised' };
+      }
+    } else if (process.env.NODE_ENV === 'production') {
+      reply.code(401);
+      return { error: 'unauthorised: no resolver wired' };
+    }
     const body = (request.body ?? {}) as GeocodeBody;
     if (typeof body.address !== 'string' || body.address.trim().length === 0) {
       reply.code(400);
