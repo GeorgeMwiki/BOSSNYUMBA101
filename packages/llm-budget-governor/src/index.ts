@@ -7,6 +7,11 @@
 export * from './types.js';
 export { createInMemoryBudgetStore } from './budget-store/index.js';
 export {
+  createPostgresBudgetStore,
+  type CreatePostgresBudgetStoreArgs,
+  type SqlClient as BudgetStoreSqlClient,
+} from './postgres-store.js';
+export {
   nextAllowedTier,
   projectCallCostCents,
 } from './auto-downgrade/index.js';
