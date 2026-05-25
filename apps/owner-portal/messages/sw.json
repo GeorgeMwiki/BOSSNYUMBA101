@@ -2130,7 +2130,94 @@
     "noMatches": "Hakuna matokeo",
     "noMatchesDesc": "Jaribu kubadilisha utafutaji wako kupata unachotafuta.",
     "noPropertiesTitle": "Hakuna mali bado",
-    "noPropertiesDesc": "Utakapoongeza mali zitaonekana hapa."
+    "noPropertiesDesc": "Utakapoongeza mali zitaonekana hapa.",
+    "addProperty": "Ongeza mali"
+  },
+  "propertyCreatePage": {
+    "title": "Ongeza mali",
+    "subtitle": "Unda mali mpya katika portfolio yako.",
+    "back": "Rudi kwenye mali",
+    "submit": "Unda mali",
+    "cancel": "Ghairi",
+    "fields": {
+      "name": "Jina la mali",
+      "type": "Aina ya mali",
+      "address": "Anwani ya mtaa",
+      "city": "Mji",
+      "region": "Eneo / jimbo",
+      "country": "Nchi",
+      "totalUnits": "Jumla ya vyumba"
+    },
+    "typeOptions": {
+      "residential": "Makazi",
+      "commercial": "Biashara",
+      "mixedUse": "Matumizi mchanganyiko",
+      "other": "Nyingine"
+    },
+    "hints": {
+      "totalUnits": "Unaweza kuongeza vyumba mmoja mmoja baadaye."
+    },
+    "errors": {
+      "nameRequired": "Jina la mali linahitajika.",
+      "createFailed": "Imeshindikana kuunda mali. Tafadhali jaribu tena."
+    }
+  },
+  "unitCreatePage": {
+    "title": "Ongeza chumba",
+    "subtitle": "Ongeza chumba katika mojawapo ya mali zako.",
+    "back": "Rudi",
+    "submit": "Unda chumba",
+    "cancel": "Ghairi",
+    "selectProperty": "Chagua mali",
+    "noPropertiesHint": "Hakuna mali bado.",
+    "createPropertyLink": "Unda mali kwanza",
+    "fields": {
+      "property": "Mali",
+      "unitNumber": "Nambari ya chumba",
+      "type": "Aina ya chumba",
+      "bedrooms": "Vyumba vya kulala",
+      "bathrooms": "Vyumba vya kuoga",
+      "rentAmount": "Kodi ya mwezi"
+    },
+    "typeOptions": {
+      "apartment": "Nyumba ya orofa",
+      "studio": "Studio",
+      "house": "Nyumba",
+      "office": "Ofisi",
+      "retail": "Duka",
+      "other": "Nyingine"
+    },
+    "errors": {
+      "propertyRequired": "Tafadhali chagua mali.",
+      "unitNumberRequired": "Nambari ya chumba inahitajika.",
+      "createFailed": "Imeshindikana kuunda chumba. Tafadhali jaribu tena."
+    }
+  },
+  "leaseDraftPage": {
+    "title": "Andaa mkataba",
+    "subtitle": "Unda rasimu ya mkataba — uwashe wakati mpangaji anaingia.",
+    "back": "Rudi kwenye mali",
+    "submit": "Hifadhi rasimu",
+    "cancel": "Ghairi",
+    "selectUnit": "Chagua chumba",
+    "selectTenant": "Chagua mpangaji",
+    "noUnitsHint": "Hakuna vyumba bado.",
+    "createUnitLink": "Ongeza chumba kwanza",
+    "draftHint": "Rasimu za mikataba zinahifadhiwa lakini hazijaanza. Unaweza kuanzisha mkataba kutoka ukurasa wa maelezo ya mkataba.",
+    "fields": {
+      "unit": "Chumba",
+      "tenant": "Mpangaji",
+      "startDate": "Tarehe ya kuanza",
+      "endDate": "Tarehe ya kumalizika",
+      "rentAmount": "Kodi ya mwezi",
+      "depositAmount": "Dhamana ya usalama"
+    },
+    "errors": {
+      "unitRequired": "Tafadhali chagua chumba.",
+      "tenantRequired": "Tafadhali chagua mpangaji.",
+      "endBeforeStart": "Tarehe ya kumalizika lazima iwe sawa na au baada ya tarehe ya kuanza.",
+      "createFailed": "Imeshindikana kuunda rasimu ya mkataba. Tafadhali jaribu tena."
+    }
   },
   "maintenancePage": {
     "title": "Matengenezo",
@@ -2918,7 +3005,10 @@
     "type": "Aina",
     "status": "Hali",
     "address": "Anwani",
-    "amenities": "Huduma"
+    "amenities": "Huduma",
+    "addUnit": "Ongeza chumba",
+    "draftLease": "Andaa mkataba",
+    "backToProperties": "Rudi kwenye mali"
   },
   "vendorContractsPage": {
     "retry": "Jaribu tena",

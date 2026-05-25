@@ -2130,7 +2130,94 @@
     "noMatches": "No matches",
     "noMatchesDesc": "Try adjusting your search to find what you're looking for.",
     "noPropertiesTitle": "No properties yet",
-    "noPropertiesDesc": "When you add properties they'll appear here."
+    "noPropertiesDesc": "When you add properties they'll appear here.",
+    "addProperty": "Add property"
+  },
+  "propertyCreatePage": {
+    "title": "Add property",
+    "subtitle": "Create a new property in your portfolio.",
+    "back": "Back to properties",
+    "submit": "Create property",
+    "cancel": "Cancel",
+    "fields": {
+      "name": "Property name",
+      "type": "Property type",
+      "address": "Street address",
+      "city": "City",
+      "region": "Region / state",
+      "country": "Country",
+      "totalUnits": "Total units"
+    },
+    "typeOptions": {
+      "residential": "Residential",
+      "commercial": "Commercial",
+      "mixedUse": "Mixed use",
+      "other": "Other"
+    },
+    "hints": {
+      "totalUnits": "You can add individual units later."
+    },
+    "errors": {
+      "nameRequired": "Property name is required.",
+      "createFailed": "Failed to create property. Please try again."
+    }
+  },
+  "unitCreatePage": {
+    "title": "Add unit",
+    "subtitle": "Add a unit to one of your properties.",
+    "back": "Back",
+    "submit": "Create unit",
+    "cancel": "Cancel",
+    "selectProperty": "Select a property",
+    "noPropertiesHint": "No properties yet.",
+    "createPropertyLink": "Create a property first",
+    "fields": {
+      "property": "Property",
+      "unitNumber": "Unit number",
+      "type": "Unit type",
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "rentAmount": "Monthly rent"
+    },
+    "typeOptions": {
+      "apartment": "Apartment",
+      "studio": "Studio",
+      "house": "House",
+      "office": "Office",
+      "retail": "Retail",
+      "other": "Other"
+    },
+    "errors": {
+      "propertyRequired": "Please choose a property.",
+      "unitNumberRequired": "Unit number is required.",
+      "createFailed": "Failed to create unit. Please try again."
+    }
+  },
+  "leaseDraftPage": {
+    "title": "Draft a lease",
+    "subtitle": "Create a draft lease — activate it when the tenant moves in.",
+    "back": "Back to properties",
+    "submit": "Save draft",
+    "cancel": "Cancel",
+    "selectUnit": "Select a unit",
+    "selectTenant": "Select a tenant",
+    "noUnitsHint": "No units yet.",
+    "createUnitLink": "Add a unit first",
+    "draftHint": "Draft leases are saved but not yet active. You can activate the lease from the lease details page.",
+    "fields": {
+      "unit": "Unit",
+      "tenant": "Tenant",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "rentAmount": "Monthly rent",
+      "depositAmount": "Security deposit"
+    },
+    "errors": {
+      "unitRequired": "Please choose a unit.",
+      "tenantRequired": "Please choose a tenant.",
+      "endBeforeStart": "End date must be on or after the start date.",
+      "createFailed": "Failed to create lease draft. Please try again."
+    }
   },
   "maintenancePage": {
     "title": "Maintenance",
@@ -2918,7 +3005,10 @@
     "type": "Type",
     "status": "Status",
     "address": "Address",
-    "amenities": "Amenities"
+    "amenities": "Amenities",
+    "addUnit": "Add unit",
+    "draftLease": "Draft lease",
+    "backToProperties": "Back to properties"
   },
   "vendorContractsPage": {
     "retry": "Retry",
