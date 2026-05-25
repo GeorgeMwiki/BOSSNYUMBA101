@@ -386,6 +386,17 @@ import {
   type ConversationAuditReader,
   type ConversationAuditRecorder,
 } from '@bossnyumba/central-intelligence';
+// PO-port wave-5 wiring #1 — six-layer cognitive memory (episodic, narrative,
+// procedural, reflective, topic-files, cohort cache). Lives ALONGSIDE the
+// existing single-layer `ConversationMemory` (which the streaming kernel
+// still consumes). MemoryV2 surfaces the richer cognitive substrate that
+// future sleep-pass orchestrators + reflection jobs will read/write.
+// In-memory variant ships in degraded mode + as the live-mode default until
+// pgvector-backed adapters land.
+import {
+  createInMemoryMemoryV2,
+  type MemoryV2,
+} from '@bossnyumba/memory-v2';
 // Canonical Property Graph (CPG) — Neo4j query service. Constructed
 // lazily so the gateway still boots when NEO4J_URI is unset; the graph
 // router returns 503 GRAPH_SERVICE_UNAVAILABLE when this slot is null.
@@ -602,6 +613,20 @@ export interface ServiceRegistry {
   /** Property grading — A–F report card scoring + portfolio rollup.
    *  Postgres-backed in live mode, null when DATABASE_URL is unset. */
   readonly propertyGrading: PropertyGradingService | null;
+
+  /**
+   * PO-port wave-5 wiring #1 — six-layer cognitive memory v2 (episodic,
+   * narrative, procedural, reflective, topic files, cohort cache).
+   * Always non-null — the in-memory variant ships in both degraded and
+   * live mode until pgvector / Drizzle-backed adapters land. Consumers
+   * (sleep-pass orchestrator, reflection workers, brain-kernel) read
+   * from the appropriate sub-store via `registry.memoryV2.stores.*`.
+   *
+   * NOTE: this layer is ADDITIVE to `centralIntelligence.memory`
+   * (single-layer thread memory used by the streaming agent loop). The
+   * two surfaces will fold together when pgvector wiring lands.
+   */
+  readonly memoryV2: MemoryV2;
 
   /** Central Intelligence — embodied first-person agent surface.
    *  The concrete LLM adapter lives in a separate service; `agent` only
@@ -1102,6 +1127,12 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
       }),
     },
     graph: { queryService: buildGraphQueryService() },
+    // PO-port wave-5 wiring #1 — six-layer cognitive memory v2 in degraded
+    // mode runs entirely against in-memory adapters (no embedder, no
+    // reflection brain). Sleep-pass orchestrators and reflection workers
+    // tolerate `embedder === null` + `brain === null` by skipping the
+    // vector-search and summarisation steps respectively.
+    memoryV2: createInMemoryMemoryV2(),
     // Central Intelligence — no concrete LLM adapter ships here (it
     // lives in a separate service). In degraded mode we still wire the
     // in-memory memory so thread listing works locally.
@@ -1760,6 +1791,12 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // NEO4J_URI is unset; the graph router degrades to 503 so live-mode
     // gateways without a Neo4j upstream still boot cleanly.
     graph: { queryService: buildGraphQueryService() },
+    // PO-port wave-5 wiring #1 — six-layer cognitive memory v2. Live mode
+    // also runs in-memory until pgvector / Drizzle store adapters land
+    // (follow-up). The slot is always non-null so downstream consumers
+    // (sleep-pass orchestrator, reflection workers) can read shapes
+    // without null-checks.
+    memoryV2: createInMemoryMemoryV2(),
     // Central Intelligence — the concrete LLM adapter lives in a
     // separate service. `agent` is only populated when `CI_LLM_URL`
     // env var is set AND the adapter is wired (follow-up PR); until

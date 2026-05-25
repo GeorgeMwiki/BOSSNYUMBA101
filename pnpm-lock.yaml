@@ -2916,6 +2916,9 @@ importers:
       '@bossnyumba/connectors':
         specifier: workspace:*
         version: link:../../packages/connectors
+      '@bossnyumba/cross-org-denial-recorder':
+        specifier: workspace:*
+        version: link:../../packages/cross-org-denial-recorder
       '@bossnyumba/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -2961,6 +2964,9 @@ importers:
       '@bossnyumba/lifecycle-advisor':
         specifier: workspace:*
         version: link:../../packages/lifecycle-advisor
+      '@bossnyumba/llm-budget-governor':
+        specifier: workspace:*
+        version: link:../../packages/llm-budget-governor
       '@bossnyumba/lpms-connector':
         specifier: workspace:*
         version: link:../../packages/lpms-connector
@@ -2973,12 +2979,18 @@ importers:
       '@bossnyumba/mcp-server':
         specifier: workspace:*
         version: link:../../packages/mcp-server
+      '@bossnyumba/memory-v2':
+        specifier: workspace:*
+        version: link:../../packages/memory-v2
       '@bossnyumba/module-templates':
         specifier: workspace:*
         version: link:../../packages/module-templates
       '@bossnyumba/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@bossnyumba/ocsf-emitter':
+        specifier: workspace:*
+        version: link:../../packages/ocsf-emitter
       '@bossnyumba/org-graph':
         specifier: workspace:*
         version: link:../../packages/org-graph
