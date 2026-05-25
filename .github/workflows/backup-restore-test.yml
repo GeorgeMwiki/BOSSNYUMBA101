@@ -21,11 +21,12 @@
 name: Backup Restore Test
 
 on:
-  # WZ-CI-GREEN 2026-05-25: include push trigger so the guard job runs
-  # on every main push (it always succeeds because the real drill is
-  # gated behind needs.guard.outputs.should_run).
-  push:
-    branches: [main]
+  # 2026-05-25: push trigger REMOVED. The earlier theory (PR #177) was
+  # that adding push:branches[main] would let a guard job run cleanly on
+  # every merge. In practice GitHub Actions returned startup_failure
+  # (zero jobs queued, run name = file path instead of declared name),
+  # so the guard never executed. Backup-restore tests are a scheduled
+  # ops concern — only run via cron + manual workflow_dispatch.
   schedule:
     # Mondays at 04:00 UTC — after the Sunday-night backup window.
     - cron: '0 4 * * 1'
