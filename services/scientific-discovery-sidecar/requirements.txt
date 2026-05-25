@@ -10,7 +10,9 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
-python-multipart==0.0.20
+python-multipart==0.0.27
+# Bumped 2026-05-25 from 0.0.20 to clear CVE-2026-24486 (arbitrary file
+# write) + CVE-2026-42561 (parser DoS). Patch-only; API-compat with 0.0.20.
 
 # --- causal-inference engines ---------------------------------------------
 # DoWhy: ATE estimation + the refutation battery (placebo, bootstrap,
