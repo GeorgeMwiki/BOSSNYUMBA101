@@ -165,7 +165,14 @@ export function assembleBrief(args: AssembleArgs): ExecutiveBrief {
     }
     // Also include the hypothesis's original evidenceRefs.
     for (const raw of verified.hypothesis.evidenceRefs) {
-      const rawRef = mapRawRef(raw);
+      // Skip refs missing required fields (Zod schema makes both optional
+      // under exactOptionalPropertyTypes; mapRawRef requires them).
+      if (!raw.kind || !raw.id) continue;
+      const rawRef = mapRawRef({
+        kind: raw.kind,
+        id: raw.id,
+        ...(raw.page !== undefined ? { page: raw.page } : {}),
+      });
       if (!rawRef) continue;
       const idx = ensureCitation({
         claimKind: kind,
@@ -223,7 +230,14 @@ export function assembleBrief(args: AssembleArgs): ExecutiveBrief {
       }
       // Also include the underlying hypothesis evidence refs.
       for (const raw of verified.hypothesis.evidenceRefs) {
-        const rawRef = mapRawRef(raw);
+        // Skip refs missing required fields (Zod schema makes both optional
+        // under exactOptionalPropertyTypes; mapRawRef requires them).
+        if (!raw.kind || !raw.id) continue;
+        const rawRef = mapRawRef({
+          kind: raw.kind,
+          id: raw.id,
+          ...(raw.page !== undefined ? { page: raw.page } : {}),
+        });
         if (!rawRef) continue;
         const idx = ensureCitation({
           claimKind: 'recommended_action',
