@@ -1668,6 +1668,22 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
+  packages/ethics-framework:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/executive-brief-engine:
     dependencies:
       '@bossnyumba/org-graph':
@@ -2808,6 +2824,18 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
+  packages/timezone-detection:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
+
   packages/tutoring-skill-pack:
     dependencies:
       zod:
@@ -2901,6 +2929,9 @@ importers:
       '@bossnyumba/assignment-registry':
         specifier: workspace:*
         version: link:../../packages/assignment-registry
+      '@bossnyumba/audit-hash-chain':
+        specifier: workspace:*
+        version: link:../../packages/audit-hash-chain
       '@bossnyumba/authz-policy':
         specifier: workspace:*
         version: link:../../packages/authz-policy
@@ -2913,6 +2944,9 @@ importers:
       '@bossnyumba/compliance-plugins':
         specifier: workspace:*
         version: link:../../packages/compliance-plugins
+      '@bossnyumba/conformal-calibration-online':
+        specifier: workspace:*
+        version: link:../../packages/conformal-calibration-online
       '@bossnyumba/connectors':
         specifier: workspace:*
         version: link:../../packages/connectors
@@ -2979,6 +3013,9 @@ importers:
       '@bossnyumba/mcp-server':
         specifier: workspace:*
         version: link:../../packages/mcp-server
+      '@bossnyumba/memory-tool-wire-adapter':
+        specifier: workspace:*
+        version: link:../../packages/memory-tool-wire-adapter
       '@bossnyumba/memory-v2':
         specifier: workspace:*
         version: link:../../packages/memory-v2
@@ -3003,6 +3040,12 @@ importers:
       '@bossnyumba/persona-runtime':
         specifier: workspace:*
         version: link:../../packages/persona-runtime
+      '@bossnyumba/probe-runners':
+        specifier: workspace:*
+        version: link:../../packages/probe-runners
+      '@bossnyumba/property-voices-debate':
+        specifier: workspace:*
+        version: link:../../packages/property-voices-debate
       '@bossnyumba/realtime-rooms':
         specifier: workspace:*
         version: link:../../packages/realtime-rooms
@@ -3790,6 +3833,12 @@ importers:
 
   services/sleep-pass-orchestrator:
     dependencies:
+      fastify:
+        specifier: ^4.27.0
+        version: 4.29.1
+      prom-client:
+        specifier: ^15.1.3
+        version: 15.1.3
       zod:
         specifier: ^3.22.4
         version: 3.25.76
