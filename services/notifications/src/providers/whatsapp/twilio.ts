@@ -2,7 +2,7 @@
  * Twilio WhatsApp Provider
  */
 
-import * as twilio from 'twilio';
+import twilio, { type Twilio } from 'twilio';
 import type { TenantId } from '../../types/index.js';
 import type { INotificationProvider, SendParams } from '../provider.interface.js';
 import type { NotificationChannel, SendResult } from '../../types/index.js';
@@ -13,7 +13,7 @@ export interface TwilioWhatsAppConfig {
   whatsappNumber: string;
 }
 
-const tenantClients = new Map<string, twilio.Twilio>();
+const tenantClients = new Map<string, Twilio>();
 const tenantNumbers = new Map<string, string>();
 
 export class TwilioWhatsAppProvider implements INotificationProvider {
@@ -21,7 +21,7 @@ export class TwilioWhatsAppProvider implements INotificationProvider {
   readonly name = 'Twilio WhatsApp';
 
   static registerConfig(tenantId: TenantId, config: TwilioWhatsAppConfig): void {
-    const client = twilio.default(config.accountSid, config.authToken);
+    const client = twilio(config.accountSid, config.authToken);
     tenantClients.set(tenantId as string, client);
     tenantNumbers.set(tenantId as string, config.whatsappNumber);
   }

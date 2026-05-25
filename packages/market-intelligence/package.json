@@ -19,7 +19,7 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "zod": "^3.22.4"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^25.8.0",

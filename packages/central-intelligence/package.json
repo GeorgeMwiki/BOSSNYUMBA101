@@ -30,7 +30,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "zod": "^3.22.4"
+    "zod": "^3.25.76"
   },
   "optionalDependencies": {
     "isolated-vm": "^6.1.2"
@@ -41,11 +41,11 @@
     "@types/node": "^25.8.0"
   },
   "peerDependencies": {
-    "@anthropic-ai/sdk": ">=0.30.0",
+    "@anthropic-ai/sdk": ">=0.97.0",
     "@bossnyumba/forecasting": "workspace:*",
     "@bossnyumba/graph-privacy": "workspace:*",
     "@bossnyumba/graph-sync": "workspace:*",
-    "inngest": ">=3.0.0"
+    "inngest": ">=4.0.0"
   },
   "peerDependenciesMeta": {
     "@anthropic-ai/sdk": {

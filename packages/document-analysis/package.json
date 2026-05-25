@@ -61,7 +61,7 @@
   },
   "dependencies": {
     "@bossnyumba/dispatch-router": "workspace:*",
-    "zod": "^3.22.4"
+    "zod": "^3.25.76"
   },
   "optionalDependencies": {
     "pdf-parse": "^1.1.1",
