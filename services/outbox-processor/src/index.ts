@@ -38,6 +38,7 @@
  */
 
 import { getEventBus } from '@bossnyumba/observability';
+import { logger } from './logger.js';
 
 export interface ProcessorLogger {
   info: (obj: Record<string, unknown>, msg?: string) => void;
@@ -48,16 +49,13 @@ export interface ProcessorLogger {
 function consoleLogger(): ProcessorLogger {
   return {
     info: (obj, msg) => {
-      // eslint-disable-next-line no-console
-      console.info('[outbox-processor]', msg ?? '', obj);
+      logger.info('[outbox-processor]', { arg0: msg ?? '', obj })
     },
     warn: (obj, msg) => {
-      // eslint-disable-next-line no-console
-      console.warn('[outbox-processor]', msg ?? '', obj);
+      logger.warn('[outbox-processor]', { arg0: msg ?? '', obj })
     },
     error: (obj, msg) => {
-      // eslint-disable-next-line no-console
-      console.error('[outbox-processor]', msg ?? '', obj);
+      logger.error('[outbox-processor]', { arg0: msg ?? '', obj })
     },
   };
 }
@@ -211,8 +209,7 @@ async function main(): Promise<void> {
     // which is fine for production aggregation but the bare console
     // call below also lands on stderr for ops greps.
     const msg = err instanceof Error ? err.message : String(err);
-    // eslint-disable-next-line no-console
-    console.error(`[outbox-processor] ${msg}`);
+    logger.error(`[outbox-processor] ${msg}`);
     process.exit(1);
   }
 
@@ -268,7 +265,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error('[outbox-processor] fatal', err);
+  logger.error('[outbox-processor] fatal', { error: err });
   process.exit(1);
 });

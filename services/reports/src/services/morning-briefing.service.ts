@@ -12,6 +12,7 @@ import type {
   KPIAlert,
   KPIPeriod,
 } from './kpi-engine.service.js';
+import { logger } from '../logger.js';
 
 // ============================================================================
 // Types
@@ -267,7 +268,7 @@ export class MorningBriefingService {
         const briefing = await this.generateBriefing(tenantId, recipient);
         briefings.push(briefing);
       } catch (error) {
-        console.error(`Failed to generate briefing for ${recipient.userId}:`, error);
+        logger.error(`Failed to generate briefing for ${recipient.userId}`, { error: error });
       }
     }
 
@@ -356,11 +357,7 @@ export class MorningBriefingService {
     try {
       return await this.kpiEngine.getKPIAlerts(tenantId, period);
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        '[morning-briefing] failed to load KPI alerts, returning empty list:',
-        err instanceof Error ? err.message : String(err)
-      );
+      logger.warn('[morning-briefing] failed to load KPI alerts, returning empty list', { value: err instanceof Error ? err.message : String(err) });
       return [];
     }
   }

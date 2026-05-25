@@ -29,6 +29,7 @@ import {
   type EnqueueNotificationFn,
 } from './notifications-sms-dispatcher.js';
 import type { TenantIdentityId } from '@bossnyumba/domain-models';
+import { logger } from '../logger.js';
 
 export interface OtpFactoryDeps {
   /** Injected notifications enqueue. Supplied by the identity composition root. */
@@ -72,8 +73,7 @@ async function resolveStore(deps: OtpFactoryDeps): Promise<OtpStore> {
 
 const defaultLogger: DispatcherLogger = {
   warn(message, meta) {
-    // eslint-disable-next-line no-console
-    console.warn(`[identity.otp.factory] ${message}`, meta ?? {});
+    logger.warn(`[identity.otp.factory] ${message}`, { value: meta ?? {} })
   },
 };
 

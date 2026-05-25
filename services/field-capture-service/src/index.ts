@@ -33,6 +33,7 @@ import type { StorageAdapter } from '@bossnyumba/storage-adapter';
 import { registerCaptureRoutes } from './routes/captures.js';
 import { registerAuthHook, type TestAuthInjector } from './middleware/auth.js';
 import { createMetrics, type MetricsHarness } from './metrics.js';
+import { logger } from './logger.js';
 
 export interface BuildAppDeps {
   readonly store?: CaptureStore;
@@ -90,11 +91,9 @@ async function main(): Promise<void> {
   const host = process.env.HOST ?? '0.0.0.0';
   try {
     await app.listen({ port, host });
-    // eslint-disable-next-line no-console
-    console.log(`[field-capture-service] listening on http://${host}:${port}`);
+    logger.info(`[field-capture-service] listening on http://${host}:${port}`);
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[field-capture-service] fatal:', err);
+    logger.error('[field-capture-service] fatal', { error: err });
     process.exit(1);
   }
 }

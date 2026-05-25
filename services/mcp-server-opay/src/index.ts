@@ -16,6 +16,7 @@ import {
 import { OPAY_TOOLS, findOpayTool } from './tools/index.js';
 import { MockOpayAdapter } from './adapter.js';
 import type { OpayAdapter, OpayTool, ToolDeps } from './types.js';
+import { logger } from './logger.js';
 
 const DEFAULT_NAME = 'bossnyumba-mcp-opay';
 const DEFAULT_VERSION = '0.1.0';
@@ -176,8 +177,7 @@ const invokedDirectly = (() => {
 
 if (invokedDirectly) {
   main().catch((err) => {
-    // eslint-disable-next-line no-console
-    console.error('[mcp-server-opay] fatal:', err);
+    logger.error('[mcp-server-opay] fatal', { error: err });
     process.exit(1);
   });
 }

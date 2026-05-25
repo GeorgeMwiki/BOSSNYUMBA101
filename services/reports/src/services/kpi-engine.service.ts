@@ -6,6 +6,7 @@
  */
 
 import type { TenantId, PropertyId } from '../types/index.js';
+import { logger } from '../logger.js';
 
 // ============================================================================
 // Types
@@ -832,11 +833,7 @@ export class KPIEngine {
         scores.push({ propertyId: property.id, score });
       } catch (err) {
         // Skip properties with errors; log for observability so silent drops are traceable.
-        // eslint-disable-next-line no-console
-        console.warn(
-          `[kpi-engine] skipped property ${property.id}:`,
-          err instanceof Error ? err.message : String(err)
-        );
+        logger.warn(`[kpi-engine] skipped property ${property.id}`, { value: err instanceof Error ? err.message : String(err) });
       }
     }
 

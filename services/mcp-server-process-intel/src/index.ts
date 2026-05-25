@@ -21,6 +21,7 @@ import { z } from 'zod';
 import { PROCESS_INTEL_TOOLS, findProcessIntelTool } from './tools/index.js';
 import { Pm4pyClient, type Pm4pyClientConfig } from './pm4py-client.js';
 import type { ProcessIntelTool, ToolDeps } from './types.js';
+import { logger } from './logger.js';
 
 // CRITICAL-4 + CRITICAL-5 (audit .audit/post-pr90-api-mcp-bug-sweep.md):
 //   - C4: every tool must Zod-validate its input BEFORE execution. We
@@ -249,8 +250,7 @@ const invokedDirectly = (() => {
 
 if (invokedDirectly) {
   main().catch((err) => {
-    // eslint-disable-next-line no-console
-    console.error('[process-intel] fatal:', err);
+    logger.error('[process-intel] fatal', { error: err });
     process.exit(1);
   });
 }

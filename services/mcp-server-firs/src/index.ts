@@ -16,6 +16,7 @@ import {
 import { FIRS_TOOLS, findFirsTool } from './tools/index.js';
 import { MockFirsAdapter } from './adapter.js';
 import type { FirsAdapter, FirsTool, ToolDeps } from './types.js';
+import { logger } from './logger.js';
 
 const DEFAULT_NAME = 'bossnyumba-mcp-firs';
 const DEFAULT_VERSION = '0.1.0';
@@ -177,8 +178,7 @@ const invokedDirectly = (() => {
 
 if (invokedDirectly) {
   main().catch((err) => {
-    // eslint-disable-next-line no-console
-    console.error('[mcp-server-firs] fatal:', err);
+    logger.error('[mcp-server-firs] fatal', { error: err });
     process.exit(1);
   });
 }

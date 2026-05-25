@@ -7,6 +7,7 @@
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import postgres from 'postgres';
+import { logger } from './logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PKG_ROOT = __dirname.replace(/\/src$/, '');
@@ -22,16 +23,16 @@ async function reset() {
   const sql = postgres(DATABASE_URL);
 
   try {
-    console.log('Dropping all tables...');
+    logger.info('Dropping all tables...');
     await sql.unsafe(`
       DROP SCHEMA public CASCADE;
       CREATE SCHEMA public;
       GRANT ALL ON SCHEMA public TO public;
       DROP SCHEMA IF EXISTS drizzle CASCADE;
     `);
-    console.log('Database reset. Running migrations...');
+    logger.info('Database reset. Running migrations...');
   } catch (err) {
-    console.error('Reset failed:', err);
+    logger.error('Reset failed', { error: err });
     throw err;
   } finally {
     await sql.end();

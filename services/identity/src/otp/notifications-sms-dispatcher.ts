@@ -30,6 +30,7 @@
  */
 
 import type { SmsDispatcher } from './otp-service.js';
+import { logger } from '../logger.js';
 
 /** The single word used for the OTP send category. */
 export const OTP_TEMPLATE_ID = 'auth_otp' as const;
@@ -77,8 +78,7 @@ export interface DispatcherLogger {
 /** Default logger — uses console.warn but tagged for structured-logger upgrade. */
 const defaultLogger: DispatcherLogger = {
   warn(message, meta) {
-    // eslint-disable-next-line no-console
-    console.warn(`[identity.otp.notifications-sms-dispatcher] ${message}`, meta ?? {});
+    logger.warn(`[identity.otp.notifications-sms-dispatcher] ${message}`, { value: meta ?? {} })
   },
 };
 

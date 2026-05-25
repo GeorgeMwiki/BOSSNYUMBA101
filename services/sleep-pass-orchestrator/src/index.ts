@@ -23,6 +23,7 @@
  *   - `SLEEP_PASS_PROD_ADAPTERS`  '1' refuses in-memory mode (prod guard)
  */
 
+import { logger } from './logger.js';
 export * from './types.js';
 export {
   createOrchestrator,
@@ -102,19 +103,16 @@ function installSignalHandlers(args: {
   const shutdown = async (signal: string): Promise<void> => {
     if (shuttingDown) return;
     shuttingDown = true;
-    // eslint-disable-next-line no-console
-    console.log(`[sleep-pass-orchestrator] ${signal} received — stopping`);
+    logger.info(`[sleep-pass-orchestrator] ${signal} received — stopping`);
     try {
       args.orchestrator.stop();
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[sleep-pass-orchestrator] stop() failed:', err);
+      logger.error('[sleep-pass-orchestrator] stop() failed', { error: err });
     }
     try {
       await args.app.close();
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[sleep-pass-orchestrator] app.close() failed:', err);
+      logger.error('[sleep-pass-orchestrator] app.close() failed', { error: err });
     }
     process.exit(0);
   };
@@ -133,16 +131,10 @@ async function main(): Promise<void> {
   const port = Number(process.env.PORT ?? 3040);
   const host = process.env.HOST ?? '0.0.0.0';
   await app.listen({ port, host });
-  // eslint-disable-next-line no-console
-  console.log(
-    `[sleep-pass-orchestrator] listening on http://${host}:${port}`,
-  );
+  logger.info(`[sleep-pass-orchestrator] listening on http://${host}:${port}`);
 
   bundle.orchestrator.start();
-  // eslint-disable-next-line no-console
-  console.log(
-    `[sleep-pass-orchestrator] heartbeat loop started (mode=${bundle.mode})`,
-  );
+  logger.info(`[sleep-pass-orchestrator] heartbeat loop started (mode=${bundle.mode})`);
 
   installSignalHandlers({ app, orchestrator: bundle.orchestrator });
 }
@@ -168,8 +160,7 @@ const invokedDirectly = (() => {
 
 if (invokedDirectly) {
   void main().catch((err) => {
-    // eslint-disable-next-line no-console
-    console.error('[sleep-pass-orchestrator] fatal:', err);
+    logger.error('[sleep-pass-orchestrator] fatal', { error: err });
     process.exit(1);
   });
 }

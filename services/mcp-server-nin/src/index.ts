@@ -20,6 +20,7 @@ import {
 import { NIN_TOOLS, findNinTool } from './tools/index.js';
 import { MockNinAdapter } from './adapter.js';
 import type { NinAdapter, NinTool, ToolDeps } from './types.js';
+import { logger } from './logger.js';
 
 const DEFAULT_NAME = 'bossnyumba-mcp-nin';
 const DEFAULT_VERSION = '0.1.0';
@@ -226,8 +227,7 @@ const invokedDirectly = (() => {
 
 if (invokedDirectly) {
   main().catch((err) => {
-    // eslint-disable-next-line no-console
-    console.error('[mcp-server-nin] fatal:', err);
+    logger.error('[mcp-server-nin] fatal', { error: err });
     process.exit(1);
   });
 }

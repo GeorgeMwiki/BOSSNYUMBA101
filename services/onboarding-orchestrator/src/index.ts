@@ -27,6 +27,7 @@ import {
   type ReadinessDbPool,
 } from './routes/readyz.js';
 import { registerMetrics } from './observability/metrics.js';
+import { logger } from './logger.js';
 
 // ---------------------------------------------------------------------------
 // App builder
@@ -78,11 +79,9 @@ async function main(): Promise<void> {
   const host = process.env.HOST ?? '0.0.0.0';
   try {
     await app.listen({ port, host });
-    // eslint-disable-next-line no-console
-    console.log(`[onboarding-orchestrator] listening on http://${host}:${port}`);
+    logger.info(`[onboarding-orchestrator] listening on http://${host}:${port}`);
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[onboarding-orchestrator] fatal:', err);
+    logger.error('[onboarding-orchestrator] fatal', { error: err });
     process.exit(1);
   }
 }

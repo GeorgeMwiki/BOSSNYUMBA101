@@ -13,6 +13,7 @@
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { createDatabaseClient } from './client.js';
+import { logger } from './logger.js';
 import {
   tenants,
   organizations,
@@ -254,9 +255,9 @@ async function seed() {
       currentCustomerId: customer2Id,
     }).where(eq(units.id, unit2Id));
 
-    console.log('Seed completed successfully');
+    logger.info('Seed completed successfully');
   } catch (err) {
-    console.error('Seed failed:', err);
+    logger.error('Seed failed', { error: err });
     throw err;
   } finally {
     process.exit(0);

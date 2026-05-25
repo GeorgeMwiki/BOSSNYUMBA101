@@ -38,6 +38,7 @@ import { registerSnapRoutes } from './routes/snap.js';
 import type { ParcelStore, TenantResolver } from './routes/parcels.js';
 import type { GeocoderChain } from './geocoder/chain.js';
 import type { SnapCandidateSource } from './snap/nearest-building.js';
+import { logger } from './logger.js';
 
 export interface BuildAppDeps {
   readonly store?: ParcelStore;
@@ -110,11 +111,9 @@ async function main(): Promise<void> {
   const host = process.env.HOST ?? '0.0.0.0';
   try {
     await app.listen({ port, host });
-    // eslint-disable-next-line no-console
-    console.log(`[parcel-service] listening on http://${host}:${port}`);
+    logger.info(`[parcel-service] listening on http://${host}:${port}`);
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[parcel-service] fatal:', err);
+    logger.error('[parcel-service] fatal', { error: err });
     process.exit(1);
   }
 }
@@ -141,8 +140,7 @@ const invokedDirectly = (() => {
 
 if (invokedDirectly) {
   void main().catch((err) => {
-    // eslint-disable-next-line no-console
-    console.error('[parcel-service] unhandled fatal:', err);
+    logger.error('[parcel-service] unhandled fatal', { error: err });
     process.exit(1);
   });
 }

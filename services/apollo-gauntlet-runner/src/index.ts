@@ -22,6 +22,7 @@
  *                                       full GauntletResult JSON.
  */
 
+import { logger } from './logger.js';
 export * from './types.js';
 export { SCENARIOS } from './scenarios/index.js';
 export { scoreHeuristic, scoreWithJudge } from './scorers/index.js';
@@ -88,35 +89,27 @@ async function pushReport(result: unknown): Promise<void> {
       body: JSON.stringify(result),
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[apollo-gauntlet-runner] report sink failed:', err);
+    logger.warn('[apollo-gauntlet-runner] report sink failed', { err });
   }
 }
 
 async function main(): Promise<void> {
   const agent = buildAgentFromEnv();
   if (!agent) {
-    // eslint-disable-next-line no-console
-    console.log(
-      '[apollo-gauntlet-runner] APOLLO_AGENT_URL unset — exiting without running gauntlet',
-    );
+    logger.info('[apollo-gauntlet-runner] APOLLO_AGENT_URL unset — exiting without running gauntlet');
     return;
   }
 
   const threshold = Number(process.env.APOLLO_GAUNTLET_THRESHOLD ?? '0.95');
-  // eslint-disable-next-line no-console
-  console.log('[apollo-gauntlet-runner] starting gauntlet pass…');
+  logger.info('[apollo-gauntlet-runner] starting gauntlet pass…');
   const result = await runGauntlet({
     agent,
     gateThreshold: Number.isFinite(threshold) ? threshold : 0.95,
   });
 
-  // eslint-disable-next-line no-console
-  console.log(
-    `[apollo-gauntlet-runner] complete: gate=${result.gateStatus} ` +
+  logger.info(`[apollo-gauntlet-runner] complete: gate=${result.gateStatus} ` +
       `passRate=${result.aggregatePassRate.toFixed(3)} ` +
-      `scenarios=${result.responses.length}`,
-  );
+      `scenarios=${result.responses.length}`);
   await pushReport(result);
 
   // Exit non-zero on gate failure so the K8s Job surfaces a failure +
@@ -141,8 +134,7 @@ const invokedDirectly = (() => {
 
 if (invokedDirectly) {
   void main().catch((err) => {
-    // eslint-disable-next-line no-console
-    console.error('[apollo-gauntlet-runner] fatal:', err);
+    logger.error('[apollo-gauntlet-runner] fatal', { error: err });
     process.exit(1);
   });
 }
