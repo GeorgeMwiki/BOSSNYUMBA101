@@ -3,88 +3,88 @@
   "version": "0.1.0",
   "description": "LLM-as-Soul brain router — LiteLLM-style universal client, DSPy compile, provider fallback, cost cascade, hedged requests, eval-drift logger (Phase N-C).",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "exports": {
     ".": {
       "types": "./src/index.ts",
-      "default": "./dist/index.js"
+      "default": "./src/index.ts"
     },
     "./universal-client": {
       "types": "./src/universal-client/index.ts",
-      "default": "./dist/universal-client/index.js"
+      "default": "./src/universal-client/index.ts"
     },
     "./task-ladder": {
       "types": "./src/task-ladder/index.ts",
-      "default": "./dist/task-ladder/index.js"
+      "default": "./src/task-ladder/index.ts"
     },
     "./provider-fallback": {
       "types": "./src/provider-fallback/index.ts",
-      "default": "./dist/provider-fallback/index.js"
+      "default": "./src/provider-fallback/index.ts"
     },
     "./cost-cascade": {
       "types": "./src/cost-cascade/index.ts",
-      "default": "./dist/cost-cascade/index.js"
+      "default": "./src/cost-cascade/index.ts"
     },
     "./dspy-compile": {
       "types": "./src/dspy-compile/index.ts",
-      "default": "./dist/dspy-compile/index.js"
+      "default": "./src/dspy-compile/index.ts"
     },
     "./hedged-requests": {
       "types": "./src/hedged-requests/index.ts",
-      "default": "./dist/hedged-requests/index.js"
+      "default": "./src/hedged-requests/index.ts"
     },
     "./prompt-portability": {
       "types": "./src/prompt-portability/index.ts",
-      "default": "./dist/prompt-portability/index.js"
+      "default": "./src/prompt-portability/index.ts"
     },
     "./cost-cap": {
       "types": "./src/cost-cap/index.ts",
-      "default": "./dist/cost-cap/index.js"
+      "default": "./src/cost-cap/index.ts"
     },
     "./eval-drift-logger": {
       "types": "./src/eval-drift-logger/index.ts",
-      "default": "./dist/eval-drift-logger/index.js"
+      "default": "./src/eval-drift-logger/index.ts"
     },
     "./brain-call-orchestrator": {
       "types": "./src/brain-call-orchestrator/index.ts",
-      "default": "./dist/brain-call-orchestrator/index.js"
+      "default": "./src/brain-call-orchestrator/index.ts"
     },
     "./dynamic-registry": {
       "types": "./src/dynamic-registry/index.ts",
-      "default": "./dist/dynamic-registry/index.js"
+      "default": "./src/dynamic-registry/index.ts"
     },
     "./rate-limit-preflight": {
       "types": "./src/rate-limit-preflight/index.ts",
-      "default": "./dist/rate-limit-preflight/index.js"
+      "default": "./src/rate-limit-preflight/index.ts"
     },
     "./concurrency-gate": {
       "types": "./src/concurrency-gate/index.ts",
-      "default": "./dist/concurrency-gate/index.js"
+      "default": "./src/concurrency-gate/index.ts"
     },
     "./provider-fingerprint-scrubber": {
       "types": "./src/provider-fingerprint-scrubber/index.ts",
-      "default": "./dist/provider-fingerprint-scrubber/index.js"
+      "default": "./src/provider-fingerprint-scrubber/index.ts"
     },
     "./pii-input-scrubber": {
       "types": "./src/pii-input-scrubber/index.ts",
-      "default": "./dist/pii-input-scrubber/index.js"
+      "default": "./src/pii-input-scrubber/index.ts"
     },
     "./kill-switch": {
       "types": "./src/kill-switch/index.ts",
-      "default": "./dist/kill-switch/index.js"
+      "default": "./src/kill-switch/index.ts"
     },
     "./routing-overrides": {
       "types": "./src/routing-overrides/index.ts",
-      "default": "./dist/routing-overrides/index.js"
+      "default": "./src/routing-overrides/index.ts"
     },
     "./cost-meter": {
       "types": "./src/cost-meter/index.ts",
-      "default": "./dist/cost-meter/index.js"
+      "default": "./src/cost-meter/index.ts"
     },
     "./policy-audit": {
       "types": "./src/policy-audit/index.ts",
-      "default": "./dist/policy-audit/index.js"
+      "default": "./src/policy-audit/index.ts"
     }
   },
   "scripts": {

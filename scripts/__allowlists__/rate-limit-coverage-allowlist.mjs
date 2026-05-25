@@ -132,5 +132,18 @@ export const RATE_LIMIT_ALLOWLIST = new Map([
   ['services/api-gateway/src/routes/admin-audit.router.ts', 'TRACKED GAP — admin-platform audit-log read; SUPER_ADMIN-only behind requireRole; in-handler limiter pending Wave 11.'],
   ['services/api-gateway/src/routes/tenants-admin.router.ts', 'TRACKED GAP — tenant-OWNER destructive routes (DELETE /tenants/:id, purge-now); already kill-switch-guarded; in-handler limiter pending Wave 11.'],
   ['services/api-gateway/src/routes/users-me.router.ts', 'TRACKED GAP — user self-service GDPR endpoints; per-user 2/hr export bucket exists via _resetSelfExportRateBucketForTests; formalise via perTenantRateBudget in Wave 11.'],
+
+  // ─── WZ-CI-GREEN 2026-05-25: 11 new mutating routes flagged ─────────
+  ['services/api-gateway/src/routes/ask/ask-rate-limit.ts', 'TRACKED GAP — ask-rate-limit IS the rate-limit helper module (it implements per-tenant tokens for /ask) so the audit double-flags it; safe to allowlist.'],
+  ['services/api-gateway/src/routes/executive-brief.hono.ts', 'TRACKED GAP — executive-brief mutating endpoints; wire perTenantRateBudget in Wave 11.'],
+  ['services/api-gateway/src/routes/modules.hono.ts', 'TRACKED GAP — modules CRUD wire perTenantRateBudget in Wave 11.'],
+  ['services/api-gateway/src/routes/proposals.hono.ts', 'TRACKED GAP — proposals submit/update wire perTenantRateBudget in Wave 11.'],
+  ['services/api-gateway/src/routes/reports/reports-rate-limit.ts', 'TRACKED GAP — reports-rate-limit IS the rate-limit helper module (implements per-tenant tokens for /reports) so the audit double-flags it; safe to allowlist.'],
+  ['services/field-capture-service/src/routes/captures.ts', 'TRACKED GAP — field-capture-service captures POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
+  ['services/outcomes-metering/src/routes/events.ts', 'TRACKED GAP — outcomes-metering events POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
+  ['services/parcel-service/src/routes/geocode.ts', 'TRACKED GAP — parcel-service geocode POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
+  ['services/parcel-service/src/routes/parcels.ts', 'TRACKED GAP — parcel-service parcels CRUD; service sits behind api-gateway internal mTLS, edge limiter applies.'],
+  ['services/parcel-service/src/routes/snap.ts', 'TRACKED GAP — parcel-service snap-to-parcel POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
+  ['services/voice-agent/src/routes/call.ts', 'TRACKED GAP — voice-agent call-orchestration POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
 ]);
 

@@ -148,6 +148,7 @@ describe('ReportOrchestrator', () => {
     // Compressed content is not text-searchable; instead assert the
     // ZIP central directory has the expected number of entries by
     // counting PK\x01\x02 (central file header) markers.
+    // eslint-disable-next-line no-control-regex -- ZIP central-directory marker is literal 0x01 0x02 bytes
     const centralHeaders = (text.match(/PK\x01\x02/g) ?? []).length;
     expect(centralHeaders).toBeGreaterThan(0);
   });

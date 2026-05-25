@@ -68,7 +68,7 @@ function generateSessionId(): string {
   ) {
     return `srpl_${crypto.randomUUID()}`;
   }
-  return `srpl_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return `srpl_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`;
 }
 
 function resolveEnabled(prop: boolean | undefined): boolean {

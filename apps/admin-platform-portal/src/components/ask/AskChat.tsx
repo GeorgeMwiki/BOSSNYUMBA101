@@ -55,7 +55,7 @@ interface AskChatProps {
 }
 
 function newId(): string {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+  return crypto.randomUUID().replace(/-/g, '') + Date.now().toString(36);
 }
 
 async function extractFailure(res: Response): Promise<Failure> {

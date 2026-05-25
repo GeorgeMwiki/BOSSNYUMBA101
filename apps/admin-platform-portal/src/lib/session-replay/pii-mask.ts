@@ -95,6 +95,7 @@ export function isPiiElement(el: Element | null | undefined): boolean {
  */
 const PII_PATTERNS: ReadonlyArray<RegExp> = [
   // Credit card (13-19 digits, with optional spaces / dashes).
+  // eslint-disable-next-line security/detect-unsafe-regex -- bounded quantifier 13..19, runs on already-buffered ≤8KB telemetry frames
   /\b(?:\d[ -]*?){13,19}\b/g,
   // East African phone (+255/+254/+256 + 9 digits).
   /\+?2(?:54|55|56)[ -]?\d{3}[ -]?\d{3}[ -]?\d{3}\b/g,

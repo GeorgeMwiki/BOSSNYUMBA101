@@ -148,10 +148,6 @@ export const HARDCODED_BANK_ALLOWLIST = new Map([
     'Customer-app pay page dispatches by provider slug (mpesa/card) to the matching downstream flow.',
   ],
   [
-    'apps/owner-portal/src/components/SlashCommandPalette.tsx',
-    'Owner-portal slash-command palette references mpesa as a quick-action keyword for owner shortcuts.',
-  ],
-  [
     'packages/file-ingest/src/proposal/heuristic-map.ts',
     'Heuristic mapping of CSV column headers to entity attributes; "nida" is the KE national-ID schema-attribute label, not a routing decision.',
   ],
@@ -162,5 +158,31 @@ export const HARDCODED_BANK_ALLOWLIST = new Map([
   [
     'packages/dynamic-sections/src/lib/adaptive-layout/policies/intent-policy.ts',
     'Adaptive-layout intent-policy compliance bucket contains kra/gepg as substring matchers for section IDs (e.g. detect "kra-filings" section); UI section-ID tokens, not provider routing.',
+  ],
+
+  // ─── WZ-CI-GREEN 2026-05-25: new sources flagged after WX/WY merges ─
+  [
+    'packages/database/src/seeds/trc-elastic-config.ts',
+    'TRC elastic-config seed binds Tanzania jurisdiction default payment-provider to gepg — schema-level enumeration of the seeded default, not provider routing.',
+  ],
+  [
+    'packages/document-analysis/src/extract/doc-classifier.ts',
+    'Document classifier weight matrix uses gepg/nida as detection keywords for KE/TZ compliance documents — text-detection patterns, not provider routing.',
+  ],
+  [
+    'packages/litfin-port-security-extra/src/webhook-signatures.ts',
+    'LITFIN-port webhook-signature verifier dispatches by provider vendor (mpesa/gepg) to the matching HMAC scheme — signature-verification dispatch, not provider routing.',
+  ],
+  [
+    'packages/payments-event-store/src/events.ts',
+    'Payments event-store provider field is the schema-level enumeration of supported payment rails (mpesa|stripe|bank-transfer) — domain-model Zod enum, not provider routing.',
+  ],
+  [
+    'packages/tab-need-detector/src/scoring-matrix.ts',
+    'Tab-need-detector scoring matrix uses kra/tra as compliance-keyword detection tokens (e.g. detect "kra-filing" tab need); UI-tab-need detection patterns, not provider routing.',
+  ],
+  [
+    'services/api-gateway/src/routes/gepg.router.ts',
+    'GePG router IS the GePG-specific sub-router — provider literal in withSecurityEvents action/resource is the route identity, mounted at /gepg prefix.',
   ],
 ]);

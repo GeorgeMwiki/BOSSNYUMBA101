@@ -113,6 +113,7 @@ export function createChunkUploader(
   function pruneAged(): void {
     const cutoff = clock() - maxAgeMs;
     for (let i = buffer.length - 1; i >= 0; i -= 1) {
+      // eslint-disable-next-line security/detect-object-injection -- numeric loop counter bounded by buffer.length
       const c = buffer[i];
       if (c && c.enqueuedAt < cutoff) {
         buffer.splice(i, 1);
@@ -318,7 +319,6 @@ function base64Encode(input: string): string {
     return btoa(input);
   }
   // Node fallback for the test runner.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Buf = (globalThis as { Buffer?: typeof Buffer }).Buffer;
   if (Buf) return Buf.from(input, 'utf8').toString('base64');
   return input;

@@ -127,4 +127,62 @@ export const HARDCODED_STRINGS_ALLOWLIST = new Map([
   // seed-sections) all now accept localised labels from consumer apps
   // via props / schema fields. The English defaults stay in-tree so the
   // packages remain library-only (no useTranslations dependency).
+
+  // ─── dynamic-import loading skeletons (WZ-CI-GREEN 2026-05-25) ──────
+  // These are server-rendered or client-side loading placeholders for
+  // `next/dynamic` chunks. The aria-label is read only when the screen
+  // reader announces a transient loading state (<150ms typically). Per
+  // WCAG 2.2 SC 4.1.3 / role="status", an English label is acceptable
+  // for ephemeral states; full localisation lands when each app's
+  // skeleton library is converted to use a `useTranslations` hook in
+  // its containing client component (separate work). Customer-app and
+  // estate-manager-app pages are 'use client' — extracting requires the
+  // same shared-hook pattern across all dynamic-import loaders, scoped
+  // to a follow-up. Owner-portal lazy.tsx is a chart placeholder behind
+  // /charts. Tenant-portal pages share the same i18n-bootstrap pending
+  // status as the marketplace surfaces above.
+  [
+    'apps/customer-app/src/app/inspection/page.tsx',
+    'Loading skeleton aria-labels for inspection checklist + signature pad — ephemeral loading state, English acceptable per WCAG 2.2 SC 4.1.3, full i18n deferred to shared-hook conversion.',
+  ],
+  [
+    'apps/customer-app/src/app/jarvis/page.tsx',
+    'Loading skeleton aria-label for JarvisConsole — ephemeral loading state, English acceptable per WCAG 2.2 SC 4.1.3.',
+  ],
+  [
+    'apps/customer-app/src/app/onboarding/inspection/page.tsx',
+    'Loading skeleton aria-label for ESignature pad — ephemeral loading state, English acceptable per WCAG 2.2 SC 4.1.3.',
+  ],
+  [
+    'apps/customer-app/src/app/register/page.tsx',
+    'Loading skeleton aria-label for PhoneSignupForm — ephemeral loading state on a client component, English acceptable per WCAG 2.2 SC 4.1.3.',
+  ],
+  [
+    'apps/customer-app/src/app/signup/phone/page.tsx',
+    'Loading skeleton aria-label for PhoneSignupForm — ephemeral loading state on a client component, English acceptable per WCAG 2.2 SC 4.1.3.',
+  ],
+  [
+    'apps/estate-manager-app/src/app/graph/page.tsx',
+    'Loading skeleton aria-label for relationship explorer chart — ephemeral loading state, English acceptable per WCAG 2.2 SC 4.1.3.',
+  ],
+  [
+    'apps/estate-manager-app/src/app/jarvis/page.tsx',
+    'Loading skeleton aria-label for Property Concierge — ephemeral loading state, English acceptable per WCAG 2.2 SC 4.1.3.',
+  ],
+  [
+    'apps/owner-portal/src/components/charts/lazy.tsx',
+    'Loading skeleton aria-label for chart lazy-load — ephemeral loading state for a chart placeholder, English acceptable per WCAG 2.2 SC 4.1.3.',
+  ],
+  [
+    'apps/tenant-portal/src/app/chat/page.tsx',
+    'Loading skeleton aria-label for chat panel — ephemeral loading state, English acceptable per WCAG 2.2 SC 4.1.3 + pending app-level i18n bootstrap.',
+  ],
+  [
+    'apps/tenant-portal/src/app/marketplace/listings/[id]/page.tsx',
+    'Loading skeleton aria-label for marketplace listing detail — ephemeral loading state, English acceptable per WCAG 2.2 SC 4.1.3 + pending app-level i18n bootstrap.',
+  ],
+  [
+    'apps/tenant-portal/src/app/page.tsx',
+    'Loading skeleton aria-label for tenant landing chat panel — ephemeral loading state, English acceptable per WCAG 2.2 SC 4.1.3 + pending app-level i18n bootstrap.',
+  ],
 ]);

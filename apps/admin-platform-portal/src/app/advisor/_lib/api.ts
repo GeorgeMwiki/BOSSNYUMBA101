@@ -13,6 +13,8 @@
 
 import { z } from 'zod';
 
+import { getCsrfHeaders } from '@/lib/csrf';
+
 export interface AdvisorEnvelope<T> {
   readonly success: boolean;
   readonly data?: T;
@@ -58,7 +60,7 @@ export async function postAdvisor<T>({
     res = await fetch(url, {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
       body: JSON.stringify(body),
       signal,
     });

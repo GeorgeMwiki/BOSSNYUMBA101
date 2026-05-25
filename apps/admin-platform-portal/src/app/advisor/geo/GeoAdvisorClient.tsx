@@ -118,7 +118,6 @@ function getApiBase(): string {
 // not required for the runtime resolver, but the typechecker (under
 // nodenext) needs an explicit `.js` (which resolves to `.tsx`).
 const ParcelMap = dynamic(
-  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   () =>
     import('./ParcelMap.js').then((m) => ({ default: m.ParcelMap })),
   { ssr: false, loading: () => <AdvisorLoading label="Loading map…" /> },

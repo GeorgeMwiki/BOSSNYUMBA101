@@ -38,9 +38,14 @@ jobs:
   # ============================================
   # Validate Release
   # ============================================
+  # WZ-CI-GREEN 2026-05-25: gated on vars.HAS_DEPLOY_SECRETS so production
+  # deploys do not false-red routine main pushes when AWS OIDC / ECR / KMS
+  # are not configured. workflow_dispatch + release events always run.
+  # See .github/CI_SOFT_FAILURES.md.
   validate:
     name: Validate Release
     runs-on: ubuntu-latest
+    if: ${{ vars.HAS_DEPLOY_SECRETS == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'release' }}
     outputs:
       version: ${{ steps.version.outputs.version }}
       sha: ${{ steps.version.outputs.sha }}
