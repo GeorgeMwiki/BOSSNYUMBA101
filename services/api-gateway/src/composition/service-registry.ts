@@ -437,6 +437,16 @@ import {
   createLitfinUtilitiesBundle,
   type LitfinUtilitiesBundle,
 } from './litfin-utilities-wiring.js';
+// LITFIN-port wave wiring (Batch 2 — 5 domain bundles).
+// Bundles mcp-cost-persistence + fairness-eval + analytics +
+// knowledge-graph + compliance-pack. Analytics + KG ship pre-wired
+// in-memory instances; the others are DI-exposed namespaces (their
+// instantiation needs per-tenant brain / collectors which the
+// composition root cannot bind statically).
+import {
+  createLitfinDomainBundle,
+  type LitfinDomainBundle,
+} from './litfin-domain-wiring.js';
 // Canonical Property Graph (CPG) — Neo4j query service. Constructed
 // lazily so the gateway still boots when NEO4J_URI is unset; the graph
 // router returns 503 GRAPH_SERVICE_UNAVAILABLE when this slot is null.
@@ -774,6 +784,27 @@ export interface ServiceRegistry {
    *     forecasting confidence interval calibrator
    */
   readonly litfinUtilities: LitfinUtilitiesBundle;
+
+  /**
+   * LITFIN-port batch 2 — 5 domain bundles exposed via DI.
+   *
+   * Always non-null in both degraded + live modes. Members:
+   *   - `mcpCostPersistence` — per-MCP cost tracking + health
+   *     probe namespace (state machines instantiated per-server)
+   *   - `fairnessEval` — counterfactual fairness namespace
+   *     (`createFairnessEval` invoked per-tenant with the brain
+   *     port resolvable at runtime)
+   *   - `analytics` — analytics namespace; `analyticsInstance` is
+   *     the pre-wired facade
+   *   - `knowledgeGraph` — KG namespace; `knowledgeGraphInstance`
+   *     is the in-memory facade (real-estate ontology, mock
+   *     embedder). Production swap: Neo4j adapter + OpenAI embedder
+   *   - `compliancePack` — 10 framework catalogs + DSAR + erasure
+   *     cascade + envelope encryption + residency + breach
+   *     notification namespace (per-tenant engine instantiated by
+   *     the caller via `createComplianceEngine`)
+   */
+  readonly litfinDomain: LitfinDomainBundle;
 
   /** Wave 29 — Forecasting (TGN + conformal prediction intervals).
    *  Every member is `null` until BOTH `TGN_INFERENCE_URL` and
@@ -1264,6 +1295,10 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // wired (no I/O). Consumers (sleep-pass, probe cron, debate gate,
     // ACI calibrator) pull from this bundle via DI.
     litfinUtilities: createLitfinUtilitiesBundle(),
+    // LITFIN-port batch 2 — 5 domain bundles (mcp-cost-persistence,
+    // fairness-eval, analytics, knowledge-graph, compliance-pack).
+    // Always wired; in-memory facade for analytics + KG.
+    litfinDomain: createLitfinDomainBundle(),
     // Central Intelligence — no concrete LLM adapter ships here (it
     // lives in a separate service). In degraded mode we still wire the
     // in-memory memory so thread listing works locally.
@@ -1950,6 +1985,11 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // live mode; no I/O to swap to a Postgres adapter). Consumers pull
     // canonical surfaces via `registry.litfinUtilities.<pkg>`.
     litfinUtilities: createLitfinUtilitiesBundle(),
+    // LITFIN-port batch 2 — 5 domain bundles (mcp-cost-persistence,
+    // fairness-eval, analytics, knowledge-graph, compliance-pack).
+    // Live mode is identical today; Neo4j-backed KG + per-tenant
+    // compliance engines are follow-up wirings.
+    litfinDomain: createLitfinDomainBundle(),
     // Central Intelligence — the concrete LLM adapter lives in a
     // separate service. `agent` is only populated when `CI_LLM_URL`
     // env var is set AND the adapter is wired (follow-up PR); until
