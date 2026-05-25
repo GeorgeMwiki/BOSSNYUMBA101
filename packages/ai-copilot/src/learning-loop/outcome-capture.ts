@@ -17,6 +17,7 @@ import type {
   OutcomeStatus,
 } from './types.js';
 import type { AutonomyDomain } from '../autonomy/types.js';
+import { logger } from '../logger.js';
 
 export interface OutcomeCaptureDeps {
   readonly eventBus?: LearningLoopEventBus;
@@ -169,7 +170,7 @@ export function createOutcomeCapture(deps: OutcomeCaptureDeps): OutcomeCapture {
       } catch (err) {
         // Capture is fire-and-forget from the bus's perspective.
          
-        console.error('outcome-capture: failed to record', err);
+        logger.error('outcome-capture: failed to record', { error: err });
       }
     });
     return unsubscribe;

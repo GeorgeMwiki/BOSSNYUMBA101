@@ -30,6 +30,7 @@
 // Constants
 // ===========================================================================
 
+import { logger } from '../logger.js';
 const COHERE_RERANK_URL = 'https://api.cohere.com/v2/rerank';
 const COHERE_RERANK_MODEL = 'rerank-v3.5';
 const COHERE_RERANK_TIMEOUT_MS = 12_000;
@@ -143,7 +144,7 @@ export async function rerankCandidates<T extends RerankCandidate>(
     });
 
     if (!response.ok) {
-      console.error('[retrieval/cohere-rerank] non-200', response.status);
+      logger.error('[retrieval/cohere-rerank] non-200', { error: response.status });
       return {
         candidates: identityFallback(candidates, topN),
         fallbackUsed: true,
@@ -191,10 +192,7 @@ export async function rerankCandidates<T extends RerankCandidate>(
       fallbackUsed: false,
     };
   } catch (err) {
-    console.error(
-      '[retrieval/cohere-rerank] fetch failed',
-      err instanceof Error ? err.message : String(err),
-    );
+    logger.error('[retrieval/cohere-rerank] fetch failed', { error: err instanceof Error ? err.message : String(err) });
     return {
       candidates: identityFallback(candidates, topN),
       fallbackUsed: true,

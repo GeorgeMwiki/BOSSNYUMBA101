@@ -32,6 +32,7 @@
  */
 
 import type { ContextualChunk } from './types.js';
+import { logger } from '../logger.js';
 
 // ===========================================================================
 // Constants
@@ -149,13 +150,10 @@ export async function contextualizeChunks(
     } catch (err) {
       // Single batch failure does not poison the whole document.
       // Affected slice falls through to identity chunks.
-      console.error(
-        '[retrieval/contextual-chunker] batch failed — slice returns identity',
-        {
+      logger.error('[retrieval/contextual-chunker] batch failed — slice returns identity', {
           startIndex: i,
           error: err instanceof Error ? err.message : String(err),
-        },
-      );
+        });
     }
   }
 

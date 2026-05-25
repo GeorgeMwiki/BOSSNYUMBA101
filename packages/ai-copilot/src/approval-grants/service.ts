@@ -42,6 +42,7 @@ import type {
   SingleActionScope,
   StandingAuthorizationScope,
 } from './types.js';
+import { logger } from '../logger.js';
 
 export interface ApprovalGrantServiceDeps {
   readonly repository: ApprovalGrantRepository;
@@ -374,10 +375,7 @@ export class ApprovalGrantService {
     } catch (err) {
       // Event publish must never break grant operations.
        
-      console.error(
-        'ApprovalGrantService: event publish failed',
-        err instanceof Error ? err.message : String(err),
-      );
+      logger.error('ApprovalGrantService: event publish failed', { error: err instanceof Error ? err.message : String(err) });
     }
   }
 

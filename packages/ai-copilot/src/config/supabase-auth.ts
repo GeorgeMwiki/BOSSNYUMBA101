@@ -53,6 +53,7 @@ import {
 } from 'jose';
 import type { JSONWebKeySet } from 'jose';
 import { z } from 'zod';
+import { logger } from '../logger.js';
 
 export interface BrainAuthPrincipal {
   /** Raw JWT subject. */
@@ -184,8 +185,7 @@ export async function verifySupabaseJwt(
   if (!opts.jwksUrl && !opts.jwtSecret) {
     // Configuration error — surface as 401 because the caller cannot know
     // (and shouldn't trust) why it's mis-configured. Server logs carry detail.
-    // eslint-disable-next-line no-console
-    console.error('supabase-auth.verifySupabaseJwt: misconfigured', {
+    logger.error('supabase-auth.verifySupabaseJwt: misconfigured', {
       reason: 'neither jwtSecret nor jwksUrl provided',
     });
     throw new SupabaseAuthError('invalid_token', 401);
@@ -222,8 +222,7 @@ export async function verifySupabaseJwt(
     const isProduction = process.env.NODE_ENV === 'production';
     const detail = err instanceof Error ? err.message : String(err);
     if (isProduction) {
-      // eslint-disable-next-line no-console
-      console.error('supabase-auth.verifySupabaseJwt: token rejected', {
+      logger.error('supabase-auth.verifySupabaseJwt: token rejected', {
         reason: detail,
         name: err instanceof Error ? err.name : 'unknown',
       });
@@ -275,7 +274,7 @@ export async function verifySupabaseJwt(
     // structured-log pipeline (Sentry, Datadog, CloudWatch, etc.).
     // We intentionally include both values so a security responder can
     // identify the attempted target tenant.
-    console.error('[SECURITY] supabase-auth: tenant_id self-promotion attempt blocked', {
+    logger.error('[SECURITY] supabase-auth: tenant_id self-promotion attempt blocked', {
       severity: 'SECURITY',
       event: 'tenant_id_self_promotion_attempt',
       userId,

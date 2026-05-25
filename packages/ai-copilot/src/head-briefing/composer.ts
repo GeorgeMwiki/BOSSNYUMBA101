@@ -26,6 +26,7 @@ import type {
   PendingApprovalsSource,
   RecommendationsSource,
 } from './types.js';
+import { logger } from '../logger.js';
 
 export interface BriefingComposerDeps {
   readonly overnightSource: OvernightSource;
@@ -149,10 +150,7 @@ async function safeFetch<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
     // Do not let a single source knock out the whole briefing — log and
     // degrade. The head sees an empty section instead of a 5xx.
      
-    console.error(
-      'head-briefing: source fetch failed — using empty fallback:',
-      err instanceof Error ? err.message : String(err),
-    );
+    logger.error('head-briefing: source fetch failed — using empty fallback', { error: err instanceof Error ? err.message : String(err) });
     return fallback;
   }
 }

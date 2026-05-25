@@ -12,6 +12,7 @@ import { AITenantContext, AIActor } from '../types/core.types.js';
 import { VisibilityViewer } from '../thread/visibility.js';
 import { Scenario, ScenarioResult, evaluateScenario } from './scenario.js';
 import { TurnResult } from '../orchestrator/orchestrator.js';
+import { logger } from '../logger.js';
 
 export interface EvalRunOptions {
   orchestrator: Orchestrator;
@@ -144,17 +145,13 @@ export async function runScenarios(
  */
 export function printReport(report: EvalRunReport): void {
   /* eslint-disable no-console */
-  console.log(
-    `Eval: ${report.passed}/${report.total} passed (${report.failed} failed) in ${report.durationMs}ms`
-  );
-  console.log(
-    `Tokens: ${report.tokensTotal} total | Advisor rate: ${(report.advisorRate * 100).toFixed(1)}%`
-  );
+  logger.info(`Eval: ${report.passed}/${report.total} passed (${report.failed} failed) in ${report.durationMs}ms`);
+  logger.info(`Tokens: ${report.tokensTotal} total | Advisor rate: ${(report.advisorRate * 100).toFixed(1)}%`);
   for (const r of report.results) {
     if (r.passed) {
-      console.log(`  ✓ ${r.scenarioId}`);
+      logger.info(`  ✓ ${r.scenarioId}`);
     } else {
-      console.log(`  ✗ ${r.scenarioId}`);
+      logger.info(`  ✗ ${r.scenarioId}`);
       for (const f of r.failures) console.log(`      - ${f}`);
     }
   }

@@ -10,6 +10,7 @@
 import type { CostLedger } from '../../cost-ledger.js';
 import { AiBudgetExceededError } from '../../cost-ledger.js';
 import type { BudgetContext } from './types.js';
+import { logger } from '../../logger.js';
 
 export interface BudgetGuardDeps {
   readonly ledger?: CostLedger;
@@ -48,10 +49,7 @@ export async function recordAiUsage(
     });
   } catch (err) {
      
-    console.error(
-      '[ai-native/phl] failed to record usage',
-      err instanceof Error ? err.message : err,
-    );
+    logger.error('[ai-native/phl] failed to record usage', { error: err instanceof Error ? err.message : err });
   }
 }
 

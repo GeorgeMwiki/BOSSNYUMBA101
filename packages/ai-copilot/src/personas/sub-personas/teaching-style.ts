@@ -13,6 +13,7 @@
  */
 
 import { z } from 'zod';
+import { logger } from '../../logger.js';
 
 // -----------------------------------------------------------------------
 // Schema
@@ -150,7 +151,7 @@ export function safeParseTeachingStyle(raw: unknown): TeachingStyle {
     }
     return TeachingStyleSchema.parse(raw);
   } catch (error) {
-    console.error('safeParseTeachingStyle: falling back to default', error);
+    logger.error('safeParseTeachingStyle: falling back to default', { error: error });
     return DEFAULT_TEACHING_STYLE;
   }
 }

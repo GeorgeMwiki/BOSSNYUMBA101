@@ -22,6 +22,7 @@ import type {
   AnthropicMessageResponse,
 } from './anthropic-client.js';
 import type { CostLedger } from '../cost-ledger.js';
+import { logger } from '../logger.js';
 
 export interface BudgetGuardContext {
   readonly tenantId: string;
@@ -120,10 +121,7 @@ export function withBudgetGuard(
           });
         } catch (err) {
            
-          console.error(
-            'withBudgetGuard: failed to record usage',
-            err instanceof Error ? err.message : err,
-          );
+          logger.error('withBudgetGuard: failed to record usage', { error: err instanceof Error ? err.message : err });
         }
 
         return response;
