@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@bossnyumba/approval-matrix-dsl": "workspace:*",
-    "zod": "^3.22.4"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "typescript": "^6.0.3",

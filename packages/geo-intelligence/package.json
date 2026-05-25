@@ -62,15 +62,19 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "zod": "^3.22.4"
+    "zod": "^3.25.76"
   },
   "peerDependencies": {
     "@bossnyumba/geo-platform": "workspace:*",
     "@bossnyumba/spatial-engine": "workspace:*"
   },
   "peerDependenciesMeta": {
-    "@bossnyumba/geo-platform": { "optional": true },
-    "@bossnyumba/spatial-engine": { "optional": true }
+    "@bossnyumba/geo-platform": {
+      "optional": true
+    },
+    "@bossnyumba/spatial-engine": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^25.8.0",

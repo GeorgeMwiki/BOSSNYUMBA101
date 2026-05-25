@@ -61,7 +61,7 @@ export class StripePaymentProvider extends BasePaymentProvider {
   constructor(config: StripeProviderConfig) {
     super();
     this.stripe = new Stripe(config.secretKey, {
-      apiVersion: config.apiVersion || '2023-10-16'
+      apiVersion: config.apiVersion || '2026-03-25.dahlia'
     });
     this.webhookSecret = config.webhookSecret;
   }
@@ -376,7 +376,7 @@ export class StripePaymentProvider extends BasePaymentProvider {
       id: event.id,
       type: event.type,
       provider: this.name,
-      data: event.data.object as Record<string, unknown>,
+      data: event.data.object as unknown as Record<string, unknown>,
       timestamp: new Date(event.created * 1000),
       signature
     };
