@@ -6,10 +6,10 @@
   "description": "Piece C — org graph projector + traversal. Denormalises lease/management/reports_to edges from existing tables into org_graph_edges; recursive CTE traversal helpers.",
   "type": "module",
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     }
