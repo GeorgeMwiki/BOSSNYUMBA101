@@ -101,6 +101,33 @@ jobs:
             -c "CREATE EXTENSION IF NOT EXISTS vector" 2>&1 | tail -3 || \
             echo "::warning::pgvector not available — migrations that depend on it may fail"
 
+      - name: Seed Supabase roles (authenticated, anon, service_role)
+        # Supabase Postgres provisions these roles at cluster init time. CI's
+        # vanilla postgres:17 image has none of them — so every RLS migration
+        # since 0155 (CREATE POLICY ... TO authenticated, GRANT ... TO anon)
+        # explodes with `role "authenticated" does not exist`. Create them
+        # idempotently before applying any migration so the fresh-DB run
+        # mirrors production. NOLOGIN matches the Supabase convention — these
+        # are JWT-claim aliases, never login users.
+        env:
+          PGPASSWORD: bossnyumba
+        run: |
+          psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_migration_check <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+              CREATE ROLE authenticated NOLOGIN;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+              CREATE ROLE anon NOLOGIN;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+              CREATE ROLE service_role NOLOGIN BYPASSRLS;
+            END IF;
+          END
+          $$;
+          SQL
+
       - name: Apply all migrations against fresh Postgres
         # Drives `scripts/migration-apply-check.mjs` which iterates every
         # *.sql file in lex order, wrapping each in a transaction via

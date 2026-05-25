@@ -104,6 +104,33 @@ jobs:
           PGPASSWORD=bossnyumba psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_apply_test \
             -c "SELECT extversion FROM pg_extension WHERE extname='vector'"
 
+      - name: Seed Supabase roles (authenticated, anon, service_role)
+        # Supabase Postgres provisions these roles at cluster init time. CI's
+        # vanilla pgvector image has none of them — so every RLS migration
+        # since 0155 (CREATE POLICY ... TO authenticated, GRANT ... TO anon)
+        # explodes with `role "authenticated" does not exist`. Create them
+        # idempotently before applying any migration so the fresh-DB run
+        # mirrors production. NOLOGIN matches the Supabase convention — these
+        # are JWT-claim aliases, never login users.
+        env:
+          PGPASSWORD: bossnyumba
+        run: |
+          psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_apply_test <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+              CREATE ROLE authenticated NOLOGIN;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+              CREATE ROLE anon NOLOGIN;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+              CREATE ROLE service_role NOLOGIN BYPASSRLS;
+            END IF;
+          END
+          $$;
+          SQL
+
       - name: Apply all migrations and capture errors
         id: apply
         env:
