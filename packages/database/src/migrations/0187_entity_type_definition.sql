@@ -1,3 +1,12 @@
+-- @safety: dynamic-not-null-reviewed
+-- Reviewed 2026-05-25: the single `EXECUTE 'ALTER TABLE
+-- entity_type_definition ALTER COLUMN id SET NOT NULL'` runs inside an
+-- idempotent DO block guarded by `IF NOT EXISTS (... column 'id')`. The
+-- preceding EXECUTE statements in the same block (a) add the column,
+-- (b) backfill every existing row via the UPDATE on lines 73-77, and
+-- only THEN set NOT NULL. This is the HAS_BACKFILL pattern the static
+-- analyser already classifies as safe; the dynamic indirection exists
+-- to keep the migration re-runnable against partially-applied DBs.
 -- =============================================================================
 -- 0187: entity_type_definition — type catalog for the universal asset model.
 --
