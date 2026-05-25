@@ -61,12 +61,19 @@ jobs:
 
       - name: Run LATS-vs-ToT eval
         id: eval
+        # Pipe workflow_dispatch inputs through env vars instead of
+        # direct shell interpolation to close the Semgrep
+        # `run-shell-injection` ERROR. The script reads the same values
+        # via process.env, no behaviour change.
+        env:
+          EVAL_BUDGET: ${{ inputs.budget || '800' }}
+          EVAL_MAX_REGRESSION: ${{ inputs.max_regression || '0.10' }}
         run: |
           mkdir -p .audit
           node scripts/eval-lats-vs-tot.mjs \
             --report .audit/lats-vs-tot.json \
-            --budget "${{ inputs.budget || '800' }}" \
-            --max-regression "${{ inputs.max_regression || '0.10' }}"
+            --budget "$EVAL_BUDGET" \
+            --max-regression "$EVAL_MAX_REGRESSION"
 
       - name: Upload eval report
         if: always()
