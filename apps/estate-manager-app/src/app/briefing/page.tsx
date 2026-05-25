@@ -638,6 +638,7 @@ function DecisionCard({
   readonly onDecide: (id: string, state: Exclude<DecisionState, 'idle'>) => void;
   readonly labels: DecisionCardLabels;
 }) {
+  const tP89 = useTranslations('p89.briefing');
   const urgencyColor =
     item.urgency === 'high'
       ? 'text-danger'
@@ -674,7 +675,7 @@ function DecisionCard({
         </div>
         <button
           className="rounded-md p-2 text-neutral-500 transition-colors duration-fast hover:bg-accent hover:text-foreground"
-          aria-label="More options"
+          aria-label={tP89('moreOptionsAria')}
           type="button"
         >
           <MoreHorizontal className="h-4 w-4" />

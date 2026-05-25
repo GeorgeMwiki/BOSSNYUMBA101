@@ -1351,5 +1351,37 @@
     "emptyDescription": "Pindi mratibu anapotaka idhini, huja hapa.",
     "disabledTitle": "Onyesho la mapendekezo",
     "disabledDescription": "Imefungwa na bendera ya module_proposals_enabled."
+  },
+  "p89": {
+    "askThread": {
+      "closeArtifactAria": "Funga kifaa"
+    },
+    "auditTrail": {
+      "panelAria": "Njia ya ukaguzi",
+      "reloadAria": "Pakia tena njia ya ukaguzi",
+      "promptHashLabel": "Hash ya prompt",
+      "prevHashLabel": "Hash ya awali",
+      "thisHashLabel": "Hash hii"
+    },
+    "briefing": {
+      "moreOptionsAria": "Chaguo zaidi"
+    },
+    "graph": {
+      "depthAria": "Kina cha utafutaji",
+      "depthClamped": "Kina cha juu kimepunguzwa hadi 3.",
+      "startSearchTitle": "Anza kwa kutafuta kitengo, mpangaji, muuzaji, au tukio",
+      "sessionExpiredTitle": "Kipindi chako kimeisha",
+      "needRoleTitle": "Unahitaji property-manager au juu zaidi",
+      "errorTitle": "Kitu kimeenda vibaya",
+      "visualisationAria": "Mwonekano wa graph",
+      "noAttributes": "Hakuna sifa zilizorejeshwa."
+    },
+    "jarvis": {
+      "attachImagesAria": "Ambatisha picha",
+      "propertyConcierge": "Msimamizi wa Mali"
+    },
+    "attachment": {
+      "addPhotosLabel": "Ongeza picha"
+    }
   }
 }

@@ -8,6 +8,7 @@
  * persona greeting).
  */
 
+import { useTranslations } from 'next-intl';
 import { JarvisConsole } from './JarvisConsole';
 
 export const metadata = {
@@ -15,10 +16,11 @@ export const metadata = {
 };
 
 export default function JarvisPage() {
+  const t = useTranslations('p89.jarvis');
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-border bg-surface px-6 py-4">
-        <h1 className="text-xl font-semibold text-foreground">Property Concierge</h1>
+        <h1 className="text-xl font-semibold text-foreground">{t('propertyConcierge')}</h1>
         <p className="text-sm text-muted-foreground">
           Your personal AI counterpart for properties, tenants, and operations.
         </p>

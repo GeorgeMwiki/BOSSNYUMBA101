@@ -25,9 +25,11 @@ export function AttachmentUpload({
   onChange,
   maxFiles = 5,
   accept = 'image/*',
-  label = 'Add photos',
+  label,
 }: AttachmentUploadProps) {
   const tA11y = useTranslations('a11y');
+  const tP89 = useTranslations('p89.attachment');
+  const resolvedLabel = label ?? tP89('addPhotosLabel');
   const [attachments, setAttachments] = useState<AttachmentPreview[]>(value);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -135,7 +137,7 @@ export function AttachmentUpload({
               onChange={(e) => handleFileSelect(e.target.files)}
             />
             <Camera className="w-6 h-6 text-gray-400 mb-1" />
-            <span className="text-[10px] text-gray-500">{label}</span>
+            <span className="text-[10px] text-gray-500">{resolvedLabel}</span>
           </label>
         )}
       </div>

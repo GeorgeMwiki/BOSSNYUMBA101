@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ROUTES } from '@/lib/routes';
 import { ArrowRight, Brain, Maximize2, ShieldCheck, Sparkles } from 'lucide-react';
 import { AgentTurn } from '../_components/AgentTurn';
@@ -384,6 +385,7 @@ function ArtifactPane({
   readonly citations: ReadonlyArray<Citation>;
   readonly onClose: () => void;
 }) {
+  const t = useTranslations('p89.askThread');
   return (
     <aside className="hidden w-[320px] shrink-0 border-l border-border bg-surface lg:flex lg:flex-col">
       <header className="flex items-start justify-between gap-2 border-b border-border px-5 py-4">
@@ -400,7 +402,7 @@ function ArtifactPane({
             type="button"
             onClick={onClose}
             className="rounded-md p-1 text-neutral-500 transition-colors duration-fast hover:bg-accent hover:text-foreground"
-            aria-label="Close artifact"
+            aria-label={t('closeArtifactAria')}
           >
             <Maximize2 className="h-3.5 w-3.5" />
           </button>

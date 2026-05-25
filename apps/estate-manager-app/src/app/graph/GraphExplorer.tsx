@@ -27,6 +27,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
   Crosshair,
@@ -268,6 +269,7 @@ const CANVAS_WIDTH = 820;
 const CANVAS_HEIGHT = 560;
 
 export function GraphExplorer(): JSX.Element {
+  const t = useTranslations('p89.graph');
   const [query, setQuery] = useState<string>('');
   const [queryError, setQueryError] = useState<string | null>(null);
   const [depth, setDepth] = useState<Depth>(1);
@@ -518,7 +520,7 @@ export function GraphExplorer(): JSX.Element {
           </span>
           <div
             role="radiogroup"
-            aria-label="Traversal depth"
+            aria-label={t('depthAria')}
             className="inline-flex rounded-md border border-border bg-surface p-0.5"
           >
             {([1, 2] as const).map((d) => (
@@ -539,7 +541,7 @@ export function GraphExplorer(): JSX.Element {
               </button>
             ))}
           </div>
-          <p className="text-[0.68rem] text-neutral-500">Max depth clamped to 3.</p>
+          <p className="text-[0.68rem] text-neutral-500">{t('depthClamped')}</p>
         </div>
 
         {/* Edge-type pills */}
@@ -641,13 +643,14 @@ function CanvasFrame({
   onKeyDown,
   canvasRef,
 }: CanvasFrameProps): JSX.Element {
+  const t = useTranslations('p89.graph');
   if (state.kind === 'idle') {
     return (
       <Card className="flex h-[560px] items-center justify-center border-dashed">
         <Empty
           variant="search"
           icon={<Network className="h-8 w-8 text-signal-500" />}
-          title="Start by searching for a unit, tenant, vendor, or incident"
+          title={t('startSearchTitle')}
           description="Results are limited to your assigned portfolio. Use two or more characters."
         />
       </Card>
@@ -669,7 +672,7 @@ function CanvasFrame({
     return (
       <DegradedCard
         icon={<Lock className="h-8 w-8 text-warning" />}
-        title="Your session has expired"
+        title={t('sessionExpiredTitle')}
         body="Redirecting to the sign-in screen…"
         tone="warning"
       />
@@ -680,7 +683,7 @@ function CanvasFrame({
     return (
       <DegradedCard
         icon={<ShieldAlert className="h-8 w-8 text-danger" />}
-        title="You need property-manager or higher"
+        title={t('needRoleTitle')}
         body="The relationship explorer exposes cross-tenant connections. Ask your admin to grant the property-manager role."
         tone="danger"
       />
@@ -714,7 +717,7 @@ function CanvasFrame({
     return (
       <DegradedCard
         icon={<AlertTriangle className="h-8 w-8 text-danger" />}
-        title="Something went wrong"
+        title={t('errorTitle')}
         body={state.message}
         tone="danger"
       />
@@ -729,7 +732,7 @@ function CanvasFrame({
       <svg
         ref={canvasRef}
         role="img"
-        aria-label="Graph visualisation"
+        aria-label={t('visualisationAria')}
         tabIndex={0}
         onKeyDown={onKeyDown}
         viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
@@ -833,6 +836,7 @@ interface DetailPaneProps {
 }
 
 function DetailPane({ node, edges, onRefocus, disabled }: DetailPaneProps): JSX.Element {
+  const t = useTranslations('p89.graph');
   if (!node) {
     return (
       <Card className="h-full">
@@ -880,7 +884,7 @@ function DetailPane({ node, edges, onRefocus, disabled }: DetailPaneProps): JSX.
             Attributes
           </h4>
           {attrEntries.length === 0 ? (
-            <p className="text-xs text-neutral-500">No attributes returned.</p>
+            <p className="text-xs text-neutral-500">{t('noAttributes')}</p>
           ) : (
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
               {attrEntries.map(([k, v]) => (

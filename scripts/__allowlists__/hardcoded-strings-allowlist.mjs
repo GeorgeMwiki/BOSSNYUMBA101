@@ -40,35 +40,7 @@ export const HARDCODED_STRINGS_ALLOWLIST = new Map([
 
   // ─── customer-app — P89 extracted (28 entries removed 2026-05-25) ──
 
-  // ─── estate-manager-app — MVP scaffold pages pending i18n ──────────
-  [
-    'apps/estate-manager-app/src/app/ask/[threadId]/page.tsx',
-    'Ask-thread page aria-label="Close artifact" — accessibility-only string pending i18n extraction in P89.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/ask/_components/AuditTrailPanel.tsx',
-    'AuditTrailPanel internal-operator aria-labels — audit-trail surface pending i18n extraction in P89.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/briefing/page.tsx',
-    'Briefing page aria-label="More options" — accessibility-only string pending i18n extraction in P89.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/graph/GraphExplorer.tsx',
-    'GraphExplorer internal-operator labels — investigative-graph UI pending i18n extraction in P89.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/jarvis/JarvisConsole.tsx',
-    'Jarvis console aria-labels — internal-operator surface pending i18n extraction in P89.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/jarvis/page.tsx',
-    'Jarvis page heading — internal-operator surface pending i18n extraction in P89.',
-  ],
-  [
-    'apps/estate-manager-app/src/components/maintenance/AttachmentUpload.tsx',
-    'AttachmentUpload default label="Add photos" — pending i18n extraction in P89 (tracked-gap).',
-  ],
+  // ─── estate-manager-app — P89 extracted (7 entries removed 2026-05-25) ──
 
   // ─── owner-portal — P89 extracted (8 entries removed 2026-05-25) ────
 

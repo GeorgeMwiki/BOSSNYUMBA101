@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { createBossnyumbaClient, createJarvisClient } from '@bossnyumba/api-sdk';
 import {
   MicButton,
@@ -63,6 +64,7 @@ function readStoredMode(): JarvisMode {
 }
 
 export function JarvisConsole(): JSX.Element {
+  const t = useTranslations('p89.jarvis');
   const [draft, setDraft] = useState('');
   const [threadId] = useState(() => `mgr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   const [pendingImages, setPendingImages] = useState<ReadonlyArray<File>>([]);
@@ -352,13 +354,13 @@ export function JarvisConsole(): JSX.Element {
           multiple
           onChange={onPickImages}
           className="hidden"
-          aria-label="Attach images"
+          aria-label={t('attachImagesAria')}
         />
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isThinking || pendingImages.length >= MAX_IMAGES_PER_TURN}
-          aria-label="Attach images"
+          aria-label={t('attachImagesAria')}
           title={
             pendingImages.length >= MAX_IMAGES_PER_TURN
               ? `Up to ${MAX_IMAGES_PER_TURN} images per turn`
