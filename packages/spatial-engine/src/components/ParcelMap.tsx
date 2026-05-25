@@ -194,6 +194,10 @@ export function ParcelMap(props: ParcelMapProps): React.ReactElement {
         // to resolve the module at compile time. Runtime failure is
         // caught and silently disables draw.
         if (enableDraw) {
+          // Hidden from TS module resolution because the dep is optional
+          // and not in package.json. Wrapped in Function() so the bundler
+          // and TS compiler don't try to resolve it at build time.
+          // eslint-disable-next-line no-new-func
           const dynamicImport = new Function(
             'specifier',
             'return import(specifier);',
