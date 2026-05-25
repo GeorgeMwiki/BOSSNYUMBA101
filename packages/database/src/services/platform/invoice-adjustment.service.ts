@@ -24,6 +24,7 @@ import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { invoices } from '../../schemas/payment.schema.js';
 import type { DatabaseClient } from '../../client.js';
+import { logger } from '../../logger.js';
 
 export type InvoiceAdjustmentCategory =
   | 'refund'
@@ -118,7 +119,7 @@ export function createPlatformInvoiceAdjustmentService(
           balanceCents: Number(r.balanceAmount ?? 0),
         };
       } catch (error) {
-        console.error('platform.invoices.loadInvoice failed:', error);
+        logger.error('platform.invoices.loadInvoice failed', { error: error });
         return null;
       }
     },
@@ -191,7 +192,7 @@ export function createPlatformInvoiceAdjustmentService(
           };
         });
       } catch (error) {
-        console.error('platform.invoices.applyAdjustment failed:', error);
+        logger.error('platform.invoices.applyAdjustment failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.invoices.applyAdjustment failed');
@@ -266,7 +267,7 @@ export function createPlatformInvoiceAdjustmentService(
             .where(eq(invoices.id, args.invoiceId));
         });
       } catch (error) {
-        console.error('platform.invoices.reverseAdjustment failed:', error);
+        logger.error('platform.invoices.reverseAdjustment failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.invoices.reverseAdjustment failed');

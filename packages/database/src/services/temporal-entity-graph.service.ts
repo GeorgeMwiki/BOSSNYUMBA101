@@ -40,10 +40,12 @@
 import { randomUUID } from 'crypto';
 import { and, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import {
+
   temporalEntities,
   temporalRelationships,
   temporalCommunities,
 } from '../schemas/temporal-entity-graph.schema.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 import {
   detectCommunitiesLouvain,
@@ -234,8 +236,7 @@ export function createTemporalEntityGraphService(
         const returnedId = out?.[0]?.id ?? id;
         return { id: returnedId, created: returnedId === id };
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('temporal-entity-graph.upsertEntity failed:', error);
+        logger.error('temporal-entity-graph.upsertEntity failed', { error: error });
         return { id, created: false };
       }
     },
@@ -269,11 +270,7 @@ export function createTemporalEntityGraphService(
           .values(insertValues as never);
         return { id, created: true };
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(
-          'temporal-entity-graph.upsertRelationship failed:',
-          error,
-        );
+        logger.error('temporal-entity-graph.upsertRelationship failed', { error: error });
         return { id, created: false };
       }
     },
@@ -292,11 +289,7 @@ export function createTemporalEntityGraphService(
           .set({ invalidatedAt, validTo } as never)
           .where(eq(temporalEntities.id, args.entityId));
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(
-          'temporal-entity-graph.invalidateEntity failed:',
-          error,
-        );
+        logger.error('temporal-entity-graph.invalidateEntity failed', { error: error });
       }
     },
 
@@ -325,8 +318,7 @@ export function createTemporalEntityGraphService(
           .limit(limit)) as ReadonlyArray<EntityRowShape>;
         return (rows ?? []).map(toEntityRow);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('temporal-entity-graph.listEntities failed:', error);
+        logger.error('temporal-entity-graph.listEntities failed', { error: error });
         return [];
       }
     },
@@ -356,11 +348,7 @@ export function createTemporalEntityGraphService(
           .limit(limit)) as ReadonlyArray<RelationshipRowShape>;
         return (rows ?? []).map(toRelationshipRow);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(
-          'temporal-entity-graph.listRelationships failed:',
-          error,
-        );
+        logger.error('temporal-entity-graph.listRelationships failed', { error: error });
         return [];
       }
     },
@@ -443,11 +431,7 @@ export function createTemporalEntityGraphService(
               } as never,
             } as never);
           } catch (error) {
-            // eslint-disable-next-line no-console
-            console.warn(
-              'temporal-entity-graph.consolidate: community insert failed (continuing):',
-              error,
-            );
+            logger.warn('temporal-entity-graph.consolidate: community insert failed (continuing)', { error });
           }
         }
 
@@ -465,11 +449,7 @@ export function createTemporalEntityGraphService(
               .where(eq(temporalEntities.id, node.id));
             mergedEntities += 1;
           } catch (error) {
-            // eslint-disable-next-line no-console
-            console.warn(
-              'temporal-entity-graph.consolidate: entity update failed (continuing):',
-              error,
-            );
+            logger.warn('temporal-entity-graph.consolidate: entity update failed (continuing)', { error });
           }
         }
 
@@ -484,11 +464,7 @@ export function createTemporalEntityGraphService(
               .set({ communityId } as never)
               .where(eq(temporalRelationships.id, rel.id));
           } catch (error) {
-            // eslint-disable-next-line no-console
-            console.warn(
-              'temporal-entity-graph.consolidate: relationship update failed (continuing):',
-              error,
-            );
+            logger.warn('temporal-entity-graph.consolidate: relationship update failed (continuing)', { error });
           }
         }
 
@@ -498,11 +474,7 @@ export function createTemporalEntityGraphService(
           mergedEntities,
         };
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(
-          'temporal-entity-graph.consolidateForTenant failed:',
-          error,
-        );
+        logger.error('temporal-entity-graph.consolidateForTenant failed', { error: error });
         return report;
       }
     },

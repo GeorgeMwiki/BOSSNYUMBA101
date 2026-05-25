@@ -19,6 +19,8 @@ import { randomUUID } from 'crypto';
 import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { coreMemoryBlocks } from '../schemas/core-memory-blocks.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export type CoreMemoryBlockKind =
   | 'persona'
@@ -113,7 +115,7 @@ export function createCoreMemoryBlocksService(
         } as never);
         return { id };
       } catch (err) {
-        console.error('core-memory-blocks.upsert failed:', err);
+        logger.error('core-memory-blocks.upsert failed', { error: err });
         return { id };
       }
     },
@@ -138,7 +140,7 @@ export function createCoreMemoryBlocksService(
           .orderBy(desc(coreMemoryBlocks.updatedAt));
         return (rows ?? []).map(rowToBlock);
       } catch (err) {
-        console.error('core-memory-blocks.active failed:', err);
+        logger.error('core-memory-blocks.active failed', { error: err });
         return [];
       }
     },
@@ -150,7 +152,7 @@ export function createCoreMemoryBlocksService(
           .set({ archivedAt: new Date() } as never)
           .where(eq(coreMemoryBlocks.id, id));
       } catch (err) {
-        console.error('core-memory-blocks.archive failed:', err);
+        logger.error('core-memory-blocks.archive failed', { error: err });
       }
     },
   };

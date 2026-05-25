@@ -37,6 +37,8 @@ import { randomUUID } from 'crypto';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { reflexionLessons } from '../schemas/lesson-store.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 /** Shape the service reads — SELECT_COLS subset; excludes insertedAt. */
 interface ReflexionLessonRow {
@@ -150,8 +152,7 @@ export function createLessonStoreService(db: DatabaseClient): LessonStore {
           recencyScore: recency,
         });
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('lesson-store.put failed:', error);
+        logger.error('lesson-store.put failed', { error: error });
         // Don't throw — the post-turn pipeline must never break the
         // kernel turn just because reflexion persistence is unhealthy.
         return Object.freeze({
@@ -182,8 +183,7 @@ export function createLessonStoreService(db: DatabaseClient): LessonStore {
           .limit(n)) as ReadonlyArray<ReflexionLessonRow>;
         return Object.freeze((rows ?? []).map(rowToLesson));
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('lesson-store.recent failed:', error);
+        logger.error('lesson-store.recent failed', { error: error });
         return Object.freeze([]);
       }
     },
@@ -193,8 +193,7 @@ export function createLessonStoreService(db: DatabaseClient): LessonStore {
         // Test-only — full wipe.
         await db.execute(sql`TRUNCATE TABLE reflexion_lessons`);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('lesson-store.clear failed:', error);
+        logger.error('lesson-store.clear failed', { error: error });
       }
     },
   };

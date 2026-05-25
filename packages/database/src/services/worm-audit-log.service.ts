@@ -36,9 +36,11 @@
 import { createHash, randomUUID } from 'crypto';
 import { and, asc, eq, sql, type SQL } from 'drizzle-orm';
 import {
+
   wormAuditLog,
   type WormAuditLogRow,
 } from '../schemas/worm-audit-log.schema.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 export interface WormAuditEntry {
@@ -161,8 +163,7 @@ export function createWormAuditLogService(db: DatabaseClient): WormAuditStore {
         // Audit-log writes that fail are a SOC 2 / GDPR Art. 30 violation.
         // Bubble up so the caller (document-studio) can refuse delivery
         // rather than silently lose the trail.
-        // eslint-disable-next-line no-console
-        console.error('worm-audit-log.append failed:', error);
+        logger.error('worm-audit-log.append failed', { error: error });
         throw error;
       }
 
@@ -179,8 +180,7 @@ export function createWormAuditLogService(db: DatabaseClient): WormAuditStore {
           .orderBy(asc(wormAuditLog.sequenceNumber))) as ReadonlyArray<WormAuditLogRow>;
         return Object.freeze((rows ?? []).map(rowToEntry));
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('worm-audit-log.list failed:', error);
+        logger.error('worm-audit-log.list failed', { error: error });
         return Object.freeze([]);
       }
     },
@@ -217,8 +217,7 @@ export function createWormAuditLogService(db: DatabaseClient): WormAuditStore {
         }
         return { ok: true };
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('worm-audit-log.verify failed:', error);
+        logger.error('worm-audit-log.verify failed', { error: error });
         return { ok: false };
       }
     },

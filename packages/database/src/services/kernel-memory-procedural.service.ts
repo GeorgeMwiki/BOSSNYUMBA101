@@ -18,6 +18,8 @@ import { randomUUID } from 'crypto';
 import { and, eq, sql } from 'drizzle-orm';
 import { kernelMemoryProcedural } from '../schemas/kernel-memory-procedural.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export interface ProceduralPattern {
   readonly id: string;
@@ -109,7 +111,7 @@ export function createProceduralMemoryService(
             } as never,
           });
       } catch (error) {
-        console.error('kernel-memory-procedural.record failed:', error);
+        logger.error('kernel-memory-procedural.record failed', { error: error });
       }
     },
 
@@ -146,7 +148,7 @@ export function createProceduralMemoryService(
 
         return scored;
       } catch (error) {
-        console.error('kernel-memory-procedural.match failed:', error);
+        logger.error('kernel-memory-procedural.match failed', { error: error });
         return [];
       }
     },

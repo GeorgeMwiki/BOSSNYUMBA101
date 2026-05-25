@@ -16,6 +16,8 @@
 import { and, asc, count, eq } from 'drizzle-orm';
 import { voiceTurns } from '../schemas/voice-turns.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export interface VoiceToolCallShape {
   readonly name: string;
@@ -79,7 +81,7 @@ export function createVoiceTurnsService(db: DatabaseClient): VoiceTurnsService {
         } as never);
         return row;
       } catch (error) {
-        console.error('voice-turns.insert failed:', error);
+        logger.error('voice-turns.insert failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('voice-turns.insert failed');
@@ -100,7 +102,7 @@ export function createVoiceTurnsService(db: DatabaseClient): VoiceTurnsService {
           )) as ReadonlyArray<{ value: number }>;
         return Number(result?.[0]?.value ?? 0);
       } catch (error) {
-        console.error('voice-turns.countBySession failed:', error);
+        logger.error('voice-turns.countBySession failed', { error: error });
         return 0;
       }
     },
@@ -120,7 +122,7 @@ export function createVoiceTurnsService(db: DatabaseClient): VoiceTurnsService {
           .orderBy(asc(voiceTurns.turnIndex))) as ReadonlyArray<VoiceTurnRowDb>;
         return rows.map(rowToShape);
       } catch (error) {
-        console.error('voice-turns.list failed:', error);
+        logger.error('voice-turns.list failed', { error: error });
         return [];
       }
     },

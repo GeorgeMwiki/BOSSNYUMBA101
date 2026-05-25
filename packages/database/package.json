@@ -40,9 +40,10 @@
   },
   "dependencies": {
     "@bossnyumba/domain-models": "workspace:*",
-    "drizzle-orm": "^0.45.2",
-    "postgres": "^3.4.3",
     "bcrypt": "^5.1.1",
+    "drizzle-orm": "^0.45.2",
+    "pino": "^8.17.0",
+    "postgres": "^3.4.3",
     "zod": "^3.22.0"
   },
   "peerDependencies": {

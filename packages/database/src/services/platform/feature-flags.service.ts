@@ -18,6 +18,7 @@ import { randomUUID } from 'crypto';
 import { and, eq, like } from 'drizzle-orm';
 import { platformFeatureFlags } from '../../schemas/platform-feature-flags.schema.js';
 import type { DatabaseClient } from '../../client.js';
+import { logger } from '../../logger.js';
 
 export type FeatureFlagValue = boolean | string;
 
@@ -140,7 +141,7 @@ export function createPlatformFeatureFlagsService(
         }
         return { flagName, globalValue, tenantOverrides: overrides };
       } catch (error) {
-        console.error('platform.featureFlags.read failed:', error);
+        logger.error('platform.featureFlags.read failed', { error: error });
         return empty;
       }
     },
@@ -202,7 +203,7 @@ export function createPlatformFeatureFlagsService(
           updatedAt: now.toISOString(),
         };
       } catch (error) {
-        console.error('platform.featureFlags.setFlag failed:', error);
+        logger.error('platform.featureFlags.setFlag failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.featureFlags.setFlag failed');
@@ -245,7 +246,7 @@ export function createPlatformFeatureFlagsService(
             ),
           );
       } catch (error) {
-        console.error('platform.featureFlags.restoreFlag failed:', error);
+        logger.error('platform.featureFlags.restoreFlag failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('platform.featureFlags.restoreFlag failed');

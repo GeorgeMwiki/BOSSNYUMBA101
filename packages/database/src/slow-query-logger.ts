@@ -15,6 +15,7 @@
  */
 
 import type { DatabaseClient } from './client.js'
+import { logger } from './logger.js';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -210,18 +211,14 @@ function parseThresholdEnv(): number | undefined {
 function defaultSlowQueryHandler(tag?: string): (event: SlowQueryEvent) => void {
   return (event) => {
     const prefix = tag ? `[slow-query:${tag}]` : '[slow-query]'
-    const structured = {
-      level: 'warn',
-      msg: 'slow database query',
+    logger.warn(prefix, {
       tag,
       durationMs: Math.round(event.durationMs * 100) / 100,
       thresholdMs: event.thresholdMs,
       rowCount: event.rowCount,
       query: truncate(event.query, 500),
       startedAt: event.startedAt.toISOString(),
-    }
-    // eslint-disable-next-line no-console
-    console.warn(prefix, JSON.stringify(structured))
+    });
   }
 }
 
@@ -233,8 +230,5 @@ let configWarningEmitted = false
 function emitConfigurationWarning(): void {
   if (configWarningEmitted) return
   configWarningEmitted = true
-  // eslint-disable-next-line no-console
-  console.warn(
-    '[slow-query] could not attach: database client does not expose a postgres.js $client; logging disabled.'
-  )
+  logger.warn('[slow-query] could not attach: database client does not expose a postgres.js $client; logging disabled.');
 }

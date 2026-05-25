@@ -23,6 +23,8 @@
 
 import { currencyRates } from '../schemas/currency-rates.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 // ─────────────────────────────────────────────────────────────────────
 // Public types
@@ -129,7 +131,7 @@ export function createCurrencyRatesService(
         // still produce a well-formed (if degraded) USD figure rather
         // than crashing. The router's PARTIAL branch handles the
         // upstream signal.
-        console.error('currency-rates.loadAll failed:', error);
+        logger.error('currency-rates.loadAll failed', { error: error });
         return new Map(FALLBACK_RATES);
       }
     },
@@ -145,9 +147,7 @@ export function createCurrencyRatesService(
       const target = (targetCurrency ?? 'USD').toUpperCase();
       let targetRate = rates.get(target);
       if (targetRate === undefined) {
-        console.warn(
-          `currency-rates: unknown target currency "${target}" — falling back to USD`,
-        );
+        logger.warn(`currency-rates: unknown target currency "${target}" — falling back to USD`);
         targetRate = 1.0; // USD-to-USD
       }
 
@@ -162,9 +162,7 @@ export function createCurrencyRatesService(
 
         const rate = rates.get(code);
         if (rate === undefined) {
-          console.warn(
-            `currency-rates: unknown currency code "${code}" — contributing 0 ${target}`,
-          );
+          logger.warn(`currency-rates: unknown currency code "${code}" — contributing 0 ${target}`);
           continue;
         }
 

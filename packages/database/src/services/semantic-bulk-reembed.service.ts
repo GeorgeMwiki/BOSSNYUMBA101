@@ -36,6 +36,8 @@
 import { and, asc, eq, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
 import { kernelMemorySemantic } from '../schemas/kernel-memory-semantic.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export interface BulkReEmbedder {
   embed(text: string): Promise<ReadonlyArray<number>>;
@@ -142,11 +144,7 @@ export function createSemanticBulkReEmbedService(
             try {
               embedding = await embedder.embed(composed);
             } catch (error) {
-              // eslint-disable-next-line no-console
-              console.warn(
-                'semantic-bulk-reembed: embedder failed (skipping row):',
-                error,
-              );
+              logger.warn('semantic-bulk-reembed: embedder failed (skipping row)', { error });
               continue;
             }
             const sanitised = sanitizeEmbedding(embedding);
@@ -162,11 +160,7 @@ export function createSemanticBulkReEmbedService(
                 .where(eq(kernelMemorySemantic.id, row.id));
               written += 1;
             } catch (error) {
-              // eslint-disable-next-line no-console
-              console.warn(
-                'semantic-bulk-reembed: update failed (skipping row):',
-                error,
-              );
+              logger.warn('semantic-bulk-reembed: update failed (skipping row)', { error });
             }
           }
 
@@ -175,8 +169,7 @@ export function createSemanticBulkReEmbedService(
           if (rows.length < fetchN) break;
         }
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('semantic-bulk-reembed.reEmbedForTenant failed:', error);
+        logger.error('semantic-bulk-reembed.reEmbedForTenant failed', { error: error });
         return baseReport;
       }
 
@@ -232,10 +225,7 @@ function sanitizeEmbedding(
 ): number[] | null {
   if (!raw || !Array.isArray(raw)) return null;
   if (raw.length !== EMBEDDING_DIMS) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      `semantic-bulk-reembed: dropping embedding — expected ${EMBEDDING_DIMS} dims, got ${raw.length}`,
-    );
+    logger.warn(`semantic-bulk-reembed: dropping embedding — expected ${EMBEDDING_DIMS} dims, got ${raw.length}`);
     return null;
   }
   const out: number[] = new Array(raw.length);

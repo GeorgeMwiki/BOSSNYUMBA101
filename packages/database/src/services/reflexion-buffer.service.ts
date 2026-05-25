@@ -13,6 +13,8 @@ import { randomUUID } from 'crypto';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { reflexionBuffer } from '../schemas/reflexion-buffer.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export type ReflexionOutcome = 'success' | 'failure' | 'mixed';
 
@@ -93,8 +95,7 @@ export function createReflexionBufferService(
 
         return { id };
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('reflexion-buffer.record failed:', error);
+        logger.error('reflexion-buffer.record failed', { error: error });
         return { id };
       }
     },
@@ -132,17 +133,12 @@ export function createReflexionBufferService(
                 sql`${reflexionBuffer.id} = ANY(${sql.raw(`ARRAY[${ids.map((i) => `'${i.replace(/'/g, "''")}'`).join(',')}]`)}::text[])`,
               );
           } catch (error) {
-            // eslint-disable-next-line no-console
-            console.warn(
-              'reflexion-buffer.recall telemetry-bump failed:',
-              error,
-            );
+            logger.warn('reflexion-buffer.recall telemetry-bump failed', { error });
           }
         }
         return entries;
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('reflexion-buffer.recall failed:', error);
+        logger.error('reflexion-buffer.recall failed', { error: error });
         return [];
       }
     },

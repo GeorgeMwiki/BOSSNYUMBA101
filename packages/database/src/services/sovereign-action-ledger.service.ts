@@ -40,9 +40,11 @@ import { createHash } from 'crypto';
 import { randomUUID } from 'crypto';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import {
+
   sovereignActionLedger,
   GENESIS_HASH,
 } from '../schemas/sovereign-action-ledger.schema.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 export interface SovereignLedgerAppendArgs {
@@ -417,10 +419,7 @@ export function createSovereignActionLedgerService(
         try {
           await exec.execute(sql`SELECT pg_advisory_xact_lock(${lockKey})`);
         } catch (error) {
-          console.error(
-            'sovereign-action-ledger: advisory_xact_lock failed:',
-            error,
-          );
+          logger.error('sovereign-action-ledger: advisory_xact_lock failed', { error: error });
           throw error instanceof Error
             ? error
             : new Error(
@@ -473,10 +472,7 @@ export function createSovereignActionLedgerService(
               : {}),
           } as never);
         } catch (error) {
-          console.error(
-            'sovereign-action-ledger.append insert failed:',
-            error,
-          );
+          logger.error('sovereign-action-ledger.append insert failed', { error: error });
           throw error instanceof Error
             ? error
             : new Error('sovereign-action-ledger.append failed');
@@ -512,7 +508,7 @@ export function createSovereignActionLedgerService(
           .limit(capped)) as ReadonlyArray<Record<string, unknown>>;
         return (rows ?? []).map(rowToLedger);
       } catch (error) {
-        console.error('sovereign-action-ledger.getLedgerTail failed:', error);
+        logger.error('sovereign-action-ledger.getLedgerTail failed', { error: error });
         return [];
       }
     },
@@ -552,10 +548,7 @@ export function createSovereignActionLedgerService(
           return { ...r, verified: recomputed === r.thisHash };
         });
       } catch (error) {
-        console.error(
-          'sovereign-action-ledger.getVerifiedLedgerTail failed:',
-          error,
-        );
+        logger.error('sovereign-action-ledger.getVerifiedLedgerTail failed', { error: error });
         return [];
       }
     },
@@ -638,10 +631,7 @@ export function createSovereignActionLedgerService(
         }
         return { ok: true, count };
       } catch (error) {
-        console.error(
-          'sovereign-action-ledger.verifyLedgerChain failed:',
-          error,
-        );
+        logger.error('sovereign-action-ledger.verifyLedgerChain failed', { error: error });
         return {
           ok: false,
           count,
@@ -669,10 +659,7 @@ export function createSovereignActionLedgerService(
           null;
         return raw ?? null;
       } catch (error) {
-        console.error(
-          'sovereign-action-ledger.loadRollbackPayload failed:',
-          error,
-        );
+        logger.error('sovereign-action-ledger.loadRollbackPayload failed', { error: error });
         return null;
       }
     },

@@ -22,6 +22,8 @@ import { randomUUID } from 'crypto';
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { implicitFeedbackSignals } from '../schemas/implicit-feedback-signals.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export type ImplicitSignalType =
   | 'copy'
@@ -149,8 +151,7 @@ export function createImplicitFeedbackSignalsService(
 
         return { id };
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('implicit-feedback.record failed:', error);
+        logger.error('implicit-feedback.record failed', { error: error });
         return { id };
       }
     },
@@ -165,8 +166,7 @@ export function createImplicitFeedbackSignalsService(
           .orderBy(desc(implicitFeedbackSignals.emittedAt))) as ReadonlyArray<SignalRow>;
         return (rows ?? []).map(rowToSignal);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('implicit-feedback.listByTrace failed:', error);
+        logger.error('implicit-feedback.listByTrace failed', { error: error });
         return [];
       }
     },
@@ -193,8 +193,7 @@ export function createImplicitFeedbackSignalsService(
 
         return (rows ?? []).map(rowToSignal);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('implicit-feedback.listForUser failed:', error);
+        logger.error('implicit-feedback.listForUser failed', { error: error });
         return [];
       }
     },
@@ -245,8 +244,7 @@ export function createImplicitFeedbackSignalsService(
           totalSignals,
         };
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('implicit-feedback.rollupForTenant failed:', error);
+        logger.error('implicit-feedback.rollupForTenant failed', { error: error });
         return ZERO_ROLLUP;
       }
     },

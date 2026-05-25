@@ -16,9 +16,11 @@
 import { randomUUID } from 'crypto';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import {
+
   kernelPromptRegistry,
   type KernelPromptStatus,
 } from '../schemas/kernel-prompt-registry.schema.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -196,7 +198,7 @@ export function createKernelPromptRegistryService(
       const r = Array.isArray(rows) ? rows[0] : undefined;
       return r ? rowToVersion(r as DbRowShape) : null;
     } catch (error) {
-      console.error('kernel-prompt-registry.findByVersion failed:', error);
+      logger.error('kernel-prompt-registry.findByVersion failed', { error: error });
       return null;
     }
   }
@@ -222,7 +224,7 @@ export function createKernelPromptRegistryService(
         rowToVersion(r as DbRowShape),
       );
     } catch (error) {
-      console.error('kernel-prompt-registry.readByStatus failed:', error);
+      logger.error('kernel-prompt-registry.readByStatus failed', { error: error });
       return [];
     }
   }
@@ -379,7 +381,7 @@ export function createKernelPromptRegistryService(
           restoredActive = await readByVersion(args.capability, prior.version);
         }
       } catch (error) {
-        console.error('kernel-prompt-registry.rollback restore failed:', error);
+        logger.error('kernel-prompt-registry.rollback restore failed', { error: error });
       }
 
       return {
@@ -410,7 +412,7 @@ export function createKernelPromptRegistryService(
             ),
           );
       } catch (error) {
-        console.error('kernel-prompt-registry.markDegraded failed:', error);
+        logger.error('kernel-prompt-registry.markDegraded failed', { error: error });
         return row;
       }
       return readByVersion(capability, version);
@@ -427,7 +429,7 @@ export function createKernelPromptRegistryService(
           rowToVersion(r as DbRowShape),
         );
       } catch (error) {
-        console.error('kernel-prompt-registry.listForCapability failed:', error);
+        logger.error('kernel-prompt-registry.listForCapability failed', { error: error });
         return [];
       }
     },

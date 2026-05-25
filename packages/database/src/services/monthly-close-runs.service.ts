@@ -24,9 +24,11 @@
 import { randomUUID } from 'crypto';
 import { and, asc, desc, eq } from 'drizzle-orm';
 import {
+
   monthlyCloseRuns,
   monthlyCloseRunSteps,
 } from '../schemas/monthly-close-runs.schema.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 export type RunStatus =
@@ -159,7 +161,7 @@ export function createMonthlyCloseRunsService(
         .orderBy(asc(monthlyCloseRunSteps.stepIndex))) as ReadonlyArray<StepRowDb>;
       return rows.map(rowToStep);
     } catch (error) {
-      console.error('monthly-close-runs.loadStepsFor failed:', error);
+      logger.error('monthly-close-runs.loadStepsFor failed', { error: error });
       return [];
     }
   }
@@ -217,7 +219,7 @@ export function createMonthlyCloseRunsService(
         }
         return created;
       } catch (error) {
-        console.error('monthly-close-runs.createRun failed:', error);
+        logger.error('monthly-close-runs.createRun failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('monthly-close-runs.createRun failed');
@@ -235,7 +237,7 @@ export function createMonthlyCloseRunsService(
           ) as ReturnType<typeof eq>,
         );
       } catch (error) {
-        console.error('monthly-close-runs.findRunByPeriod failed:', error);
+        logger.error('monthly-close-runs.findRunByPeriod failed', { error: error });
         return null;
       }
     },
@@ -250,7 +252,7 @@ export function createMonthlyCloseRunsService(
           ) as ReturnType<typeof eq>,
         );
       } catch (error) {
-        console.error('monthly-close-runs.findRunById failed:', error);
+        logger.error('monthly-close-runs.findRunById failed', { error: error });
         return null;
       }
     },
@@ -271,7 +273,7 @@ export function createMonthlyCloseRunsService(
         }
         return out;
       } catch (error) {
-        console.error('monthly-close-runs.listRuns failed:', error);
+        logger.error('monthly-close-runs.listRuns failed', { error: error });
         return [];
       }
     },
@@ -319,7 +321,7 @@ export function createMonthlyCloseRunsService(
         }
         return updated;
       } catch (error) {
-        console.error('monthly-close-runs.updateRun failed:', error);
+        logger.error('monthly-close-runs.updateRun failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('monthly-close-runs.updateRun failed');
@@ -366,7 +368,7 @@ export function createMonthlyCloseRunsService(
           errorMessage: input.errorMessage,
         };
       } catch (error) {
-        console.error('monthly-close-runs.recordStep failed:', error);
+        logger.error('monthly-close-runs.recordStep failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('monthly-close-runs.recordStep failed');
@@ -389,7 +391,7 @@ export function createMonthlyCloseRunsService(
         const row = rows?.[0];
         return row ? rowToStep(row) : null;
       } catch (error) {
-        console.error('monthly-close-runs.findStep failed:', error);
+        logger.error('monthly-close-runs.findStep failed', { error: error });
         return null;
       }
     },

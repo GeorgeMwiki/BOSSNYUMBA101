@@ -23,6 +23,8 @@ import { randomUUID } from 'crypto';
 import { and, eq, gte, lt, sql, desc } from 'drizzle-orm';
 import { kernelMemoryEpisodic } from '../schemas/kernel-memory-episodic.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export type EpisodicKind = 'user-message' | 'agent-action' | 'tool-result';
 
@@ -103,7 +105,7 @@ export function createEpisodicMemoryService(
           .onConflictDoNothing();
       } catch (error) {
         // Memory is a side-channel; log + swallow.
-        console.error('kernel-memory-episodic.record failed:', error);
+        logger.error('kernel-memory-episodic.record failed', { error: error });
       }
     },
 
@@ -142,7 +144,7 @@ export function createEpisodicMemoryService(
 
         return (rows ?? []).map(rowToEntry);
       } catch (error) {
-        console.error('kernel-memory-episodic.recall failed:', error);
+        logger.error('kernel-memory-episodic.recall failed', { error: error });
         return [];
       }
     },
@@ -158,7 +160,7 @@ export function createEpisodicMemoryService(
         }>;
         return Array.isArray(out) ? out.length : 0;
       } catch (error) {
-        console.error('kernel-memory-episodic.purgeExpired failed:', error);
+        logger.error('kernel-memory-episodic.purgeExpired failed', { error: error });
         return 0;
       }
     },

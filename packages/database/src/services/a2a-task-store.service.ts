@@ -38,9 +38,11 @@
 
 import { and, asc, eq, sql } from 'drizzle-orm';
 import {
+
   a2aTasks,
   type A2aTaskRow,
 } from '../schemas/a2a-tasks.schema.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -176,8 +178,7 @@ export function createA2aTaskStoreService(
         // Task-state transitions that fail leave the orchestrator in
         // an undefined state. Surface the error so the caller (lifecycle
         // module) can retry or fail the task explicitly.
-        // eslint-disable-next-line no-console
-        console.error('a2a-task-store.put failed:', error);
+        logger.error('a2a-task-store.put failed', { error: error });
         throw error;
       }
     },
@@ -193,8 +194,7 @@ export function createA2aTaskStoreService(
         const row = rows?.[0];
         return row ? rowToTask(row) : null;
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('a2a-task-store.get failed:', error);
+        logger.error('a2a-task-store.get failed', { error: error });
         return null;
       }
     },
@@ -214,8 +214,7 @@ export function createA2aTaskStoreService(
           .orderBy(asc(a2aTasks.createdAtIso))) as ReadonlyArray<A2aTaskRow>;
         return Object.freeze((rows ?? []).map(rowToTask));
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('a2a-task-store.list failed:', error);
+        logger.error('a2a-task-store.list failed', { error: error });
         return Object.freeze([]);
       }
     },

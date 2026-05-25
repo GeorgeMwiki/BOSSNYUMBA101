@@ -13,6 +13,7 @@
  * compile-time depend on `@bossnyumba/central-intelligence`.
  */
 
+import { logger } from '../../logger.js';
 export interface DecisionTraceRow {
   readonly traceId: string;
   readonly threadId: string;
@@ -79,7 +80,7 @@ export function createDecisionTraceQueryService(
         });
         return filtered.slice(0, limit);
       } catch (error) {
-        console.error('platform.decisionTraces.listRecent failed:', error);
+        logger.error('platform.decisionTraces.listRecent failed', { error: error });
         return [];
       }
     },

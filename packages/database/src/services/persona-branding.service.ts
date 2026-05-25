@@ -23,6 +23,8 @@
 import { and, eq } from 'drizzle-orm';
 import { personaBranding } from '../schemas/persona-branding.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 // ─────────────────────────────────────────────────────────────────────
 // Public types
@@ -117,7 +119,7 @@ export function createPersonaBrandingService(
         // Hard DB failure — never crash the kernel; the caller treats
         // null as "no override" and falls back to the surface-default
         // persona.
-        console.error('persona-branding.get failed:', error);
+        logger.error('persona-branding.get failed', { error: error });
         return null;
       }
     },
@@ -151,7 +153,7 @@ export function createPersonaBrandingService(
             set: setOnConflict as never,
           });
       } catch (error) {
-        console.error('persona-branding.upsert failed:', error);
+        logger.error('persona-branding.upsert failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('persona-branding.upsert failed');

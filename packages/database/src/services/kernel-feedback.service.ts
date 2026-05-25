@@ -32,6 +32,8 @@ import { randomUUID } from 'crypto';
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { kernelFeedback } from '../schemas/kernel-feedback.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export type FeedbackSignal =
   | 'thumbs-up'
@@ -127,7 +129,7 @@ export function createFeedbackService(db: DatabaseClient): FeedbackService {
         await db.insert(kernelFeedback).values(insertRow as never);
         return { id };
       } catch (error) {
-        console.error('kernel-feedback.record failed:', error);
+        logger.error('kernel-feedback.record failed', { error: error });
         // Don't break the calling request — surface a synthetic id so
         // the caller can still hand the user a confirmation token. The
         // row simply isn't persisted.
@@ -160,7 +162,7 @@ export function createFeedbackService(db: DatabaseClient): FeedbackService {
 
         return (rows ?? []).map(rowToEntry);
       } catch (error) {
-        console.error('kernel-feedback.recallForUser failed:', error);
+        logger.error('kernel-feedback.recallForUser failed', { error: error });
         return [];
       }
     },
@@ -175,7 +177,7 @@ export function createFeedbackService(db: DatabaseClient): FeedbackService {
           .orderBy(desc(kernelFeedback.capturedAt))) as ReadonlyArray<FeedbackRow>;
         return (rows ?? []).map(rowToEntry);
       } catch (error) {
-        console.error('kernel-feedback.byThought failed:', error);
+        logger.error('kernel-feedback.byThought failed', { error: error });
         return [];
       }
     },
@@ -232,7 +234,7 @@ export function createFeedbackService(db: DatabaseClient): FeedbackService {
           negativeRate,
         };
       } catch (error) {
-        console.error('kernel-feedback.rollup failed:', error);
+        logger.error('kernel-feedback.rollup failed', { error: error });
         return empty;
       }
     },

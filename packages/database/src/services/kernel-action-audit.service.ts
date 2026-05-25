@@ -9,6 +9,8 @@
 import { randomUUID } from 'crypto';
 import { kernelActionAudit } from '../schemas/kernel-action-audit.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export type ActionAuditDecision =
   | 'running'
@@ -60,7 +62,7 @@ export function createKernelActionAuditService(
           latencyMs: entry.latencyMs,
         } as never);
       } catch (error) {
-        console.error('kernel-action-audit.record failed:', error);
+        logger.error('kernel-action-audit.record failed', { error: error });
       }
     },
   };

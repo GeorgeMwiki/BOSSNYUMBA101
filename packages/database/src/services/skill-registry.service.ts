@@ -29,6 +29,8 @@ import { randomUUID } from 'crypto';
 import { and, desc, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import { skillRegistry } from '../schemas/skill-registry.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export type SkillStatus = 'active' | 'retired' | 'shadow';
 
@@ -158,8 +160,7 @@ export function createSkillRegistryService(
         const returnedId = inserted?.[0]?.id ?? id;
         return { id: returnedId, created: returnedId === id };
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('skill-registry.upsertSkill failed:', error);
+        logger.error('skill-registry.upsertSkill failed', { error: error });
         return { id, created: false };
       }
     },
@@ -218,8 +219,7 @@ export function createSkillRegistryService(
             distance: Number(r.distance),
           }));
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('skill-registry.searchByEmbedding failed:', error);
+        logger.error('skill-registry.searchByEmbedding failed', { error: error });
         return [];
       }
     },
@@ -240,8 +240,7 @@ export function createSkillRegistryService(
           } as never)
           .where(eq(skillRegistry.id, args.skillId));
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('skill-registry.recordOutcome failed:', error);
+        logger.error('skill-registry.recordOutcome failed', { error: error });
       }
     },
 
@@ -271,8 +270,7 @@ export function createSkillRegistryService(
 
         return (rows ?? []).map(rowToSkill);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('skill-registry.listByTenant failed:', error);
+        logger.error('skill-registry.listByTenant failed', { error: error });
         return [];
       }
     },
@@ -285,8 +283,7 @@ export function createSkillRegistryService(
           .set({ status: 'retired' } as never)
           .where(eq(skillRegistry.id, skillId));
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('skill-registry.retire failed:', error);
+        logger.error('skill-registry.retire failed', { error: error });
       }
     },
   };
@@ -359,20 +356,14 @@ function sanitizeEmbedding(
   if (raw === undefined || raw === null) return undefined;
   if (!Array.isArray(raw)) return undefined;
   if (raw.length !== EMBEDDING_DIMS) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      `skill-registry: dropping embedding — expected ${EMBEDDING_DIMS} dims, got ${raw.length}`,
-    );
+    logger.warn(`skill-registry: dropping embedding — expected ${EMBEDDING_DIMS} dims, got ${raw.length}`);
     return undefined;
   }
   const cleaned: number[] = new Array(raw.length);
   for (let i = 0; i < raw.length; i += 1) {
     const n = Number(raw[i]);
     if (!Number.isFinite(n)) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `skill-registry: dropping embedding — non-finite at index ${i}`,
-      );
+      logger.warn(`skill-registry: dropping embedding — non-finite at index ${i}`);
       return undefined;
     }
     cleaned[i] = n;

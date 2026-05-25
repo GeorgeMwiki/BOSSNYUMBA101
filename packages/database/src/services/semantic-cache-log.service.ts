@@ -22,6 +22,7 @@ import { randomUUID } from 'crypto';
 import { and, eq, gte, isNotNull, isNull, sql } from 'drizzle-orm';
 import { semanticCacheLog } from '../schemas/semantic-cache-log.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Public types
@@ -102,10 +103,7 @@ export function createSemanticCacheLogService(
   return {
     async record(args) {
       if (!VALID_OUTCOMES.has(args.outcome)) {
-        console.warn(
-          'semantic-cache-log: invalid outcome rejected:',
-          args.outcome,
-        );
+        logger.warn('semantic-cache-log: invalid outcome rejected', { value: args.outcome });
         return null;
       }
       const id = randomUUID();
@@ -129,10 +127,7 @@ export function createSemanticCacheLogService(
         return { id };
       } catch (err) {
         // Side-channel — log + swallow. Never break the user turn.
-        console.warn(
-          'semantic-cache-log: record failed:',
-          err instanceof Error ? err.message : String(err),
-        );
+        logger.warn('semantic-cache-log: record failed', { value: err instanceof Error ? err.message : String(err) });
         return null;
       }
     },
@@ -158,10 +153,7 @@ export function createSemanticCacheLogService(
           .groupBy(semanticCacheLog.outcome);
         return buildRollup(rows);
       } catch (err) {
-        console.warn(
-          'semantic-cache-log: rollupForTenant failed:',
-          err instanceof Error ? err.message : String(err),
-        );
+        logger.warn('semantic-cache-log: rollupForTenant failed', { value: err instanceof Error ? err.message : String(err) });
         return ZERO_ROLLUP;
       }
     },

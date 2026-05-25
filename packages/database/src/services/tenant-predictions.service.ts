@@ -21,9 +21,11 @@
 
 import { and, desc, eq } from 'drizzle-orm';
 import {
+
   tenantPredictions,
   predictiveInterventionOpportunities,
 } from '../schemas/tenant-predictions.schema.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 export type PredictionHorizonDays = 30 | 60 | 90;
@@ -113,7 +115,7 @@ export function createTenantPredictionsService(
         } as never);
         return prediction;
       } catch (error) {
-        console.error('tenant-predictions.insertPrediction failed:', error);
+        logger.error('tenant-predictions.insertPrediction failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('tenant-predictions.insertPrediction failed');
@@ -141,7 +143,7 @@ export function createTenantPredictionsService(
         } as never);
         return op;
       } catch (error) {
-        console.error('tenant-predictions.insertOpportunity failed:', error);
+        logger.error('tenant-predictions.insertOpportunity failed', { error: error });
         throw error instanceof Error
           ? error
           : new Error('tenant-predictions.insertOpportunity failed');
@@ -165,10 +167,7 @@ export function createTenantPredictionsService(
           .limit(cap)) as ReadonlyArray<TenantPredictionRowDb>;
         return rows.map(rowToPrediction);
       } catch (error) {
-        console.error(
-          'tenant-predictions.listRecentPredictions failed:',
-          error,
-        );
+        logger.error('tenant-predictions.listRecentPredictions failed', { error: error });
         return [];
       }
     },
@@ -190,10 +189,7 @@ export function createTenantPredictionsService(
           .limit(cap)) as ReadonlyArray<OpportunityRowDb>;
         return rows.map(rowToOpportunity);
       } catch (error) {
-        console.error(
-          'tenant-predictions.listOpenOpportunities failed:',
-          error,
-        );
+        logger.error('tenant-predictions.listOpenOpportunities failed', { error: error });
         return [];
       }
     },

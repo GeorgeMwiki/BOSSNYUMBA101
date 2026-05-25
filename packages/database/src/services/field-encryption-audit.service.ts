@@ -31,6 +31,7 @@ import {
   fieldEncryptionAudit,
   type FieldEncryptionAuditRow,
 } from '../schemas/field-encryption-audit.schema.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 export interface RecordEncryptedFieldArgs {
@@ -107,8 +108,7 @@ export function createFieldEncryptionAuditService(
           keyVersion: Math.floor(args.keyVersion),
         } as never);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.warn('field-encryption-audit.recordEncryptedField failed', {
+        logger.warn('field-encryption-audit.recordEncryptedField failed', {
           table: args.table,
           column: args.column,
           error: error instanceof Error ? error.message : String(error),
@@ -139,8 +139,7 @@ export function createFieldEncryptionAuditService(
           .limit(limit)) as ReadonlyArray<FieldEncryptionAuditRow>;
         return (rows ?? []).map(rowToEntry);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.warn('field-encryption-audit.listByScope failed', {
+        logger.warn('field-encryption-audit.listByScope failed', {
           error: error instanceof Error ? error.message : String(error),
         });
         return [];
@@ -155,8 +154,7 @@ export function createFieldEncryptionAuditService(
           .set({ rotatedAt: new Date() } as never)
           .where(inArray(fieldEncryptionAudit.id, [...ids]));
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.warn('field-encryption-audit.markRotated failed', {
+        logger.warn('field-encryption-audit.markRotated failed', {
           count: ids.length,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -193,8 +191,7 @@ export function createFieldEncryptionAuditService(
           count: Number(r.count) || 0,
         }));
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.warn('field-encryption-audit.countByKeyVersion failed', {
+        logger.warn('field-encryption-audit.countByKeyVersion failed', {
           error: error instanceof Error ? error.message : String(error),
         });
         return [];

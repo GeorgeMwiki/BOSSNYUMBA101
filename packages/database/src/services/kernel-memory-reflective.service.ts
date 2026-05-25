@@ -22,6 +22,8 @@ import { randomUUID } from 'crypto';
 import { and, eq, isNull, desc } from 'drizzle-orm';
 import { kernelMemoryReflective } from '../schemas/kernel-memory-reflective.schema.js';
 import type { DatabaseClient } from '../client.js';
+import { logger } from '../logger.js';
+
 
 export type ReflectivePeriodKind = 'daily' | 'weekly' | 'monthly';
 
@@ -95,7 +97,7 @@ export function createReflectiveMemoryService(
 
         return (rows ?? []).map(rowToDigest);
       } catch (error) {
-        console.error('kernel-memory-reflective.latest failed:', error);
+        logger.error('kernel-memory-reflective.latest failed', { error: error });
         return [];
       }
     },
@@ -119,7 +121,7 @@ export function createReflectiveMemoryService(
           } as never)
           .onConflictDoNothing();
       } catch (error) {
-        console.error('kernel-memory-reflective.record failed:', error);
+        logger.error('kernel-memory-reflective.record failed', { error: error });
       }
     },
   };
