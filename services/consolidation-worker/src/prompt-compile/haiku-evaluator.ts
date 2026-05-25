@@ -21,6 +21,8 @@
  * rejects most mutations.
  */
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
+
 export interface GoldenCase {
   readonly id: string;
   readonly input: string;
@@ -64,7 +66,7 @@ export interface HaikuEvaluatorDeps {
   readonly maxTokens?: number;
 }
 
-export const DEFAULT_EVALUATOR_MODEL = 'claude-haiku-4-5-20251001';
+export const DEFAULT_EVALUATOR_MODEL = getModelLatest('haiku');
 const DEFAULT_MAX_TOKENS = 512;
 
 /** Heuristic range — see header doc for rationale. */

@@ -24,6 +24,7 @@
  * a runaway tenant can't rack up charges across multiple providers.
  */
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import type { CostLedger } from '../cost-ledger.js';
 import type {
   AIProvider,
@@ -80,9 +81,9 @@ export interface RouteHints {
  *   free → Haiku 4.5
  */
 const TIER_PREFERRED_ANTHROPIC: Readonly<Record<TenantTier, string>> = {
-  enterprise: 'claude-opus-4-7',
-  growth: 'claude-sonnet-4-6',
-  free: 'claude-haiku-4-5-20251001',
+  enterprise: getModelLatest('opus'),
+  growth: getModelLatest('sonnet'),
+  free: getModelLatest('haiku'),
 };
 
 /** How long to skip a provider after a 429 / RATE_LIMIT response. */

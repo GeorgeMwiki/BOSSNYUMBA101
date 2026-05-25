@@ -133,6 +133,7 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",
+    "@bossnyumba/brain-llm-router": "workspace:*",
     "@bossnyumba/forecasting": "workspace:*",
     "jose": "^6.2.3",
     "openai": "^6.38.0",

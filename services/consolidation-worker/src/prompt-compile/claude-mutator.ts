@@ -29,6 +29,8 @@
  *     return the raw response as a single candidate.
  */
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
+
 /**
  * `GoldenCase` mirrors the kernel's `EvalCase` structurally so we have
  * NO compile-time dependency on `@bossnyumba/central-intelligence`. The
@@ -80,7 +82,7 @@ export interface ClaudeMutatorDeps {
 }
 
 /** Default — strongest available reasoning model. */
-export const DEFAULT_MUTATOR_MODEL = 'claude-opus-4-20250514';
+export const DEFAULT_MUTATOR_MODEL = getModelLatest('opus');
 
 const DEFAULT_MAX_TOKENS = 2048;
 const MAX_MUTATION_COUNT = 8;

@@ -46,6 +46,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@bossnyumba/brain-llm-router": "workspace:*",
     "zod": "^3.25.76"
   },
   "peerDependencies": {

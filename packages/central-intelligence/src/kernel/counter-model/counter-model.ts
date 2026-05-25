@@ -26,6 +26,7 @@
  *     are trying to close.
  */
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import type {
   CounterModelVerdict,
 } from './prompt-template.js';
@@ -88,7 +89,7 @@ export interface CounterModelConfig {
   readonly maxTokens?: number;
 }
 
-export const DEFAULT_COUNTER_MODEL_ID = 'claude-haiku-4-5-20251001';
+export const DEFAULT_COUNTER_MODEL_ID = getModelLatest('haiku');
 
 export function createCounterModelReview(
   config: CounterModelConfig,

@@ -8,6 +8,7 @@
  * Adapter is fetch-injectable so tests don't need network access.
  */
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import type { OCRConfig, OCRPort, ParsedDocument, TextBlock } from '../types.js';
 import { buildPage, buildParsedDocument } from './parsed-document-builder.js';
 
@@ -31,7 +32,7 @@ export function createAnthropicVisionAdapter(
   config: AnthropicVisionAdapterConfig
 ): OCRPort {
   const endpoint = config.endpoint ?? 'https://api.anthropic.com/v1/messages';
-  const model = config.model ?? 'claude-opus-4-7';
+  const model = config.model ?? getModelLatest('opus');
   const maxTokens = config.maxTokens ?? 4096;
 
   return {
