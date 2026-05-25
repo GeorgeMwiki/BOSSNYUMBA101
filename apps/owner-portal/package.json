@@ -20,6 +20,7 @@
     "@bossnyumba/domain-models": "*",
     "@bossnyumba/genui": "*",
     "@bossnyumba/observability": "workspace:^",
+    "@bossnyumba/performance-toolkit": "workspace:*",
     "@bossnyumba/realtime-rooms": "workspace:*",
     "@bossnyumba/spotlight": "*",
     "@liveblocks/client": "^2.0.0",

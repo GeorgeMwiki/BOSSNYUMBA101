@@ -534,6 +534,9 @@ importers:
       '@bossnyumba/observability':
         specifier: workspace:^
         version: link:../../packages/observability
+      '@bossnyumba/performance-toolkit':
+        specifier: workspace:*
+        version: link:../../packages/performance-toolkit
       '@bossnyumba/realtime-rooms':
         specifier: workspace:*
         version: link:../../packages/realtime-rooms
