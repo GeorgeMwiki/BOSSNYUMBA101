@@ -19,6 +19,7 @@ import {
   type ChangeEvent,
   type DragEvent,
 } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2, UploadCloud, CheckCircle2 } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api';
 import { getCsrfHeaders } from '@/lib/csrf';
@@ -95,11 +96,13 @@ async function uploadFile(
 export function FileUpload({
   accept = ACCEPT_DEFAULT,
   onUploaded,
-  label = 'Upload a document',
+  label,
   relatedEntityType,
   relatedEntityId,
   documentType,
 }: UploadProps) {
+  const t = useTranslations('p89.fileUpload');
+  const resolvedLabel = label ?? t('defaultLabel');
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -177,7 +180,7 @@ export function FileUpload({
             inputRef.current?.click();
           }
         }}
-        aria-label={label}
+        aria-label={resolvedLabel}
         className={`rounded-lg border-2 border-dashed p-6 text-center cursor-pointer transition-colors ${
           dragging
             ? 'border-blue-500 bg-blue-500/10'
@@ -191,7 +194,7 @@ export function FileUpload({
         ) : (
           <>
             <UploadCloud className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-200 font-medium">{label}</p>
+            <p className="text-sm text-gray-200 font-medium">{resolvedLabel}</p>
             <p className="text-xs text-gray-500 mt-1">
               Drop file here, or click to choose
             </p>

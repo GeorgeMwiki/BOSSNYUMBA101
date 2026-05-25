@@ -1126,5 +1126,142 @@
     "activityEmpty": "Matukio kwenye kiwanja hiki yataonekana hapa yanapotokea.",
     "disabledTitle": "Onyesho la KPI za kodi",
     "disabledDescription": "Imefungwa na bendera ya lease_kpi_panel_enabled."
+  },
+  "p89": {
+    "houseRules": {
+      "title": "Sheria za Nyumba"
+    },
+    "emergencyTypes": {
+      "waterLabel": "Uvujaji wa Maji / Mafuriko",
+      "powerLabel": "Kukatika kwa Umeme",
+      "securityLabel": "Suala la Usalama",
+      "otherLabel": "Dharura Nyingine"
+    },
+    "inspection": {
+      "wallsUndamaged": "Kuta hazijaharibika",
+      "flooringCondition": "Sakafu iko katika hali nzuri",
+      "plumbingWorks": "Mabomba yanafanya kazi",
+      "electricalOutletsWorking": "Soketi za umeme zinafanya kazi",
+      "doorsLocksSecure": "Milango na funguo salama",
+      "windowsFunctional": "Madirisha yanafunguka na kufungwa",
+      "signatureAlt": "Saini iliyohifadhiwa"
+    },
+    "triage": {
+      "noPowerElectrical": "Hakuna umeme / kielektroniki",
+      "waterPlumbing": "Maji / mabomba",
+      "acHeatingNotWorking": "AC / kupasha joto haifanyi kazi",
+      "applianceBroken": "Kifaa kimeharibika",
+      "somethingElse": "Kitu kingine",
+      "wholeHouse": "Nyumba nzima",
+      "oneRoomZone": "Chumba kimoja tu / eneo",
+      "oneOutlet": "Soketi moja tu",
+      "breakerFlipped": "Ndiyo, moja imegeuzwa",
+      "breakersNormal": "Hapana, zote zinaonekana sawa",
+      "breakerNotFound": "Siwezi kupata sanduku la breka",
+      "leakOnFloor": "Kuna uvujaji / maji sakafuni",
+      "noWater": "Hakuna maji yanayotoka kabisa",
+      "sinkSlow": "Sinki / shawa inatoka taratibu",
+      "completelyDead": "Imekufa kabisa",
+      "runningButWarm": "Inafanya kazi lakini inatoa hewa ya joto",
+      "strangeNoises": "Inatoa sauti za ajabu",
+      "remoteBlank": "Hapana, skrini ya remote ni tupu",
+      "remoteIgnored": "Ndiyo, remote inafanya kazi lakini kifaa hakijibu",
+      "diyAdvice": "Unaweza kuirekebisha mwenyewe.",
+      "dispatchTechnician": "Tutamtuma fundi.",
+      "diagnosticHistory": "Historia ya uchunguzi"
+    },
+    "onboardingComplete": {
+      "keyCollection": "Kuchukua Funguo"
+    },
+    "onboardingUtilities": {
+      "copyMeterNumber": "Nakili Nambari ya Mita"
+    },
+    "onboardingWelcome": {
+      "pushNotifications": "Arifa za Push"
+    },
+    "declaredFacts": {
+      "title": "Ukweli uliotangazwa"
+    },
+    "feedbackThumbs": {
+      "reasonPlaceholder": "Niambie kilichoenda vibaya (si lazima)",
+      "reasonAriaLabel": "Sababu ya maoni",
+      "thumbsUpAria": "Kidole gumba juu",
+      "thumbsDownAria": "Kidole gumba chini"
+    },
+    "chatComposer": {
+      "sendMessageAria": "Tuma ujumbe"
+    },
+    "fileUpload": {
+      "defaultLabel": "Pakia hati"
+    },
+    "moveOut": {
+      "reasonPlaceholder": "Kwa nini unahama?",
+      "depositPlaceholder": "Tutume amana yako wapi?",
+      "depositLegend": "Upendeleo wa kurudisha amana"
+    },
+    "notificationCenter": {
+      "panelAria": "Paneli ya arifa",
+      "closeAria": "Funga arifa"
+    },
+    "maintenanceModal": {
+      "pestControlLabel": "Kuangamiza wadudu"
+    },
+    "ticketRating": {
+      "prompt": "Huduma ilikuwaje?",
+      "commentPlaceholder": "Nini kilifanya kazi vizuri? Kuna kitu chochote tunachoweza kuboresha?",
+      "submitAria": "Wasilisha tathmini"
+    },
+    "liveAffordability": {
+      "enterIncomeLabel": "Weka mapato",
+      "comfortablyAffordableLabel": "Inaweza kumudika kwa raha"
+    },
+    "marketingShell": {
+      "stationMastersLabel": "Mabingwa wa Stesheni",
+      "howItWorksLabel": "Inavyofanya kazi"
+    },
+    "docQuality": {
+      "label": "Ubora wa Hati"
+    },
+    "inspectionChecklist": {
+      "itemsAria": "Vipengele vya orodha ya ukaguzi",
+      "submitAria": "Wasilisha ukaguzi"
+    },
+    "phoneSignup": {
+      "sendOtpAria": "Tuma OTP",
+      "verifyCodeAria": "Thibitisha msimbo"
+    },
+    "signaturePad": {
+      "padAria": "Paneli ya saini",
+      "clearAria": "Futa saini",
+      "confirmAria": "Thibitisha saini na wasilisha"
+    },
+    "categorySelector": {
+      "pestControlLabel": "Kuangamiza Wadudu"
+    },
+    "requestCard": {
+      "inProgressLabel": "Inaendelea"
+    },
+    "paymentsData": {
+      "allTime": "Wakati wote",
+      "last30Days": "Siku 30 zilizopita",
+      "last3Months": "Miezi 3 iliyopita",
+      "last6Months": "Miezi 6 iliyopita",
+      "thisYear": "Mwaka huu"
+    },
+    "proposedAction": {
+      "openMaintenance": "Fungua fomu ya matengenezo",
+      "openPayment": "Fungua fomu ya malipo",
+      "openMessage": "Fungua mtungaji wa ujumbe",
+      "openLease": "Fungua fomu ya mkataba"
+    },
+    "starterPrompts": {
+      "rentDue": "Kodi yangu inayofuata ni lini?",
+      "openMaintenance": "Fungua ombi la matengenezo",
+      "explainLease": "Nieleze mkataba wangu",
+      "findReceipt": "Tafuta risiti ya malipo"
+    },
+    "maintenancePage": {
+      "inProgressLabel": "Inaendelea"
+    }
   }
 }

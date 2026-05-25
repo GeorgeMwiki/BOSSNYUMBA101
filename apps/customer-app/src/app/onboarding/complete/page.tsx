@@ -30,11 +30,14 @@ interface MoveInDetail {
   value: string;
 }
 
-const MOVE_IN_DETAILS: MoveInDetail[] = [
-  { icon: Calendar, label: 'Move-in Date', value: 'June 1, 2024' },
-  { icon: Clock, label: 'Key Collection', value: '10:00 AM - 12:00 PM' },
-  { icon: MapPin, label: 'Location', value: 'Sunset Apartments, Management Office' },
-];
+function useMoveInDetails(): MoveInDetail[] {
+  const t = useTranslations('p89.onboardingComplete');
+  return [
+    { icon: Calendar, label: 'Move-in Date', value: 'June 1, 2024' },
+    { icon: Clock, label: t('keyCollection'), value: '10:00 AM - 12:00 PM' },
+    { icon: MapPin, label: 'Location', value: 'Sunset Apartments, Management Office' },
+  ];
+}
 
 const WELCOME_ITEMS = [
   {
@@ -77,6 +80,7 @@ const TIME_SLOTS = [
 
 export default function OnboardingCompletePage() {
   const t = useTranslations('onboardingComplete');
+  const MOVE_IN_DETAILS = useMoveInDetails();
   const router = useRouter();
   const { user } = useAuth();
   const [welcomeItems, setWelcomeItems] = useState(WELCOME_ITEMS);

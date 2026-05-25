@@ -14,6 +14,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { CheckCircle2, Loader2, Send } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api';
 import { getCsrfHeaders } from '@/lib/csrf';
@@ -45,6 +46,7 @@ interface MoveOutFormProps {
 }
 
 export function MoveOutNoticeForm({ onSubmitted }: MoveOutFormProps) {
+  const t = useTranslations('p89.moveOut');
   const [state, setState] = useState<FormState>(INITIAL_STATE);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +160,7 @@ export function MoveOutNoticeForm({ onSubmitted }: MoveOutFormProps) {
           onChange={(e) => updateField('reason', e.target.value)}
           rows={3}
           required
-          placeholder="Why are you moving out?"
+          placeholder={t('reasonPlaceholder')}
           data-testid="move-out-reason"
           className="mt-1 w-full rounded bg-gray-800 border border-gray-700 px-3 py-2 text-white"
         />
@@ -170,13 +172,13 @@ export function MoveOutNoticeForm({ onSubmitted }: MoveOutFormProps) {
           type="text"
           value={state.forwardingAddress}
           onChange={(e) => updateField('forwardingAddress', e.target.value)}
-          placeholder="Where should we mail your deposit?"
+          placeholder={t('depositPlaceholder')}
           className="mt-1 w-full rounded bg-gray-800 border border-gray-700 px-3 py-2 text-white"
         />
       </label>
 
       <fieldset className="block text-sm text-gray-300">
-        <legend className="mb-2">Deposit return preference</legend>
+        <legend className="mb-2">{t('depositLegend')}</legend>
         <div className="grid grid-cols-3 gap-2">
           {(['bank', 'mpesa', 'cheque'] as const).map((preference) => (
             <label

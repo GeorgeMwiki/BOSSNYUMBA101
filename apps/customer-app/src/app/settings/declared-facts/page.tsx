@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { Trash2, Plus, Save } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getCsrfHeaders } from '@/lib/csrf';
@@ -82,6 +83,7 @@ async function deleteDeclared(key: string): Promise<boolean> {
 }
 
 export default function DeclaredFactsPage(): JSX.Element {
+  const t = useTranslations('p89.declaredFacts');
   const [facts, setFacts] = useState<ReadonlyArray<DeclaredFact>>([]);
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
@@ -128,7 +130,7 @@ export default function DeclaredFactsPage(): JSX.Element {
 
   return (
     <div className="p-6 max-w-3xl">
-      <PageHeader title="Declared facts" showBack />
+      <PageHeader title={t('title')} showBack />
       <p className="mt-3 text-sm text-neutral-400">
         Things you&apos;ve told me about yourself — these override anything I
         infer from your activity.

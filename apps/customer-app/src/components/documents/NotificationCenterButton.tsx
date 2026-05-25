@@ -10,6 +10,7 @@
 
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Bell, Loader2, X } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api';
 
@@ -30,6 +31,7 @@ function token(): string {
 }
 
 export function NotificationCenterButton() {
+  const t = useTranslations('p89.notificationCenter');
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<readonly NotificationItem[]>([]);
@@ -95,7 +97,7 @@ export function NotificationCenterButton() {
       {open && (
         <div
           role="dialog"
-          aria-label="Notifications panel"
+          aria-label={t('panelAria')}
           className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-30 overflow-hidden"
         >
           <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
@@ -103,7 +105,7 @@ export function NotificationCenterButton() {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Close notifications"
+              aria-label={t('closeAria')}
               className="p-1 rounded hover:bg-white/5 text-gray-400"
             >
               <X className="w-4 h-4" />

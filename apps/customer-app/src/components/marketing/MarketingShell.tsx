@@ -9,6 +9,7 @@
  */
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   readonly title: string;
@@ -17,17 +18,21 @@ interface Props {
   readonly children: React.ReactNode;
 }
 
-const NAV_LINKS: ReadonlyArray<{ href: string; label: string }> = [
-  { href: '/for-owners', label: 'Owners' },
-  { href: '/for-tenants', label: 'Tenants' },
-  { href: '/for-managers', label: 'Managers' },
-  { href: '/for-station-masters', label: 'Station Masters' },
-  { href: '/pricing', label: 'Pricing' },
-  { href: '/how-it-works', label: 'How it works' },
-  { href: '/compare', label: 'Compare' },
-];
+function useNavLinks(): ReadonlyArray<{ href: string; label: string }> {
+  const t = useTranslations('p89.marketingShell');
+  return [
+    { href: '/for-owners', label: 'Owners' },
+    { href: '/for-tenants', label: 'Tenants' },
+    { href: '/for-managers', label: 'Managers' },
+    { href: '/for-station-masters', label: t('stationMastersLabel') },
+    { href: '/pricing', label: 'Pricing' },
+    { href: '/how-it-works', label: t('howItWorksLabel') },
+    { href: '/compare', label: 'Compare' },
+  ];
+}
 
 export function MarketingShell({ title, subtitle, heroCtaLabel, children }: Props) {
+  const NAV_LINKS = useNavLinks();
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white">

@@ -5,12 +5,19 @@ export const CARD_PAYMENT_ENABLED = false;
 
 export const MOCK_PAYMENTS: Payment[] = [];
 
+/**
+ * Date range options for filtering payments by time period.
+ *
+ * `labelKey` resolves through `useTranslations('p89.paymentsData')` at
+ * render time — consumers pass the key to `t()` to get the localised
+ * label.
+ */
 export const DATE_RANGE_OPTIONS = [
-  { label: 'All time', value: 'all' },
-  { label: 'Last 30 days', value: '30' },
-  { label: 'Last 3 months', value: '90' },
-  { label: 'Last 6 months', value: '180' },
-  { label: 'This year', value: 'year' },
+  { labelKey: 'allTime', value: 'all' },
+  { labelKey: 'last30Days', value: '30' },
+  { labelKey: 'last3Months', value: '90' },
+  { labelKey: 'last6Months', value: '180' },
+  { labelKey: 'thisYear', value: 'year' },
 ];
 
 export function filterPaymentsByDateRange(items: Payment[], range: string): Payment[] {

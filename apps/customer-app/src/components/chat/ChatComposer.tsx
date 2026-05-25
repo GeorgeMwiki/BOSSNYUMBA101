@@ -79,6 +79,7 @@ export function ChatComposer({
   disabled = false,
 }: ChatComposerProps): JSX.Element {
   const t = useTranslations('chatComposer');
+  const tP89 = useTranslations('p89.chatComposer');
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState<ReadonlyArray<PendingFile>>([]);
   const [sending, setSending] = useState(false);
@@ -279,7 +280,7 @@ export function ChatComposer({
         <button
           type="submit"
           disabled={sending || disabled || (!draft.trim() && pending.length === 0)}
-          aria-label="Send message"
+          aria-label={tP89('sendMessageAria')}
           data-testid="chat-send-button"
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 inline-flex items-center gap-2"
         >

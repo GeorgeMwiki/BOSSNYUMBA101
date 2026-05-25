@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Camera, Check, X } from 'lucide-react';
 
 /**
@@ -59,8 +60,10 @@ export function InspectionChecklist({
   items,
   onPatch,
   onSubmit,
-  submitLabel = 'Submit inspection',
+  submitLabel,
 }: InspectionChecklistProps): JSX.Element {
+  const t = useTranslations('p89.inspectionChecklist');
+  const resolvedSubmitLabel = submitLabel ?? t('submitAria');
   const [state, setState] = useState<readonly ChecklistItemState[]>(
     () => items.map(seedToState)
   );
@@ -120,7 +123,7 @@ export function InspectionChecklist({
         data-checklist="true"
         className="space-y-3 pb-32"
         role="list"
-        aria-label="Inspection checklist items"
+        aria-label={t('itemsAria')}
       >
         {state.map((item, idx) => (
           <div
@@ -246,13 +249,13 @@ export function InspectionChecklist({
           onClick={() => void handleSubmit()}
           disabled={!canSubmit}
           data-testid="inspection-submit-button"
-          aria-label="Submit inspection"
+          aria-label={t('submitAria')}
           className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-4 text-base font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
         >
           {submitting ? (
             <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : (
-            submitLabel
+            resolvedSubmitLabel
           )}
         </button>
         <p className="text-center text-xs text-gray-500">

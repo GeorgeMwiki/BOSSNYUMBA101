@@ -50,6 +50,7 @@ export function FeedbackThumbs({
   disabled = false,
 }: FeedbackThumbsProps): JSX.Element {
   const t = useTranslations('feedbackThumbs');
+  const tP89 = useTranslations('p89.feedbackThumbs');
   const [submitting, setSubmitting] = useState(false);
   const [submittedVerdict, setSubmittedVerdict] = useState<FeedbackVerdict | null>(null);
   const [showReason, setShowReason] = useState(false);
@@ -144,8 +145,8 @@ export function FeedbackThumbs({
             type="text"
             value={reason}
             onChange={(e) => setReason(e.target.value.slice(0, REASON_MAX_LEN))}
-            placeholder="Tell me what was wrong (optional)"
-            aria-label="Feedback reason"
+            placeholder={tP89('reasonPlaceholder')}
+            aria-label={tP89('reasonAriaLabel')}
             disabled={buttonsDisabled}
             className="min-w-0 flex-1 rounded border border-border bg-surface px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground disabled:opacity-50"
             maxLength={REASON_MAX_LEN}

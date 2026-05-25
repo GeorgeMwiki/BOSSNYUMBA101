@@ -19,15 +19,18 @@ export interface MaintenanceRequest {
   scheduledDate?: string;
 }
 
-const statusConfig: Record<
+function useStatusConfig(): Record<
   RequestStatus,
   { label: string; icon: React.ElementType; color: string }
-> = {
-  submitted: { label: 'Submitted', icon: Clock, color: 'badge-info' },
-  in_progress: { label: 'In Progress', icon: Wrench, color: 'badge-warning' },
-  scheduled: { label: 'Scheduled', icon: Clock, color: 'badge-info' },
-  completed: { label: 'Completed', icon: CheckCircle, color: 'badge-success' },
-};
+> {
+  const t = useTranslations('p89.requestCard');
+  return {
+    submitted: { label: 'Submitted', icon: Clock, color: 'badge-info' },
+    in_progress: { label: t('inProgressLabel'), icon: Wrench, color: 'badge-warning' },
+    scheduled: { label: 'Scheduled', icon: Clock, color: 'badge-info' },
+    completed: { label: 'Completed', icon: CheckCircle, color: 'badge-success' },
+  };
+}
 
 const priorityColors: Record<RequestPriority, string> = {
   emergency: 'border-l-red-500',
@@ -43,6 +46,7 @@ interface RequestCardProps {
 
 export function RequestCard({ request, href }: RequestCardProps) {
   const t = useTranslations('requestCard');
+  const statusConfig = useStatusConfig();
   const status = statusConfig[request.status];
   const StatusIcon = status.icon;
   const linkHref = href ?? `/requests/${request.id}`;

@@ -9,6 +9,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type TouchEvent as ReactTouchEvent,
 } from 'react';
+import { useTranslations } from 'next-intl';
 import { Check, RotateCcw } from 'lucide-react';
 
 /**
@@ -54,6 +55,7 @@ export function SignaturePad({
   ariaLabel = 'Signature drawing area. Use mouse or touch to draw your signature.',
   testId = 'signature-pad',
 }: SignaturePadProps): JSX.Element {
+  const t = useTranslations('p89.signaturePad');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasInk, setHasInk] = useState(false);
@@ -177,7 +179,7 @@ export function SignaturePad({
       className={`space-y-3 ${className ?? ''}`}
       data-testid={testId}
       role="group"
-      aria-label="Signature pad"
+      aria-label={t('padAria')}
     >
       <div className="border-2 border-gray-200 rounded-lg overflow-hidden bg-white focus-within:border-primary-500 transition-colors">
         <canvas
@@ -209,7 +211,7 @@ export function SignaturePad({
           disabled={!hasInk}
           data-testid={`${testId}-clear`}
           className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label="Clear signature"
+          aria-label={t('clearAria')}
         >
           <RotateCcw className="w-4 h-4" />
           Clear
@@ -220,7 +222,7 @@ export function SignaturePad({
           disabled={!hasInk}
           data-testid={`${testId}-done`}
           className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-3 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label="Confirm signature and submit"
+          aria-label={t('confirmAria')}
         >
           <Check className="w-4 h-4" />
           Done

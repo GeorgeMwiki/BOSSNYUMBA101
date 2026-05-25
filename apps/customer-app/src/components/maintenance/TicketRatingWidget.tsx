@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Send, Star, ThumbsUp } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api';
 import { getCsrfHeaders } from '@/lib/csrf';
@@ -38,6 +39,7 @@ export function TicketRatingWidget({
   ticketId,
   onSubmitted,
 }: TicketRatingWidgetProps): JSX.Element {
+  const t = useTranslations('p89.ticketRating');
   const [score, setScore] = useState<number>(0);
   const [hover, setHover] = useState<number>(0);
   const [comment, setComment] = useState('');
@@ -103,7 +105,7 @@ export function TicketRatingWidget({
       className="space-y-3 rounded-lg border border-white/10 bg-[#1a1a1a] p-4"
     >
       <div>
-        <p className="text-sm font-medium text-white">How was the service?</p>
+        <p className="text-sm font-medium text-white">{t('prompt')}</p>
         <p className="text-xs text-gray-400">
           Your rating helps us improve dispatch and response times.
         </p>
@@ -156,7 +158,7 @@ export function TicketRatingWidget({
           rows={3}
           aria-label="Comment"
           data-testid="rating-comment"
-          placeholder="What worked well? Anything we should improve?"
+          placeholder={t('commentPlaceholder')}
           className="block w-full rounded-md border border-white/10 bg-[#121212] px-3 py-2 text-sm text-white"
         />
       </label>
@@ -175,7 +177,7 @@ export function TicketRatingWidget({
           type="submit"
           disabled={submitting || score < 1}
           data-testid="submit-rating"
-          aria-label="Submit rating"
+          aria-label={t('submitAria')}
           className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           <Send className="h-4 w-4" />

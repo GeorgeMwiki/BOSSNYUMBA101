@@ -11,6 +11,7 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export interface CategoryOption {
   value: string;
@@ -19,16 +20,19 @@ export interface CategoryOption {
   icon: LucideIcon;
 }
 
-export const CATEGORIES: CategoryOption[] = [
-  { value: 'plumbing', label: 'Plumbing', description: 'Leaks, clogs, water', icon: Droplets },
-  { value: 'electrical', label: 'Electrical', description: 'Lights, outlets, wiring', icon: Zap },
-  { value: 'hvac', label: 'HVAC', description: 'Heating, cooling, AC', icon: Thermometer },
-  { value: 'appliances', label: 'Appliances', description: 'Fridge, stove, washer', icon: Refrigerator },
-  { value: 'structural', label: 'Structural', description: 'Walls, floors, doors', icon: Home },
-  { value: 'pest_control', label: 'Pest Control', description: 'Insects, rodents', icon: Bug },
-  { value: 'security', label: 'Security', description: 'Locks, alarms, access', icon: Shield },
-  { value: 'general', label: 'General', description: 'Other issues', icon: Wrench },
-];
+export function useCategories(): CategoryOption[] {
+  const t = useTranslations('p89.categorySelector');
+  return [
+    { value: 'plumbing', label: 'Plumbing', description: 'Leaks, clogs, water', icon: Droplets },
+    { value: 'electrical', label: 'Electrical', description: 'Lights, outlets, wiring', icon: Zap },
+    { value: 'hvac', label: 'HVAC', description: 'Heating, cooling, AC', icon: Thermometer },
+    { value: 'appliances', label: 'Appliances', description: 'Fridge, stove, washer', icon: Refrigerator },
+    { value: 'structural', label: 'Structural', description: 'Walls, floors, doors', icon: Home },
+    { value: 'pest_control', label: t('pestControlLabel'), description: 'Insects, rodents', icon: Bug },
+    { value: 'security', label: 'Security', description: 'Locks, alarms, access', icon: Shield },
+    { value: 'general', label: 'General', description: 'Other issues', icon: Wrench },
+  ];
+}
 
 interface CategorySelectorProps {
   value: string;
@@ -36,6 +40,7 @@ interface CategorySelectorProps {
 }
 
 export function CategorySelector({ value, onChange }: CategorySelectorProps) {
+  const CATEGORIES = useCategories();
   return (
     <div className="grid grid-cols-2 gap-2">
       {CATEGORIES.map((cat) => {

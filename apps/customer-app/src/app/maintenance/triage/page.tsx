@@ -65,11 +65,11 @@ const TREE: { rootNodeId: string; nodes: Record<string, Node> } = {
       id: 'root',
       question: 'What kind of problem are you experiencing?',
       options: [
-        { key: 'electrical', label: 'No power / electrical', nextNodeId: 'electrical.scope' },
-        { key: 'plumbing', label: 'Water / plumbing', nextNodeId: 'plumbing.scope' },
-        { key: 'hvac', label: 'AC / heating not working', nextNodeId: 'hvac.scope' },
-        { key: 'appliance', label: 'Appliance broken', nextNodeId: 'appliance.dispatch' },
-        { key: 'other', label: 'Something else', nextNodeId: 'other.dispatch' },
+        { key: 'electrical', labelKey: 'noPowerElectrical', nextNodeId: 'electrical.scope' },
+        { key: 'plumbing', labelKey: 'waterPlumbing', nextNodeId: 'plumbing.scope' },
+        { key: 'hvac', labelKey: 'acHeatingNotWorking', nextNodeId: 'hvac.scope' },
+        { key: 'appliance', labelKey: 'applianceBroken', nextNodeId: 'appliance.dispatch' },
+        { key: 'other', labelKey: 'somethingElse', nextNodeId: 'other.dispatch' },
       ],
     },
     'electrical.scope': {
@@ -77,9 +77,9 @@ const TREE: { rootNodeId: string; nodes: Record<string, Node> } = {
       id: 'electrical.scope',
       question: 'Where is the power out?',
       options: [
-        { key: 'whole-house', label: 'The whole house', nextNodeId: 'electrical.whole-house.dispatch' },
-        { key: 'zone', label: 'Just one room / zone', nextNodeId: 'electrical.zone.breaker-check' },
-        { key: 'one-outlet', label: 'Just one wall socket', nextNodeId: 'electrical.outlet.dispatch' },
+        { key: 'whole-house', labelKey: 'wholeHouse', nextNodeId: 'electrical.whole-house.dispatch' },
+        { key: 'zone', labelKey: 'oneRoomZone', nextNodeId: 'electrical.zone.breaker-check' },
+        { key: 'one-outlet', labelKey: 'oneOutlet', nextNodeId: 'electrical.outlet.dispatch' },
       ],
     },
     'electrical.zone.breaker-check': {
@@ -87,9 +87,9 @@ const TREE: { rootNodeId: string; nodes: Record<string, Node> } = {
       id: 'electrical.zone.breaker-check',
       question: 'Please check the breaker box. Has a breaker flipped down or shows red?',
       options: [
-        { key: 'yes', label: 'Yes, one is flipped', nextNodeId: 'electrical.breaker.flip-back' },
-        { key: 'no', label: 'No, all look normal', nextNodeId: 'electrical.zone.dispatch' },
-        { key: 'cant-find', label: 'I cannot find the breaker box', nextNodeId: 'electrical.zone.dispatch' },
+        { key: 'yes', labelKey: 'breakerFlipped', nextNodeId: 'electrical.breaker.flip-back' },
+        { key: 'no', labelKey: 'breakersNormal', nextNodeId: 'electrical.zone.dispatch' },
+        { key: 'cant-find', labelKey: 'breakerNotFound', nextNodeId: 'electrical.zone.dispatch' },
       ],
     },
     'electrical.breaker.flip-back': {
@@ -139,9 +139,9 @@ const TREE: { rootNodeId: string; nodes: Record<string, Node> } = {
       id: 'plumbing.scope',
       question: 'What is wrong with the water?',
       options: [
-        { key: 'leak', label: 'There is a leak / water on the floor', nextNodeId: 'plumbing.leak.dispatch' },
-        { key: 'no-water', label: 'No water coming out at all', nextNodeId: 'plumbing.no-water.dispatch' },
-        { key: 'slow-drain', label: 'Sink / shower draining slowly', nextNodeId: 'plumbing.slow-drain.self' },
+        { key: 'leak', labelKey: 'leakOnFloor', nextNodeId: 'plumbing.leak.dispatch' },
+        { key: 'no-water', labelKey: 'noWater', nextNodeId: 'plumbing.no-water.dispatch' },
+        { key: 'slow-drain', labelKey: 'sinkSlow', nextNodeId: 'plumbing.slow-drain.self' },
       ],
     },
     'plumbing.slow-drain.self': {
@@ -180,9 +180,9 @@ const TREE: { rootNodeId: string; nodes: Record<string, Node> } = {
       id: 'hvac.scope',
       question: 'Is the AC unit running at all (any sound or air movement)?',
       options: [
-        { key: 'not-running', label: 'It is completely dead', nextNodeId: 'hvac.not-running.remote-check' },
-        { key: 'running-no-cool', label: 'Running but blowing warm air', nextNodeId: 'hvac.warm.dispatch' },
-        { key: 'noisy', label: 'Making strange noises', nextNodeId: 'hvac.noisy.dispatch' },
+        { key: 'not-running', labelKey: 'completelyDead', nextNodeId: 'hvac.not-running.remote-check' },
+        { key: 'running-no-cool', labelKey: 'runningButWarm', nextNodeId: 'hvac.warm.dispatch' },
+        { key: 'noisy', labelKey: 'strangeNoises', nextNodeId: 'hvac.noisy.dispatch' },
       ],
     },
     'hvac.not-running.remote-check': {
@@ -190,8 +190,8 @@ const TREE: { rootNodeId: string; nodes: Record<string, Node> } = {
       id: 'hvac.not-running.remote-check',
       question: 'When you press the AC remote, does the display light up?',
       options: [
-        { key: 'no-display', label: 'No, the remote display is blank', nextNodeId: 'hvac.remote-battery.self' },
-        { key: 'display-ok', label: 'Yes, remote works but unit ignores it', nextNodeId: 'hvac.warm.dispatch' },
+        { key: 'no-display', labelKey: 'remoteBlank', nextNodeId: 'hvac.remote-battery.self' },
+        { key: 'display-ok', labelKey: 'remoteIgnored', nextNodeId: 'hvac.warm.dispatch' },
       ],
     },
     'hvac.remote-battery.self': {
@@ -262,6 +262,7 @@ interface Turn {
 
 export default function MaintenanceTriagePage() {
   const t = useTranslations('pageHeaders');
+  const tTriage = useTranslations('p89.triage');
   const [initialReport, setInitialReport] = useState('');
   const [started, setStarted] = useState(false);
   const [currentNodeId, setCurrentNodeId] = useState(TREE.rootNodeId);
@@ -280,11 +281,11 @@ export default function MaintenanceTriagePage() {
       if (!option) return;
       setHistory((prev) => [
         ...prev,
-        { nodeId: node.id, question: node.question, chosenLabel: option.label },
+        { nodeId: node.id, question: node.question, chosenLabel: tTriage(option.labelKey) },
       ]);
       setCurrentNodeId(option.nextNodeId);
     },
-    [currentNodeId],
+    [currentNodeId, tTriage],
   );
 
   const reset = useCallback(() => {
@@ -390,7 +391,7 @@ export default function MaintenanceTriagePage() {
                   onClick={() => choose(opt.key)}
                   className="w-full text-left rounded-lg bg-gray-800 border border-gray-700 px-4 py-3 text-white hover:bg-gray-700"
                 >
-                  {opt.label}
+                  {tTriage(opt.labelKey)}
                 </button>
               ))}
             </div>
@@ -400,7 +401,7 @@ export default function MaintenanceTriagePage() {
         {started && currentNode?.kind === 'self-service' && (
           <div className="space-y-3">
             <div className="rounded-lg bg-emerald-900/30 border border-emerald-500/40 text-emerald-100 p-3">
-              <p className="text-sm font-medium">You may be able to fix this yourself.</p>
+              <p className="text-sm font-medium">{tTriage('diyAdvice')}</p>
             </div>
             {currentNode.safetyWarning && (
               <div className="rounded-lg bg-amber-900/30 border border-amber-500/40 text-amber-200 p-3 text-sm">
@@ -434,7 +435,7 @@ export default function MaintenanceTriagePage() {
         {started && currentNode?.kind === 'dispatch' && !submitted && (
           <div className="space-y-3">
             <div className="rounded-lg bg-blue-900/30 border border-blue-500/40 text-blue-100 p-3 space-y-1">
-              <p className="text-sm font-medium">We will dispatch a technician.</p>
+              <p className="text-sm font-medium">{tTriage('dispatchTechnician')}</p>
               <p className="text-xs text-blue-200">
                 Classification: {currentNode.problemCode} · urgency {currentNode.urgency}
               </p>
@@ -479,7 +480,7 @@ export default function MaintenanceTriagePage() {
 
         {history.length > 0 && (
           <details className="text-xs text-gray-500 mt-4">
-            <summary>Diagnostic history</summary>
+            <summary>{tTriage('diagnosticHistory')}</summary>
             <ul className="mt-2 space-y-1">
               {history.map((h, i) => (
                 <li key={i}>

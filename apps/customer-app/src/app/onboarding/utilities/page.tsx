@@ -36,7 +36,7 @@ interface UtilityInstruction {
   title: string;
   content: string;
   action?: {
-    label: string;
+    labelKey: string;
     type: 'copy' | 'link';
     value: string;
   };
@@ -64,7 +64,7 @@ const UTILITY_SETUPS: UtilitySetup[] = [
         content:
           'You can purchase LUKU tokens via M-Pesa. Dial *150*00# and select "Buy Electricity/LUKU". Enter your meter number when prompted.',
         action: {
-          label: 'Copy Meter Number',
+          labelKey: 'copyMeterNumber',
           type: 'copy',
           value: '04-123-4567-890',
         },
@@ -149,6 +149,7 @@ const UTILITY_SETUPS: UtilitySetup[] = [
 
 export default function OnboardingUtilitiesPage() {
   const t = useTranslations('pageHeaders');
+  const tP89 = useTranslations('p89.onboardingUtilities');
   const router = useRouter();
   const [utilities, setUtilities] = useState<UtilitySetup[]>(UTILITY_SETUPS);
   const [expandedId, setExpandedId] = useState<string | null>('electricity');
@@ -358,7 +359,7 @@ export default function OnboardingUtilitiesPage() {
                                 )}
                                 {copiedText === instruction.action.value
                                   ? 'Copied!'
-                                  : instruction.action.label}
+                                  : tP89(instruction.action.labelKey)}
                               </button>
                             )}
                           </div>
