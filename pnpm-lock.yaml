@@ -2929,9 +2929,18 @@ importers:
       '@bossnyumba/acquisition-advisor':
         specifier: workspace:*
         version: link:../../packages/acquisition-advisor
+      '@bossnyumba/agent-orchestrator':
+        specifier: workspace:*
+        version: link:../../packages/agent-orchestrator
       '@bossnyumba/agent-platform':
         specifier: workspace:*
         version: link:../../packages/agent-platform
+      '@bossnyumba/agent-runtime':
+        specifier: workspace:*
+        version: link:../../packages/agent-runtime
+      '@bossnyumba/agentic-os':
+        specifier: workspace:*
+        version: link:../../packages/agentic-os
       '@bossnyumba/ai-copilot':
         specifier: workspace:*
         version: link:../../packages/ai-copilot
@@ -3043,6 +3052,9 @@ importers:
       '@bossnyumba/marketing-brain':
         specifier: workspace:*
         version: link:../../packages/marketing-brain
+      '@bossnyumba/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
       '@bossnyumba/mcp-cost-persistence':
         specifier: workspace:*
         version: link:../../packages/mcp-cost-persistence
@@ -3064,6 +3076,12 @@ importers:
       '@bossnyumba/ocsf-emitter':
         specifier: workspace:*
         version: link:../../packages/ocsf-emitter
+      '@bossnyumba/open-coding-agent-patterns':
+        specifier: workspace:*
+        version: link:../../packages/open-coding-agent-patterns
+      '@bossnyumba/openclaw-operating-model':
+        specifier: workspace:*
+        version: link:../../packages/openclaw-operating-model
       '@bossnyumba/org-graph':
         specifier: workspace:*
         version: link:../../packages/org-graph

@@ -456,6 +456,16 @@ import {
   createLitfinPlatformBundle,
   type LitfinPlatformBundle,
 } from './litfin-platform-wiring.js';
+// LITFIN-port wave wiring (Batch 4 — 6 agent-stack bundles).
+// Bundles agent-runtime + mcp + agent-orchestrator + open-coding-agent-
+// patterns + openclaw-operating-model + agentic-os. Brain-dependent
+// members are namespace-only (no safe defaults without an LLM key);
+// the OpenClaw operating-model facade is pre-wired async via a
+// Promise slot (same pattern as cross-portal bus).
+import {
+  createLitfinAgentStackBundle,
+  type LitfinAgentStackBundle,
+} from './litfin-agent-stack-wiring.js';
 // Canonical Property Graph (CPG) — Neo4j query service. Constructed
 // lazily so the gateway still boots when NEO4J_URI is unset; the graph
 // router returns 503 GRAPH_SERVICE_UNAVAILABLE when this slot is null.
@@ -841,6 +851,32 @@ export interface ServiceRegistry {
    *     land. Consumers gate on `audioCaptureInstance.stt !== null`
    */
   readonly litfinPlatform: LitfinPlatformBundle;
+
+  /**
+   * LITFIN-port batch 4 — 6 agent-stack bundles exposed via DI.
+   *
+   * Always non-null in both degraded + live modes. Most members are
+   * namespace-only because they require a brain port (per-tenant,
+   * per-request); the OpenClaw operating-model is the exception and
+   * ships pre-wired via an async `openclawInstance: Promise<...>`
+   * slot (in-memory stores + auto-seeded 10 shipped agent domains).
+   * Members:
+   *   - `agentRuntime` namespace (Claude Code parity — hooks +
+   *     slash + sub-agents + skills + MCP host + memory + permissions).
+   *     Async factory; instantiated per project / per worker.
+   *   - `mcp` namespace (deep MCP protocol primitives — sister to the
+   *     already-wired `@bossnyumba/mcp-server` deployable surface).
+   *   - `agentOrchestrator` namespace (single + multi + state machine +
+   *     cost optimisation + durable + judge-jury). Brain-dependent.
+   *   - `openCodingAgentPatterns` namespace (repo-map + minimal diff +
+   *     sandbox + TDD + plan persistence + browser + trajectory).
+   *     Brain-dependent.
+   *   - `openclawOperatingModel` namespace + `openclawInstance`
+   *     pre-wired Promise (in-memory + auto-seeded 10 domains).
+   *   - `agenticOS` namespace (meta-synthesis layer). Requires 5+
+   *     concrete ports; namespace-only until those converge.
+   */
+  readonly litfinAgentStack: LitfinAgentStackBundle;
 
   /** Wave 29 — Forecasting (TGN + conformal prediction intervals).
    *  Every member is `null` until BOTH `TGN_INFERENCE_URL` and
@@ -1340,6 +1376,12 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // audio-capture). Always wired; pre-wired facades with safe
     // defaults; namespaces exposed for follow-up port wiring.
     litfinPlatform: createLitfinPlatformBundle(),
+    // LITFIN-port batch 4 — 6 agent-stack bundles (agent-runtime, mcp,
+    // agent-orchestrator, open-coding-agent-patterns, openclaw-
+    // operating-model, agentic-os). Always wired; brain-dependent
+    // members are namespace-only; openclaw ships an async pre-wired
+    // facade with auto-seeded shipped domains.
+    litfinAgentStack: createLitfinAgentStackBundle(),
     // Central Intelligence — no concrete LLM adapter ships here (it
     // lives in a separate service). In degraded mode we still wire the
     // in-memory memory so thread listing works locally.
@@ -2036,6 +2078,11 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // audio-capture). Live mode is identical today; concrete OCR /
     // STT / WebAuthn ports land via follow-up wirings.
     litfinPlatform: createLitfinPlatformBundle(),
+    // LITFIN-port batch 4 — 6 agent-stack bundles. Live mode identical
+    // today; brain-dependent members instantiated per-tenant by their
+    // consumers (brain port resolves at request time via the per-tenant
+    // budget-guarded Anthropic client).
+    litfinAgentStack: createLitfinAgentStackBundle(),
     // Central Intelligence — the concrete LLM adapter lives in a
     // separate service. `agent` is only populated when `CI_LLM_URL`
     // env var is set AND the adapter is wired (follow-up PR); until
