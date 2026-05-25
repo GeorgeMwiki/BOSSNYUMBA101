@@ -397,6 +397,17 @@ import {
   createInMemoryMemoryV2,
   type MemoryV2,
 } from '@bossnyumba/memory-v2';
+// PO-port wave-5 wiring #2 — per-tenant LLM budget cap + auto-downgrade
+// ladder. Every llmRouter / Anthropic-client call routes through
+// `governor.evaluateCall` first. Default caps: $50/day, 5M tokens/day;
+// downgrade ladder kicks in at 85% of cap (opus → sonnet → haiku).
+// Overridable per-tenant via the budget store; ops can also override
+// via env (LLM_BUDGET_DAILY_CENTS etc.) once the seed helper lands.
+import {
+  createLLMBudgetGovernor,
+  createInMemoryBudgetStore,
+  type LLMBudgetGovernor,
+} from '@bossnyumba/llm-budget-governor';
 // Canonical Property Graph (CPG) — Neo4j query service. Constructed
 // lazily so the gateway still boots when NEO4J_URI is unset; the graph
 // router returns 503 GRAPH_SERVICE_UNAVAILABLE when this slot is null.
@@ -534,6 +545,20 @@ export interface ServiceRegistry {
   readonly buildBudgetGuardedAnthropicClient:
     | ((tenantId: string, operation?: string) => BudgetGuardedAnthropicClient)
     | null;
+
+  /**
+   * PO-port wave-5 wiring #2 — per-tenant LLM budget governor with
+   * auto-downgrade ladder (opus → sonnet → haiku). Sits in front of
+   * `llmRouter` / Anthropic clients: every call routes through
+   * `governor.evaluateCall({ tenantId, model, estimatedTokens })` first;
+   * the governor either proceeds, downgrades to a cheaper tier, or
+   * blocks when the tenant has burned through their cap. Always wired
+   * (in-memory budget store in both degraded + live until a Postgres
+   * adapter lands). Default caps: $50/day, $1000/month per tenant —
+   * seedable via `governor.recordSpend` or the `seedBudget` admin
+   * helper, overridable per-tenant via the budget store.
+   */
+  readonly llmBudgetGovernor: LLMBudgetGovernor;
 
   /** Arrears ledger (NEW 4). Service + loader for the projection endpoint. */
   readonly arrears: {
@@ -1078,6 +1103,14 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     privacyBudgetComposer: createPrivacyBudgetComposerService(),
     llmRouter: null,
     buildBudgetGuardedAnthropicClient: null,
+    // PO-port wave-5 wiring #2 — LLM budget governor is always wired
+    // (in-memory store in degraded mode). Default caps: $50/day,
+    // 5M tokens/day; downgrade at 85% of cap. Even when no real LLM
+    // calls happen in degraded mode, the slot is non-null so consumer
+    // routes can call `governor.snapshot(tenantId)` without null-guards.
+    llmBudgetGovernor: createLLMBudgetGovernor({
+      store: createInMemoryBudgetStore(),
+    }),
     arrears: {
       service: null,
       repo: null,
@@ -1725,6 +1758,14 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     privacyBudgetComposer: createPrivacyBudgetComposerService(),
     llmRouter,
     buildBudgetGuardedAnthropicClient,
+    // PO-port wave-5 wiring #2 — LLM budget governor. Live mode uses
+    // the in-memory store until the Postgres adapter ships (follow-up).
+    // Caps are seedable per-tenant via the admin override helpers; the
+    // governor's `evaluateCall` is the choke-point every llmRouter +
+    // Anthropic-client call must traverse before reaching the provider.
+    llmBudgetGovernor: createLLMBudgetGovernor({
+      store: createInMemoryBudgetStore(),
+    }),
     arrears: {
       service: arrearsService,
       repo: arrearsRepo,
