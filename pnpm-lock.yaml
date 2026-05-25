@@ -2391,6 +2391,10 @@ importers:
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(vite@6.4.2)
 
   packages/open-coding-agent-patterns:
+    dependencies:
+      '@bossnyumba/enterprise-hardening':
+        specifier: workspace:*
+        version: link:../enterprise-hardening
     devDependencies:
       '@types/node':
         specifier: ^25.8.0
