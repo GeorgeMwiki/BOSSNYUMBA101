@@ -66,7 +66,6 @@ export const AFRICA_DEFAULTS: ReadonlyArray<JurisdictionDefault> = [
   { jurisdiction: 'TG', timezone: 'Africa/Lome', canonicalCity: 'Lome', isMultiZone: false, observesDST: false },
   { jurisdiction: 'TN', timezone: 'Africa/Tunis', canonicalCity: 'Tunis', isMultiZone: false, observesDST: false },
   { jurisdiction: 'UG', timezone: 'Africa/Kampala', canonicalCity: 'Kampala', isMultiZone: false, observesDST: false },
-  { jurisdiction: 'EH', timezone: 'Africa/El_Aaiun', canonicalCity: 'El Aaiun', isMultiZone: false, observesDST: false },
   { jurisdiction: 'ZM', timezone: 'Africa/Lusaka', canonicalCity: 'Lusaka', isMultiZone: false, observesDST: false },
   { jurisdiction: 'ZW', timezone: 'Africa/Harare', canonicalCity: 'Harare', isMultiZone: false, observesDST: false },
 ];
