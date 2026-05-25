@@ -1,9 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { User, Bell, Shield, HelpCircle, ChevronRight, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { User, Bell, Shield, HelpCircle, ChevronRight, LogOut, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface SettingsItem {
   href: string;
@@ -31,6 +34,20 @@ const settingsSections: { title: string; items: SettingsItem[] }[] = [
 
 export default function SettingsOverviewPage() {
   const t = useTranslations('simple');
+  const router = useRouter();
+  const { logout } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleSignOut = (): void => {
+    if (signingOut) return;
+    setSigningOut(true);
+    // logout() is synchronous (clears localStorage + React Query cache),
+    // so we just navigate immediately. router.replace prevents a Back
+    // navigation re-entering authenticated screens with stale state.
+    logout();
+    router.replace('/login');
+  };
+
   return (
     <>
       <PageHeader title={t('settings')} subtitle={t('settingsSubtitle')} />
@@ -64,8 +81,18 @@ export default function SettingsOverviewPage() {
         ))}
 
         <div className="pt-4">
-          <button className="w-full flex items-center justify-center gap-2 py-3 text-danger-600 font-medium hover:bg-danger-50 rounded-lg transition-colors">
-            <LogOut className="w-5 h-5" />
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            aria-busy={signingOut}
+            className="w-full flex items-center justify-center gap-2 py-3 text-danger-600 font-medium hover:bg-danger-50 rounded-lg transition-colors disabled:opacity-60"
+          >
+            {signingOut ? (
+              <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+            ) : (
+              <LogOut className="w-5 h-5" />
+            )}
             Sign Out
           </button>
         </div>
