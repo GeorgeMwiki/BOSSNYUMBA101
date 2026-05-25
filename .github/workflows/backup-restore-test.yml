@@ -21,6 +21,11 @@
 name: Backup Restore Test
 
 on:
+  # WZ-CI-GREEN 2026-05-25: include push trigger so the guard job runs
+  # on every main push (it always succeeds because the real drill is
+  # gated behind needs.guard.outputs.should_run).
+  push:
+    branches: [main]
   schedule:
     # Mondays at 04:00 UTC — after the Sunday-night backup window.
     - cron: '0 4 * * 1'

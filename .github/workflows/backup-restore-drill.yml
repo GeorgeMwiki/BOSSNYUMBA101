@@ -42,6 +42,13 @@
 name: Backup Restore Drill
 
 on:
+  # WZ-CI-GREEN 2026-05-25: include push trigger so the guard job runs
+  # on every main push (it always succeeds because the real drill is
+  # gated behind needs.guard.outputs.should_run). Without this push
+  # trigger, GitHub Actions creates zero-job startup-failure entries
+  # when an unrelated merge happens to touch this workflow file.
+  push:
+    branches: [main]
   schedule:
     # Sundays at 02:00 UTC — after the Saturday-night backup window.
     - cron: '0 2 * * 0'
