@@ -64,6 +64,12 @@ export interface DegradedBannerProps {
    */
   readonly body?: string;
   /**
+   * Optional override for the affected-capabilities list aria-label
+   * (i18n). When omitted falls back to an English default — consumer
+   * apps should pass a localised string.
+   */
+  readonly affectedAriaLabel?: string;
+  /**
    * Optional className for outer container — picked up only when the
    * consuming app uses a styled-components / Tailwind layer that wants
    * to override positioning. Inline styles still apply.
@@ -186,6 +192,7 @@ export function DegradedBanner({
   compact = false,
   headline,
   body,
+  affectedAriaLabel = 'Affected capabilities',
   className,
   style,
 }: DegradedBannerProps): JSX.Element | null {
@@ -221,7 +228,7 @@ export function DegradedBanner({
       </div>
       {showPills ? (
         <ul
-          aria-label="Affected capabilities"
+          aria-label={affectedAriaLabel}
           data-testid="degraded-capabilities"
           style={{ ...styles.pills, listStyle: 'none', padding: 0, margin: 0 }}
         >

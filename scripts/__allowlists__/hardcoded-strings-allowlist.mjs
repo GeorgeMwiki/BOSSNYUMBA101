@@ -44,93 +44,87 @@ export const HARDCODED_STRINGS_ALLOWLIST = new Map([
 
   // ─── owner-portal — P89 extracted (8 entries removed 2026-05-25) ────
 
-  // ─── tenant-portal — MVP marketplace pages pending i18n extraction ─
+  // ─── tenant-portal — pending app-level i18n bootstrap ──────────────
+  //
+  // The tenant-portal package does NOT yet have next-intl wired up — no
+  // `messages/` dir, no `i18n.ts`, no `NextIntlClientProvider` in the
+  // layout, no next-intl in `package.json`. Per P89 scope-deferral, we
+  // keep these 14 surfaces allowlisted with a more honest reason:
+  // they need an app-level i18n bootstrap PR before per-string extraction
+  // can land. That bootstrap is its own follow-up tracked outside this
+  // wave (the work spans: pnpm-lock + dep add, plugin/next config update,
+  // RootLayout provider, server-side message loader, empty messages JSON
+  // pair, locale-cookie middleware). Doing it inline here would explode
+  // the P89 scope and conflict with the parallel P88 lockfile owner.
   [
     'apps/tenant-portal/src/app/marketplace/applications/page.tsx',
-    'Tenant-portal applications page heading pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal applications page heading pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
   [
     'apps/tenant-portal/src/app/marketplace/join/page.tsx',
-    'Tenant-portal join page heading pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal join page heading pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
   [
     'apps/tenant-portal/src/app/marketplace/listings/page.tsx',
-    'Tenant-portal listings page filter placeholder pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal listings page filter placeholder pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
   [
     'apps/tenant-portal/src/app/marketplace/orgs/[orgId]/page.tsx',
-    'Tenant-portal orgs-detail empty-state copy pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal orgs-detail empty-state copy pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
   [
     'apps/tenant-portal/src/app/marketplace/orgs/page.tsx',
-    'Tenant-portal orgs filter placeholder pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal orgs filter placeholder pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
   [
     'apps/tenant-portal/src/app/marketplace/page.tsx',
-    'Tenant-portal marketplace landing copy pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal marketplace landing copy pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
   [
     'apps/tenant-portal/src/app/marketplace/tenancies/page.tsx',
-    'Tenant-portal tenancies page copy pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal tenancies page copy pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
   [
     'apps/tenant-portal/src/app/marketplace/tenders/page.tsx',
-    'Tenant-portal tenders page copy pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal tenders page copy pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
   [
     'apps/tenant-portal/src/components/AskPanel.tsx',
-    'Tenant-portal AskPanel copy pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal AskPanel copy pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
   [
     'apps/tenant-portal/src/components/marketplace/ApplicationDraftAssistant.tsx',
-    'Tenant-portal ApplicationDraftAssistant copy pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal ApplicationDraftAssistant copy pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
   [
     'apps/tenant-portal/src/components/marketplace/MarketplaceHeader.tsx',
-    'Tenant-portal MarketplaceHeader nav labels pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal MarketplaceHeader nav labels pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
   [
     'apps/tenant-portal/src/components/marketplace/OrgJoinForm.tsx',
-    'Tenant-portal OrgJoinForm labels/placeholders pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal OrgJoinForm labels/placeholders pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
   [
     'apps/tenant-portal/src/components/marketplace/PriceNegotiator.tsx',
-    'Tenant-portal PriceNegotiator copy pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal PriceNegotiator copy pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
   [
     'apps/tenant-portal/src/components/marketplace/TenancyWidget.tsx',
-    'Tenant-portal TenancyWidget copy pending i18n extraction in P89 (tracked-gap).',
+    'Tenant-portal TenancyWidget copy pending app-level i18n bootstrap (no next-intl wired yet).',
+  ],
+  [
+    'apps/tenant-portal/src/app/error.tsx',
+    'Tenant-portal root error boundary copy pending app-level i18n bootstrap (no next-intl wired yet).',
+  ],
+  [
+    'apps/tenant-portal/src/app/not-found.tsx',
+    'Tenant-portal 404 page copy pending app-level i18n bootstrap (no next-intl wired yet).',
   ],
 
-  // ─── chat-ui — generative-UI shared components ────────────────────
-  [
-    'packages/chat-ui/src/components/DegradedBanner.tsx',
-    'DegradedBanner aria-label — accessibility-only string pending i18n extraction in P89.',
-  ],
-  [
-    'packages/chat-ui/src/components/ProactiveHint.tsx',
-    'ProactiveHint aria-label="Dismiss hint" — accessibility-only string pending i18n extraction in P89.',
-  ],
-  [
-    'packages/chat-ui/src/generative-ui/block-generator.ts',
-    'Block-generator emits demo/scaffold labels for generative-UI blocks; pending tenant-data wire-up in P89.',
-  ],
-
-  // ─── genui + dynamic-sections — render-time shared components ──────
-  [
-    'packages/genui/src/components/ChatEmbed.tsx',
-    'ChatEmbed empty-state copy — generative-UI component pending i18n extraction in P89.',
-  ],
-  [
-    'packages/genui/src/components/PdfViewer.tsx',
-    'PdfViewer zoom aria-labels — accessibility-only strings pending i18n extraction in P89.',
-  ],
-  [
-    'packages/dynamic-sections/src/seed/section-components.tsx',
-    'Dynamic-sections seed file — KRA Filings is a Kenya-specific tax surface; section title pending i18n in P89.',
-  ],
-  [
-    'packages/dynamic-sections/src/seed/seed-sections.ts',
-    'Dynamic-sections seed data — section labels (KRA Filings etc.) pending i18n extraction in P89.',
-  ],
+  // ─── shared packages — P89 converted to prop-driven labels (7 entries removed 2026-05-25) ──
+  // chat-ui (DegradedBanner, ProactiveHint, block-generator), genui
+  // (ChatEmbed, PdfViewer), and dynamic-sections (section-components,
+  // seed-sections) all now accept localised labels from consumer apps
+  // via props / schema fields. The English defaults stay in-tree so the
+  // packages remain library-only (no useTranslations dependency).
 ]);
