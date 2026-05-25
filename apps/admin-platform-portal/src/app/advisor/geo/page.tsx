@@ -1,5 +1,20 @@
+import dynamic from 'next/dynamic';
 import { PortalShell } from '../_lib/PortalShell';
-import { GeoAdvisorClient } from './GeoAdvisorClient';
+import { AdvisorLoading } from '../_lib/states';
+
+// Geo advisor is the heaviest of the eight — pulls in MapLibre/Leaflet
+// via ParcelMap.tsx. Dynamic + ssr:false keeps map deps out of the
+// server build entirely. The map is useless server-side anyway.
+const GeoAdvisorClient = dynamic(
+  () =>
+    import('./GeoAdvisorClient.js').then((m) => ({
+      default: m.GeoAdvisorClient,
+    })),
+  {
+    ssr: false,
+    loading: () => <AdvisorLoading label="Loading map + advisor panel…" />,
+  },
+);
 
 export const metadata = {
   title: 'Geo advisor — BossNyumba HQ',

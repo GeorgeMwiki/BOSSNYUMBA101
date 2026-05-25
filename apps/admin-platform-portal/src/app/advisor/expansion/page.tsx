@@ -1,5 +1,17 @@
+import dynamic from 'next/dynamic';
 import { PortalShell } from '../_lib/PortalShell';
-import { ExpansionAdvisorClient } from './ExpansionAdvisorClient';
+import { AdvisorLoading } from '../_lib/states';
+
+const ExpansionAdvisorClient = dynamic(
+  () =>
+    import('./ExpansionAdvisorClient.js').then((m) => ({
+      default: m.ExpansionAdvisorClient,
+    })),
+  {
+    ssr: false,
+    loading: () => <AdvisorLoading label="Loading expansion advisor…" />,
+  },
+);
 
 export const metadata = {
   title: 'Expansion advisor — BossNyumba HQ',

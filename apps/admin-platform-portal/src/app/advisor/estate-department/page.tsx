@@ -1,5 +1,19 @@
+import dynamic from 'next/dynamic';
 import { PortalShell } from '../_lib/PortalShell';
-import { EstateDepartmentAdvisorClient } from './EstateDepartmentAdvisorClient';
+import { AdvisorLoading } from '../_lib/states';
+
+const EstateDepartmentAdvisorClient = dynamic(
+  () =>
+    import('./EstateDepartmentAdvisorClient.js').then((m) => ({
+      default: m.EstateDepartmentAdvisorClient,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <AdvisorLoading label="Loading estate-department advisor…" />
+    ),
+  },
+);
 
 export const metadata = {
   title: 'Estate-department health — BossNyumba HQ',
