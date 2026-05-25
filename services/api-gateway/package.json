@@ -65,6 +65,7 @@
     "@bossnyumba/spotlight": "workspace:*",
     "@bossnyumba/stage-advisor": "workspace:*",
     "@bossnyumba/storage-adapter": "workspace:*",
+    "@bossnyumba/strategic-reports": "workspace:*",
     "@bossnyumba/supabase-client": "workspace:*",
     "@bossnyumba/sustainability-advisor": "workspace:*",
     "@bossnyumba/user-context-store": "workspace:*",
