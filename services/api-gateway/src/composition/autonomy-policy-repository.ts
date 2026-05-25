@@ -20,6 +20,7 @@ import type {
   AutonomyPolicyRepository,
 } from '@bossnyumba/ai-copilot/autonomy';
 import { buildDefaultPolicy } from '@bossnyumba/ai-copilot/autonomy';
+import { logger } from '../utils/logger.js';
 
 interface AutonomyPolicyRow {
   readonly tenant_id: string;
@@ -58,7 +59,7 @@ export class PostgresAutonomyPolicyRepository
       // Never throw across tenants — return null so the service falls
       // back to defaults. The caller's observability pipeline will log
       // the underlying error.
-      console.error('PostgresAutonomyPolicyRepository.get failed:', err);
+      logger.error('PostgresAutonomyPolicyRepository.get failed', { error: err });
       return null;
     }
   }

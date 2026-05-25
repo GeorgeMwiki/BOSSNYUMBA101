@@ -40,6 +40,7 @@ import {
   type AuditTrailRecorder,
 } from '@bossnyumba/ai-copilot/audit-trail';
 import type { ServiceRegistry } from './service-registry.js';
+import { logger } from '../utils/logger.js';
 
 export interface AutonomyGuardDeps {
   readonly guard: AutonomyGuardFn;
@@ -90,11 +91,7 @@ export function createAutonomyGuard(
       });
       return row.id;
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error(
-        'autonomy-guard: exception-inbox queue failed',
-        err instanceof Error ? err.message : String(err),
-      );
+      logger.error('autonomy-guard: exception-inbox queue failed', { error: err instanceof Error ? err.message : String(err) });
       return null;
     }
   };

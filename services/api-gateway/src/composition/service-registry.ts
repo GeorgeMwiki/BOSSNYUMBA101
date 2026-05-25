@@ -29,6 +29,7 @@
  */
 
 import { createDatabaseClient } from '@bossnyumba/database';
+import { logger } from '../utils/logger.js';
 /**
  * The `DatabaseClient` type alias from `@bossnyumba/database` resolves
  * as a namespace when pulled through the package barrel (TS2709) due
@@ -1285,11 +1286,7 @@ function buildGraphQueryService(): GraphQueryService | null {
     const client = createNeo4jClient();
     return createGraphQueryService(client);
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      'service-registry: graph query service init failed — returning null',
-      err instanceof Error ? err.message : err,
-    );
+    logger.warn('service-registry: graph query service init failed — returning null', { value: err instanceof Error ? err.message : err });
     return null;
   }
 }
@@ -1763,11 +1760,7 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         try {
           return buildMultiLLMRouterFromEnv(aiCostLedger);
         } catch (err) {
-          // eslint-disable-next-line no-console
-          console.warn(
-            'service-registry: buildMultiLLMRouterFromEnv failed — falling back to null',
-            err instanceof Error ? err.message : err,
-          );
+          logger.warn('service-registry: buildMultiLLMRouterFromEnv failed — falling back to null', { value: err instanceof Error ? err.message : err });
           return null;
         }
       })()
@@ -1973,16 +1966,19 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     crossPortalBus: liveCrossPortalBus,
     logger: {
       info: (obj, msg) =>
-        console.info('announcement-dispatcher:', msg ?? '', obj),
+        logger.info('announcement-dispatcher', { arg0: msg ?? '', obj })
+        ,
       warn: (obj, msg) =>
-        console.warn('announcement-dispatcher:', msg ?? '', obj),
+        logger.warn('announcement-dispatcher', { arg0: msg ?? '', obj })
+        ,
     },
   });
   const recipientResolverAdapter = createRecipientResolverAdapter({
     db,
     logger: {
       warn: (obj, msg) =>
-        console.warn('recipient-resolver:', msg ?? '', obj),
+        logger.warn('recipient-resolver', { arg0: msg ?? '', obj })
+        ,
     },
   });
 
@@ -2190,11 +2186,14 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         },
         logger: {
           info: (obj, msg) =>
-            console.info('hq-tool-port-bindings:', msg ?? '', obj),
+            logger.info('hq-tool-port-bindings', { arg0: msg ?? '', obj })
+            ,
           warn: (obj, msg) =>
-            console.warn('hq-tool-port-bindings:', msg ?? '', obj),
+            logger.warn('hq-tool-port-bindings', { arg0: msg ?? '', obj })
+            ,
           error: (obj, msg) =>
-            console.error('hq-tool-port-bindings:', msg ?? '', obj),
+            logger.error('hq-tool-port-bindings', { arg0: msg ?? '', obj })
+            ,
         },
       });
       // Wave-K T1 — brain-kernel wiring with env-driven killswitch,
@@ -2376,11 +2375,14 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
       eventBus,
       logger: {
         info: (obj, msg) =>
-          console.info('sovereign-ledger-verify-cron:', msg ?? '', obj),
+          logger.info('sovereign-ledger-verify-cron', { arg0: msg ?? '', obj })
+          ,
         warn: (obj, msg) =>
-          console.warn('sovereign-ledger-verify-cron:', msg ?? '', obj),
+          logger.warn('sovereign-ledger-verify-cron', { arg0: msg ?? '', obj })
+          ,
         error: (obj, msg) =>
-          console.error('sovereign-ledger-verify-cron:', msg ?? '', obj),
+          logger.error('sovereign-ledger-verify-cron', { arg0: msg ?? '', obj })
+          ,
       },
     }),
     // Wave-K parity-litfin Gap C — capability dashboard wired against the
@@ -2444,9 +2446,11 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
       ) || 90,
       logger: {
         info: (obj, msg) =>
-          console.info('session-replay-retention:', msg ?? '', obj),
+          logger.info('session-replay-retention', { arg0: msg ?? '', obj })
+          ,
         warn: (obj, msg) =>
-          console.warn('session-replay-retention:', msg ?? '', obj),
+          logger.warn('session-replay-retention', { arg0: msg ?? '', obj })
+          ,
       },
     }),
     // Central Command Phase C C2 — B1 wiring closures. The fan-out

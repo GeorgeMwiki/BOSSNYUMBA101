@@ -39,6 +39,7 @@ import type {
   PayoutProviderInput,
   PayoutProviderResult,
 } from '../stub-payout-provider';
+import { logger } from '../../../utils/logger.js';
 
 /**
  * Closure that resolves the tenant's data-residency region from
@@ -120,10 +121,7 @@ export function createEftStubAdapter(config: EftStubConfig = {}): PayoutProvider
   // `send` refusal. In any other environment, construction itself is
   // the loud signal: operators see the misconfiguration at boot.
   if (process.env.NODE_ENV !== 'test') {
-    // eslint-disable-next-line no-console
-    console.error(
-      '[eft-stub-adapter] constructed outside test env — payouts via this adapter will refuse. Wire a real EFT MCP server (see Phase E composition).',
-    );
+    logger.error('[eft-stub-adapter] constructed outside test env — payouts via this adapter will refuse. Wire a real EFT MCP server (see Phase E composition).');
   }
 
   async function send(input: PayoutProviderInput): Promise<PayoutProviderResult> {

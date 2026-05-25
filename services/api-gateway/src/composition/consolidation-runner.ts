@@ -43,6 +43,7 @@ import {
   createReflectiveMemoryService,
 } from '@bossnyumba/database';
 import type { ReflectivePeriodKind } from '@bossnyumba/central-intelligence';
+import { logger } from '../utils/logger.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -107,13 +108,10 @@ export async function runConsolidationForActiveTenants(
   options: ConsolidationRunnerOptions = {},
 ): Promise<ConsolidationRunnerSummary> {
   if (!db || !anthropic) {
-    console.warn(
-      'consolidation-runner: missing prerequisites; runner is a no-op',
-      {
+    logger.warn('consolidation-runner: missing prerequisites; runner is a no-op', {
         hasDb: !!db,
         hasAnthropic: !!anthropic,
-      },
-    );
+      });
     return emptySummary();
   }
 
@@ -135,7 +133,7 @@ export async function runConsolidationForActiveTenants(
   try {
     scopes = await discover();
   } catch (error) {
-    console.warn('consolidation-runner: scope discovery failed', error);
+    logger.warn('consolidation-runner: scope discovery failed', { error });
     return { ...emptySummary(), errors: [asMsg(error)] };
   }
 
@@ -176,7 +174,7 @@ export async function runConsolidationForActiveTenants(
       for (const e of report.errors) errors.push(e);
     } catch (error) {
       const msg = `cycle failed for tenant=${scope.tenantId ?? 'null'} user=${scope.userId}: ${asMsg(error)}`;
-      console.warn('consolidation-runner:', msg);
+      logger.warn('consolidation-runner', { msg });
       errors.push(msg);
     }
   }
@@ -217,7 +215,7 @@ async function discoverFromEpisodic(
       .filter((r) => typeof r.user_id === 'string' && r.user_id.length > 0)
       .map((r) => ({ tenantId: r.tenant_id ?? null, userId: r.user_id }));
   } catch (error) {
-    console.warn('consolidation-runner: episodic discovery failed', error);
+    logger.warn('consolidation-runner: episodic discovery failed', { error });
     return [];
   }
 }
@@ -253,7 +251,7 @@ function buildAnthropicJudge(
         }
         return body;
       } catch (error) {
-        console.warn('consolidation-runner: judge call failed', asMsg(error));
+        logger.warn('consolidation-runner: judge call failed', { value: asMsg(error) });
         return '';
       }
     },
@@ -292,10 +290,7 @@ export async function runFromEnv(): Promise<ConsolidationRunnerSummary> {
   const dbUrl = process.env.DATABASE_URL?.trim();
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (!dbUrl || !apiKey) {
-    console.warn(
-      'consolidation-runner CLI: DATABASE_URL and ANTHROPIC_API_KEY are required; no-op',
-      { hasDbUrl: !!dbUrl, hasApiKey: !!apiKey },
-    );
+    logger.warn('consolidation-runner CLI: DATABASE_URL and ANTHROPIC_API_KEY are required; no-op', { hasDbUrl: !!dbUrl, hasApiKey: !!apiKey });
     return emptySummary();
   }
 
@@ -304,7 +299,7 @@ export async function runFromEnv(): Promise<ConsolidationRunnerSummary> {
     const dbModule = await import('./db-client.js');
     db = (dbModule.getDb?.() ?? null) as DrizzleLikeClient | null;
   } catch (error) {
-    console.warn('consolidation-runner CLI: db-client import failed', error);
+    logger.warn('consolidation-runner CLI: db-client import failed', { error });
     return emptySummary();
   }
 
@@ -314,7 +309,7 @@ export async function runFromEnv(): Promise<ConsolidationRunnerSummary> {
     const Anthropic = (sdk.default ?? sdk) as unknown as new (cfg: { apiKey: string }) => AnthropicLikeClient;
     anthropic = new Anthropic({ apiKey });
   } catch (error) {
-    console.warn('consolidation-runner CLI: @anthropic-ai/sdk import failed', error);
+    logger.warn('consolidation-runner CLI: @anthropic-ai/sdk import failed', { error });
     return emptySummary();
   }
 
@@ -347,15 +342,11 @@ const isDirect =
 if (isDirect) {
   runFromEnv()
     .then((summary) => {
-      // eslint-disable-next-line no-console
-      console.log(
-        `consolidation-runner: tenantsProcessed=${summary.tenantsProcessed} facts=${summary.factsUpserted} patterns=${summary.patternsRecorded} digests=${summary.digestsWritten} purged=${summary.expiredPurged} decayed=${summary.decayedFacts} errors=${summary.errors.length}`,
-      );
+      logger.info(`consolidation-runner: tenantsProcessed=${summary.tenantsProcessed} facts=${summary.factsUpserted} patterns=${summary.patternsRecorded} digests=${summary.digestsWritten} purged=${summary.expiredPurged} decayed=${summary.decayedFacts} errors=${summary.errors.length}`);
       process.exit(summary.errors.length > 0 ? 1 : 0);
     })
     .catch((error) => {
-      // eslint-disable-next-line no-console
-      console.error('consolidation-runner: fatal', error);
+      logger.error('consolidation-runner: fatal', { error: error });
       process.exit(2);
     });
 }

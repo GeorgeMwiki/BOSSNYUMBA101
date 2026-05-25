@@ -42,6 +42,7 @@ import {
   NoopSpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import { logger } from '../utils/logger.js';
 
 /**
  * Public bootstrap config. All fields override the env-driven defaults.
@@ -170,11 +171,7 @@ export function bootstrapOTel(config: OTelBootstrapConfig = {}): OTelHandle {
     // Bootstrap failures must not crash the gateway. Surface a single
     // warning and fall back to a no-op handle so the rest of the boot
     // sequence proceeds.
-    // eslint-disable-next-line no-console
-    console.warn(
-      'otel-bootstrap: SDK start failed; continuing without telemetry',
-      err instanceof Error ? err.message : err,
-    );
+    logger.warn('otel-bootstrap: SDK start failed; continuing without telemetry', { value: err instanceof Error ? err.message : err });
   }
 
   let shutdownPromise: Promise<void> | null = null;
@@ -191,11 +188,7 @@ export function bootstrapOTel(config: OTelBootstrapConfig = {}): OTelHandle {
         .shutdown()
         .catch((err: unknown) => {
           // Shutdown errors are advisory — the process is exiting.
-          // eslint-disable-next-line no-console
-          console.warn(
-            'otel-bootstrap: shutdown failed',
-            err instanceof Error ? err.message : err,
-          );
+          logger.warn('otel-bootstrap: shutdown failed', { value: err instanceof Error ? err.message : err });
         })
         .then(() => undefined);
       return shutdownPromise;
