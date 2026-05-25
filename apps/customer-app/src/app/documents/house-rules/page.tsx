@@ -129,7 +129,7 @@ export default function HouseRulesPage() {
 
   return (
     <>
-      <PageHeader title="House Rules" showBack />
+      <PageHeader title={t('houseRules')} showBack />
       <div className="px-4 py-4 pb-24 space-y-4">
         <p className="text-sm text-gray-400">
           These are the policies and guidelines that apply to your unit. Please

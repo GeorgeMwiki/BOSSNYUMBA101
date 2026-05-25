@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api';
 import { getCsrfHeaders } from '@/lib/csrf';
@@ -46,6 +47,7 @@ export function FeedbackThumbs({
   contextType,
   label,
 }: FeedbackThumbsProps): JSX.Element {
+  const t = useTranslations('p89.feedbackThumbs');
   const [submitting, setSubmitting] = useState(false);
   const [chosen, setChosen] = useState<'up' | 'down' | null>(null);
   const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(
@@ -102,7 +104,7 @@ export function FeedbackThumbs({
         type="button"
         onClick={() => void submit('up')}
         disabled={submitting}
-        aria-label="Thumbs up"
+        aria-label={t('thumbsUpAria')}
         aria-pressed={chosen === 'up'}
         data-testid={`thumbs-up-${contextType}-${contextId}`}
         className={
@@ -117,7 +119,7 @@ export function FeedbackThumbs({
         type="button"
         onClick={() => void submit('down')}
         disabled={submitting}
-        aria-label="Thumbs down"
+        aria-label={t('thumbsDownAria')}
         aria-pressed={chosen === 'down'}
         data-testid={`thumbs-down-${contextType}-${contextId}`}
         className={

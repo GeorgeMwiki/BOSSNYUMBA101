@@ -25,6 +25,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Camera, X } from 'lucide-react';
 import { Modal } from '@bossnyumba/design-system';
 import { getApiBaseUrl } from '@/lib/api';
@@ -33,15 +34,18 @@ import { getCsrfHeaders } from '@/lib/csrf';
 const SEVERITY_VALUES = ['low', 'medium', 'high', 'critical', 'emergency'] as const;
 type Severity = (typeof SEVERITY_VALUES)[number];
 
-const CATEGORIES: ReadonlyArray<{ readonly value: string; readonly label: string }> = [
-  { value: 'plumbing', label: 'Plumbing' },
-  { value: 'electrical', label: 'Electrical' },
-  { value: 'hvac', label: 'HVAC' },
-  { value: 'appliance', label: 'Appliance' },
-  { value: 'lighting', label: 'Lighting' },
-  { value: 'pest', label: 'Pest control' },
-  { value: 'general', label: 'General' },
-];
+function useCategories(): ReadonlyArray<{ readonly value: string; readonly label: string }> {
+  const t = useTranslations('p89.maintenanceModal');
+  return [
+    { value: 'plumbing', label: 'Plumbing' },
+    { value: 'electrical', label: 'Electrical' },
+    { value: 'hvac', label: 'HVAC' },
+    { value: 'appliance', label: 'Appliance' },
+    { value: 'lighting', label: 'Lighting' },
+    { value: 'pest', label: t('pestControlLabel') },
+    { value: 'general', label: 'General' },
+  ];
+}
 
 const SEVERITY_LABELS: Readonly<Record<Severity, string>> = {
   low: 'Low — when convenient',
@@ -90,6 +94,7 @@ export function MaintenanceTicketModal({
   onClose,
   onCreated,
 }: MaintenanceTicketModalProps): JSX.Element {
+  const CATEGORIES = useCategories();
   const [category, setCategory] = useState<string>('plumbing');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<Severity>('medium');

@@ -14,35 +14,35 @@ import {
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ROUTES } from '@/lib/routes';
 
-const emergencyTypes = [
-  {
-    value: 'water',
-    label: 'Water Leak / Flooding',
-    icon: Droplets,
-    description: 'Burst pipe, major leak, flooding',
-  },
-  {
-    value: 'power',
-    label: 'Power Outage',
-    icon: Zap,
-    description: 'No electricity, electrical hazard',
-  },
-  {
-    value: 'security',
-    label: 'Security Issue',
-    icon: Shield,
-    description: 'Break-in, suspicious activity, lock issue',
-  },
-  {
-    value: 'other',
-    label: 'Other Emergency',
-    icon: AlertTriangle,
-    description: 'Gas leak, structural damage, etc.',
-  },
-];
-
 export default function ReportEmergencyPage() {
   const t = useTranslations('reportEmergency');
+  const tP89 = useTranslations('p89.emergencyTypes');
+  const emergencyTypes = [
+    {
+      value: 'water',
+      label: tP89('waterLabel'),
+      icon: Droplets,
+      description: 'Burst pipe, major leak, flooding',
+    },
+    {
+      value: 'power',
+      label: tP89('powerLabel'),
+      icon: Zap,
+      description: 'No electricity, electrical hazard',
+    },
+    {
+      value: 'security',
+      label: tP89('securityLabel'),
+      icon: Shield,
+      description: 'Break-in, suspicious activity, lock issue',
+    },
+    {
+      value: 'other',
+      label: tP89('otherLabel'),
+      icon: AlertTriangle,
+      description: 'Gas leak, structural damage, etc.',
+    },
+  ];
   const router = useRouter();
   const [formData, setFormData] = useState({
     type: '',

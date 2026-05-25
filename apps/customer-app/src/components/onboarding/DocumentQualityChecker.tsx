@@ -23,6 +23,7 @@ export function DocumentQualityChecker({
   onQualityResult,
 }: DocumentQualityCheckerProps): ReactElement | null {
   const t = useTranslations('screenUnavailable');
+  const tP89 = useTranslations('p89.docQuality');
   useEffect(() => {
     if (!imageFile) {
       return;
@@ -31,13 +32,13 @@ export function DocumentQualityChecker({
     onQualityResult(false, [
       {
         id: 'document-quality',
-        label: 'Document Quality',
+        label: tP89('label'),
         status: 'fail',
         message: 'Live document quality analysis is not wired in this build.',
         icon: Eye,
       },
     ]);
-  }, [imageFile, onQualityResult]);
+  }, [imageFile, onQualityResult, tP89]);
 
   if (!imageFile) {
     return null;

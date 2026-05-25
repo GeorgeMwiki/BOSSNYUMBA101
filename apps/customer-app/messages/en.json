@@ -1126,5 +1126,142 @@
     "activityEmpty": "Events on this parcel will appear here as they happen.",
     "disabledTitle": "Lease KPIs preview",
     "disabledDescription": "Gated by the lease_kpi_panel_enabled flag."
+  },
+  "p89": {
+    "houseRules": {
+      "title": "House Rules"
+    },
+    "emergencyTypes": {
+      "waterLabel": "Water Leak / Flooding",
+      "powerLabel": "Power Outage",
+      "securityLabel": "Security Issue",
+      "otherLabel": "Other Emergency"
+    },
+    "inspection": {
+      "wallsUndamaged": "Walls undamaged",
+      "flooringCondition": "Flooring in good condition",
+      "plumbingWorks": "Plumbing works",
+      "electricalOutletsWorking": "Electrical outlets working",
+      "doorsLocksSecure": "Doors & locks secure",
+      "windowsFunctional": "Windows open and close",
+      "signatureAlt": "Saved signature"
+    },
+    "triage": {
+      "noPowerElectrical": "No power / electrical",
+      "waterPlumbing": "Water / plumbing",
+      "acHeatingNotWorking": "AC / heating not working",
+      "applianceBroken": "Appliance broken",
+      "somethingElse": "Something else",
+      "wholeHouse": "The whole house",
+      "oneRoomZone": "Just one room / zone",
+      "oneOutlet": "Just one wall socket",
+      "breakerFlipped": "Yes, one is flipped",
+      "breakersNormal": "No, all look normal",
+      "breakerNotFound": "I cannot find the breaker box",
+      "leakOnFloor": "There is a leak / water on the floor",
+      "noWater": "No water coming out at all",
+      "sinkSlow": "Sink / shower draining slowly",
+      "completelyDead": "It is completely dead",
+      "runningButWarm": "Running but blowing warm air",
+      "strangeNoises": "Making strange noises",
+      "remoteBlank": "No, the remote display is blank",
+      "remoteIgnored": "Yes, remote works but unit ignores it",
+      "diyAdvice": "You may be able to fix this yourself.",
+      "dispatchTechnician": "We will dispatch a technician.",
+      "diagnosticHistory": "Diagnostic history"
+    },
+    "onboardingComplete": {
+      "keyCollection": "Key Collection"
+    },
+    "onboardingUtilities": {
+      "copyMeterNumber": "Copy Meter Number"
+    },
+    "onboardingWelcome": {
+      "pushNotifications": "Push Notifications"
+    },
+    "declaredFacts": {
+      "title": "Declared facts"
+    },
+    "feedbackThumbs": {
+      "reasonPlaceholder": "Tell me what was wrong (optional)",
+      "reasonAriaLabel": "Feedback reason",
+      "thumbsUpAria": "Thumbs up",
+      "thumbsDownAria": "Thumbs down"
+    },
+    "chatComposer": {
+      "sendMessageAria": "Send message"
+    },
+    "fileUpload": {
+      "defaultLabel": "Upload a document"
+    },
+    "moveOut": {
+      "reasonPlaceholder": "Why are you moving out?",
+      "depositPlaceholder": "Where should we mail your deposit?",
+      "depositLegend": "Deposit return preference"
+    },
+    "notificationCenter": {
+      "panelAria": "Notifications panel",
+      "closeAria": "Close notifications"
+    },
+    "maintenanceModal": {
+      "pestControlLabel": "Pest control"
+    },
+    "ticketRating": {
+      "prompt": "How was the service?",
+      "commentPlaceholder": "What worked well? Anything we should improve?",
+      "submitAria": "Submit rating"
+    },
+    "liveAffordability": {
+      "enterIncomeLabel": "Enter income",
+      "comfortablyAffordableLabel": "Comfortably affordable"
+    },
+    "marketingShell": {
+      "stationMastersLabel": "Station Masters",
+      "howItWorksLabel": "How it works"
+    },
+    "docQuality": {
+      "label": "Document Quality"
+    },
+    "inspectionChecklist": {
+      "itemsAria": "Inspection checklist items",
+      "submitAria": "Submit inspection"
+    },
+    "phoneSignup": {
+      "sendOtpAria": "Send OTP",
+      "verifyCodeAria": "Verify code"
+    },
+    "signaturePad": {
+      "padAria": "Signature pad",
+      "clearAria": "Clear signature",
+      "confirmAria": "Confirm signature and submit"
+    },
+    "categorySelector": {
+      "pestControlLabel": "Pest Control"
+    },
+    "requestCard": {
+      "inProgressLabel": "In Progress"
+    },
+    "paymentsData": {
+      "allTime": "All time",
+      "last30Days": "Last 30 days",
+      "last3Months": "Last 3 months",
+      "last6Months": "Last 6 months",
+      "thisYear": "This year"
+    },
+    "proposedAction": {
+      "openMaintenance": "Open maintenance form",
+      "openPayment": "Open payment form",
+      "openMessage": "Open message composer",
+      "openLease": "Open lease form"
+    },
+    "starterPrompts": {
+      "rentDue": "When is my next rent due?",
+      "openMaintenance": "Open a maintenance request",
+      "explainLease": "Explain my lease",
+      "findReceipt": "Find a payment receipt"
+    },
+    "maintenancePage": {
+      "inProgressLabel": "In Progress"
+    }
   }
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { PenLine } from 'lucide-react';
 
 import {
@@ -24,38 +25,41 @@ import { ROUTES } from '@/lib/routes';
  * across the rest of customer-app).
  */
 
-const CHECKLIST_ITEMS: readonly ChecklistItemSeed[] = [
-  {
-    id: 'walls-undamaged',
-    label: 'Walls undamaged',
-    description: 'Check for holes, cracks, or peeling paint.',
-  },
-  {
-    id: 'flooring-condition',
-    label: 'Flooring in good condition',
-    description: 'No major scratches, stains, or loose tiles.',
-  },
-  {
-    id: 'plumbing-works',
-    label: 'Plumbing works',
-    description: 'All taps run, drains flow, no leaks.',
-  },
-  {
-    id: 'electrical-outlets-work',
-    label: 'Electrical outlets working',
-    description: 'Power available at every socket.',
-  },
-  {
-    id: 'doors-locks-secure',
-    label: 'Doors & locks secure',
-    description: 'Every door closes and locks properly.',
-  },
-  {
-    id: 'windows-functional',
-    label: 'Windows open and close',
-    description: 'No broken latches or stuck frames.',
-  },
-];
+function useChecklistItems(): readonly ChecklistItemSeed[] {
+  const t = useTranslations('p89.inspection');
+  return [
+    {
+      id: 'walls-undamaged',
+      label: t('wallsUndamaged'),
+      description: 'Check for holes, cracks, or peeling paint.',
+    },
+    {
+      id: 'flooring-condition',
+      label: t('flooringCondition'),
+      description: 'No major scratches, stains, or loose tiles.',
+    },
+    {
+      id: 'plumbing-works',
+      label: t('plumbingWorks'),
+      description: 'All taps run, drains flow, no leaks.',
+    },
+    {
+      id: 'electrical-outlets-work',
+      label: t('electricalOutletsWorking'),
+      description: 'Power available at every socket.',
+    },
+    {
+      id: 'doors-locks-secure',
+      label: t('doorsLocksSecure'),
+      description: 'Every door closes and locks properly.',
+    },
+    {
+      id: 'windows-functional',
+      label: t('windowsFunctional'),
+      description: 'No broken latches or stuck frames.',
+    },
+  ];
+}
 
 async function patchProgress(
   baseUrl: string,
@@ -143,6 +147,8 @@ async function submitInspection(
 
 export default function InspectionPage(): JSX.Element {
   const router = useRouter();
+  const tP89 = useTranslations('p89.inspection');
+  const CHECKLIST_ITEMS = useChecklistItems();
   const [signature, setSignature] = useState<string | null>(null);
   const baseUrl = useMemo(() => {
     try {
@@ -208,7 +214,7 @@ export default function InspectionPage(): JSX.Element {
               <div className="rounded-lg border-2 border-success-200 bg-success-50 p-2">
                 <img
                   src={signature}
-                  alt="Saved signature"
+                  alt={tP89('signatureAlt')}
                   className="w-full h-auto"
                 />
               </div>

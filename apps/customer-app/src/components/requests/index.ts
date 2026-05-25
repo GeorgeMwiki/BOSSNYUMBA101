@@ -1,4 +1,4 @@
-export { CategorySelector, CATEGORIES } from './CategorySelector';
+export { CategorySelector, useCategories } from './CategorySelector';
 export { PrioritySelector, PRIORITIES } from './PrioritySelector';
 export { PhotoCapture } from './PhotoCapture';
 export type { PhotoPreview } from './PhotoCapture';

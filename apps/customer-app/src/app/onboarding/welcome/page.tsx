@@ -22,39 +22,43 @@ const LANGUAGES = [
   { code: 'sw', label: 'Kiswahili', flag: '🇹🇿' },
 ];
 
-const CHANNELS = [
-  {
-    id: 'whatsapp',
-    label: 'WhatsApp',
-    description: 'Get updates via WhatsApp messages',
-    icon: MessageCircle,
-    recommended: true,
-  },
-  {
-    id: 'sms',
-    label: 'SMS',
-    description: 'Standard text message notifications',
-    icon: Phone,
-    recommended: false,
-  },
-  {
-    id: 'email',
-    label: 'Email',
-    description: 'Receive detailed email notifications',
-    icon: Mail,
-    recommended: false,
-  },
-  {
-    id: 'push',
-    label: 'Push Notifications',
-    description: 'In-app push notifications',
-    icon: Bell,
-    recommended: false,
-  },
-];
+function useChannels() {
+  const t = useTranslations('p89.onboardingWelcome');
+  return [
+    {
+      id: 'whatsapp',
+      label: 'WhatsApp',
+      description: 'Get updates via WhatsApp messages',
+      icon: MessageCircle,
+      recommended: true,
+    },
+    {
+      id: 'sms',
+      label: 'SMS',
+      description: 'Standard text message notifications',
+      icon: Phone,
+      recommended: false,
+    },
+    {
+      id: 'email',
+      label: 'Email',
+      description: 'Receive detailed email notifications',
+      icon: Mail,
+      recommended: false,
+    },
+    {
+      id: 'push',
+      label: t('pushNotifications'),
+      description: 'In-app push notifications',
+      icon: Bell,
+      recommended: false,
+    },
+  ];
+}
 
 export default function OnboardingWelcomePage() {
   const t = useTranslations('onboardingWelcomePage');
+  const CHANNELS = useChannels();
   const router = useRouter();
   const { user } = useAuth();
   const [language, setLanguage] = useState('en');

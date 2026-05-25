@@ -9,18 +9,22 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 
-function classify(rent: number, income: number): {
+function classify(
+  rent: number,
+  income: number,
+  labels: { enterIncome: string; comfortable: string; tight: string; unaffordable: string },
+): {
   readonly ratio: number;
   readonly status: 'green' | 'yellow' | 'red';
   readonly label: string;
 } {
-  if (income <= 0) return { ratio: 0, status: 'red', label: 'Enter income' };
+  if (income <= 0) return { ratio: 0, status: 'red', label: labels.enterIncome };
   const ratio = rent / income;
   if (ratio <= 0.33)
-    return { ratio, status: 'green', label: 'Comfortably affordable' };
+    return { ratio, status: 'green', label: labels.comfortable };
   if (ratio <= 0.4)
-    return { ratio, status: 'yellow', label: 'Tight — budget carefully' };
-  return { ratio, status: 'red', label: 'Unaffordable — reject or coach' };
+    return { ratio, status: 'yellow', label: labels.tight };
+  return { ratio, status: 'red', label: labels.unaffordable };
 }
 
 const STATUS_COLOR: Record<'green' | 'yellow' | 'red', string> = {
@@ -31,9 +35,15 @@ const STATUS_COLOR: Record<'green' | 'yellow' | 'red', string> = {
 
 export function LiveAffordabilityDemo() {
   const t = useTranslations('liveAffordability');
+  const tP89 = useTranslations('p89.liveAffordability');
   const [rent, setRent] = useState(450_000);
   const [income, setIncome] = useState(1_500_000);
-  const { ratio, status, label } = classify(rent, income);
+  const { ratio, status, label } = classify(rent, income, {
+    enterIncome: tP89('enterIncomeLabel'),
+    comfortable: tP89('comfortablyAffordableLabel'),
+    tight: 'Tight — budget carefully',
+    unaffordable: 'Unaffordable — reject or coach',
+  });
   const percent = Math.round(ratio * 1000) / 10;
 
   return (

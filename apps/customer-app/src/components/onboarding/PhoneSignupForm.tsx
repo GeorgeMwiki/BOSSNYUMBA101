@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Phone, ArrowRight, KeyRound, ShieldCheck } from 'lucide-react';
 import { getRegionConfig } from '@bossnyumba/domain-models';
 
@@ -89,6 +90,7 @@ export function PhoneSignupForm({
   initialPhone = '',
   defaultCountry,
 }: PhoneSignupFormProps): JSX.Element {
+  const t = useTranslations('p89.phoneSignup');
   const router = useRouter();
   const country = (defaultCountry ?? DEFAULT_COUNTRY_FROM_ENV).toUpperCase();
   const region = useMemo(() => getRegionConfig(country), [country]);
@@ -291,7 +293,7 @@ export function PhoneSignupForm({
               type="submit"
               disabled={submitting || !phoneValid}
               data-testid="send-otp-button"
-              aria-label="Send OTP"
+              aria-label={t('sendOtpAria')}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-4 text-base font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
             >
               {submitting ? (
@@ -361,7 +363,7 @@ export function PhoneSignupForm({
               type="submit"
               disabled={submitting || otp.length < 4}
               data-testid="verify-otp-button"
-              aria-label="Verify code"
+              aria-label={t('verifyCodeAria')}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-4 text-base font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
             >
               {submitting ? (
