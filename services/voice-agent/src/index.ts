@@ -23,10 +23,17 @@
 
 import Fastify from 'fastify';
 
+import { authMiddleware, type TestAuthInjector } from './middleware/auth.js';
 import { registerCallRoute } from './routes/call.js';
 
 export interface BuildAppOptions {
   readonly wsBaseUrl?: string;
+  /**
+   * Test-only — bypass JWT verification by stamping `request.user`
+   * directly. Production constructs `buildApp({})` and so the real
+   * JWT auth path always runs.
+   */
+  readonly testAuthInjector?: TestAuthInjector;
 }
 
 export async function buildApp(options: BuildAppOptions = {}) {
@@ -34,6 +41,14 @@ export async function buildApp(options: BuildAppOptions = {}) {
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',
     },
+  });
+
+  // Auth gate — registered BEFORE routes so the preHandler hook fires
+  // on every non-public path (/health is whitelisted inside the hook).
+  authMiddleware(app, {
+    ...(options.testAuthInjector
+      ? { testAuthInjector: options.testAuthInjector }
+      : {}),
   });
 
   app.get('/health', async () => ({ status: 'ok' }));

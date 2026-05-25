@@ -18,6 +18,7 @@
 /* eslint-disable no-console */
 
 import { setTimeout as delay, clearTimeout as clearDelay } from 'node:timers';
+import { assertUrlSafe } from '@bossnyumba/enterprise-hardening';
 
 /**
  * Read an environment variable lazily. Returns `undefined` (not empty string)
@@ -157,6 +158,24 @@ export async function fetchWithTimeout(
   options: FetchWithTimeoutOptions,
 ): Promise<FetchResult> {
   const { timeoutMs, externalSignal, ...init } = options;
+
+  // SSRF guard — every outbound provider call (OpenAI, ElevenLabs,
+  // Lelapa, Cartesia, …) is screened by the central
+  // `assertUrlSafe` policy before we open the socket. Closes the
+  // tenant-influenced-URL gap surfaced by audit-ssrf-coverage.
+  // Vendor hosts are compile-time; the assertion still runs to catch
+  // accidental introduction of a tenant-supplied URL upstream.
+  try {
+    await assertUrlSafe(url);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      status: 0,
+      bodyText: '',
+      providerError: `safeFetch refused outbound URL: ${detail}`,
+    };
+  }
 
   const controller = new AbortController();
   const timer = delay(() => controller.abort(new Error(`timeout after ${timeoutMs}ms`)), timeoutMs);

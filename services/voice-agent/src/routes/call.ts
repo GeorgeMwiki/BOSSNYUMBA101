@@ -15,13 +15,24 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
+import {
+  recordSecurityEvent,
+  withSecurityEventsFastify,
+} from '@bossnyumba/observability';
+import { requireUser } from '../middleware/auth.js';
 import { detectLanguage } from '../router/language-router.js';
 import { routeStt } from '../router/stt-router.js';
 import { routeTts, type LatencyTier } from '../router/tts-router.js';
 
-import { withSecurityEventsFastify } from '@bossnyumba/observability';
+// `tenantId` is intentionally NOT in the body schema — it is derived
+// from the verified JWT (see `requireUser`). A separate `bodyTenantId`
+// field stays optional for backwards-compat with older mobile builds;
+// when it disagrees with the session tenant we emit a security event
+// and use the session value (never the body). Closes the
+// write-to-wrong-tenant risk surfaced in P75 / P86 closure (CWE-285).
 const BodySchema = z.object({
-  tenantId: z.string().min(1),
+  /** Deprecated — ignored. Kept optional so older clients keep parsing. */
+  tenantId: z.string().min(1).optional(),
   language: z.string().min(1).optional(),
   /** Caller's E.164 phone number, if known. */
   callerE164: z.string().min(1).optional(),
@@ -84,6 +95,24 @@ export function registerCallRoute(
       reply.code(400);
       return { error: 'invalid_request', details: parsed.error.flatten() };
     }
+    // Tenant id ALWAYS from the verified JWT — never from the body.
+    const sessionTenantId = requireUser(request).tenantId;
+    if (parsed.data.tenantId && parsed.data.tenantId !== sessionTenantId) {
+      void recordSecurityEvent({
+        action: 'voice-call.create.tenant_mismatch',
+        resource: 'voice-call',
+        severity: 'warn',
+        method: request.method,
+        route: request.url,
+        tenantId: sessionTenantId,
+        actorId: requireUser(request).userId,
+        detail: {
+          sessionTenantId,
+          bodyTenantId: parsed.data.tenantId,
+          note: 'body tenantId ignored — session value used',
+        },
+      });
+    }
     const wsBaseUrl =
       options.wsBaseUrl ??
       // Fall back to the request's protocol + host. WSS upgrades from HTTPS.
@@ -91,6 +120,8 @@ export function registerCallRoute(
 
     const plan = planCall(parsed.data, { wsBaseUrl });
     reply.code(201);
-    return plan;
+    // Stamp the session-derived tenant id back in the response so
+    // callers can confirm the tenant the brain will run under.
+    return { ...plan, tenantId: sessionTenantId };
   }));
 }
