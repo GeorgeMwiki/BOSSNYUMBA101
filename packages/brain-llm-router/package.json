@@ -53,6 +53,38 @@
     "./dynamic-registry": {
       "types": "./src/dynamic-registry/index.ts",
       "default": "./dist/dynamic-registry/index.js"
+    },
+    "./rate-limit-preflight": {
+      "types": "./src/rate-limit-preflight/index.ts",
+      "default": "./dist/rate-limit-preflight/index.js"
+    },
+    "./concurrency-gate": {
+      "types": "./src/concurrency-gate/index.ts",
+      "default": "./dist/concurrency-gate/index.js"
+    },
+    "./provider-fingerprint-scrubber": {
+      "types": "./src/provider-fingerprint-scrubber/index.ts",
+      "default": "./dist/provider-fingerprint-scrubber/index.js"
+    },
+    "./pii-input-scrubber": {
+      "types": "./src/pii-input-scrubber/index.ts",
+      "default": "./dist/pii-input-scrubber/index.js"
+    },
+    "./kill-switch": {
+      "types": "./src/kill-switch/index.ts",
+      "default": "./dist/kill-switch/index.js"
+    },
+    "./routing-overrides": {
+      "types": "./src/routing-overrides/index.ts",
+      "default": "./dist/routing-overrides/index.js"
+    },
+    "./cost-meter": {
+      "types": "./src/cost-meter/index.ts",
+      "default": "./dist/cost-meter/index.js"
+    },
+    "./policy-audit": {
+      "types": "./src/policy-audit/index.ts",
+      "default": "./dist/policy-audit/index.js"
     }
   },
   "scripts": {

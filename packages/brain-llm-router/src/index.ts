@@ -122,3 +122,136 @@ export type {
   CoveConfig,
   CoveResult,
 } from './brain-call-orchestrator/index.js';
+
+// Dynamic registry — extended with min-tier policy (WX port 1)
+export {
+  MODEL_REQUIREMENTS,
+  enforceMinTier,
+  requiresOpusFamily,
+  requiresSonnetOrBetter,
+  getEnforcementLog,
+  getEnforcementStats,
+  setMinTierLogger,
+  setEnforcementAuditSink,
+  clearMinTierLogger,
+  clearEnforcementAuditSink,
+} from './dynamic-registry/min-tier-policy.js';
+export type {
+  TaskCategory as MinTierTaskCategory,
+  ModelRequirement,
+  EnforceResult,
+  EnforcementLogEntry,
+  MinTierLogger,
+  EnforcementAuditSink,
+} from './dynamic-registry/min-tier-policy.js';
+
+// Rate-limit pre-flight (WX port 2)
+export {
+  RateLimitNearExhaustionError,
+  checkRateLimitFloor,
+  extractRetryAfterMsFromError,
+  updateRateLimitFromHeaders,
+  parseRetryAfterMs,
+  getProviderRateLimitState,
+  resetProviderRateLimitState,
+} from './rate-limit-preflight/index.js';
+export type {
+  ProviderRateLimitState,
+  PreflightProvider,
+  HeadersLike,
+} from './rate-limit-preflight/index.js';
+
+// Concurrency gate (WX port 3)
+export {
+  SlotAcquireTimeoutError,
+  acquireSlot,
+  createConcurrencyGate,
+  getDefaultTenantCapacity,
+  getDefaultGlobalCapacity,
+  resetConcurrencyGate,
+} from './concurrency-gate/index.js';
+export type {
+  AcquireOptions,
+  ConcurrencyGate,
+  SlotRelease,
+} from './concurrency-gate/index.js';
+
+// Provider-fingerprint scrubber (WX port 4)
+export {
+  PROVIDER_FINGERPRINT_PATTERNS,
+  scrubProviderFingerprints,
+} from './provider-fingerprint-scrubber/index.js';
+export type { ScrubResult } from './provider-fingerprint-scrubber/index.js';
+
+// PII egress scrubber (WX port 5)
+export {
+  safeText,
+  safePayload,
+  setPiiScrubberConfig,
+  resetPiiScrubberConfig,
+  PII_PATTERNS,
+  scrubPiiText,
+} from './pii-input-scrubber/index.js';
+export type {
+  PiiScrubberConfig,
+  BrandRedactor,
+  PiiScrubber,
+  PresidioScrubber,
+  PiiPattern,
+} from './pii-input-scrubber/index.js';
+
+// AI kill-switch (WX port 6)
+export {
+  isKillSwitchActive,
+  buildKillSwitchPrompt,
+  setKillSwitchDbReader,
+  resetKillSwitchDbReader,
+} from './kill-switch/index.js';
+export type {
+  KillSwitchLanguage,
+  KillSwitchDbReader,
+} from './kill-switch/index.js';
+
+// Routing overrides (WX port 7)
+export {
+  routingOverrideEntrySchema,
+  routingOverridePatchSchema,
+  LOCKED_CATEGORIES,
+  InMemoryOverrideAdapter,
+  RoutingOverrideRepository,
+} from './routing-overrides/index.js';
+export type {
+  RoutingOverrideEntry,
+  RoutingOverridePatch,
+  OverridePort,
+  RoutingOverride,
+} from './routing-overrides/index.js';
+
+// Cost meter (WX port 8)
+export {
+  meterCall,
+  getTenantSpend,
+  resetTenantSpend,
+  resetAllTenantSpend,
+  setCostMeterEmitter,
+  resetCostMeterEmitter,
+} from './cost-meter/index.js';
+export type {
+  CostMeterEvent,
+  CostMeterEmitter,
+  MeterCallArgs,
+  TenantSpendSnapshot,
+} from './cost-meter/index.js';
+
+// Policy audit — OCSF emitter + cross-family alert (WX port 9)
+export {
+  formatPolicyDecisionOcsf,
+  bindMinTierToOcsf,
+  bindCrossFamilyFallbackToLogger,
+} from './policy-audit/index.js';
+export type {
+  PolicyDecisionOcsf,
+  OcsfEmitter,
+  CrossFamilyFallbackEvent,
+  CrossFamilyFallbackEmitter,
+} from './policy-audit/index.js';
