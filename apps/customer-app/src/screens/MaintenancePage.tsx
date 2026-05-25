@@ -3,6 +3,9 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+// Warm the maintenance detail bundle on hover/touch so opening a
+// ticket card feels instant on mobile networks.
+import { prefetchOnHover } from '@bossnyumba/performance-toolkit/lazy-load';
 import {
   Plus,
   Clock,
@@ -417,8 +420,9 @@ function TicketCard({ ticket }: { ticket: MaintenanceTicket }) {
   const category = CATEGORIES.find((c) => c.id === ticket.category);
   const CategoryIcon = category?.icon || Wrench;
 
+  const detailHref = `/maintenance/${ticket.id}`;
   return (
-    <Link href={`/maintenance/${ticket.id}`}>
+    <Link href={detailHref} {...prefetchOnHover(detailHref)}>
       <div className={`card p-4 border-l-4 ${priorityCfg.borderColor} active:scale-[0.98] transition-transform`}>
         <div className="flex items-start gap-3">
           <div className={`p-2 rounded-lg ${category?.color || 'bg-gray-100 text-gray-600'}`}>

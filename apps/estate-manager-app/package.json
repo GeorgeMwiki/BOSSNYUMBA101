@@ -24,6 +24,7 @@
     "@bossnyumba/genui": "workspace:*",
     "@bossnyumba/graph-sync": "workspace:*",
     "@bossnyumba/observability": "workspace:^",
+    "@bossnyumba/performance-toolkit": "workspace:*",
     "@bossnyumba/realtime-rooms": "workspace:*",
     "@bossnyumba/spotlight": "workspace:*",
     "@dnd-kit/core": "^6.1.0",

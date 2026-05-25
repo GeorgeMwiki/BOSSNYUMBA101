@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { Logomark } from '@bossnyumba/design-system';
 import { PLATFORM_SESSION_COOKIE } from '@/lib/session';
+import { PrefetchNavLink } from './PrefetchNavLink';
 
 interface NavGroup {
   readonly heading: string;
@@ -116,13 +117,13 @@ export async function StaffNav() {
               {group.heading}
             </div>
             {group.items.map((item) => (
-              <Link
+              <PrefetchNavLink
                 key={item.href}
                 href={item.href}
                 className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors"
               >
                 {item.label}
-              </Link>
+              </PrefetchNavLink>
             ))}
           </div>
         ))}

@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import type { MarketplaceListing } from '@/lib/marketplace/types';
 import { formatPriceRange } from '@/lib/marketplace/api-client';
+// `prefetchOnHover` warms the listing detail bundle on first hover/touch
+// so the click into a listing feels instant on slow mobile networks.
+import { prefetchOnHover } from '@bossnyumba/performance-toolkit/lazy-load';
 
 /**
  * Listing card — used in the discovery grid and on org pages.
@@ -15,10 +18,13 @@ export function ListingCard({
   readonly listing: MarketplaceListing;
 }): JSX.Element {
   const price = formatPriceRange(listing.priceMin, listing.priceMax, listing.currency);
+  const detailHref = `/marketplace/listings/${listing.listingId}`;
+  const prefetch = prefetchOnHover(detailHref);
   return (
     <Link
-      href={`/marketplace/listings/${listing.listingId}`}
+      href={detailHref}
       className="group flex flex-col overflow-hidden rounded-chat border border-ink-muted/10 bg-surface transition hover:border-brand hover:shadow-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      {...prefetch}
     >
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-surface-raised">
         {listing.thumbnailUrl ? (

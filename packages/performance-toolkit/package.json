@@ -39,6 +39,10 @@
     "./perf-metrics": {
       "types": "./dist/perf-metrics/index.d.ts",
       "import": "./dist/perf-metrics/index.js"
+    },
+    "./yield-and-chunk": {
+      "types": "./dist/yield-and-chunk/index.d.ts",
+      "import": "./dist/yield-and-chunk/index.js"
     }
   },
   "scripts": {

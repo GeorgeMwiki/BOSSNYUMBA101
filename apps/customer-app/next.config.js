@@ -18,6 +18,7 @@ const nextConfig = {
     '@bossnyumba/config',
     '@bossnyumba/compliance-plugins',
     '@bossnyumba/chat-ui',
+    '@bossnyumba/performance-toolkit',
   ],
   // Support `.js` extensions on TS source imports (NodeNext convention).
   webpack: (config, { isServer, webpack }) => {

@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Bell, Loader2 } from 'lucide-react';
+import { prefetchOnHover } from '@bossnyumba/performance-toolkit/lazy-load';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getApiBaseUrl } from '@/lib/api';
 
@@ -134,7 +135,12 @@ export default function NotificationsPage() {
           );
 
           return n.actionUrl ? (
-            <Link key={n.id} href={n.actionUrl} className="block">
+            <Link
+              key={n.id}
+              href={n.actionUrl}
+              className="block"
+              {...prefetchOnHover(n.actionUrl)}
+            >
               {content}
             </Link>
           ) : (

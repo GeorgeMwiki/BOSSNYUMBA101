@@ -114,6 +114,9 @@ importers:
       '@bossnyumba/observability':
         specifier: workspace:^
         version: link:../../packages/observability
+      '@bossnyumba/performance-toolkit':
+        specifier: workspace:*
+        version: link:../../packages/performance-toolkit
       '@bossnyumba/realtime-rooms':
         specifier: workspace:*
         version: link:../../packages/realtime-rooms
@@ -287,6 +290,9 @@ importers:
       '@bossnyumba/observability':
         specifier: workspace:^
         version: link:../../packages/observability
+      '@bossnyumba/performance-toolkit':
+        specifier: workspace:*
+        version: link:../../packages/performance-toolkit
       '@bossnyumba/realtime-rooms':
         specifier: workspace:*
         version: link:../../packages/realtime-rooms
@@ -393,6 +399,9 @@ importers:
       '@bossnyumba/observability':
         specifier: workspace:^
         version: link:../../packages/observability
+      '@bossnyumba/performance-toolkit':
+        specifier: workspace:*
+        version: link:../../packages/performance-toolkit
       '@bossnyumba/realtime-rooms':
         specifier: workspace:*
         version: link:../../packages/realtime-rooms
@@ -624,6 +633,9 @@ importers:
 
   apps/tenant-portal:
     dependencies:
+      '@bossnyumba/performance-toolkit':
+        specifier: workspace:*
+        version: link:../../packages/performance-toolkit
       next:
         specifier: ^15.5.15
         version: 15.5.18(@babel/core@7.29.0)(@playwright/test@1.59.1)(react-dom@18.3.1)(react@18.3.1)

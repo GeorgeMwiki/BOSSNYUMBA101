@@ -23,6 +23,7 @@ export * as cache from './cache/index.js';
 export * as bundleBudget from './bundle-budget/index.js';
 export * as promptCache from './prompt-cache/index.js';
 export * as perfMetrics from './perf-metrics/index.js';
+export * as yieldAndChunk from './yield-and-chunk/index.js';
 
 import type { PerfMetricsSink } from './types.js';
 import * as lazyMod from './lazy-load/index.js';
@@ -31,6 +32,7 @@ import * as cacheMod from './cache/index.js';
 import * as bundleBudgetMod from './bundle-budget/index.js';
 import * as promptCacheMod from './prompt-cache/index.js';
 import * as perfMetricsMod from './perf-metrics/index.js';
+import * as yieldAndChunkMod from './yield-and-chunk/index.js';
 
 export interface PerformanceToolkitOptions {
   readonly metricsSink?: PerfMetricsSink;
@@ -47,6 +49,7 @@ export function createPerformanceToolkit(opts: PerformanceToolkitOptions = {}) {
     cache: cacheMod,
     bundleBudget: bundleBudgetMod,
     promptCache: promptCacheMod,
+    yieldAndChunk: yieldAndChunkMod,
     metrics: opts.metricsSink !== undefined
       ? perfMetricsMod.bindSink(opts.metricsSink)
       : perfMetricsMod,

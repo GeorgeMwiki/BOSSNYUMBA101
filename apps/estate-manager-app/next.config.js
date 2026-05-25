@@ -16,6 +16,7 @@ const nextConfig = {
     '@bossnyumba/config',
     '@bossnyumba/compliance-plugins',
     '@bossnyumba/chat-ui',
+    '@bossnyumba/performance-toolkit',
   ],
   experimental: {
     // Wave-21 Agent R: collapse barrel imports to single-file imports at

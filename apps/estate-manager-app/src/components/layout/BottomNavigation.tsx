@@ -9,6 +9,11 @@ import {
   Brain,
   Users,
 } from 'lucide-react';
+// `prefetchOnHover` warms the next route's chunk on hover/focus/touch so
+// the click feels instant. Next's <Link> already prefetches on viewport
+// for visible links, but the bottom nav is fixed visible and hover is a
+// cheaper, more deterministic signal — particularly on tablets.
+import { prefetchOnHover } from '@bossnyumba/performance-toolkit/lazy-load';
 
 const navItems = [
   { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -28,12 +33,14 @@ export function BottomNavigation() {
           const isActive = pathname === item.href ||
             (item.href !== '/' && (pathname?.startsWith(item.href) ?? false));
           const Icon = item.icon;
+          const prefetch = prefetchOnHover(item.href);
 
           return (
             <Link
               key={item.href}
               href={item.href}
               className={`bottom-nav-item ${isActive ? 'active' : ''}`}
+              {...prefetch}
             >
               <Icon className="w-6 h-6" />
               <span className="text-xs mt-1">{item.label}</span>

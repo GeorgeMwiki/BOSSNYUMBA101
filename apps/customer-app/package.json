@@ -24,6 +24,7 @@
     "@bossnyumba/domain-models": "workspace:*",
     "@bossnyumba/genui": "workspace:*",
     "@bossnyumba/observability": "workspace:^",
+    "@bossnyumba/performance-toolkit": "workspace:*",
     "@bossnyumba/realtime-rooms": "workspace:*",
     "@bossnyumba/spotlight": "workspace:*",
     "@hookform/resolvers": "^5.2.2",

@@ -7,6 +7,7 @@ const nextConfig = {
     '@bossnyumba/graph-privacy',
     '@bossnyumba/forecasting',
     '@bossnyumba/observability',
+    '@bossnyumba/performance-toolkit',
   ],
   experimental: {
     optimizePackageImports: [
