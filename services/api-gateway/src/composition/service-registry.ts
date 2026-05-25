@@ -408,6 +408,17 @@ import {
   createInMemoryBudgetStore,
   type LLMBudgetGovernor,
 } from '@bossnyumba/llm-budget-governor';
+// PO-port wave-5 wiring #3 — OCSF 1.5 emitter. Secondary audit sink that
+// maps every internal audit event to OCSF + pushes to syslog / file /
+// HTTP for SIEM ingestion (Sentinel / Splunk / Datadog). Coexists with
+// the primary AuditTrailRecorder which writes to Postgres + the
+// hash-chained sovereign ledger; the OCSF emitter is fire-and-forget
+// and never blocks the primary audit path.
+import type {
+  InternalAuditEvent as OcsfInternalAuditEvent,
+  OCSFSink,
+} from '@bossnyumba/ocsf-emitter';
+import { createOcsfBundle } from './ocsf-emitter-wiring.js';
 // Canonical Property Graph (CPG) — Neo4j query service. Constructed
 // lazily so the gateway still boots when NEO4J_URI is unset; the graph
 // router returns 503 GRAPH_SERVICE_UNAVAILABLE when this slot is null.
@@ -686,6 +697,28 @@ export interface ServiceRegistry {
      * admin route lands in a follow-up owned by W-Ops.
      */
     readonly brainKernel: BrainKernelWiringSlot | null;
+  };
+
+  /**
+   * PO-port wave-5 wiring #3 — OCSF 1.5 secondary audit sink.
+   *
+   * Pluggable sink: in-memory (default in degraded / dev), JSON-lines
+   * file (default in live; env `OCSF_LOG_PATH`), syslog or HTTP
+   * (follow-up adapters). Maps every internal audit event onto the
+   * OCSF envelope with PII redaction.
+   *
+   * The OCSF sink is a SECONDARY pipeline — never blocks or replaces
+   * the primary `AuditTrailRecorder` (hash-chained Postgres). It runs
+   * fire-and-forget; sink errors are swallowed via the `emitted` flag
+   * on the EmitResult so a transient SIEM outage cannot break a
+   * response path. Consumers wire-in by calling
+   * `ocsf.emit(internalEvent)` after their primary audit record lands.
+   */
+  readonly ocsf: {
+    readonly sink: OCSFSink;
+    readonly emit: (
+      event: OcsfInternalAuditEvent,
+    ) => Promise<{ readonly emitted: boolean }>;
   };
 
   /** Wave 29 — Forecasting (TGN + conformal prediction intervals).
@@ -1166,6 +1199,9 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // tolerate `embedder === null` + `brain === null` by skipping the
     // vector-search and summarisation steps respectively.
     memoryV2: createInMemoryMemoryV2(),
+    // PO-port wave-5 wiring #3 — OCSF emitter (secondary SIEM-egress sink).
+    // Degraded mode: in-memory sink unless `OCSF_LOG_PATH` is set.
+    ocsf: createOcsfBundle(),
     // Central Intelligence — no concrete LLM adapter ships here (it
     // lives in a separate service). In degraded mode we still wire the
     // in-memory memory so thread listing works locally.
@@ -1838,6 +1874,10 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // (sleep-pass orchestrator, reflection workers) can read shapes
     // without null-checks.
     memoryV2: createInMemoryMemoryV2(),
+    // PO-port wave-5 wiring #3 — OCSF emitter (secondary SIEM-egress
+    // sink). Live mode picks up `OCSF_LOG_PATH` for the file-line sink;
+    // syslog / HTTP forwarders land as follow-up sink adapters.
+    ocsf: createOcsfBundle(),
     // Central Intelligence — the concrete LLM adapter lives in a
     // separate service. `agent` is only populated when `CI_LLM_URL`
     // env var is set AND the adapter is wired (follow-up PR); until
