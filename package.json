@@ -99,6 +99,9 @@
         "@types/react",
         "react"
       ]
-    }
+    },
+    "neverBuiltDependencies": [
+      "isolated-vm"
+    ]
   }
 }
