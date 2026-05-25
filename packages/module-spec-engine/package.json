@@ -6,10 +6,10 @@
   "description": "Piece B — Module spec DSL: Zod grammar, validator, deterministic compiler from JSON spec to safe Drizzle migration SQL + per-entity Zod validators, dry-run preview.",
   "type": "module",
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     }
