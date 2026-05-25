@@ -14,13 +14,25 @@ infra/k8s/
 ├── overlays/
 │   ├── staging/                 Smaller envelope, staging hostnames
 │   └── prod/                    Full envelope, anti-affinity required, prod hostnames
-├── brain-evolution-worker/      Per-service tree (added 2026-05-24)
-├── document-render/             Per-service tree
-├── onboarding-orchestrator/     Per-service tree
-├── outcomes-metering/           Per-service tree
-├── parcel-service/              Per-service tree
-├── scientific-discovery-sidecar/ Per-service tree
-└── voice-agent/                 Per-service tree
+├── brain-evolution-worker/      Per-service tree (added 2026-05-24, CronJob)
+├── apollo-gauntlet-runner/      Per-service tree (CronJob, 02:00 UTC)
+├── consolidation-worker/        Per-service tree (Deployment, 1h loop)
+├── document-render/             Per-service tree (Deployment)
+├── field-capture-service/       Per-service tree (Deployment)
+├── mcp-server-firs/             Per-service tree (Deployment, stdio MCP)
+├── mcp-server-nggis/            Per-service tree (Deployment, stdio MCP)
+├── mcp-server-nin/              Per-service tree (Deployment, stdio MCP)
+├── mcp-server-opay/             Per-service tree (Deployment, stdio MCP)
+├── mcp-server-process-intel/    Per-service tree (Deployment + pm4py sidecar)
+├── onboarding-orchestrator/     Per-service tree (Deployment)
+├── outbox-processor/            Per-service tree (Deployment, singleton drainer)
+├── outcomes-metering/           Per-service tree (Deployment)
+├── parcel-service/              Per-service tree (Deployment)
+├── payments-ledger/             Per-service tree (Deployment, port 3001, money path)
+├── proactive-triggers-worker/   Per-service tree (Deployment, 1h sweep loop)
+├── scientific-discovery-sidecar/ Per-service tree (Deployment)
+├── sleep-pass-orchestrator/     Per-service tree (Deployment, port 3040, 60s heartbeat)
+└── voice-agent/                 Per-service tree (Deployment, port 8080, WebSocket sticky)
 ```
 
 Per-service trees follow:
@@ -32,6 +44,24 @@ Per-service trees follow:
     ├── staging/                 namespace + image tag + small envelope
     └── prod/                    namespace + image tag + full envelope + anti-affinity
 ```
+
+Not every service needs every base manifest — the shape depends on the
+runtime topology:
+
+| Shape                  | base files                                                    | Examples                                          |
+|------------------------|---------------------------------------------------------------|---------------------------------------------------|
+| HTTP backend           | deployment + service + hpa + pdb + networkpolicy + servicemonitor + externalsecret | voice-agent, sleep-pass-orchestrator, payments-ledger, field-capture-service, onboarding-orchestrator, outcomes-metering, parcel-service |
+| Singleton-loop worker  | deployment + networkpolicy + externalsecret                   | consolidation-worker, outbox-processor, proactive-triggers-worker |
+| Stdio MCP server       | deployment + networkpolicy + externalsecret                   | mcp-server-firs, mcp-server-nin, mcp-server-nggis, mcp-server-opay, mcp-server-process-intel |
+| Scheduled CronJob      | cronjob  + networkpolicy + externalsecret                     | brain-evolution-worker, apollo-gauntlet-runner    |
+
+Singleton-loop workers use `strategy: Recreate` because their cadence
+is driven by `setInterval` and overlapping pod lifetimes during a
+rolling update would duplicate claims against the work backlog.
+
+Stdio MCP servers do not expose a Service because the transport is
+stdio — api-gateway adapters either spawn the binary as a child
+process or wire a separate HTTP/SSE bridge container.
 
 ## Image registry convention
 
@@ -79,14 +109,34 @@ The schema mirrors `.env.production.example` 1:1, organised as
 ## Quick start
 
 ```bash
+# Variables
+SERVICES=(
+  apollo-gauntlet-runner
+  brain-evolution-worker
+  consolidation-worker
+  document-render
+  field-capture-service
+  mcp-server-firs
+  mcp-server-nggis
+  mcp-server-nin
+  mcp-server-opay
+  mcp-server-process-intel
+  onboarding-orchestrator
+  outbox-processor
+  outcomes-metering
+  parcel-service
+  payments-ledger
+  proactive-triggers-worker
+  scientific-discovery-sidecar
+  sleep-pass-orchestrator
+  voice-agent
+)
+
 # Validate
 kubectl apply --dry-run=client -k infra/k8s/external-secrets
 kubectl apply --dry-run=client -k infra/k8s/overlays/staging
 kubectl apply --dry-run=client -k infra/k8s/overlays/prod
-# Per-service trees (each one of the 7 new services)
-for svc in brain-evolution-worker document-render onboarding-orchestrator \
-           outcomes-metering parcel-service scientific-discovery-sidecar \
-           voice-agent; do
+for svc in "${SERVICES[@]}"; do
   kubectl apply --dry-run=client -k "infra/k8s/$svc/overlays/staging"
   kubectl apply --dry-run=client -k "infra/k8s/$svc/overlays/prod"
 done
@@ -95,9 +145,7 @@ done
 kubectl apply -k infra/k8s/external-secrets
 kubectl apply -k infra/k8s/overlays/staging
 kubectl apply -k infra/k8s/overlays/prod
-for svc in brain-evolution-worker document-render onboarding-orchestrator \
-           outcomes-metering parcel-service scientific-discovery-sidecar \
-           voice-agent; do
+for svc in "${SERVICES[@]}"; do
   kubectl apply -k "infra/k8s/$svc/overlays/staging"
   kubectl apply -k "infra/k8s/$svc/overlays/prod"
 done
