@@ -8,7 +8,7 @@
 -- flag rows so the override endpoint (`PUT /api/v1/feature-flags/:key`) won't
 -- reject operator toggles with UNKNOWN_FLAG (404).
 --
--- Pattern mirrors `0168_kill_switch_feature_flags.sql`:
+-- Pattern mirrors `0168b_kill_switch_feature_flags.sql`:
 --   - `default_enabled = FALSE` — the only way to fire a kill-switch is for
 --     an operator to flip the per-tenant override.
 --   - When the override is true, the middleware short-circuits with

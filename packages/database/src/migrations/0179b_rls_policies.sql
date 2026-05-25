@@ -948,7 +948,7 @@ END
 $do_approval_requests$;
 
 
--- ---- arrears_case_projections (created in 0018_arrears_ledger.sql) ----
+-- ---- arrears_case_projections (created in 0018b_arrears_ledger.sql) ----
 DO $do_arrears_case_projections$
 BEGIN
   IF EXISTS (
@@ -1016,7 +1016,7 @@ END
 $do_arrears_cases$;
 
 
--- ---- arrears_line_proposals (created in 0018_arrears_ledger.sql) ----
+-- ---- arrears_line_proposals (created in 0018b_arrears_ledger.sql) ----
 DO $do_arrears_line_proposals$
 BEGIN
   IF EXISTS (
@@ -1118,7 +1118,7 @@ END
 $do_autonomy_policies$;
 
 
--- ---- bids (created in 0018_marketplace.sql) ----
+-- ---- bids (created in 0018d_marketplace.sql) ----
 DO $do_bids$
 BEGIN
   IF EXISTS (
@@ -1934,7 +1934,7 @@ END
 $do_gdpr_deletion_requests$;
 
 
--- ---- gepg_control_numbers (created in 0017_gepg.sql) ----
+-- ---- gepg_control_numbers (created in 0017b_gepg.sql) ----
 DO $do_gepg_control_numbers$
 BEGIN
   IF EXISTS (
@@ -1968,7 +1968,7 @@ END
 $do_gepg_control_numbers$;
 
 
--- ---- gepg_reconciliation_events (created in 0017_gepg.sql) ----
+-- ---- gepg_reconciliation_events (created in 0017b_gepg.sql) ----
 DO $do_gepg_reconciliation_events$
 BEGIN
   IF EXISTS (
@@ -2580,7 +2580,7 @@ END
 $do_market_rate_snapshots$;
 
 
--- ---- marketplace_listings (created in 0018_marketplace.sql) ----
+-- ---- marketplace_listings (created in 0018d_marketplace.sql) ----
 DO $do_marketplace_listings$
 BEGIN
   IF EXISTS (
@@ -2750,7 +2750,7 @@ END
 $do_move_out_checklists$;
 
 
--- ---- negotiation_policies (created in 0017_negotiation.sql) ----
+-- ---- negotiation_policies (created in 0017e_negotiation.sql) ----
 DO $do_negotiation_policies$
 BEGIN
   IF EXISTS (
@@ -2784,7 +2784,7 @@ END
 $do_negotiation_policies$;
 
 
--- ---- negotiation_turns (created in 0017_negotiation.sql) ----
+-- ---- negotiation_turns (created in 0017e_negotiation.sql) ----
 DO $do_negotiation_turns$
 BEGIN
   IF EXISTS (
@@ -2818,7 +2818,7 @@ END
 $do_negotiation_turns$;
 
 
--- ---- negotiations (created in 0017_negotiation.sql) ----
+-- ---- negotiations (created in 0017e_negotiation.sql) ----
 DO $do_negotiations$
 BEGIN
   IF EXISTS (
@@ -3396,7 +3396,7 @@ END
 $do_rent_recommendations$;
 
 
--- ---- reward_events (created in 0019_gamification.sql) ----
+-- ---- reward_events (created in 0019b_gamification.sql) ----
 DO $do_reward_events$
 BEGIN
   IF EXISTS (
@@ -3430,7 +3430,7 @@ END
 $do_reward_events$;
 
 
--- ---- reward_policies (created in 0019_gamification.sql) ----
+-- ---- reward_policies (created in 0019b_gamification.sql) ----
 DO $do_reward_policies$
 BEGIN
   IF EXISTS (
@@ -3668,7 +3668,7 @@ END
 $do_sovereign_approvals$;
 
 
--- ---- station_master_coverage (created in 0023_station_master_coverage.sql) ----
+-- ---- station_master_coverage (created in 0023b_station_master_coverage.sql) ----
 DO $do_station_master_coverage$
 BEGIN
   IF EXISTS (
@@ -4076,7 +4076,7 @@ END
 $do_tenant_feature_flag_overrides$;
 
 
--- ---- tenant_gamification_profile (created in 0019_gamification.sql) ----
+-- ---- tenant_gamification_profile (created in 0019b_gamification.sql) ----
 DO $do_tenant_gamification_profile$
 BEGIN
   IF EXISTS (
@@ -4212,7 +4212,7 @@ END
 $do_tenant_predictions$;
 
 
--- ---- tenant_risk_reports (created in 0020_tenant_risk_reports.sql) ----
+-- ---- tenant_risk_reports (created in 0020b_tenant_risk_reports.sql) ----
 DO $do_tenant_risk_reports$
 BEGIN
   IF EXISTS (
@@ -4246,7 +4246,7 @@ END
 $do_tenant_risk_reports$;
 
 
--- ---- tenders (created in 0018_marketplace.sql) ----
+-- ---- tenders (created in 0018d_marketplace.sql) ----
 DO $do_tenders$
 BEGIN
   IF EXISTS (
@@ -4416,7 +4416,7 @@ END
 $do_training_paths$;
 
 
--- ---- unit_waitlists (created in 0019_waitlist.sql) ----
+-- ---- unit_waitlists (created in 0019d_waitlist.sql) ----
 DO $do_unit_waitlists$
 BEGIN
   IF EXISTS (
@@ -4484,7 +4484,7 @@ END
 $do_vacancy_pipeline_runs$;
 
 
--- ---- waitlist_outreach_events (created in 0019_waitlist.sql) ----
+-- ---- waitlist_outreach_events (created in 0019d_waitlist.sql) ----
 DO $do_waitlist_outreach_events$
 BEGIN
   IF EXISTS (
@@ -4586,7 +4586,7 @@ END
 $do_warehouse_movements$;
 
 
--- ---- worker_tags (created in 0023_station_master_coverage.sql) ----
+-- ---- worker_tags (created in 0023b_station_master_coverage.sql) ----
 DO $do_worker_tags$
 BEGIN
   IF EXISTS (
@@ -4620,7 +4620,7 @@ END
 $do_worker_tags$;
 
 
--- ---- worm_audit_log (created in 0165_worm_audit_log.sql) ----
+-- ---- worm_audit_log (created in 0165b_worm_audit_log.sql) ----
 DO $do_worm_audit_log$
 BEGIN
   IF EXISTS (

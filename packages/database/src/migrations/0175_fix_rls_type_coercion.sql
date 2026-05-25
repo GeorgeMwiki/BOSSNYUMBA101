@@ -38,9 +38,9 @@
 --                                                which was a previous broken
 --                                                fix attempt; recreate
 --                                                without the cast
---        0164_sovereign_append_only_enforcement.sql — 9 append-only tables
---        0166_rls_promote_out_wave.sql        — 6 high-blast-radius tables
---        0169_payments_ledger_rls.sql         — 3 ledger tables
+--        0164c_sovereign_append_only_enforcement.sql — 9 append-only tables
+--        0166b_rls_promote_out_wave.sql        — 6 high-blast-radius tables
+--        0169b_payments_ledger_rls.sql         — 3 ledger tables
 --        0173_force_rls_sweep.sql             — tool_call_denylist policies
 --        0174_payments_ledger_extra_repos.sql — 4 payments-ledger tables
 --

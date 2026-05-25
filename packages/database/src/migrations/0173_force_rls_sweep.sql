@@ -178,7 +178,7 @@ DECLARE
     'inspection_items',               -- 0014
     'inspection_signatures',          -- 0014
     -- 0017 — inspection extensions
-    'inspection_extensions',          -- 0017_inspections_extensions
+    'inspection_extensions',          -- 0017c_inspections_extensions
     -- 0018 — conditional surveys (NOTE: 0156's roster has typo "conditional_survey"
     -- singular; the real table names are plural — covered here)
     'conditional_surveys',            -- 0018

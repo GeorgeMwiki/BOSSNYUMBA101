@@ -9,7 +9,7 @@
 -- Two independent changes, both idempotent + safe to re-run:
 --
 --   1. ENABLE + FORCE RLS on `accounts`, `ledger_entries`, `statements`
---      using the same loop pattern as 0166_rls_promote_out_wave.sql.
+--      using the same loop pattern as 0166b_rls_promote_out_wave.sql.
 --      These three are the remaining money-touching tables that landed
 --      after the 0166 wave and were never wrapped. RLS on
 --      `payment_intents` and `disbursements` was already shipped in 0166.
@@ -35,7 +35,7 @@
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- 1. ENABLE RLS on accounts / ledger_entries / statements
---    Mirrors the policy pattern from 0166_rls_promote_out_wave.sql.
+--    Mirrors the policy pattern from 0166b_rls_promote_out_wave.sql.
 -- ─────────────────────────────────────────────────────────────────────────
 
 DO $$

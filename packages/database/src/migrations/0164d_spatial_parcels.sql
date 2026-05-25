@@ -41,7 +41,7 @@
 DO $$ BEGIN
   CREATE EXTENSION IF NOT EXISTS postgis;
 EXCEPTION WHEN OTHERS THEN
-  RAISE NOTICE '0164_spatial_parcels: postgis unavailable: %', SQLERRM;
+  RAISE NOTICE '0164d_spatial_parcels: postgis unavailable: %', SQLERRM;
 END $$;
 
 -- h3 + h3_postgis are optional in some self-hosted deployments. Guard

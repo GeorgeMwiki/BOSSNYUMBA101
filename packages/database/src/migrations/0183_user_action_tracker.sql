@@ -59,7 +59,7 @@ COMMENT ON TABLE user_action_tracker IS
 
 -- ============================================================================
 -- 3. ENABLE + FORCE RLS, install tenant-isolation policies.
---    Pattern from 0166_rls_promote_out_wave.sql / 0182_section_layouts.sql.
+--    Pattern from 0166b_rls_promote_out_wave.sql / 0182_section_layouts.sql.
 -- ============================================================================
 
 DO $$
