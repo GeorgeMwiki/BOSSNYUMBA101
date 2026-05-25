@@ -1059,6 +1059,9 @@ importers:
 
   packages/carbon-market:
     dependencies:
+      '@bossnyumba/enterprise-hardening':
+        specifier: workspace:*
+        version: link:../enterprise-hardening
       viem:
         specifier: ^2.21.0
         version: 2.50.4(typescript@6.0.3)(zod@3.25.76)
@@ -1234,6 +1237,9 @@ importers:
 
   packages/content-studio:
     dependencies:
+      '@bossnyumba/enterprise-hardening':
+        specifier: workspace:*
+        version: link:../enterprise-hardening
       c2pa-node:
         specifier: '>=0.5.0'
         version: 0.5.26(@types/node@25.8.0)
@@ -1932,6 +1938,9 @@ importers:
 
   packages/geo-platform:
     dependencies:
+      '@bossnyumba/enterprise-hardening':
+        specifier: workspace:*
+        version: link:../enterprise-hardening
       maplibre-gl:
         specifier: ^5.0.0
         version: 5.24.0
