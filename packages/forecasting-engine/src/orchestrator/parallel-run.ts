@@ -8,6 +8,7 @@
 
 import type { AnyScenario, ScenarioRunContext } from '../scenarios/scenario.js';
 import type { ScenarioOutcome } from '../types.js';
+import { logger } from '../logger.js';
 
 export interface ParallelInvocation {
   readonly scenario: AnyScenario;
@@ -23,7 +24,7 @@ export async function runScenariosParallel(
       const parsed = inv.scenario.inputs.parse(inv.input);
       return await inv.scenario.run(parsed, ctx);
     } catch (err) {
-      console.error('Scenario failed', { name: inv.scenario.name, err });
+      logger.error('Scenario failed', { name: inv.scenario.name, err });
       throw new Error(
         `Scenario "${inv.scenario.name}" failed: ${
           err instanceof Error ? err.message : String(err)

@@ -7,6 +7,7 @@
  */
 
 import type { GeofenceEvent, GeofenceEventKind } from '../types.js';
+import { logger } from '../logger.js';
 
 export type GeofenceEventListener = (event: GeofenceEvent) => void;
 export type Unsubscribe = () => void;
@@ -47,7 +48,7 @@ export class GeofenceEventBus {
             // `LoggerPort` is added to the package, swap this call to
             // `logger.warn`. The raw `err` is intentionally discarded —
             // it could contain tenant-bound geofence labels.
-            console.error('[geofence] listener threw; continuing dispatch');
+            logger.error('[geofence] listener threw; continuing dispatch');
             void err;
           }
         }

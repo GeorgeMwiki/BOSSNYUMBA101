@@ -56,6 +56,7 @@ import {
   type SandboxOptions,
   type SandboxResult,
 } from './types.js';
+import { logger } from '../../logger.js';
 
 // `isolated-vm` is an OPTIONAL dependency — it's a native module that may
 // not build on every platform (and may not even be present in CI runs
@@ -143,11 +144,8 @@ let _fallbackWarned = false;
 function warnFallbackOnce(reason: string): void {
   if (_fallbackWarned) return;
   _fallbackWarned = true;
-  // eslint-disable-next-line no-console
-  console.warn(
-    `[central-intelligence/sandbox] Falling back to node:vm backend — ${reason}. ` +
-      `Snippet isolation is REDUCED: shared V8 heap, weaker timeout enforcement.`,
-  );
+  logger.warn(`[central-intelligence/sandbox] Falling back to node:vm backend — ${reason}. ` +
+      `Snippet isolation is REDUCED: shared V8 heap, weaker timeout enforcement.`);
 }
 
 /**

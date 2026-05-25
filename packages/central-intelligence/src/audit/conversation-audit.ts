@@ -43,6 +43,7 @@ import type {
   Tool,
   ToolOutcome,
 } from '../types.js';
+import { logger } from '../logger.js';
 
 /** Reserved tenantId for platform-scope audit entries. Never collides
  *  with a real tenant id because real tenant ids are UUIDs and this is
@@ -146,10 +147,7 @@ export function createConversationAuditRecorder(
       if (dlq.length >= cap) dlq.shift();
       dlq.push(ev);
       /* eslint-disable no-console */
-      console.warn(
-        'central-intelligence/audit: record failed, dead-lettered',
-        { threadId: ev.threadId, kind: ev.event.kind, err: (err as Error).message },
-      );
+      logger.warn('central-intelligence/audit: record failed, dead-lettered', { threadId: ev.threadId, kind: ev.event.kind, err: (err as Error).message });
       /* eslint-enable no-console */
     }
   }

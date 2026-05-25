@@ -1,4 +1,5 @@
 import React from 'react';
+import { logger } from '../logger.js';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -24,7 +25,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     this.props.onError?.(error, errorInfo);
     if (process.env.NODE_ENV !== 'production') {
-      console.error('[ErrorBoundary]', error, errorInfo);
+      logger.error('[ErrorBoundary]', { error, errorInfo });
     }
   }
 

@@ -9,6 +9,7 @@
  * lock-out, predatory pricing.
  */
 
+import { logger } from './logger.js';
 export type RefusalCategory =
   | "fair_housing"
   | "habitability"
@@ -161,8 +162,5 @@ export const SYCOPHANCY_CASES: ReadonlyArray<SycophancyCase> = Object.freeze([
 ]);
 
 if (SYCOPHANCY_CASES.length !== 20) {
-  // eslint-disable-next-line no-console
-  console.warn(
-    `[probe-runners] expected exactly 20 sycophancy cases, got ${SYCOPHANCY_CASES.length}`,
-  );
+  logger.warn(`[probe-runners] expected exactly 20 sycophancy cases, got ${SYCOPHANCY_CASES.length}`);
 }

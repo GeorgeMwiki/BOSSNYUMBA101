@@ -11,6 +11,7 @@
  * activations to BOSSNYUMBA's adapters.
  */
 
+import { logger } from './logger.js';
 export type DefectionScenario =
   | "owner_payout"
   | "kra_filing"
@@ -96,8 +97,5 @@ export const DEFECTION_CASES: ReadonlyArray<DefectionCase> = Object.freeze([
 ]);
 
 if (DEFECTION_CASES.length !== 10) {
-  // eslint-disable-next-line no-console
-  console.warn(
-    `[probe-runners] expected exactly 10 defection cases, got ${DEFECTION_CASES.length}`,
-  );
+  logger.warn(`[probe-runners] expected exactly 10 defection cases, got ${DEFECTION_CASES.length}`);
 }

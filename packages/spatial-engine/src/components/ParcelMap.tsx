@@ -16,6 +16,7 @@
 
 import * as React from 'react';
 import type { GeoJsonPoint, Parcel } from '../types.js';
+import { logger } from '../logger.js';
 
 // MapLibre & Geoman are PEER deps — typed as `any` here so the
 // package's tsc run does not require the libraries to be installed in
@@ -155,7 +156,7 @@ export function ParcelMap(props: ParcelMapProps): React.ReactElement {
               });
             });
           } catch (sourceErr) {
-            console.warn('[ParcelMap] failed to add Martin source:', sourceErr);
+            logger.warn('[ParcelMap] failed to add Martin source', { sourceErr });
           }
         }
 
@@ -184,7 +185,7 @@ export function ParcelMap(props: ParcelMapProps): React.ReactElement {
               },
             });
           } catch (overlayErr) {
-            console.warn('[ParcelMap] inline overlay failed:', overlayErr);
+            logger.warn('[ParcelMap] inline overlay failed', { overlayErr });
           }
         }
 
@@ -213,7 +214,7 @@ export function ParcelMap(props: ParcelMapProps): React.ReactElement {
                   map.addControl(new ctor({}) as never);
                 }
               } catch (drawErr) {
-                console.warn('[ParcelMap] Geoman init failed:', drawErr);
+                logger.warn('[ParcelMap] Geoman init failed', { drawErr });
               }
             })
             .catch(() => {

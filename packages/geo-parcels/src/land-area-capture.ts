@@ -24,6 +24,7 @@ import type {
 } from './types.js';
 import { polygonAreaSqm, polygonCentroid } from './polygon-math.js';
 import type { GeoParcelsPort } from './persistence-port.js';
+import { logger } from './logger.js';
 
 /**
  * Optional reverse-geocoder. Pure interface — no I/O inside this
@@ -119,11 +120,7 @@ export async function captureLandArea(
     } catch (err) {
       // Reverse-geocode failure is non-fatal — we logged what we have.
       // Application can re-attempt async.
-      // eslint-disable-next-line no-console
-      console.warn(
-        'reverse-geocode lookup failed during captureLandArea:',
-        err instanceof Error ? err.message : String(err),
-      );
+      logger.warn('reverse-geocode lookup failed during captureLandArea', { value: err instanceof Error ? err.message : String(err) });
     }
   }
 

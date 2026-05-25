@@ -34,6 +34,7 @@ import type {
   VendorId,
 } from '../types.js';
 import { SYSTEM_CLOCK } from '../types.js';
+import { logger } from '../logger.js';
 
 const RfqLineSchema = z.object({
   sku: z.string().nullable().optional(),
@@ -175,7 +176,7 @@ export function createRfqService(deps: RfqServiceDeps): RfqService {
             try {
               await deps.notifyVendors({ rfq: updated, vendor });
             } catch (err) {
-              console.error(`RFQ notify failed for vendor ${vendorId}`, err);
+              logger.error(`RFQ notify failed for vendor ${vendorId}`, { error: err });
             }
           }
         }

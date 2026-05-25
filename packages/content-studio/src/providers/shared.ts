@@ -6,6 +6,7 @@
 import { createHash } from 'node:crypto';
 
 import { assertUrlSafe } from '@bossnyumba/enterprise-hardening';
+import { logger } from '../logger.js';
 
 /**
  * SHA-256 hex (first 16 chars) of an input — used by stub providers to
@@ -127,9 +128,6 @@ export function warnStubInvocation(providerId: string, envVarHint: string): void
   if (isTestMode()) return;
   if (warned.has(providerId)) return;
   warned.add(providerId);
-  // eslint-disable-next-line no-console
-  console.warn(
-    `[content-studio] provider "${providerId}" is a STUB and produced ` +
-      `a placeholder URL. Set ${envVarHint} to enable the real backend.`,
-  );
+  logger.warn(`[content-studio] provider "${providerId}" is a STUB and produced ` +
+      `a placeholder URL. Set ${envVarHint} to enable the real backend.`);
 }

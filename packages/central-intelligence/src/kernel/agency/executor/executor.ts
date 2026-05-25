@@ -64,6 +64,7 @@ import type {
   ActionToolStakes,
 } from '../action-tools/types.js';
 import type { Goal, GoalsPort, GoalStep } from '../goals/types.js';
+import { logger } from '../../../logger.js';
 
 /**
  * Minimal port shape the executor needs from the sovereign action
@@ -869,7 +870,7 @@ async function safeUpdateStep(
   try {
     await deps.goals.updateStepStatus(args);
   } catch (err) {
-    console.error('agency-executor: updateStepStatus failed', err);
+    logger.error('agency-executor: updateStepStatus failed', { error: err });
   }
 }
 
@@ -880,7 +881,7 @@ async function safeAudit(
   try {
     await deps.auditSink.record(entry);
   } catch (err) {
-    console.error('agency-executor: audit-sink failed', err);
+    logger.error('agency-executor: audit-sink failed', { error: err });
   }
 }
 
@@ -960,10 +961,7 @@ async function safeSovereignLedger(
           'sovereign-tier audit write failed (fail-closed) — manual reconciliation required',
         );
       } else {
-        console.error(
-          'agency-executor: sovereign-ledger.appendLedgerEntry failed (fail-closed)',
-          err,
-        );
+        logger.error('agency-executor: sovereign-ledger.appendLedgerEntry failed (fail-closed)', { error: err });
       }
       return { ok: false, reason: SOVEREIGN_AUDIT_WRITE_FAILED_REASON };
     }
@@ -971,10 +969,7 @@ async function safeSovereignLedger(
     if (log) {
       log(logObj, 'sovereign-ledger.appendLedgerEntry failed');
     } else {
-      console.error(
-        'agency-executor: sovereign-ledger.appendLedgerEntry failed',
-        err,
-      );
+      logger.error('agency-executor: sovereign-ledger.appendLedgerEntry failed', { error: err });
     }
     return { ok: true };
   }

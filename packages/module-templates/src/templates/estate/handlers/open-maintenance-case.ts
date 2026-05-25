@@ -12,6 +12,7 @@
  */
 
 import { z } from 'zod';
+import { logger } from '../../../logger.js';
 
 // ─── Payload schema ───────────────────────────────────────────────────────
 
@@ -140,10 +141,7 @@ export async function openMaintenanceCaseHandler(
         'TODO: write to maintenance_tickets table when migration lands',
       );
     } else {
-      console.warn(
-        'TODO: write to maintenance_tickets table when migration lands',
-        { proposal_id: ctx.proposalId, unit_id: parsed.unit_id },
-      );
+      logger.warn('TODO: write to maintenance_tickets table when migration lands', { proposal_id: ctx.proposalId, unit_id: parsed.unit_id });
     }
   } else {
     ticketId = ticket.id;

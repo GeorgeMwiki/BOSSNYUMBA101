@@ -37,6 +37,7 @@
 // Types
 // ─────────────────────────────────────────────────────────────────────
 
+import { logger } from '../../logger.js';
 /**
  * Posture — the agent's stance toward the current thought. Closed
  * union so monitors can switch on it without ambiguity. Mirrors the
@@ -468,7 +469,7 @@ function safeRunJudge(
     const out = judge(args);
     return out ?? {};
   } catch (error) {
-    console.error('IntrospectionJudge failed:', error);
+    logger.error('IntrospectionJudge failed', { error: error });
     return {};
   }
 }

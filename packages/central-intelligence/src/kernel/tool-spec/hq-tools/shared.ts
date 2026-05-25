@@ -20,6 +20,7 @@ import type {
   RiskTier,
 } from '../../risk-tier.js';
 import { isSovereignTier } from '../../risk-tier.js';
+import { logger } from '../../../logger.js';
 
 export interface HqTelemetryArgs<I, O> {
   readonly toolName: `platform.${string}`;
@@ -89,11 +90,7 @@ export async function withHqTelemetry<I, O>(
         at: startedAt.toISOString(),
       });
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error(
-        'hq-tool: sovereign-ledger emit failed (call still considered successful):',
-        err,
-      );
+      logger.error('hq-tool: sovereign-ledger emit failed (call still considered successful)', { error: err });
     }
   }
 
@@ -129,8 +126,7 @@ function emitSpan(args: {
       errorMessage: args.errorMessage,
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('hq-tool: OTel span emit failed:', err);
+    logger.error('hq-tool: OTel span emit failed', { error: err });
   }
 }
 

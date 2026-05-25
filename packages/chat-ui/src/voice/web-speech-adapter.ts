@@ -16,6 +16,7 @@ import type {
   VoiceAudioPort,
   VoiceDescriptor,
 } from './voice-audio-port.js';
+import { logger } from '../logger.js';
 
 export interface CreateWebSpeechAudioPortOptions {
   /** BCP-47 language tag for STT recognition. Defaults to navigator.language. */
@@ -100,7 +101,7 @@ export function createWebSpeechAudioPort(
           onResult(result);
         } catch (err) {
           // Don't let callback failures kill the recognition session.
-          console.error('voice-audio-port onResult callback failed', err);
+          logger.error('voice-audio-port onResult callback failed', { error: err });
         }
       }
     };
@@ -108,7 +109,7 @@ export function createWebSpeechAudioPort(
     recognition.onerror = (event): void => {
       // 'no-speech' and 'aborted' are benign; surface anything else.
       if (event.error && event.error !== 'no-speech' && event.error !== 'aborted') {
-        console.warn('SpeechRecognition error:', event.error, event.message);
+        logger.warn('SpeechRecognition error', { arg0: event.error, arg1: event.message });
       }
     };
 

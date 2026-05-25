@@ -30,6 +30,7 @@
  *     slow candidate cannot back-pressure the live request.
  */
 
+import { logger } from '../../logger.js';
 export interface ShadowExecutorOutput {
   readonly text: string;
   readonly outcome: 'answer' | 'softened' | 'refusal';
@@ -143,7 +144,7 @@ export function createShadowRunner(deps: ShadowRunnerDeps): ShadowRunner {
         candidateOutput = await deps.executeCandidate(input);
       } catch (error) {
         candidateFailed = true;
-        console.error('shadow-runner: candidate execution failed:', error);
+        logger.error('shadow-runner: candidate execution failed', { error: error });
       }
 
       // 3) Comparison + sink. Sink errors are swallowed.
@@ -173,7 +174,7 @@ export function createShadowRunner(deps: ShadowRunnerDeps): ShadowRunner {
       try {
         await Promise.resolve(deps.sink.record(comparison));
       } catch (error) {
-        console.error('shadow-runner: sink record failed:', error);
+        logger.error('shadow-runner: sink record failed', { error: error });
       }
 
       return activeOutput;

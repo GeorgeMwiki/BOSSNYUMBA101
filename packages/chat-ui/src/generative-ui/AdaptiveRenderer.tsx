@@ -23,6 +23,7 @@ import { PropertyComparisonTable } from './blocks/property-comparison-table';
 import { LeaseTimelineDiagram } from './blocks/lease-timeline-diagram';
 import { MaintenanceCaseFlowDiagram } from './blocks/maintenance-case-flow-diagram';
 import { FivePsTenancyRiskWheel } from './blocks/5ps-tenancy-risk-wheel';
+import { logger } from '../logger.js';
 
 interface AdaptiveRendererProps {
   readonly metadata?: AdaptiveMessageMetadata;
@@ -46,7 +47,7 @@ class BlockErrorBoundary extends Component<
   }
 
   override componentDidCatch(error: Error) {
-    console.error(`[chat-ui] block error (${this.props.blockId})`, error);
+    logger.error(`[chat-ui] block error (${this.props.blockId})`, { error: error });
   }
 
   override render() {

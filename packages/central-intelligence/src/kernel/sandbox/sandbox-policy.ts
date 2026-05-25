@@ -33,6 +33,7 @@ import {
   type SandboxResult,
 } from './types.js';
 import { runInSandbox } from './js-sandbox.js';
+import { logger } from '../../logger.js';
 
 export type SandboxTier = 'free' | 'pro' | 'enterprise' | 'sovereign';
 
@@ -165,7 +166,6 @@ function fireAudit(auditor: SandboxAuditor | undefined, event: SandboxAuditEvent
  */
 export function makeConsoleAuditAdapter(prefix = '[sandbox-audit]'): SandboxAuditor {
   return (event) => {
-    // eslint-disable-next-line no-console
-    console.log(`${prefix} ${JSON.stringify({ ...event, at: event.at.toISOString() })}`);
+    logger.info(`${prefix} ${JSON.stringify({ ...event, at: event.at.toISOString() })}`);
   };
 }

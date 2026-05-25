@@ -84,6 +84,7 @@
     "@bossnyumba/observability": "workspace:*",
     "@bossnyumba/payments-ledger-service": "workspace:*",
     "@bossnyumba/payments-service": "workspace:*",
+    "@bossnyumba/performance-toolkit": "workspace:*",
     "@bossnyumba/progressive-intelligence": "workspace:*",
     "@bossnyumba/role-aware-advisor": "workspace:*",
     "@bossnyumba/security-hardening": "workspace:*",

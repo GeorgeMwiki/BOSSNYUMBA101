@@ -25,6 +25,7 @@ import type {
   RiskTier,
 } from '../../risk-tier.js';
 import type { OwnerRefusalReasonCode, OwnerToolName } from './types.js';
+import { logger } from '../../../logger.js';
 
 export interface OwnerTelemetryArgs<I, O> {
   readonly toolName: OwnerToolName;
@@ -91,8 +92,7 @@ function emitSpan(args: {
       errorMessage: args.errorMessage,
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('owner-tool: OTel span emit failed:', err);
+    logger.error('owner-tool: OTel span emit failed', { error: err });
   }
 }
 
