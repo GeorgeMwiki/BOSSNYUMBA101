@@ -23,9 +23,9 @@
   },
   "devDependencies": {
     "typescript": "^6.0.3",
-    "vitest": "^4.1.6",
+    "vitest": "^4.1.7",
     "zod": "^3.22.4",
-    "@types/node": "^25.8.0"
+    "@types/node": "^25.9.1"
   },
   "peerDependencies": {
     "zod": ">=3.22.0"

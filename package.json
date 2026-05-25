@@ -38,7 +38,7 @@
   "devDependencies": {
     "@eslint/js": "^9.18.0",
     "@playwright/test": "^1.41.2",
-    "@types/node": "^25.8.0",
+    "@types/node": "^25.9.1",
     "eslint": "^10.4.0",
     "eslint-plugin-no-secrets": "^2.3.3",
     "eslint-plugin-security": "^4.0.0",
@@ -46,7 +46,7 @@
     "husky": "^9.1.7",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.3",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.7"
   },
   "engines": {
     "node": ">=20.0.0"
