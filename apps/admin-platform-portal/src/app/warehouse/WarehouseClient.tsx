@@ -256,6 +256,7 @@ function CreateItemDrawer({
             <span className="text-neutral-300">{field}</span>
             <input
               type={field === 'quantity' ? 'number' : 'text'}
+              // eslint-disable-next-line security/detect-object-injection -- field is a TS-typed literal-union key from FORM_FIELDS
               value={form[field]}
               onChange={(e) => setForm({ ...form, [field]: e.target.value })}
               className="mt-1 w-full rounded border border-border bg-surface-sunken px-3 py-2 text-sm text-foreground"

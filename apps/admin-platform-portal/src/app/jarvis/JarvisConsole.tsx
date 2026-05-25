@@ -50,7 +50,7 @@ const ALLOWED_IMAGE_MIME = 'image/png,image/jpeg,image/gif,image/webp';
 
 export function JarvisConsole(): JSX.Element {
   const [draft, setDraft] = useState('');
-  const [threadId] = useState(() => `hq_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+  const [threadId] = useState(() => `hq_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 6)}`);
   const [pendingImages, setPendingImages] = useState<ReadonlyArray<File>>([]);
   // Default to streaming for visibly faster UX; the toggle lets ops
   // compare wire-level streaming against the single-shot /think path.

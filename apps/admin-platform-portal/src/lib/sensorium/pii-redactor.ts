@@ -21,6 +21,7 @@ const PATTERNS: ReadonlyArray<{ name: string; re: RegExp }> = [
   // International phone — + then 7-15 digits with optional separators.
   { name: 'phone', re: /\+?\d[\d\s().-]{6,18}\d/ },
   // 13-19 digit credit card (PAN) with optional separators.
+  // eslint-disable-next-line security/detect-unsafe-regex -- bounded quantifier 13..19, no nested groups, runs on already-buffered ≤8KB telemetry
   { name: 'card', re: /(?:\d[ -]?){13,19}/ },
   // Tanzania NIDA — 20-digit national id.
   { name: 'nida', re: /\b\d{8}-\d{5}-\d{5}-\d{2}\b/ },

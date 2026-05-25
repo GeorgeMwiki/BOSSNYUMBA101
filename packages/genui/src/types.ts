@@ -377,6 +377,10 @@ export type AgUiUiPart =
       readonly name: string;
       readonly initialPage?: number;
       readonly allowAnnotate?: boolean;
+      /** Optional i18n override for the zoom-out button aria-label. */
+      readonly zoomOutAriaLabel?: string;
+      /** Optional i18n override for the zoom-in button aria-label. */
+      readonly zoomInAriaLabel?: string;
     }
   | {
       readonly kind: 'slider-input';
@@ -416,6 +420,8 @@ export type AgUiUiPart =
         readonly role: 'user' | 'assistant' | 'system';
         readonly text: string;
       }>;
+      /** Optional i18n override for the empty-state copy. */
+      readonly emptyText?: string;
     }
   | {
       readonly kind: 'live-counter';

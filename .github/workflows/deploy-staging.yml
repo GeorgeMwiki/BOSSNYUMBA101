@@ -20,9 +20,13 @@ jobs:
   # ============================================
   # Preflight: wait for Strict CI to pass
   # ============================================
+  # WZ-CI-GREEN 2026-05-25: gated on vars.HAS_DEPLOY_SECRETS so the
+  # workflow stops false-red'ing routine pushes when AWS OIDC / ECR
+  # creds are not configured. See .github/CI_SOFT_FAILURES.md.
   ci-preflight:
     name: Preflight — Strict CI must pass
     runs-on: ubuntu-latest
+    if: ${{ vars.HAS_DEPLOY_SECRETS == 'true' || github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v6
       - name: Wait for Strict CI

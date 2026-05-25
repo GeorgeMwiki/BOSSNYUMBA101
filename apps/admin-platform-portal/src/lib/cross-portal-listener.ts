@@ -234,7 +234,9 @@ export function startCrossPortalListener(
     attempt += 1;
     const backoff = Math.min(
       maxBackoffMs,
-      Math.floor(Math.min(30, 2 ** attempt) * 100) + Math.floor(Math.random() * 200),
+      // Jitter via crypto-strong randomness so reconnect collisions
+      // across tabs do not align — 0..199ms.
+      Math.floor(Math.min(30, 2 ** attempt) * 100) + (crypto.getRandomValues(new Uint16Array(1))[0] % 200),
     );
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;

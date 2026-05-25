@@ -55,7 +55,7 @@ function generateSessionId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `sess_${crypto.randomUUID()}`;
   }
-  return `sess_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return `sess_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`;
 }
 
 export function SensoriumProvider(props: SensoriumProviderProps): React.ReactElement {

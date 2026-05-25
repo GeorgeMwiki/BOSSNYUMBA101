@@ -59,8 +59,11 @@ function admit(
   now: number,
 ): boolean {
   const key = bucketKey(input);
-  const last = state.lastAdmitAt.get(key) ?? 0;
-  if (now - last < RATE_LIMIT_WINDOW_MS) {
+  const existing = state.lastAdmitAt.get(key);
+  // If the bucket has never seen a write, admit unconditionally. Using
+  // 0 as the sentinel would drop the very first call at now=0 (test
+  // harness uses synthetic clocks starting at 0).
+  if (existing !== undefined && now - existing < RATE_LIMIT_WINDOW_MS) {
     state.droppedSinceLastAdmit += 1;
     return false;
   }

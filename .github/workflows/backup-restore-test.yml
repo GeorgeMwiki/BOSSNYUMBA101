@@ -57,6 +57,9 @@ jobs:
     name: Restore from S3 and smoke-test
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # WZ-CI-GREEN 2026-05-25: gated on the same marker var as the
+    # weekly drill — see .github/CI_SOFT_FAILURES.md.
+    if: ${{ vars.HAS_BACKUP_RESTORE_SECRETS == 'true' || github.event_name == 'workflow_dispatch' }}
 
     services:
       postgres:
