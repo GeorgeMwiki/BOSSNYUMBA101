@@ -408,6 +408,11 @@ import {
   createInMemoryBudgetStore,
   type LLMBudgetGovernor,
 } from '@bossnyumba/llm-budget-governor';
+// P76 BUG-HI-3 closure — Postgres-backed `BudgetStore` swap. Live mode
+// now persists per-tenant spend to `tenant_llm_budgets` so caps survive
+// restarts. Degraded mode keeps the in-memory adapter (logs a single
+// warn so operators know spend won't persist).
+import { wireBudgetStore } from './llm-budget-postgres-wiring.js';
 // PO-port wave-5 wiring #3 — OCSF 1.5 emitter. Secondary audit sink that
 // maps every internal audit event to OCSF + pushes to syslog / file /
 // HTTP for SIEM ingestion (Sentinel / Splunk / Datadog). Coexists with
@@ -1293,13 +1298,18 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     privacyBudgetComposer: createPrivacyBudgetComposerService(),
     llmRouter: null,
     buildBudgetGuardedAnthropicClient: null,
-    // PO-port wave-5 wiring #2 — LLM budget governor is always wired
-    // (in-memory store in degraded mode). Default caps: $50/day,
+    // PO-port wave-5 wiring #2 — LLM budget governor is always wired.
+    // Degraded mode falls back to the in-memory store (no DB to persist
+    // to); P76 BUG-HI-3 closure: live mode swap to the Postgres-backed
+    // store happens in the live registry below. Default caps: $50/day,
     // 5M tokens/day; downgrade at 85% of cap. Even when no real LLM
     // calls happen in degraded mode, the slot is non-null so consumer
     // routes can call `governor.snapshot(tenantId)` without null-guards.
     llmBudgetGovernor: createLLMBudgetGovernor({
-      store: createInMemoryBudgetStore(),
+      store: wireBudgetStore({
+        db: null,
+        logger: { warn: (meta, msg) => console.warn('llm-budget:', msg ?? '', meta) },
+      }),
     }),
     arrears: {
       service: null,
@@ -1974,13 +1984,15 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     privacyBudgetComposer: createPrivacyBudgetComposerService(),
     llmRouter,
     buildBudgetGuardedAnthropicClient,
-    // PO-port wave-5 wiring #2 — LLM budget governor. Live mode uses
-    // the in-memory store until the Postgres adapter ships (follow-up).
-    // Caps are seedable per-tenant via the admin override helpers; the
-    // governor's `evaluateCall` is the choke-point every llmRouter +
-    // Anthropic-client call must traverse before reaching the provider.
+    // PO-port wave-5 wiring #2 — LLM budget governor. Live mode swaps
+    // to the Postgres-backed store so per-tenant spend survives gateway
+    // restarts (P76 BUG-HI-3 closure — was leaking the cap across
+    // deploy / OOM / scale-down). Caps are seedable per-tenant via the
+    // admin override helpers; the governor's `evaluateCall` is the
+    // choke-point every llmRouter + Anthropic-client call must traverse
+    // before reaching the provider.
     llmBudgetGovernor: createLLMBudgetGovernor({
-      store: createInMemoryBudgetStore(),
+      store: wireBudgetStore({ db }),
     }),
     arrears: {
       service: arrearsService,
