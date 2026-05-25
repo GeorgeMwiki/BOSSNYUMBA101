@@ -23,6 +23,8 @@
 
 import { spawn } from 'node:child_process';
 
+import { assertUrlSafe } from '@bossnyumba/enterprise-hardening';
+
 import type {
   SandboxCommand,
   SandboxExecutionResult,
@@ -290,6 +292,11 @@ export function createE2BSandbox(options: E2BSandboxOptions): SandboxPort {
 }
 
 async function defaultFetcher(url: string, init: E2BFetchInit): Promise<E2BHttpResponse> {
+  // SSRF guard — the E2B baseUrl is operator-configurable. Even with
+  // the api.e2b.dev default, screen every outbound request through
+  // assertUrlSafe() so a misconfigured deployment can't accidentally
+  // dial a private-RFC1918 / link-local host.
+  await assertUrlSafe(url);
   // Use the global `fetch` (Node 18+).
   const res = await fetch(url, {
     method: init.method,

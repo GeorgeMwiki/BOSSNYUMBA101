@@ -32,6 +32,7 @@ export { runGauntlet, type RunGauntletArgs } from './runner.js';
 // ---------------------------------------------------------------------------
 
 import { pathToFileURL } from 'url';
+import { safeHttpFetch } from '@bossnyumba/enterprise-hardening';
 import { runGauntlet } from './runner.js';
 import type { AgentUnderTest } from './types.js';
 
@@ -39,6 +40,11 @@ import type { AgentUnderTest } from './types.js';
  * Build an `AgentUnderTest` that pings an HTTP endpoint. When the env is
  * unset, returns a stub agent that records the gap so the CronJob can
  * surface a clean log line rather than failing.
+ *
+ * SSRF posture: `APOLLO_AGENT_URL` is operator-controlled at deploy
+ * time, but we still route the dispatch through `safeHttpFetch` so an
+ * accidental link-local / private-RFC1918 URL (e.g. the metadata IP
+ * 169.254.169.254) is refused at the boundary, never opened.
  */
 function buildAgentFromEnv(): AgentUnderTest | null {
   const url = process.env.APOLLO_AGENT_URL?.trim();
@@ -46,7 +52,7 @@ function buildAgentFromEnv(): AgentUnderTest | null {
   return {
     async respond(req) {
       try {
-        const response = await fetch(url, {
+        const response = await safeHttpFetch(url, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(req),
@@ -73,7 +79,10 @@ async function pushReport(result: unknown): Promise<void> {
   const sinkUrl = process.env.APOLLO_REPORT_SINK_URL?.trim();
   if (!sinkUrl) return;
   try {
-    await fetch(sinkUrl, {
+    // safeHttpFetch enforces the same SSRF policy on the report-sink
+    // URL — the sink is operator-set but still benefits from the
+    // private-IP denylist defence in depth.
+    await safeHttpFetch(sinkUrl, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(result),

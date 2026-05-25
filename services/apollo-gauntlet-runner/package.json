@@ -22,6 +22,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@bossnyumba/enterprise-hardening": "workspace:*",
     "zod": "^3.22.4"
   },
   "devDependencies": {

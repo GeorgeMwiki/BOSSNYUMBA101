@@ -41,7 +41,9 @@
     "test:watch": "vitest",
     "clean": "rm -rf dist"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@bossnyumba/enterprise-hardening": "workspace:*"
+  },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
     "maplibre-gl": "^5.0.0"

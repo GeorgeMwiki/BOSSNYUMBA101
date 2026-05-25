@@ -5,6 +5,8 @@
 
 import { createHash } from 'node:crypto';
 
+import { assertUrlSafe } from '@bossnyumba/enterprise-hardening';
+
 /**
  * SHA-256 hex (first 16 chars) of an input — used by stub providers to
  * synthesize deterministic placeholder URLs. Real provider implementations
@@ -67,6 +69,12 @@ export interface FetchWithTimeoutArgs {
  * shape. NEVER logs the request body or headers — those may carry secrets.
  */
 export async function fetchWithTimeout(args: FetchWithTimeoutArgs): Promise<Response> {
+  // SSRF guard — every multi-modal provider call (Replicate, RunwayML,
+  // Suno, …) is screened by the central assertUrlSafe() policy
+  // before we open the socket. Vendor hosts are compile-time today;
+  // the assertion still runs as defence-in-depth in case a future
+  // change introduces a tenant-supplied URL upstream.
+  await assertUrlSafe(args.url);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), args.timeoutMs);
   try {

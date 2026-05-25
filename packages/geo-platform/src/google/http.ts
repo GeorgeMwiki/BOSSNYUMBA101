@@ -7,6 +7,8 @@
  * Spec: `.audit/sota-2026-05-24/01-geo-platform.md` §10.
  */
 
+import { assertUrlSafe } from '@bossnyumba/enterprise-hardening';
+
 import type {
   ClientCallOptions,
   ErrorResult,
@@ -110,6 +112,12 @@ export async function fetchJson<T>(input: FetchJsonInput): Promise<GeoResult<T>>
 
   let response: Response;
   try {
+    // SSRF guard — every Google Maps Platform call (Aerial View,
+    // Solar, Air Quality, Routes, …) runs through assertUrlSafe()
+    // before we open the socket. Google hosts are compile-time
+    // strings today; this still catches the case where a future
+    // change introduces a tenant-supplied URL upstream.
+    await assertUrlSafe(input.url);
     response = await fetch(input.url, {
       method: input.method ?? 'GET',
       headers,

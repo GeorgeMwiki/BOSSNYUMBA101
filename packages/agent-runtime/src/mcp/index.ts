@@ -24,6 +24,8 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 
+import { assertUrlSafe } from '@bossnyumba/enterprise-hardening';
+
 import type {
   MCPServerConfig,
   MCPTool,
@@ -234,7 +236,14 @@ class HttpTransport implements MCPClientTransport {
       method,
       ...(params !== undefined ? { params } : {}),
     };
-    const response = await fetch(this.#config.url ?? '', {
+    // SSRF guard — MCP server URLs come from `.mcp.json` on the
+    // project root, which is operator-controlled but still
+    // user-influenceable in multi-tenant deployments. Run the
+    // central assertUrlSafe() check (private-IP denylist + DNS
+    // rebinding guard) before opening the socket.
+    const targetUrl = this.#config.url ?? '';
+    await assertUrlSafe(targetUrl);
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',

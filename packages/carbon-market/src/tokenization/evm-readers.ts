@@ -33,6 +33,7 @@
  * the registry client can wire the EVM reader without a second port.
  */
 
+import { assertUrlSafe } from '@bossnyumba/enterprise-hardening';
 import { createPublicClient, http, parseAbi, type Address, type Chain } from 'viem';
 import { polygon, celo, mainnet, base } from 'viem/chains';
 import type {
@@ -395,6 +396,11 @@ function defaultHttpTransport(): HttpTransport {
       const timeoutMs = opts?.timeoutMs ?? DEFAULT_RPC_TIMEOUT_MS;
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
+        // SSRF guard — IPFS gateway URLs can carry tenant-supplied
+        // CIDs / paths, and the gateway host itself is operator-set
+        // but still benefits from the central private-IP denylist.
+        // Run assertUrlSafe() before opening the socket.
+        await assertUrlSafe(url);
         const res = await fetch(url, {
           method: 'GET',
           headers: { Accept: 'application/json', ...(opts?.headers ?? {}) },
