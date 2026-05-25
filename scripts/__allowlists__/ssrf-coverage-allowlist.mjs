@@ -179,4 +179,47 @@ export const SSRF_ALLOWLIST = new Map([
     'packages/genui/src/components/PrefillForm.tsx',
     'browser-side React component — same-origin /api fetch only (server-emitted endpoint path).',
   ],
+
+  // ─── Vendor-pinned compile-time hosts (api-gateway composition) ────
+  [
+    'services/api-gateway/src/auth/supabase/supabase-auth-routes.ts',
+    'Supabase auth endpoints — host is `NEXT_PUBLIC_SUPABASE_URL` (deploy-pinned vendor URL); same vendor model as packages/ai-copilot/src/providers/anthropic.ts.',
+  ],
+  [
+    'services/api-gateway/src/composition/executive-brief.composition.ts',
+    'compile-time api.anthropic.com — Haiku 3.5 fallback wiring; host is not tenant-influenced.',
+  ],
+
+  // ─── Verra registry client (compile-time vendor host) ──────────────
+  [
+    'packages/carbon-market/src/verra/client.ts',
+    'compile-time registry.verra.org/uiapi — VCS carbon-credit registry; URL built from VERRA_REGISTRY_BASE_URL constant + path.',
+  ],
+
+  // ─── Scanner false positives — function signatures, not fetch() ────
+  // The audit-ssrf-coverage scanner matches `(?:^|[^.\w])fetch\(`
+  // call sites. The files below define INTERFACE signatures whose
+  // first parameter happens to be named `fetch(arg)` or follow that
+  // shape, OR contain string-only example URLs inside throw messages
+  // that the regex picks up as call sites.
+  [
+    'packages/analytics/src/dashboards/compose.ts',
+    'false positive — type-only import of CompiledQuery; no outbound HTTP in this file.',
+  ],
+  [
+    'packages/openclaw-operating-model/src/context-architecture/context.ts',
+    'false positive — `fetch(args: {...})` is a pure function signature on a context-builder helper; no outbound HTTP.',
+  ],
+  [
+    'packages/probe-runners/src/defection-runner.ts',
+    'false positive — `fetch(caseInput, auditMode)` is the AuditedBrainFetcher interface method signature; no outbound HTTP.',
+  ],
+  [
+    'packages/probe-runners/src/sycophancy-runner.ts',
+    'false positive — `fetch(caseInput)` is the SycophancyBrainFetcher interface method signature; no outbound HTTP.',
+  ],
+  [
+    'packages/timezone-detection/src/detect/detect-from-ip.ts',
+    'reference stub — `fetch("https://ipapi.co/...")` and `fetch("https://api.ipgeolocation.io/...")` live inside throw-message strings of `createIpapiAdapterStub()` + `createIpgeolocationAdapterStub()` instructing operators what to wire at composition time; no runtime fetch executed.',
+  ],
 ]);

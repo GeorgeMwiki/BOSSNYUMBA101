@@ -93,4 +93,32 @@ export const AUTH_ALLOWLIST = new Map([
     'services/document-intelligence/src/routes/documents.routes.ts',
     'service is private — only reachable via api-gateway, which applies authMiddleware before proxying.',
   ],
+
+  // ─── Scanner false positives — Map.get/.delete on internal stores ──
+  // The auth-coverage scanner matches `<ident>.get|post|delete(` to
+  // catch Hono / Express route handlers. The files below register NO
+  // HTTP routes — the matches are calls into JavaScript Map data
+  // structures used by in-process middleware bookkeeping.
+  [
+    'services/api-gateway/src/routes/ask/ask-rate-limit.ts',
+    'middleware factory — Map.delete/.get on token-bucket store; not an HTTP route.',
+  ],
+  [
+    'services/api-gateway/src/routes/reports/reports-rate-limit.ts',
+    'middleware factory — Map.delete/.get on token-bucket store; not an HTTP route.',
+  ],
+  [
+    'services/api-gateway/src/routes/marketplace/in-memory-data-port.ts',
+    'in-process data port helper — Map.get for org-membership lookup; not an HTTP route.',
+  ],
+
+  // ─── Public health probes (must be unauthenticated for LB) ─────────
+  [
+    'services/onboarding-orchestrator/src/routes/readyz.ts',
+    'k8s readiness probe — LB + uptime monitors require unauthenticated access; checks DB SELECT 1 only.',
+  ],
+  [
+    'services/outcomes-metering/src/routes/readyz.ts',
+    'k8s readiness probe — LB + uptime monitors require unauthenticated access; checks DB SELECT 1 only.',
+  ],
 ]);
