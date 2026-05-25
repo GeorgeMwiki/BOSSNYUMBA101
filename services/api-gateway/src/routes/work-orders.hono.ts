@@ -49,6 +49,21 @@ function workOrderNumber() {
   return `WO-${Date.now().toString().slice(-6)}`;
 }
 
+/**
+ * P84 audit: `new Date(maybeUserString)` silently returns an Invalid
+ * Date for malformed input, then writes `NaN` into the DB or throws a
+ * cryptic "RangeError: Invalid time value" downstream. Validate
+ * loudly so the caller receives a 400 instead.
+ */
+function parseUserDate(raw: string | undefined | null): Date | undefined {
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(`INVALID_DATE: '${raw}' is not a parseable ISO timestamp`);
+  }
+  return d;
+}
+
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
@@ -67,6 +82,24 @@ async function updateWorkOrder(c: any) {
       ? body.actualCost.amount
       : body.actualCost;
 
+  let scheduledAt: Date | undefined;
+  let completedAt: Date | undefined;
+  try {
+    scheduledAt = parseUserDate(body.scheduledAt ?? body.scheduledDate);
+    completedAt = parseUserDate(body.completedAt);
+  } catch (err) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'INVALID_DATE',
+          message: err instanceof Error ? err.message : 'Invalid date',
+        },
+      },
+      400,
+    );
+  }
+
   const row = await repos.workOrders.update(c.req.param('id'), auth.tenantId, {
     vendorId: body.vendorId,
     priority: body.priority ? String(body.priority).toLowerCase() : undefined,
@@ -78,8 +111,8 @@ async function updateWorkOrder(c: any) {
     attachments: body.attachments,
     estimatedCost: estimatedCost != null ? majorToMinor(estimatedCost) : undefined,
     actualCost: actualCost != null ? majorToMinor(actualCost) : undefined,
-    scheduledAt: body.scheduledAt || body.scheduledDate ? new Date(body.scheduledAt || body.scheduledDate) : undefined,
-    completedAt: body.completedAt ? new Date(body.completedAt) : undefined,
+    scheduledAt,
+    completedAt,
     completionNotes: body.completionNotes,
     updatedBy: auth.userId,
   });
