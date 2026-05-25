@@ -709,7 +709,17 @@ export const enforceLimit = (
 };
 
 /**
- * Ensure tenant isolation - request tenant matches auth tenant
+ * Ensure tenant isolation - request tenant matches auth tenant.
+ *
+ * Cross-tenant denial is the single highest-signal security event the
+ * gateway produces: a fully-authenticated user attempting to reach
+ * another tenant's resources. PO-port wave-5 wiring #4 hooks the
+ * `crossOrgDenialRecorder` here so every TENANT_MISMATCH lands in the
+ * recorder (in-memory ring buffer today; Drizzle adapter in follow-up)
+ * and feeds the brute-force pattern scanner. Recording is fire-and-
+ * forget: the recorder itself swallows all errors and rate-limits per
+ * (actor, target) bucket, so this hook can NEVER break the response
+ * path.
  */
 export const ensureTenantIsolation = createMiddleware(async (c, next) => {
   const auth = c.get('auth') as AuthContext | undefined;
@@ -722,6 +732,45 @@ export const ensureTenantIsolation = createMiddleware(async (c, next) => {
   }
 
   if (auth && tenant && auth.tenantId !== tenant.id) {
+    // Fire-and-forget cross-tenant denial recording. The recorder is
+    // always wired (in-memory sink as default); guard for shape so
+    // older test contexts that don't bind `services` still work.
+    try {
+      const services = c.get('services') as
+        | {
+            crossOrgDenialRecorder?: {
+              record: (input: {
+                actorUserId?: string | null;
+                actorTenantId?: string | null;
+                targetTenantId: string;
+                route: string;
+                httpMethod: string;
+                reason: string;
+                requestId?: string | null;
+              }) => Promise<{ admitted: boolean; droppedRollup: number }>;
+            };
+          }
+        | undefined;
+      const recorder = services?.crossOrgDenialRecorder;
+      if (recorder) {
+        // No `await` — the contract is fire-and-forget. We attach a
+        // catch so an unhandled rejection cannot leak past the request.
+        void recorder
+          .record({
+            actorUserId: auth.userId ?? null,
+            actorTenantId: auth.tenantId ?? null,
+            targetTenantId: tenant.id,
+            route: c.req.path,
+            httpMethod: c.req.method,
+            reason: 'PERMISSION_DENIED',
+            requestId: c.req.header('X-Request-ID') ?? null,
+          })
+          .catch(() => undefined);
+      }
+    } catch {
+      // Defensive — never let the recorder block tenant isolation.
+    }
+
     return c.json(
       {
         success: false,

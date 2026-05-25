@@ -419,6 +419,15 @@ import type {
   OCSFSink,
 } from '@bossnyumba/ocsf-emitter';
 import { createOcsfBundle } from './ocsf-emitter-wiring.js';
+// PO-port wave-5 wiring #4 — cross-tenant denial recorder. Audit-side
+// sink fired from `ensureTenantIsolation` (TENANT_MISMATCH branch) and
+// any other authz-policy denial surface. Fire-and-forget; never blocks
+// the response path. Defaults to an in-memory ring buffer (10k rows);
+// swap to a Drizzle adapter in a follow-up.
+import {
+  createCrossOrgDenialRecorderBundle,
+  type CrossOrgDenialRecorderBundle,
+} from './cross-org-denial-recorder-wiring.js';
 // Canonical Property Graph (CPG) — Neo4j query service. Constructed
 // lazily so the gateway still boots when NEO4J_URI is unset; the graph
 // router returns 503 GRAPH_SERVICE_UNAVAILABLE when this slot is null.
@@ -720,6 +729,22 @@ export interface ServiceRegistry {
       event: OcsfInternalAuditEvent,
     ) => Promise<{ readonly emitted: boolean }>;
   };
+
+  /**
+   * PO-port wave-5 wiring #4 — cross-tenant denial recorder.
+   *
+   * Audit-side sink fired from `ensureTenantIsolation` middleware's
+   * TENANT_MISMATCH branch (and any future authz-policy denial site).
+   * Records each denial via the bundle's per-process recorder state
+   * (1s per-actor rate-limit + LRU-trim at 5000 buckets so a malicious
+   * actor cannot OOM the gateway). Default sink: in-memory ring
+   * buffer (10k rows). Always wired in both degraded + live modes.
+   *
+   * Brute-force scanner (`findBruteForcePatterns` from the package) is
+   * reachable by feeding `bundle.recentRows()` into it from an ops
+   * endpoint; the recorder itself only writes.
+   */
+  readonly crossOrgDenialRecorder: CrossOrgDenialRecorderBundle;
 
   /** Wave 29 — Forecasting (TGN + conformal prediction intervals).
    *  Every member is `null` until BOTH `TGN_INFERENCE_URL` and
@@ -1202,6 +1227,10 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // PO-port wave-5 wiring #3 — OCSF emitter (secondary SIEM-egress sink).
     // Degraded mode: in-memory sink unless `OCSF_LOG_PATH` is set.
     ocsf: createOcsfBundle(),
+    // PO-port wave-5 wiring #4 — cross-tenant denial recorder. Always
+    // wired (in-memory sink in degraded mode). The recorder is fire-
+    // and-forget; rate-limit + LRU-trim guarantee bounded memory.
+    crossOrgDenialRecorder: createCrossOrgDenialRecorderBundle(),
     // Central Intelligence — no concrete LLM adapter ships here (it
     // lives in a separate service). In degraded mode we still wire the
     // in-memory memory so thread listing works locally.
@@ -1878,6 +1907,12 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // sink). Live mode picks up `OCSF_LOG_PATH` for the file-line sink;
     // syslog / HTTP forwarders land as follow-up sink adapters.
     ocsf: createOcsfBundle(),
+    // PO-port wave-5 wiring #4 — cross-tenant denial recorder. Live mode
+    // still uses the in-memory sink until a Drizzle-backed adapter lands
+    // (follow-up wave-30 in Docs/TODO_BACKLOG.md). The recorder slot is
+    // always non-null so `ensureTenantIsolation` and any other authz-
+    // policy denial site can record without null-guards.
+    crossOrgDenialRecorder: createCrossOrgDenialRecorderBundle(),
     // Central Intelligence — the concrete LLM adapter lives in a
     // separate service. `agent` is only populated when `CI_LLM_URL`
     // env var is set AND the adapter is wired (follow-up PR); until
