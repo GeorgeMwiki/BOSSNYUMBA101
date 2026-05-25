@@ -11,7 +11,7 @@
  * described here.
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
@@ -78,7 +78,7 @@ export function registerCallRoute(
   app: FastifyInstance,
   options: CallRouteOptions = {},
 ): void {
-  app.post('/voice/calls/start', withSecurityEventsFastify({ action: 'voice-call.create', resource: 'voice-call', severity: 'info' }, async (request, reply) => {
+  app.post('/voice/calls/start', withSecurityEventsFastify({ action: 'voice-call.create', resource: 'voice-call', severity: 'info' }, async (request: FastifyRequest, reply: FastifyReply) => {
     const parsed = BodySchema.safeParse(request.body);
     if (!parsed.success) {
       reply.code(400);

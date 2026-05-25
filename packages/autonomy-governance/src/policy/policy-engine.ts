@@ -433,6 +433,10 @@ export function parsePolicyYaml(yamlText: string): PolicyRuleset {
  * bundle the YAML at build time and pass the string to `parsePolicyYaml`.
  */
 export function loadPolicyFromFile(filePath: string): PolicyRuleset {
+  // Caller-supplied filePath is intentional — this helper is Node-only
+  // and exists precisely to read policy YAML from disk. Browser/edge
+  // callers must bundle the YAML and call parsePolicyYaml directly.
+  // eslint-disable-next-line security/detect-non-literal-fs-filename
   const text = readFileSync(filePath, 'utf-8');
   return parsePolicyYaml(text);
 }
