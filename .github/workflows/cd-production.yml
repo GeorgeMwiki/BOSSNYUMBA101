@@ -35,17 +35,32 @@ env:
   ENVIRONMENT: production
 
 jobs:
+  # WZ-CI-GREEN 2026-05-25: guard job always succeeds; downstream skips
+  # cleanly when secrets absent so the workflow conclusion is success.
+  # See .github/CI_SOFT_FAILURES.md.
+  guard:
+    name: Preflight — skip if secrets absent
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ vars.HAS_DEPLOY_SECRETS }}" == "true" || "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "release" ]]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping CD-Production: vars.HAS_DEPLOY_SECRETS not set; see .github/CI_SOFT_FAILURES.md"
+          fi
+
   # ============================================
   # Validate Release
   # ============================================
-  # WZ-CI-GREEN 2026-05-25: gated on vars.HAS_DEPLOY_SECRETS so production
-  # deploys do not false-red routine main pushes when AWS OIDC / ECR / KMS
-  # are not configured. workflow_dispatch + release events always run.
-  # See .github/CI_SOFT_FAILURES.md.
   validate:
     name: Validate Release
     runs-on: ubuntu-latest
-    if: ${{ vars.HAS_DEPLOY_SECRETS == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'release' }}
+    needs: guard
+    if: needs.guard.outputs.should_run == 'true'
     outputs:
       version: ${{ steps.version.outputs.version }}
       sha: ${{ steps.version.outputs.sha }}
