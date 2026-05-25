@@ -33,6 +33,7 @@ import {
   type ConsumerLogger,
   OUTCOMES_METERING_EVENT_TYPES,
 } from './consumers/brain-event-consumer.js';
+import { authMiddleware, type TestAuthInjector } from './middleware/auth.js';
 import {
   registerEventsRoutes,
 } from './routes/events.js';
@@ -74,6 +75,12 @@ export interface BuildAppDeps {
    * async dependency to wait on.
    */
   readonly dbPool?: ReadinessDbPool;
+  /**
+   * Test-only — bypass JWT verification by stamping `request.user`
+   * directly. Production constructs `buildApp({})` and so the real
+   * JWT auth path always runs.
+   */
+  readonly testAuthInjector?: TestAuthInjector;
 }
 
 export interface BuildAppResult {
@@ -95,6 +102,15 @@ export async function buildApp(deps: BuildAppDeps = {}): Promise<BuildAppResult>
   // Order matters: metrics middleware registers `onRequest`/`onResponse`
   // hooks that must observe the health/readyz/billing routes below.
   registerMetrics(app);
+
+  // Auth gate — registered BEFORE routes so the preHandler hook fires
+  // on every non-public path (/healthz, /readyz, /metrics are
+  // whitelisted inside the hook).
+  authMiddleware(app, {
+    ...(deps.testAuthInjector
+      ? { testAuthInjector: deps.testAuthInjector }
+      : {}),
+  });
 
   app.get('/healthz', async () => ({ status: 'ok', service: 'outcomes-metering' }));
 

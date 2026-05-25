@@ -6,25 +6,36 @@
  *     produces a billing line.
  *   - POST /outcomes/events with the same eventId twice is idempotent
  *     and returns 200 `idempotent: true` on the second attempt.
- *   - POST /outcomes/events refuses when X-Tenant-Id disagrees with
- *     the body tenantId (403).
+ *   - POST /outcomes/events refuses when body tenantId disagrees with
+ *     the session tenant (403).
  *   - GET /outcomes/billing/:tenantId/:month returns the per-month
  *     aggregate matching what the consumer wrote.
- *   - GET refuses when X-Tenant-Id disagrees with the path tenantId.
+ *   - GET refuses when path tenantId disagrees with the session
+ *     tenant (403).
+ *   - Unauthenticated requests are rejected with 401.
+ *   - /healthz remains public.
+ *
+ * Uses the `testAuthInjector` escape hatch on `buildApp` so the tests
+ * can stamp `request.user` without minting real JWTs. Production
+ * deploys never construct the app with that dep.
  */
 
 import { describe, it, expect } from 'vitest';
 import { buildApp } from '../index.js';
+import type { AuthUser } from '../middleware/auth.js';
 
 const TENANT = 't_demo';
 
+const injector = (tenantId: string, userId = 'u_test'): ((req: unknown) => AuthUser) =>
+  () => ({ userId, tenantId, role: 'user' });
+
 describe('outcomes-metering HTTP routes', () => {
   it('POST /outcomes/events accepts a vacancy_filled event and records a billing line', async () => {
-    const { app, store } = await buildApp();
+    const { app, store } = await buildApp({ testAuthInjector: injector(TENANT) });
     const res = await app.inject({
       method: 'POST',
       url: '/outcomes/events',
-      headers: { 'x-tenant-id': TENANT, 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json' },
       payload: {
         kind: 'vacancy_filled',
         eventId: 'evt_vac_1',
@@ -48,18 +59,12 @@ describe('outcomes-metering HTTP routes', () => {
     expect(body.qualified).toBe(true);
     expect(body.billableAmountMinor).toBe(250_000);
 
-    // Read-side: the billing aggregate exposes the same numbers.
-    const month = new Date().toISOString().slice(0, 7); // YYYY-MM (now)
-    void month;
-    // The route stamps scoredAt with the current clock, so we read the
-    // current month bucket. We can't assert on a fixed month string
-    // without injecting the clock, so we read directly from the store.
     const aggregate = await store.getMonthlyBilling(TENANT, new Date().toISOString().slice(0, 7));
     expect(aggregate.byOutcome.vacancy_filled.totalBillableMinor).toBe(250_000);
   });
 
   it('POST /outcomes/events is idempotent on the second submission of the same eventId', async () => {
-    const { app } = await buildApp();
+    const { app } = await buildApp({ testAuthInjector: injector(TENANT) });
     const payload = {
       kind: 'vacancy_filled' as const,
       eventId: 'evt_vac_dup',
@@ -80,7 +85,7 @@ describe('outcomes-metering HTTP routes', () => {
     const first = await app.inject({
       method: 'POST',
       url: '/outcomes/events',
-      headers: { 'x-tenant-id': TENANT, 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json' },
       payload,
     });
     expect(first.statusCode).toBe(201);
@@ -88,7 +93,7 @@ describe('outcomes-metering HTTP routes', () => {
     const second = await app.inject({
       method: 'POST',
       url: '/outcomes/events',
-      headers: { 'x-tenant-id': TENANT, 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json' },
       payload,
     });
     expect(second.statusCode).toBe(200);
@@ -96,12 +101,12 @@ describe('outcomes-metering HTTP routes', () => {
     expect(body.idempotent).toBe(true);
   });
 
-  it('POST /outcomes/events refuses on X-Tenant-Id / body tenantId mismatch', async () => {
-    const { app } = await buildApp();
+  it('POST /outcomes/events refuses when body tenantId disagrees with session tenant', async () => {
+    const { app } = await buildApp({ testAuthInjector: injector('t_attacker') });
     const res = await app.inject({
       method: 'POST',
       url: '/outcomes/events',
-      headers: { 'x-tenant-id': 't_attacker', 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json' },
       payload: {
         kind: 'vacancy_filled',
         eventId: 'evt_xt',
@@ -124,12 +129,12 @@ describe('outcomes-metering HTTP routes', () => {
   });
 
   it('GET /outcomes/billing/:tenantId/:month returns the aggregate', async () => {
-    const { app } = await buildApp();
+    const { app } = await buildApp({ testAuthInjector: injector(TENANT) });
     // Seed a billing line via POST.
     await app.inject({
       method: 'POST',
       url: '/outcomes/events',
-      headers: { 'x-tenant-id': TENANT, 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json' },
       payload: {
         kind: 'vacancy_filled',
         eventId: 'evt_seed_b',
@@ -152,24 +157,35 @@ describe('outcomes-metering HTTP routes', () => {
     const res = await app.inject({
       method: 'GET',
       url: `/outcomes/billing/${TENANT}/${month}`,
-      headers: { 'x-tenant-id': TENANT },
     });
     expect(res.statusCode).toBe(200);
     const body = res.json() as { totalBillableMinor: number };
     expect(body.totalBillableMinor).toBe(300_000);
   });
 
-  it('GET /outcomes/billing refuses on X-Tenant-Id / path tenantId mismatch', async () => {
-    const { app } = await buildApp();
+  it('GET /outcomes/billing refuses when path tenantId disagrees with session tenant', async () => {
+    const { app } = await buildApp({ testAuthInjector: injector('t_attacker') });
     const res = await app.inject({
       method: 'GET',
       url: `/outcomes/billing/t_victim/2026-05`,
-      headers: { 'x-tenant-id': 't_attacker' },
     });
     expect(res.statusCode).toBe(403);
   });
 
-  it('GET /healthz returns ok', async () => {
+  it('POST /outcomes/events rejects unauthenticated requests with 401', async () => {
+    const { app } = await buildApp({
+      testAuthInjector: () => undefined,
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/outcomes/events',
+      headers: { 'content-type': 'application/json' },
+      payload: { kind: 'vacancy_filled', eventId: 'x', tenantId: 't', propertyId: 'p', agentId: 'a', occurredAt: '2026-05-10T10:00:00.000Z', confidence: 0.9, evidenceHash: 's', unitId: 'u', leaseId: 'l', leaseExecuted: true, moveInCompleted: true, monthlyRentMinor: 1, currency: 'USD', cancelledWithinWindow: false },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('GET /healthz remains public (no auth required)', async () => {
     const { app } = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/healthz' });
     expect(res.statusCode).toBe(200);

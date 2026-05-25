@@ -17,6 +17,7 @@
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { requireUser } from '../middleware/auth.js';
 import type { BillingStore } from '../store/billing-store.js';
 
 const MONTH_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -25,14 +26,6 @@ const RouteParamsSchema = z.object({
   tenantId: z.string().min(1),
   month: z.string().regex(MONTH_REGEX),
 });
-
-function pickHeaderTenantId(request: FastifyRequest): string | null {
-  const headerVal = request.headers['x-tenant-id'];
-  const fromHeader = Array.isArray(headerVal) ? headerVal[0] : headerVal;
-  return typeof fromHeader === 'string' && fromHeader.length > 0
-    ? fromHeader
-    : null;
-}
 
 export interface RegisterBillingRoutesDeps {
   readonly store: BillingStore;
@@ -53,11 +46,14 @@ export async function registerBillingRoutes(
         });
       }
       const { tenantId, month } = parsed.data;
-      const headerTenantId = pickHeaderTenantId(request);
-      if (headerTenantId !== null && headerTenantId !== tenantId) {
+      // The path tenantId MUST equal the session tenantId from the
+      // verified JWT — a leaked URL replayed under another principal
+      // can't read another tenant's billing aggregate.
+      const sessionTenantId = requireUser(request).tenantId;
+      if (sessionTenantId !== tenantId) {
         return reply.code(403).send({
           error: 'tenant_id_mismatch',
-          message: 'X-Tenant-Id header and path tenantId disagree',
+          message: 'session tenant and path tenantId disagree',
         });
       }
 

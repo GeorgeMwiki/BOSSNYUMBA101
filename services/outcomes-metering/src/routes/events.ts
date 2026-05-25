@@ -30,9 +30,12 @@ import {
   type MeteringRecord,
   type OutcomeEvent,
 } from '@bossnyumba/outcomes';
+import {
+  recordSecurityEvent,
+  withSecurityEventsFastify,
+} from '@bossnyumba/observability';
+import { requireUser } from '../middleware/auth.js';
 import type { BillingStore } from '../store/billing-store.js';
-
-import { withSecurityEventsFastify } from '@bossnyumba/observability';
 // ---------------------------------------------------------------------------
 // Request schema
 // ---------------------------------------------------------------------------
@@ -94,11 +97,16 @@ const OutcomeEventInputSchema = z.discriminatedUnion('kind', [
 // Helpers
 // ---------------------------------------------------------------------------
 
-function pickTenantId(request: FastifyRequest, fallbackBodyTenantId: string): string {
-  const headerVal = request.headers['x-tenant-id'];
-  const fromHeader = Array.isArray(headerVal) ? headerVal[0] : headerVal;
-  if (typeof fromHeader === 'string' && fromHeader.length > 0) return fromHeader;
-  return fallbackBodyTenantId;
+/**
+ * Resolve the effective tenantId for a request. ALWAYS returns the
+ * session-bound value from the verified JWT — the legacy `X-Tenant-Id`
+ * header trust path was removed (P75 / P86 closure CWE-285). The
+ * body's `tenantId` is still cross-checked further down: a mismatch
+ * fires a security event and rejects the request, since it indicates
+ * either an operator confusion or a tampering attempt.
+ */
+function pickTenantId(request: FastifyRequest): string {
+  return requireUser(request).tenantId;
 }
 
 function scoreOutcome(
@@ -152,15 +160,30 @@ export async function registerEventsRoutes(
       });
     }
     const event = parsed.data;
-    const tenantId = pickTenantId(request, event.tenantId);
+    const tenantId = pickTenantId(request);
 
-    // Cross-check: the body's tenantId MUST match the header
+    // Cross-check: the body's tenantId MUST match the session-derived
     // tenantId. Otherwise a confused operator could write into the
-    // wrong tenant's billing log under the wrong header.
+    // wrong tenant's billing log. Emit a security event so SREs can
+    // detect tampering attempts or stale clients.
     if (event.tenantId !== tenantId) {
+      void recordSecurityEvent({
+        action: 'outcomes.events.create.tenant_mismatch',
+        resource: 'events',
+        severity: 'warn',
+        method: request.method,
+        route: request.url,
+        tenantId,
+        actorId: requireUser(request).userId,
+        detail: {
+          sessionTenantId: tenantId,
+          bodyTenantId: event.tenantId,
+          note: 'request rejected — body tenant disagrees with session tenant',
+        },
+      });
       return reply.code(403).send({
         error: 'tenant_id_mismatch',
-        message: 'X-Tenant-Id header and payload tenantId disagree',
+        message: 'session tenant and payload tenantId disagree',
       });
     }
 
