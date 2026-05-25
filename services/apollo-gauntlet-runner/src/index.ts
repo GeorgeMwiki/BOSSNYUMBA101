@@ -31,6 +31,7 @@ export { runGauntlet, type RunGauntletArgs } from './runner.js';
 // CronJob entrypoint — only runs when this module is invoked directly.
 // ---------------------------------------------------------------------------
 
+import { pathToFileURL } from 'url';
 import { runGauntlet } from './runner.js';
 import type { AgentUnderTest } from './types.js';
 
@@ -116,11 +117,14 @@ async function main(): Promise<void> {
   }
 }
 
+// P84 audit BUG-HI-5: `new URL(\`file://${process.argv[1]}\`)` does NOT
+// percent-encode spaces; dev paths with spaces break the equality check
+// and main() never fires. `pathToFileURL` handles encoding correctly.
 const invokedDirectly = (() => {
   try {
-    if (!process.argv[1]) return false;
-    const argvUrl = new URL(`file://${process.argv[1]}`).href;
-    return import.meta.url === argvUrl;
+    const entry = process.argv[1];
+    if (typeof entry !== 'string' || entry.length === 0) return false;
+    return import.meta.url === pathToFileURL(entry).href;
   } catch {
     return false;
   }

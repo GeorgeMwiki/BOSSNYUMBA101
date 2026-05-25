@@ -34,7 +34,12 @@ export function createRecorderState(): RecorderState {
 }
 
 function bucketKey(input: DenialInput): string {
-  return `${input.actorUserId ?? "anon"}::${input.targetTenantId}`;
+  // P84 audit BUG-ME-4: include actorTenantId so a user with the same
+  // userId across multiple source tenants (rare on BOSSNYUMBA but
+  // possible with platform-admin or shared-SSO scenarios) does NOT
+  // share a rate-limit slot. Full isolation key:
+  // actorTenantId :: actorUserId :: targetTenantId
+  return `${input.actorTenantId ?? "_"}::${input.actorUserId ?? "anon"}::${input.targetTenantId}`;
 }
 
 function trimBuckets(state: RecorderState): void {

@@ -2,7 +2,7 @@
  * Buildings / Floors / Parcel-Units / Rooms Schema —
  * Muzima spatial parcel engine (Wave-3 task #12).
  *
- * Mirrors migration `0164_spatial_parcels.sql`.
+ * Mirrors migration `0164d_spatial_parcels.sql` (renamed from `0164_spatial_parcels.sql` in P72 collision fix).
  *
  * Geometry columns are stored as text-GeoJSON at the Drizzle layer;
  * the underlying PostGIS column type is enforced by the migration.

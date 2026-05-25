@@ -24,6 +24,7 @@
  *   - `PARCEL_DB_URL`         — Phase F: PostGIS connection string
  *   - `MCP_TENANT_ALLOWLIST`  — JSON `{"parcel": ["t1","t2"]}` per-tenant guard
  */
+import { pathToFileURL } from 'url';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { createDefaultGeocoderChain } from './geocoder/chain.js';
@@ -113,18 +114,31 @@ async function main(): Promise<void> {
 }
 
 // Auto-start when invoked directly (`node dist/index.js`).
+//
+// P84 audit (carries forward P76 BUG-HI-5 + BUG-HI-6 patterns):
+//   - `new URL(\`file://${process.argv[1]}\`)` does NOT percent-encode
+//     spaces; on dev paths with spaces the URL constructor either
+//     throws or produces a mismatched href and main() never fires.
+//     `pathToFileURL` handles encoding correctly.
+//   - bare `void main()` discards the promise — any synchronous reject
+//     before listen() bubbles up as UnhandledPromiseRejection. Match
+//     apollo-gauntlet-runner's `.catch` + process.exit pattern.
 const invokedDirectly = (() => {
   try {
-    if (!process.argv[1]) return false;
-    const argvUrl = new URL(`file://${process.argv[1]}`).href;
-    return import.meta.url === argvUrl;
+    const entry = process.argv[1];
+    if (typeof entry !== 'string' || entry.length === 0) return false;
+    return import.meta.url === pathToFileURL(entry).href;
   } catch {
     return false;
   }
 })();
 
 if (invokedDirectly) {
-  void main();
+  void main().catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error('[parcel-service] unhandled fatal:', err);
+    process.exit(1);
+  });
 }
 
 // ---------------------------------------------------------------------------

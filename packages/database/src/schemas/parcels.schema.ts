@@ -1,7 +1,7 @@
 /**
  * Parcels Schema — Muzima spatial parcel engine (Wave-3 task #12).
  *
- * Drizzle definitions mirroring migration `0164_spatial_parcels.sql`.
+ * Drizzle definitions mirroring migration `0164d_spatial_parcels.sql` (renamed from `0164_spatial_parcels.sql` in P72 collision fix).
  *
  * IMPORTANT (pragmatic choice):
  *   Drizzle does not ship a first-class PostGIS column type. Wiring
