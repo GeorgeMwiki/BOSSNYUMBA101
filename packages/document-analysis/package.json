@@ -61,12 +61,12 @@
   },
   "dependencies": {
     "@bossnyumba/dispatch-router": "workspace:*",
-    "zod": "^3.22.4"
+    "zod": "^4.4.3"
   },
   "optionalDependencies": {
-    "pdf-parse": "^1.1.1",
+    "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^4.0.379",
-    "tesseract.js": "^5.0.5"
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.8.0",
