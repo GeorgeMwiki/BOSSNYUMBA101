@@ -147,7 +147,7 @@ export const roachMotelDetector: Detector = (input) => {
 };
 
 export const privacyZuckeringDetector: Detector = (input) => {
-  if (/share\s+(all|my)\s+(contacts|posts|friends|location)/i.test(input.copy)) {
+  if (/share\s+(all|my)(\s+\w+){0,2}\s+(contacts|posts|friends|location|messages|photos)/i.test(input.copy)) {
     return detection(
       'privacy-zuckering',
       'Broad data-sharing copy without granular control.',

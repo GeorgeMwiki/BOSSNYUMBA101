@@ -85,7 +85,7 @@ export const identifyInputPurposeCheck: WcagCheck = {
   wcagSc: '1.3.5-identify-input-purpose',
   severity: 'medium',
   evaluate(html) {
-    const inputs = html.match(/<input\b[^>]*type=["']?(email|tel|name|password)/gi) ?? [];
+    const inputs = html.match(/<input\b[^>]*\btype=["']?(email|tel|name|password)["']?[^>]*>/gi) ?? [];
     const missingAutocomplete = inputs.filter((i) => !/\bautocomplete=/i.test(i));
     if (missingAutocomplete.length > 0) {
       return failed(
