@@ -62,7 +62,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "zod": "^3.22.4"
+    "zod": "^4.4.3"
   },
   "peerDependencies": {
     "@bossnyumba/geo-platform": "workspace:*",

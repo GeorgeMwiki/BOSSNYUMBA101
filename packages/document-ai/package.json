@@ -46,7 +46,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "zod": "^3.22.4"
+    "zod": "^4.4.3"
   },
   "peerDependencies": {
     "tesseract.js": ">=5.0.0",
