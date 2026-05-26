@@ -82,3 +82,13 @@ export { generateAgentCard, type AgentCardDeps } from './agent-card.js';
 
 // A2A (Agent-to-Agent) protocol v1.0 — Google / Linux Foundation
 export * as a2a from './a2a/index.js';
+
+// Canonical user-facing display identity (founder correction — post 18V-FIX).
+// The user always sees one string in the chat UI: "Mr. Mwikila — Boss
+// Nyumba's AI Property Operations Manager". No specialisation subtitle,
+// no agent_id. Spec: Docs/DESIGN/CAPABILITIES_UNIFICATION.md "User-facing
+// identity is locked".
+export {
+  MR_MWIKILA_CANONICAL_DISPLAY,
+  type MrMwikilaCanonicalDisplay,
+} from './canonical-display.js';

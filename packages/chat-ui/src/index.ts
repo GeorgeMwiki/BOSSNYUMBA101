@@ -63,3 +63,10 @@ export * as Dopamine from './dopamine/index.js';
 // alongside the existing useChatStream / useJarvis hooks for consumers
 // that need locale-toggle history retranslation against Claude Haiku.
 export * from './bossnyumba/index.js';
+// Canonical display identity — locked by founder directive. Every UI
+// surface that renders the persona name/title must source from here so
+// the string never drifts. See `./canonical-display.ts`.
+export {
+  MR_MWIKILA_CANONICAL_DISPLAY,
+  type MrMwikilaCanonicalDisplay,
+} from './canonical-display.js';
