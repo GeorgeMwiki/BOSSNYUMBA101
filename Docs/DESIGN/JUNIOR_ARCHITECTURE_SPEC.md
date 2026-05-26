@@ -28,6 +28,36 @@ Sibling specs — the foundations the juniors inherit from:
 
 ---
 
+## 0. Singular Mr. Mwikila identity — agents are specialisations, not characters
+
+Founder directive (verbatim, supersedes earlier drafts of this spec):
+
+> "No, all just Mr. Mwikila persona, and all really constitute singular
+> intelligence ... the MD. Name intelligently the agents — use English."
+
+The discipline this enforces:
+
+- **One persona name across the entire product: `Mr. Mwikila`.** Every
+  surface, every tab, every junior renders the same name. Users never
+  see per-junior Swahili character names — those would fragment the
+  brand into a roster of personalities.
+- **Each junior is a specialisation of Mr. Mwikila, not a separate
+  character.** The chat surface stacks `Mr. Mwikila` over the junior's
+  `title` (e.g. *"Boss Nyumba's AI Tenant-Onboarding Specialist"*) and
+  tags the chip with the `specialisation` (e.g. *"Tenant Onboarding"*).
+- **Internal agent IDs stay English-named** —
+  `tenant-onboarding-advisor`, `lease-renewal-advisor`,
+  `maintenance-coordinator`, etc. These are stable for audit, routing,
+  and the `agent_turns.agent_id` ledger; they are never shown to users.
+- **One name. One brand. Many specialisations.**
+
+This is the only display-identity rule for juniors. The `JuniorPersona`
+contract is enforced at the type level by dropping the per-junior `name`
+field and providing the singular `MR_MWIKILA_DISPLAY_NAME` constant on
+the agent-platform package (shared across Borjie and Boss Nyumba).
+
+---
+
 ## 1. Vision
 
 Founder, verbatim:
@@ -44,16 +74,17 @@ a single tool. They are **bounded MDs**. Each junior carries the full
 weight of the Master Brain's reasoning, citation discipline, calibration,
 adaptive ingestion, observability, and mutation authority — confined to a
 domain envelope (`JuniorScope`) so that a tenant talking to the lease-
-renewal junior cannot inadvertently inspect treasury data, and a
+renewal specialisation cannot inadvertently inspect treasury data, and a
 caretaker on the property floor cannot accidentally mutate a vendor
 contract.
 
 The MD remains the apex — owner + admin route to Mr. Mwikila on every
-surface, every device. Juniors serve estate managers, caretakers,
-tenants / leaseholders, and regulators. Every junior turn writes to a
-unified `agent_turns` table the MD's working memory subscribes to, so
-Mr. Mwikila sees everything the juniors do and can intervene if a junior
-goes off the rails.
+surface, every device. Specialised Mr. Mwikila variants serve estate
+managers, caretakers, tenants / leaseholders, and regulators. Every
+junior turn writes to a unified `agent_turns` table the MD's working
+memory subscribes to, so the global Mr. Mwikila sees everything the
+specialised variants do and can intervene if a specialisation goes off
+the rails.
 
 ---
 
@@ -65,10 +96,13 @@ declare a scope, an escalation policy, or a target-audience list cannot
 be registered.
 
 ```typescript
+// Singular display identity — every junior renders this name.
+export const MR_MWIKILA_DISPLAY_NAME = 'Mr. Mwikila' as const;
+
 export interface JuniorPersona {
-  readonly id: string;
-  readonly name: string;
-  readonly title: string;
+  readonly id: string;                          // English, stable: 'tenant-onboarding-advisor', 'lease-renewal-advisor'
+  readonly specialisation: string;              // 'Tenant Onboarding', 'Lease Renewal', 'Maintenance' — chip label
+  readonly title: string;                       // "Boss Nyumba's AI Tenant-Onboarding Specialist" — subtitle
   readonly mandate: string;
   readonly default_language: 'sw' | 'en' | 'fr';
   readonly modes: ReadonlyArray<JuniorMode>;
@@ -104,54 +138,64 @@ export interface EscalationPolicy {
 }
 ```
 
+Note the deliberate absence of a per-junior `name` field. The user always
+sees `MR_MWIKILA_DISPLAY_NAME`; the subtitle reflects the active
+specialisation. Agent IDs are internal and English-named.
+
 ---
 
 ## 3. Audience-routing matrix — Boss Nyumba
 
-| User role          | Surface              | Floating chat resolves to            | Reasoning                                                       |
-|--------------------|----------------------|---------------------------------------|------------------------------------------------------------------|
-| Owner              | owner-web            | Mr. Mwikila (MD) ALWAYS               | Owner is the apex decision-maker.                                |
-| Admin              | admin-web            | Mr. Mwikila (MD) ALWAYS               | Platform-level visibility across tenants.                        |
-| Estate Manager     | estate-mobile        | Mr. Mwikila for cross-domain;         | Property ops + leasing concentrated; cross-domain escalates.     |
-|                    |                      | scoped junior for in-domain           |                                                                  |
-| Caretaker          | estate-mobile        | Safety / inspection / comms junior    | Caretaker stays in-domain — no exposure to financials.           |
-| Tenant             | tenant-mobile        | Lease / maintenance / billing junior  | Tenant sees only lease + maintenance + payment surfaces.         |
-| Regulator          | regulator-pack       | Compliance / safety junior            | Regulator sees compliance + safety filings only.                 |
-| Public             | marketing            | Mr. Mwikila (public variant)          | Marketing chat answers from public corpus only.                  |
+| User role          | Surface              | Floating chat resolves to              | Reasoning                                                       |
+|--------------------|----------------------|-----------------------------------------|------------------------------------------------------------------|
+| Owner              | owner-web            | Mr. Mwikila (MD) ALWAYS                 | Owner is the apex decision-maker.                                |
+| Admin              | admin-web            | Mr. Mwikila (MD) ALWAYS                 | Platform-level visibility across tenants.                        |
+| Estate Manager     | estate-mobile        | Mr. Mwikila for cross-domain;           | Property ops + leasing concentrated; cross-domain escalates.     |
+|                    |                      | scoped specialisation for in-domain     |                                                                  |
+| Caretaker          | estate-mobile        | Safety / inspection / comms specialisation | Caretaker stays in-domain — no exposure to financials.       |
+| Tenant             | tenant-mobile        | Lease / maintenance / billing specialisation | Tenant sees only lease + maintenance + payment surfaces.   |
+| Regulator          | regulator-pack       | Compliance / safety specialisation      | Regulator sees compliance + safety filings only.                 |
+| Public             | marketing            | Mr. Mwikila (public variant)            | Marketing chat answers from public corpus only.                  |
 
 ---
 
-## 4. Property-domain juniors — MD-class upgrade list
+## 4. The 27 specialisations — MD-class upgrade list
 
-| #  | Junior package                  | Domain                                    | Audiences                | Tier | Modes (suggested)                                    | Junior name        |
-|----|---------------------------------|--------------------------------------------|---------------------------|------|------------------------------------------------------|---------------------|
-| 1  | estate-department-advisor       | Estate department operations              | manager                   | T1   | plan / report / escalate / brief                     | Mr. Karibu          |
-| 2  | estate-auto-management          | Automated estate ops                      | manager, employee         | T1   | dispatch / report / handoff                          | Ms. Auto            |
-| 3  | acquisition-advisor             | Property acquisition + DD                 | owner                     | T2   | screen / value / brief                               | Mr. Mnunuzi         |
-| 4  | expansion-advisor               | Portfolio expansion modelling             | owner                     | T1   | scenario / rank / brief                              | Mr. Panua           |
-| 5  | lifecycle-advisor               | Building lifecycle + CapEx                | owner, manager            | T1   | plan / brief / propose                               | Ms. Mzunguko        |
-| 6  | green-angle-advisor             | Sustainability + ESG angle                | owner, manager            | T1   | assess / propose / report                            | Ms. Kijani          |
-| 7  | sustainability-advisor          | Sustainability programme                  | owner, manager            | T1   | monitor / report / propose                           | Mr. Endelevu        |
-| 8  | role-aware-advisor              | Role-shaped front door                    | all                       | T0   | route / nudge / propose                              | Mr. Sajili          |
-| 9  | stage-advisor                   | Org maturity detection                    | owner, admin              | T0   | detect / propose / nudge                             | Ms. Hatua           |
-| 10 | market-intelligence             | Property market intel                     | owner, manager            | T0   | watch / brief / alert                                | Mr. Soko            |
-| 11 | geo-intelligence                | Geo / parcel / spatial intelligence       | manager                   | T0   | map / overlay / brief                                | Mr. Ramani          |
-| 12 | fleet-management                | Vehicle + asset fleet                     | manager, caretaker        | T1   | dispatch / maintain / brief                          | Mr. Gari            |
-| 13 | inventory-management            | Inventory / spare parts / consumables     | manager, caretaker        | T1   | count / reconcile / brief                            | Mr. Ghala           |
-| 14 | workforce-orchestrator          | Caretaker roster + dispatch               | manager, caretaker        | T1   | roster / dispatch / hand-off                         | Ms. Kazi            |
-| 15 | (workforce-safety)              | OSHA / OHS for caretakers                 | caretaker, manager        | T2   | observe / alert / file-propose                       | Mr. Kombo           |
-| 16 | (lease-renewal)                 | Lease renewal advisor                     | tenant, manager           | T2   | quote / negotiate / sign-propose                     | Mr. Mkataba         |
-| 17 | (tenant-onboarding)             | Tenant onboarding + KYC                   | tenant, compliance        | T2   | onboard / verify / decline-propose                   | Ms. Karibu          |
-| 18 | (property-inspection)           | Inspection scheduling + reports           | manager, caretaker        | T1   | schedule / report / file                             | Mr. Tafiti          |
-| 19 | (maintenance-coordinator)       | Maintenance tickets + vendor dispatch     | tenant, manager           | T1   | triage / dispatch / track                            | Ms. Marekebisho     |
-| 20 | (billing-collections)           | Rent + utility billing + collections      | tenant, manager, finance  | T2   | bill / chase / settle-propose                        | Mr. Bili            |
-| 21 | compliance-pack                 | Compliance pack delivery                  | compliance, regulator     | T1   | assemble / verify / brief                            | Ms. Idhini          |
-| 22 | content-studio                  | Brand collateral generation               | manager, marketing        | T1   | compose / improve / publish-propose                  | Ms. Sanaa           |
-| 23 | document-studio                 | Doc generation per recipe                 | manager, owner            | T1   | draft / cite-check / approve-propose                 | Mr. Hati            |
-| 24 | marketing-brain                 | Campaign composition                      | manager (marketing)       | T1   | plan / launch-propose / measure                      | Ms. Tangaza         |
-| 25 | proactive-intel                 | Proactive ops intelligence                | owner, manager            | T0   | watch / surface / brief                              | Mr. Macho           |
-| 26 | progressive-intelligence        | Adaptive capability surfacing             | owner, admin              | T0   | detect / propose / nudge                             | Ms. Ongezeko        |
-| 27 | carbon-market                   | Carbon credit advisory                    | owner                     | T2   | assess / propose / file                              | Dr. Hewa            |
+Every row below is a specialisation of `Mr. Mwikila`. The user sees
+`Mr. Mwikila` as the display name with the subtitle / specialisation
+chip rendered underneath. Agent IDs are internal English-named handles.
+
+| Agent ID                       | Specialisation                | Subtitle (user-facing)                                       | Tier | Audience                  |
+|--------------------------------|-------------------------------|--------------------------------------------------------------|------|---------------------------|
+| tenant-onboarding-advisor      | Tenant Onboarding             | Boss Nyumba's AI Tenant-Onboarding Specialist                | T2   | customer, compliance      |
+| lease-renewal-advisor          | Lease Renewal                 | Boss Nyumba's AI Lease-Renewal Specialist                    | T2   | customer, manager         |
+| maintenance-coordinator        | Maintenance                   | Boss Nyumba's AI Maintenance Specialist                      | T1   | customer, manager         |
+| billing-collections            | Billing & Collections         | Boss Nyumba's AI Billing & Collections Specialist            | T2   | customer, manager, finance|
+| property-inspection            | Property Inspection           | Boss Nyumba's AI Inspection Specialist                       | T1   | manager, employee         |
+| property-listings              | Listings                      | Boss Nyumba's AI Listings Specialist                         | T1   | manager, customer         |
+| viewings-coordinator           | Viewings                      | Boss Nyumba's AI Viewings Coordinator                        | T1   | manager, customer         |
+| estate-department-advisor      | Estate Operations             | Boss Nyumba's AI Estate Operations Specialist                | T1   | manager                   |
+| estate-auto-management         | Automated Estate Ops          | Boss Nyumba's AI Auto-Ops Specialist                         | T1   | manager, employee         |
+| acquisition-advisor            | Mergers & Acquisitions        | Boss Nyumba's AI M&A Specialist                              | T2   | owner                     |
+| expansion-advisor              | Portfolio Expansion           | Boss Nyumba's AI Expansion Advisor                           | T1   | owner                     |
+| lifecycle-advisor              | Building Lifecycle            | Boss Nyumba's AI Lifecycle Specialist                        | T1   | owner, manager            |
+| green-angle-advisor            | ESG Angle                     | Boss Nyumba's AI ESG Specialist                              | T1   | owner, manager            |
+| sustainability-advisor         | Sustainability                | Boss Nyumba's AI Sustainability Specialist                   | T1   | owner, manager            |
+| workforce-orchestrator         | Workforce Operations          | Boss Nyumba's AI Workforce Specialist                        | T1   | manager, employee         |
+| fleet-management               | Fleet Management              | Boss Nyumba's AI Fleet Specialist                            | T1   | manager, employee         |
+| inventory-management           | Inventory                     | Boss Nyumba's AI Inventory Specialist                        | T1   | manager, employee         |
+| workforce-safety-officer       | Workforce Safety              | Boss Nyumba's AI Safety Specialist                           | T2   | employee, manager         |
+| market-intelligence            | Property Market Intelligence  | Boss Nyumba's AI Market Intelligence Specialist              | T0   | owner, manager            |
+| geo-intelligence               | Geographic Intelligence       | Boss Nyumba's AI Geo Specialist                              | T0   | manager                   |
+| compliance-pack                | Compliance                    | Boss Nyumba's AI Compliance Specialist                       | T1   | compliance, regulator     |
+| role-aware-router              | Role Routing                  | Boss Nyumba's AI Role Router                                 | T0   | all                       |
+| stage-advisor                  | Lifecycle Stage               | Boss Nyumba's AI Stage Advisor                               | T0   | owner, admin              |
+| content-studio                 | Content Creation              | Boss Nyumba's AI Content Specialist                          | T1   | manager, marketing        |
+| document-studio                | Document Composition          | Boss Nyumba's AI Document Specialist                         | T1   | manager, owner            |
+| marketing-brain                | Marketing Strategy            | Boss Nyumba's AI Marketing Specialist                        | T1   | manager                   |
+| carbon-market                  | Carbon Market                 | Boss Nyumba's AI Carbon Market Specialist                    | T2   | owner                     |
+| proactive-intel                | Proactive Intelligence        | Boss Nyumba's AI Proactive Sentinel                          | T0   | owner, manager            |
+| progressive-intelligence       | Skills & Mastery              | Boss Nyumba's AI Mastery Coach                               | T0   | owner, admin              |
 
 Authority tier guidance is identical to the Borjie spec.
 
@@ -163,10 +207,10 @@ Authority tier guidance is identical to the Borjie spec.
 User input via floating chat (any surface)
       |
       v
-Audience-resolver  ->  junior_id (or 'mr-mwikila')
+Audience-resolver  ->  agent_id (specialisation handle or 'mr-mwikila')
       |
       v
-Junior persona system prompt loaded + JuniorScope applied to OrgUserDataContext
+Specialisation system prompt loaded + JuniorScope applied to OrgUserDataContext
       |
       v
 Cognitive Engine — same 6 disciplines:
@@ -178,64 +222,69 @@ compose_anything_v1 — meta-dispatch within JuniorScope only
    compose_tab_v1 (restricted to tab_recipes_owned)
    compose_doc_v1 (restricted to doc_recipes_owned)
    compose_media_v1 (restricted to media_recipes_owned)
-   compose_campaign_v1 (only if junior owns a campaign recipe)
+   compose_campaign_v1 (only if the specialisation owns a campaign recipe)
       |
       v
 Mutation Authority — tier check via JuniorScope.authority_tier_max
       |
-      +-- if tier exceeded  ->  escalate to Mr. Mwikila with hand-off transcript
+      +-- if tier exceeded  ->  escalate to global Mr. Mwikila with hand-off transcript
       |
       v
-Output produced + audit-chained to junior_id + Mr. Mwikila visibility row in agent_turns
+Output produced + audit-chained to agent_id + global-MD visibility row in agent_turns
 ```
 
 ---
 
-## 6. Mr. Mwikila visibility
+## 6. Global Mr. Mwikila visibility
 
-Every junior turn writes a row to `agent_turns`. Mr. Mwikila's working
-memory has a subscription to `agent_turns where agent_id != 'mr-mwikila'`.
-The MD treats those rows as oversight signal — sampling them in the
-Daily Briefing, surfacing anomalies (e.g. a junior with sustained
-low-confidence turns, or a junior repeatedly escalating cross-domain),
-and proactively offering to retrain the junior's persona or extend its
-scope. The MD can also intervene mid-turn.
+Every specialisation turn writes a row to `agent_turns`. The global
+Mr. Mwikila working memory has a subscription to `agent_turns where
+agent_id != 'mr-mwikila'`. Treats those rows as oversight signal —
+sampling them in the Daily Briefing, surfacing anomalies (e.g. a
+specialisation with sustained low-confidence turns, or a specialisation
+repeatedly escalating cross-domain), and proactively offering to retrain
+the specialisation's prompt or extend its scope. The MD can also
+intervene mid-turn.
 
 ---
 
 ## 7. Escalation patterns
 
-The junior escalates to Mr. Mwikila in five clearly-defined situations:
+The specialisation escalates to the global Mr. Mwikila context in five
+clearly-defined situations:
 
-1. **Cross-domain intent.** User asks something spanning the junior's
-   scope plus another junior's scope (e.g. lease question + billing
-   question). Junior summarises and hands off.
+1. **Cross-domain intent.** User asks something spanning the
+   specialisation's scope plus another specialisation's scope (e.g.
+   lease question + billing question). Specialisation summarises and
+   hands off.
 2. **Low confidence.** Cognitive engine returns confidence < 0.4.
-3. **Tier exceeded.** User asks for a mutation above the junior's
+3. **Tier exceeded.** User asks for a mutation above the specialisation's
    `authority_tier_max`.
-4. **Owner names a junior + asks cross-domain.** Owner says "ask Mr.
-   Mkataba about FX exposure" — Mkataba cannot answer (FX is not in his
-   scope) and hands off to Mr. Mwikila.
-5. **Safety / compliance critical event.** Any junior detecting a
-   critical safety incident or regulatory violation escalates
+4. **Owner names a specialisation + asks cross-domain.** Owner says
+   "ask the Lease-Renewal specialisation about FX exposure" — the
+   specialisation cannot answer (FX is not in its scope) and hands off
+   to the global Mr. Mwikila.
+5. **Safety / compliance critical event.** Any specialisation detecting
+   a critical safety incident or regulatory violation escalates
    immediately.
 
 ---
 
-## 8. The 4 capability scopings per junior
+## 8. The 4 capability scopings per specialisation
 
-Every junior owns a slice of each of the four atomic creation
+Every specialisation owns a slice of each of the four atomic creation
 capabilities. Examples:
 
-**Tab recipes owned.** `lease-renewal` owns `lease_renewal_review`,
-`rent_adjustment_proposal`. Trying to compose `vendor_onboarding`
-(owned by `maintenance-coordinator`) yields a scope-violation error.
+**Tab recipes owned.** `lease-renewal-advisor` owns
+`lease_renewal_review`, `rent_adjustment_proposal`. Trying to compose
+`vendor_onboarding` (owned by `maintenance-coordinator`) yields a
+scope-violation error.
 
-**Doc recipes owned.** `lease-renewal` owns `lease_renewal_letter`,
-`rent_adjustment_notice`.
+**Doc recipes owned.** `lease-renewal-advisor` owns
+`lease_renewal_letter`, `rent_adjustment_notice`.
 
 **Media recipes owned.** `marketing-brain` owns `property_listing_image`,
-`virtual_tour_video`. Estate-department-advisor does NOT — keeps the
+`virtual_tour_video`. `estate-department-advisor` does NOT — keeps the
 marketing voice consistent.
 
 **Research topics.** `compliance-pack` is an expert in Tanzania
@@ -244,80 +293,75 @@ historical compliance corpus.
 
 ---
 
-## 9. Junior personas have names
+## 9. Persona identity — singular Mr. Mwikila
 
-Property-domain Swahili names (full list in §4):
+The user always sees `Mr. Mwikila` as the persona name. The subtitle
+reflects the active specialisation. Agent IDs are internal and
+English-named. There are no per-specialisation character names anywhere
+in the product. The chip + subtitle pattern is the only way the user
+distinguishes one specialisation from another:
 
-- estate-department -> **Mr. Karibu** (karibu = "welcome")
-- lease-renewal -> **Mr. Mkataba** (mkataba = "contract")
-- tenant-onboarding -> **Ms. Karibu** (welcoming)
-- property-inspection -> **Mr. Tafiti** (tafiti = "investigate")
-- maintenance-coordinator -> **Ms. Marekebisho** (marekebisho = "repairs")
-- billing-collections -> **Mr. Bili** (bili = "bill")
-- safety -> **Mr. Kombo** (kombo = "alertness")
-- compliance -> **Ms. Idhini** (idhini = "permit / licence")
-- carbon-market -> **Dr. Hewa** (hewa = "air / atmosphere")
-- workforce-orchestrator -> **Ms. Kazi** (kazi = "work")
-- fleet-management -> **Mr. Gari** (gari = "vehicle")
-- inventory -> **Mr. Ghala** (ghala = "warehouse")
-- market-intelligence -> **Mr. Soko** (soko = "market")
-- lifecycle -> **Ms. Mzunguko** (mzunguko = "cycle")
-- green-angle -> **Ms. Kijani** (kijani = "green")
-- sustainability -> **Mr. Endelevu** (endelevu = "sustainable")
-- proactive-intel -> **Mr. Macho** (macho = "eyes / watch")
-- progressive-intel -> **Ms. Ongezeko** (ongezeko = "growth")
-- acquisition -> **Mr. Mnunuzi** (mnunuzi = "acquirer")
-- expansion -> **Mr. Panua** (panua = "expand")
-- role-aware -> **Mr. Sajili** (sajili = "register")
-- stage -> **Ms. Hatua** (hatua = "stage / step")
-- estate-auto-management -> **Ms. Auto** (auto = automation cadre)
-- geo-intelligence -> **Mr. Ramani** (ramani = "map")
-- content-studio -> **Ms. Sanaa** (sanaa = "art")
-- document-studio -> **Mr. Hati** (hati = "document")
-- marketing-brain -> **Ms. Tangaza** (tangaza = "announce")
+```
+Mr. Mwikila                                       <- singular display name
+Boss Nyumba's AI Tenant-Onboarding Specialist     <- title (subtitle)
+[Tenant Onboarding]                               <- specialisation chip
+```
 
-The MD persona name (Mr. Mwikila) is preserved across both brands.
+When the user switches contexts (e.g. asks a billing question in the
+middle of a lease-renewal chat), the chip + subtitle change but the
+name stays `Mr. Mwikila`. The brand stays singular; the intelligence
+specialises.
+
+The MD persona name (Mr. Mwikila) is preserved across both Borjie and
+Boss Nyumba brands.
 
 ---
 
 ## 10. Anti-patterns
 
-- **Output outside scope.** A junior produces a document or tab not in
-  its `recipes_owned`. Caught by the persona-runtime scope filter.
-- **Bypassing the cognitive engine.** A junior returns a raw model
-  completion without routing through the 6 disciplines. Caught by the
-  agent-runtime.
+- **Output outside scope.** A specialisation produces a document or tab
+  not in its `recipes_owned`. Caught by the persona-runtime scope filter.
+- **Bypassing the cognitive engine.** A specialisation returns a raw
+  model completion without routing through the 6 disciplines. Caught by
+  the agent-runtime.
 - **Writes outside `data_tables`.** Caught at the mutation authority
   gate.
-- **Junior shown to an unauthorised audience.** The audience-resolver
-  returns the MD as fallback.
-- **Owner asks Mr. Mwikila but he silently delegates.** Owner has the
-  right to know who is responding — the MD MUST disclose delegation.
+- **Specialisation shown to an unauthorised audience.** The
+  audience-resolver returns the MD as fallback.
+- **Global Mr. Mwikila silently swaps specialisations.** Owner has the
+  right to know which specialisation is responding — the MD MUST disclose
+  the swap. Every artefact tagged with the specialisation id in the
+  audit trail.
+- **Inventing a per-specialisation character name.** Strictly forbidden.
+  Every turn renders as `Mr. Mwikila`.
 
 ---
 
 ## 11. Implementation plan — Boss Nyumba phases
 
-Each junior upgrade is 4-8 hours of engineering:
+Each specialisation upgrade is 4-8 hours of engineering:
 
-1. Write `<junior>-persona.ts`.
+1. Write `<specialisation>-persona.ts`. `specialisation` + `title` only
+   — no `name`.
 2. Define `JuniorScope`.
 3. Write 3-5 modes.
 4. Register recipes.
-5. Tests.
+5. Tests. Assertions on `specialisation` + `title` — never assert a
+   character name.
 
 Sequencing (mirrors Borjie):
 
-- **Wave 18V-B (next batch — 5 juniors).** Top-of-mind for the busiest
-  audiences: `estate-department-advisor`, `lease-renewal`,
-  `maintenance-coordinator`, `tenant-onboarding`, `billing-collections`.
+- **Wave 18V-B (next batch — 5 specialisations).** Top-of-mind for the
+  busiest audiences: `estate-department-advisor`,
+  `lease-renewal-advisor`, `maintenance-coordinator`,
+  `tenant-onboarding-advisor`, `billing-collections`.
 - **Wave 18V-C (next 10).** Lifecycle, expansion, acquisition,
   workforce, fleet, inventory, property-inspection, compliance, safety,
   market-intelligence.
-- **Wave 18V-D (final batch).** Sustainability, green-angle, content-
-  studio, document-studio, marketing-brain, geo-intelligence,
-  proactive-intel, progressive-intel, role-aware, stage, estate-auto,
-  carbon-market.
+- **Wave 18V-D (final batch).** Sustainability, green-angle,
+  content-studio, document-studio, marketing-brain, geo-intelligence,
+  proactive-intel, progressive-intel, role-aware-router, stage-advisor,
+  estate-auto-management, carbon-market.
 
 ---
 
@@ -326,7 +370,8 @@ Sequencing (mirrors Borjie):
 ```sql
 CREATE TABLE junior_personas (
   id text PRIMARY KEY,
-  display_name text NOT NULL,
+  display_name text NOT NULL,                   -- DEPRECATED — always 'Mr. Mwikila' (singular brand)
+  specialisation text NOT NULL DEFAULT '',      -- 'Tenant Onboarding', 'Lease Renewal', ...
   title text NOT NULL,
   mandate text NOT NULL,
   default_language text NOT NULL DEFAULT 'en',
@@ -356,15 +401,19 @@ CREATE INDEX idx_agent_turns_md_visibility ON agent_turns (tenant_id, agent_id, 
 ```
 
 `junior_personas` is global (tenant-agnostic). `agent_turns` is
-tenant-scoped and RLS-bound.
+tenant-scoped and RLS-bound. The `display_name` column is retained for
+backward compatibility but is considered deprecated — every junior
+renders as `Mr. Mwikila`.
 
 ---
 
 ## 13. Cross-repo
 
-Borjie mirrors this spec at `docs/DESIGN/JUNIOR_ARCHITECTURE_SPEC.md`
-with brand + domain swap — property juniors become mining juniors
-(`mine-planner-advisor`, `geology-advisor`, `fx-treasury-advisor`,
-`mining-commodity-intelligence`, plus the mining-domain workforce /
-fleet / inventory juniors) with the same contract and mining-domain
-`data_tables`, `tab_recipes_owned`, etc.
+Borjie mirrors this spec at `Docs/DESIGN/JUNIOR_ARCHITECTURE_SPEC.md`
+with brand + domain swap — property specialisations become mining
+specialisations (`mine-planner-advisor`, `geology-advisor`,
+`fx-treasury-advisor`, `mining-commodity-intelligence`, plus the
+mining-domain workforce / fleet / inventory specialisations) with the
+same contract and mining-domain `data_tables`, `tab_recipes_owned`, etc.
+Both repos share the singular display identity discipline from
+Section 0 — `Mr. Mwikila` is the only user-facing persona name.
