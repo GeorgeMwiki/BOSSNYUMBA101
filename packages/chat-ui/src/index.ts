@@ -59,3 +59,7 @@ export type {
   UserActionTrackerRow,
 } from './lib/learned-shortcuts/index.js';
 export * as Dopamine from './dopamine/index.js';
+// Bilingual SSE chat hook with /api/v1/translate retranslation. Lives
+// alongside the existing useChatStream / useJarvis hooks for consumers
+// that need locale-toggle history retranslation against Claude Haiku.
+export * from './bossnyumba/index.js';
