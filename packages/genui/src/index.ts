@@ -63,6 +63,18 @@ export { DecisionTrace, type DecisionTraceProps } from './components/DecisionTra
 export { CodeBlock, type CodeBlockProps } from './components/CodeBlock';
 export { DataflowDiagram, type DataflowDiagramProps } from './components/DataflowDiagram';
 
+// Richer standalone gantt renderer (multi-row, status colours, hover).
+// Independent of the catalog `gantt` artifact which still projects to the
+// `workflow` AgUiUiPart for kernel emit paths.
+export {
+  GanttChart,
+  GanttBarSchema,
+  GanttChartSchema,
+  type GanttChartProps,
+  type GanttBar,
+  type GanttBarStatus,
+} from './components/GanttChart';
+
 export { Frame, GenUiError } from './components/Frame';
 export { ClientOnly } from './components/ClientOnly';
 
