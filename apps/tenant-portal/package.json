@@ -5,7 +5,7 @@
   "private": true,
   "description": "Tenant-facing chat portal — the front door for the universal role-aware advisor. Minimal Next.js 15 surface with an AskPanel chat component, starting-point chips, citations, and feedback. Mirrors customer-app for tsconfig + tailwind conventions, slimmer.",
   "scripts": {
-    "dev": "next dev --port 3007",
+    "dev": "next dev --turbo --port 3007",
     "build": "next build",
     "start": "next start --port 3007",
     "lint": "next lint",
