@@ -6,12 +6,25 @@
  * depending on route. On mount we also peek at `/api/v1/training/next-step`
  * so Mr. Mwikila can proactively open a teaching conversation whenever the
  * employee has an outstanding adaptive-training assignment.
+ *
+ * SOTA lazy-load — the floating chat widget bundle is loaded via
+ * `next/dynamic({ ssr: false })` so the heavy widget never enters the
+ * SSR module graph. Cuts SSR JS payload + parse time and guarantees no
+ * future window-touching transitive dep can ever crash boot. The
+ * `BossnyumbaAIProvider` stays in the server graph because it only
+ * provides context — the visible/interactive widget is what we defer.
  */
 import { useEffect, useState } from 'react';
 import type React from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
-import { BossnyumbaAIProvider, FloatingChatWidget } from '@bossnyumba/chat-ui';
+import { BossnyumbaAIProvider } from '@bossnyumba/chat-ui';
 import { useAuth } from '@/providers/AuthProvider';
+
+const FloatingChatWidget = dynamic(
+  () => import('@bossnyumba/chat-ui').then((m) => m.FloatingChatWidget),
+  { ssr: false },
+);
 
 interface MwikilaWidgetMountProps {
   readonly children: React.ReactNode;
