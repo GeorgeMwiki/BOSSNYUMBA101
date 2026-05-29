@@ -53,6 +53,11 @@ import { JURISDICTION_TOOLS } from './jurisdiction-tools.js';
 // 2-4 strategies with pros/cons/confidence, recommended_index, why,
 // downsides, retrospective grade plan).
 import { REASON_STRATEGIZE_TOOLS } from './reason-strategize-tool.js';
+// Entity legibility (Wave ENTITY-LEGIBILITY) — 6 read-only tools
+// (resolve / full_picture / recent / search / trace / deduplicate) that
+// ground every chat reference to a concrete entity by id. Backed by the
+// entity-index service (mig 0288). Persona: T1 owner + T2 admin only.
+import { ENTITY_LEGIBILITY_TOOLS } from './entity-legibility-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -85,6 +90,7 @@ export function buildPersonaToolHandlers(
       JURISDICTION_DISCOVERY_TOOLS,
       JURISDICTION_TOOLS,
       REASON_STRATEGIZE_TOOLS,
+      ENTITY_LEGIBILITY_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -118,6 +124,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       JURISDICTION_DISCOVERY_TOOLS,
       JURISDICTION_TOOLS,
       REASON_STRATEGIZE_TOOLS,
+      ENTITY_LEGIBILITY_TOOLS,
     ],
     undefined,
   );
@@ -172,3 +179,12 @@ export {
   REASON_STRATEGIZE_TOOLS,
   reasonStrategizeTool,
 } from './reason-strategize-tool.js';
+export {
+  ENTITY_LEGIBILITY_TOOLS,
+  entityResolveTool,
+  entityFullPictureTool,
+  entityRecentTool,
+  entitySearchTool,
+  entityTraceTool,
+  entityDeduplicateTool,
+} from './entity-legibility-tools.js';

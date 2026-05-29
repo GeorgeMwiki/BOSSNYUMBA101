@@ -40,6 +40,16 @@ describe('brain-tools — boot integrity', () => {
     expect(ids.has('bossnyumba.reason.strategize')).toBe(true);
   });
 
+  it('registers the six entity-legibility tools', () => {
+    const ids = new Set(listPersonaToolDescriptors().map((d) => d.id));
+    expect(ids.has('entity.resolve')).toBe(true);
+    expect(ids.has('entity.full_picture')).toBe(true);
+    expect(ids.has('entity.recent')).toBe(true);
+    expect(ids.has('entity.search')).toBe(true);
+    expect(ids.has('entity.trace')).toBe(true);
+    expect(ids.has('entity.deduplicate')).toBe(true);
+  });
+
   it('every descriptor is persona-scoped to a known persona slug', () => {
     const known = new Set([
       'T1_owner_strategist',
