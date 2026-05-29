@@ -307,6 +307,8 @@ import type {
   NotificationSender as LeaseExpiryNotificationSender,
 } from './workers/lease-expiry-alert-cron';
 import { createExecutiveBriefCron } from './workers/executive-brief-cron';
+import { createDecisionRetrospectiveWorker } from './workers/decision-retrospective-worker';
+import { createDecisionRecorder } from './services/decision-journal/recorder';
 import {
   registerDomainEventSubscribers,
   type SubscribableBus,
@@ -1474,6 +1476,40 @@ const executiveBriefCron = serviceRegistry.db
     })
   : { start() {}, stop() {}, async tickOnce() { return { scanned: 0, generated: 0, degraded: 0, refused: 0, failed: 0 }; } };
 
+// Decision-retrospective recorder + worker — Wave DECISION-LEGIBILITY.
+// Ported from Borjie (DIM-A A9). The recorder writes hash-chained
+// append-only decision_outcomes rows; the worker ticks every 24h to
+// grade decisions whose prediction horizon has passed. Both stay
+// inert when serviceRegistry.db is null (degraded mode).
+const decisionRecorder = serviceRegistry.db
+  ? createDecisionRecorder({
+      db: serviceRegistry.db as unknown as { execute(q: unknown): Promise<unknown> },
+    })
+  : null;
+
+const decisionRetrospectiveWorker =
+  serviceRegistry.db && decisionRecorder
+    ? createDecisionRetrospectiveWorker({
+        db: serviceRegistry.db as unknown as { execute(q: unknown): Promise<unknown> },
+        logger,
+        recorder: decisionRecorder,
+        intervalMs:
+          Number(
+            process.env.BOSSNYUMBA_DECISION_RETROSPECTIVE_INTERVAL_MS ??
+              24 * 60 * 60 * 1000,
+          ) || 24 * 60 * 60 * 1000,
+        enabled:
+          process.env.NODE_ENV !== 'test' &&
+          process.env.BOSSNYUMBA_DECISION_RETROSPECTIVE_DISABLED !== 'true',
+      })
+    : {
+        start() {},
+        stop() {},
+        async tickOnce() {
+          return { considered: 0, graded: 0, skipped: 0, failed: 0 };
+        },
+      };
+
 // Graceful shutdown — documented and tested step-by-step:
 //  1. Flip a "shutting down" flag so the /health probe returns 503.
 //  2. Tell the HTTP server to stop accepting NEW connections.
@@ -1526,6 +1562,12 @@ async function gracefulShutdown(signal: string): Promise<void> {
     logger.info('shutdown: cases SLA supervisor stopped');
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: cases SLA stop failed');
+  }
+  try {
+    decisionRetrospectiveWorker.stop();
+    logger.info('shutdown: decision-retrospective worker stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: decision-retrospective stop failed');
   }
   try {
     leaseExpiryCron.stop();
@@ -1640,6 +1682,12 @@ if (require.main === module) {
   // get briefs generated at their local_time + cadence. ON_DEMAND
   // subscriptions are never auto-fired.
   executiveBriefCron.start();
+  // Wave DECISION-LEGIBILITY (DIM-A A9) — start the decision-retrospective
+  // worker. Ticks every 24h, grades decisions whose prediction horizon has
+  // passed and writes hash-chained outcomes via the decision recorder.
+  // Degraded-mode (no DB) is internally a no-op stub; safe to call
+  // unconditionally.
+  decisionRetrospectiveWorker.start();
   // K7 parity-litfin Gap H — wake-loop cron. Until this start() call the
   // supervisor was inert: the brain only woke when an out-of-band k8s
   // CronJob fired. In-process start arms an advisory-lock-guarded interval
