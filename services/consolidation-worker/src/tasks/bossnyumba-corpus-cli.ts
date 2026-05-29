@@ -1,0 +1,136 @@
+/**
+ * CLI runner for the BossNyumba corpus-ingest task.
+ *
+ * Wires the abstract `ingestCorpus(...)` engine to the concrete adapters
+ * (OpenAI embedder, Drizzle sink) at the composition root. Kept separate
+ * from `bossnyumba-corpus-ingest.ts` so the core ingest module stays
+ * under the file-size budget and tests can exercise the pure pipeline
+ * without dragging in `@bossnyumba/database` or `fetch`.
+ *
+ * Invocation:
+ *   pnpm tsx services/consolidation-worker/src/tasks/bossnyumba-corpus-cli.ts
+ *
+ * Env vars:
+ *   - BOSSNYUMBA_REAL_ESTATE_CORPUS_PATH  — default docs root. Falls back
+ *     to the operator's local Docs path if unset.
+ *   - OPENAI_API_KEY                       — embedder credentials. Pass
+ *     `--allow-stub-embeddings` to run a structural dry-run with zero
+ *     vectors.
+ *   - DATABASE_URL                         — Drizzle sink. Falls back to
+ *     a log-only sink (no DB writes) when missing.
+ */
+
+import { join } from 'node:path';
+import {
+  createDrizzleCorpusSink,
+  createLogSink,
+  createOpenAIEmbedder,
+  createStubEmbedder,
+  type DrizzleLikeClient,
+} from './bossnyumba-corpus-adapters.js';
+import {
+  ingestCorpus,
+  type CorpusSink,
+  type Embedder,
+  type IngestReport,
+  type WorkerLogger,
+} from './bossnyumba-corpus-ingest.js';
+import { logger as pinoLogger } from '../logger.js';
+
+const DEFAULT_DOCS_ROOT =
+  process.env.BOSSNYUMBA_REAL_ESTATE_CORPUS_PATH ??
+  '/Users/georgesmackbookair/Desktop/CLAUDE_CURSOR_CODEX PROJECTS/Claude Projects/BossNyumba project/Docs';
+
+const DEFAULT_CORPUS_ROOTS = [
+  join(DEFAULT_DOCS_ROOT, 'primary_sources'),
+  join(DEFAULT_DOCS_ROOT, 'research'),
+  join(DEFAULT_DOCS_ROOT, 'research', 'tenancy'),
+  join(DEFAULT_DOCS_ROOT, 'research', 'leases'),
+];
+
+export interface CliOptions {
+  readonly corpusRoots?: ReadonlyArray<string>;
+  readonly db?: DrizzleLikeClient | null;
+  readonly embedder?: Embedder | null;
+  readonly logger?: WorkerLogger;
+}
+
+export async function main(opts: CliOptions = {}): Promise<IngestReport> {
+  const logger: WorkerLogger = opts.logger ?? pinoLogger;
+  const corpusRoots = opts.corpusRoots ?? DEFAULT_CORPUS_ROOTS;
+  const embedder = opts.embedder ?? resolveEmbedder(logger);
+  const sink = opts.db
+    ? createDrizzleCorpusSink(opts.db)
+    : await resolveSink(logger);
+  return ingestCorpus({ corpusRoots, sink, embedder, logger });
+}
+
+function resolveEmbedder(logger: WorkerLogger): Embedder {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (apiKey) return createOpenAIEmbedder({ apiKey });
+  const allowStub = process.argv.includes('--allow-stub-embeddings');
+  if (!allowStub) {
+    throw new Error(
+      'OPENAI_API_KEY missing — pass --allow-stub-embeddings to ingest with zero-vector stubs (dev only)',
+    );
+  }
+  logger.warn(
+    'bossnyumba-corpus-ingest: OPENAI_API_KEY missing — stub embedder enabled via --allow-stub-embeddings (zero vectors)',
+  );
+  return createStubEmbedder();
+}
+
+async function resolveSink(logger: WorkerLogger): Promise<CorpusSink> {
+  const dbUrl = process.env.DATABASE_URL?.trim();
+  if (!dbUrl) {
+    logger.warn(
+      'bossnyumba-corpus-ingest: DATABASE_URL missing — using log-only sink',
+    );
+    return createLogSink(logger);
+  }
+  try {
+    const dbMod = (await import('@bossnyumba/database')) as unknown as {
+      createDatabaseClient?: (url: string) => DrizzleLikeClient;
+    };
+    if (typeof dbMod.createDatabaseClient !== 'function') {
+      throw new Error(
+        '@bossnyumba/database does not export createDatabaseClient',
+      );
+    }
+    return createDrizzleCorpusSink(dbMod.createDatabaseClient(dbUrl));
+  } catch (error) {
+    logger.error(
+      'bossnyumba-corpus-ingest: db client init failed — using log-only sink',
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+    );
+    return createLogSink(logger);
+  }
+}
+
+// CLI guard — only run main() when THIS file is the program entry. The
+// sibling `bossnyumba-corpus-ingest.ts` has its own guard that imports
+// this module dynamically, so we deliberately do NOT match the ingest
+// path here to avoid double-running main().
+const isDirect =
+  typeof process !== 'undefined' &&
+  Array.isArray(process.argv) &&
+  typeof process.argv[1] === 'string' &&
+  /bossnyumba-corpus-cli(\.js|\.ts)?$/.test(process.argv[1]);
+
+if (isDirect) {
+  main()
+    .then((report) => {
+      process.stdout.write(`[REPORT] ${JSON.stringify(report)}\n`);
+      process.exit(0);
+    })
+    .catch((error) => {
+      process.stderr.write(
+        `bossnyumba-corpus-ingest fatal: ${
+          error instanceof Error ? error.message : String(error)
+        }\n`,
+      );
+      process.exit(2);
+    });
+}
