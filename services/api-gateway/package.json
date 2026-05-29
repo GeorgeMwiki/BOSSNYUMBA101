@@ -60,6 +60,7 @@
     "@bossnyumba/estate-department-advisor": "workspace:*",
     "@bossnyumba/expansion-advisor": "workspace:*",
     "@bossnyumba/fairness-eval": "workspace:*",
+    "@bossnyumba/file-ingest": "workspace:*",
     "@bossnyumba/forecasting": "workspace:*",
     "@bossnyumba/genui": "workspace:*",
     "@bossnyumba/geo-platform": "workspace:*",
