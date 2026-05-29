@@ -1093,8 +1093,6 @@ api.route('/', createWellKnownBossNyumbaRouter({
 // /oauth/device/approve, /oauth/device/deny, /oauth/agent-tokens.
 // Backed by migration 0282 (oauth_agent_tokens + oauth_device_codes).
 api.route('/oauth', oauthDeviceRouter);
-// DEBUG: probe route to confirm Hono router dispatches at /api/v1/oauth-debug
-api.get('/oauth-debug', (c) => c.json({ ok: true, source: 'inline-debug' }));
 // Wave 11 — public marketing (Mr. Mwikila, unauthenticated) + AI workflow engine
 api.route('/public', publicMarketingRouter);
 // BossNyumba locale-toggle re-translation — see routes/translate.hono.ts.
