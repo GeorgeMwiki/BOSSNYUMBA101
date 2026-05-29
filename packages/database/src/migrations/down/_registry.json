@@ -153,6 +153,14 @@
       "reverses": "CREATE TABLE maintenance_tasks + maintenance_toolbox_talks + CHECK constraints + RLS (renumbered from 0283 — slot taken by 0283_oauth_action_approvals.sql sibling port; effectively idempotent due to IF NOT EXISTS)",
       "dataLoss": true,
       "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0295_discovered_jurisdictions.sql",
+      "down": "down/0295_down_discovered_jurisdictions.sql",
+      "reverses": "CREATE TABLE discovered_jurisdictions + unique/partial indexes + RLS policy dj_admin_only",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Cache rows are recomputable via the discovery pipeline; safe to drop in dev/staging."
     }
   ]
 }
