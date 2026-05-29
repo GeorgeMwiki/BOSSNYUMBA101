@@ -869,7 +869,27 @@ api.use('*', createAmbientBrainMiddleware(behaviorObserver, logger));
 // passed through with zero overhead. The Security Route Coverage gate
 // at `.github/workflows/security-route-coverage.yml` detects this mount
 // and counts every router under `/api/v1/*` as wrapped.
-api.use('*', securityEventsMiddleware);
+//
+// PROD-RISK FIX: guard against the import resolving to `undefined`
+// (e.g. when `@bossnyumba/observability` dist/ is stale — the source
+// exports the middleware but the compiled JS may not). Hono's compose
+// pipeline silently treats `undefined` middleware as "no handler" and
+// falls through to `notFound`, which previously 404-d EVERY
+// /api/v1/* route once this mount was added. Wrapping in a pass-through
+// when the import fails keeps routing alive and surfaces the missing
+// audit emission via a one-shot warning.
+if (typeof securityEventsMiddleware === 'function') {
+  api.use('*', securityEventsMiddleware);
+} else {
+  logger.error(
+    {
+      packageName: '@bossnyumba/observability',
+      missingExport: 'securityEventsMiddleware',
+    },
+    'api-gateway: securityEventsMiddleware export missing — audit emission DISABLED. ' +
+      'Rebuild @bossnyumba/observability (pnpm -F @bossnyumba/observability build) to restore.',
+  );
+}
 api.route('/auth', authRouter);
 api.route('/auth/mfa', authMfaRouter);
 api.route('/tenants', tenantsRouter);
@@ -1366,9 +1386,23 @@ api.route('/', openApiRouter);
 // via `api.route('/', createWellKnownBossNyumbaRouter(...))`.
 //   GET /.well-known/bossnyumba-capabilities.json
 //   GET /.well-known/mcp.json
-app.use('/.well-known', handle(createWellKnownBossNyumbaRouter({
+//
+// PROD-RISK FIX: the well-known Hono router registers its routes with
+// the FULL `/.well-known/...` path (NOT relative paths). When mounted
+// via `app.use('/.well-known', handle(router))`, Express strips the
+// `/.well-known` prefix from `req.url` before forwarding to the Hono
+// handler, leaving Hono to look for `/bossnyumba-capabilities.json`
+// which is unregistered → 404. Bind the handler directly so the
+// original `req.url` (which the Hono router DOES match) is preserved.
+const wellKnownHonoHandler = handle(createWellKnownBossNyumbaRouter({
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? 'http://localhost:4001',
-})));
+}));
+app.get('/.well-known/bossnyumba-capabilities.json', (req, res, next) => {
+  void Promise.resolve(wellKnownHonoHandler(req, res)).catch(next);
+});
+app.get('/.well-known/mcp.json', (req, res, next) => {
+  void Promise.resolve(wellKnownHonoHandler(req, res)).catch(next);
+});
 
 app.use('/api/v1', handle(api));
 
