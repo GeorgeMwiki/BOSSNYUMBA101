@@ -63,6 +63,11 @@ import { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
 // daily report / handoff notes). Real-estate retailoring of Borjie's
 // manager-tools.ts.
 import { MANAGER_TOOLS } from './manager-tools.js';
+// PT-C — Maintenance staff persona tools (30 tools covering clock-in/out,
+// task lifecycle, toolbox-talks, incidents, photos, work-orders,
+// timesheets, leave, training, inspections). Real-estate retailoring
+// of Borjie's worker-tools.ts.
+import { STAFF_TOOLS } from './staff-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -97,6 +102,7 @@ export function buildPersonaToolHandlers(
       REASON_STRATEGIZE_TOOLS,
       OWNER_PROPERTY_TOOLS,
       MANAGER_TOOLS,
+      STAFF_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -132,6 +138,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       REASON_STRATEGIZE_TOOLS,
       OWNER_PROPERTY_TOOLS,
       MANAGER_TOOLS,
+      STAFF_TOOLS,
     ],
     undefined,
   );
@@ -188,3 +195,4 @@ export {
 } from './reason-strategize-tool.js';
 export { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
 export { MANAGER_TOOLS } from './manager-tools.js';
+export { STAFF_TOOLS } from './staff-tools.js';
