@@ -68,7 +68,7 @@ export {
 export * from './kernel/index.js';
 
 // Namespace exports (`agency`, `counterModel`, `orchestrator`,
-// `powerTools`, `autonomy`) must be re-exported explicitly —
+// `powerTools`, `autonomy`, `auditor`) must be re-exported explicitly —
 // `export * from` does NOT carry over `export * as <ns>` declarations.
 export {
   agency,
@@ -76,6 +76,7 @@ export {
   orchestrator,
   powerTools,
   autonomy,
+  auditor,
 } from './kernel/index.js';
 
 // Durable-execution wrapper around the legacy task-agents executor.
