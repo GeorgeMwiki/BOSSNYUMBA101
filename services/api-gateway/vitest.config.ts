@@ -60,6 +60,13 @@ export default defineConfig({
         find: /^@bossnyumba\/brain-llm-router\/dynamic-registry$/,
         replacement: path.resolve(__dirname, '../../packages/brain-llm-router/src/dynamic-registry/index.ts'),
       },
+      // COMPANY-BRAIN - brain-ingestion parser imports file-ingest's
+      // schema-sniff subpath. Resolve from source so tests run without
+      // a `pnpm build` round-trip on file-ingest.
+      {
+        find: /^@bossnyumba\/file-ingest\/schema-sniff$/,
+        replacement: path.resolve(__dirname, '../../packages/file-ingest/src/schema-sniff/index.ts'),
+      },
     ],
   },
   test: {
