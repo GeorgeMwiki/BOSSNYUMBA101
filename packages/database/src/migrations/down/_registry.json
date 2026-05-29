@@ -139,6 +139,13 @@
       "reverses": "CREATE TABLE move_in_out_condition_reports + CHECK constraints + RLS",
       "dataLoss": true,
       "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0283_maintenance_tasks_toolbox.sql",
+      "down": "down/0283_down_maintenance_tasks_toolbox.sql",
+      "reverses": "CREATE TABLE maintenance_tasks + maintenance_toolbox_talks + CHECK constraints + RLS",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
     }
   ]
 }
