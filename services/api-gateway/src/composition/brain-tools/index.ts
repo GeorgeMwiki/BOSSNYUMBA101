@@ -71,6 +71,26 @@ import { LEASE_HISTORY_TOOLS } from './lease-history-tools.js';
 // PT-RP — Owner rent-payout settlement listing. Backed by the L8
 // SettlementOrchestrator (services/api-gateway/src/services/settlement).
 import { RENT_PAYOUT_TOOLS } from './rent-payout-tools.js';
+// PT-A — Owner persona property tools (42 tools covering cockpit reads
+// + lease lifecycle + delinquency + payroll + delegation + regulator
+// disclosure + signed condition reports). Real-estate retailoring of
+// Borjie's owner-tools.ts + owner-estate-tools.ts + companion catalogs.
+import { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
+// PT-B — Manager persona tools (25 tools covering assign / dispatch /
+// contractor engagement / move-in/out / security-deposit assessment /
+// daily report / handoff notes). Real-estate retailoring of Borjie's
+// manager-tools.ts.
+import { MANAGER_TOOLS } from './manager-tools.js';
+// PT-C — Maintenance staff persona tools (30 tools covering clock-in/out,
+// task lifecycle, toolbox-talks, incidents, photos, work-orders,
+// timesheets, leave, training, inspections). Real-estate retailoring
+// of Borjie's worker-tools.ts.
+import { STAFF_TOOLS } from './staff-tools.js';
+// PT-D — Tenant persona tools (30 tools covering listing browse, lease
+// lifecycle, rent payment via LedgerService, maintenance requests,
+// complaints, KYC, move-in / move-out signing, market intel). Real-
+// estate retailoring of Borjie's buyer-tools.ts.
+import { TENANT_TOOLS } from './tenant-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -107,6 +127,10 @@ export function buildPersonaToolHandlers(
       DECISION_JOURNAL_TOOLS,
       LEASE_HISTORY_TOOLS,
       RENT_PAYOUT_TOOLS,
+      OWNER_PROPERTY_TOOLS,
+      MANAGER_TOOLS,
+      STAFF_TOOLS,
+      TENANT_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -144,6 +168,10 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       DECISION_JOURNAL_TOOLS,
       LEASE_HISTORY_TOOLS,
       RENT_PAYOUT_TOOLS,
+      OWNER_PROPERTY_TOOLS,
+      MANAGER_TOOLS,
+      STAFF_TOOLS,
+      TENANT_TOOLS,
     ],
     undefined,
   );
@@ -227,3 +255,7 @@ export {
   RENT_PAYOUT_TOOLS,
   ownerRentPayoutListMineTool,
 } from './rent-payout-tools.js';
+export { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
+export { MANAGER_TOOLS } from './manager-tools.js';
+export { STAFF_TOOLS } from './staff-tools.js';
+export { TENANT_TOOLS } from './tenant-tools.js';
