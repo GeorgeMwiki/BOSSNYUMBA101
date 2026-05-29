@@ -119,6 +119,12 @@ export interface ScanState {
     readonly vacancyRatePct: number | null;
     readonly portfolioRolePeerP25VacancyRatePct: number | null;
     readonly totalRentRollMonthly: number | null;
+    /** Average days a vacant unit sits before re-leasing. */
+    readonly avgVacancyDays?: number | null;
+    /** Long-vacant units (>60 days) with stale listings. */
+    readonly longVacantUnitsStaleListingCount?: number;
+    /** Net new units over last 12 months. */
+    readonly portfolioGrowthRate12m?: number | null;
   } | null;
 
   // ── Rent + market signals
@@ -127,6 +133,10 @@ export interface ScanState {
     readonly portfolioAvgRentPerUnit: number | null;
     readonly tenantRentBelowMarketPct: number | null;
     readonly leasesExpiringIn90dCount: number;
+    /** Leases >12 months old without rent review. */
+    readonly longStayLeasesNoReviewCount?: number;
+    /** Off-market acquisition leads. */
+    readonly offMarketLeadsCount?: number;
   } | null;
 
   // ── Tax + regulator (housing authority)
@@ -135,6 +145,14 @@ export interface ScanState {
     readonly currentWithholdingRatePct: number | null;
     readonly altWithholdingRatePct: number | null;
     readonly quarterlyRentReceiptsTax: number | null;
+    /** Property-tax abatement application window status. */
+    readonly taxAbatementWindowOpen?: boolean;
+    readonly taxAbatementDaysRemaining?: number | null;
+    readonly estimatedAbatementSavings?: number | null;
+    /** Capital-expenditure tax-year planning signal. */
+    readonly capexTaxYearOptimumMonth?: boolean;
+    readonly deferrableCapex?: number | null;
+    readonly currentYearTaxableProfit?: number | null;
   } | null;
 
   readonly regulator?: {
@@ -142,6 +160,12 @@ export interface ScanState {
     readonly housingAmnestyDaysRemaining: number | null;
     readonly tenantQualifiesForAmnesty: boolean;
     readonly estimatedPenaltyAvoided: number | null;
+    /** Section-21 / 32 notice timing window. */
+    readonly section21WindowOpensInDays?: number | null;
+    readonly section21OptimumNotices?: number;
+    /** Service-charge audit recovery opportunity. */
+    readonly serviceChargeAuditOverdueCount?: number;
+    readonly estimatedServiceChargeRecovery?: number | null;
   } | null;
 
   // ── Estate / portfolio + succession
@@ -150,6 +174,8 @@ export interface ScanState {
     readonly intercompanySurplus: number | null;
     readonly holdingCoExists: boolean;
     readonly overdueSuccessionReviewCount: number;
+    /** Co-tenancy concentration — % of revenue from top tenant. */
+    readonly topTenantRevenuePct?: number | null;
   } | null;
 
   // ── Marketplace + leasing channels
@@ -157,6 +183,8 @@ export interface ScanState {
     readonly latestListingViewRate30d: number | null;
     readonly bestPerformingChannelName: string | null;
     readonly worstPerformingChannelName: string | null;
+    /** Number of stale/expired marketplace listings. */
+    readonly staleListingCount?: number;
   } | null;
 
   // ── Vendors (cleaning / repairs / security)
@@ -165,6 +193,12 @@ export interface ScanState {
       readonly category: string;
       readonly supplierCount: number;
       readonly annualSpend: number;
+    }>;
+    /** Maintenance bundling opportunity — pending tickets per contractor. */
+    readonly maintenanceBundlingCandidates?: ReadonlyArray<{
+      readonly contractor: string;
+      readonly pendingTicketCount: number;
+      readonly mobilizationFee: number;
     }>;
   } | null;
 
@@ -181,6 +215,10 @@ export interface ScanState {
     readonly policyDueWithin60d: boolean;
     readonly currentAnnualPremium: number | null;
     readonly bestMarketQuote: number | null;
+    /** Properties currently on separate policies. */
+    readonly separatePoliciesCount?: number;
+    /** Multi-property bundling discount %. */
+    readonly bundlingDiscountPct?: number | null;
   } | null;
 
   // ── Peer cohort
@@ -205,6 +243,9 @@ export interface ScanState {
     readonly currentGridTariffPerKwh: number | null;
     readonly solarHybridPerKwh: number | null;
     readonly monthlyKwhConsumption: number | null;
+    /** Energy-efficiency retrofit rebate eligibility. */
+    readonly retrofitRebateEligibleUnits?: number;
+    readonly perUnitRebateAmount?: number | null;
   } | null;
 
   readonly capital?: {
@@ -214,6 +255,10 @@ export interface ScanState {
     readonly cashOnHand: number | null;
     readonly idleCashOver90d: number | null;
     readonly tibillsYieldPct: number | null;
+    /** Mortgage refinance signal — rate dropped enough to refi. */
+    readonly mortgageCurrentRatePct?: number | null;
+    readonly mortgageMarketRatePct?: number | null;
+    readonly mortgagePrincipal?: number | null;
   } | null;
 
   // ── Operations (maintenance, turnover)
@@ -224,6 +269,22 @@ export interface ScanState {
     readonly turnaroundP25Days: number | null;
     readonly arrearsTotalAmount: number | null;
     readonly arrearsPeerP25Amount: number | null;
+    /** Tenants without auto-debit — collection-rate uplift signal. */
+    readonly tenantsWithoutAutoDebitCount?: number;
+    readonly avgRentPerTenantForAutoDebit?: number | null;
+  } | null;
+
+  // ── Sublet / monetisation signals
+  readonly sublet?: {
+    readonly unitsWithSubletPotentialCount: number;
+    readonly estimatedSubletMonthlyFeePerUnit: number | null;
+  } | null;
+
+  // ── Long-stay renegotiation signals
+  readonly longStay?: {
+    /** Tenants on multi-year tenure not on best discount tier. */
+    readonly tenantsOver24mNotOnDiscountTierCount: number;
+    readonly avgRetentionUpliftPerLease: number | null;
   } | null;
 }
 
