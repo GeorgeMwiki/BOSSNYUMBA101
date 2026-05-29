@@ -350,7 +350,7 @@ export const databaseMiddleware = createMiddleware(async (c, next) => {
 
   // Set RLS tenant context BEFORE any repository runs queries.
   if (database && !useMockData) {
-    const auth = c.get('auth') as { tenantId?: string } | undefined;
+    const auth = c.get('auth') as { tenantId?: string; role?: string } | undefined;
     const tenantId = auth?.tenantId;
     if (tenantId) {
       try {
@@ -362,6 +362,18 @@ export const databaseMiddleware = createMiddleware(async (c, next) => {
         // SQL injection via the boolean third argument.
         await database.execute(
           sql`SELECT set_config('app.current_tenant_id', ${tenantId}, false)`
+        );
+        // Wave launch-green JC-1 — internal-admin GUC for global-table RLS.
+        // Migration 0295 (discovered_jurisdictions) gates writes behind
+        // `app.is_bossnyumba_internal_admin = 'true'`. Set the flag based
+        // on the JWT role so only platform admin / admin sessions can mutate
+        // the cache; every other request leaves the GUC reset to 'false'
+        // and the RLS policy denies the write. The third arg `false` ⇒
+        // session-scope on the pooled connection (mirrors tenant binding).
+        const role = String(auth?.role ?? '').toUpperCase();
+        const isInternalAdmin = role === 'PLATFORM_ADMIN' || role === 'ADMIN';
+        await database.execute(
+          sql`SELECT set_config('app.is_bossnyumba_internal_admin', ${isInternalAdmin ? 'true' : 'false'}, false)`
         );
       } catch (error) {
         logger.error({ error, tenantId }, 'Failed to set RLS tenant context');
