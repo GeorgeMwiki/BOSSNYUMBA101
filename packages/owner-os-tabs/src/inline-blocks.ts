@@ -320,19 +320,19 @@ export type InlineComparison = z.infer<typeof inlineComparisonSchema>;
 // Recursive grouping. The children are rendered as sub-blocks. Depth
 // is capped at 3 by the renderer to keep cost bounded.
 
-export const inlineSectionSchema: z.ZodType<{
-  type: 'inline_section';
-  title: BilingualLabel;
-  children: ReadonlyArray<unknown>;
-  collapsed?: boolean;
-}> = z.lazy(() =>
-  z.object({
-    type: z.literal('inline_section'),
-    title: bilingualLabelSchema,
-    children: z.array(z.lazy(() => inlineBlockSchema)).max(10),
-    collapsed: z.boolean().optional(),
-  }),
-);
+// NOTE: `inlineSectionSchema` is intentionally untyped (no explicit
+// `z.ZodType<...>` annotation) so it remains a concrete `ZodObject` /
+// `ZodLazy` that `z.discriminatedUnion('type', [...])` below can accept.
+// The recursion through `inlineBlockSchema` is broken via `z.lazy(() => ...)`
+// inside the `children` array — TypeScript handles the forward reference
+// because `inlineBlockSchema` is declared later in this module with an
+// explicit `z.ZodTypeAny` annotation that closes the cycle.
+export const inlineSectionSchema = z.object({
+  type: z.literal('inline_section'),
+  title: bilingualLabelSchema,
+  children: z.array(z.lazy(() => inlineBlockSchema)).max(10),
+  collapsed: z.boolean().optional(),
+});
 
 export type InlineSection = z.infer<typeof inlineSectionSchema>;
 
