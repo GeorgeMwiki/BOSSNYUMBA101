@@ -128,6 +128,17 @@ import crossPortalSubscribeRouter from './routes/cross-portal-subscribe.router';
 // Roadmap R6 — cockpit SSE pulse stream. Fans `publishCockpitEvent`
 // bus emissions out to the owner / manager / staff cockpits.
 import cockpitStreamRouter from './routes/cockpit-stream.hono';
+// Bidirectional notification receivers — Expo / FCM / APNS device token
+// registration table. Mobile apps call POST /device-push-tokens on
+// startup with their token + app + platform; soft-revoke via DELETE
+// preserves the audit trail. Tenant-scoped from the JWT.
+import devicePushTokensRouter from './routes/device-push-tokens.hono';
+// Lease history chain-of-custody — append step + show trace. Backs
+// the `lease_history.append_step` + `lease_history.show_trace` brain
+// tools. Hash-chained, append-only.
+import leaseHistoryRouter from './routes/lease-history.hono';
+// L8 settlement listing — backs `owner.rent_payout.list_mine`.
+import ownerRentPayoutsRouter from './routes/owner-rent-payouts.hono';
 // Central Command Phase B B6 — Liveblocks 3.0 rooms auth (token mint).
 import liveblocksAuthRouter from './routes/liveblocks-auth.router';
 // Central Command Phase B B3 — Inngest durable-execution webhook. Receives
@@ -858,6 +869,17 @@ api.route('/cross-portal', crossPortalSubscribeRouter);
 // rent_payout.initiated, etc.). Tenant-scoped via JWT — clients
 // cannot pass a tenant id.
 api.route('/cockpit', cockpitStreamRouter);
+// Bidirectional notification receivers — mobile + web apps register
+// their Expo / FCM / APNS push tokens here; the notification-dispatch
+// service fans out across all active tokens for a user. Tenant-scoped
+// via the JWT.
+api.route('/device-push-tokens', devicePushTokensRouter);
+// Lease history chain-of-custody — POST /leases/:id/history/steps and
+// GET /leases/:id/history. Backs the lease_history.* brain tools.
+api.route('/leases', leaseHistoryRouter);
+// L8 settlement listing — GET /owner/rent-payouts/mine. Backs
+// owner.rent_payout.list_mine.
+api.route('/owner/rent-payouts', ownerRentPayoutsRouter);
 // Central Command Phase B B6 — Liveblocks 3.0 rooms auth. POST
 // /realtime/auth mints session tokens scoped to caller's tenantId.
 api.route('/realtime', liveblocksAuthRouter);
