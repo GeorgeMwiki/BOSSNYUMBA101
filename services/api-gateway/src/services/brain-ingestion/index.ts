@@ -3,6 +3,8 @@
  * Wave COMPANY-BRAIN (C-1).
  */
 export { ingest, type IngestionDeps, type KnowledgeGraphGrower } from './ingest.js';
+// Adapter factory: wire the real-estate KG grower into brain-ingestion.
+export { createDefaultKnowledgeGraphGrower } from './grower-adapter.js';
 export {
   createDrizzlePersistence,
   type IngestionDb,
