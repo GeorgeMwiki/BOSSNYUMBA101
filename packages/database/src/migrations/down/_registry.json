@@ -118,6 +118,27 @@
       "reverses": "CREATE TABLE tab_proposals_inbox + CHECK constraints + RLS",
       "dataLoss": true,
       "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0280_corpus_doc_uploads.sql",
+      "down": "down/0280_down_corpus_doc_uploads.sql",
+      "reverses": "CREATE TABLE corpus_doc_uploads + corpus_doc_summaries + RLS (append-only memory tables)",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0281_request_for_applications.sql",
+      "down": "down/0281_down_request_for_applications.sql",
+      "reverses": "CREATE TABLE request_for_applications + request_for_application_responses + indexes + RLS",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0282_move_in_out_condition_reports.sql",
+      "down": "down/0282_down_move_in_out_condition_reports.sql",
+      "reverses": "CREATE TABLE move_in_out_condition_reports + CHECK constraints + RLS",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
     }
   ]
 }
