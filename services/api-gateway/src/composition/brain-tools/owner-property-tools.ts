@@ -661,7 +661,7 @@ export const ownerReminderCreateTool: PersonaToolDescriptor<
   personaSlugs: OWNER,
   inputSchema: ReminderCreateInput,
   outputSchema: ReminderCreateOutput,
-  stakes: 'LOW',
+  stakes: 'MEDIUM',
   isWrite: true,
   requiresPolicyRuleLiteral: false,
   async handler(input, ctx) {
@@ -740,7 +740,7 @@ export const ownerReminderSnoozeTool: PersonaToolDescriptor<
   personaSlugs: OWNER,
   inputSchema: ReminderSnoozeInput,
   outputSchema: ReminderSnoozeOutput,
-  stakes: 'LOW',
+  stakes: 'MEDIUM',
   isWrite: true,
   requiresPolicyRuleLiteral: false,
   async handler(input, ctx) {
@@ -766,6 +766,7 @@ export const ownerReminderSnoozeTool: PersonaToolDescriptor<
 // ====================================================================
 const PayrollRunInput = z.object({
   period: z.string().regex(/^\d{4}-\d{2}$/),
+  approvalEvidenceRef: z.string().min(1).max(500),
 });
 const PayrollRunOutput = z.object({
   runId: z.string(),
@@ -779,7 +780,8 @@ export const ownerPayrollRunTool: PersonaToolDescriptor<
   name: 'Owner — start payroll run (en) / Mwenye — anza malipo ya mishahara (sw)',
   description:
     'Initiate a payroll run for property staff for the given YYYY-MM ' +
-    'period. Money path flows through LedgerService.post() at commit.',
+    'period. Money path flows through LedgerService.post() at commit. ' +
+    'HIGH stakes — evidence-required.',
   personaSlugs: OWNER,
   inputSchema: PayrollRunInput,
   outputSchema: PayrollRunOutput,
@@ -789,7 +791,13 @@ export const ownerPayrollRunTool: PersonaToolDescriptor<
   async handler(input, ctx) {
     const client = ctx.httpClient;
     if (!client) return { runId: '', status: 'failed' as const };
-    const body = withChatProvenance({ period: input.period }, ctx);
+    const body = withChatProvenance(
+      {
+        period: input.period,
+        evidenceRefs: [input.approvalEvidenceRef],
+      },
+      ctx,
+    );
     return client.post<{
       runId: string;
       status: 'draft' | 'preview_ready' | 'committed' | 'failed';
@@ -1316,7 +1324,7 @@ export const ownerTabPinTool: PersonaToolDescriptor<
   personaSlugs: OWNER,
   inputSchema: TabPinInput,
   outputSchema: TabPinOutput,
-  stakes: 'LOW',
+  stakes: 'MEDIUM',
   isWrite: true,
   requiresPolicyRuleLiteral: false,
   async handler(input, ctx) {
@@ -1346,7 +1354,7 @@ export const ownerTabReorderTool: PersonaToolDescriptor<
   personaSlugs: OWNER,
   inputSchema: TabReorderInput,
   outputSchema: TabReorderOutput,
-  stakes: 'LOW',
+  stakes: 'MEDIUM',
   isWrite: true,
   requiresPolicyRuleLiteral: false,
   async handler(input, ctx) {
@@ -1374,7 +1382,7 @@ export const ownerTabRemoveTool: PersonaToolDescriptor<
   personaSlugs: OWNER,
   inputSchema: TabRemoveInput,
   outputSchema: TabRemoveOutput,
-  stakes: 'LOW',
+  stakes: 'MEDIUM',
   isWrite: true,
   requiresPolicyRuleLiteral: false,
   async handler(input, ctx) {
@@ -1408,7 +1416,7 @@ export const ownerNotificationMarkReadTool: PersonaToolDescriptor<
   personaSlugs: OWNER,
   inputSchema: NotifMarkReadInput,
   outputSchema: NotifMarkReadOutput,
-  stakes: 'LOW',
+  stakes: 'MEDIUM',
   isWrite: true,
   requiresPolicyRuleLiteral: false,
   async handler(input, ctx) {
@@ -1731,6 +1739,7 @@ const InspectionSignInput = z.object({
   inspectionId: z.string().min(1).max(120),
   reportId: z.string().min(1).max(120),
   canonicalPdfSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  evidenceRef: z.string().min(1).max(500),
 });
 const InspectionSignOutput = z.object({
   reportId: z.string(),
@@ -1745,7 +1754,7 @@ export const ownerInspectionSignTool: PersonaToolDescriptor<
   description:
     'Sign the reviewed move-in or move-out condition report (PDF SHA-256 ' +
     'anchor). HIGH stakes — anchors the canonical artefact for any future ' +
-    'security-deposit dispute.',
+    'security-deposit dispute. Evidence-required.',
   personaSlugs: OWNER,
   inputSchema: InspectionSignInput,
   outputSchema: InspectionSignOutput,
@@ -1756,7 +1765,10 @@ export const ownerInspectionSignTool: PersonaToolDescriptor<
     const client = ctx.httpClient;
     if (!client) return { reportId: input.reportId, status: 'unavailable' };
     const body = withChatProvenance(
-      { canonicalPdfSha256: input.canonicalPdfSha256 },
+      {
+        canonicalPdfSha256: input.canonicalPdfSha256,
+        evidenceRefs: [input.evidenceRef],
+      },
       ctx,
     );
     return client.post<{ reportId: string; status: string }>(
@@ -1876,7 +1888,7 @@ export const ownerSavedSearchCreateTool: PersonaToolDescriptor<
   personaSlugs: OWNER,
   inputSchema: SavedSearchInput,
   outputSchema: SavedSearchOutput,
-  stakes: 'LOW',
+  stakes: 'MEDIUM',
   isWrite: true,
   requiresPolicyRuleLiteral: false,
   async handler(input, ctx) {
