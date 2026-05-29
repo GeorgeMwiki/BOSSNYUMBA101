@@ -50,6 +50,16 @@ describe('brain-tools — boot integrity', () => {
     expect(ids.has('entity.deduplicate')).toBe(true);
   });
 
+  it('registers the six decision-journal tools', () => {
+    const ids = new Set(listPersonaToolDescriptors().map((d) => d.id));
+    expect(ids.has('decisions.recent')).toBe(true);
+    expect(ids.has('decisions.explain')).toBe(true);
+    expect(ids.has('decisions.search')).toBe(true);
+    expect(ids.has('decisions.replay')).toBe(true);
+    expect(ids.has('decisions.what_did_i_decide')).toBe(true);
+    expect(ids.has('decisions.success_rate')).toBe(true);
+  });
+
   it('every descriptor is persona-scoped to a known persona slug', () => {
     const known = new Set([
       'T1_owner_strategist',

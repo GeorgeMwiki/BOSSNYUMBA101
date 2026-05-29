@@ -58,6 +58,12 @@ import { REASON_STRATEGIZE_TOOLS } from './reason-strategize-tool.js';
 // ground every chat reference to a concrete entity by id. Backed by the
 // entity-index service (mig 0288). Persona: T1 owner + T2 admin only.
 import { ENTITY_LEGIBILITY_TOOLS } from './entity-legibility-tools.js';
+// Decision Journal (Wave DECISION-JOURNAL) — 6 read-only tools
+// (recent / explain / search / replay / what_did_i_decide / success_rate)
+// over the hash-chained `decisions` + `decision_outcomes` + `decision_links`
+// tables (mig 0289). Multi-currency outcome shape (observedValue +
+// observedCurrency). Persona: T1 owner + T2 admin only.
+import { DECISION_JOURNAL_TOOLS } from './decision-journal-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -91,6 +97,7 @@ export function buildPersonaToolHandlers(
       JURISDICTION_TOOLS,
       REASON_STRATEGIZE_TOOLS,
       ENTITY_LEGIBILITY_TOOLS,
+      DECISION_JOURNAL_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -125,6 +132,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       JURISDICTION_TOOLS,
       REASON_STRATEGIZE_TOOLS,
       ENTITY_LEGIBILITY_TOOLS,
+      DECISION_JOURNAL_TOOLS,
     ],
     undefined,
   );
@@ -188,3 +196,14 @@ export {
   entityTraceTool,
   entityDeduplicateTool,
 } from './entity-legibility-tools.js';
+export {
+  DECISION_JOURNAL_TOOLS,
+  decisionsRecentTool,
+  decisionsExplainTool,
+  decisionsSearchTool,
+  decisionsReplayTool,
+  decisionsWhatDidIDecideTool,
+  decisionsSuccessRateTool,
+  configureDecisionJournalTools,
+  __resetDecisionJournalToolsForTests,
+} from './decision-journal-tools.js';
