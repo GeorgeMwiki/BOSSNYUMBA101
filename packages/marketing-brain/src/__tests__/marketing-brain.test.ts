@@ -3,6 +3,7 @@ import {
   buildMarketingSystemPrompt,
   MARKETING_METADATA,
   MARKETING_PROMPT_LAYER,
+  REAL_TIME_REASONING_BLOCK,
 } from '../marketing-persona.js';
 import { qualifyLead } from '../lead-qualifier.js';
 import {
@@ -33,6 +34,34 @@ describe('marketing-persona', () => {
 
   it('metadata is stable', () => {
     expect(MARKETING_METADATA.id).toBe('mr-mwikila-marketing');
+  });
+
+  // RT-2 — REAL-TIME REASONING block injection.
+  it('injects the REAL-TIME REASONING block BEFORE the marketing layer', () => {
+    const prompt = buildMarketingSystemPrompt({});
+    expect(prompt).toContain('REAL-TIME REASONING');
+    const rtIdx = prompt.indexOf('REAL-TIME REASONING');
+    const mlIdx = prompt.indexOf('Marketing Dimension');
+    expect(rtIdx).toBeLessThan(mlIdx);
+  });
+
+  it('REAL_TIME_REASONING_BLOCK frames registry + few-shots as reference, not script', () => {
+    expect(REAL_TIME_REASONING_BLOCK).toMatch(/REFERENCE MATERIAL/i);
+    expect(REAL_TIME_REASONING_BLOCK).toMatch(/NEVER paste them verbatim/i);
+    expect(REAL_TIME_REASONING_BLOCK).toMatch(/Variation across turns is EXPECTED/i);
+  });
+
+  it('REAL_TIME_REASONING_BLOCK names BOSSNYUMBA-specific authorities', () => {
+    // The block should reference real-estate authorities (KRA / TRA / URA /
+    // FIRS / RERA) — not mining authorities (Mining Commission / LBMA).
+    expect(REAL_TIME_REASONING_BLOCK).toMatch(/KRA/);
+    expect(REAL_TIME_REASONING_BLOCK).not.toMatch(/Mining Commission/);
+    expect(REAL_TIME_REASONING_BLOCK).not.toMatch(/LBMA/);
+  });
+
+  it('REAL_TIME_REASONING_BLOCK enables strategic reasoning', () => {
+    expect(REAL_TIME_REASONING_BLOCK).toMatch(/STRATEGIC REASONING/i);
+    expect(REAL_TIME_REASONING_BLOCK).toMatch(/retrospective grade/i);
   });
 });
 
