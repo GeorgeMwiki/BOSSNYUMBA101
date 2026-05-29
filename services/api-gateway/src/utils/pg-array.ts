@@ -15,7 +15,7 @@
  *   the issue without touching the SQL contract.
  *
  * Usage:
- *   import { toPgTextArray } from '../utils/pg-array';
+ *   import { toPgTextArray } from '../utils/pg-array.js';
  *
  *   await db.execute(sql`
  *     SELECT * FROM things

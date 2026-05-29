@@ -3,29 +3,32 @@
  * brain's structured `decision` framing automatically lands in the
  * decisions table.
  *
+ * Port from Borjie services/api-gateway/src/services/decision-journal/
+ * middleware.ts (real-estate retailoring: tool ids are property /
+ * lease / tenant / maintenance scoped instead of mining domain).
+ *
  * Contract: when the orchestrator dispatches a WRITE brain tool, it
  * may attach a structured `decision` envelope to the tool input under
- * the reserved `__decision` key. The brain prompt template instructs
- * the model to emit the envelope for any non-trivial action:
+ * the reserved `__decision` key. Example:
  *
  *   {
  *     "__decision": {
- *       "subject": "File April royalty: now or Friday",
+ *       "subject": "Rent increase Apr 2027: 5% or 7%",
  *       "alternatives": [
- *         {"option": {"choice": "wait_friday"}, "whyNot": "5% penalty risk"}
+ *         {"option": {"choice": "increase_7pct"}, "whyNot": "tenant churn risk"}
  *       ],
- *       "rationale": "Filing 3d early avoids the auto-imposed 5% penalty",
+ *       "rationale": "5% matches local-market median while keeping the tenant",
  *       "confidence": 0.78
  *     },
- *     ...rest of tool input
+ *     leaseId: "l_42",
+ *     newRent: 800000
  *   }
  *
  * The wrapper strips `__decision` from the input before the underlying
  * handler runs, then after a successful WRITE it persists the decision
- * with `decidedByKind = 'brain'` (or `agent_apply` when the tool was
- * dispatched by an autonomous agent). Failures are swallowed (logged)
- * so a recorder hiccup never blocks the WRITE — the audit chain
- * already records the action itself.
+ * with `decidedByKind = 'brain'` (or `agent_apply` for autonomous
+ * agents). Failures are swallowed (logged) so a recorder hiccup never
+ * blocks the WRITE.
  */
 
 import { z } from 'zod';
@@ -33,7 +36,6 @@ import { z } from 'zod';
 import type { DecisionRecorder } from './recorder.js';
 import type {
   DecidedByKind,
-  DecisionAlternative,
   DecisionProvenance,
   RecordDecisionInput,
 } from './types.js';
@@ -43,8 +45,6 @@ interface LoggerLike {
   error(obj: unknown, msg?: string): void;
 }
 
-/** Reserved key on the tool input where the brain attaches its
- *  decision framing. Stripped before the underlying handler runs. */
 export const DECISION_ENVELOPE_KEY = '__decision' as const;
 
 const AlternativeShape = z
@@ -72,11 +72,6 @@ const DecisionEnvelopeShape = z
 
 export type DecisionEnvelope = z.infer<typeof DecisionEnvelopeShape>;
 
-/**
- * Pull a structured decision envelope out of a tool input, returning
- * the stripped input + parsed envelope. Returns `null` envelope when
- * the input did not carry one or it failed validation.
- */
 export function extractDecisionFraming(
   toolInput: Record<string, unknown>,
 ): {
@@ -126,27 +121,18 @@ export type BrainToolHandler = (
 ) => Promise<unknown>;
 
 export interface WrapBrainToolOptions {
-  /** Tool id (e.g. `mining.royalties.file_now`). */
+  /** Tool id (e.g. `lease.renewal.draft` / `rent.increase.propose`). */
   readonly toolId: string;
-  /** Whether this tool is a WRITE. Non-write tools are returned
-   *  unwrapped — there is nothing to record. */
+  /** Whether this tool is a WRITE. */
   readonly isWrite: boolean;
-  /**
-   * The actor kind. Defaults to 'brain'. Pass 'agent_apply' for tools
-   * dispatched by an autonomous agent (background mission) so the
-   * provenance reflects the right voice.
-   */
+  /** Defaults to 'brain'. 'agent_apply' for autonomous-agent dispatches. */
   readonly actorKind?: DecidedByKind;
 }
 
+export interface DecisionJournalMiddlewareDeps extends WrapWithRecorderDeps {}
+
 /**
- * Wrap a brain WRITE tool with the decision recorder. Returns a new
- * handler that:
- *   1. Strips `__decision` from the input.
- *   2. Dispatches the underlying handler with the cleaned input.
- *   3. On success + envelope present, records the decision (best-effort).
- *
- * Read-only tools are passed through untouched — they never record.
+ * Wrap a brain WRITE tool with the decision recorder.
  */
 export function wrapBrainToolWithDecisionRecorder(
   deps: WrapWithRecorderDeps,
@@ -187,10 +173,7 @@ export function wrapBrainToolWithDecisionRecorder(
         toolId: options.toolId,
         input: strippedInput,
       },
-      ...(envelope.alternatives && {
-        alternativesConsidered:
-          envelope.alternatives as ReadonlyArray<DecisionAlternative>,
-      }),
+      ...(envelope.alternatives && { alternativesConsidered: envelope.alternatives }),
       rationale: envelope.rationale,
       ...(envelope.confidence !== undefined && { confidence: envelope.confidence }),
       ...(envelope.scopeIds && { scopeIds: envelope.scopeIds }),
@@ -217,3 +200,9 @@ export function wrapBrainToolWithDecisionRecorder(
     return result;
   };
 }
+
+/**
+ * Compatibility re-export so brain-tools wiring imports as
+ * `decisionJournalMiddleware` if that's the convention.
+ */
+export const decisionJournalMiddleware = wrapBrainToolWithDecisionRecorder;

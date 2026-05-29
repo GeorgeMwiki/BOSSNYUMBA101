@@ -1,16 +1,21 @@
 /**
  * Decision Recorder — hash-chained writer for the decision journal.
  *
+ * Port from Borjie services/api-gateway/src/services/decision-journal/
+ * recorder.ts with the `observedValueTzs` → `observedValue` +
+ * `observedCurrency` rename so multi-currency portfolios feed outcomes
+ * correctly.
+ *
  * Three append-only writes:
  *   recordDecision(input)  decisions
  *   recordOutcome(input)   decision_outcomes
  *   recordLink(input)      decision_links
  *
- * Every write computes its row hash via @bossnyumba/audit-hash-chain so an
- * auditor can replay verifyChain() over any tenant slice.
+ * Every write computes its row hash via @bossnyumba/audit-hash-chain so
+ * an auditor can replay verifyChain() over any tenant slice.
  *
  * Tenant isolation lives at the RLS layer via the canonical
- * `app.tenant_id` GUC. The recorder never double-filters.
+ * `app.current_tenant_id` GUC. The recorder never double-filters.
  *
  * Failure containment:
  *   - Zod-level validation of every field; throws `DecisionRecorderError`
@@ -48,10 +53,6 @@ import {
   type RecordOutcomeInput,
 } from './types.js';
 
-// Re-export `DecisionRecorderError` so consumers can `import {
-// DecisionRecorderError } from '../recorder'` without reaching into
-// types.ts. Mirrors the established export shape used by tests + the
-// brain-tools wiring.
 export { DecisionRecorderError } from './types.js';
 
 interface DbLike {
@@ -108,7 +109,11 @@ const RecordOutcomeSchema = z
     tenantId: z.string().min(1).max(80),
     decisionId: z.string().uuid(),
     outcomeSummary: z.string().min(3).max(2000),
-    observedValueTzs: z.number().finite().optional().nullable(),
+    observedValue: z.number().finite().optional().nullable(),
+    observedCurrency: z
+      .string()
+      .regex(/^[A-Z]{3}$/, 'must be ISO-4217 code')
+      .optional(),
     observedAt: z.string().datetime().optional(),
     retrospectiveGrade: z.enum(RETROSPECTIVE_GRADES),
     learnings: z.string().max(2000).optional().nullable(),
@@ -135,9 +140,6 @@ const RecordLinkSchema = z
 export interface DecisionRecorderDeps {
   readonly db: DbLike;
   readonly now?: () => Date;
-  /** Optional HMAC secret for the chain. When provided, every row
-   *  hash is HMAC-SHA256 instead of plain SHA-256. The same secret
-   *  must be supplied to `verifyChain` at audit time. */
   readonly chainSecret?: string;
   readonly chainSecretId?: string;
 }
@@ -229,20 +231,10 @@ export function createDecisionRecorder(
     return rows.length > 0;
   }
 
-  // G3 — robustness 2026-05-29.
-  //
-  // The migration 0125 partial UNIQUE index on `(tenant_id, prev_hash)`
-  // refuses two concurrent writers from chaining off the same head row
-  // — a fork in the hash chain. If the SQL INSERT trips 23505
-  // unique_violation we re-read `lastDecisionHash` and retry once with
-  // the fresh head. A second collision (rare; ~impossible under the
-  // current single-writer-per-tenant invariant) surfaces as
-  // `persistence_failed` so the caller can decide.
-  //
-  // Detection: Postgres tags 23505 as `code` on the error. drizzle-orm
-  // re-throws the underlying postgres-js error with that field; we
-  // fall back to message-substring matching for adapters that scrub
-  // the code.
+  // G3 — robustness retry: migration 0289 partial UNIQUE on
+  // (tenant_id, prev_hash) refuses two concurrent writers from chaining
+  // off the same head row. On 23505 unique_violation re-read head and
+  // retry once. A second collision raises persistence_failed.
   function isUniqueViolation(err: unknown): boolean {
     const e = err as { code?: string; message?: string };
     if (e?.code === '23505') return true;
@@ -250,7 +242,7 @@ export function createDecisionRecorder(
     return (
       msg.includes('unique constraint') ||
       msg.includes('duplicate key value') ||
-      msg.includes('decisions_tenant_prev_hash_unique')
+      msg.includes('decisions_chain_unique_idx')
     );
   }
 
@@ -274,13 +266,6 @@ export function createDecisionRecorder(
       );
       const status = value.status ?? 'committed';
 
-      // G3 retry loop — read head, compute entry_hash off it, INSERT.
-      // On 23505 unique_violation (a concurrent writer landed first)
-      // re-read once and retry. Bounded at 2 attempts because under
-      // the orchestrator's single-writer-per-tenant invariant a
-      // collision is already vanishingly rare; a second collision
-      // signals a deeper failure of that invariant and warrants a
-      // hard error so the caller can investigate.
       const MAX_ATTEMPTS = 2;
       let prev: string | null = null;
       let entryHash = '';
@@ -327,11 +312,6 @@ export function createDecisionRecorder(
                 ${JSON.stringify(alternatives)}::jsonb,
                 ${value.rationale}, ${value.confidence ?? null},
                 ${decidedAt}::timestamptz,
-                -- Encode the JS array as a Postgres array literal text
-                -- and cast — drizzle's tagged-template binds bare arrays
-                -- as comma-separated params instead of a single text[],
-                -- which trips 22P02 "malformed array literal" the moment
-                -- scopeIds has any entries. Belt-and-braces array escape.
                 ${toPgTextArray(scopeIds)}::text[],
                 ${value.relatedPredictionId ?? null},
                 ${value.relatedActionAuditHash ?? null},
@@ -347,8 +327,6 @@ export function createDecisionRecorder(
         } catch (err) {
           lastErr = err;
           if (attempt < MAX_ATTEMPTS && isUniqueViolation(err)) {
-            // A concurrent writer chained off the same prev_hash and
-            // landed first. Loop to re-read the head and retry.
             continue;
           }
           throw new DecisionRecorderError(
@@ -372,11 +350,6 @@ export function createDecisionRecorder(
         );
       }
 
-      // R6 — cockpit SSE notify. The bus is fire-and-forget; a missing
-      // listener is fine. Severity is derived from `provenance.severity`
-      // when present (sovereign / high / medium / low); otherwise we
-      // default to 'medium' so the owner-web toast renders with the
-      // neutral accent.
       const severityHint = (provenance as { severity?: string }).severity;
       const severity: 'low' | 'medium' | 'high' | 'sovereign' =
         severityHint === 'sovereign' || severityHint === 'high' ||
@@ -433,12 +406,14 @@ export function createDecisionRecorder(
       }
 
       const observedAt = value.observedAt ?? now().toISOString();
+      const observedCurrency = value.observedCurrency ?? 'TZS';
       const prev = await lastOutcomeHash(value.tenantId, value.decisionId);
       const payload = {
         tenant_id: value.tenantId,
         decision_id: value.decisionId,
         outcome_summary: value.outcomeSummary,
-        observed_value_tzs: value.observedValueTzs ?? null,
+        observed_value: value.observedValue ?? null,
+        observed_currency: observedCurrency,
         observed_at: observedAt,
         retrospective_grade: value.retrospectiveGrade,
         learnings: value.learnings ?? null,
@@ -451,13 +426,15 @@ export function createDecisionRecorder(
         rows = rowsOf(
           await deps.db.execute(sql`
             INSERT INTO decision_outcomes (
-              tenant_id, decision_id, outcome_summary, observed_value_tzs,
+              tenant_id, decision_id, outcome_summary, observed_value,
+              observed_currency,
               observed_at, retrospective_grade, learnings, recorded_by,
               entry_hash, prev_hash
             )
             VALUES (
               ${value.tenantId}, ${value.decisionId}, ${value.outcomeSummary},
-              ${value.observedValueTzs ?? null},
+              ${value.observedValue ?? null},
+              ${observedCurrency},
               ${observedAt}::timestamptz, ${value.retrospectiveGrade},
               ${value.learnings ?? null}, ${value.recordedBy},
               ${entryHash}, ${prev}
@@ -485,7 +462,8 @@ export function createDecisionRecorder(
         tenantId: value.tenantId,
         decisionId: value.decisionId,
         outcomeSummary: value.outcomeSummary,
-        observedValueTzs: value.observedValueTzs ?? null,
+        observedValue: value.observedValue ?? null,
+        observedCurrency,
         observedAt,
         retrospectiveGrade: value.retrospectiveGrade,
         learnings: value.learnings ?? null,

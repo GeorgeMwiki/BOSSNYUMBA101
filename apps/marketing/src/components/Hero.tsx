@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { Logomark } from '@bossnyumba/design-system';
+import { MR_MWIKILA_CANONICAL_DISPLAY } from '@/lib/persona';
 
 /**
  * Hero — the single most important surface on the site.
@@ -80,19 +81,20 @@ export function Hero() {
         {/* Subhead */}
         <p className="mx-auto mt-8 max-w-[62ch] text-center text-lg leading-relaxed text-neutral-500 sm:text-xl">
           BossNyumba is an autonomous AI brain for property portfolios.
-          It runs finance, maintenance, compliance, leasing, legal, and seven
-          more domains on your authority — with a five-level autonomy dial,
-          seven red-line guardrails, a cryptographic audit chain, and a
-          first-person agent you can talk to about your own company.
+          {' '}{MR_MWIKILA_CANONICAL_DISPLAY.name} runs rent collection, maintenance,
+          compliance, leasing, finance, and seven more domains on your
+          authority — with a five-level autonomy dial, seven red-line
+          guardrails, a cryptographic audit chain, and a first-person
+          agent you can talk to in Swahili about your own portfolio.
         </p>
 
         {/* Capability micro-strip */}
         <ul className="mx-auto mt-6 flex max-w-3xl flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[0.72rem] font-mono uppercase tracking-widest text-neutral-500">
           {[
             'Head Briefing',
-            'Talk to your company',
+            'Talk to Mr. Mwikila',
+            'M-Pesa rent ledger',
             'Forecasts · conformal',
-            'Knowledge graph',
             'Audit chain',
             'Shadow mode',
           ].map((label, i, arr) => (
@@ -108,17 +110,17 @@ export function Hero() {
         {/* CTAs */}
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
-            href="/book-demo"
+            href="/sign-up"
             className="group inline-flex h-12 items-center justify-center gap-2 rounded-md bg-signal-500 px-6 text-sm font-semibold text-primary-foreground shadow-md transition-all duration-base ease-out hover:bg-signal-400 hover:shadow-lg active:scale-[0.98]"
           >
-            Book a 20-minute demo
+            Sign Up — free on Mkulima
             <ArrowRight className="h-4 w-4 transition-transform duration-fast group-hover:translate-x-0.5" />
           </Link>
           <Link
-            href="/tour"
+            href="/book-demo"
             className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border px-6 text-sm font-semibold text-foreground transition-colors duration-fast hover:bg-surface-raised"
           >
-            Watch the 2-minute tour
+            Book a 20-minute demo
           </Link>
         </div>
 

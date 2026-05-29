@@ -162,6 +162,8 @@ import ClassroomPage from './pages/Classroom';
 import ComplianceSettings from './pages/ComplianceSettings';
 import { ConfigurationPage } from './pages/ConfigurationPage';
 import DelegationMatrix from './pages/DelegationMatrix';
+import MwikilaInbox from './pages/MwikilaInbox';
+import MwikilaDelegation from './pages/MwikilaDelegation';
 import DesktopReview from './pages/DesktopReview';
 import ExceptionsPage from './pages/Exceptions';
 import HeadOfEstates from './pages/HeadOfEstates';
@@ -325,6 +327,8 @@ function App() {
                     <Route path="/compliance/documents" element={<ComplianceDocumentsPage />} />
                     <Route path="/configuration" element={<ConfigurationPage />} />
                     <Route path="/delegation" element={<DelegationMatrix />} />
+                    <Route path="/mwikila/inbox" element={<MwikilaInbox />} />
+                    <Route path="/mwikila/delegation" element={<MwikilaDelegation />} />
                     <Route path="/desktop-review" element={<DesktopReview />} />
                     <Route path="/exceptions" element={<ExceptionsPage />} />
                     <Route path="/head-of-estates" element={<HeadOfEstates />} />

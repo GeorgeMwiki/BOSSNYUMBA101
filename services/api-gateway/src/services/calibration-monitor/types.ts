@@ -1,5 +1,5 @@
 /**
- * Calibration-monitor port types - Wave CLOSED-LOOP.
+ * Calibration-monitor port types — Wave CLOSED-LOOP (real-estate).
  *
  * Pure type surface shared between tracker / alerter / the brain tool
  * adapter. No db client / network reference here so the types stay
@@ -12,7 +12,7 @@ export interface CalibrationScoreInput {
   readonly actorKindFilter?: 'brain' | 'owner' | 'agent' | 'external';
   /** Look-back window in days. Defaults to 30. */
   readonly sinceDays?: number;
-  /** Optional action_kind prefix filter (e.g. "mining.licence."). */
+  /** Optional action_kind prefix filter (e.g. "rent.", "lease.", "maintenance."). */
   readonly actionKindPrefix?: string;
 }
 

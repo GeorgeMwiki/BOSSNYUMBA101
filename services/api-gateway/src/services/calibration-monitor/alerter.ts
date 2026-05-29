@@ -1,18 +1,21 @@
 /**
- * Calibration alerter - Wave CLOSED-LOOP.
+ * Calibration alerter — Wave CLOSED-LOOP (real-estate).
  *
  * Watches the per-tenant calibration accuracy. When it dips below the
  * configured floor (default 0.6) on a fresh score, the alerter emits a
  * `calibration_drift` event so the brain can surface a humble line in
  * the next chat turn ("My predictions have been less accurate this
- * week - let me ask you for more context").
+ * week — let me ask you for more context").
  *
- * Side-effect-free apart from the emit callback - the alerter does NOT
+ * Side-effect-free apart from the emit callback — the alerter does NOT
  * persist anything (no row writes, no audit). Persistence is the
  * tracker's domain; this is a thin observer.
+ *
+ * Ported from Borjie services/api-gateway/src/services/calibration-
+ * monitor/alerter.ts.
  */
 
-import type { CalibrationScore } from './types';
+import type { CalibrationScore } from './types.js';
 
 const DEFAULT_FLOOR = 0.6;
 const DEFAULT_MIN_SAMPLES = 5;
@@ -35,7 +38,7 @@ export interface CalibrationAlerterOptions {
   readonly accuracyFloor?: number;
   /**
    * Skip the alert when the verdict population (matched + divergent)
-   * is below this threshold - we don't want to alert on a single
+   * is below this threshold — we don't want to alert on a single
    * unlucky divergent row in a quiet tenant.
    */
   readonly minSamples?: number;

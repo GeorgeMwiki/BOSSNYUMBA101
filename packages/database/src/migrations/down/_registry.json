@@ -141,9 +141,16 @@
       "envs": ["dev", "staging"]
     },
     {
+      "up": "0283_maintenance_tasks_toolbox.sql",
+      "down": "down/0283_down_maintenance_tasks_toolbox.sql",
+      "reverses": "CREATE TABLE maintenance_tasks + maintenance_toolbox_talks + CHECK constraints + RLS",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
+    },
+    {
       "up": "0284_maintenance_tasks_toolbox.sql",
       "down": "down/0284_down_maintenance_tasks_toolbox.sql",
-      "reverses": "CREATE TABLE maintenance_tasks + maintenance_toolbox_talks + CHECK constraints + RLS (renumbered from 0283 — slot taken by 0283_oauth_action_approvals.sql sibling port)",
+      "reverses": "CREATE TABLE maintenance_tasks + maintenance_toolbox_talks + CHECK constraints + RLS (renumbered from 0283 — slot taken by 0283_oauth_action_approvals.sql sibling port; effectively idempotent due to IF NOT EXISTS)",
       "dataLoss": true,
       "envs": ["dev", "staging"]
     }

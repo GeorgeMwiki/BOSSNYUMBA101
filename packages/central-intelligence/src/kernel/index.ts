@@ -686,3 +686,13 @@ export {
  * orchestrator routes `power_tool.<id>` calls through.
  */
 export * as powerTools from './power-tools/index.js';
+
+/**
+ * Autonomy — Mr. Mwikila's autonomous-MD framework. Owner-defined
+ * delegation tiers (T0..T3), per-category defaults, and the six
+ * inviolable rails (kill-switch / family-target / non-domestic
+ * currency / envelope-exceeded / capex-over-envelope / eviction
+ * autonomy refused) every autonomous handler must clear before
+ * touching state.
+ */
+export * as autonomy from './autonomy/index.js';

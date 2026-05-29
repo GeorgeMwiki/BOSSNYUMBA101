@@ -1,5 +1,5 @@
 /**
- * Calibration tracker - Wave CLOSED-LOOP.
+ * Calibration tracker — Wave CLOSED-LOOP (real-estate).
  *
  * Computes the per-tenant calibration score from outcome_predictions +
  * outcome_reconciliations. Pure adapter: the DB port is injected so
@@ -15,8 +15,11 @@
  *     per band so the cockpit can show whether high-confidence
  *     predictions actually land better than low-confidence ones.
  *
- * The tracker NEVER mutates rows - it is read-only over the telemetry
+ * The tracker NEVER mutates rows — it is read-only over the telemetry
  * tables. The alerter (alerter.ts) is the only writer in this package.
+ *
+ * Ported from Borjie services/api-gateway/src/services/calibration-
+ * monitor/tracker.ts.
  */
 
 import { sql } from 'drizzle-orm';
@@ -24,7 +27,7 @@ import type {
   CalibrationCurvePoint,
   CalibrationScore,
   CalibrationScoreInput,
-} from './types';
+} from './types.js';
 
 interface DbLike {
   execute(query: unknown): Promise<unknown>;
@@ -55,7 +58,7 @@ interface ReconciliationSample {
 }
 
 function rowToSample(r: Record<string, unknown>): ReconciliationSample | null {
-  const status = typeof r.status === 'string' ? r.status : null;
+  const status = typeof r['status'] === 'string' ? r['status'] : null;
   if (
     status !== 'matched' &&
     status !== 'divergent' &&
@@ -66,8 +69,8 @@ function rowToSample(r: Record<string, unknown>): ReconciliationSample | null {
   }
   return {
     status,
-    confidence: toNumber(r.prediction_confidence),
-    drift: toNumber(r.drift_score),
+    confidence: toNumber(r['prediction_confidence']),
+    drift: toNumber(r['drift_score']),
   };
 }
 
@@ -85,10 +88,10 @@ function bandFor(confidence: number): { lower: number; upper: number } {
 function buildCurve(
   samples: readonly ReconciliationSample[],
 ): readonly CalibrationCurvePoint[] {
-  // Initialise 5 fixed bands so the curve shape stays stable even with
-  // few samples.
-  const bands: Map<string, { lower: number; upper: number; total: number; matched: number }> =
-    new Map();
+  const bands: Map<
+    string,
+    { lower: number; upper: number; total: number; matched: number }
+  > = new Map();
   for (let i = 0; i < Math.round(1 / CURVE_BAND_WIDTH); i += 1) {
     const lower = Number((i * CURVE_BAND_WIDTH).toFixed(2));
     const upper = Number(((i + 1) * CURVE_BAND_WIDTH).toFixed(2));
@@ -109,7 +112,8 @@ function buildCurve(
         confidenceLower: b.lower,
         confidenceUpper: b.upper,
         count: b.total,
-        matchedFraction: b.total === 0 ? 0 : Number((b.matched / b.total).toFixed(4)),
+        matchedFraction:
+          b.total === 0 ? 0 : Number((b.matched / b.total).toFixed(4)),
       }),
     ),
   );
@@ -121,7 +125,9 @@ export interface CalibrationTrackerOptions {
 }
 
 export interface CalibrationTracker {
-  getCalibrationScore(input: CalibrationScoreInput): Promise<CalibrationScore>;
+  getCalibrationScore(
+    input: CalibrationScoreInput,
+  ): Promise<CalibrationScore>;
 }
 
 export function createCalibrationTracker(
@@ -143,10 +149,6 @@ export function createCalibrationTracker(
       const samples: ReconciliationSample[] = [];
       let predictedCount = 0;
       try {
-        // Pull predictions + their reconciliations (LEFT JOIN so we
-        // also count predictions whose horizon has not yet elapsed -
-        // they contribute to `predictedCount` but not to any of the
-        // verdict buckets).
         const res = await options.db.execute(sql`
           SELECT p.prediction_confidence,
                  COALESCE(r.status, NULL)        AS status,
@@ -169,7 +171,6 @@ export function createCalibrationTracker(
           if (sample) samples.push(sample);
         }
       } catch {
-        // Degraded mode - return the empty-state envelope.
         return Object.freeze({
           tenantId: input.tenantId,
           sinceDays,
@@ -226,9 +227,8 @@ export function createCalibrationTracker(
   };
 }
 
-// Re-export the types so callers only need one import.
 export type {
   CalibrationCurvePoint,
   CalibrationScore,
   CalibrationScoreInput,
-} from './types';
+} from './types.js';

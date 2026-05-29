@@ -1,50 +1,34 @@
 /**
- * Brain tool: `property.calibration.score`.
+ * Brain tool: `bossnyumba.calibration.score`.
  *
- * Lets the owner ask Mr. Mwikila "did your last N recommendations
- * work?" and lets the brain itself self-check before making a
- * confidence claim. The tool reads outcome_predictions +
- * outcome_reconciliations through the calibration-tracker port.
+ * Wave CLOSED-LOOP (real-estate). Lets the owner ask Mr. Mwikila
+ * "did your last N recommendations work?" and lets the brain itself
+ * self-check before making a confidence claim. The tool reads
+ * outcome_predictions + outcome_reconciliations through the
+ * calibration-tracker port.
  *
  * Returns the matched / divergent / undetermined / expired breakdown
- * plus accuracy + mean drift + a per-confidence-band curve. Read-only
- * (isWrite: false on the persona descriptor side).
+ * plus accuracy + mean drift + a per-confidence-band curve. Read-only.
  *
- * Local-typed: the canonical `@bossnyumba/ai-copilot` ToolHandler /
- * ToolExecutionContext / ToolExecutionResult signatures are mirrored
- * structurally here so the brain agent can pick up the tool without
- * a hard package dependency.
+ * Ported from Borjie services/api-gateway/src/services/calibration-
+ * monitor/brain-tool.ts. Real-estate retailored: tool id +
+ * description switched to BossNyumba namespace + property-management
+ * action prefixes.
  */
 
+import type {
+  ToolHandler,
+  ToolExecutionContext,
+  ToolExecutionResult,
+} from '@bossnyumba/ai-copilot';
 import type { CalibrationTracker } from './tracker.js';
-
-export interface ToolExecutionContext {
-  readonly tenant: { readonly tenantId: string };
-}
-
-export interface ToolExecutionResult {
-  readonly ok: boolean;
-  readonly data?: unknown;
-  readonly evidenceSummary?: string;
-  readonly error?: string;
-}
-
-export interface ToolHandler {
-  readonly name: string;
-  readonly description: string;
-  readonly parameters: Record<string, unknown>;
-  execute(
-    params: Record<string, unknown>,
-    context: ToolExecutionContext,
-  ): Promise<ToolExecutionResult>;
-}
 
 export interface CalibrationScoreToolDeps {
   readonly tracker: CalibrationTracker;
 }
 
 export interface CalibrationScoreTool extends ToolHandler {
-  readonly name: 'property.calibration.score';
+  readonly name: 'bossnyumba.calibration.score';
 }
 
 const PARAMETER_SCHEMA: Record<string, unknown> = Object.freeze({
@@ -63,7 +47,7 @@ const PARAMETER_SCHEMA: Record<string, unknown> = Object.freeze({
     actionKindPrefix: {
       type: 'string',
       description:
-        'Optional prefix filter on action_kind (e.g. "property.lease.").',
+        'Optional prefix filter on action_kind (e.g. "rent.", "lease.", "maintenance.").',
     },
   },
 });
@@ -72,7 +56,7 @@ export function buildCalibrationScoreTool(
   deps: CalibrationScoreToolDeps,
 ): CalibrationScoreTool {
   return {
-    name: 'property.calibration.score',
+    name: 'bossnyumba.calibration.score',
     description:
       'Mr. Mwikila self-check: return the proportion of recent predictions that matched the observed outcome. Use when the owner asks "did your recommendations work" or before quoting a confidence number, so the reply reflects measured accuracy not vibes.',
     parameters: PARAMETER_SCHEMA,
@@ -80,12 +64,12 @@ export function buildCalibrationScoreTool(
       params: Record<string, unknown>,
       context: ToolExecutionContext,
     ): Promise<ToolExecutionResult> {
-      const sinceDaysRaw = params.sinceDays;
+      const sinceDaysRaw = params['sinceDays'];
       const sinceDays =
         typeof sinceDaysRaw === 'number' && Number.isFinite(sinceDaysRaw)
           ? Math.max(1, Math.min(365, Math.round(sinceDaysRaw)))
           : 30;
-      const actorKindRaw = params.actorKind;
+      const actorKindRaw = params['actorKind'];
       const actorKindFilter =
         actorKindRaw === 'brain' ||
         actorKindRaw === 'owner' ||
@@ -93,7 +77,7 @@ export function buildCalibrationScoreTool(
         actorKindRaw === 'external'
           ? (actorKindRaw as 'brain' | 'owner' | 'agent' | 'external')
           : undefined;
-      const actionKindPrefixRaw = params.actionKindPrefix;
+      const actionKindPrefixRaw = params['actionKindPrefix'];
       const actionKindPrefix =
         typeof actionKindPrefixRaw === 'string' &&
         actionKindPrefixRaw.length > 0

@@ -1,5 +1,9 @@
 /**
- * Decision Journal — shared types.
+ * Decision Journal — shared types (real-estate retailored).
+ *
+ * Port from Borjie decision-journal/types.ts. Domain-agnostic apart
+ * from the `observedValue` currency field (was `observedValueTzs` —
+ * multi-currency portfolios required currency tracking).
  *
  * Three append-only, hash-chained tables back this service:
  *   decisions          chosen value + alternatives + rationale + scope
@@ -83,9 +87,6 @@ export interface RecordDecisionInput {
   readonly provenance?: DecisionProvenance;
 }
 
-/**
- * Decision row as returned by the recorder. Immutable.
- */
 export interface RecordedDecision {
   readonly id: string;
   readonly tenantId: string;
@@ -109,13 +110,16 @@ export interface RecordedDecision {
 }
 
 /**
- * Inputs accepted by `recordOutcome`.
+ * Inputs accepted by `recordOutcome`. `observedValue` is currency-
+ * aware via `observedCurrency` so multi-currency portfolios (TZS / KES
+ * / USD / EUR) feed the outcomes correctly.
  */
 export interface RecordOutcomeInput {
   readonly tenantId: string;
   readonly decisionId: string;
   readonly outcomeSummary: string;
-  readonly observedValueTzs?: number | null;
+  readonly observedValue?: number | null;
+  readonly observedCurrency?: string;
   readonly observedAt?: string;
   readonly retrospectiveGrade: RetrospectiveGrade;
   readonly learnings?: string | null;
@@ -127,7 +131,8 @@ export interface RecordedOutcome {
   readonly tenantId: string;
   readonly decisionId: string;
   readonly outcomeSummary: string;
-  readonly observedValueTzs: number | null;
+  readonly observedValue: number | null;
+  readonly observedCurrency: string;
   readonly observedAt: string;
   readonly retrospectiveGrade: RetrospectiveGrade;
   readonly learnings: string | null;
@@ -155,8 +160,7 @@ export interface RecordedLink {
 }
 
 /**
- * Error raised when an input fails validation. Carries a stable code
- * so the caller can branch on it without parsing the message.
+ * Error raised when an input fails validation.
  */
 export class DecisionRecorderError extends Error {
   readonly code:
