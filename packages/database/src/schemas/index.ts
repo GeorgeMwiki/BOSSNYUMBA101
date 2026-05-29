@@ -520,3 +520,14 @@ export * from './corpus-doc-uploads.schema.js';
 export * from './request-for-applications.schema.js';
 export * from './move-in-out-condition-reports.schema.js';
 export * from './maintenance-tasks.schema.js';
+
+// ─── COMPANY-BRAIN wave (migrations 0285-0286) ─────────────────────────────
+//   - intelligence_corpus_chunks  : pgvector-backed brain memory store
+//                                    (global + per-tenant chunks).
+//   - entity_index                : (tenant, kind, id) registry with
+//                                    semantic embedding + tags + summary.
+//   - entity_cross_references     : typed (source -> target) edges for
+//                                    one-hop knowledge-graph traversal.
+// All tenant-scoped via the canonical `app.current_tenant_id` GUC.
+export * from './intelligence-corpus.schema.js';
+export * from './entity-index.schema.js';

@@ -117,6 +117,45 @@ import aiCostsRouter from './routes/ai-costs.router';
 // Wave 12 — metrics / observability snapshot
 import { metricsRouter } from './routes/metrics.router';
 import { createMetricsMiddleware } from './observability/metrics-middleware';
+// M-1 (2026-05-29) realtime latency telemetry (ported from Borjie RT-3).
+//   POST /api/v1/metrics/realtime-latency — SSE clients post measurements.
+//   GET  /api/v1/observability/realtime    — owner cockpit reads P50/P95/P99.
+import { realtimeLatencyRouter } from './routes/metrics/realtime-latency.hono';
+import { observabilityRealtimeRouter } from './routes/observability/realtime.hono';
+// G1-B (2026-05-29) field staff hero card surface — mobile workforce
+// app posts/reads these to render the home card (estate manager,
+// maintenance tech, security, leasing agent).
+//   GET    /api/v1/field/staff/me
+//   GET    /api/v1/field/staff/tasks/next
+//   POST   /api/v1/field/staff/tasks/:id/complete
+//   POST   /api/v1/field/staff/help-requests
+import { fieldStaffRouter } from './routes/field/staff.hono';
+// G1-A (2026-05-29) regulator DSR flow — jurisdiction-aware DSR intake
+// across regulator_jurisdictions catalogue rows.
+//   GET    /api/v1/regulator/dsr/jurisdictions
+//   GET    /api/v1/regulator/dsr/jurisdictions/:slug
+//   POST   /api/v1/regulator/dsr/requests
+//   GET    /api/v1/regulator/dsr/requests
+//   GET    /api/v1/regulator/dsr/requests/:id
+//   POST   /api/v1/regulator/dsr/requests/:id/dispatch-export
+import { regulatorDsrRouter } from './routes/regulator/dsr.hono';
+// G1-C (2026-05-29) Mr. Mwikila autonomous-MD inbox + delegation matrix.
+//   GET    /api/v1/owner/mwikila-inbox            paginated inbox
+//   GET    /api/v1/owner/mwikila-inbox/delegation-matrix    12 × T0-T3 matrix
+//   POST   /api/v1/owner/mwikila-inbox/:id/approve|deny|reverse
+import { mwikilaInboxRouter } from './routes/owner/mwikila-inbox.hono';
+// G1-D (2026-05-29) marketplace listings + applications — direct-DB
+// alternative to the service-port marketplace.router; reads/writes
+// against marketplace_listings + ai_audit_chain.
+//   POST   /api/v1/marketplace/listings
+//   GET    /api/v1/marketplace/listings/mine
+//   GET    /api/v1/marketplace/listings/nearby?lat&lng[&km=]
+//   PATCH  /api/v1/marketplace/listings/:id
+//   POST   /api/v1/marketplace/listings/:id/applications
+import { marketplaceListingsRouter } from './routes/marketplace/listings.hono';
+// G2-B (2026-05-29) well-known capability + MCP discovery (stub
+// manifest — see well-known-bossnyumba.hono.ts for the contract).
+import { createWellKnownBossNyumbaRouter } from './routes/well-known-bossnyumba.hono';
 // Central Command Phase A C4 — Sensorium / Brain Skin event ingestion.
 // Receives batched 14-event sensory payloads from the client-side bus.
 import sensoriumRouter from './routes/sensorium.router';
@@ -840,6 +879,33 @@ api.route('/dsar', createDsarRouter());
 api.route('/ai-costs', aiCostsRouter);
 // Wave 12 — metrics snapshot for SystemHealth page
 api.route('/metrics', metricsRouter);
+// M-1 — realtime latency telemetry. The metrics POST is colocated under
+// /metrics; the aggregate GET sits under /observability so the cockpit
+// widget reads from a "read-only stats" surface, not a write endpoint.
+api.route('/metrics', realtimeLatencyRouter);
+api.route('/observability', observabilityRealtimeRouter);
+// G1-B — field staff hero card. Backs the mobile workforce home card
+// for property managers / maintenance / leasing agents / security
+// officers. All four endpoints are auth + tenant scoped via the
+// router's internal authMiddleware + databaseMiddleware.
+api.route('/field/staff', fieldStaffRouter);
+// G1-A — regulator DSR flow. Jurisdiction-aware Data Subject Request
+// intake + dispatch. Reads/writes against regulator_jurisdictions
+// catalogue and audits via ai_audit_chain. The actual export pipeline
+// remains the dsar router; this surface stamps the regulator envelope.
+api.route('/regulator/dsr', regulatorDsrRouter);
+// G1-C — Mr. Mwikila autonomous-MD inbox + delegation matrix. Backs
+// the owner cockpit's "Acting on your behalf" panel and the
+// per-category × T0-T3 delegation policy screen.
+api.route('/owner/mwikila-inbox', mwikilaInboxRouter);
+// G1-D — marketplace listings + applications. Direct-DB rental
+// marketplace surface for the buyer-mobile + owner-portal. Mounts at
+// /marketplace-direct so it does not collide with the existing
+// service-port /marketplace router; route names inside this scope
+// follow the launch-closure plan (listings/mine, listings/nearby,
+// listings/:id/applications). Owner-portal swaps to this surface as
+// the composition root wires a Postgres marketplace adapter.
+api.route('/marketplace-direct', marketplaceListingsRouter);
 // Central Command Phase A C4 — Sensorium / Brain Skin. POST /sensorium/events
 // receives batched sensory payloads from the client-side 14-event bus.
 api.route('/sensorium', sensoriumRouter);
@@ -868,6 +934,16 @@ api.route('/mcp', mcpRouter);
 // .well-known/ path would require mounting at the express root; this variant
 // is still discoverable by A2A clients that follow our OpenAPI spec).
 api.route('/.well-known/agent.json', agentCardRouter);
+// G2-B — BossNyumba capability manifest + MCP discovery doc. Mounts at
+// the api root so the URLs match the public well-known contract
+// (/.well-known/bossnyumba-capabilities.json + /.well-known/mcp.json).
+// The manifest body is the inline stub from
+// routes/well-known-bossnyumba.hono.ts; when a dedicated
+// @bossnyumba/mcp-server-bossnyumba package ships, swap to its
+// buildManifest() call.
+api.route('/', createWellKnownBossNyumbaRouter({
+  publicBaseUrl: process.env.PUBLIC_BASE_URL ?? 'http://localhost:4001',
+}));
 // Wave 11 — public marketing (Mr. Mwikila, unauthenticated) + AI workflow engine
 api.route('/public', publicMarketingRouter);
 // BossNyumba locale-toggle re-translation — see routes/translate.hono.ts.

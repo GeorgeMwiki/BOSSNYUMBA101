@@ -1,0 +1,14 @@
+BEGIN;
+DROP INDEX IF EXISTS entity_cross_references_relationship_idx;
+DROP INDEX IF EXISTS entity_cross_references_reverse_idx;
+DROP INDEX IF EXISTS entity_cross_references_forward_idx;
+DROP TABLE IF EXISTS entity_cross_references;
+DROP INDEX IF EXISTS entity_index_embedding_hnsw_idx;
+DROP INDEX IF EXISTS entity_index_lifecycle_idx;
+DROP INDEX IF EXISTS entity_index_tags_gin_idx;
+DROP INDEX IF EXISTS entity_index_recent_idx;
+DROP INDEX IF EXISTS entity_index_natural_key_idx;
+DROP TABLE IF EXISTS entity_index;
+DROP TYPE IF EXISTS entity_cross_ref_relationship;
+DROP TYPE IF EXISTS entity_lifecycle_stage;
+COMMIT;

@@ -183,10 +183,10 @@ publicApp.post('/device/code', async (c) => {
 
   const verificationUri = VERIFICATION_URI;
   const verificationUriComplete = `${VERIFICATION_URI}?code=${encodeURIComponent(userCode)}`;
-  moduleLogger.info(
-    { clientId: parsed.data.client_id, scopes },
-    'oauth.device.code.issued',
-  );
+  moduleLogger.info('oauth.device.code.issued', {
+    clientId: parsed.data.client_id,
+    scopes,
+  });
   return c.json(
     {
       device_code: deviceCode,
@@ -319,7 +319,7 @@ publicApp.post('/token', async (c) => {
   }
   // status === 'approved'
   if (!row.tenantId || !row.userId) {
-    moduleLogger.error({ deviceCode: row.deviceCode }, 'oauth.token: approved row missing tenant/user');
+    moduleLogger.error('oauth.token: approved row missing tenant/user', { deviceCode: row.deviceCode });
     return c.json(
       { error: 'server_error', error_description: 'Approved grant missing tenant/user binding' },
       500,
@@ -352,7 +352,7 @@ publicApp.post('/token', async (c) => {
       },
     });
   } catch (err) {
-    moduleLogger.warn({ err }, 'oauth.token.issued: audit append failed');
+    moduleLogger.warn('oauth.token.issued: audit append failed', { err: err instanceof Error ? err.message : String(err) });
   }
   return c.json(
     {
@@ -402,7 +402,7 @@ publicApp.post('/revoke', async (c) => {
         details: { clientId: row.clientId, source: 'revoke-endpoint' },
       });
     } catch (err) {
-      moduleLogger.warn({ err }, 'oauth.token.revoked: audit append failed');
+      moduleLogger.warn('oauth.token.revoked: audit append failed', { err: err instanceof Error ? err.message : String(err) });
     }
   }
   return c.json({}, 200);
@@ -472,7 +472,7 @@ ownerApp.post('/device/approve', async (c) => {
       },
     });
   } catch (err) {
-    moduleLogger.warn({ err }, 'oauth.device.approved: audit append failed');
+    moduleLogger.warn('oauth.device.approved: audit append failed', { err: err instanceof Error ? err.message : String(err) });
   }
   return c.json({ success: true, approved: true }, 200);
 });
@@ -519,7 +519,7 @@ ownerApp.post('/device/deny', async (c) => {
       },
     });
   } catch (err) {
-    moduleLogger.warn({ err }, 'oauth.device.denied: audit append failed');
+    moduleLogger.warn('oauth.device.denied: audit append failed', { err: err instanceof Error ? err.message : String(err) });
   }
   return c.json({ success: true, denied: true }, 200);
 });
@@ -578,7 +578,7 @@ ownerApp.post('/agent-tokens/:id/revoke', async (c) => {
       details: { clientId: row.clientId, source: 'owner-ui' },
     });
   } catch (err) {
-    moduleLogger.warn({ err }, 'oauth.token.revoked: audit append failed (owner-ui)');
+    moduleLogger.warn('oauth.token.revoked: audit append failed (owner-ui)', { err: err instanceof Error ? err.message : String(err) });
   }
   return c.json({ success: true }, 200);
 });
