@@ -106,3 +106,37 @@ export type {
   SeedPort,
   SeedResult,
 } from './seeds.js';
+
+// ── Capabilities (RT-1 / CSA-1 / JA-3) ───────────────────────────────
+// Ported from Borjie — real-estate retailored. Provides the canonical
+// capability registry (REASONING GUIDELINES, NOT SCRIPTS) consumed by
+// the brain-tools capability tools, marketing chat, and brain-teach
+// disclosure logic.
+export {
+  CAPABILITY_REGISTRY,
+  CAPABILITY_COUNT,
+  CAPABILITY_TOPIC,
+  CAPABILITY_VISIBILITY,
+  CAPABILITY_JURISDICTION_OVERRIDES,
+  CapabilityEntrySchema,
+  exampleReasoningTrace,
+  getCapabilityById,
+  getCapabilityOverride,
+  hasJurisdictionOverrides,
+  isDisclosable,
+  listCapabilitiesByTopic,
+  listCapabilitiesByVisibility,
+  listCapabilitiesWithOverrides,
+  listDisclosableCapabilities,
+  parseCapabilityEntry,
+  reasoningHint,
+  resolveCapabilityForJurisdiction,
+} from './capabilities/index.js';
+
+export type {
+  BilingualString,
+  CapabilityEntry,
+  CapabilityJurisdictionOverride,
+  CapabilityTopic,
+  CapabilityVisibility,
+} from './capabilities/index.js';
