@@ -58,6 +58,11 @@ import { REASON_STRATEGIZE_TOOLS } from './reason-strategize-tool.js';
 // disclosure + signed condition reports). Real-estate retailoring of
 // Borjie's owner-tools.ts + owner-estate-tools.ts + companion catalogs.
 import { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
+// PT-B — Manager persona tools (25 tools covering assign / dispatch /
+// contractor engagement / move-in/out / security-deposit assessment /
+// daily report / handoff notes). Real-estate retailoring of Borjie's
+// manager-tools.ts.
+import { MANAGER_TOOLS } from './manager-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -91,6 +96,7 @@ export function buildPersonaToolHandlers(
       JURISDICTION_TOOLS,
       REASON_STRATEGIZE_TOOLS,
       OWNER_PROPERTY_TOOLS,
+      MANAGER_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -125,6 +131,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       JURISDICTION_TOOLS,
       REASON_STRATEGIZE_TOOLS,
       OWNER_PROPERTY_TOOLS,
+      MANAGER_TOOLS,
     ],
     undefined,
   );
@@ -180,3 +187,4 @@ export {
   reasonStrategizeTool,
 } from './reason-strategize-tool.js';
 export { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
+export { MANAGER_TOOLS } from './manager-tools.js';
