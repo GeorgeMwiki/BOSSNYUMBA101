@@ -153,6 +153,9 @@ import { mwikilaInboxRouter } from './routes/owner/mwikila-inbox.hono';
 //   PATCH  /api/v1/marketplace/listings/:id
 //   POST   /api/v1/marketplace/listings/:id/applications
 import { marketplaceListingsRouter } from './routes/marketplace/listings.hono';
+// G2-B (2026-05-29) well-known capability + MCP discovery (stub
+// manifest — see well-known-bossnyumba.hono.ts for the contract).
+import { createWellKnownBossNyumbaRouter } from './routes/well-known-bossnyumba.hono';
 // Central Command Phase A C4 — Sensorium / Brain Skin event ingestion.
 // Receives batched 14-event sensory payloads from the client-side bus.
 import sensoriumRouter from './routes/sensorium.router';
@@ -931,6 +934,16 @@ api.route('/mcp', mcpRouter);
 // .well-known/ path would require mounting at the express root; this variant
 // is still discoverable by A2A clients that follow our OpenAPI spec).
 api.route('/.well-known/agent.json', agentCardRouter);
+// G2-B — BossNyumba capability manifest + MCP discovery doc. Mounts at
+// the api root so the URLs match the public well-known contract
+// (/.well-known/bossnyumba-capabilities.json + /.well-known/mcp.json).
+// The manifest body is the inline stub from
+// routes/well-known-bossnyumba.hono.ts; when a dedicated
+// @bossnyumba/mcp-server-bossnyumba package ships, swap to its
+// buildManifest() call.
+api.route('/', createWellKnownBossNyumbaRouter({
+  publicBaseUrl: process.env.PUBLIC_BASE_URL ?? 'http://localhost:4001',
+}));
 // Wave 11 — public marketing (Mr. Mwikila, unauthenticated) + AI workflow engine
 api.route('/public', publicMarketingRouter);
 // BossNyumba locale-toggle re-translation — see routes/translate.hono.ts.
