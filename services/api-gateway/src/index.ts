@@ -125,6 +125,9 @@ import sensoriumRouter from './routes/sensorium.router';
 // notifications / state-mutations / wake-trigger events from the
 // brain. Tenant-scoped via JWT (NEVER via query/body).
 import crossPortalSubscribeRouter from './routes/cross-portal-subscribe.router';
+// Roadmap R6 — cockpit SSE pulse stream. Fans `publishCockpitEvent`
+// bus emissions out to the owner / manager / staff cockpits.
+import cockpitStreamRouter from './routes/cockpit-stream.hono';
 // Central Command Phase B B6 — Liveblocks 3.0 rooms auth (token mint).
 import liveblocksAuthRouter from './routes/liveblocks-auth.router';
 // Central Command Phase B B3 — Inngest durable-execution webhook. Receives
@@ -848,6 +851,13 @@ api.route('/sensorium', sensoriumRouter);
 // notifications + state-mutations + wake-triggers to ANY logged-in
 // user, scoped to their JWT tenantId.
 api.route('/cross-portal', crossPortalSubscribeRouter);
+// Roadmap R6 — Cockpit SSE pulse. GET /cockpit/stream multiplexes
+// every cockpit-event kind onto a single per-tenant SSE channel
+// (decision.recorded, reminder.fired, opportunity.scan_completed,
+// risk.changed, staff.shift_event, compliance.deadline_approaching,
+// rent_payout.initiated, etc.). Tenant-scoped via JWT — clients
+// cannot pass a tenant id.
+api.route('/cockpit', cockpitStreamRouter);
 // Central Command Phase B B6 — Liveblocks 3.0 rooms auth. POST
 // /realtime/auth mints session tokens scoped to caller's tenantId.
 api.route('/realtime', liveblocksAuthRouter);
