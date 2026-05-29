@@ -122,6 +122,14 @@ import { createMetricsMiddleware } from './observability/metrics-middleware';
 //   GET  /api/v1/observability/realtime    — owner cockpit reads P50/P95/P99.
 import { realtimeLatencyRouter } from './routes/metrics/realtime-latency.hono';
 import { observabilityRealtimeRouter } from './routes/observability/realtime.hono';
+// G1-B (2026-05-29) field staff hero card surface — mobile workforce
+// app posts/reads these to render the home card (estate manager,
+// maintenance tech, security, leasing agent).
+//   GET    /api/v1/field/staff/me
+//   GET    /api/v1/field/staff/tasks/next
+//   POST   /api/v1/field/staff/tasks/:id/complete
+//   POST   /api/v1/field/staff/help-requests
+import { fieldStaffRouter } from './routes/field/staff.hono';
 // Central Command Phase A C4 — Sensorium / Brain Skin event ingestion.
 // Receives batched 14-event sensory payloads from the client-side bus.
 import sensoriumRouter from './routes/sensorium.router';
@@ -850,6 +858,11 @@ api.route('/metrics', metricsRouter);
 // widget reads from a "read-only stats" surface, not a write endpoint.
 api.route('/metrics', realtimeLatencyRouter);
 api.route('/observability', observabilityRealtimeRouter);
+// G1-B — field staff hero card. Backs the mobile workforce home card
+// for property managers / maintenance / leasing agents / security
+// officers. All four endpoints are auth + tenant scoped via the
+// router's internal authMiddleware + databaseMiddleware.
+api.route('/field/staff', fieldStaffRouter);
 // Central Command Phase A C4 — Sensorium / Brain Skin. POST /sensorium/events
 // receives batched sensory payloads from the client-side 14-event bus.
 api.route('/sensorium', sensoriumRouter);
