@@ -85,8 +85,8 @@ describe('R11 — RFB i18n bundle', () => {
   })
 
   it('translate() returns the right copy per language', () => {
-    expect(translate('en', 'rfb.title')).toBe('Request for Bids')
-    expect(translate('sw', 'rfb.title')).toBe('Ombi la Bei')
+    expect(translate('en', 'rfb.title')).toBe('Request for Application')
+    expect(translate('sw', 'rfb.title')).toBe('Ombi la Tangazo')
   })
 
   it('translate() interpolates {km} into radius_value', () => {
