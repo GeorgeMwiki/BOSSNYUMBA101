@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
  * HomeChat tests — focused on the data contract + routing tables that
- * power the chat-first home tab. The workforce-mobile vitest config
+ * power the chat-first home tab. The staff-mobile vitest config
  * runs in node (no React Native renderer, no JSX runtime), so each
  * test exercises the layer that is testable cold:
  *

@@ -8,7 +8,7 @@ import {
   type BuiltInPersonaSpec,
   type PowerTier,
   type WorkforceRoleId
-} from '@bossnyumba/persona-runtime'
+} from '@/_persona-shim'
 
 const sessionStore: ActivePersonaSessionStore = createInMemorySessionStore()
 

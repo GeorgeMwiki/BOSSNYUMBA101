@@ -45,7 +45,7 @@ function restoreEnv(snapshot: SavedEnv): void {
   }
 }
 
-describe('workforce-mobile sentry wrapper init safety', () => {
+describe('staff-mobile sentry wrapper init safety', () => {
   let saved: SavedEnv;
 
   beforeEach(() => {
@@ -78,8 +78,8 @@ describe('workforce-mobile sentry wrapper init safety', () => {
 
   it('startTransaction returns a callable end() function', () => {
     delete process.env.EXPO_PUBLIC_SENTRY_DSN;
-    const tx = startTransaction('workforce-mobile.test');
-    expect(tx.name).toBe('workforce-mobile.test');
+    const tx = startTransaction('staff-mobile.test');
+    expect(tx.name).toBe('staff-mobile.test');
     expect(() => tx.end()).not.toThrow();
   });
 

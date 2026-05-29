@@ -20,7 +20,7 @@ import {
   defaultEnabledTabIdsForRole,
   type WorkforceRoleId,
   type WorkforceTabSpec
-} from '@bossnyumba/persona-runtime'
+} from '@/_persona-shim'
 import { request } from '../../../src/api/client'
 import { useAuth } from '../../../src/auth/useAuth'
 import { useI18n } from '../../../src/i18n/useI18n'

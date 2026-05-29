@@ -1,5 +1,5 @@
 /**
- * Context breadcrumbs (K-D) — workforce-mobile.
+ * Context breadcrumbs (K-D) — staff-mobile.
  *
  * Mobile equivalent of apps/owner-web/src/lib/context-breadcrumbs.ts.
  * Same wire payload + same serializer so the brain side reads one
@@ -9,7 +9,7 @@
  *   Tab "Mwadui" → Shift "10:00-18:00" → Task "Pre-shift inspection"
  *
  * Pure helpers. The React state holder lives alongside the chat
- * composer in `apps/workforce-mobile/src/chat/`.
+ * composer in `apps/staff-mobile/src/chat/`.
  */
 
 export interface ContextCrumb {

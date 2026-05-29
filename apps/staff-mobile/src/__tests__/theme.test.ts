@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { colors } from '../theme/colors'
 import { workforcePersonaSpec } from '../roles/persona'
 
-describe('workforce-mobile theme tokens', () => {
+describe('staff-mobile theme tokens', () => {
   it('exposes the BossNyumba ore-green primary palette', () => {
     expect(colors.gold).toMatch(/^#[0-9A-Fa-f]{6}$/)
     expect(colors.earth900).toMatch(/^#[0-9A-Fa-f]{6}$/)
@@ -19,7 +19,7 @@ describe('workforce-mobile theme tokens', () => {
   })
 })
 
-describe('workforce-mobile persona wiring', () => {
+describe('staff-mobile persona wiring', () => {
   it('resolves owner persona spec from @bossnyumba/persona-runtime', () => {
     const spec = workforcePersonaSpec('owner')
     expect(spec.slug).toBe('T1_owner_strategist')

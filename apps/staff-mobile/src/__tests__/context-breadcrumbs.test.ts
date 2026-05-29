@@ -1,5 +1,5 @@
 /**
- * context-breadcrumbs (K-D) tests — workforce-mobile.
+ * context-breadcrumbs (K-D) tests — staff-mobile.
  *
  * Validates the LIFO stack helpers + wire-payload serialiser. Pure
  * functions, so we exercise them without any React Native mount.

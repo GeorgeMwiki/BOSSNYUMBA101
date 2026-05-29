@@ -1,7 +1,7 @@
 /**
- * ChatSkeleton — assistant-bubble shimmer placeholder for buyer-mobile.
+ * ChatSkeleton — assistant-bubble shimmer placeholder for tenant-mobile.
  *
- * Mirrors the workforce-mobile component but uses the buyer-mobile
+ * Mirrors the workforce-mobile component but uses the tenant-mobile
  * palette (forest/cream). Surfaces 200 ms after a user sends if no
  * stream chunk has landed yet, and stays visible for a minimum of
  * 200 ms before tokens replace it (R7 §11.3 timing table — NN/G).

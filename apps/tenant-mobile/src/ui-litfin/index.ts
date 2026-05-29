@@ -1,5 +1,5 @@
 /**
- * LitFin DNA — React Native primitives for buyer-mobile.
+ * LitFin DNA — React Native primitives for tenant-mobile.
  *
  * These mirror the LitFin web design system (rounded-3xl cards,
  * gold-on-navy palette, Syne/Inter type ramp, pill buttons, gold-top

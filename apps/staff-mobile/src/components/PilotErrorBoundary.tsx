@@ -1,6 +1,6 @@
 /**
  * Pilot error boundary — catches every uncaught React error in the
- * workforce-mobile tree, reports it via the pilot Sentry wrapper, and
+ * staff-mobile tree, reports it via the pilot Sentry wrapper, and
  * shows a Swahili-first "tap to retry" surface so the pilot never sees
  * a white screen.
  *

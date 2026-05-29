@@ -18,8 +18,8 @@ export interface DocumentExplorerProps {
 }
 
 /**
- * DocumentExplorer (buyer-mobile) — single-doc chat + preview. Mirrors
- * the workforce-mobile component contract but uses the buyer-mobile
+ * DocumentExplorer (tenant-mobile) — single-doc chat + preview. Mirrors
+ * the workforce-mobile component contract but uses the tenant-mobile
  * theme tokens.
  */
 export function DocumentExplorer({ document, initialPrompt }: DocumentExplorerProps) {

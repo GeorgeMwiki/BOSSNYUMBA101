@@ -3,7 +3,7 @@
  *
  * Mirrors the backend surface in
  * `services/api-gateway/src/routes/marketplace/rfb.hono.ts`. The
- * buyer-mobile only needs the buyer-side endpoints (create, list_mine,
+ * tenant-mobile only needs the buyer-side endpoints (create, list_mine,
  * cancel) — the seller `nearby` + respond endpoints surface in the
  * future seller-mobile / owner cockpit.
  *

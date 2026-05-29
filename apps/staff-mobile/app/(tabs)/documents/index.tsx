@@ -11,7 +11,7 @@ import { colors } from '../../../src/theme/colors'
 import { fontSize, spacing } from '../../../src/theme/spacing'
 
 /**
- * W-DOC-INTEL-01 — Documents tab (workforce-mobile).
+ * W-DOC-INTEL-01 — Documents tab (staff-mobile).
  *
  * Lists every document the worker / owner / manager has uploaded across
  * sessions, with kind + ingestion-status chips. Tapping a row navigates

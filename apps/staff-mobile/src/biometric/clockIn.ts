@@ -1,5 +1,5 @@
 /**
- * clockIn — workforce-mobile biometric clock-in wrapper.
+ * clockIn — staff-mobile biometric clock-in wrapper.
  *
  * Wraps `expo-local-authentication` + the existing `useFingerprintSign`
  * hook into a single call site for the workforce mobile clock-in flow.

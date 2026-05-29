@@ -8,10 +8,10 @@ import {
 } from '../documents/types'
 
 /**
- * Pure-data tests for the buyer-mobile documents module.
+ * Pure-data tests for the tenant-mobile documents module.
  */
 
-describe('buyer-mobile documents.validateUpload', () => {
+describe('tenant-mobile documents.validateUpload', () => {
   it('rejects an empty filename', () => {
     const r = validateUpload({ fileName: '', mimeType: 'application/pdf', fileSize: 1024 })
     expect(r.ok).toBe(false)
@@ -58,7 +58,7 @@ describe('buyer-mobile documents.validateUpload', () => {
   })
 })
 
-describe('buyer-mobile documents.label helpers', () => {
+describe('tenant-mobile documents.label helpers', () => {
   it('returns English status labels', () => {
     expect(ingestionStatusLabel('queued')).toBe('Queued')
     expect(ingestionStatusLabel('processing')).toBe('Processing')
@@ -75,7 +75,7 @@ describe('buyer-mobile documents.label helpers', () => {
   })
 })
 
-describe('buyer-mobile documents.ALLOWED_MIMES', () => {
+describe('tenant-mobile documents.ALLOWED_MIMES', () => {
   it('covers PDF + DOCX + image mimes', () => {
     expect(ALLOWED_MIMES).toContain('application/pdf')
     expect(ALLOWED_MIMES).toContain('image/jpeg')

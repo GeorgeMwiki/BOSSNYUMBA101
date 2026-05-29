@@ -1,5 +1,5 @@
 /**
- * Push-token registration for workforce-mobile.
+ * Push-token registration for staff-mobile.
  *
  * Wired into AuthProvider so every successful Supabase sign-in (re-)posts
  * the device's Expo push token to the api-gateway, which stores it in
@@ -60,7 +60,7 @@ interface ExpoDeviceModule {
   readonly isDevice: boolean
 }
 
-const APP_NAME = 'workforce-mobile' as const
+const APP_NAME = 'staff-mobile' as const
 
 let lastRegisteredToken: string | null = null
 

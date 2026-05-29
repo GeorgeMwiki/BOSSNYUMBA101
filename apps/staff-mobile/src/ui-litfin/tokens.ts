@@ -1,5 +1,5 @@
 /**
- * LitFin DNA design tokens for workforce-mobile — RN-native rebrand
+ * LitFin DNA design tokens for staff-mobile — RN-native rebrand
  * of the LitFin Tailwind tokens for direct use in StyleSheet.
  *
  * Pulls from the existing app palette (`src/theme/colors.ts`) so colour

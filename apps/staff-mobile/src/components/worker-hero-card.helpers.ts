@@ -1,7 +1,7 @@
 /**
  * Pure helpers for WorkerHeroCard / WorkerHomeHero.
  *
- * Lives in a `.ts` (no JSX) so the workforce-mobile vitest config (node
+ * Lives in a `.ts` (no JSX) so the staff-mobile vitest config (node
  * runtime, no JSX runtime) can import and exercise the logic without
  * pulling in React Native. The presentational `WorkerHeroCard` component
  * re-exports these helpers so consumers have one canonical entry point.

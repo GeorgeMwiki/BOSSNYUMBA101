@@ -1,5 +1,5 @@
 /**
- * SendButton — buyer-mobile, Doherty-compliant.
+ * SendButton — tenant-mobile, Doherty-compliant.
  *
  * Press-down scales to 0.95 in 80 ms then springs through 1.05 → 1.0
  * (R7 §4.2). A 10 ms Vibration pulse fires on press as a tactile ack

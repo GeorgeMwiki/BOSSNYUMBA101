@@ -1,5 +1,5 @@
 /**
- * Context breadcrumbs (K-D) — buyer-mobile.
+ * Context breadcrumbs (K-D) — tenant-mobile.
  *
  * Mobile equivalent of apps/owner-web/src/lib/context-breadcrumbs.ts.
  * Same wire payload + same serializer so the brain side reads one

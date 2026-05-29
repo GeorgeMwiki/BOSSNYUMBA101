@@ -54,7 +54,7 @@ import { RequestTabChangeSheet } from '../components/RequestTabChangeSheet'
 import {
   slashCommandsForPersona,
   type WorkforceRoleId
-} from '@bossnyumba/persona-runtime'
+} from '@/_persona-shim'
 import { streamBrainTurn, type BrainStreamEvent } from './brainTurn'
 import {
   applySelection,

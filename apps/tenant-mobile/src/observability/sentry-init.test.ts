@@ -43,7 +43,7 @@ vi.mock('@bossnyumba/observability', () => {
 });
 
 import {
-  initBuyerMobileSentry,
+  initTenantMobileSentry,
   captureError,
   captureMessage,
   startTransaction,
@@ -79,7 +79,7 @@ function restoreEnv(snapshot: SavedEnv): void {
   }
 }
 
-describe('buyer-mobile sentry wrapper init safety', () => {
+describe('tenant-mobile sentry wrapper init safety', () => {
   let saved: SavedEnv;
 
   beforeEach(() => {
@@ -91,16 +91,16 @@ describe('buyer-mobile sentry wrapper init safety', () => {
   });
 
   it('exports the wrapper surface without crashing', () => {
-    expect(typeof initBuyerMobileSentry).toBe('function');
+    expect(typeof initTenantMobileSentry).toBe('function');
     expect(typeof captureError).toBe('function');
     expect(typeof captureMessage).toBe('function');
     expect(typeof startTransaction).toBe('function');
     expect(typeof setPilotUser).toBe('function');
   });
 
-  it('initBuyerMobileSentry resolves without throwing when DSN is unset', async () => {
+  it('initTenantMobileSentry resolves without throwing when DSN is unset', async () => {
     delete process.env.EXPO_PUBLIC_SENTRY_DSN;
-    await expect(initBuyerMobileSentry()).resolves.toBeUndefined();
+    await expect(initTenantMobileSentry()).resolves.toBeUndefined();
   });
 
   it('captureError tolerates any error shape under no-DSN path', () => {
@@ -112,15 +112,15 @@ describe('buyer-mobile sentry wrapper init safety', () => {
 
   it('startTransaction returns a callable end() function', () => {
     delete process.env.EXPO_PUBLIC_SENTRY_DSN;
-    const tx = startTransaction('buyer-mobile.test');
-    expect(tx.name).toBe('buyer-mobile.test');
+    const tx = startTransaction('tenant-mobile.test');
+    expect(tx.name).toBe('tenant-mobile.test');
     expect(() => tx.end()).not.toThrow();
   });
 
   it('respects pilot-mode flag without throwing', async () => {
     process.env.EXPO_PUBLIC_BOSSNYUMBA_PILOT_MODE = '1';
     delete process.env.EXPO_PUBLIC_SENTRY_DSN;
-    await expect(initBuyerMobileSentry()).resolves.toBeUndefined();
+    await expect(initTenantMobileSentry()).resolves.toBeUndefined();
   });
 
   it('setPilotUser does not throw when called before init', () => {

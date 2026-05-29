@@ -1,5 +1,5 @@
 /**
- * BossNyumba workforce-mobile palette — LitFin-aligned (2026-05).
+ * BossNyumba staff-mobile palette — LitFin-aligned (2026-05).
  *
  * Same direction as buyer-mobile + marketing + owner-web:
  * "Midnight Slate Ledger with Warm-Gold Signal." Navy-slate dark

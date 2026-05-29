@@ -2,7 +2,7 @@
  * Buyer-mobile wire client for /api/v1/mining/document-intelligence.
  *
  * Builds on the apiFetch helper so the bearer token + envelope handling
- * stay identical to every other buyer-mobile API call.
+ * stay identical to every other tenant-mobile API call.
  */
 
 import { apiFetch } from '@/api/client'

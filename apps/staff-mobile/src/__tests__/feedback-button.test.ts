@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 /**
  * Tests for FeedbackButton contract — bilingual labels + submission shape.
  *
- * Why no React-Native render? The workforce-mobile vitest config mirrors
+ * Why no React-Native render? The staff-mobile vitest config mirrors
  * the project's node-only environment (see preview-banner.test.ts and
  * theme.test.ts). We therefore exercise the component's data contract:
  *

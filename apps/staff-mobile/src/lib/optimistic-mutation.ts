@@ -1,5 +1,5 @@
 /**
- * RT-2 — Optimistic mutation helper for workforce-mobile.
+ * RT-2 — Optimistic mutation helper for staff-mobile.
  *
  * Mirror of `apps/owner-web/src/lib/optimistic-mutation.ts` — same
  * TanStack Query v5 onMutate / onError / onSettled pattern, no

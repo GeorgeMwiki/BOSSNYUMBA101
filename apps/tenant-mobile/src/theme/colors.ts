@@ -1,4 +1,4 @@
-// BossNyumba buyer-mobile palette — LitFin-aligned (2026-05).
+// BossNyumba tenant-mobile palette — LitFin-aligned (2026-05).
 //
 // Direction: "Midnight Slate Ledger with Warm-Gold Signal" — matches
 // the marketing site, owner-web, and admin-web. Dark-navy slate

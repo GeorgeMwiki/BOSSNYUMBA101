@@ -1,5 +1,5 @@
 /**
- * brainTurn — SSE-first POST /api/v1/brain/turn client for buyer-mobile.
+ * brainTurn — SSE-first POST /api/v1/brain/turn client for tenant-mobile.
  *
  * `postBrainTurn` is preserved verbatim so the existing schema-driven
  * home-chat tests keep passing. The chat surface consumes

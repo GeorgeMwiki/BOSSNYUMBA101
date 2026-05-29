@@ -1,5 +1,5 @@
 /**
- * Supabase client for the workforce-mobile app.
+ * Supabase client for the staff-mobile app.
  *
  * Required env vars (set in `eas.json` env block per profile, mirrored to
  * `app.json` extras at build time, or set as `EXPO_PUBLIC_*` for `expo start`):
@@ -44,7 +44,7 @@ function assertConfig(cfg: RuntimeConfig): void {
     throw new Error(
       'Supabase config missing — set EXPO_PUBLIC_SUPABASE_URL and ' +
         'EXPO_PUBLIC_SUPABASE_ANON_KEY (env) or expo.extra.supabaseUrl / ' +
-        'expo.extra.supabaseAnonKey (app.json) before launching workforce-mobile.'
+        'expo.extra.supabaseAnonKey (app.json) before launching staff-mobile.'
     )
   }
 }

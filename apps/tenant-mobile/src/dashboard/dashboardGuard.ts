@@ -1,7 +1,7 @@
 import type { BuyerUser } from '@/types/auth'
 
 /**
- * Pure routing guard for the Dashibodi tab. The buyer-mobile session model
+ * Pure routing guard for the Dashibodi tab. The tenant-mobile session model
  * has no cross-tenant scenario in the app shell — the Supabase JWT binds
  * `app.current_tenant_id` server-side — but we still verify locally that
  * the active session belongs to the expected tenant (the one bound to the

@@ -6,7 +6,7 @@ import type { ProvenanceEnvelope } from '@/types/listing'
  * Buyer-mobile equivalent of the owner-web ProvenancePill.
  *
  * Implements principle 5 of the Chat-as-OS Bidirectional Parity
- * Manifesto: every bid / inquiry / kyc row in a buyer-mobile list
+ * Manifesto: every bid / inquiry / kyc row in a tenant-mobile list
  * surfaces the path that produced it. Chat-created rows get a small
  * gold pill; tapping opens the originating chat session.
  *

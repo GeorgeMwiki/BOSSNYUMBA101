@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
  * Buyer-mobile SSE streaming + R7 polish tests.
  *
  * Coverage:
- *   • `parseFrame` decodes every SSE event kind buyer-mobile cares about.
+ *   • `parseFrame` decodes every SSE event kind tenant-mobile cares about.
  *   • `chatTurns` reducers stay immutable and obey the state machine.
  *   • `streamBrainTurn` opens the channel, forwards events, resolves on
  *     `done`, rejects on terminal `error` / missing auth.

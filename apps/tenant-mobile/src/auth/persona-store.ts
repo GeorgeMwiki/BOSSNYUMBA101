@@ -1,5 +1,5 @@
 /**
- * Persistent persona session store for buyer-mobile.
+ * Persistent persona session store for tenant-mobile.
  *
  * Backed by @react-native-async-storage/async-storage so that the
  * active persona binding survives app reload, cold start, and OS
@@ -15,7 +15,7 @@
  * contract — neither throws — and keeps the UI thread unblocked.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import type { ActivePersonaSessionStore } from '@bossnyumba/persona-runtime'
+import type { ActivePersonaSessionStore } from '@/_persona-shim'
 
 const KEY_PREFIX = 'bossnyumba.persona'
 

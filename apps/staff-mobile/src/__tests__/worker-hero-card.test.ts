@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 /**
  * WorkerHeroCard helper tests — Roadmap R5.
  *
- * The workforce-mobile vitest config runs in node with no JSX runtime.
+ * The staff-mobile vitest config runs in node with no JSX runtime.
  * The pure helpers live in `worker-hero-card.helpers.ts` (no JSX) so
  * they can be imported and exercised cold. The `.tsx` renderer is
  * covered by the Playwright E2E pack that runs against the Expo dev

@@ -13,7 +13,7 @@
 import {
   WORKFORCE_TAB_CATALOG,
   type WorkforceTabSpec
-} from '@bossnyumba/persona-runtime'
+} from '@/_persona-shim'
 
 const TAB_CHANGE_VERBS_EN: ReadonlyArray<string> = [
   'add',

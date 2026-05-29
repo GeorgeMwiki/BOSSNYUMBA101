@@ -1,5 +1,5 @@
 /**
- * FailureDot — buyer-mobile equivalent of the workforce-mobile dot.
+ * FailureDot — tenant-mobile equivalent of the workforce-mobile dot.
  *
  * Per R7 §6.1 we never use a banner for a transient send failure. The
  * failed user bubble carries a 12 px red dot whose tap re-fires the

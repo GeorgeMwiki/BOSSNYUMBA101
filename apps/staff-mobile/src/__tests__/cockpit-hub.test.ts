@@ -1,7 +1,7 @@
 /**
  * Tests for the owner-mobile cockpit hub hook (Roadmap R7).
  *
- * Vitest in workforce-mobile runs Node-only — we lock the pure-logic
+ * Vitest in staff-mobile runs Node-only — we lock the pure-logic
  * helpers (`isEmptyCockpit`) and the fallback shape so the screen has
  * provable empty-state behaviour even before the api-gateway
  * `/cockpit/hub` endpoint lands.

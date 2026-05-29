@@ -4,7 +4,7 @@
  * Bottom-sheet a worker opens from "Profile → Request a tab change".
  * The brain also opens this auto-magically when it detects intent like
  * "I need access to dispatch" — the request is NEVER auto-applied;
- * Mr. Mwikila (the MD persona on workforce-mobile) routes it to the
+ * Mr. Mwikila (the MD persona on staff-mobile) routes it to the
  * owner portal for review.
  *
  * Submits to POST /api/v1/workforce/tab-change-requests.
@@ -25,7 +25,7 @@ import {
   listTabsAllowedForRole,
   type WorkforceRoleId,
   type WorkforceTabSpec
-} from '@bossnyumba/persona-runtime'
+} from '@/_persona-shim'
 import { request } from '../api/client'
 import { useI18n } from '../i18n/useI18n'
 import { tokens } from '../ui-litfin'

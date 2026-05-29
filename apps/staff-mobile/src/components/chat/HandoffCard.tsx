@@ -1,5 +1,5 @@
 /**
- * HandoffCard — workforce-mobile renderer for the K-A cross-role handoff.
+ * HandoffCard — staff-mobile renderer for the K-A cross-role handoff.
  *
  * Mirrors apps/owner-web/src/components/chat/HandoffCard.tsx so the
  * worker (or manager) sees the same data model in their mobile chat

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
  * Tests for the Dashibodi (Dashboard) tab — role-aware composition of the
  * existing partial sub-components plus inline slot fillers.
  *
- * The workforce-mobile vitest config is Node-only with no React Native
+ * The staff-mobile vitest config is Node-only with no React Native
  * renderer (see preview-banner.test.ts and theme.test.ts patterns). We
  * therefore mock react-native + expo-router + the data-fetching layer at
  * the module boundary and exercise the wiring contracts each role-component

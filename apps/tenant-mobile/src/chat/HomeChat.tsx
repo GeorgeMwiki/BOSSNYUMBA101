@@ -1,5 +1,5 @@
 /**
- * HomeChat — buyer-mobile chat surface with SSE streaming + R7 polish.
+ * HomeChat — tenant-mobile chat surface with SSE streaming + R7 polish.
  *
  * R7 changes baked in:
  *   • The permanent `ActivityIndicator` is gone (was an anti-pattern
@@ -49,7 +49,7 @@ import { greet as timeAwareGreeting } from '@/ui-litfin'
 import {
   BUYER_SLASH_COMMANDS,
   slashCommandsForPersona
-} from '@bossnyumba/persona-runtime'
+} from '@/_persona-shim'
 import { streamBrainTurn, type BrainStreamEvent } from './brainTurn'
 import { ChatSkeleton } from './ChatSkeleton'
 import { FailureDot } from './FailureDot'

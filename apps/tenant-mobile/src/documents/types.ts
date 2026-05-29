@@ -1,5 +1,5 @@
 /**
- * Wire-level types shared between the buyer-mobile documents UI and the
+ * Wire-level types shared between the tenant-mobile documents UI and the
  * `/api/v1/mining/document-intelligence` endpoint family.
  *
  * Mirrors `apps/workforce-mobile/src/documents/types.ts` so the two

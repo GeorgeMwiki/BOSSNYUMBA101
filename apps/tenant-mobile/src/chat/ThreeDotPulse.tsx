@@ -1,5 +1,5 @@
 /**
- * ThreeDotPulse — buyer-mobile typing indicator.
+ * ThreeDotPulse — tenant-mobile typing indicator.
  *
  * Replaces the permanent `ActivityIndicator` flagged in R7 §6.2 as an
  * anti-pattern (a spinner that appears on press communicates "we have

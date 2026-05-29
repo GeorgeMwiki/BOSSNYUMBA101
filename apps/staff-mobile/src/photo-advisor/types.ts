@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 /**
- * Wire contract for the workforce-mobile Photo Advisor feature.
+ * Wire contract for the staff-mobile Photo Advisor feature.
  *
  * The feature captures a single still image plus optional natural-language
  * prompt plus optional GPS fix, and asks the Brain to return contextual

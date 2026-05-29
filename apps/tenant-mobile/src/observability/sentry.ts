@@ -3,23 +3,58 @@
  *
  * Twin of `apps/workforce-mobile/src/observability/sentry.ts` — they
  * stay parallel by design so one doc patch updates both. The only
- * difference is `service: 'buyer-mobile'` on every log line and the
+ * difference is `service: 'tenant-mobile'` on every log line and the
  * `screen` context-key naming.
  *
  * Upgrade path
  * ────────────
  * Install `@sentry/react-native`, set `EXPO_PUBLIC_SENTRY_DSN`, then
- * call `initBuyerMobileSentry()` from the app entry.
+ * call `initTenantMobileSentry()` from the app entry.
  */
 
 import {
   createLogger,
-  buildPilotEventContext,
-  resolvePilotSampleRate,
   type Logger,
 } from '@bossnyumba/observability';
 
-const SERVICE_NAME = 'buyer-mobile';
+const SERVICE_NAME = 'tenant-mobile';
+
+/**
+ * Local pilot-context helpers.
+ *
+ * These are deliberately inlined (vs. importing from
+ * `@bossnyumba/observability`) so the mobile bundle does not pull in
+ * the Node-only telemetry surface. Once the workforce-mobile twin
+ * sibling lands the same helpers under the platform package, swap
+ * these calls back out.
+ */
+interface PilotEventBundle {
+  readonly tags: Readonly<Record<string, string | undefined>>;
+  readonly extra: Readonly<Record<string, unknown>>;
+}
+
+interface PilotEventInput {
+  readonly pilotUserId?: string;
+  readonly pilotCohort?: string;
+  readonly replaySessionId?: string;
+}
+
+function buildPilotEventContext(input: PilotEventInput): PilotEventBundle {
+  const tags: Record<string, string | undefined> = {};
+  const extra: Record<string, unknown> = {};
+  if (input.pilotUserId) tags['pilotUserId'] = input.pilotUserId;
+  if (input.pilotCohort) tags['pilotCohort'] = input.pilotCohort;
+  if (input.replaySessionId) extra['replaySessionId'] = input.replaySessionId;
+  return { tags, extra };
+}
+
+function resolvePilotSampleRate(): number {
+  const raw = process.env['EXPO_PUBLIC_PILOT_SAMPLE_RATE'];
+  if (!raw) return 0.1;
+  const parsed = Number.parseFloat(raw);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) return 0.1;
+  return parsed;
+}
 
 interface SentryLikeScope {
   setTag: (key: string, value: string) => void;
@@ -88,24 +123,24 @@ async function loadSentry(): Promise<SentryLike | null> {
   return null;
 }
 
-export interface BuyerMobileSentryConfig {
+export interface TenantMobileSentryConfig {
   readonly dsn?: string;
   readonly environment?: string;
   readonly release?: string;
 }
 
-export async function initBuyerMobileSentry(
-  config: BuyerMobileSentryConfig = {},
+export async function initTenantMobileSentry(
+  config: TenantMobileSentryConfig = {},
 ): Promise<void> {
   const dsn = config.dsn ?? process.env.EXPO_PUBLIC_SENTRY_DSN ?? '';
   if (!dsn) {
-    state.logger.info('buyer-mobile Sentry disabled — no DSN configured');
+    state.logger.info('tenant-mobile Sentry disabled — no DSN configured');
     return;
   }
   const sentry = await loadSentry();
   if (!sentry) {
     state.logger.info(
-      'buyer-mobile Sentry disabled — @sentry/* package not installed',
+      'tenant-mobile Sentry disabled — @sentry/* package not installed',
     );
     return;
   }
@@ -115,7 +150,7 @@ export async function initBuyerMobileSentry(
     release: config.release ?? process.env.EXPO_PUBLIC_GIT_SHA,
     tracesSampleRate: resolvePilotSampleRate(),
   });
-  state.logger.info('buyer-mobile Sentry initialised', {
+  state.logger.info('tenant-mobile Sentry initialised', {
     pilotSampleRate: resolvePilotSampleRate(),
   });
 }
@@ -214,7 +249,7 @@ export function startTransaction(name: string): PilotTransaction {
     name,
     end: () => {
       const durationMs = Date.now() - startedAt;
-      state.logger.debug('buyer-mobile transaction', { name, durationMs });
+      state.logger.debug('tenant-mobile transaction', { name, durationMs });
     },
   };
 }

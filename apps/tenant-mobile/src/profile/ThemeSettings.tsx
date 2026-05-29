@@ -12,7 +12,7 @@ import { colors } from '@/theme/colors'
 import { useTheme, type Theme } from '@/theme/ThemeProvider'
 
 /**
- * ThemeSettings — segmented three-state control for the buyer-mobile
+ * ThemeSettings — segmented three-state control for the tenant-mobile
  * profile screen. Functionally identical to the workforce app's
  * control so off-takers and miners flipping between apps land in the
  * same UX.

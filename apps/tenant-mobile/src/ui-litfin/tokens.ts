@@ -1,5 +1,5 @@
 /**
- * LitFin DNA design tokens for buyer-mobile — RN-native rebrand of
+ * LitFin DNA design tokens for tenant-mobile — RN-native rebrand of
  * the LitFin Tailwind tokens for direct use in StyleSheet.
  *
  * Single-sources from the existing buyer palette so colour truth

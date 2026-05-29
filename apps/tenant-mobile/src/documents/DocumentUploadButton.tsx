@@ -14,7 +14,7 @@ export interface DocumentUploadButtonProps {
 }
 
 /**
- * DocumentUploadButton (buyer-mobile) — paperclip / button used by the
+ * DocumentUploadButton (tenant-mobile) — paperclip / button used by the
  * Documents tab and the chat composer. See workforce-mobile sibling for
  * the canonical contract.
  */

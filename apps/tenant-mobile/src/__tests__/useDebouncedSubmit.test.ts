@@ -1,7 +1,7 @@
 /**
  * useDebouncedSubmit tests — G4 robustness-audit closure (2026-05-29).
  *
- * Pure-logic harness — buyer-mobile's vitest config runs in Node with
+ * Pure-logic harness — tenant-mobile's vitest config runs in Node with
  * no React DOM / test-renderer, so we drive the hook via a minimal
  * React shim that lets us hold a ref across "renders" and call the
  * returned callback directly. The behaviour we want to pin is the

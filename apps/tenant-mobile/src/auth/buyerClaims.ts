@@ -1,5 +1,5 @@
 /**
- * Lightweight JWT claim parser for buyer-mobile — base64-decodes the middle
+ * Lightweight JWT claim parser for tenant-mobile — base64-decodes the middle
  * segment of a Supabase access token to extract the `phone` claim and the
  * BossNyumba-domain custom claims (`app_metadata.tenant_id`).
  *

@@ -22,7 +22,7 @@ import { tokens } from '../../src/ui-litfin'
 import { useWorkforceTabConfig } from '../../src/lib/hooks/useWorkforceTabConfig'
 
 /**
- * Map catalog tab ids → file-system screen names. The workforce-mobile
+ * Map catalog tab ids → file-system screen names. The staff-mobile
  * app currently ships these expo-router files: home, dashboard, field,
  * decisions, cash, people, sites, docs, ask, documents. We alias the
  * richer catalog ids onto them so the tab strip can be driven entirely

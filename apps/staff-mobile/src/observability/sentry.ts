@@ -53,14 +53,14 @@ function createLogger(_config: unknown): Logger {
       // Console is the only universally-available sink on-device until
       // a real transport (pino-react-native, Sentry) is wired in.
       // eslint-disable-next-line no-console
-      (console[level] ?? console.log)(`[workforce-mobile] ${msg}`, ...rest);
+      (console[level] ?? console.log)(`[staff-mobile] ${msg}`, ...rest);
     };
   return Object.freeze({
     info: sink('info'),
     warn: sink('warn'),
     error: (msg: string, err?: Error, ctx?: Readonly<Record<string, unknown>>) => {
       // eslint-disable-next-line no-console
-      console.error(`[workforce-mobile] ${msg}`, err, ctx);
+      console.error(`[staff-mobile] ${msg}`, err, ctx);
     },
     debug: sink('debug'),
   });
@@ -103,7 +103,7 @@ function resolvePilotSampleRate(): number {
   return isPilotMode() ? 1.0 : 0.1;
 }
 
-const SERVICE_NAME = 'workforce-mobile';
+const SERVICE_NAME = 'staff-mobile';
 
 interface SentryLikeScope {
   setTag: (key: string, value: string) => void;
@@ -185,13 +185,13 @@ export async function initWorkforceMobileSentry(
 ): Promise<void> {
   const dsn = config.dsn ?? process.env.EXPO_PUBLIC_SENTRY_DSN ?? '';
   if (!dsn) {
-    state.logger.info('workforce-mobile Sentry disabled — no DSN configured');
+    state.logger.info('staff-mobile Sentry disabled — no DSN configured');
     return;
   }
   const sentry = await loadSentry();
   if (!sentry) {
     state.logger.info(
-      'workforce-mobile Sentry disabled — @sentry/* package not installed',
+      'staff-mobile Sentry disabled — @sentry/* package not installed',
     );
     return;
   }
@@ -201,7 +201,7 @@ export async function initWorkforceMobileSentry(
     release: config.release ?? process.env.EXPO_PUBLIC_GIT_SHA,
     tracesSampleRate: resolvePilotSampleRate(),
   });
-  state.logger.info('workforce-mobile Sentry initialised', {
+  state.logger.info('staff-mobile Sentry initialised', {
     pilotSampleRate: resolvePilotSampleRate(),
   });
 }
@@ -305,7 +305,7 @@ export function startTransaction(name: string): PilotTransaction {
     name,
     end: () => {
       const durationMs = Date.now() - startedAt;
-      state.logger.debug('workforce-mobile transaction', { name, durationMs });
+      state.logger.debug('staff-mobile transaction', { name, durationMs });
     },
   };
 }

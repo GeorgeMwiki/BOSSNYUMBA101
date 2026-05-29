@@ -1,5 +1,5 @@
 /**
- * HandoffCard — buyer-mobile renderer for the K-A cross-role handoff.
+ * HandoffCard — tenant-mobile renderer for the K-A cross-role handoff.
  *
  * Mirrors apps/workforce-mobile/src/components/chat/HandoffCard.tsx
  * so the buyer sees the same model when a seller / owner / concierge

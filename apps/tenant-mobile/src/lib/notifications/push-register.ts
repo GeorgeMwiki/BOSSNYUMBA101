@@ -1,5 +1,5 @@
 /**
- * Push-token registration for buyer-mobile.
+ * Push-token registration for tenant-mobile.
  *
  * Wired into `src/auth/session.ts` so every successful Supabase sign-in
  * (re-)posts the device's Expo push token to the api-gateway, which
@@ -48,7 +48,7 @@ interface ExpoDeviceModule {
   readonly isDevice: boolean
 }
 
-const APP_NAME = 'buyer-mobile' as const
+const APP_NAME = 'tenant-mobile' as const
 
 let lastRegisteredToken: string | null = null
 

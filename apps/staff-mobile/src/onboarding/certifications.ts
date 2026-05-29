@@ -3,7 +3,7 @@
  * literal values mirror the `Certification` enum in
  * `@bossnyumba/mining-shift-planner` (packages/mining-shift-planner/src/types.ts)
  * so that downstream OSHA-TZ rule evaluation can consume the captured set
- * verbatim once the planner package is wired into workforce-mobile's
+ * verbatim once the planner package is wired into staff-mobile's
  * dependency graph. Keep this list in sync with the planner package.
  */
 export const CERTIFICATIONS = [

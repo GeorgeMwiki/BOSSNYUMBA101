@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 /**
  * Tests for PreviewBanner — copy + testID contract per kind.
  *
- * The workforce-mobile vitest config runs in a Node environment with no
+ * The staff-mobile vitest config runs in a Node environment with no
  * React Native renderer and no JSX runtime in scope (see vitest.config.ts +
  * theme.test.ts pattern). The component itself relies on the Expo babel
  * preset at app build time; under vitest we can only import the module and

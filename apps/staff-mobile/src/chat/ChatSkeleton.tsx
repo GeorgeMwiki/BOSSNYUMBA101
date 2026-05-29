@@ -6,7 +6,7 @@
  * it (NN/G: a skeleton shown for <500 ms reads as distracting flicker).
  * The shimmer is driven by a single `Animated.Value` looped via the RN
  * core Animated module so we stay off the JS bridge between frames —
- * Reanimated is preferred but the workforce-mobile bundler has it as
+ * Reanimated is preferred but the staff-mobile bundler has it as
  * an optional dep and the chat surface must degrade cleanly.
  */
 import { useEffect, useMemo, useRef } from 'react'

@@ -23,7 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
  *   - System tracking uses RN's `Appearance` + the `useColorScheme`
  *     hook. The provider rebinds whenever the user moves to / from
  *     `system` mode so we never fight the OS once the operator pins.
- *   - Persistence uses AsyncStorage (workforce-mobile + buyer-mobile
+ *   - Persistence uses AsyncStorage (staff-mobile + buyer-mobile
  *     both already depend on it for auth tokens).
  *   - We don't ship a runtime palette here — the existing `colors`
  *     module is the source of truth. This provider's job is purely
