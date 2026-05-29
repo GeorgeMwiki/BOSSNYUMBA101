@@ -52,6 +52,7 @@ export {
   useSectionRegistry,
   useViewportBreakpoint,
   useSwipeNav,
+  useAdaptiveLayout,
   sectionQueryKeys,
   type SectionContextLoader,
   type SectionContextProviderProps,
@@ -61,8 +62,29 @@ export {
   type ViewportBreakpoint,
   type UseSwipeNavArgs,
   type UseSwipeNavResult,
+  type UseAdaptiveLayoutArgs,
   type SectionQueryScope,
 } from './hooks/index.js';
+
+// Adaptive-layout engine — pure-function decideLayout + policies.
+export {
+  ABSTAIN,
+  decideLayout,
+  defaultPolicies,
+  frustrationPolicy,
+  roleMasteryPolicy,
+  recencyPolicy,
+  intentPolicy,
+  type SectionId,
+  type MasteryLevel,
+  type AffectiveProfile,
+  type UserBehaviorPattern,
+  type DetectedIntent,
+  type LayoutContext,
+  type LayoutDecision,
+  type LayoutPreference,
+  type LayoutPolicy,
+} from './lib/adaptive-layout/index.js';
 
 // Components
 export {
