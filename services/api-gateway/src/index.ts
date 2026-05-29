@@ -144,6 +144,15 @@ import { regulatorDsrRouter } from './routes/regulator/dsr.hono';
 //   GET    /api/v1/owner/mwikila-inbox/delegation-matrix    12 × T0-T3 matrix
 //   POST   /api/v1/owner/mwikila-inbox/:id/approve|deny|reverse
 import { mwikilaInboxRouter } from './routes/owner/mwikila-inbox.hono';
+// G1-D (2026-05-29) marketplace listings + applications — direct-DB
+// alternative to the service-port marketplace.router; reads/writes
+// against marketplace_listings + ai_audit_chain.
+//   POST   /api/v1/marketplace/listings
+//   GET    /api/v1/marketplace/listings/mine
+//   GET    /api/v1/marketplace/listings/nearby?lat&lng[&km=]
+//   PATCH  /api/v1/marketplace/listings/:id
+//   POST   /api/v1/marketplace/listings/:id/applications
+import { marketplaceListingsRouter } from './routes/marketplace/listings.hono';
 // Central Command Phase A C4 — Sensorium / Brain Skin event ingestion.
 // Receives batched 14-event sensory payloads from the client-side bus.
 import sensoriumRouter from './routes/sensorium.router';
@@ -886,6 +895,14 @@ api.route('/regulator/dsr', regulatorDsrRouter);
 // the owner cockpit's "Acting on your behalf" panel and the
 // per-category × T0-T3 delegation policy screen.
 api.route('/owner/mwikila-inbox', mwikilaInboxRouter);
+// G1-D — marketplace listings + applications. Direct-DB rental
+// marketplace surface for the buyer-mobile + owner-portal. Mounts at
+// /marketplace-direct so it does not collide with the existing
+// service-port /marketplace router; route names inside this scope
+// follow the launch-closure plan (listings/mine, listings/nearby,
+// listings/:id/applications). Owner-portal swaps to this surface as
+// the composition root wires a Postgres marketplace adapter.
+api.route('/marketplace-direct', marketplaceListingsRouter);
 // Central Command Phase A C4 — Sensorium / Brain Skin. POST /sensorium/events
 // receives batched sensory payloads from the client-side 14-event bus.
 api.route('/sensorium', sensoriumRouter);
