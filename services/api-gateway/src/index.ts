@@ -140,6 +140,7 @@ import sessionReplayRouter from './routes/session-replay.router';
 import mcpRouter, { agentCardRouter } from './routes/mcp.router';
 // Wave 11 — public marketing (Mr. Mwikila), workflows
 import publicMarketingRouter from './routes/public-marketing.router';
+import { translateRouter } from './routes/translate.hono';
 import publicSandboxRouter from './routes/public-sandbox.router';
 import publicLeadsRouter from './routes/public-leads.router';
 // Wave 12 — streaming AI chat (SSE) for all 4 chat surfaces
@@ -869,6 +870,10 @@ api.route('/mcp', mcpRouter);
 api.route('/.well-known/agent.json', agentCardRouter);
 // Wave 11 — public marketing (Mr. Mwikila, unauthenticated) + AI workflow engine
 api.route('/public', publicMarketingRouter);
+// BossNyumba locale-toggle re-translation — see routes/translate.hono.ts.
+// Mounted publicly (no auth) because the widget translates already-visible
+// chat content; cached in Redis with sha256(text+from+to+context) keys.
+api.route('/translate', translateRouter);
 api.route('/public/sandbox', publicSandboxRouter);
 api.route('/public/leads', publicLeadsRouter);
 // Streaming AI chat — POST /api/v1/ai/chat with SSE response

@@ -8,6 +8,11 @@
  * conversation with the floating bubble.
  */
 import type { Language } from '../chat-modes/types';
+// Display identity is locked — see CAPABILITIES_UNIFICATION.md
+// "User-facing identity is locked". Every widget string that surfaces
+// the persona name must source from MR_MWIKILA_CANONICAL_DISPLAY so the
+// chat header, FAB tooltip, and intro greeting never drift.
+import { MR_MWIKILA_CANONICAL_DISPLAY } from '../canonical-display.js';
 
 export type PortalId = 'customer' | 'estate-manager' | 'admin' | 'owner' | 'public';
 
@@ -79,8 +84,8 @@ export interface WidgetStrings {
 }
 
 export const DEFAULT_WIDGET_STRINGS_EN: WidgetStrings = {
-  greet: 'Hi, I am Mr. Mwikila. How can I help with your estate today?',
-  placeholder: 'Ask Mr. Mwikila anything…',
+  greet: `Hi, I am ${MR_MWIKILA_CANONICAL_DISPLAY.name_full}. How can I help with your estate today?`,
+  placeholder: `Ask ${MR_MWIKILA_CANONICAL_DISPLAY.name} anything…`,
   send: 'Send',
   collapse: 'Collapse chat',
   expand: 'Open chat',
@@ -90,7 +95,9 @@ export const DEFAULT_WIDGET_STRINGS_EN: WidgetStrings = {
   languageSwitched: 'Switched to English',
   voiceError: 'Voice input unavailable',
   attachmentAccepted: 'Attachment received',
-  personaName: 'Mr. Mwikila',
+  // The header renders the full canonical identity ("Mr. Mwikila —
+  // Boss Nyumba's AI Property Operations Manager"), not just the name.
+  personaName: MR_MWIKILA_CANONICAL_DISPLAY.name_full,
 };
 
 export const DEFAULT_WIDGET_STRINGS_SW: WidgetStrings = {

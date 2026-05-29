@@ -500,3 +500,23 @@ export * from './conversation-capture.schema.js';
 export * from './module-update-proposals.schema.js';
 export * from './tab-subscriptions.schema.js';
 export * from './tab-event-log.schema.js';
+
+// ─── Borjie port batch (migrations 0274-0283) ──────────────────────────────
+//   - tenants.scale_tier             : T1 single_unit → T5 multi_country
+//   - marketing_pilot_applications   : landlord/PM portfolio onboarding leads
+//   - tenants.rate_limit_*           : per-tenant rate-limit overrides
+//   - regulator_jurisdictions        : real-estate authority catalogue
+//   - onboarding_state               : Day-1 jumpstart gate (1-per-tenant)
+//   - tab_proposals_inbox            : autonomous tab-suggester proposals
+//   - corpus_doc_uploads / summaries : Company Brain ingestion (append-only)
+//   - request_for_applications       : vacancy listings + applicant pipeline
+//   - move_in_out_condition_reports  : bilingual move-in/out narratives
+//   - maintenance_tasks / toolbox    : crew task queue + safety briefings
+export * from './marketing-pilot-applications.schema.js';
+export * from './onboarding-state.schema.js';
+export * from './regulator-jurisdictions.schema.js';
+export * from './tab-proposals-inbox.schema.js';
+export * from './corpus-doc-uploads.schema.js';
+export * from './request-for-applications.schema.js';
+export * from './move-in-out-condition-reports.schema.js';
+export * from './maintenance-tasks.schema.js';
