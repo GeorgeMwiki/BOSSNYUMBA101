@@ -286,7 +286,28 @@ import {
   createAmbientBehaviorObserver,
   createIntelligenceHistorySupervisor,
 } from './composition/background-wiring';
-import { setBrainExtraSkills } from './composition/brain-extensions';
+import {
+  setBrainExtraSkills,
+  appendBossNyumbaPersonaSkills,
+} from './composition/brain-extensions';
+// Persona-aware brain tool catalog wiring — owner (PT-A 42 tools),
+// manager (PT-B 25 tools), staff (PT-C 30 tools), tenant (PT-D 30 tools).
+// Surfaces the 127+ persona-aware brain tools onto every per-tenant
+// Brain via `appendBossNyumbaPersonaSkills(personaHandlers)` once the
+// LoopbackHttpClient + audit-sink have been bound onto the gate.
+import {
+  buildPersonaToolHandlers,
+  type PersonaToolGate,
+} from './composition/brain-tools';
+// Loopback HTTP client — handlers that need a tenant-bound HTTP path
+// (cockpit reads, lease writes, rent payments) get routed through the
+// gateway's own routes so auth + RLS + audit + observability fire on
+// every brain-tool call exactly like a browser request.
+import { createLoopbackHttpClient } from './composition/brain-tools/loopback-http-client';
+// Pino-backed persona-tool audit sink — emits a structured info per
+// WRITE-tool call so every brain decision lands in the standard
+// observability pipeline (no parallel audit path).
+import { createPinoAuditSink } from './composition/brain-tools/audit-sink';
 // Wave-3-int2 — brain↔tab loop composition (Piece L → Piece B handlers).
 import {
   createDispatchRouterWiring,
@@ -610,6 +631,89 @@ try {
   });
   setBrainExtraSkills([orgSkill]);
   logger.info('brain-extensions: org.query_organization skill wired');
+
+  // Persona-aware brain tool catalog — appendBossNyumbaPersonaSkills.
+  // Wires the 127+ persona-aware tools (owner / manager / staff /
+  // tenant) onto the brain extraSkills list so Mr. Mwikila can dispatch
+  // any of them subject to persona ceiling + kill-switch + audit.
+  try {
+    const killSwitchOpen =
+      (
+        (serviceRegistry as unknown as {
+          killSwitch?: { isOpen?: () => boolean };
+        }).killSwitch?.isOpen?.()
+      ) === true;
+    // Bind a loopback HTTP client onto the gate so persona-tool
+    // handlers that do `ctx.httpClient.get/post(...)` reach the
+    // gateway's own routes through the same auth + RLS + observability
+    // path a browser request would take. Without this binding every
+    // handler falls into its `if (!client) return { fake }` defensive
+    // fallback — preferable to crashing the boot path when JWT_SECRET
+    // is absent (kept defensive — chat brain stays alive in degraded
+    // mode without the loopback).
+    const jwtSecret = process.env.JWT_SECRET ?? '';
+    const gatewayPort = Number(process.env.PORT ?? '4001') || 4001;
+    const personaLoopbackClient =
+      jwtSecret.length >= 32
+        ? createLoopbackHttpClient({
+            origin: `http://127.0.0.1:${gatewayPort}`,
+            apiPrefix: '/api/v1',
+            jwtSecret,
+            logger: {
+              warn: (ctx, msg): void =>
+                logger.warn(ctx as object, msg),
+            },
+          })
+        : undefined;
+    if (!personaLoopbackClient) {
+      logger.warn(
+        { jwtSecretLen: jwtSecret.length },
+        'persona-tool loopback HTTP client unbound — JWT_SECRET missing or <32 chars; handlers will continue to use defensive fallbacks',
+      );
+    }
+    // Pino-backed audit sink — emits one structured info per WRITE-tool
+    // call so every brain decision is searchable + alertable in the
+    // standard observability pipeline.
+    const personaAuditSink = createPinoAuditSink(logger);
+    const personaGate: PersonaToolGate = {
+      killSwitchOpen,
+      // The persona slug is resolved from `ToolExecutionContext.actor`
+      // by the orchestrator at dispatch time. Defaults to T1 owner
+      // strategist when actor metadata is missing so the brain's
+      // default surface stays usable in degraded mode.
+      resolvePersonaSlug(ctx): string | undefined {
+        const role = (ctx as { actor?: { role?: string } }).actor?.role;
+        if (role === 'OWNER') return 'T1_owner_strategist';
+        if (role === 'TENANT_ADMIN' || role === 'PLATFORM_ADMIN')
+          return 'T2_admin_strategist';
+        if (role === 'MANAGER') return 'T3_module_manager';
+        if (role === 'EMPLOYEE' || role === 'STAFF' || role === 'WORKER')
+          return 'T4_field_employee';
+        if (role === 'TENANT' || role === 'CUSTOMER' || role === 'BUYER')
+          return 'T5_customer_concierge';
+        return 'T1_owner_strategist';
+      },
+      auditSink: personaAuditSink,
+      ...(personaLoopbackClient && { httpClient: personaLoopbackClient }),
+    };
+    const personaHandlers = buildPersonaToolHandlers(personaGate, {
+      onDuplicate: (toolId) =>
+        logger.warn({ toolId }, 'brain-tools: duplicate descriptor ignored'),
+    });
+    appendBossNyumbaPersonaSkills(personaHandlers);
+    logger.info(
+      {
+        personaToolCount: personaHandlers.length,
+        killSwitchOpen,
+      },
+      'brain-extensions: persona-aware tool catalog wired (PT-A owner / PT-B manager / PT-C staff / PT-D tenant)',
+    );
+  } catch (err) {
+    logger.warn(
+      { err: err instanceof Error ? err.message : String(err) },
+      'brain-extensions: persona-aware tool catalog wiring failed (non-fatal)',
+    );
+  }
 } catch (err) {
   logger.warn(
     { err: err instanceof Error ? err.message : String(err) },
