@@ -53,6 +53,13 @@ import { JURISDICTION_TOOLS } from './jurisdiction-tools.js';
 // 2-4 strategies with pros/cons/confidence, recommended_index, why,
 // downsides, retrospective grade plan).
 import { REASON_STRATEGIZE_TOOLS } from './reason-strategize-tool.js';
+// PT-LH — Lease history chain-of-custody tools (append_step +
+// show_trace). Visible to owner / manager / tenant personas; backed
+// by services/api-gateway/src/services/lease-history/.
+import { LEASE_HISTORY_TOOLS } from './lease-history-tools.js';
+// PT-RP — Owner rent-payout settlement listing. Backed by the L8
+// SettlementOrchestrator (services/api-gateway/src/services/settlement).
+import { RENT_PAYOUT_TOOLS } from './rent-payout-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -85,6 +92,8 @@ export function buildPersonaToolHandlers(
       JURISDICTION_DISCOVERY_TOOLS,
       JURISDICTION_TOOLS,
       REASON_STRATEGIZE_TOOLS,
+      LEASE_HISTORY_TOOLS,
+      RENT_PAYOUT_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -118,6 +127,8 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       JURISDICTION_DISCOVERY_TOOLS,
       JURISDICTION_TOOLS,
       REASON_STRATEGIZE_TOOLS,
+      LEASE_HISTORY_TOOLS,
+      RENT_PAYOUT_TOOLS,
     ],
     undefined,
   );
@@ -172,3 +183,12 @@ export {
   REASON_STRATEGIZE_TOOLS,
   reasonStrategizeTool,
 } from './reason-strategize-tool.js';
+export {
+  LEASE_HISTORY_TOOLS,
+  leaseHistoryAppendStepTool,
+  leaseHistoryShowTraceTool,
+} from './lease-history-tools.js';
+export {
+  RENT_PAYOUT_TOOLS,
+  ownerRentPayoutListMineTool,
+} from './rent-payout-tools.js';
