@@ -117,6 +117,11 @@ import aiCostsRouter from './routes/ai-costs.router';
 // Wave 12 — metrics / observability snapshot
 import { metricsRouter } from './routes/metrics.router';
 import { createMetricsMiddleware } from './observability/metrics-middleware';
+// M-1 (2026-05-29) realtime latency telemetry (ported from Borjie RT-3).
+//   POST /api/v1/metrics/realtime-latency — SSE clients post measurements.
+//   GET  /api/v1/observability/realtime    — owner cockpit reads P50/P95/P99.
+import { realtimeLatencyRouter } from './routes/metrics/realtime-latency.hono';
+import { observabilityRealtimeRouter } from './routes/observability/realtime.hono';
 // Central Command Phase A C4 — Sensorium / Brain Skin event ingestion.
 // Receives batched 14-event sensory payloads from the client-side bus.
 import sensoriumRouter from './routes/sensorium.router';
@@ -840,6 +845,11 @@ api.route('/dsar', createDsarRouter());
 api.route('/ai-costs', aiCostsRouter);
 // Wave 12 — metrics snapshot for SystemHealth page
 api.route('/metrics', metricsRouter);
+// M-1 — realtime latency telemetry. The metrics POST is colocated under
+// /metrics; the aggregate GET sits under /observability so the cockpit
+// widget reads from a "read-only stats" surface, not a write endpoint.
+api.route('/metrics', realtimeLatencyRouter);
+api.route('/observability', observabilityRealtimeRouter);
 // Central Command Phase A C4 — Sensorium / Brain Skin. POST /sensorium/events
 // receives batched sensory payloads from the client-side 14-event bus.
 api.route('/sensorium', sensoriumRouter);
