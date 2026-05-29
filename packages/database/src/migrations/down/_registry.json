@@ -97,6 +97,55 @@
       "reverses": "ADD COLUMNs tenants.rate_limit_max_per_min + ai_rate_limit_max_per_min + token_budget_hourly + 3 CHECK constraints",
       "dataLoss": true,
       "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0277_regulator_jurisdictions.sql",
+      "down": "down/0277_down_regulator_jurisdictions.sql",
+      "reverses": "CREATE TABLE regulator_jurisdictions + ADD COLUMNs tenants.{regulator_set,country_code,primary_currency,default_language} + CHECK constraints + indexes",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0278_onboarding_state.sql",
+      "down": "down/0278_down_onboarding_state.sql",
+      "reverses": "CREATE TABLE onboarding_state + RLS",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0279_tab_proposals_inbox.sql",
+      "down": "down/0279_down_tab_proposals_inbox.sql",
+      "reverses": "CREATE TABLE tab_proposals_inbox + CHECK constraints + RLS",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0280_corpus_doc_uploads.sql",
+      "down": "down/0280_down_corpus_doc_uploads.sql",
+      "reverses": "CREATE TABLE corpus_doc_uploads + corpus_doc_summaries + RLS (append-only memory tables)",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0281_request_for_applications.sql",
+      "down": "down/0281_down_request_for_applications.sql",
+      "reverses": "CREATE TABLE request_for_applications + request_for_application_responses + indexes + RLS",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0282_move_in_out_condition_reports.sql",
+      "down": "down/0282_down_move_in_out_condition_reports.sql",
+      "reverses": "CREATE TABLE move_in_out_condition_reports + CHECK constraints + RLS",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0283_maintenance_tasks_toolbox.sql",
+      "down": "down/0283_down_maintenance_tasks_toolbox.sql",
+      "reverses": "CREATE TABLE maintenance_tasks + maintenance_toolbox_talks + CHECK constraints + RLS",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
     }
   ]
 }
