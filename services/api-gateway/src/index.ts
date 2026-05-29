@@ -139,6 +139,11 @@ import { fieldStaffRouter } from './routes/field/staff.hono';
 //   GET    /api/v1/regulator/dsr/requests/:id
 //   POST   /api/v1/regulator/dsr/requests/:id/dispatch-export
 import { regulatorDsrRouter } from './routes/regulator/dsr.hono';
+// G1-C (2026-05-29) Mr. Mwikila autonomous-MD inbox + delegation matrix.
+//   GET    /api/v1/owner/mwikila-inbox            paginated inbox
+//   GET    /api/v1/owner/mwikila-inbox/delegation-matrix    12 × T0-T3 matrix
+//   POST   /api/v1/owner/mwikila-inbox/:id/approve|deny|reverse
+import { mwikilaInboxRouter } from './routes/owner/mwikila-inbox.hono';
 // Central Command Phase A C4 — Sensorium / Brain Skin event ingestion.
 // Receives batched 14-event sensory payloads from the client-side bus.
 import sensoriumRouter from './routes/sensorium.router';
@@ -877,6 +882,10 @@ api.route('/field/staff', fieldStaffRouter);
 // catalogue and audits via ai_audit_chain. The actual export pipeline
 // remains the dsar router; this surface stamps the regulator envelope.
 api.route('/regulator/dsr', regulatorDsrRouter);
+// G1-C — Mr. Mwikila autonomous-MD inbox + delegation matrix. Backs
+// the owner cockpit's "Acting on your behalf" panel and the
+// per-category × T0-T3 delegation policy screen.
+api.route('/owner/mwikila-inbox', mwikilaInboxRouter);
 // Central Command Phase A C4 — Sensorium / Brain Skin. POST /sensorium/events
 // receives batched sensory payloads from the client-side 14-event bus.
 api.route('/sensorium', sensoriumRouter);
