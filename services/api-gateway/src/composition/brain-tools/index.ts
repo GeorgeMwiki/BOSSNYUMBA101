@@ -53,6 +53,11 @@ import { JURISDICTION_TOOLS } from './jurisdiction-tools.js';
 // 2-4 strategies with pros/cons/confidence, recommended_index, why,
 // downsides, retrospective grade plan).
 import { REASON_STRATEGIZE_TOOLS } from './reason-strategize-tool.js';
+// PT-A — Owner persona property tools (42 tools covering cockpit reads
+// + lease lifecycle + delinquency + payroll + delegation + regulator
+// disclosure + signed condition reports). Real-estate retailoring of
+// Borjie's owner-tools.ts + owner-estate-tools.ts + companion catalogs.
+import { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -85,6 +90,7 @@ export function buildPersonaToolHandlers(
       JURISDICTION_DISCOVERY_TOOLS,
       JURISDICTION_TOOLS,
       REASON_STRATEGIZE_TOOLS,
+      OWNER_PROPERTY_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -118,6 +124,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       JURISDICTION_DISCOVERY_TOOLS,
       JURISDICTION_TOOLS,
       REASON_STRATEGIZE_TOOLS,
+      OWNER_PROPERTY_TOOLS,
     ],
     undefined,
   );
@@ -172,3 +179,4 @@ export {
   REASON_STRATEGIZE_TOOLS,
   reasonStrategizeTool,
 } from './reason-strategize-tool.js';
+export { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
