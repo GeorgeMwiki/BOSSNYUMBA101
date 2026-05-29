@@ -156,6 +156,10 @@ import { marketplaceListingsRouter } from './routes/marketplace/listings.hono';
 // G2-B (2026-05-29) well-known capability + MCP discovery (stub
 // manifest — see well-known-bossnyumba.hono.ts for the contract).
 import { createWellKnownBossNyumbaRouter } from './routes/well-known-bossnyumba.hono';
+// Wave AGENTIC-PLATFORM — OAuth2 device-flow + per-agent access tokens.
+// Powers the MCP / CLI / SDK consumers (Claude Code, Cursor, Windsurf,
+// `bossnyumba` CLI, `@bossnyumba/api-sdk`).
+import { oauthDeviceRouter } from './routes/oauth-device.hono';
 // Central Command Phase A C4 — Sensorium / Brain Skin event ingestion.
 // Receives batched 14-event sensory payloads from the client-side bus.
 import sensoriumRouter from './routes/sensorium.router';
@@ -327,6 +331,8 @@ import { analyticsGrowthRouter } from './routes/owner/analytics-growth.router';
 import { analyticsUsageRouter } from './routes/owner/analytics-usage.router';
 import { billingRouter } from './routes/owner/billing.router';
 import { ownerMessagingRouter } from './routes/owner/owner-messaging.router';
+import { ownerPinnedItemsRouter } from './routes/owner/pinned-items.hono';
+import { savedSearchesRouter } from './routes/owner/saved-searches.hono';
 import { supportRouter } from './routes/owner/support.router';
 import { adminUsersRouter } from './routes/owner/admin-users.router';
 import { buildServices, type ServiceRegistry } from './composition/service-registry';
@@ -1080,6 +1086,15 @@ api.route('/.well-known/agent.json', agentCardRouter);
 api.route('/', createWellKnownBossNyumbaRouter({
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? 'http://localhost:4001',
 }));
+// Wave AGENTIC-PLATFORM — OAuth2 device-flow + per-agent access tokens.
+// PUBLIC endpoints (no auth): /oauth/device/code, /oauth/device/verify,
+// /oauth/device/details, /oauth/token, /oauth/revoke.
+// OWNER-AUTH endpoints (Supabase JWT / session cookie):
+// /oauth/device/approve, /oauth/device/deny, /oauth/agent-tokens.
+// Backed by migration 0282 (oauth_agent_tokens + oauth_device_codes).
+api.route('/oauth', oauthDeviceRouter);
+// DEBUG: probe route to confirm Hono router dispatches at /api/v1/oauth-debug
+api.get('/oauth-debug', (c) => c.json({ ok: true, source: 'inline-debug' }));
 // Wave 11 — public marketing (Mr. Mwikila, unauthenticated) + AI workflow engine
 api.route('/public', publicMarketingRouter);
 // BossNyumba locale-toggle re-translation — see routes/translate.hono.ts.
@@ -1214,6 +1229,11 @@ api.route('/analytics/growth', analyticsGrowthRouter);
 api.route('/analytics/usage', analyticsUsageRouter);
 api.route('/billing', billingRouter);
 api.route('/owner/messaging', ownerMessagingRouter);
+// DIM-B port — pinned items strip (SUPERPOWER ui.bookmark) +
+// owner-defined saved-search alerts (Roadmap R2). Both tenant-scoped
+// via JWT + RLS FORCE (migrations 0293-0294).
+api.route('/owner/pinned-items', ownerPinnedItemsRouter);
+api.route('/owner/saved-searches', savedSearchesRouter);
 api.route('/support', supportRouter);
 api.route('/admin', adminUsersRouter);
 // Unit subdivision + components — Manager-app dependency. Hono mounts
@@ -1339,6 +1359,16 @@ const openApiRouter = createOpenApiRouter({
   ],
 });
 api.route('/', openApiRouter);
+
+// Public capability + MCP discovery — mounted at the express ROOT
+// under /.well-known/ per the RFC spec. PUBLIC (no auth). The same
+// Hono router is also registered above under `/api/v1` (legacy mount)
+// via `api.route('/', createWellKnownBossNyumbaRouter(...))`.
+//   GET /.well-known/bossnyumba-capabilities.json
+//   GET /.well-known/mcp.json
+app.use('/.well-known', handle(createWellKnownBossNyumbaRouter({
+  publicBaseUrl: process.env.PUBLIC_BASE_URL ?? 'http://localhost:4001',
+})));
 
 app.use('/api/v1', handle(api));
 
