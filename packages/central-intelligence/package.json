@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@bossnyumba/brain-llm-router": "workspace:*",
+    "@bossnyumba/owner-os-tabs": "workspace:*",
     "zod": "^3.25.76"
   },
   "optionalDependencies": {

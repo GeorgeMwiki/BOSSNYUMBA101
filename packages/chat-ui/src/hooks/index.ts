@@ -9,3 +9,9 @@ export * from './useChatStream.js';
 export * from './useJarvis.js';
 export * from './useJarvisStream.js';
 export * from './useUserMastery.js';
+// Theory-of-mind affective profile — drives ProactiveHint thresholds.
+export {
+  useAffectiveProfile,
+  type AffectiveProfile,
+  type UseAffectiveProfileOptions,
+} from './useAffectiveProfile.js';
