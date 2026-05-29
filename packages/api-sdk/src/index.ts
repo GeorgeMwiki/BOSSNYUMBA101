@@ -61,3 +61,52 @@ export {
   type JarvisStreamGateVerdict,
   type JarvisStreamUiPart,
 } from './jarvis-stream.js';
+
+// Typed error hierarchy — agents switch on instanceof rather than parse
+// HTTP status codes. Wraps the legacy ApiSdkError class.
+export {
+  BossNyumbaError,
+  AuthError,
+  ValidationError,
+  RateLimitError,
+  ServerError,
+  NetworkError,
+  toBossNyumbaError,
+  type BossNyumbaErrorArgs,
+} from './errors.js';
+
+// Exponential-backoff retry helper for idempotent requests.
+export {
+  retry,
+  defaultShouldRetry,
+  type RetryOptions,
+} from './retry.js';
+
+// Universal SSE consumer — Node 20+ / Bun / Deno / browser.
+export {
+  consumeSse,
+  type SseFrame,
+  type ConsumeSseOptions,
+} from './sse.js';
+
+// 13 typed brain-tool client categories: chat, drafts, estate,
+// compliance, opportunities, risks, decisions, entities, reminders,
+// share, bulk, undo, scope. Backed by retry + structured errors.
+export {
+  createBrainTools,
+  type BrainToolClients,
+  type ChatClient,
+  type ChatSendOptions,
+  type DraftsClient,
+  type EstateClient,
+  type ComplianceClient,
+  type OpportunitiesClient,
+  type RisksClient,
+  type DecisionsClient,
+  type EntitiesClient,
+  type RemindersClient,
+  type ShareClient,
+  type BulkClient,
+  type UndoClient,
+  type ScopeClient,
+} from './brain-tools.js';
