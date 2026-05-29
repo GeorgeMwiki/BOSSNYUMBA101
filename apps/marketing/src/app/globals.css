@@ -38,3 +38,48 @@ html { color-scheme: dark; }
     radial-gradient(ellipse 40% 30% at 30% 40%, hsl(var(--signal-700) / 0.08) 0%, transparent 60%);
   filter: blur(40px);
 }
+
+/* WCAG 2.2 AA — Skip-to-content link, only visible on keyboard focus.
+   Audience pages use <a href="#main-content"> from the layout. */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  z-index: 100;
+  padding: 0.625rem 1rem;
+  background: hsl(var(--signal-500));
+  color: hsl(var(--primary-foreground));
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  transition: top 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.skip-link:focus-visible {
+  top: 1rem;
+  outline: 2px solid hsl(var(--foreground));
+  outline-offset: 2px;
+}
+
+/* Editorial prose max-widths — keep paragraphs in the 55-75ch comfort
+   zone for readability. Avoids the hardcoded 62ch sprinkled across
+   marketing pages. */
+.max-w-prose-tight  { max-width: 55ch; }
+.max-w-prose        { max-width: 65ch; }
+.max-w-prose-wide   { max-width: 72ch; }
+.max-w-prose-widest { max-width: 78ch; }
+
+/* Audience-page aurora variant — a touch more amber at the top so the
+   page-level hero feels lit even without ScrollProgressBar / fonts. */
+.audience-aurora {
+  position: absolute;
+  inset: -10% -5% auto -5%;
+  height: 60vh;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 70% 45% at 50% 12%,
+    hsl(var(--signal-500) / 0.18) 0%,
+    transparent 60%
+  );
+  filter: blur(56px);
+}
