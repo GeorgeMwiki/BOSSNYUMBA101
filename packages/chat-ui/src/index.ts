@@ -36,6 +36,41 @@ export type {
 export { MasteryGate } from './components/MasteryGate';
 export type { MasteryGateProps } from './components/MasteryGate';
 export * from './lib/user-mastery/index.js';
+
+// Superpower chips — eight families of brain-emitted action chips
+// (ui_navigate / prefill / highlight / share / bulk / undo / cmdk /
+// bookmark). Frontend agnostic — host app injects onNavigate +
+// postJson.
+export {
+  SuperpowerChips,
+  UndoChip,
+  publishFormPrefill,
+  publishHighlight,
+  publishOpenCommandPalette,
+  FORM_PREFILL_EVENT_NAME,
+  HIGHLIGHT_EVENT_NAME,
+  CMDK_OPEN_EVENT_NAME,
+  uiNavigateChipSchema,
+  uiPrefillChipSchema,
+  uiHighlightChipSchema,
+  uiShareChipSchema,
+  uiBulkChipSchema,
+  uiUndoChipSchema,
+  uiCmdkChipSchema,
+  uiBookmarkChipSchema,
+} from './components/SuperpowerChips';
+export type {
+  SuperpowerChipsProps,
+  UndoChipProps,
+  UiNavigateChip,
+  UiPrefillChip,
+  UiHighlightChip,
+  UiShareChip,
+  UiBulkChip,
+  UiUndoChip,
+  UiCmdkChip,
+  UiBookmarkChip,
+} from './components/SuperpowerChips';
 // Learned-shortcuts panel — per-route ranked frequent actions. Reads
 // from the `user_action_tracker` table owned by UI-3's migration in
 // packages/database; chat-ui only consumes denormalised rows via a
