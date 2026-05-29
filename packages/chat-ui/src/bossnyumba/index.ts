@@ -16,3 +16,12 @@ export {
   type UseBossNyumbaChatOptions,
   type UseBossNyumbaChatResult,
 } from './useBossNyumbaChat.js';
+
+// Dynamic UI hint catalogue — bilingual sw/en strings for ProactiveHint,
+// MasteryGate, LearnedShortcutsPanel. Mr. Mwikila persona-tailored.
+export {
+  bossnyumbaProactiveHints,
+  bossnyumbaMasteryGateCopy,
+  bossnyumbaLearnedShortcutsHeadline,
+  type BossNyumbaMasteryGateCopy,
+} from './dynamic-ui-hints.js';
