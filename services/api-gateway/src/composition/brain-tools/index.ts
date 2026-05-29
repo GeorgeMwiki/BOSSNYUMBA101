@@ -68,6 +68,11 @@ import { MANAGER_TOOLS } from './manager-tools.js';
 // timesheets, leave, training, inspections). Real-estate retailoring
 // of Borjie's worker-tools.ts.
 import { STAFF_TOOLS } from './staff-tools.js';
+// PT-D — Tenant persona tools (30 tools covering listing browse, lease
+// lifecycle, rent payment via LedgerService, maintenance requests,
+// complaints, KYC, move-in / move-out signing, market intel). Real-
+// estate retailoring of Borjie's buyer-tools.ts.
+import { TENANT_TOOLS } from './tenant-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -103,6 +108,7 @@ export function buildPersonaToolHandlers(
       OWNER_PROPERTY_TOOLS,
       MANAGER_TOOLS,
       STAFF_TOOLS,
+      TENANT_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -139,6 +145,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       OWNER_PROPERTY_TOOLS,
       MANAGER_TOOLS,
       STAFF_TOOLS,
+      TENANT_TOOLS,
     ],
     undefined,
   );
@@ -196,3 +203,4 @@ export {
 export { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
 export { MANAGER_TOOLS } from './manager-tools.js';
 export { STAFF_TOOLS } from './staff-tools.js';
+export { TENANT_TOOLS } from './tenant-tools.js';
