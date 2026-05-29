@@ -31,6 +31,8 @@ import { and, eq, desc } from 'drizzle-orm';
 import { maintenanceRequests } from '@bossnyumba/database';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
+// R6 cockpit pulse — maintenance.requested + maintenance.completed.
+import { publishCockpitEvent } from '../services/cockpit-events/index.js';
 const app = new Hono();
 
 app.use('*', authMiddleware);
@@ -148,6 +150,28 @@ app.post('/requests', zValidator('json', CreateRequestSchema), withSecurityEvent
       updatedBy: userId,
     })
     .returning();
+  // R6 cockpit pulse — maintenance request lands. Severity maps to
+  // priority so the bus payload stays self-explanatory.
+  try {
+    publishCockpitEvent({
+      kind: 'maintenance.requested',
+      tenantId,
+      emittedAt: now.toISOString(),
+      workOrderId: id,
+      unitId: input.unitId ?? null,
+      category: String(input.category ?? 'general'),
+      severity: (input.priority === 'urgent'
+        ? 'urgent'
+        : input.priority === 'high'
+        ? 'high'
+        : input.priority === 'medium'
+        ? 'medium'
+        : 'low'),
+      requestedBy: userId,
+    });
+  } catch {
+    // Best-effort.
+  }
   return c.json({ success: true, data: row }, 201);
 }));
 
@@ -311,6 +335,24 @@ app.post('/requests/:id/complete', zValidator('json', CompletionSchema), withSec
         eq(maintenanceRequests.tenantId, tenantId)
       )
     );
+
+  // R6 cockpit pulse — maintenance.completed.
+  try {
+    publishCockpitEvent({
+      kind: 'maintenance.completed',
+      tenantId,
+      emittedAt: new Date().toISOString(),
+      workOrderId: input.workOrderId,
+      unitId: null,
+      category: 'general',
+      costAmount:
+        input.costActualMinor != null ? input.costActualMinor / 100 : null,
+      currencyCode: input.costActualMinor != null ? 'TZS' : null,
+      completedBy: userId,
+    });
+  } catch {
+    // Best-effort.
+  }
 
   return c.json({ success: true, data: proof }, 201);
 }));
