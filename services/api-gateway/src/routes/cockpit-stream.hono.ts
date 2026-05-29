@@ -1,32 +1,45 @@
 /**
- * /api/v1/cockpit/stream — Roadmap R6.
+ * Cockpit Stream SSE route — Roadmap R6 (real-estate edition).
  *
- * Server-Sent Events channel for the owner-web cockpit. Multiplexes
- * six event kinds onto a single per-tenant stream:
+ * `GET /api/v1/cockpit/stream` opens a Server-Sent Events channel for
+ * the owner / manager / staff cockpits. The bus multiplexes every
+ * cockpit event kind onto one per-tenant stream:
  *
  *   - decision.recorded
  *   - reminder.fired
  *   - opportunity.scan_completed
  *   - risk.changed
- *   - workforce.shift_event
+ *   - staff.shift_event
  *   - compliance.deadline_approaching
+ *   - persona.acted / persona.proposes
+ *   - rent.collected / lease.signed / lease.renewed / lease.terminated
+ *   - maintenance.completed / maintenance.requested
+ *   - inspection.completed / inspection.scheduled
+ *   - application.submitted / application.approved / application.rejected
+ *   - viewing.scheduled / viewing.completed
+ *   - regulator.request_received / regulator.request_status_changed
+ *   - rfa.dispatched / task.assigned / safety.incident_reported
+ *   - rent_payout.initiated / payroll.committed / licence.renewed
+ *   - chat.handoff / manager.approved / bid.placed / incident.escalated
+ *   - cockpit.tab.{spawned,updated,removed,proposed}
+ *   - property.celebrate
  *
- * Auth: any signed-in tenant user. The stream is auto-scoped to
- * `auth.tenantId` — no path / query parameter is required. A user
- * cannot subscribe to a tenant they don't belong to.
+ * Tenant isolation: scoped to `auth.tenantId` taken from the JWT.
+ * Callers can NEVER pass a tenant id; the route silently refuses
+ * 401 when the JWT lacks `tenantId`.
  *
- * Wire format: standard SSE — one `event: <kind>` + `data: <json>` pair
- * per push, plus a 25-second heartbeat comment to keep proxies from
+ * Wire format: standard SSE — one `event: <kind>` + `data: <json>` per
+ * push, plus a 25-second heartbeat comment frame to keep proxies from
  * idling the socket.
  *
  * Lifecycle:
- *   - On connect: emit `event: connected` + the current ISO timestamp
- *     so the client can render a green dot immediately.
- *   - The request's AbortSignal drives the cleanup (close the stream,
- *     unsubscribe from the bus, clear the heartbeat).
- *
- * No buffering: if the client disconnects mid-publish the event is
- * dropped on the floor (consumers are read-only views).
+ *   - On connect: emits `event: connected` so the client can render the
+ *     green dot immediately.
+ *   - Bridges bus events into the SSE wire through a bounded internal
+ *     queue; if the client cannot keep up the route drops the oldest
+ *     in-flight events rather than back-pressuring the bus.
+ *   - Stream tears down on `stream.onAbort` — the bus subscription is
+ *     released and the heartbeat cleared. Memory-safe.
  */
 
 import { Hono } from 'hono';
@@ -36,14 +49,14 @@ import { authMiddleware } from '../middleware/hono-auth';
 import {
   subscribeCockpitEvents,
   type CockpitEvent,
-} from '../services/cockpit-events';
+} from '../services/cockpit-events/index.js';
 
 const HEARTBEAT_MS = 25_000;
+const MAX_QUEUE = 256;
 
-export const cockpitStreamRouter = new Hono();
-cockpitStreamRouter.use('*', authMiddleware);
+const app = new Hono();
 
-cockpitStreamRouter.get('/stream', (c) => {
+app.get('/stream', authMiddleware, (c) => {
   const auth = c.get('auth') as { tenantId?: string } | undefined;
   const tenantId = auth?.tenantId;
   if (!tenantId) {
@@ -52,7 +65,8 @@ cockpitStreamRouter.get('/stream', (c) => {
         success: false,
         error: {
           code: 'TENANT_REQUIRED',
-          message: 'auth.tenantId missing — cockpit stream requires a tenant scope',
+          message:
+            'auth.tenantId missing — cockpit stream requires a tenant scope',
         },
       },
       401,
@@ -60,16 +74,20 @@ cockpitStreamRouter.get('/stream', (c) => {
   }
 
   return streamSSE(c, async (stream) => {
-    // Opening packet so the client knows the connection is live.
+    // Opening packet so the client knows the stream is live.
     await stream.writeSSE({
       event: 'connected',
-      data: JSON.stringify({ tenantId, openedAt: new Date().toISOString() }),
+      data: JSON.stringify({
+        tenantId,
+        openedAt: new Date().toISOString(),
+      }),
     });
 
-    // Bridge bus events into the SSE wire. Push errors are caught
-    // so a single slow client never crashes the bus emit loop.
+    // Bridge bus events into the SSE wire. Push errors are caught so
+    // a single slow client never crashes the bus emit loop.
     const queue: CockpitEvent[] = [];
     let flushScheduled = false;
+
     const scheduleFlush = (): void => {
       if (flushScheduled) return;
       flushScheduled = true;
@@ -84,7 +102,7 @@ cockpitStreamRouter.get('/stream', (c) => {
               data: JSON.stringify(next),
             });
           } catch {
-            // client gone; drop the rest. The abort signal will
+            // Client gone; drop the rest. The abort signal will
             // unsubscribe us in a moment.
             queue.length = 0;
             return;
@@ -94,6 +112,10 @@ cockpitStreamRouter.get('/stream', (c) => {
     };
 
     const unsubscribe = subscribeCockpitEvents(tenantId, (event) => {
+      if (queue.length >= MAX_QUEUE) {
+        // Slow consumer — drop the oldest to keep the queue bounded.
+        queue.shift();
+      }
       queue.push(event);
       scheduleFlush();
     });
@@ -101,11 +123,16 @@ cockpitStreamRouter.get('/stream', (c) => {
     // Heartbeat — comment-only frame so the client sees no payload.
     const heartbeat = setInterval(() => {
       stream
-        .writeSSE({ event: 'heartbeat', data: JSON.stringify({ at: new Date().toISOString() }) })
+        .writeSSE({
+          event: 'heartbeat',
+          data: JSON.stringify({ at: new Date().toISOString() }),
+        })
         .catch(() => {
-          // client disconnected; the abort signal will tear down below.
+          // Client disconnected; the abort signal will tear down below.
         });
     }, HEARTBEAT_MS);
+    // Make sure the heartbeat never holds the event loop open.
+    if (typeof heartbeat.unref === 'function') heartbeat.unref();
 
     const cleanup = (): void => {
       clearInterval(heartbeat);
@@ -122,4 +149,5 @@ cockpitStreamRouter.get('/stream', (c) => {
   });
 });
 
+export const cockpitStreamRouter = app;
 export default cockpitStreamRouter;

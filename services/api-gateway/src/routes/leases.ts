@@ -10,6 +10,14 @@ import { mapLeaseRow, majorToMinor, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
+// R6 cockpit pulse — emit lease.signed / lease.renewed / lease.terminated
+// on every life-cycle mutation so the cockpit + mobile consumers light
+// up in real time. Best-effort: bus errors never block the response.
+import {
+  publishCockpitEvent,
+  publishLeaseSigned,
+  publishLeaseTerminated,
+} from '../services/cockpit-events/index.js';
 // Wave 19 Agent H+I: lease mutations are staff-only. RESIDENT / OWNER
 // users read via `/leases/current*` (self) but cannot create, update,
 // terminate, renew, or delete leases.
@@ -425,6 +433,18 @@ app.post('/:id/activate', staffOnly, withSecurityEvents({ action: 'lease.create'
   const auth = c.get('auth');
   const repos = c.get('repos');
   const row = await repos.leases.update(c.req.param('id'), auth.tenantId, { status: 'active', activatedAt: new Date(), activatedBy: auth.userId }, auth.userId);
+  // R6 cockpit pulse — lease activation is the canonical "lease.signed"
+  // moment from the bus's perspective.
+  publishLeaseSigned({
+    tenantId: auth.tenantId,
+    leaseId: String(row.id),
+    unitId: String(row.unitId ?? ''),
+    tenantUserId: String(row.customerId ?? ''),
+    startsOn: row.startDate ? new Date(row.startDate).toISOString() : new Date().toISOString(),
+    endsOn: row.endDate ? new Date(row.endDate).toISOString() : '',
+    rentAmount: Number(row.rentAmount ?? 0),
+    currencyCode: 'TZS',
+  });
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 }));
 
@@ -444,6 +464,14 @@ app.post('/:id/terminate', staffOnly, zValidator('json', TerminateLeaseSchema), 
     },
     auth.userId
   );
+  // R6 cockpit pulse — lease termination.
+  publishLeaseTerminated({
+    tenantId: auth.tenantId,
+    leaseId: String(row.id),
+    unitId: String(row.unitId ?? ''),
+    terminatedOn: new Date().toISOString(),
+    reason: body.reason ? 'notice' : 'expiry',
+  });
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 }));
 
@@ -477,6 +505,23 @@ app.post('/:id/renew', staffOnly, zValidator('json', RenewLeaseSchema), withSecu
     },
     auth.userId
   );
+  // R6 cockpit pulse — lease renewal. Emitted via generic publish
+  // because the typed helper covers signed/terminated specifically;
+  // renewed has its own shape (renewedThrough).
+  try {
+    publishCockpitEvent({
+      kind: 'lease.renewed',
+      tenantId: auth.tenantId,
+      emittedAt: new Date().toISOString(),
+      leaseId: String(row.id),
+      unitId: String(row.unitId ?? ''),
+      renewedThrough: newEnd.toISOString(),
+      rentAmount: Number(row.rentAmount ?? 0),
+      currencyCode: 'TZS',
+    });
+  } catch {
+    // Best-effort.
+  }
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 }));
 

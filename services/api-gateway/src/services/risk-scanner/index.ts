@@ -1,24 +1,34 @@
 /**
- * Risk Scanner — public barrel (real-estate domain).
+ * Risk Scanner — public barrel.
+ *
+ * Mirrors the opportunity-scanner public surface, polarity-flipped. The
+ * brain tools (`property.risks.scan` / `expand` / `mitigate` /
+ * `acknowledge`) import from here; the daily-brief composer and the SSE
+ * block parser also wire through this module.
  */
-
-export type {
-  Risk,
-  RiskKind,
-  RiskMitigationAction,
-  RiskRule,
-  RiskScannerState,
-  RiskSeverity,
-  ScanRisksOptions,
-  BilingualText,
-} from './types.js';
-
-export { SEVERITY_WEIGHT, scoreRisk } from './types.js';
-
-export { RISK_RULES, ALL_RISK_RULES } from './scan-rules.js';
 
 export {
   scanRisks,
-  renderRiskHeadline,
-  renderRiskNarrative,
+  evaluateRisks,
+  buildScannerState,
+  listRules,
+  countRulesByKind,
+  type RiskScannerDeps,
 } from './scanner.js';
+export { RISK_RULES } from './scan-rules.js';
+export {
+  scanAndPublishRisks,
+  type ScanAndPublishRisksOptions,
+} from './publish.js';
+export {
+  SEVERITY_WEIGHT,
+  scoreRisk,
+  type Risk,
+  type RiskKind,
+  type RiskMitigationAction,
+  type RiskRule,
+  type RiskScannerState,
+  type RiskSeverity,
+  type ScanRisksOptions,
+  type BilingualText,
+} from './types.js';

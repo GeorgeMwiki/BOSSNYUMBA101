@@ -64,6 +64,13 @@ import { ENTITY_LEGIBILITY_TOOLS } from './entity-legibility-tools.js';
 // tables (mig 0289). Multi-currency outcome shape (observedValue +
 // observedCurrency). Persona: T1 owner + T2 admin only.
 import { DECISION_JOURNAL_TOOLS } from './decision-journal-tools.js';
+// PT-LH — Lease history chain-of-custody tools (append_step +
+// show_trace). Visible to owner / manager / tenant personas; backed
+// by services/api-gateway/src/services/lease-history/.
+import { LEASE_HISTORY_TOOLS } from './lease-history-tools.js';
+// PT-RP — Owner rent-payout settlement listing. Backed by the L8
+// SettlementOrchestrator (services/api-gateway/src/services/settlement).
+import { RENT_PAYOUT_TOOLS } from './rent-payout-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -98,6 +105,8 @@ export function buildPersonaToolHandlers(
       REASON_STRATEGIZE_TOOLS,
       ENTITY_LEGIBILITY_TOOLS,
       DECISION_JOURNAL_TOOLS,
+      LEASE_HISTORY_TOOLS,
+      RENT_PAYOUT_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -133,6 +142,8 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       REASON_STRATEGIZE_TOOLS,
       ENTITY_LEGIBILITY_TOOLS,
       DECISION_JOURNAL_TOOLS,
+      LEASE_HISTORY_TOOLS,
+      RENT_PAYOUT_TOOLS,
     ],
     undefined,
   );
@@ -207,3 +218,12 @@ export {
   configureDecisionJournalTools,
   __resetDecisionJournalToolsForTests,
 } from './decision-journal-tools.js';
+export {
+  LEASE_HISTORY_TOOLS,
+  leaseHistoryAppendStepTool,
+  leaseHistoryShowTraceTool,
+} from './lease-history-tools.js';
+export {
+  RENT_PAYOUT_TOOLS,
+  ownerRentPayoutListMineTool,
+} from './rent-payout-tools.js';

@@ -34,3 +34,4 @@ export {
   renderOpportunityNarrative,
   type ScanOptions,
 } from './scanner.js';
+export { scanAndPublishOpportunities } from './publish.js';

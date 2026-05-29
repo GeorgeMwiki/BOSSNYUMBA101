@@ -4,8 +4,26 @@
  *
  * Ported from Borjie's G-FIX-2 (inspection-narrator, negotiation-counter,
  * RAG-citation-parser) pattern. Wraps the api-gateway's lazy Anthropic
- * SDK access with createBrainLlmClient + callBrainLlmJson +
- * withLlmOrHeuristic. See header on the matching commit for full doc.
+ * SDK access with:
+ *
+ *   - createBrainLlmClient(): lazy-instantiates an Anthropic SDK
+ *     instance from `ANTHROPIC_API_KEY` (read once at bootstrap by
+ *     dotenv per CLAUDE.md). Returns `null` when the key is missing
+ *     so callers can degrade gracefully.
+ *   - callBrainLlmJson(): a structured-output call with
+ *     5-minute ephemeral `cache_control` markers on the system prompt
+ *     (matches Anthropic prompt-caching docs — single highest-ROI
+ *     marker per request). Parses the response into the caller's
+ *     Zod schema with two retries on parse failure.
+ *   - withLlmOrHeuristic(): graceful-degradation wrapper that runs
+ *     the heuristic when the LLM is unavailable, errors out, or
+ *     returns evidence-empty output (per CLAUDE.md grounding rule).
+ *
+ * The cache_control marker is placed on the system prompt because
+ * across consecutive rent-comparable / eviction-notice / maintenance-
+ * priority calls within a session the system + tenant context block
+ * is stable while the user payload changes — this is the canonical
+ * Anthropic caching pattern.
  *
  * Per CLAUDE.md:
  *   - Pino logger only (callers pass their service-scoped logger).
@@ -18,6 +36,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { Logger } from 'pino';
 import { z } from 'zod';
 
+// ---------------------------------------------------------------------------
+// Model constants (2026 Anthropic IDs — match ai-copilot's ModelTier)
+// ---------------------------------------------------------------------------
+
 export const BRAIN_LLM_MODELS = {
   HAIKU: 'claude-haiku-4-5-20251001',
   SONNET: 'claude-sonnet-4-6',
@@ -26,6 +48,10 @@ export const BRAIN_LLM_MODELS = {
 
 export type BrainLlmModelId =
   (typeof BRAIN_LLM_MODELS)[keyof typeof BRAIN_LLM_MODELS];
+
+// ---------------------------------------------------------------------------
+// Client surface — thin facade so tests can inject a hand-rolled stub
+// ---------------------------------------------------------------------------
 
 export interface BrainLlmClient {
   readonly model: BrainLlmModelId | string;
@@ -76,6 +102,10 @@ export interface BrainLlmMessageResponse {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Factory — lazy, env-gated
+// ---------------------------------------------------------------------------
+
 export interface CreateBrainLlmClientOptions {
   readonly apiKey?: string | undefined;
   readonly model?: BrainLlmModelId | string;
@@ -84,6 +114,12 @@ export interface CreateBrainLlmClientOptions {
   readonly logger?: Logger | undefined;
 }
 
+/**
+ * Create an Anthropic-backed brain LLM client. Returns `null` when the
+ * API key is missing — callers MUST handle this and fall back to the
+ * heuristic. We deliberately do NOT read `process.env` here; the
+ * caller passes the key from the api-gateway bootstrap dotenv pass.
+ */
 export function createBrainLlmClient(
   options: CreateBrainLlmClientOptions = {},
 ): BrainLlmClient | null {
@@ -108,6 +144,10 @@ export function createBrainLlmClient(
     sdk,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Structured-output call with cache_control + Zod parse + 2 retries
+// ---------------------------------------------------------------------------
 
 export interface CallBrainLlmJsonOptions<T> {
   readonly client: BrainLlmClient;
@@ -161,6 +201,9 @@ export async function callBrainLlmJson<T>(
       model,
       max_tokens: maxTokens,
       temperature,
+      // System prompt as a single text block with `cache_control:
+      // ephemeral`. Anthropic caches everything UP TO AND INCLUDING
+      // this block for ~5 minutes — see prompt-caching docs.
       system: [
         {
           type: 'text',
@@ -205,6 +248,10 @@ export async function callBrainLlmJson<T>(
   throw err;
 }
 
+// ---------------------------------------------------------------------------
+// Evidence-required graceful-degradation wrapper
+// ---------------------------------------------------------------------------
+
 export interface WithLlmOrHeuristicOptions<TOut> {
   readonly llmAttempt: () => Promise<TOut>;
   readonly heuristic: () => Promise<TOut>;
@@ -213,6 +260,13 @@ export interface WithLlmOrHeuristicOptions<TOut> {
   readonly pathName: string;
 }
 
+/**
+ * Run the LLM attempt. On any error, or if the LLM result fails the
+ * evidence-required check, log a Pino warn and fall back to the
+ * heuristic. The heuristic always wins on the no-LLM path — this is
+ * the "wiring is what we ship, activation happens when key is set"
+ * contract from the mitigation brief.
+ */
 export async function withLlmOrHeuristic<TOut>(
   options: WithLlmOrHeuristicOptions<TOut>,
 ): Promise<TOut> {
@@ -234,6 +288,10 @@ export async function withLlmOrHeuristic<TOut>(
     return await options.heuristic();
   }
 }
+
+// ---------------------------------------------------------------------------
+// Internals
+// ---------------------------------------------------------------------------
 
 function extractText(response: BrainLlmMessageResponse): string {
   if (!Array.isArray(response.content)) return '';

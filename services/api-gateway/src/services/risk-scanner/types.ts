@@ -1,11 +1,14 @@
 /**
  * Risk Scanner — typed shapes (real-estate domain).
  *
- * Mirrors the opportunity-scanner architecture but polarity-flipped:
- * every rule LOOKS for a threat the owner can mitigate BEFORE it
- * materialises. Headlines and narratives are bilingual; the scanner
- * ranks by severity * 1/timeToImpactDays so the most urgent meaningful
- * threats float to the top of the brain's `property.risks.scan` call.
+ * Mirrors the opportunity-scanner architecture but polarity-flipped: every
+ * rule LOOKS for a threat the owner can mitigate BEFORE it materialises.
+ * Headlines and narratives are bilingual; the scanner ranks by severity *
+ * 1/timeToImpactDays so the most urgent meaningful threats float to the
+ * top of the brain's `property.risks.scan` call.
+ *
+ * Symmetry rule with opportunity-scanner: when both surface conflicts
+ * on the same urgency band, risk wins the tie-break.
  */
 
 export type RiskKind =
@@ -42,7 +45,7 @@ export interface Risk {
   readonly severity: RiskSeverity;
   readonly headline: BilingualText;
   readonly narrative: BilingualText;
-  readonly exposure: number | null;
+  readonly exposureAmount: number | null;
   readonly currencyCode: string;
   readonly timeToImpactDays: number;
   readonly mitigationActions: ReadonlyArray<RiskMitigationAction>;
@@ -55,43 +58,82 @@ export interface RiskScannerState {
   readonly tenantId: string;
   readonly nowIso: string;
   readonly primaryCurrencyCode: string;
+
+  // Cash flow
   readonly cashRunwayDays: number | null;
-  readonly arrearsOver60dPctOfMonthly: number | null;
+  readonly arOverdue60dPctOfMonthly: number | null;
   readonly payrollDueInDays: number | null;
   readonly payrollAmount: number | null;
   readonly cashOnHand: number | null;
-  readonly housingPermitDaysToExpiry: number | null;
-  readonly buildingComplianceDaysToExpiry: number | null;
-  readonly traFilingDaysOverdue: number | null;
-  readonly traPenaltyAccrual: number | null;
-  readonly maintenanceBacklogMomMonthsUp: number;
-  readonly maintenanceBacklogMomDeltaPct: number | null;
-  readonly avgTurnaroundDaysOverP75: number | null;
-  readonly equipmentRepeatFailures: ReadonlyArray<{
-    readonly equipmentKind: string;
-    readonly count: number;
+  readonly mortgagePaymentDueInDays: number | null;
+  readonly mortgagePaymentAmount: number | null;
+
+  // Rent arrears (tenant delinquency 30/60/90+)
+  readonly rentArrears30dCount: number;
+  readonly rentArrears60dCount: number;
+  readonly rentArrears90dCount: number;
+  readonly rentArrearsTotalAmount: number | null;
+
+  // Regulatory
+  readonly insuranceCertDaysToExpiry: number | null;
+  readonly fireSafetyCertDaysToExpiry: number | null;
+  readonly gasSafetyCertDaysToExpiry: number | null;
+  readonly housingFilingDaysOverdue: number | null;
+  readonly housingPenaltyAccrual: number | null;
+  readonly regulatorInspectionDueInDays: number | null;
+
+  // Property tax
+  readonly propertyTaxDaysOverdue: number | null;
+  readonly propertyTaxAccruedAmount: number | null;
+
+  // HOA dues
+  readonly hoaDuesOverdueAmount: number | null;
+  readonly hoaDuesDaysOverdue: number | null;
+
+  // Operational
+  readonly maintenanceTicketsOverSlaCount: number;
+  readonly maintenanceTicketsOverSla7dCount: number;
+  readonly avgTicketAgingDays: number | null;
+  readonly contractorRepeatNonPerformances: ReadonlyArray<{
+    readonly contractor: string;
+    readonly failureCount: number;
     readonly windowDays: number;
   }>;
-  readonly managerAttrition90d: number;
-  readonly staffWithExpiredCertActive: number;
-  readonly rentReceiptDraftPctDeviation: number | null;
-  readonly housingBoardAmber: boolean;
-  readonly safetyAmber: boolean;
+
+  // Lease expiry
+  readonly leaseExpiryWithoutRenewalCount: number;
+  readonly leaseExpiryWithoutRenewalAverageDaysOut: number | null;
+  readonly evictionNoticeDeadlineRiskCount: number;
+  readonly evictionDeadlineWithinDays: number | null;
+
+  // HR
+  readonly staffAttrition90d: number;
+  readonly staffCertsExpiredActive: number;
+
+  // Compliance
+  readonly housingCompliancePoliciesAmber: boolean;
+  readonly safetyCompliancePoliciesAmber: boolean;
   readonly openIncidents: number;
-  readonly tenantLatePayments: ReadonlyArray<{
-    readonly tenantUserId: string;
+
+  // Counterparty
+  readonly tenantsLatePayments: ReadonlyArray<{
+    readonly tenantId: string;
     readonly tenantName: string;
     readonly latePaymentCount: number;
-    readonly crbScoreDelta: number | null;
+    readonly creditScoreDelta: number | null;
   }>;
-  readonly vendorQualityIssues: ReadonlyArray<{
-    readonly vendorId: string;
-    readonly vendorName: string;
+  readonly contractorQualityIssues: ReadonlyArray<{
+    readonly contractorId: string;
+    readonly contractorName: string;
     readonly offSpecCount: number;
   }>;
-  readonly localRentIndexDelta30dSigma: number | null;
-  readonly fxUsdLocalVolatilityPctIntraday: number | null;
+
+  // Market
+  readonly localMarketRentDropPct: number | null;
+  readonly fxVolatilityPctIntraday: number | null;
   readonly monthlyRevenue: number | null;
+
+  // Estate
   readonly successionReviewOverdueDays: number | null;
   readonly principalOwnerAgeYears: number | null;
   readonly insurancePoliciesExpiring30d: ReadonlyArray<{
@@ -99,15 +141,28 @@ export interface RiskScannerState {
     readonly policyKind: string;
     readonly daysToExpiry: number;
   }>;
+  readonly topTenantRevenuePct: number | null;
+  readonly titleDeedRegistrationDriftDays: number | null;
+  readonly propertiesWithoutInsuranceCount: number;
+  readonly avgPropertyValuationForUninsured: number | null;
+
+  // Security
   readonly accessAnomaliesLastHour: number;
   readonly failedAuthSpike: number;
   readonly suspiciousActionCount: number;
-  readonly tenantComplaints60d: number;
-  readonly communityMilestonesOverdue: number;
+
+  // Reputational
+  readonly tenantGrievances60d: number;
+  readonly communityComplaintsOverdue: number;
+  readonly disputeEscalatingCount: number;
+
+  // Tax
   readonly withholdingTaxPayable: number | null;
   readonly withholdingProvision: number | null;
-  readonly traInquiryOpen: boolean;
-  readonly traFilingOverdueDays: number | null;
+  readonly taxInquiryOpen: boolean;
+  readonly taxFilingOverdueDays: number | null;
+
+  // Legal
   readonly top3ContractsExpiring60d: ReadonlyArray<{
     readonly contractId: string;
     readonly counterpartyName: string;
@@ -120,6 +175,7 @@ export interface RiskScannerState {
     readonly counterpartyName: string;
     readonly disputeCount90d: number;
   }>;
+
   readonly knownScopes: ReadonlyArray<{
     readonly id: string;
     readonly label: string;
