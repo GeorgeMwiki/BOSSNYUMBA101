@@ -130,6 +130,15 @@ import { observabilityRealtimeRouter } from './routes/observability/realtime.hon
 //   POST   /api/v1/field/staff/tasks/:id/complete
 //   POST   /api/v1/field/staff/help-requests
 import { fieldStaffRouter } from './routes/field/staff.hono';
+// G1-A (2026-05-29) regulator DSR flow — jurisdiction-aware DSR intake
+// across regulator_jurisdictions catalogue rows.
+//   GET    /api/v1/regulator/dsr/jurisdictions
+//   GET    /api/v1/regulator/dsr/jurisdictions/:slug
+//   POST   /api/v1/regulator/dsr/requests
+//   GET    /api/v1/regulator/dsr/requests
+//   GET    /api/v1/regulator/dsr/requests/:id
+//   POST   /api/v1/regulator/dsr/requests/:id/dispatch-export
+import { regulatorDsrRouter } from './routes/regulator/dsr.hono';
 // Central Command Phase A C4 — Sensorium / Brain Skin event ingestion.
 // Receives batched 14-event sensory payloads from the client-side bus.
 import sensoriumRouter from './routes/sensorium.router';
@@ -863,6 +872,11 @@ api.route('/observability', observabilityRealtimeRouter);
 // officers. All four endpoints are auth + tenant scoped via the
 // router's internal authMiddleware + databaseMiddleware.
 api.route('/field/staff', fieldStaffRouter);
+// G1-A — regulator DSR flow. Jurisdiction-aware Data Subject Request
+// intake + dispatch. Reads/writes against regulator_jurisdictions
+// catalogue and audits via ai_audit_chain. The actual export pipeline
+// remains the dsar router; this surface stamps the regulator envelope.
+api.route('/regulator/dsr', regulatorDsrRouter);
 // Central Command Phase A C4 — Sensorium / Brain Skin. POST /sensorium/events
 // receives batched sensory payloads from the client-side 14-event bus.
 api.route('/sensorium', sensoriumRouter);
