@@ -24,6 +24,22 @@ if (!process.env.BOSSNYUMBA_SKIP_DOTENV) {
 import { bootstrapOTel } from './observability/otel-bootstrap';
 bootstrapOTel({});
 
+// Wave launch-green follow-up — audit logger bootstrap. Initializes the
+// process-singleton audit logger so kill-switch, security-events,
+// and brain-tool audit emissions land in a backed store rather than
+// falling through to the console fallback. MemoryAuditStore is the
+// only store currently shipped in @bossnyumba/observability (a
+// Postgres-backed store is on the W2 roadmap); the in-memory ring
+// buffer satisfies the API contract and keeps boot fail-closed-free.
+import {
+  initAuditLogger,
+  MemoryAuditStore,
+} from '@bossnyumba/observability';
+initAuditLogger({
+  store: new MemoryAuditStore(),
+  serviceName: 'api-gateway',
+});
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -378,6 +394,15 @@ import { installJarvisCaptureHook } from './routes/jarvis-router-factory';
 import { buildQueryOrganizationTool } from '@bossnyumba/ai-copilot';
 import { createAmbientBrainMiddleware } from './middleware/ambient-brain.middleware';
 import { createWebhookDlqRouter } from './routes/webhook-dlq.router';
+// Wave launch-green C10 — HTTP corpus upload endpoint (5-stage brain
+// ingestion pipeline). PUBLIC under /api/v1/corpus/upload, auth +
+// databaseMiddleware enforced at the router level.
+import corpusUploadRouter from './routes/corpus/upload.hono';
+// Wave launch-green JC-1 (real-estate) — jurisdiction-discovery loopback
+// endpoint. Mounted at the express ROOT under
+// /internal/jurisdiction-discovery so the brain-tool descriptor can
+// reach it via the loopback HTTP client.
+import jurisdictionDiscoveryRouter from './routes/internal/jurisdiction-discovery.hono';
 import { createOpenApiRouter } from './openapi';
 import {
   createDeepHealthHandler,
@@ -914,6 +939,9 @@ api.route('/feedback', feedbackRouter);
 api.route('/complaints', complaintsRouter);
 api.route('/inspections', inspectionsRouter);
 api.route('/documents', documentsHonoRouter);
+// Wave launch-green C10 — Company Brain corpus upload (5-stage ingestion).
+// POST /api/v1/corpus/upload
+api.route('/corpus/upload', corpusUploadRouter);
 // Piece C — Executive briefs (T1-T3 only) + subscription cadence registry.
 api.route('/briefs', executiveBriefRouter);
 api.route('/briefing-subscriptions', briefingSubscriptionRouter);
@@ -1402,6 +1430,17 @@ app.get('/.well-known/bossnyumba-capabilities.json', (req, res, next) => {
 });
 app.get('/.well-known/mcp.json', (req, res, next) => {
   void Promise.resolve(wellKnownHonoHandler(req, res)).catch(next);
+});
+
+// Wave launch-green JC-1 — internal loopback for jurisdiction discovery.
+// Mounted at the express ROOT (not under /api/v1) so it mirrors the
+// other internal routes. Auth + role guard live inside the Hono router
+// (PLATFORM_ADMIN or ADMIN only). Same prefix-stripping mitigation as
+// /.well-known above: bind the Hono handler directly so the original
+// `req.url` (which the router DOES match) is preserved.
+const jurisdictionDiscoveryHandler = handle(jurisdictionDiscoveryRouter);
+app.post('/internal/jurisdiction-discovery/discover', (req, res, next) => {
+  void Promise.resolve(jurisdictionDiscoveryHandler(req, res)).catch(next);
 });
 
 app.use('/api/v1', handle(api));
