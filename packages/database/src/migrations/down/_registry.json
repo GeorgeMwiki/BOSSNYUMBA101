@@ -83,6 +83,20 @@
       "reverses": "ADD COLUMNs tenants.scale_tier + scale_signals + index + CHECK constraint",
       "dataLoss": true,
       "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0275_marketing_pilot_applications.sql",
+      "down": "down/0275_down_marketing_pilot_applications.sql",
+      "reverses": "CREATE TABLE marketing_pilot_applications + indexes + RLS policies",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
+    },
+    {
+      "up": "0276_tenants_rate_limit_override.sql",
+      "down": "down/0276_down_tenants_rate_limit_override.sql",
+      "reverses": "ADD COLUMNs tenants.rate_limit_max_per_min + ai_rate_limit_max_per_min + token_budget_hourly + 3 CHECK constraints",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
     }
   ]
 }
