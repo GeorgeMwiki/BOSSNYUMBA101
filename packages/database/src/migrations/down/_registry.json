@@ -76,6 +76,13 @@
       "envs": ["dev", "staging"],
       "criticality": "high",
       "notes": "Event store is audit substrate for rent + arrears. Production down requires export-then-restore plan."
+    },
+    {
+      "up": "0274_tenants_scale_tier.sql",
+      "down": "down/0274_down_tenants_scale_tier.sql",
+      "reverses": "ADD COLUMNs tenants.scale_tier + scale_signals + index + CHECK constraint",
+      "dataLoss": true,
+      "envs": ["dev", "staging"]
     }
   ]
 }
