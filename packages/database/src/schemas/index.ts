@@ -531,3 +531,10 @@ export * from './maintenance-tasks.schema.js';
 // All tenant-scoped via the canonical `app.current_tenant_id` GUC.
 export * from './intelligence-corpus.schema.js';
 export * from './entity-index.schema.js';
+
+// ─── DIM-B port (migrations 0293-0294) ─────────────────────────────────────
+//   - pinned_items     : per-owner quick-access strip + folder grouping
+//   - saved_searches   : owner-defined alert rules with cadence-based
+//                        worker re-runs (Roadmap R2).
+export * from './pinned-items.schema.js';
+export * from './saved-searches.schema.js';

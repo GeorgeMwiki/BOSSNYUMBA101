@@ -14,9 +14,16 @@
 
 import { publishCockpitEvent } from './bus.js';
 import type {
+  ApplicationApprovedEvent,
   ComplianceDeadlineApproachingEvent,
   DecisionRecordedEvent,
+  InspectionCompletedEvent,
+  LicenceRenewedEvent,
+  MaintenanceCompletedEvent,
+  RentCollectedEvent,
+  RentPayoutInitiatedEvent,
   ReminderFiredEvent,
+  SafetyIncidentEvent,
   StaffShiftEvent,
 } from './types.js';
 
@@ -161,6 +168,201 @@ export function publishLeaseTerminated(
       terminatedOn: input.terminatedOn,
       reason: input.reason,
     });
+  } catch {
+    // Best-effort.
+  }
+}
+
+// ─── DIM-B port — 6 lifecycle publishers ────────────────────────────
+// Rent collected (M-Pesa / bank / cash) — owner + tenant pulse.
+export interface PublishRentCollectedInput extends CommonInputs {
+  readonly invoiceId: string;
+  readonly leaseId: string;
+  readonly unitId: string;
+  readonly amount: number;
+  readonly currencyCode: string;
+  readonly method: RentCollectedEvent['method'];
+}
+
+export function publishRentCollected(input: PublishRentCollectedInput): void {
+  try {
+    publishCockpitEvent({
+      kind: 'rent.collected',
+      tenantId: input.tenantId,
+      emittedAt: new Date().toISOString(),
+      invoiceId: input.invoiceId,
+      leaseId: input.leaseId,
+      unitId: input.unitId,
+      amount: input.amount,
+      currencyCode: input.currencyCode,
+      method: input.method,
+    } satisfies RentCollectedEvent);
+  } catch {
+    // Best-effort.
+  }
+}
+
+// Maintenance work order completed.
+export interface PublishMaintenanceCompletedInput extends CommonInputs {
+  readonly workOrderId: string;
+  readonly unitId: string | null;
+  readonly category: string;
+  readonly costAmount: number | null;
+  readonly currencyCode: string | null;
+  readonly completedBy: string;
+}
+
+export function publishMaintenanceCompleted(
+  input: PublishMaintenanceCompletedInput,
+): void {
+  try {
+    publishCockpitEvent({
+      kind: 'maintenance.completed',
+      tenantId: input.tenantId,
+      emittedAt: new Date().toISOString(),
+      workOrderId: input.workOrderId,
+      unitId: input.unitId,
+      category: input.category,
+      costAmount: input.costAmount,
+      currencyCode: input.currencyCode,
+      completedBy: input.completedBy,
+    } satisfies MaintenanceCompletedEvent);
+  } catch {
+    // Best-effort.
+  }
+}
+
+// Inspection completed (move_in | mid_tenancy | exit | compliance).
+export interface PublishInspectionCompletedInput extends CommonInputs {
+  readonly inspectionId: string;
+  readonly unitId: string | null;
+  readonly inspectionKind: InspectionCompletedEvent['inspectionKind'];
+  readonly inspectorId: string;
+  readonly outcome: InspectionCompletedEvent['outcome'];
+}
+
+export function publishInspectionCompleted(
+  input: PublishInspectionCompletedInput,
+): void {
+  try {
+    publishCockpitEvent({
+      kind: 'inspection.completed',
+      tenantId: input.tenantId,
+      emittedAt: new Date().toISOString(),
+      inspectionId: input.inspectionId,
+      unitId: input.unitId,
+      inspectionKind: input.inspectionKind,
+      inspectorId: input.inspectorId,
+      outcome: input.outcome,
+    } satisfies InspectionCompletedEvent);
+  } catch {
+    // Best-effort.
+  }
+}
+
+// Tenant application approved.
+export interface PublishApplicationApprovedInput extends CommonInputs {
+  readonly applicationId: string;
+  readonly listingId: string;
+  readonly applicantUserId: string;
+  readonly approvedBy: string;
+}
+
+export function publishApplicationApproved(
+  input: PublishApplicationApprovedInput,
+): void {
+  try {
+    publishCockpitEvent({
+      kind: 'application.approved',
+      tenantId: input.tenantId,
+      emittedAt: new Date().toISOString(),
+      applicationId: input.applicationId,
+      listingId: input.listingId,
+      applicantUserId: input.applicantUserId,
+      approvedBy: input.approvedBy,
+    } satisfies ApplicationApprovedEvent);
+  } catch {
+    // Best-effort.
+  }
+}
+
+// Rent payout initiated to landlord — mobile pulse.
+export interface PublishRentPayoutInitiatedInput extends CommonInputs {
+  readonly payoutId: string;
+  readonly ownerId: string;
+  readonly amount: number;
+  readonly currencyCode: string;
+  readonly initiatedBy: string;
+}
+
+export function publishRentPayoutInitiated(
+  input: PublishRentPayoutInitiatedInput,
+): void {
+  try {
+    publishCockpitEvent({
+      kind: 'rent_payout.initiated',
+      tenantId: input.tenantId,
+      emittedAt: new Date().toISOString(),
+      payoutId: input.payoutId,
+      ownerId: input.ownerId,
+      amount: input.amount,
+      currencyCode: input.currencyCode,
+      initiatedBy: input.initiatedBy,
+    } satisfies RentPayoutInitiatedEvent);
+  } catch {
+    // Best-effort.
+  }
+}
+
+// Safety incident reported (manager + owner pulse).
+export interface PublishSafetyIncidentInput extends CommonInputs {
+  readonly incidentId: string;
+  readonly unitId: string | null;
+  readonly severity: SafetyIncidentEvent['severity'];
+  readonly reportedBy: string;
+  readonly summary: string;
+}
+
+export function publishSafetyIncidentReported(
+  input: PublishSafetyIncidentInput,
+): void {
+  try {
+    publishCockpitEvent({
+      kind: 'safety.incident_reported',
+      tenantId: input.tenantId,
+      emittedAt: new Date().toISOString(),
+      incidentId: input.incidentId,
+      unitId: input.unitId,
+      severity: input.severity,
+      reportedBy: input.reportedBy,
+      summary: input.summary,
+    } satisfies SafetyIncidentEvent);
+  } catch {
+    // Best-effort.
+  }
+}
+
+// Operating licence renewed (terminal state).
+export interface PublishLicenceRenewedInput extends CommonInputs {
+  readonly licenceId: string;
+  readonly licenceKind: string;
+  readonly renewedThrough: string;
+  readonly renewedBy: string;
+}
+
+export function publishLicenceRenewed(
+  input: PublishLicenceRenewedInput,
+): void {
+  try {
+    publishCockpitEvent({
+      kind: 'licence.renewed',
+      tenantId: input.tenantId,
+      emittedAt: new Date().toISOString(),
+      licenceId: input.licenceId,
+      licenceKind: input.licenceKind,
+      renewedThrough: input.renewedThrough,
+      renewedBy: input.renewedBy,
+    } satisfies LicenceRenewedEvent);
   } catch {
     // Best-effort.
   }

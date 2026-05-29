@@ -15,7 +15,7 @@ export {
   leasesShowCommand,
 } from './commands/leases.js';
 export { remindersLsCommand, remindersAddCommand } from './commands/reminders.js';
-export { estateSitesCommand, estateWorkersCommand } from './commands/estate.js';
+export { propertiesSitesCommand, propertiesWorkersCommand } from './commands/properties.js';
 export { complianceCheckCommand } from './commands/compliance.js';
 export { scopeCommand } from './commands/scope.js';
 export { opportunitiesCommand } from './commands/opportunities.js';
