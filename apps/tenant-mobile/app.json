@@ -1,0 +1,73 @@
+{
+  "expo": {
+    "name": "BossNyumba Tenants",
+    "slug": "bossnyumba-tenant",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "bossnyumba-tenant",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#17100A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bossnyumba.tenant",
+      "infoPlist": {
+        "NSCameraUsageDescription": "BossNyumba Tenants uses the camera to capture NIDA, TIN and lease evidence for KYC.",
+        "NSPhotoLibraryUsageDescription": "BossNyumba Tenants needs gallery access to attach KYC and lease evidence.",
+        "NSFaceIDUsageDescription": "BossNyumba Tenants uses biometric sign-off to confirm applications and leases."
+      }
+    },
+    "android": {
+      "package": "com.bossnyumba.tenant",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#17100A"
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-local-authentication",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BossNyumba Tenants needs camera and gallery access to capture NIDA, TIN and lease images for KYC.",
+          "cameraPermission": "BossNyumba Tenants needs the camera to capture NIDA front/back and selfie checks."
+        }
+      ],
+      "expo-document-picker",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/REPLACE_WITH_EAS_PROJECT_ID"
+    },
+    "extra": {
+      "splashTagline": "BossNyumba Tenants — Karibu nyumbani",
+      "apiGatewayUrl": "http://localhost:4001",
+      "supabaseUrl": "",
+      "supabaseAnonKey": "",
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

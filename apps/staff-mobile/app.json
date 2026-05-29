@@ -1,0 +1,95 @@
+{
+  "expo": {
+    "name": "BossNyumba Staff",
+    "slug": "bossnyumba-staff",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "bossnyumba-staff",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#17100A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bossnyumba.staff",
+      "infoPlist": {
+        "NSCameraUsageDescription": "BossNyumba uses the camera to capture maintenance photos, move-in/move-out evidence, and incident reports.",
+        "NSMicrophoneUsageDescription": "BossNyumba uses the microphone to record voice notes on work orders and incident logs.",
+        "NSLocationWhenInUseUsageDescription": "BossNyumba uses your location to log on-site clock-ins, geo-tag property visits, and confirm proximity to assigned units.",
+        "NSPhotoLibraryUsageDescription": "BossNyumba uses photos for evidence attached to work orders and incident reports.",
+        "NSFaceIDUsageDescription": "BossNyumba uses biometric sign-off to confirm work-order completion and acknowledgements."
+      }
+    },
+    "android": {
+      "package": "com.bossnyumba.staff",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#17100A"
+      },
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "BossNyumba uses the camera to capture maintenance evidence."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BossNyumba attaches photos to work orders and incident reports.",
+          "cameraPermission": "BossNyumba uses the camera to capture maintenance evidence."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "BossNyumba uses your location for clock-in proximity checks and geo-tagged property visits."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "BossNyumba records voice notes for work orders and incident reports."
+        }
+      ],
+      "expo-local-authentication",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/REPLACE_WITH_EAS_PROJECT_ID"
+    },
+    "extra": {
+      "splashTagline": "BossNyumba — Estate intelligence in your pocket",
+      "apiGatewayUrl": "http://localhost:4001",
+      "supabaseUrl": "",
+      "supabaseAnonKey": "",
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    }
+  }
+}
