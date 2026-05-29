@@ -696,3 +696,14 @@ export * as powerTools from './power-tools/index.js';
  * touching state.
  */
 export * as autonomy from './autonomy/index.js';
+
+/**
+ * Auditor Agent — canonical evidence-required-output enforcer (wave
+ * launch-green follow-up). Pure validator: rejects junior
+ * recommendations whose evidence chains are empty or whose confidence
+ * is below the configured floor. Improves on the Borjie original by
+ * removing the direct DB write — the api-gateway composition root
+ * persists the verdict to the hash-chained audit log; this module
+ * never writes. Phase-3 composition wires the counter-model port.
+ */
+export * as auditor from './auditor/index.js';
