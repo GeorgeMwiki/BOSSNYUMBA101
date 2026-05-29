@@ -17,6 +17,10 @@ export {
 } from './scanner.js';
 export { RISK_RULES } from './scan-rules.js';
 export {
+  scanAndPublishRisks,
+  type ScanAndPublishRisksOptions,
+} from './publish.js';
+export {
   SEVERITY_WEIGHT,
   scoreRisk,
   type Risk,
