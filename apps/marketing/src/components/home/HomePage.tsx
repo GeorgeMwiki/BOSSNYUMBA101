@@ -251,7 +251,7 @@ export function HomePage({ locale }: HomePageProps) {
             transition={{ duration: 0.4 }}
             className="mx-auto mb-14 max-w-3xl text-center"
           >
-            <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-primary">
+            <span className="text-meta font-semibold uppercase tracking-[0.16em] text-primary">
               {banner.gapKicker}
             </span>
             <h2 className="mt-3 text-4xl font-bold tracking-[-0.025em] text-foreground md:text-5xl">

@@ -638,7 +638,7 @@ export function CapabilitiesSection({
         <div className="mb-10 md:mb-14 flex max-w-3xl items-start gap-4">
           <Logomark size={36} variant="premium" />
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-primary">
+            <p className="text-meta font-semibold uppercase tracking-[0.16em] text-primary">
               {resolvedKicker}
             </p>
             <h2 className="mt-3 text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-[-0.03em] text-foreground leading-[1.05]">

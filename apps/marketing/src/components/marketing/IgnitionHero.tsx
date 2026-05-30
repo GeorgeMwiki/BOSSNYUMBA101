@@ -397,7 +397,7 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
                 className="shrink-0 text-[hsl(24_72%_50%)] dark:text-[hsl(36_70%_64%)]"
                 aria-hidden
               />
-              <p className="text-[10px] leading-snug tracking-[-0.005em] text-[hsl(14_30%_38%)] dark:text-[hsl(36_20%_72%)]">
+              <p className="text-[11px] font-medium leading-snug tracking-[-0.005em] text-[hsl(14_40%_30%)] dark:text-[hsl(36_20%_72%)]">
                 {chat.disclaimer}
               </p>
             </div>
@@ -434,10 +434,10 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
                 </Link>
               </div>
               <div className="mt-2 flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">
-                  {chat.languageHint} <span className="font-medium text-primary">{chat.language}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {chat.languageHint} <span className="font-semibold text-signal-700">{chat.language}</span>
                 </span>
-                <span className="text-[10px] text-muted-foreground">{chat.micReady}</span>
+                <span className="text-[11px] text-muted-foreground">{chat.micReady}</span>
               </div>
             </div>
 
