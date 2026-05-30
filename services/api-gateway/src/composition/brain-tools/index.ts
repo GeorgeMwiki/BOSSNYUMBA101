@@ -91,6 +91,16 @@ import { STAFF_TOOLS } from './staff-tools.js';
 // complaints, KYC, move-in / move-out signing, market intel). Real-
 // estate retailoring of Borjie's buyer-tools.ts.
 import { TENANT_TOOLS } from './tenant-tools.js';
+// Wave UNWIRED-LOGIC-SWEEP — Opportunity-scanner brain tools. Two
+// LOW-stakes read-only tools (`property.opportunities.scan` +
+// `property.opportunities.list_rules`) that surface the 33-rule
+// opportunity engine the brain previously had no way to invoke.
+import { OPPORTUNITY_SCANNER_TOOLS } from './opportunity-scanner-tools.js';
+// Wave UNWIRED-LOGIC-SWEEP — Risk-scanner brain tools. MEDIUM-stakes
+// read-only tools (`property.risks.scan` + `property.risks.list_rules`)
+// that surface the 33-rule risk engine the brain previously had no way
+// to invoke. Cockpit `risk.changed` SSE event fires alongside the scan.
+import { RISK_SCANNER_TOOLS } from './risk-scanner-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -131,6 +141,8 @@ export function buildPersonaToolHandlers(
       MANAGER_TOOLS,
       STAFF_TOOLS,
       TENANT_TOOLS,
+      OPPORTUNITY_SCANNER_TOOLS,
+      RISK_SCANNER_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -172,6 +184,8 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       MANAGER_TOOLS,
       STAFF_TOOLS,
       TENANT_TOOLS,
+      OPPORTUNITY_SCANNER_TOOLS,
+      RISK_SCANNER_TOOLS,
     ],
     undefined,
   );
@@ -259,3 +273,16 @@ export { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
 export { MANAGER_TOOLS } from './manager-tools.js';
 export { STAFF_TOOLS } from './staff-tools.js';
 export { TENANT_TOOLS } from './tenant-tools.js';
+export {
+  OPPORTUNITY_SCANNER_TOOLS,
+  opportunityScanTool,
+  opportunityListRulesTool,
+  configureOpportunityScannerTools,
+  type ScanStateBuilder,
+} from './opportunity-scanner-tools.js';
+export {
+  RISK_SCANNER_TOOLS,
+  riskScanTool,
+  riskListRulesTool,
+  configureRiskScannerTools,
+} from './risk-scanner-tools.js';

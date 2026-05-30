@@ -50,6 +50,12 @@ const NOTIFICATION_KINDS: ReadonlyArray<CockpitEventKind> = [
   'bid.placed',
   'incident.escalated',
   'reminder.fired',
+  // Wave UNWIRED-LOGIC-SWEEP — opportunity + risk scanner pulses.
+  // The api-gateway brain tools emit these whenever the scanner
+  // surfaces actionable items so the owner-portal toast tile + the
+  // unread-badge counter both update without a poll round-trip.
+  'opportunity.scan_completed',
+  'risk.changed',
 ];
 
 const NOTIFICATION_KIND_SET = new Set<string>(NOTIFICATION_KINDS);

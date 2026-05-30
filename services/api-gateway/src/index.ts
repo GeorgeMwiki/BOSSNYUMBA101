@@ -366,6 +366,10 @@ import { billingRouter } from './routes/owner/billing.router';
 import { ownerMessagingRouter } from './routes/owner/owner-messaging.router';
 import { ownerPinnedItemsRouter } from './routes/owner/pinned-items.hono';
 import { savedSearchesRouter } from './routes/owner/saved-searches.hono';
+import {
+  ownerShareLinksRouter,
+  publicShareResolverRouter,
+} from './routes/owner/share-links.hono';
 import { supportRouter } from './routes/owner/support.router';
 import { adminUsersRouter } from './routes/owner/admin-users.router';
 import { buildServices, type ServiceRegistry } from './composition/service-registry';
@@ -389,6 +393,8 @@ import {
 // LoopbackHttpClient + audit-sink have been bound onto the gate.
 import {
   buildPersonaToolHandlers,
+  configureOpportunityScannerTools,
+  configureRiskScannerTools,
   type PersonaToolGate,
 } from './composition/brain-tools';
 // Loopback HTTP client — handlers that need a tenant-bound HTTP path
@@ -797,6 +803,29 @@ try {
       auditSink: personaAuditSink,
       ...(personaLoopbackClient && { httpClient: personaLoopbackClient }),
     };
+    // Wave UNWIRED-LOGIC-SWEEP — wire the opportunity + risk scanner
+    // brain-tools before the catalog is built. The opportunity scanner
+    // takes a ScanState builder; we leave it unbound here (returns
+    // `null`) — the tool gracefully reports `resolverBound: false` until
+    // a sibling commit wires the Drizzle-backed ScanState resolver. The
+    // risk scanner already has a built-in `scanRisks(tenantId, deps)`
+    // entry point so we wire it with the tenant-scoped DB pool right
+    // now.
+    try {
+      const dbForBrainTools = (serviceRegistry.db as unknown as {
+        execute(q: unknown): Promise<unknown>;
+      }) ?? null;
+      if (dbForBrainTools) {
+        configureRiskScannerTools({ db: dbForBrainTools });
+      }
+      configureOpportunityScannerTools({});
+    } catch (err) {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        'brain-tools: opportunity/risk scanner wiring failed (non-fatal)',
+      );
+    }
+
     const personaHandlers = buildPersonaToolHandlers(personaGate, {
       onDuplicate: (toolId) =>
         logger.warn({ toolId }, 'brain-tools: duplicate descriptor ignored'),
@@ -1297,6 +1326,11 @@ api.route('/owner/messaging', ownerMessagingRouter);
 // via JWT + RLS FORCE (migrations 0293-0294).
 api.route('/owner/pinned-items', ownerPinnedItemsRouter);
 api.route('/owner/saved-searches', savedSearchesRouter);
+// Wave SUPERPOWERS — chat-as-OS backend (migration 0297). Owner-side
+// share-link CRUD (auth + RLS); the public token resolver is mounted
+// separately under /public/share so it stays outside the auth gate.
+api.route('/owner/share-links', ownerShareLinksRouter);
+api.route('/public/share', publicShareResolverRouter);
 api.route('/support', supportRouter);
 api.route('/admin', adminUsersRouter);
 // Unit subdivision + components — Manager-app dependency. Hono mounts

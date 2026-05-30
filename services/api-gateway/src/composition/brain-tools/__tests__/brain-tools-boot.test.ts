@@ -60,6 +60,35 @@ describe('brain-tools — boot integrity', () => {
     expect(ids.has('decisions.success_rate')).toBe(true);
   });
 
+  it('registers the four scanner brain tools (opportunity + risk)', () => {
+    const ids = new Set(listPersonaToolDescriptors().map((d) => d.id));
+    expect(ids.has('property.opportunities.scan')).toBe(true);
+    expect(ids.has('property.opportunities.list_rules')).toBe(true);
+    expect(ids.has('property.risks.scan')).toBe(true);
+    expect(ids.has('property.risks.list_rules')).toBe(true);
+  });
+
+  it('scanner tools are persona-scoped to owner + admin only', () => {
+    const scannerIds = new Set([
+      'property.opportunities.scan',
+      'property.opportunities.list_rules',
+      'property.risks.scan',
+      'property.risks.list_rules',
+    ]);
+    const descriptors = listPersonaToolDescriptors().filter((d) =>
+      scannerIds.has(d.id),
+    );
+    expect(descriptors.length).toBe(4);
+    for (const d of descriptors) {
+      expect([...d.personaSlugs].sort()).toEqual([
+        'T1_owner_strategist',
+        'T2_admin_strategist',
+      ]);
+      expect(d.isWrite).toBe(false);
+      expect(d.requiresPolicyRuleLiteral).toBe(false);
+    }
+  });
+
   it('every descriptor is persona-scoped to a known persona slug', () => {
     const known = new Set([
       'T1_owner_strategist',
