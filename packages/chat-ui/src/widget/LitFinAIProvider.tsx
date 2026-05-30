@@ -81,6 +81,14 @@ interface LitFinAIContextValue {
   readonly isOpen: boolean;
   readonly pageData: Record<string, unknown>;
   readonly endpoint: string;
+  /**
+   * Domain-specific compliance copy shown in the bottom footer of the
+   * chat panel. BossNyumba mounts pass the real-estate "landlord"
+   * variant; Borjie mounts pass the mining "mine owner" variant.
+   * Missing → the panel renders a generic "owner" fallback.
+   */
+  readonly disclaimerEn?: string;
+  readonly disclaimerSw?: string;
   readonly toggleWidget: () => void;
   readonly openWidget: () => void;
   readonly closeWidget: () => void;
@@ -93,6 +101,15 @@ export interface LitFinAIProviderProps {
   readonly portalId: LitFinPortalId;
   readonly initialRoute?: string;
   readonly endpoint?: string;
+  /**
+   * Bilingual compliance copy injected into LitFinChatPanel's footer.
+   * BossNyumba passes the real-estate "landlord" variant; Borjie passes
+   * the mining "mine owner" variant. Keeps the panel domain-agnostic
+   * while making the domain choice explicit at the mount boundary so
+   * unrelated edits cannot silently swap copy.
+   */
+  readonly disclaimerEn?: string;
+  readonly disclaimerSw?: string;
   readonly children: ReactNode;
 }
 
@@ -100,6 +117,8 @@ export function LitFinAIProvider({
   portalId,
   initialRoute = '/',
   endpoint = '/api/chat',
+  disclaimerEn,
+  disclaimerSw,
   children,
 }: LitFinAIProviderProps): JSX.Element {
   const [currentRoute, setCurrentRoute] = useState<string>(initialRoute);
@@ -156,6 +175,8 @@ export function LitFinAIProvider({
       isOpen,
       pageData,
       endpoint,
+      disclaimerEn,
+      disclaimerSw,
       toggleWidget,
       openWidget,
       closeWidget,
@@ -168,6 +189,8 @@ export function LitFinAIProvider({
       isOpen,
       pageData,
       endpoint,
+      disclaimerEn,
+      disclaimerSw,
       toggleWidget,
       openWidget,
       closeWidget,

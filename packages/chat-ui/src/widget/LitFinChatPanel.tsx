@@ -40,7 +40,25 @@ import { LitFinContextBadge } from './LitFinContextBadge';
 
 interface LitFinChatPanelProps {
   readonly onClose: () => void;
+  /**
+   * EN compliance line shown in the bottom footer. Defaults to a
+   * generic "owner" copy so a missing prop never renders the wrong
+   * domain (BossNyumba real-estate uses "landlord", Borjie mining uses
+   * "mine owner"). Mount components MUST pass the domain-specific copy.
+   */
+  readonly disclaimerEn?: string;
+  /** SW compliance line. Same fallback rules as disclaimerEn. */
+  readonly disclaimerSw?: string;
 }
+
+/**
+ * Generic compliance copy used when no prop is passed. Mount sites that
+ * skip the prop will at least never display the wrong domain term.
+ */
+const DEFAULT_DISCLAIMER_EN =
+  'AI-generated. Not legal advice. Decisions are made by the owner.';
+const DEFAULT_DISCLAIMER_SW =
+  'AI-iliyotengenezwa . Si ushauri wa kisheria . Maamuzi yanafanywa na mmiliki';
 
 function makeId(prefix: string): string {
   const cryptoApi =
@@ -92,9 +110,27 @@ async function fileToImage(file: File): Promise<PendingImage | null> {
   });
 }
 
-export function LitFinChatPanel({ onClose }: LitFinChatPanelProps): JSX.Element {
-  const { portalId, currentRoute, endpoint } = useLitFinAI();
+export function LitFinChatPanel({
+  onClose,
+  disclaimerEn,
+  disclaimerSw,
+}: LitFinChatPanelProps): JSX.Element {
+  const {
+    portalId,
+    currentRoute,
+    endpoint,
+    disclaimerEn: ctxDisclaimerEn,
+    disclaimerSw: ctxDisclaimerSw,
+  } = useLitFinAI();
   const { language, toggleLanguage } = useWidgetLanguage();
+
+  // Resolution order: explicit prop wins (lets tests pin a value),
+  // then provider context (the mount-site choice), then the generic
+  // "owner" default so a missing wiring never displays the wrong domain.
+  const resolvedDisclaimerEn =
+    disclaimerEn ?? ctxDisclaimerEn ?? DEFAULT_DISCLAIMER_EN;
+  const resolvedDisclaimerSw =
+    disclaimerSw ?? ctxDisclaimerSw ?? DEFAULT_DISCLAIMER_SW;
 
   const [messages, setMessages] = useState<ReadonlyArray<LitFinMessage>>([]);
   const [input, setInput] = useState('');
@@ -154,7 +190,13 @@ export function LitFinChatPanel({ onClose }: LitFinChatPanelProps): JSX.Element 
       try {
         const res = await fetch(endpoint, {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          headers: {
+            'content-type': 'application/json',
+            // Ask the route to forward upstream SSE — keeps the widget on the
+            // streaming code path. The route still falls back to JSON when the
+            // upstream cannot stream, so this header is safe everywhere.
+            accept: 'text/event-stream',
+          },
           body: JSON.stringify({
             message: text,
             sessionId,
@@ -602,15 +644,29 @@ export function LitFinChatPanel({ onClose }: LitFinChatPanelProps): JSX.Element 
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
         <p className="min-w-0 flex-1 truncate text-[10px] font-medium leading-tight text-muted-foreground/80">
-          {language === 'sw'
-            ? 'AI-iliyotengenezwa . Si ushauri wa kisheria . Maamuzi yanafanywa na mmiliki'
-            : 'AI-generated. Not legal advice. Decisions are made by the landlord.'}
+          {language === 'sw' ? resolvedDisclaimerSw : resolvedDisclaimerEn}
         </p>
       </div>
     </motion.section>
   );
 }
 
+/**
+ * Parse a BossNyumba / Borjie public-chat SSE stream incrementally.
+ *
+ * Frame shape (one per blank-line separated record):
+ *   event: <name>
+ *   data: <json>
+ *
+ * Events we honour:
+ *   - message_chunk → emit `data.text` to the bubble
+ *   - turn.accepted / suggested_actions / done / error → ignored on the
+ *     widget side (the bubble only cares about the running text)
+ *
+ * The parser also tolerates `data: <json-with-text>` frames that have no
+ * `event:` line (Anthropic-style stream) and the OpenAI-style `[DONE]`
+ * sentinel for forward compatibility.
+ */
 async function readEventStream(
   body: ReadableStream<Uint8Array>,
   onChunk: (text: string) => void,
@@ -618,23 +674,34 @@ async function readEventStream(
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buf = '';
+  let currentEvent: string | null = null;
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
     buf += decoder.decode(value, { stream: true });
     const lines = buf.split('\n');
     buf = lines.pop() ?? '';
-    for (const line of lines) {
+    for (const rawLine of lines) {
+      const line = rawLine.replace(/\r$/, '');
+      if (line.length === 0) {
+        currentEvent = null;
+        continue;
+      }
+      if (line.startsWith('event:')) {
+        currentEvent = line.slice(6).trim();
+        continue;
+      }
       if (!line.startsWith('data:')) continue;
       const data = line.slice(5).trim();
       if (data === '[DONE]') return;
       if (!data) continue;
+      if (currentEvent !== null && currentEvent !== 'message_chunk') continue;
       try {
         const parsed = JSON.parse(data) as { text?: string; delta?: string };
         const text = parsed.text ?? parsed.delta ?? '';
         if (text) onChunk(text);
       } catch {
-        onChunk(data);
+        if (currentEvent === null) onChunk(data);
       }
     }
   }
