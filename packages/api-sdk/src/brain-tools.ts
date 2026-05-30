@@ -1,7 +1,7 @@
 /**
  * Typed brain-tool clients for @bossnyumba/api-sdk.
  *
- * Wraps the universal `BossNyumbaClient.request` with retry + the typed
+ * Wraps the universal `BossnyumbaClient.request` with retry + the typed
  * error hierarchy from ./errors.ts, and exposes a curated method set
  * per brain-tool category. New surfaces SHOULD land here so external
  * agents discover them via SDK autocomplete instead of via free-form
@@ -16,7 +16,7 @@
 
 import {
   ApiSdkError,
-  type BossNyumbaClient,
+  type BossnyumbaClient,
 } from './client.js';
 import {
   toBossNyumbaError,
@@ -61,14 +61,14 @@ export interface ChatClient {
   teach(opts: ChatSendOptions): AsyncGenerator<SseFrame, void, void>;
 }
 
-function bearerFrom(client: BossNyumbaClient): Promise<string | undefined> {
+function bearerFrom(client: BossnyumbaClient): Promise<string | undefined> {
   const t = client.config.bearerToken;
   if (!t) return Promise.resolve(undefined);
   if (typeof t === 'function') return Promise.resolve(t());
   return Promise.resolve(t);
 }
 
-function chatClient(client: BossNyumbaClient): ChatClient {
+function chatClient(client: BossnyumbaClient): ChatClient {
   return {
     async *teach(opts) {
       const bearer = await bearerFrom(client);
@@ -105,7 +105,7 @@ export interface DraftsClient {
   revisions(id: string): Promise<Json>;
 }
 
-function draftsClient(client: BossNyumbaClient): DraftsClient {
+function draftsClient(client: BossnyumbaClient): DraftsClient {
   return {
     list: () =>
       safeCall(() =>
@@ -161,7 +161,7 @@ export interface EstateClient {
   workers(): Promise<Json>;
 }
 
-function estateClient(client: BossNyumbaClient): EstateClient {
+function estateClient(client: BossnyumbaClient): EstateClient {
   return {
     sites: () =>
       safeCall(() => client.request({ method: 'GET', path: '/api/v1/properties/sites' }), {
@@ -178,7 +178,7 @@ export interface ComplianceClient {
   status(): Promise<Json>;
 }
 
-function complianceClient(client: BossNyumbaClient): ComplianceClient {
+function complianceClient(client: BossnyumbaClient): ComplianceClient {
   return {
     status: () =>
       safeCall(() => client.request({ method: 'GET', path: '/api/v1/compliance/status' }), {
@@ -191,7 +191,7 @@ export interface OpportunitiesClient {
   list(): Promise<Json>;
 }
 
-function opportunitiesClient(client: BossNyumbaClient): OpportunitiesClient {
+function opportunitiesClient(client: BossnyumbaClient): OpportunitiesClient {
   return {
     list: () =>
       safeCall(() => client.request({ method: 'GET', path: '/api/v1/opportunities' }), {
@@ -204,7 +204,7 @@ export interface RisksClient {
   list(): Promise<Json>;
 }
 
-function risksClient(client: BossNyumbaClient): RisksClient {
+function risksClient(client: BossnyumbaClient): RisksClient {
   return {
     list: () =>
       safeCall(() => client.request({ method: 'GET', path: '/api/v1/owner/risks' }), {
@@ -218,7 +218,7 @@ export interface DecisionsClient {
   get(id: string): Promise<Json>;
 }
 
-function decisionsClient(client: BossNyumbaClient): DecisionsClient {
+function decisionsClient(client: BossnyumbaClient): DecisionsClient {
   return {
     list: () =>
       safeCall(() => client.request({ method: 'GET', path: '/api/v1/decisions' }), {
@@ -240,7 +240,7 @@ export interface EntitiesClient {
   search(q: string): Promise<Json>;
 }
 
-function entitiesClient(client: BossNyumbaClient): EntitiesClient {
+function entitiesClient(client: BossnyumbaClient): EntitiesClient {
   return {
     search: (q) =>
       safeCall(() =>
@@ -263,7 +263,7 @@ export interface RemindersClient {
   }): Promise<Json>;
 }
 
-function remindersClient(client: BossNyumbaClient): RemindersClient {
+function remindersClient(client: BossnyumbaClient): RemindersClient {
   return {
     list: () =>
       safeCall(() => client.request({ method: 'GET', path: '/api/v1/owner/reminders' }), {
@@ -291,7 +291,7 @@ export interface ShareClient {
   }): Promise<Json>;
 }
 
-function shareClient(client: BossNyumbaClient): ShareClient {
+function shareClient(client: BossnyumbaClient): ShareClient {
   return {
     create: ({ entityType, entityId, idempotencyKey }) =>
       safeCall(() =>
@@ -314,7 +314,7 @@ export interface BulkClient {
   }): Promise<Json>;
 }
 
-function bulkClient(client: BossNyumbaClient): BulkClient {
+function bulkClient(client: BossnyumbaClient): BulkClient {
   return {
     apply: ({ operations, idempotencyKey }) =>
       safeCall(() =>
@@ -338,7 +338,7 @@ export interface UndoClient {
   }): Promise<Json>;
 }
 
-function undoClient(client: BossNyumbaClient): UndoClient {
+function undoClient(client: BossnyumbaClient): UndoClient {
   return {
     list: () =>
       safeCall(() => client.request({ method: 'GET', path: '/api/v1/undo' }), {
@@ -362,7 +362,7 @@ export interface ScopeClient {
   tree(): Promise<Json>;
 }
 
-function scopeClient(client: BossNyumbaClient): ScopeClient {
+function scopeClient(client: BossnyumbaClient): ScopeClient {
   return {
     tree: () =>
       safeCall(() => client.request({ method: 'GET', path: '/api/v1/scope' }), {
@@ -389,9 +389,9 @@ export interface BrainToolClients {
 
 /**
  * Build the full set of brain-tool clients from an existing
- * `BossNyumbaClient`. Pure function — does not mutate the input.
+ * `BossnyumbaClient`. Pure function — does not mutate the input.
  */
-export function createBrainTools(client: BossNyumbaClient): BrainToolClients {
+export function createBrainTools(client: BossnyumbaClient): BrainToolClients {
   return {
     chat: chatClient(client),
     drafts: draftsClient(client),

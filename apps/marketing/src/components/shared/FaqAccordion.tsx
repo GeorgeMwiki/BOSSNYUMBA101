@@ -5,7 +5,7 @@ import { ChevronDown } from 'lucide-react';
 
 /**
  * FaqAccordion — accessible single-open-at-a-time FAQ block ported
- * from Borjie. CSS-only animation (no framer-motion in the bundle)
+ * from BossNyumba. CSS-only animation (no framer-motion in the bundle)
  * so the marketing build stays lean.
  *
  * Keyboard: native <button> semantics give Enter/Space toggle.
