@@ -30,7 +30,7 @@ export function PilotForm({ locale }: { readonly locale: Locale }) {
       email: String(form.get('email') ?? '').trim(),
       phone: String(form.get('phone') ?? '').trim(),
       portfolioSize: Number(form.get('portfolioSize') ?? 0),
-      mineralFocus: String(form.get('mineralFocus') ?? '').trim(),
+      assetFocus: String(form.get('assetFocus') ?? '').trim(),
     };
 
     try {
@@ -71,20 +71,20 @@ export function PilotForm({ locale }: { readonly locale: Locale }) {
 
       <div>
         <label
-          htmlFor="mineralFocus"
+          htmlFor="assetFocus"
           className="font-mono text-meta uppercase tracking-widest text-neutral-400"
         >
-          {t.fields.mineralFocus}
+          {t.fields.assetFocus}
         </label>
         <select
-          id="mineralFocus"
-          name="mineralFocus"
+          id="assetFocus"
+          name="assetFocus"
           required
           defaultValue=""
           className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:border-signal-500 focus:outline-none"
         >
           <option value="" disabled>—</option>
-          {t.minerals.map((m) => (
+          {t.assets.map((m) => (
             <option key={m} value={m}>{m}</option>
           ))}
         </select>

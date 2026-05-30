@@ -240,7 +240,7 @@ const REGULATOR_CAPABILITIES: ReadonlyArray<Capability> = [
     icon: FileCheck,
     name: 'Regulator-grade audit trail',
     description:
-      'Hash-chained, append-only. Every action with actor, timestamp, evidence. PCCB + EITI export-ready.',
+      'Hash-chained, append-only. Every action with actor, timestamp, evidence. BRELA + ESRB export-ready.',
   },
   {
     icon: Languages,

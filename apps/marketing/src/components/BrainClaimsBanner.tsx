@@ -8,7 +8,7 @@ import { getMessages, type Locale } from '@/lib/i18n';
 
 /**
  * BrainClaimsBanner — single-row band that sits below the hero, rotating
- * through three notable mining claims every 6s with a fade transition.
+ * through three notable real-estate claims every 6s with a fade transition.
  * Each claim has a deep-dive link that opens an evidence page (stubs OK
  * for now).
  *

@@ -6,10 +6,10 @@ import { getMessages, type Locale } from '@/lib/i18n';
 
 /**
  * ProblemSolution — LitFin's "WHY CREDIT BUSINESS" pattern, ported to
- * BossNyumba's mining problem statement.
+ * BossNyumba's real-estate problem statement.
  *
  * Two-card grid:
- *   LEFT  — PROBLEM (danger-red icon, "Mining at the margin")
+ *   LEFT  — PROBLEM (danger-red icon, "Renting at the margin")
  *   RIGHT — SOLUTION (gold/primary icon, "BossNyumba does the work")
  *
  * Each card lists four numbered items. The left card uses a danger
