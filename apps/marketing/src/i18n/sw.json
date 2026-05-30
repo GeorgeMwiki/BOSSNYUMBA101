@@ -48,7 +48,7 @@
     "kicker": "Chagua mtazamo wako",
     "owners": {
       "title": "Wamiliki wa migodi",
-      "blurb": "Endesha mgodi wako. Briefing ya kila siku, kalenda ya leseni, drill-hole logger."
+      "blurb": "Endesha mgodi wako. Briefing ya kila siku, kalenda ya leseni, tiketi ya matengenezo logger."
     },
     "buyers": {
       "title": "Wanunuzi wa mali",
@@ -64,7 +64,7 @@
     "swahiliFirstBadge": "Kiingereza-kwanza · Kiswahili",
     "pill": "Tanzania-kwanza · Inayoongozwa na AI",
     "headline": "Endesha mali yote ya mali kwa otomatiki.",
-    "sub": "Mwl. Mwikila ni Mkurugenzi Mtendaji wa AI wa Mali. Leseni, kodi, wafanyakazi, hazina, utii, soko, holdings, subsidiaries, biashara za ziada (usafiri, chakula, mafuta, rejareja, ardhi, kukodi vifaa), family office, urithi, daftari la mali. Anaandaa, anafunga, anasimamia, anawasilisha. Wewe unasaini mara moja.",
+    "sub": "Mwl. Mwikila ni Mkurugenzi Mtendaji wa AI wa Mali. Leseni, kodi, wafanyakazi wa matengenezo wa matengenezo, hazina, utii, soko, mali, kampuni tanzu, biashara za ziada (usafiri, chakula, huduma, rejareja, ardhi, kukodi vifaa), family office, urithi, daftari la mali. Anaandaa, anafunga, anasimamia, anawasilisha. Wewe unasaini mara moja.",
     "ctaPilot": "Anza sasa",
     "ctaDemo": "Tazama demo ya sekunde 60",
     "trustline": "BRELA · TRA · NHC · BoT · M-Pesa",
@@ -93,7 +93,7 @@
         },
         {
           "role": "ai",
-          "body": "Wafanyakazi wanane, saa tatu kila mwezi kwenye karatasi za kodi. Ndio muundo wa Tume ya Mali ya Tanzania unaokula wiki yako. BossNyumba anaandaa kwa dakika mbili, anataja kila mstari, na unasaini mara moja. Ungependa kuona jinsi Jumatano halisi saa 06:00 inavyoonekana?"
+          "body": "Vyumba nane, saa tatu kila mwezi kwenye karatasi za kodi. Ndio muundo wa Wizara ya Ardhi unaokula wiki yako. BossNyumba anaandaa kwa dakika mbili, anataja kila mstari, na unasaini mara moja. Ungependa kuona jinsi Jumatano halisi saa 06:00 inavyoonekana?"
         }
       ]
     },
@@ -115,15 +115,15 @@
         "href": "/insights/rent-compliance-format-compliance"
       },
       {
-        "id": "lbma-hedge",
-        "title": "Hedges za gold-window zinaokoa 1.4% kwenye Vetted spot.",
+        "id": "fx-hedge",
+        "title": "Hedges za FX-window zinaokoa 1.4% kwenye BoT spot.",
         "body": "BossNyumba anafunga dhahabu yako kwenye dirisha la Vetted AM-fix kiotomatiki. Akiba ya mfano ya 1.4% dhidi ya spot wakati wa kupokea.",
-        "href": "/insights/lbma-window-hedging"
+        "href": "/insights/fx-window-hedging"
       },
       {
         "id": "biometric",
         "title": "Mahudhurio ya kidole yanaongeza tija ya zamu 18%.",
-        "body": "Fingerprint clock-in lango la pit inapunguza upotevu wa malipo na kuongeza tani zinazotolewa kwa zamu. Data kutoka uendeshaji Mikocheni na Songwe.",
+        "body": "Fingerprint clock-in lango la jengo inapunguza upotevu wa malipo na kuongeza tani zinazotolewa kwa zamu. Data kutoka uendeshaji Mikocheni na Songwe.",
         "href": "/insights/biometric-attendance-roi"
       }
     ]
@@ -160,7 +160,7 @@
         "delta": "0 mabadiliko"
       },
       {
-        "label": "TZS iliyofungwa kwenye gold-window",
+        "label": "TZS iliyofungwa kwenye FX-window",
         "value": "TZS 4.2B",
         "delta": "Mfano"
       }
@@ -187,15 +187,15 @@
       },
       "brief": {
         "title": "Briefing ya Asubuhi",
-        "blurb": "Saa 06:00 kila siku Master Brain anaonyesha shughuli za usiku, maamuzi yanayohitajika, na hali ya hazina ya gold-window."
+        "blurb": "Saa 06:00 kila siku Master Brain anaonyesha shughuli za usiku, maamuzi yanayohitajika, na hali ya hazina ya FX-window."
       },
       "drillhole": {
-        "title": "Daftari la Drill-Hole",
-        "blurb": "Logger ya mashimo ya kuchimba na grade-control. Cores zimepigwa picha, kupimwa, kuhusishwa na pit segment, kwenye chain."
+        "title": "Daftari la Matengenezo",
+        "blurb": "Logger ya tiketi za matengenezo na ukaguzi-hali. Tiketi zimepigwa picha, kupimwa, kuhusishwa na sehemu ya mali, kwenye chain."
       },
       "treasury": {
         "title": "FX na Hazina",
-        "blurb": "TZS · USD · gold ounces. Hedge proposals na live spot kutoka BoT na Vetted. Off-take projections kwa wiki."
+        "blurb": "TZS · USD · risiti za kodi. Hedge proposals na live spot kutoka BoT na Vetted. Tenancy projections kwa wiki."
       },
       "marketplace": {
         "title": "Soko",
@@ -224,7 +224,7 @@
       "two": {
         "label": "Import",
         "title": "Leta leseni na sites zako.",
-        "body": "Upload leseni za Individual Landlord/Portfolio Landlord/Institutional, ramani za pit, drill-hole logs. Grafu ya mgodi wako inajengwa otomatiki.",
+        "body": "Upload leseni za Individual Landlord/Portfolio Landlord/Institutional, michoro ya mali, tiketi ya matengenezo logs. Grafu ya mgodi wako inajengwa otomatiki.",
         "bullets": [
           "Individual Landlord, Portfolio Landlord, Institutional upload na OCR",
           "Ramani za pit kama GeoJSON au PDF",
@@ -261,7 +261,7 @@
         {
           "time": "22:14",
           "domain": "Mikocheni pit · shift B",
-          "body": "Shift B walitoa tani 184. Grade ya 3.2 g/t. Imehifadhiwa kwenye drill-hole log MR-241.",
+          "body": "Shift B walitoa tani 184. Grade ya 3.2 g/t. Imehifadhiwa kwenye tiketi ya matengenezo log MR-241.",
           "tone": "good",
           "tag": "OK"
         },
@@ -281,7 +281,7 @@
         },
         {
           "time": "03:05",
-          "domain": "Treasury · gold-window",
+          "domain": "Treasury · FX-window",
           "body": "Spot ya Vetted imepanda 1.4% ndani ya saa 6. Hedge proposal ya uncia 60 imeandaliwa.",
           "tone": "good",
           "tag": "TX"
@@ -310,11 +310,11 @@
     "question": "Cash runway yangu ni nini?",
     "answerPlan": [
       "Pata mizania ya TZS kwenye bank accounts zote",
-      "Pata gold inventory na live Vetted spot",
+      "Pata gold inventory na live BoT spot",
       "Pata burn rate ya wiki 4 zilizopita"
     ],
     "answer": "Una TZS 412M mkononi na uncia 184 za dhahabu zenye thamani ya TZS 1.18B kwa spot ya leo. Burn ya wiki 4 zilizopita ni TZS 87M/wiki. Hiyo inakupa runway ya wiki 18.3 — au wiki 22 kama off-take ya Mikocheni ya Februari ikitimia kwa wakati.",
-    "evidence": "Ushahidi: TRA bank-feed · Vetted spot · off-take MR-241",
+    "evidence": "Ushahidi: TRA bank-feed · BoT spot · off-take MR-241",
     "showcase": {
       "kicker": "Ongea na mgodi wako",
       "title": "Mimi ni mgodi.",
@@ -577,7 +577,7 @@
       "kicker": "Kwa nini mfumo wa Mali ya Mali",
       "title": "Mali za mali zinaendeshwa ukingoni.",
       "titleAccent": "BossNyumba inafunga pengo hilo mwanzo hadi mwisho.",
-      "subOne": "Mali za mali Tanzania bado zinaendeshwa kwa Excel, WhatsApp na mafaili ya kibinadamu ya compliance, kwenye leseni, kitabu cha kodi, wafanyakazi, hazina, soko, subsidiaries, family office na kila biashara ya ziada. Amana ni ya kiwango cha dunia. Miundombinu inayoizunguka sio.",
+      "subOne": "Mali za mali Tanzania bado zinaendeshwa kwa Excel, WhatsApp na mafaili ya kibinadamu ya compliance, kwenye leseni, kitabu cha kodi, wafanyakazi wa matengenezo, hazina, soko, subsidiaries, family office na kila biashara ya ziada. Amana ni ya kiwango cha dunia. Miundombinu inayoizunguka sio.",
       "subTwo": "BossNyumba ni mfumo wa uendeshaji wa Mali ya Mali wa AI ambao sekta imekuwa ikisubiri.",
       "problem": {
         "title": "Mali ukingoni",
@@ -595,8 +595,8 @@
             "desc": "NHC, NHC, Benki Kuu ya Tanzania, na TRA wanataka vitu tofauti kwa nyakati tofauti. Mmiliki anakuwa afisa wa compliance wa muda badala ya mchimbaji."
           },
           {
-            "title": "Mtazamo wa wafanyakazi unaishia getini",
-            "desc": "Wamiliki hawawezi kuona aliyeingia ofisini, mafuta gani yamechomwa, au matukio gani yametokea Jumatano ya zamu B. Upotevu wa malipo na kasoro za usalama vinarundikana wiki kwa wiki."
+            "title": "Mtazamo wa wafanyakazi wa matengenezo unaishia getini",
+            "desc": "Wamiliki hawawezi kuona aliyeingia ofisini, huduma gani zimetumika, au matukio gani yametokea Jumatano ya zamu B. Upotevu wa malipo na kasoro za usalama vinarundikana wiki kwa wiki."
           }
         ]
       },
@@ -617,7 +617,7 @@
           },
           {
             "title": "Workforce console kwenye simu ya supervisor",
-            "desc": "Endesha zamu, mahudhurio, fuel logs, na incidents kutoka mfukoni mwa foreman. Biometric clock-in kwenye lango la pit inaongeza tija ya zamu kwa 18% kwa pilot sites."
+            "desc": "Endesha zamu, mahudhurio, kumbukumbu za huduma na matukio kutoka mfukoni mwa foreman. Biometric clock-in kwenye lango la jengo inaongeza tija ya zamu kwa 18% kwa pilot sites."
           }
         ]
       }
@@ -653,7 +653,7 @@
             },
             {
               "name": "GST",
-              "desc": "Geological Survey Tanzania · ulodgement wa drill-hole + assay"
+              "desc": "Tanzania Land Survey Service · ulodgement wa tiketi ya matengenezo + ukaguzi"
             }
           ]
         },
@@ -704,8 +704,8 @@
           "body": "Kila lebo, kila brief, kila artifact ya mamlaka inakuja kwa Kiswahili. Kiingereza ni mbofyo mmoja. Hakuna kuchelewa kwa tafsiri — bendera ya lugha inageuka na UI yote inafuata, ikiwa ni pamoja na PDF zilizosainiwa."
         },
         {
-          "title": "Simu kwa pit, tablet kwa ofisi",
-          "body": "Supervisors wanaendesha zamu kutoka simu — biometric clock-in, fuel logs, incident reports. Wamiliki wanapitia kwa tablet — daily brief, treasury, kalenda ya leseni. Data sawa, surface sahihi."
+          "title": "Simu uwandani, kombora ofisini",
+          "body": "Supervisors wanaendesha zamu kutoka simu — biometric clock-in, kumbukumbu za huduma, incident reports. Wamiliki wanapitia kwa tablet — daily brief, treasury, kalenda ya leseni. Data sawa, surface sahihi."
         },
         {
           "title": "Desktop kwa mamlaka",
@@ -725,7 +725,7 @@
           "headline": "Anasimamisha real estate knowledge graph kwa saa 48",
           "capabilities": [
             "Anaingiza leseni za Individual Landlord/Portfolio Landlord/Institutional kwa OCR na anazifuatilia dhidi ya rejista ya Regulator",
-            "Anaingiza ramani za pit kama GeoJSON au PDF na anaunganisha kila drill-hole na segment",
+            "Anaingiza michoro ya mali kama GeoJSON au PDF na anaunganisha kila tiketi ya matengenezo na segment",
             "Anajenga rejista za vendor, tenant, na worker kutoka rekodi za M-Pesa na payroll",
             "Anatoa kila mwanachama wa timu credential ya jukumu — owner, manager, supervisor, employee"
           ]
@@ -733,7 +733,7 @@
         {
           "id": "strategy",
           "label": "Mkakati",
-          "headline": "Anaona mwelekeo wa muda mrefu — pit, treasury, wafanyakazi, soko",
+          "headline": "Anaona mwelekeo wa muda mrefu — pit, treasury, wafanyakazi wa matengenezo, soko",
           "capabilities": [
             "Anasimulia uzalishaji wa miezi 12 dhidi ya hali tatu za bei ya dhahabu",
             "Anakadiria cash runway kutoka burn ya sasa, kitabu cha hedge, na pipeline ya off-take",
@@ -744,11 +744,11 @@
         {
           "id": "operations",
           "label": "Uendeshaji",
-          "headline": "Anaendesha siku kutoka lango la pit hadi wash plant",
+          "headline": "Anaendesha siku kutoka lango la jengo hadi wash plant",
           "capabilities": [
             "Anapanga zamu na anafuatilia biometric clock-in kwenye simu ya supervisor",
-            "Anaweka kila drill-hole, assay, na measurement ya grade-control kwenye chain",
-            "Anafuatilia matumizi ya mafuta, lubricants, na explosives dhidi ya pit segments",
+            "Anaweka kila tiketi ya matengenezo, ukaguzi, na measurement ya ukaguzi-hali kwenye chain",
+            "Anafuatilia matumizi ya huduma, lubricants, na explosives dhidi ya sehemu ya malis",
             "Anaonyesha matukio ya usiku, near-misses, na downtime ya vifaa ifikapo saa 06:00"
           ]
         },
@@ -831,7 +831,7 @@
           "desc": "Garini kwenye haul road. Kwenye wash plant deck. Lango la pit ambapo mikono yote miwili ni mchafu. Bofya mic, ongea, na BossNyumba anajibu kwa Kiswahili au Kiingereza.",
           "preview": {
             "user": "Mwikila, ni gani limetokea usiku?",
-            "ai": "Zamu B imetoa tani 184 kwa daraja la 3.2 g/t. Gari moja la mafuta limepoteza saa mbili kwa breakdown. Hakuna ajali. Rent ya Aprili iko tayari kusainiwa."
+            "ai": "Zamu B imetoa tani 184 kwa daraja la 3.2 g/t. Gari moja la huduma limepoteza saa mbili kwa breakdown. Hakuna ajali. Rent ya Aprili iko tayari kusainiwa."
           }
         }
       ]
@@ -845,7 +845,7 @@
         {
           "title": "Owner Cockpit",
           "subtitle": "Tablet · desktop · skrini 22",
-          "desc": "Daily brief, kalenda ya leseni, treasury, drill-hole logger, compliance pack. Surface ya amri ya kistratejia kwa mmiliki wa mali.",
+          "desc": "Daily brief, kalenda ya leseni, treasury, tiketi ya matengenezo logger, compliance pack. Surface ya amri ya kistratejia kwa mmiliki wa mali.",
           "mockType": "kpi",
           "kpis": [
             {
@@ -869,7 +869,7 @@
           "mockType": "shift",
           "rows": [
             {
-              "label": "Zamu B · pit segment 4",
+              "label": "Zamu B · sehemu ya mali 4",
               "value": "184 t",
               "tone": "good"
             },
@@ -888,7 +888,7 @@
         {
           "title": "Buyer Marketplace",
           "subtitle": "Web · simu · skrini 12",
-          "desc": "Wauzaji wa KYB-verified, vetted corporate assays, biometric off-take signatures. Marketplace ya wanunuzi wanaotafuta mali ya Tanzania yaliyothibitishwa.",
+          "desc": "Wauzaji wa KYB-verified, vetted corporate inspections, biometric off-take signatures. Marketplace ya wanunuzi wanaotafuta mali ya Tanzania yaliyothibitishwa.",
           "mockType": "market",
           "listings": [
             {
@@ -897,12 +897,12 @@
               "tone": "live"
             },
             {
-              "label": "Mererani tanzanite · Block-D",
+              "label": "Mwanza jengo · Block-D",
               "value": "TZS 88M",
               "tone": "live"
             },
             {
-              "label": "Kigoma coltan · 2.4 t",
+              "label": "Arusha block · ekari 2.4",
               "value": "TZS 56M",
               "tone": "live"
             }
@@ -1004,7 +1004,7 @@
       "pills": [
         {
           "label": "Q1 2026",
-          "title": "Waendeshaji wa mapema — migodi kumi hai",
+          "title": "Waendeshaji wa mapema — mali kumi hai",
           "tone": "active"
         },
         {
@@ -1163,11 +1163,11 @@
     "sections": [
       {
         "title": "1. Tunakusanya nini",
-        "body": "BossNyumba inakusanya data ya biashara yako ya mgodi — leseni za Individual Landlord/Portfolio Landlord/Institutional, ramani za pit, drill-hole logs, shughuli za off-take, rent returns, na ujumbe wa watumiaji wako. Hatukusanyi data za kibinafsi za wamiliki wa mali binafsi isipokuwa ikiwa wameipakia wenyewe au mmiliki ametuagiza."
+        "body": "BossNyumba inakusanya data ya biashara yako ya mgodi — leseni za Individual Landlord/Portfolio Landlord/Institutional, michoro ya mali, tiketi ya matengenezo logs, shughuli za off-take, rent returns, na ujumbe wa watumiaji wako. Hatukusanyi data za kibinafsi za wamiliki wa mali binafsi isipokuwa ikiwa wameipakia wenyewe au mmiliki ametuagiza."
       },
       {
         "title": "2. Kwa nini",
-        "body": "Tunatumia data hii kuendesha Master Brain yako, kutoa briefing za asubuhi, kuandaa reports kwa NHC na TRA, na kufanya hedge proposals kwenye gold-window. Hatuiuzi kwa watu wengine. Hatuitumii kwa matangazo."
+        "body": "Tunatumia data hii kuendesha Master Brain yako, kutoa briefing za asubuhi, kuandaa reports kwa NHC na TRA, na kufanya hedge proposals kwenye FX-window. Hatuiuzi kwa watu wengine. Hatuitumii kwa matangazo."
       },
       {
         "title": "3. Wapi inaishi",
@@ -1225,7 +1225,7 @@
   "ownersPage": {
     "kicker": "Kwa wamiliki wa migodi",
     "heading": "Endesha mgodi wako kama wabora duniani.",
-    "sub": "Master Brain, kalenda ya leseni, drill-hole logger, FX/treasury, soko na compliance — yote kwenye operator mmoja mtulivu.",
+    "sub": "Master Brain, kalenda ya leseni, tiketi ya matengenezo logger, FX/treasury, soko na compliance — yote kwenye operator mmoja mtulivu.",
     "ctaPilot": "Anza sasa",
     "ctaPricing": "Ona bei"
   },
@@ -1274,7 +1274,7 @@
       "cards": {
         "provenance": {
           "title": "Asili iliyothibitishwa",
-          "blurb": "Mnyororo wa ushahidi kutoka drill-hole hadi weighbridge. Kila uhamisho umesainiwa, umetiwa muda, na kuandikwa kwenye audit chain."
+          "blurb": "Mnyororo wa ushahidi kutoka tiketi ya matengenezo hadi weighbridge. Kila uhamisho umesainiwa, umetiwa muda, na kuandikwa kwenye audit chain."
         },
         "kyb": {
           "title": "Wauzaji wa KYB",
@@ -1400,7 +1400,7 @@
       "contactEmailEn": "Contact email"
     },
     "businessKinds": {
-      "corporate-let": "Kampuni inayokodi kwa wafanyakazi",
+      "corporate-let": "Kampuni inayokodi kwa wafanyakazi wa matengenezo",
       "serviced-apartment": "Mtoa-huduma wa serviced-apartment",
       "embassy-or-ngo": "Ubalozi au NGO",
       "institutional": "Mpangaji wa kitaasisi / wa kiserikali",
@@ -1534,7 +1534,7 @@
         },
         "usdCliff": {
           "title": "Remediation ya USD cliff ya 27-Mar-2026",
-          "blurb": "Inafuatilia USD exposure dhidi ya tarehe ya cliff ya kanuni. Inapendekeza hedges, sarafu mbadala za invoice, na settlement za gold-window."
+          "blurb": "Inafuatilia USD exposure dhidi ya tarehe ya cliff ya kanuni. Inapendekeza hedges, sarafu mbadala za invoice, na settlement za FX-window."
         },
         "auditPack": {
           "title": "Export ya audit-pack",
@@ -1928,7 +1928,7 @@
       "heroKicker": "Kwa waendeshaji wa Institutional",
       "heroHeadline": "Leseni maalum zinastahili",
       "heroHeadlineAccent": "nidhamu maalum",
-      "heroSub": "BossNyumba inawapa waendeshaji wa Institutional dashibodi ya kiwango cha bodi. Muunganisho wa migodi mingi, ulingano wa mazingira, daftari la jamii, mlolongo wa ukaguzi, na AI mkuu wa wafanyakazi anayemfafanulia mkurugenzi kila siku.",
+      "heroSub": "BossNyumba inawapa waendeshaji wa Institutional dashibodi ya kiwango cha bodi. Muunganisho wa migodi mingi, ulingano wa mazingira, daftari la jamii, mlolongo wa ukaguzi, na AI mkuu wa wafanyakazi wa matengenezo anayemfafanulia mkurugenzi kila siku.",
       "heroPrimaryCta": "Anza majaribio ya siku 90",
       "heroSecondaryCta": "Iangalie inavyofanya kazi",
       "trustline": [

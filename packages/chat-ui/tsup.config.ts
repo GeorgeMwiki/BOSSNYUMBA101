@@ -17,7 +17,22 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   treeshake: true,
-  external: ['react', 'react-dom'],
+  external: [
+    'react',
+    'react-dom',
+    'react/jsx-runtime',
+    'next',
+    'next/dynamic',
+    'next/link',
+    'next/image',
+    'next/navigation',
+    'next/headers',
+    'framer-motion',
+    'lucide-react',
+    '@bossnyumba/design-system',
+    '@bossnyumba/api-sdk',
+    '@bossnyumba/genui',
+  ],
   esbuildOptions(options) {
     options.jsx = 'automatic';
   },
