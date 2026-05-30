@@ -105,3 +105,31 @@ export {
   MR_MWIKILA_CANONICAL_DISPLAY,
   type MrMwikilaCanonicalDisplay,
 } from './canonical-display.js';
+
+// LitFin canonical chat-UI primitives — carbon copy of LitFin's chat-ui
+// (LITFIN_PATH/src/components/chat-ui/index.tsx). The visual shell every
+// BossNyumba chat surface must use so the copper-on-cream brand experience
+// is consistent across marketing widget, owner cockpit chat, tenant portal,
+// estate-manager chat, mobile shells.
+export {
+  CHAT_HEADER_GRADIENT,
+  CHAT_USER_BUBBLE,
+  CHAT_AI_BUBBLE,
+  ChatShellHeader,
+  ChatHeaderIconButton,
+  TypingDots,
+  ChatShellEmptyState,
+  ChatShellBody,
+  ChatShellMessageRow,
+  ChatShellComposer,
+  ChatShellDisclaimer,
+  ChatShell,
+} from './litfin-primitives.js';
+export type {
+  ChatShellHeaderProps,
+  ChatShellEmptyStateProps,
+  ChatShellMessageRowProps,
+  ChatShellComposerProps,
+  ChatShellDisclaimerProps,
+  ChatShellProps,
+} from './litfin-primitives.js';
