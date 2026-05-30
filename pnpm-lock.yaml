@@ -887,9 +887,6 @@ importers:
 
   apps/tenant-portal:
     dependencies:
-      '@bossnyumba/design-system':
-        specifier: workspace:*
-        version: link:../../packages/design-system
       '@bossnyumba/performance-toolkit':
         specifier: workspace:*
         version: link:../../packages/performance-toolkit
@@ -2453,6 +2450,19 @@ importers:
       vitest:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
+
+  packages/i18n:
+    dependencies:
+      react:
+        specifier: '>=18.0.0'
+        version: 18.3.1
+    devDependencies:
+      '@types/react':
+        specifier: 18.3.28
+        version: 18.3.28
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
 
   packages/inventory-management:
     dependencies:
@@ -30063,7 +30073,6 @@ packages:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
     hasBin: true
-    dev: false
 
   /typescript@6.0.3:
     resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}

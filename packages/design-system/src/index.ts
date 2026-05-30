@@ -221,6 +221,9 @@ export * from './components/Spinner';
 // ErrorBoundary
 export { ErrorBoundary } from './components/ErrorBoundary';
 
+// ThemeProvider — light/dark/system theme switching (LitFin shape, BN-namespaced)
+export { ThemeProvider, useTheme, ThemeToggle } from './components/ThemeProvider';
+
 // Pagination
 export * from './components/Pagination';
 
