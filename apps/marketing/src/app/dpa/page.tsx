@@ -84,7 +84,7 @@ export default function DpaPage() {
           6. Audit rights
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-neutral-400">
-          On Kampuni and Group tiers, you may audit our compliance once
+          On the Corporate and Group tiers, you may audit our compliance once
           per calendar year, on 30 days&apos; notice, at your cost. SOC 2
           Type II report satisfies the audit obligation.
         </p>

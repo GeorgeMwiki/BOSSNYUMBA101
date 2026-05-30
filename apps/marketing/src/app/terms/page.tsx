@@ -33,7 +33,7 @@ export default function TermsPage() {
         </h2>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-neutral-400">
           <li>You own your data. We process it on your behalf. You can export and delete it any time.</li>
-          <li>You pay for your tier. Mkulima is free up to 5 units; other tiers are billed monthly in TZS.</li>
+          <li>You pay for your tier. The Smallholder tier is free up to 5 units; other tiers are billed monthly in TZS.</li>
           <li>You can cancel any time. You keep access until the end of the current month. No early-termination fee.</li>
           <li>We&apos;ll do what we say in the SLA. If we don&apos;t, you get the remedies in the SLA.</li>
           <li>Do not use Boss Nyumba to break the law, abuse tenants, evade tax, or commit fraud.</li>

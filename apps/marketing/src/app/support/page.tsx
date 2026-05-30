@@ -71,7 +71,7 @@ export default function SupportPage() {
         <p className="mt-6 text-lg leading-relaxed text-neutral-300">
           Mr. Mwikila is your first line; the human team is your second.
           For paid tiers, SLAs are baked into your contract. For free
-          tier (Mkulima), we still aim to answer within one business day.
+          tier (Smallholder), we still aim to answer within one business day.
         </p>
 
         <div className="mt-12 grid gap-4 md:grid-cols-2">

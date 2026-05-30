@@ -3,21 +3,92 @@ import Link from 'next/link';
 import { ShieldCheck, Sparkles } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { MwikilaChip } from '@/components/shared/MwikilaChip';
+import { getLocale } from '@/lib/locale';
+import { type Locale } from '@/lib/i18n';
+import { TIERS, tierLabel } from '@/lib/pricing';
 
-export const metadata: Metadata = {
-  title: 'Sign Up — Boss Nyumba',
-  description:
-    'Sign Up free on Mkulima (T1). Up to 5 units, one user seat, M-Pesa rent collection, double-entry ledger, Mr. Mwikila chat. No card needed. Swahili-first.',
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'sw') {
+    return {
+      title: 'Jisajili — Boss Nyumba',
+      description:
+        'Jisajili bure kwenye daraja la Mkulima. Hadi vyumba 5, kiti kimoja cha mtumiaji, ukusanyaji wa kodi kwa M-Pesa, daftari la maingizo mawili, mazungumzo na Bw. Mwikila. Hakuna kadi inayohitajika. Lugha mbili sw/en.',
+    };
+  }
+  return {
+    title: 'Sign Up — Boss Nyumba',
+    description:
+      'Sign up free on the Smallholder tier. Up to 5 units, one user seat, M-Pesa rent collection, double-entry ledger, Mr. Mwikila chat. No card needed. Bilingual sw/en.',
+  };
+}
+
+interface SignUpCopy {
+  readonly kicker: string;
+  readonly headline: (tierName: string) => string;
+  readonly sub: string;
+  readonly fullName: string;
+  readonly mpesaPhone: string;
+  readonly mpesaHelp: string;
+  readonly emailOptional: string;
+  readonly agreePrefix: string;
+  readonly agreeTerms: string;
+  readonly agreeAnd: string;
+  readonly agreePrivacy: string;
+  readonly submit: string;
+  readonly alreadyHave: string;
+  readonly logIn: string;
+}
+
+const COPY: Record<Locale, SignUpCopy> = {
+  en: {
+    kicker: 'Welcome',
+    headline: (tierName) => `Sign up — free on ${tierName}.`,
+    sub: 'Up to 5 units, one user seat, M-Pesa rent collection. No card needed. Upgrade only when your portfolio grows.',
+    fullName: 'Full name',
+    mpesaPhone: 'M-Pesa-linked phone number',
+    mpesaHelp: 'We send a one-time code over SMS to verify. Standard rates apply.',
+    emailOptional: 'Email (optional)',
+    agreePrefix: 'I agree to the',
+    agreeTerms: 'Terms of Service',
+    agreeAnd: 'and',
+    agreePrivacy: 'Privacy Notice',
+    submit: 'Sign Up — free',
+    alreadyHave: 'Already have an account?',
+    logIn: 'Log In',
+  },
+  sw: {
+    kicker: 'Karibu',
+    headline: (tierName) => `Jisajili — bure kwenye ${tierName}.`,
+    sub: 'Hadi vyumba 5, kiti kimoja cha mtumiaji, ukusanyaji wa kodi kwa M-Pesa. Hakuna kadi inayohitajika. Pandisha daraja portfolio yako inapokua.',
+    fullName: 'Jina kamili',
+    mpesaPhone: 'Nambari ya simu iliyounganishwa na M-Pesa',
+    mpesaHelp: 'Tunatuma msimbo wa mara moja kwa SMS kuthibitisha. Gharama za kawaida zinatozwa.',
+    emailOptional: 'Barua pepe (hiari)',
+    agreePrefix: 'Nakubaliana na',
+    agreeTerms: 'Masharti ya Huduma',
+    agreeAnd: 'na',
+    agreePrivacy: 'Taarifa ya Faragha',
+    submit: 'Jisajili — bure',
+    alreadyHave: 'Tayari una akaunti?',
+    logIn: 'Ingia',
+  },
 };
 
 /**
- * /sign-up — owner registration landing.
+ * /sign-up — owner registration landing. Locale-aware: the entire
+ * page resolves through `getLocale()` so the English render is pure
+ * English and the Swahili render is pure Swahili.
  *
  * Static form skeleton. POST handler owned by API agent #226. We
  * deliberately use "Sign Up" language only — no "Start a free trial"
  * (Borjie discipline).
  */
-export default function SignUpPage() {
+export default async function SignUpPage() {
+  const locale = await getLocale();
+  const copy = COPY[locale] ?? COPY.en;
+  const smallholder = tierLabel(TIERS[0], locale);
+
   return (
     <PageShell>
       <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -29,14 +100,13 @@ export default function SignUpPage() {
         <div className="relative mx-auto max-w-xl px-6 py-20 lg:py-28">
           <header className="mb-10 text-center">
             <p className="font-mono text-xs uppercase tracking-widest text-signal-500">
-              Karibu (Welcome)
+              {copy.kicker}
             </p>
             <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
-              Sign Up — free on Mkulima.
+              {copy.headline(smallholder)}
             </h1>
             <p className="mx-auto mt-5 max-w-prose-wide text-base leading-relaxed text-neutral-400">
-              Up to 5 units, one user seat, M-Pesa rent collection. No
-              card needed. Upgrade only when your portfolio grows.
+              {copy.sub}
             </p>
             <div className="mt-6 flex justify-center">
               <MwikilaChip variant="compact" />
@@ -50,7 +120,7 @@ export default function SignUpPage() {
                   htmlFor="signup-name"
                   className="block text-sm font-semibold text-foreground"
                 >
-                  Full name
+                  {copy.fullName}
                 </label>
                 <input
                   id="signup-name"
@@ -66,7 +136,7 @@ export default function SignUpPage() {
                   htmlFor="signup-phone"
                   className="block text-sm font-semibold text-foreground"
                 >
-                  M-Pesa-linked phone number
+                  {copy.mpesaPhone}
                 </label>
                 <input
                   id="signup-phone"
@@ -79,7 +149,7 @@ export default function SignUpPage() {
                   className="mt-2 block w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-neutral-600 focus:border-signal-500 focus:outline-none focus:ring-1 focus:ring-signal-500"
                 />
                 <p className="mt-1 text-xs text-neutral-500">
-                  We send a one-time code over SMS to verify. Standard rates apply.
+                  {copy.mpesaHelp}
                 </p>
               </div>
               <div>
@@ -87,7 +157,7 @@ export default function SignUpPage() {
                   htmlFor="signup-email"
                   className="block text-sm font-semibold text-foreground"
                 >
-                  Email (optional)
+                  {copy.emailOptional}
                 </label>
                 <input
                   id="signup-email"
@@ -106,13 +176,13 @@ export default function SignUpPage() {
                   className="mt-1 h-4 w-4 rounded border-border bg-background text-signal-500 focus:ring-signal-500"
                 />
                 <label htmlFor="signup-terms" className="text-xs leading-snug text-neutral-400">
-                  I agree to the{' '}
+                  {copy.agreePrefix}{' '}
                   <Link href="/terms" className="text-signal-500 underline-offset-4 hover:underline">
-                    Terms of Service
+                    {copy.agreeTerms}
                   </Link>{' '}
-                  and{' '}
+                  {copy.agreeAnd}{' '}
                   <Link href="/privacy" className="text-signal-500 underline-offset-4 hover:underline">
-                    Privacy Notice
+                    {copy.agreePrivacy}
                   </Link>
                   .
                 </label>
@@ -122,18 +192,18 @@ export default function SignUpPage() {
                 className="group inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-signal-500 px-5 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:bg-signal-400 active:scale-[0.98]"
               >
                 <Sparkles className="h-4 w-4" aria-hidden="true" />
-                Sign Up — free
+                {copy.submit}
               </button>
             </form>
           </div>
 
           <p className="mt-6 text-center text-sm text-neutral-400">
-            Already have an account?{' '}
+            {copy.alreadyHave}{' '}
             <Link
               href="/sign-in"
               className="font-medium text-signal-500 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 rounded-sm"
             >
-              Log In
+              {copy.logIn}
             </Link>
           </p>
 

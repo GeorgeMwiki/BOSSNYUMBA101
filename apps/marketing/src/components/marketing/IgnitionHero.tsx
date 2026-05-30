@@ -242,12 +242,12 @@ export function IgnitionHero() {
             className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground md:text-xl"
             style={{ textWrap: 'pretty' }}
           >
-            BossNyumba (Swahili: <em>head of the house</em>) is the only
-            operating system built to run a single landlord, a portfolio,
-            a fund, a campus, a mission, or a parastatal on the same
-            calm brain. Mr. Mwikila handles leases, rent, maintenance
-            staff, treasury, compliance, and the morning brief on your
-            authority &mdash; bilingual, audit-grade, every action signed.
+            BossNyumba is the only operating system built to run a single
+            landlord, a portfolio, a fund, a campus, a mission, or a
+            parastatal on the same calm brain. Mr. Mwikila handles leases,
+            rent, maintenance staff, treasury, compliance, and the morning
+            brief on your authority &mdash; bilingual, audit-grade, every
+            action signed.
           </p>
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">

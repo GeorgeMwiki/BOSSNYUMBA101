@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 const COMMITMENTS: ReadonlyArray<{ title: string; body: string }> = [
   {
     title: 'No card, no commit',
-    body: "Mfanyabiashara tier free for 90 days. We don't ask for a card until the pilot converts.",
+    body: "Professional tier free for 90 days. We don't ask for a card until the pilot converts.",
   },
   {
     title: 'Implementation included',
