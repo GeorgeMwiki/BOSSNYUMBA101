@@ -151,51 +151,76 @@ export interface ComparisonFeature {
   readonly group: string;
   readonly feature: string;
   readonly tiers: ReadonlyArray<TierId>;
+  /**
+   * Optional Swahili translations. When present, the rendering layer
+   * picks `groupSw` / `featureSw` for locale === 'sw'. If absent, the
+   * EN strings are used as fallback so the table never breaks.
+   */
+  readonly groupSw?: string;
+  readonly featureSw?: string;
+}
+
+/**
+ * Resolve a feature's group + feature label for a given locale.
+ * Falls back to English if SW translation is missing for that row.
+ */
+export function comparisonGroupLabel(
+  cf: ComparisonFeature,
+  locale: Locale,
+): string {
+  return locale === 'sw' && cf.groupSw ? cf.groupSw : cf.group;
+}
+
+export function comparisonFeatureLabel(
+  cf: ComparisonFeature,
+  locale: Locale,
+): string {
+  return locale === 'sw' && cf.featureSw ? cf.featureSw : cf.feature;
 }
 
 export const COMPARISON: readonly ComparisonFeature[] = [
   // === Core ===
-  { group: 'Core',         feature: 'Mr. Mwikila — AI property operations manager',          tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Core',         feature: 'Head Briefing morning summary',                          tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Core',         feature: 'Five-level autonomy dial',                               tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Core',         feature: 'Cryptographic audit chain',                              tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Core',         feature: 'Swahili + English (sw/en)',                              tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Core',         groupSw: 'Msingi',          feature: 'Mr. Mwikila — AI property operations manager',          featureSw: 'Mwl. Mwikila — meneja wa shughuli za mali wa AI',                   tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Core',         groupSw: 'Msingi',          feature: 'Head Briefing morning summary',                          featureSw: 'Muhtasari wa asubuhi wa Mkuu',                                       tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Core',         groupSw: 'Msingi',          feature: 'Five-level autonomy dial',                               featureSw: 'Kipimo cha viwango vitano vya uhuru',                                tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Core',         groupSw: 'Msingi',          feature: 'Cryptographic audit chain',                              featureSw: 'Mnyororo wa ukaguzi wa kripto',                                      tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Core',         groupSw: 'Msingi',          feature: 'Swahili + English (sw/en)',                              featureSw: 'Kiswahili + Kiingereza (sw/en)',                                      tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
   // === Property ops ===
-  { group: 'Property ops', feature: 'Rent collection (M-Pesa, Tigo Pesa, Airtel Money)',      tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Property ops', feature: 'Tenant onboarding + screening',                          tiers: ['mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Property ops', feature: 'Maintenance ticket triage',                              tiers: ['mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Property ops', feature: 'Vendor + handyman dispatch',                             tiers: ['mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Property ops', feature: 'Inspection + condition reports',                         tiers: ['mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Property ops', feature: 'Damage-deductions ledger',                               tiers: ['mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Property ops', groupSw: 'Shughuli za mali', feature: 'Rent collection (M-Pesa, Tigo Pesa, Airtel Money)',     featureSw: 'Ukusanyaji wa kodi (M-Pesa, Tigo Pesa, Airtel Money)',                tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Property ops', groupSw: 'Shughuli za mali', feature: 'Tenant onboarding + screening',                         featureSw: 'Usajili na uchunguzi wa wapangaji',                                   tiers: ['mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Property ops', groupSw: 'Shughuli za mali', feature: 'Maintenance ticket triage',                             featureSw: 'Uchambuzi wa tiketi za matengenezo',                                  tiers: ['mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Property ops', groupSw: 'Shughuli za mali', feature: 'Vendor + handyman dispatch',                            featureSw: 'Usambazaji wa wauzaji na mafundi',                                    tiers: ['mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Property ops', groupSw: 'Shughuli za mali', feature: 'Inspection + condition reports',                        featureSw: 'Taarifa za ukaguzi na hali',                                          tiers: ['mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Property ops', groupSw: 'Shughuli za mali', feature: 'Damage-deductions ledger',                              featureSw: 'Leja ya makato ya uharibifu',                                         tiers: ['mfanyabiashara', 'kampuni', 'group'] },
   // === Finance ===
-  { group: 'Finance',      feature: 'Double-entry rent ledger',                               tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Finance',      feature: 'Owner statements + disbursements',                       tiers: ['mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Finance',      feature: 'Multi-currency (TZS / KES / USD)',                       tiers: ['mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Finance',      feature: 'Budgets + forecasts',                                    tiers: ['mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Finance',      feature: 'Treasury sweep + escrow',                                tiers: ['kampuni', 'group'] },
+  { group: 'Finance',      groupSw: 'Fedha',           feature: 'Double-entry rent ledger',                               featureSw: 'Leja ya kodi ya kuingia mara mbili',                                  tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Finance',      groupSw: 'Fedha',           feature: 'Owner statements + disbursements',                       featureSw: 'Taarifa za mwenye nyumba na malipo',                                  tiers: ['mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Finance',      groupSw: 'Fedha',           feature: 'Multi-currency (TZS / KES / USD)',                       featureSw: 'Sarafu nyingi (TZS / KES / USD)',                                     tiers: ['mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Finance',      groupSw: 'Fedha',           feature: 'Budgets + forecasts',                                    featureSw: 'Bajeti na utabiri',                                                   tiers: ['mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Finance',      groupSw: 'Fedha',           feature: 'Treasury sweep + escrow',                                featureSw: 'Hazina pamoja na escrow',                                             tiers: ['kampuni', 'group'] },
   // === Compliance ===
-  { group: 'Compliance',   feature: 'Lease + title registry',                                 tiers: ['mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Compliance',   feature: 'Regulatory calendar (housing board / municipal)',        tiers: ['mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Compliance',   feature: 'Housing-regulator e-filing',                             tiers: ['kampuni', 'group'] },
-  { group: 'Compliance',   feature: 'Council levy + property tax automation',                 tiers: ['mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Compliance',   groupSw: 'Utii',            feature: 'Lease + title registry',                                 featureSw: 'Daftari la mikataba na hati miliki',                                  tiers: ['mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Compliance',   groupSw: 'Utii',            feature: 'Regulatory calendar (housing board / municipal)',        featureSw: 'Kalenda ya udhibiti (bodi ya makazi / manispaa)',                     tiers: ['mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Compliance',   groupSw: 'Utii',            feature: 'Housing-regulator e-filing',                             featureSw: 'Uwasilishaji wa kielektroniki kwa mdhibiti wa makazi',                tiers: ['kampuni', 'group'] },
+  { group: 'Compliance',   groupSw: 'Utii',            feature: 'Council levy + property tax automation',                 featureSw: 'Otomatiki ya ushuru wa halmashauri na kodi ya mali',                  tiers: ['mfanyabiashara', 'kampuni', 'group'] },
   // === People ===
-  { group: 'People',       feature: 'User seats included',                                    tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'People',       feature: 'Role-based access control',                              tiers: ['mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'People',       feature: 'SSO / SCIM provisioning',                                tiers: ['kampuni', 'group'] },
-  { group: 'People',       feature: 'Workforce management (estate manager / handyman team)',  tiers: ['mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'People',       groupSw: 'Watu',            feature: 'User seats included',                                    featureSw: 'Viti vya watumiaji vilivyojumuishwa',                                 tiers: ['mkulima', 'mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'People',       groupSw: 'Watu',            feature: 'Role-based access control',                              featureSw: 'Udhibiti wa upatikanaji kwa jukumu',                                  tiers: ['mwanafamilia', 'mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'People',       groupSw: 'Watu',            feature: 'SSO / SCIM provisioning',                                featureSw: 'Utoaji wa SSO / SCIM',                                                tiers: ['kampuni', 'group'] },
+  { group: 'People',       groupSw: 'Watu',            feature: 'Workforce management (estate manager / handyman team)', featureSw: 'Usimamizi wa wafanyakazi (meneja wa mali / timu ya mafundi)',        tiers: ['mfanyabiashara', 'kampuni', 'group'] },
   // === Intelligence ===
-  { group: 'Intelligence', feature: 'Rent-rate forecasts (conformal)',                        tiers: ['mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Intelligence', feature: 'Tenant churn prediction',                                tiers: ['mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Intelligence', feature: 'Master Brain — portfolio-wide reasoning',                tiers: ['kampuni', 'group'] },
-  { group: 'Intelligence', feature: 'LMBM — legal-master-brain memory',                       tiers: ['kampuni', 'group'] },
-  { group: 'Intelligence', feature: 'Cross-tenant pattern library',                           tiers: ['group'] },
+  { group: 'Intelligence', groupSw: 'Akili',           feature: 'Rent-rate forecasts (conformal)',                        featureSw: 'Utabiri wa viwango vya kodi (conformal)',                             tiers: ['mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Intelligence', groupSw: 'Akili',           feature: 'Tenant churn prediction',                                featureSw: 'Utabiri wa wapangaji kuondoka',                                       tiers: ['mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Intelligence', groupSw: 'Akili',           feature: 'Master Brain — portfolio-wide reasoning',                featureSw: 'Master Brain — hoja katika mali yote',                                tiers: ['kampuni', 'group'] },
+  { group: 'Intelligence', groupSw: 'Akili',           feature: 'LMBM — legal-master-brain memory',                       featureSw: 'LMBM — kumbukumbu za ubongo-mkuu-wa-kisheria',                        tiers: ['kampuni', 'group'] },
+  { group: 'Intelligence', groupSw: 'Akili',           feature: 'Cross-tenant pattern library',                           featureSw: 'Maktaba ya mifumo ya wateja mbalimbali',                              tiers: ['group'] },
   // === Trust + support ===
-  { group: 'Trust',        feature: 'Community + email support',                              tiers: ['mkulima', 'mwanafamilia'] },
-  { group: 'Trust',        feature: 'Priority support, 4-hour SLA',                           tiers: ['mfanyabiashara', 'kampuni', 'group'] },
-  { group: 'Trust',        feature: 'Dedicated success manager',                              tiers: ['kampuni', 'group'] },
-  { group: 'Trust',        feature: '99.95% uptime SLA + named support engineer',             tiers: ['group'] },
-  { group: 'Trust',        feature: 'On-prem or private-cloud deployment',                    tiers: ['group'] },
-  { group: 'Trust',        feature: 'Custom audit + regulator reports',                       tiers: ['group'] },
+  { group: 'Trust',        groupSw: 'Uaminifu',        feature: 'Community + email support',                              featureSw: 'Msaada wa jumuiya na barua pepe',                                     tiers: ['mkulima', 'mwanafamilia'] },
+  { group: 'Trust',        groupSw: 'Uaminifu',        feature: 'Priority support, 4-hour SLA',                           featureSw: 'Msaada wa kipaumbele, SLA ya saa 4',                                  tiers: ['mfanyabiashara', 'kampuni', 'group'] },
+  { group: 'Trust',        groupSw: 'Uaminifu',        feature: 'Dedicated success manager',                              featureSw: 'Meneja wa mafanikio aliyetajwa',                                      tiers: ['kampuni', 'group'] },
+  { group: 'Trust',        groupSw: 'Uaminifu',        feature: '99.95% uptime SLA + named support engineer',             featureSw: 'SLA ya muda wa kufanya kazi 99.95% + mhandisi wa msaada aliyetajwa',  tiers: ['group'] },
+  { group: 'Trust',        groupSw: 'Uaminifu',        feature: 'On-prem or private-cloud deployment',                    featureSw: 'Usimikaji wa on-prem au wingu binafsi',                               tiers: ['group'] },
+  { group: 'Trust',        groupSw: 'Uaminifu',        feature: 'Custom audit + regulator reports',                       featureSw: 'Ukaguzi maalum na taarifa za mdhibiti',                               tiers: ['group'] },
 ];
 
 export interface FaqItem {
