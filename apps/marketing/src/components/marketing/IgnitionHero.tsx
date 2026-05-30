@@ -229,24 +229,25 @@ export function IgnitionHero() {
             className="mt-6 text-5xl font-bold leading-[1.02] tracking-[-0.025em] text-foreground md:text-6xl lg:text-7xl"
             style={{ textWrap: 'balance' }}
           >
-            The autonomous{' '}
+            The world&rsquo;s first{' '}
             <span className="relative inline-block">
               <span className="bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)] bg-clip-text text-transparent">
-                operating system
+                AI Estate-Management Partner
               </span>
             </span>{' '}
-            for property portfolios.
+            that learns your portfolio.
           </h1>
 
           <p
             className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground md:text-xl"
             style={{ textWrap: 'pretty' }}
           >
-            BossNyumba (Swahili: <em>head of the house</em>) runs your
-            leases, rent, maintenance staff, treasury, and compliance on
-            your authority. Mr. Mwikila is the calm AI partner who boots,
-            listens, acts, remembers, and asks permission correctly —
-            across NHC, BRELA, TRA, and 11 languages.
+            BossNyumba (Swahili: <em>head of the house</em>) is the only
+            operating system built to run a single landlord, a portfolio,
+            a fund, a campus, a mission, or a parastatal on the same
+            calm brain. Mr. Mwikila handles leases, rent, maintenance
+            staff, treasury, compliance, and the morning brief on your
+            authority &mdash; bilingual, audit-grade, every action signed.
           </p>
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">

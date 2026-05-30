@@ -52,6 +52,13 @@ export function MarketingFooter() {
           { label: 'Bank', href: '/for-bank' },
           { label: 'Regulator', href: '/for-regulator' },
           { label: 'Community housing', href: '/for-community-housing' },
+          { label: 'Corporate portfolio', href: '/for-corporate-portfolio' },
+          { label: 'Government entity', href: '/for-government-entity' },
+          { label: 'REIT and property fund', href: '/for-reit' },
+          { label: 'Diplomatic mission and NGO', href: '/for-embassy-ngo' },
+          { label: 'University and hospital', href: '/for-institutional-landlord' },
+          { label: 'Religious organisation', href: '/for-religious-organization' },
+          { label: 'SACCO and cooperative', href: '/for-cooperative-sacco' },
         ],
       },
       capabilities: {

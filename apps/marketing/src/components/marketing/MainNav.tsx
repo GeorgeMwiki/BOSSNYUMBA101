@@ -19,6 +19,10 @@ import {
   ShieldCheck,
   HeartHandshake,
   UserCircle,
+  Globe,
+  GraduationCap,
+  LineChart,
+  Church,
 } from 'lucide-react';
 
 import { Wordmark } from '@bossnyumba/design-system';
@@ -125,6 +129,58 @@ const AUDIENCE_CATEGORIES: ReadonlyArray<AudienceCategory> = [
         href: '/for-community-housing',
         icon: HeartHandshake,
       },
+      {
+        label: 'Government entity',
+        desc: 'Parastatals and ministries stewarding public property.',
+        href: '/for-government-entity',
+        icon: Landmark,
+      },
+    ],
+  },
+  {
+    title: 'Enterprise',
+    items: [
+      {
+        label: 'Corporate portfolio',
+        desc: 'Staff housing, branch offices, warehouses as one estate.',
+        href: '/for-corporate-portfolio',
+        icon: Building2,
+      },
+      {
+        label: 'REIT and property fund',
+        desc: 'Daily NAV, per-asset P&L, unitholder-grade audit.',
+        href: '/for-reit',
+        icon: LineChart,
+      },
+      {
+        label: 'University and hospital',
+        desc: 'Campus estate, per-faculty P&L, donor-grade audit.',
+        href: '/for-institutional-landlord',
+        icon: GraduationCap,
+      },
+    ],
+  },
+  {
+    title: 'Community',
+    items: [
+      {
+        label: 'Diplomatic mission and NGO',
+        desc: 'Multi-capital estate, donor-audit-ready ledger.',
+        href: '/for-embassy-ngo',
+        icon: Globe,
+      },
+      {
+        label: 'Religious organisation',
+        desc: 'Congregation-transparent dues + trustee statements.',
+        href: '/for-religious-organization',
+        icon: Church,
+      },
+      {
+        label: 'SACCO and cooperative',
+        desc: 'Member-visible ledger + registrar-ready filings.',
+        href: '/for-cooperative-sacco',
+        icon: Users,
+      },
     ],
   },
 ] as const;
@@ -148,6 +204,13 @@ const OPERATOR_PAGES = new Set<string>([
   '/for-bank',
   '/for-regulator',
   '/for-community-housing',
+  '/for-corporate-portfolio',
+  '/for-government-entity',
+  '/for-reit',
+  '/for-embassy-ngo',
+  '/for-institutional-landlord',
+  '/for-religious-organization',
+  '/for-cooperative-sacco',
 ]);
 
 interface PageCTA {
