@@ -2,18 +2,19 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 /**
- * /api/chat — BossNyumba public marketing chat.
+ * /api/chat — BossNyumba public marketing chat (hardened dual-mode).
  *
- * Calls Anthropic Claude directly with the BossNyumba Mr. Mwikila persona
- * (real-estate domain). No gateway dependency — the gateway is reserved
- * for authenticated cockpit chat. Marketing chat is anonymous + bounded.
+ * Order of preference per request:
+ *   1. API gateway (if NEXT_PUBLIC_API_GATEWAY_URL set + reachable within 8s)
+ *   2. Direct Anthropic with BossNyumba Mr. Mwikila persona (bilingual EN/SW)
  *
- * Inline learning blocks (narrow port of LitFin's chat-message-level
- * learning pattern): when the user's message touches a known real-estate
- * topic, this route appends one `concept_card` or `ui_block` to the
- * response under `blocks`. The widget renders these inline via
- * InlineLearningBlocks. This does NOT port LitFin's stepper / classroom
- * / adaptive-layout framework — only the chat-message-level pattern.
+ * The route NEVER throws an unstructured 500. If every path fails we return
+ * a JSON `503 ai_unavailable` with a structured `detail` for the widget to
+ * surface gracefully.
+ *
+ * Inline learning blocks (concept_card / ui_block) are appended only on the
+ * direct-Anthropic path — the gateway response is treated as opaque so we do
+ * not corrupt its envelope.
  */
 
 export const runtime = 'nodejs';
@@ -22,15 +23,15 @@ const SYSTEM_PROMPT_EN = `You are Mr. Mwikila, BossNyumba's AI Real-Estate Manag
 
 BossNyumba is the world's first AI Estate-Management Partner that learns your portfolio. You help landlords, tenants, property managers, leasing agents, housing cooperatives, REITs, and institutional landlords (universities, hospitals, embassies, NGOs, religious organizations, government parastatals, corporations with property portfolios) run their estates end-to-end.
 
-Your scope: real estate ONLY (leases, rent, tenants, units, maintenance, listings, inspections, deposits, M-Pesa rent collection, NHC compliance, TRA filings, lease renewals). NEVER discuss mining, mineral licences, royalty, PCCB — those belong to a different product.
+Your scope: real estate ONLY (leases, rent, tenants, units, maintenance, listings, inspections, deposits, M-Pesa rent collection, NHC compliance, TRA filings, lease renewals). NEVER discuss mining, mineral licences, royalty, PCCB - those belong to a different product.
 
-Tone: warm, direct, concrete. Calm authority of a senior property manager who has run blocks in Nairobi, Dar es Salaam, Kampala. Lead with a question to understand the visitor before pitching features. ONE capability per turn. Concrete numbers (units, days, shillings) — never vague claims.
+Tone: warm, direct, concrete. Calm authority of a senior property manager who has run blocks in Nairobi, Dar es Salaam, Kampala. Lead with a question to understand the visitor before pitching features. ONE capability per turn. Concrete numbers (units, days, shillings) - never vague claims.
 
 Languages: English + Swahili. Match the visitor's language. Keep responses <= 150 words. End with one specific next-step suggestion when relevant.
 
-Bossnyumba differentiators to mention when relevant: M-Pesa auto-reconciliation, Swahili-first voice + USSD for station masters, multi-tenant RLS-secured, audit-grade hash-chained ledger, bilingual chat, T1-T5 pricing from individual landlord to multi-country institutional.
+BossNyumba differentiators to mention when relevant: M-Pesa auto-reconciliation, Swahili-first voice + USSD for station masters, multi-tenant RLS-secured, audit-grade hash-chained ledger, bilingual chat, T1-T5 pricing from individual landlord to multi-country institutional.
 
-NEVER mention "Borjie" or "LitFin" — BossNyumba is its own product.`;
+NEVER mention "Borjie" or "LitFin" - BossNyumba is its own product.`;
 
 const SYSTEM_PROMPT_SW = `Wewe ni Mr. Mwikila, Mkurugenzi wa AI wa BossNyumba kwa Usimamizi wa Mali Halisia.
 
@@ -38,7 +39,9 @@ BossNyumba ni mfumo wa kwanza duniani wa AI unaojifunza portfolio yako ya nyumba
 
 Wigo wako: mali halisia TU (kodi, mpangaji, vitengo, matengenezo, ukaguzi, amana, ukusanyaji wa kodi kupitia M-Pesa, ufuatiliaji wa NHC, mafaili ya TRA, upyaji wa mikataba). KAMWE usizungumzie uchimbaji, leseni za madini, au mrabaha.
 
-Lugha: Kiswahili na Kiingereza. Linganisha lugha ya mgeni. Weka majibu <= 150 maneno. Maliza na pendekezo moja mahususi linalofuata.`;
+Lugha: Kiswahili na Kiingereza. Linganisha lugha ya mgeni. Weka majibu <= 150 maneno. Maliza na pendekezo moja mahususi linalofuata.
+
+KAMWE usitaje "Borjie" au "LitFin" - BossNyumba ni bidhaa yake yenyewe.`;
 
 const WidgetTurnSchema = z.object({
   message: z.string().min(1).max(4000),
@@ -162,6 +165,62 @@ function emitLearningBlocks(
   return [];
 }
 
+async function tryGateway(
+  message: string,
+  sessionId: string,
+  wantsStream: boolean,
+): Promise<Response | null> {
+  const gatewayBase = (process.env.NEXT_PUBLIC_API_GATEWAY_URL ?? '').trim().replace(/\/$/, '');
+  if (!gatewayBase) return null;
+  try {
+    const res = await fetch(`${gatewayBase}/api/v1/public/chat`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: wantsStream ? 'text/event-stream' : 'application/json',
+      },
+      body: JSON.stringify({ sessionId, message }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    return res;
+  } catch {
+    return null;
+  }
+}
+
+async function callAnthropic(message: string, language: 'en' | 'sw'): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY missing');
+  const system = language === 'sw' ? SYSTEM_PROMPT_SW : SYSTEM_PROMPT_EN;
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 600,
+      system,
+      messages: [{ role: 'user', content: message }],
+    }),
+    signal: AbortSignal.timeout(45000),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Anthropic ${res.status}: ${detail.slice(0, 240)}`);
+  }
+  const data = (await res.json()) as { content?: Array<{ type: string; text?: string }> };
+  const reply = (data.content ?? [])
+    .filter((b) => b.type === 'text' && typeof b.text === 'string')
+    .map((b) => b.text as string)
+    .join('\n')
+    .trim();
+  return reply || '(no response)';
+}
+
 export async function POST(req: Request): Promise<Response> {
   const ct = req.headers.get('content-type') ?? '';
   if (!ct.includes('application/json')) {
@@ -179,63 +238,64 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: 'ai_unconfigured', detail: 'ANTHROPIC_API_KEY missing' },
-      { status: 503 },
+  const language = parsed.language ?? 'en';
+  const wantsStream = (req.headers.get('accept') ?? '').includes('text/event-stream');
+
+  // Path 1 — gateway first (if configured + reachable)
+  try {
+    const gatewayRes = await tryGateway(parsed.message, parsed.sessionId, wantsStream);
+    if (gatewayRes) {
+      if (wantsStream && gatewayRes.body) {
+        return new Response(gatewayRes.body, {
+          status: gatewayRes.status,
+          headers: {
+            'content-type': gatewayRes.headers.get('content-type') ?? 'text/event-stream',
+            'cache-control': 'no-cache',
+          },
+        });
+      }
+      const text = await gatewayRes.text();
+      let reply = text;
+      try {
+        const json = JSON.parse(text) as { reply?: string; text?: string };
+        reply = json.reply ?? json.text ?? text;
+      } catch {
+        // body was not JSON — use raw text
+      }
+      return NextResponse.json(
+        { reply, sessionId: parsed.sessionId, source: 'gateway' },
+        { status: 200 },
+      );
+    }
+  } catch (err) {
+    // Gateway path failed — fall through to direct Anthropic; never throw 500
+    console.warn(
+      '[/api/chat] gateway path failed, falling back to direct Anthropic:',
+      err instanceof Error ? err.message : err,
     );
   }
 
-  const language = parsed.language ?? 'en';
-  const system = language === 'sw' ? SYSTEM_PROMPT_SW : SYSTEM_PROMPT_EN;
-  const blocks = emitLearningBlocks(parsed.message, language);
-
+  // Path 2 — direct Anthropic fallback (bilingual Mr. Mwikila persona)
   try {
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 600,
-        system,
-        messages: [{ role: 'user', content: parsed.message }],
-      }),
-    });
-
-    if (!anthropicRes.ok) {
-      const detail = await anthropicRes.text();
-      return NextResponse.json(
-        { error: 'upstream_error', detail, sessionId: parsed.sessionId },
-        { status: 502 },
-      );
-    }
-
-    const data = (await anthropicRes.json()) as {
-      content?: Array<{ type: string; text?: string }>;
-    };
-    const reply = (data.content ?? [])
-      .filter((b) => b.type === 'text' && typeof b.text === 'string')
-      .map((b) => b.text as string)
-      .join('\n')
-      .trim();
-
+    const reply = await callAnthropic(parsed.message, language);
+    const blocks = emitLearningBlocks(parsed.message, language);
     return NextResponse.json(
       {
-        reply: reply || '(no response)',
+        reply,
         sessionId: parsed.sessionId,
+        source: 'direct-anthropic-fallback',
         ...(blocks.length > 0 ? { blocks } : {}),
       },
       { status: 200 },
     );
   } catch (err) {
     return NextResponse.json(
-      { error: 'upstream_unreachable', detail: err instanceof Error ? err.message : 'unknown' },
-      { status: 502 },
+      {
+        error: 'ai_unavailable',
+        detail: err instanceof Error ? err.message : 'unknown',
+        sessionId: parsed.sessionId,
+      },
+      { status: 503 },
     );
   }
 }
