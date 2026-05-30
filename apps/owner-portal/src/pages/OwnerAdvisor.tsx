@@ -6,12 +6,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AdaptiveRenderer,
-  Blackboard,
   TeachingModeLayout,
   QuizLockdownOverlay,
   ReviewModeSummary,
   detectModeFromResponse,
   generateBlocks,
+  parseBoardElements,
   useChatStream,
   INITIAL_CHAT_MODE_STATE,
   type AdaptiveMessageMetadata,
@@ -22,6 +22,11 @@ import {
   type ReviewModeData,
 } from '@bossnyumba/chat-ui';
 import { useTranslations } from 'next-intl';
+// Local blackboard — module-level store + chat ↔ board bridge.
+import {
+  Blackboard,
+  useChatBoardBridge,
+} from '../components/blackboard';
 
 interface ChatMessage {
   readonly id: string;
@@ -44,7 +49,9 @@ export default function OwnerAdvisor() {
       endpoint: '/api/v1/ai/chat',
       onEvent: (evt) => {
         if (evt.type === 'turn_end' && activeAssistantId) {
-          const text = state.assistantText;
+          // Strip `<board_add>` tags — the bridge hook has already
+          // pushed the elements into the blackboard store.
+          const { body: text } = parseBoardElements(state.assistantText);
           const toolCalls = state.toolCalls.map((t) => t.name);
           const detection = detectModeFromResponse({
             responseText: text,
@@ -67,11 +74,23 @@ export default function OwnerAdvisor() {
     },
   );
 
+  // Stream board elements into the blackboard store as soon as
+  // they arrive in the assistant text. Sibling `<Blackboard />`
+  // aside re-renders without any prop drilling.
+  useChatBoardBridge({
+    assistantText: state.assistantText,
+    messageId: activeAssistantId,
+    isStreaming: state.isStreaming,
+  });
+
   useEffect(() => {
     if (!state.isStreaming || !activeAssistantId) return;
+    // Render the streaming body without raw `<board_add>` XML — the
+    // parsed elements have already landed on the board canvas.
+    const { body } = parseBoardElements(state.assistantText);
     setMessages((prev) =>
       prev.map((m) =>
-        m.id === activeAssistantId ? { ...m, text: state.assistantText, isStreaming: true } : m,
+        m.id === activeAssistantId ? { ...m, text: body, isStreaming: true } : m,
       ),
     );
   }, [state.assistantText, state.isStreaming, activeAssistantId]);
@@ -208,11 +227,12 @@ export default function OwnerAdvisor() {
       </div>
 
       <aside>
-        <Blackboard language="en" conceptTitle={modeState.teachingData?.conceptName}>
-          {lastAssistant?.metadata?.uiBlocks && lastAssistant.metadata.uiBlocks.length > 0 && (
+        <Blackboard languagePreference="en" />
+        {lastAssistant?.metadata?.uiBlocks && lastAssistant.metadata.uiBlocks.length > 0 && (
+          <div style={{ marginTop: 12 }}>
             <AdaptiveRenderer metadata={lastAssistant.metadata} language="en" />
-          )}
-        </Blackboard>
+          </div>
+        )}
       </aside>
     </div>
   );
