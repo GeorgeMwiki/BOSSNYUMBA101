@@ -58,9 +58,9 @@ function resolveSiteUrl(): string {
 const SITE_URL = resolveSiteUrl();
 
 export const metadata: Metadata = {
-  title: 'BossNyumba — The head of the house, amplified',
+  title: 'BossNyumba — Property portfolios, amplified',
   description:
-    'BossNyumba (Swahili: head of the house) is the autonomous operating system for property portfolios. A brain that boots, listens, acts, remembers, and asks permission correctly. Ten domains, one calm operator, across 232 jurisdictions and 11 languages.',
+    'BossNyumba is the autonomous operating system for property portfolios. A brain that boots, listens, acts, remembers, and asks permission correctly. Ten domains, one calm operator, across 232 jurisdictions and 11 languages.',
   applicationName: 'BossNyumba',
   metadataBase: new URL(SITE_URL),
   keywords: [
@@ -76,13 +76,13 @@ export const metadata: Metadata = {
     'real-estate operating system',
   ],
   openGraph: {
-    title: 'BossNyumba — The head of the house, amplified',
+    title: 'BossNyumba — Property portfolios, amplified',
     description:
-      'Run your entire Property Portfolio on autopilot. Leases, rent, maintenance staff, treasury, compliance, marketplace, holdings, subsidiaries, ancillary businesses, family office, succession, asset register. Swahili-first.',
+      'Run your entire Property Portfolio on autopilot. Leases, rent, maintenance staff, treasury, compliance, marketplace, holdings, subsidiaries, ancillary businesses, family office, succession, asset register. Bilingual sw/en.',
     type: 'website',
     siteName: 'BossNyumba',
-    locale: 'sw_TZ',
-    alternateLocale: ['en_US'],
+    locale: 'en_US',
+    alternateLocale: ['sw_TZ'],
     url: SITE_URL,
   },
   twitter: {

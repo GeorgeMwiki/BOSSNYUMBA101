@@ -1,14 +1,21 @@
 /**
- * BossNyumba pricing ladder — five Swahili-named tiers ported from
- * Borjie's mining ladder (Mwanzo / Mkulima / Mfanyabiashara / Kampuni
- * / Group) and reframed for real-estate.
+ * BossNyumba pricing ladder — five tiers ported from Borjie's mining
+ * ladder and reframed for real-estate.
  *
- * Naming convention:
- *   - T1 Mkulima        — single landlord, up to 5 units
- *   - T2 Mwanafamilia   — family landlord, up to 25 units
- *   - T3 Mfanyabiashara — professional manager, up to 250 units
- *   - T4 Kampuni        — institutional, up to 2,500 units
- *   - T5 Group          — multi-country, 2,500+ units / custom
+ * Tier identity:
+ *   - `id` is a stable lowercase Swahili token used by analytics, URL
+ *     params, and internal logic. Never localised.
+ *   - `displayName` carries the user-facing label per locale. Swahili
+ *     keeps the heritage tier name (Mkulima / Mwanafamilia / …); English
+ *     uses the descriptive translation (Smallholder / Family / …) so the
+ *     English UI stays in pure English.
+ *
+ * Ladder:
+ *   - T1 Mkulima / Smallholder      — single landlord, up to 5 units
+ *   - T2 Mwanafamilia / Family      — family landlord, up to 25 units
+ *   - T3 Mfanyabiashara / Professional — pro manager, up to 250 units
+ *   - T4 Kampuni / Corporate        — institutional, up to 2,500 units
+ *   - T5 Group                      — multi-country, 2,500+ units / custom
  *
  * Hard rule from CLAUDE.md: "Multi-currency, TZS-primary. Every money
  * render uses formatCurrency(amount, currencyCode)." We expose the
@@ -18,13 +25,17 @@
  * "Log In" only.
  */
 
+import type { Locale } from './i18n';
+
 export type TierId = 'mkulima' | 'mwanafamilia' | 'mfanyabiashara' | 'kampuni' | 'group';
 
 export interface PricingTier {
   readonly id: TierId;
   readonly position: 1 | 2 | 3 | 4 | 5;
+  /** @deprecated Use `displayName[locale]`. Kept as the Swahili literal for backwards-compatible callers. */
   readonly name: string;
-  readonly tagline: { sw: string; en: string };
+  readonly displayName: { readonly sw: string; readonly en: string };
+  readonly tagline: { readonly sw: string; readonly en: string };
   /** Monthly subscription in TZS, per portfolio (not per unit). */
   readonly priceMonthlyTzs: number | 'custom';
   /** Per-unit overage in TZS for additional units beyond the cap. */
@@ -40,6 +51,7 @@ export const TIERS: readonly PricingTier[] = [
     id: 'mkulima',
     position: 1,
     name: 'Mkulima',
+    displayName: { sw: 'Mkulima', en: 'Smallholder' },
     tagline: {
       sw: 'Kwa mmiliki mmoja wa nyumba',
       en: 'For the individual landlord',
@@ -54,6 +66,7 @@ export const TIERS: readonly PricingTier[] = [
     id: 'mwanafamilia',
     position: 2,
     name: 'Mwanafamilia',
+    displayName: { sw: 'Mwanafamilia', en: 'Family' },
     tagline: {
       sw: 'Familia inayomiliki vyumba vichache',
       en: 'For the family-owned portfolio',
@@ -68,6 +81,7 @@ export const TIERS: readonly PricingTier[] = [
     id: 'mfanyabiashara',
     position: 3,
     name: 'Mfanyabiashara',
+    displayName: { sw: 'Mfanyabiashara', en: 'Professional' },
     tagline: {
       sw: 'Meneja wa mali wa kitaalam',
       en: 'For the professional property manager',
@@ -83,6 +97,7 @@ export const TIERS: readonly PricingTier[] = [
     id: 'kampuni',
     position: 4,
     name: 'Kampuni',
+    displayName: { sw: 'Kampuni', en: 'Corporate' },
     tagline: {
       sw: 'Kampuni za mali na REIT',
       en: 'For property companies and REITs',
@@ -97,6 +112,7 @@ export const TIERS: readonly PricingTier[] = [
     id: 'group',
     position: 5,
     name: 'Group',
+    displayName: { sw: 'Group', en: 'Group' },
     tagline: {
       sw: 'Mali nyingi, nchi nyingi',
       en: 'Multi-country, sovereign portfolios',
@@ -108,6 +124,23 @@ export const TIERS: readonly PricingTier[] = [
     ctaKey: 'sales',
   },
 ];
+
+/**
+ * Helper: resolve the user-facing tier label for the current locale.
+ * Used by every page that previously interpolated `tier.name` directly.
+ */
+export function tierLabel(tier: PricingTier, locale: Locale): string {
+  return tier.displayName[locale] ?? tier.displayName.en;
+}
+
+/**
+ * Helper: resolve a tier label by id (avoids hand-threading the full
+ * tier object into copy lookups).
+ */
+export function tierLabelById(id: TierId, locale: Locale): string {
+  const found = TIERS.find((t) => t.id === id);
+  return found ? tierLabel(found, locale) : id;
+}
 
 /**
  * Comparison-matrix feature ledger. Each row lists which tiers ship
@@ -170,18 +203,22 @@ export interface FaqItem {
   readonly a: string;
 }
 
-export const PRICING_FAQ: readonly FaqItem[] = [
+/**
+ * Bilingual FAQ. English copy strips Swahili tier names from the user-
+ * visible text; Swahili copy keeps the heritage names.
+ */
+export const PRICING_FAQ_EN: readonly FaqItem[] = [
   {
-    q: 'Je, ninaweza kuanza bila kulipa kitu? (Can I start without paying?)',
-    a: 'Yes. Mkulima (T1) is free for up to 5 units, one user seat, and core property operations. Sign up with M-Pesa-linked phone, NIDA, or email — no card needed.',
+    q: 'Can I start without paying?',
+    a: 'Yes. The Smallholder tier is free for up to 5 units, one user seat, and core property operations. Sign up with an M-Pesa-linked phone, NIDA, or email — no card needed.',
   },
   {
     q: 'Are these prices in TZS, KES, or USD?',
-    a: 'List prices are in Tanzanian Shillings (TZS). Kenyan customers see the TZS amount converted to KES at the spot rate at billing time, with the FX margin disclosed on the invoice. USD billing is available for Group tier on request.',
+    a: 'List prices are in Tanzanian Shillings (TZS). Kenyan customers see the TZS amount converted to KES at the spot rate at billing time, with the FX margin disclosed on the invoice. USD billing is available for the Group tier on request.',
   },
   {
     q: 'Can I pay with mobile money?',
-    a: 'Yes — M-Pesa, Tigo Pesa, and Airtel Money are accepted on every tier. Bank transfer is also supported on Mfanyabiashara and above. Card billing (Visa / Mastercard) on Mwanafamilia and above.',
+    a: 'Yes — M-Pesa, Tigo Pesa, and Airtel Money are accepted on every tier. Bank transfer is also supported on Professional and above. Card billing (Visa / Mastercard) on Family and above.',
   },
   {
     q: 'What happens if I exceed the unit cap on my tier?',
@@ -189,7 +226,7 @@ export const PRICING_FAQ: readonly FaqItem[] = [
   },
   {
     q: 'Are there any seat fees on top of the per-portfolio price?',
-    a: 'No. Each tier includes a generous seat allowance (1 / 3 / 12 / 50 / unlimited). Additional seats are TZS 8,000 / month each on Mfanyabiashara and above. Read-only viewer seats (e.g. for accountants, investors) are always free.',
+    a: 'No. Each tier includes a generous seat allowance (1 / 3 / 12 / 50 / unlimited). Additional seats are TZS 8,000 / month each on Professional and above. Read-only viewer seats (e.g. for accountants, investors) are always free.',
   },
   {
     q: 'Do you take a cut of the rent we collect?',
@@ -201,6 +238,48 @@ export const PRICING_FAQ: readonly FaqItem[] = [
   },
   {
     q: 'Do you offer discounts for cooperatives or non-profits?',
-    a: 'Yes. Registered housing cooperatives get 30% off Mfanyabiashara and above. Government-housing and student-housing non-profits qualify for the same discount. Email community@bossnyumba.com from your registered domain to apply.',
+    a: 'Yes. Registered housing cooperatives get 30% off Professional and above. Government-housing and student-housing non-profits qualify for the same discount. Email community@bossnyumba.com from your registered domain to apply.',
   },
 ];
+
+export const PRICING_FAQ_SW: readonly FaqItem[] = [
+  {
+    q: 'Je, ninaweza kuanza bila kulipa kitu?',
+    a: 'Ndiyo. Daraja la Mkulima ni bure kwa hadi vyumba 5, kiti kimoja cha mtumiaji, na shughuli za msingi za mali. Jisajili kwa nambari ya simu iliyounganishwa na M-Pesa, NIDA, au barua pepe — hakuna kadi inayohitajika.',
+  },
+  {
+    q: 'Je, bei hizi ziko katika TZS, KES, au USD?',
+    a: 'Bei za orodha ziko katika Shilingi za Tanzania (TZS). Wateja wa Kenya wanaona kiasi cha TZS kilichobadilishwa kwa KES kwa kiwango cha siku ya malipo, na marejeo ya FX yameelezwa kwenye ankara. Malipo ya USD yanapatikana kwa daraja la Group kwa ombi.',
+  },
+  {
+    q: 'Je, ninaweza kulipa kwa pesa za simu?',
+    a: 'Ndiyo — M-Pesa, Tigo Pesa, na Airtel Money zinakubaliwa kwenye kila daraja. Uhamisho wa benki pia unasaidiwa kwenye Mfanyabiashara na juu. Malipo ya kadi (Visa / Mastercard) kwenye Mwanafamilia na juu.',
+  },
+  {
+    q: 'Nini hutokea nikizidi kikomo cha vyumba kwenye daraja langu?',
+    a: 'Unapokea taarifa ndani ya programu ukifikia 90% na 100% ya kikomo. Hatupandishi daraja lako kiotomatiki. Unaweza kupandisha daraja (tofauti ya bei inagawanywa kwa muda) au kulipa kiwango cha ziada kwa kila chumba kwa mwezi. Hakuna usumbufu wa huduma.',
+  },
+  {
+    q: 'Je, kuna ada za viti zaidi ya bei ya kila portfolio?',
+    a: 'Hapana. Kila daraja linajumuisha viti vya kutosha (1 / 3 / 12 / 50 / bila kikomo). Viti vya ziada ni TZS 8,000 / mwezi kwenye Mfanyabiashara na juu. Viti vya kusoma tu (mfano kwa wahasibu, wawekezaji) ni bure daima.',
+  },
+  {
+    q: 'Je, mnachukua sehemu ya kodi tunayokusanya?',
+    a: 'Hapana. Malipo ya kodi yanaingia moja kwa moja kwenye akaunti yako ya M-Pesa / benki; BossNyumba haishikilii pesa za wapangaji. Unalipa tu malipo yako ya kila mwezi. Daftari la kodi la maingizo mawili linapatanisha kiotomatiki.',
+  },
+  {
+    q: 'Je, ninaweza kuacha wakati wowote?',
+    a: 'Ndiyo. Acha kutoka Mipangilio -> Malipo. Tunatoza miezi ya kalenda mapema — ukiacha, unabaki na ufikiaji hadi mwisho wa mwezi wa sasa. Hakuna ada ya kumaliza mapema. Mauzo ya data yako ni bure kwa siku 90 baada ya kufunga.',
+  },
+  {
+    q: 'Je, mnatoa punguzo kwa vyama vya ushirika au mashirika yasiyo ya faida?',
+    a: 'Ndiyo. Vyama vya ushirika wa nyumba vilivyosajiliwa vinapata punguzo la 30% kwenye Mfanyabiashara na juu. Mashirika yasiyo ya faida ya nyumba za serikali na za wanafunzi yanastahiki punguzo hilo hilo. Tuma barua pepe community@bossnyumba.com kutoka kwa kikoa chako kilichosajiliwa kuomba.',
+  },
+];
+
+export function pricingFaq(locale: Locale): readonly FaqItem[] {
+  return locale === 'sw' ? PRICING_FAQ_SW : PRICING_FAQ_EN;
+}
+
+/** @deprecated Kept for callers still importing the legacy mixed-language array. Prefer `pricingFaq(locale)`. */
+export const PRICING_FAQ: readonly FaqItem[] = PRICING_FAQ_EN;

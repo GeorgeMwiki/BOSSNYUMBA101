@@ -27,7 +27,7 @@ export const COPY = {
     heroHeadline: 'Run two flats',
     heroHeadlineAccent: 'like a portfolio',
     heroSub:
-      "If you own one to five units, Mr. Mwikila collects rent over M-Pesa, chases late tenants in Swahili, files your council levy, and emails you a one-page owner statement on the 1st. You stay free on tier T1 — Mkulima.",
+      "If you own one to five units, Mr. Mwikila collects rent over M-Pesa, chases late tenants politely, files your council levy, and emails you a one-page owner statement on the 1st. You stay free on the Smallholder tier (T1).",
     heroPrimaryCta: 'Sign Up — free',
     heroSecondaryCta: 'How it works',
     trustline: [
@@ -37,11 +37,11 @@ export const COPY = {
     ],
     statsHeading: 'Built for the Tanzanian landlord, not the Wall-Street REIT.',
     statsSub:
-      'Individual landlords lose 18% of annual rent to late payments, manual chase calls, and missing receipts. Mr. Mwikila closes the gap with the same brain that powers REITs — at zero cost on Mkulima.',
+      'Individual landlords lose 18% of annual rent to late payments, manual chase calls, and missing receipts. Mr. Mwikila closes the gap with the same brain that powers REITs — at zero cost on the Smallholder tier.',
     stats: [
       { value: '18%', label: 'Average rent leakage', sub: 'For untooled landlords in Dar es Salaam (BOT 2025).' },
       { value: '4 hrs', label: 'Saved per month', sub: 'On rent chase + receipts + bookkeeping.' },
-      { value: '0 TZS', label: 'On Mkulima', sub: 'Up to 5 units, one seat, core property ops.' },
+      { value: '0 TZS', label: 'On Smallholder tier', sub: 'Up to 5 units, one seat, core property ops.' },
     ],
     stepsKicker: 'How it works',
     stepsHeading: 'Three steps. One hour. Then it runs itself.',
@@ -81,8 +81,8 @@ export const COPY = {
       { title: 'Regulatory calendar',         desc: 'Council levy, property tax, lease renewals — every deadline lands on your phone 14 days early.' },
       { title: 'Tax-ready year-end',          desc: 'Owner statements concatenate into a TRA-ready PDF in 90 seconds.' },
     ],
-    ctaHeading: 'Anza bure leo.',
-    ctaSub: 'Start free today. Mkulima is free up to 5 units. Sign up with your M-Pesa number — no card needed.',
+    ctaHeading: 'Start free today.',
+    ctaSub: 'The Smallholder tier is free up to 5 units. Sign up with your M-Pesa number — no card needed.',
     ctaPrimary: 'Sign Up — free',
   },
 
@@ -95,7 +95,7 @@ export const COPY = {
     heroPrimaryCta: 'Book a 20-minute demo',
     heroSecondaryCta: 'See the platform',
     trustline: [
-      'Up to 2,500 units on Kampuni',
+      'Up to 2,500 units on Corporate tier',
       'Multi-currency TZS/KES/USD',
       'Master Brain reasoning',
     ],
@@ -416,7 +416,7 @@ export const COPY = {
       "Most Tanzanian landlords have rentable assets and no bankable books. BossNyumba's audit chain turns receipts into underwritable cash flow.",
     stats: [
       { value: '12 mo',  label: 'Live cash-flow history', sub: 'Per landlord, hash-chained, exportable to your credit system.' },
-      { value: '+38%',   label: 'Underwrite-ready pool',  sub: 'Of Mfanyabiashara-and-above landlords on BossNyumba.' },
+      { value: '+38%',   label: 'Underwrite-ready pool',  sub: 'Of Professional-and-above landlords on BossNyumba.' },
       { value: 'API',    label: 'Direct feed',            sub: 'Read-only API into landlord-consented cash-flow data.' },
     ],
     stepsKicker: 'How it works',
