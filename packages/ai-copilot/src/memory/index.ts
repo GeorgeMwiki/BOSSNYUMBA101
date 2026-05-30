@@ -56,3 +56,42 @@ export {
   type DecideMem0Options,
   type Mem0Embedder,
 } from './mem0-semantics.js';
+
+// Federated Personal Knowledge Base (migration 0296) — ported from
+// Borjie. Tenant-scoped memory (semantic-memory + core-memory-blocks)
+// keeps the active-tenancy recall; PersonLayer adds the federated
+// person-level overlay so a multi-tenancy landlord no longer loses
+// her preferences when she switches estates. boundary-tagger enforces
+// the Chinese-wall on every cross-tenant numeric synthesis.
+export {
+  loadPersonLayer,
+  upsertPersonalFact,
+  flattenPersonLayer,
+  PERSON_CELL_KINDS,
+  PERSON_LAYER_PER_KIND_LIMIT,
+  type PersonCellKind,
+  type PersonalMemoryCell,
+  type PersonLayerResult,
+  type LoadPersonLayerArgs,
+  type UpsertPersonalFactArgs,
+  type PersonLayerDrizzleClient,
+  type PersonLayerSqlTemplate,
+} from './person-layer.js';
+export {
+  enforceChineseWall,
+  assertChineseWall,
+  tagBoundary,
+  cellContainsNumeric,
+  K_ANONYMITY_FLOOR,
+  PersonalKbBoundaryViolation,
+  type EnforceChineseWallArgs,
+  type EnforceChineseWallResult,
+  type CrossTenantCount,
+  type BoundaryTags,
+  type TagBoundaryArgs,
+} from './boundary-tagger.js';
+export {
+  composePromptWithPersonLayer,
+  type ComposePromptWithPersonLayerArgs,
+  type ComposePromptWithPersonLayerResult,
+} from './compose-prompt-with-person-layer.js';

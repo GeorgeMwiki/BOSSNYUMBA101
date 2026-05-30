@@ -161,6 +161,30 @@
       "dataLoss": true,
       "envs": ["dev", "staging"],
       "notes": "Cache rows are recomputable via the discovery pipeline; safe to drop in dev/staging."
+    },
+    {
+      "up": "0296_personal_knowledge_base.sql",
+      "down": "down/0296_down_personal_knowledge_base.sql",
+      "reverses": "CREATE TABLE persons + person_links + personal_memory_cells (federated PKB — NO RLS by design; gated by app.current_person_id GUC + boundary-tagger Chinese-wall)",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "personal_memory_cells holds GDPR Art. 4(1) personal data; production redaction MUST go through the GDPR right-to-be-forgotten pipeline (gdpr.schema.ts), not this down script."
+    },
+    {
+      "up": "0297_share_links.sql",
+      "down": "down/0297_down_share_links.sql",
+      "reverses": "CREATE TABLE share_links + unique token idx + tenant/entity indexes + RLS policy share_links_tenant_isolation",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Active share links are time-bounded and re-mintable; safe to drop in dev/staging."
+    },
+    {
+      "up": "0298_undo_journal.sql",
+      "down": "down/0298_down_undo_journal.sql",
+      "reverses": "CREATE TABLE undo_journal + actor/entity/window indexes + RLS policy undo_journal_tenant_isolation",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Undo journal is a transient 5-min reverse buffer; the immutable AI audit chain holds the durable record."
     }
   ]
 }

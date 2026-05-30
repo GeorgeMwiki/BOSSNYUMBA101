@@ -538,3 +538,29 @@ export * from './entity-index.schema.js';
 //                        worker re-runs (Roadmap R2).
 export * from './pinned-items.schema.js';
 export * from './saved-searches.schema.js';
+
+// ─── Federated Personal Knowledge Base (migration 0296, ported from Borjie) ─
+//   - persons                : canonical human identity (one row per
+//                              real human; opt-in unified-KB flag).
+//   - person_links           : (person × tenant × supabase_user × role)
+//                              join. Many hats per human.
+//   - personal_memory_cells  : federated personal-memory cells. NO RLS
+//                              by design — gated by `app.current_person_id`
+//                              GUC + Chinese-wall boundary-tagger in
+//                              `packages/ai-copilot/src/memory/`.
+//
+// Closes BN "memory persistence" superpower #11 (PARTIAL → REAL): tenant-
+// scoped memory (`core_memory_blocks`, `ai_semantic_memories`) survives,
+// but a multi-tenancy landlord no longer loses her preferences when she
+// switches estates.
+export * from './persons.schema.js';
+export * from './personal-memory.schema.js';
+
+// ─── Wave SUPERPOWERS — chat-as-OS backend routes (migrations 0297-0299) ──
+//   - share_links      : time-limited shareable URLs for entities
+//                        (mig 0297, route: /owner/share-links).
+//   - undo_journal     : generic 5-min undo ledger for chat-initiated
+//                        writes (mig 0298, route: /owner/undo-journal).
+//                        bulk_action + prefill emissions also append here.
+export * from './share-links.schema.js';
+export * from './undo-journal.schema.js';
