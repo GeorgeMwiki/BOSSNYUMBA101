@@ -78,13 +78,20 @@
     --neutral-950:           30 14% 7%;
 
     /* --- Signal — copper, the one brand color ---
-       Tuned to LitFin's copper-on-cream IGNITION family. */
+       Tuned to LitFin's copper-on-cream IGNITION family.
+       2026-05-30 contrast pass: --signal-500 darkened from
+       24 58% 48% (3.72:1 on cream — FAILS WCAG AA body text) to
+       18 70% 38% (≈4.9:1 on cream — PASSES AA body text). The legacy
+       value still lives at --signal-450 for places that intentionally
+       want the brighter copper accent on an already-dark background
+       (button glow, hero halo, gradient stops). */
     --signal-50:             32 60% 96%;
     --signal-100:            30 55%  90%;
     --signal-200:            28 50%  82%;
     --signal-300:            26 55%  70%;
     --signal-400:            24 60%  58%;
-    --signal-500:            24 58%  48%;         /* hero copper */
+    --signal-450:            24 58%  48%;         /* legacy hero copper — pre-contrast bump */
+    --signal-500:            18 70%  38%;         /* hero copper (AA-safe on cream) */
     --signal-600:            22 60%  40%;
     --signal-700:            18 62%  32%;
     --signal-800:            14 62%  28%;
