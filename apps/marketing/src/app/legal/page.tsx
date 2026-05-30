@@ -36,7 +36,7 @@ export default function LegalIndexPage() {
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           The legal corner.
         </h1>
-        <p className="mt-6 text-lg leading-relaxed text-neutral-300">
+        <p className="mt-6 text-lg leading-relaxed text-foreground/75">
           Plain-English summaries first; binding documents second.
           Bilingual sw/en where applicable.
         </p>
@@ -52,11 +52,11 @@ export default function LegalIndexPage() {
                   <h2 className="font-display text-base font-semibold tracking-tight text-foreground transition-colors group-hover:text-signal-500">
                     {doc.title}
                   </h2>
-                  <p className="font-mono text-[0.65rem] uppercase tracking-widest text-neutral-500 tabular-nums">
+                  <p className="font-mono text-[0.65rem] uppercase tracking-widest text-foreground/60 tabular-nums">
                     Updated {doc.updated}
                   </p>
                 </div>
-                <p className="mt-1.5 text-sm leading-relaxed text-neutral-400">
+                <p className="mt-1.5 text-sm leading-relaxed text-foreground/70">
                   {doc.summary}
                 </p>
               </Link>

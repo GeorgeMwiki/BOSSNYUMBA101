@@ -42,7 +42,7 @@ export default function PilotPage() {
           <h1 className="mt-5 font-display text-5xl font-medium tracking-tight text-balance sm:text-6xl">
             Ninety days. Real portfolios. Real numbers.
           </h1>
-          <p className="mx-auto mt-6 max-w-prose-widest text-lg leading-relaxed text-neutral-400 sm:text-xl">
+          <p className="mx-auto mt-6 max-w-prose-widest text-lg leading-relaxed text-foreground/70 sm:text-xl">
             For portfolio landlords, professional managers, and REITs.
             Run Boss Nyumba alongside your current system for 90 days.
             Free implementation, written leakage report, no card.
@@ -69,7 +69,7 @@ export default function PilotPage() {
                 <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">
                   {c.title}
                 </h2>
-                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                <p className="mt-2 text-sm leading-relaxed text-foreground/70">
                   {c.body}
                 </p>
               </div>

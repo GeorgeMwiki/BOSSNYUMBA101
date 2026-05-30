@@ -72,7 +72,7 @@ export default function DocsIndexPage() {
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           Everything you need to run Boss Nyumba.
         </h1>
-        <p className="mt-6 max-w-prose-wide text-lg leading-relaxed text-neutral-300">
+        <p className="mt-6 max-w-prose-wide text-lg leading-relaxed text-foreground/75">
           End-user guides, integration docs, API reference, and security
           policy — all in one place. Swahili and English. The chat
           widget asks Mr. Mwikila when the docs don&apos;t answer.
@@ -89,7 +89,7 @@ export default function DocsIndexPage() {
               <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground transition-colors group-hover:text-signal-500">
                 {s.title}
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+              <p className="mt-2 text-sm leading-relaxed text-foreground/70">
                 {s.body}
               </p>
             </Link>
@@ -100,7 +100,7 @@ export default function DocsIndexPage() {
           <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
             Need a human?
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+          <p className="mt-2 text-sm leading-relaxed text-foreground/70">
             Email{' '}
             <a href="mailto:docs@bossnyumba.com" className="text-signal-500 hover:underline">
               docs@bossnyumba.com

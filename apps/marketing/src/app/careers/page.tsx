@@ -39,7 +39,7 @@ export default function CareersPage() {
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           Build the OS for African real estate.
         </h1>
-        <p className="mt-6 text-lg leading-relaxed text-neutral-300">
+        <p className="mt-6 text-lg leading-relaxed text-foreground/75">
           We are East African, mission-led, and shipping the AI brain that
           replaces WhatsApp landlording. Headquartered in Dar es Salaam,
           with a hub in Nairobi and remote engineers across the EAT
@@ -48,7 +48,7 @@ export default function CareersPage() {
           the magic possible.
         </p>
 
-        <p className="mt-10 font-mono text-xs uppercase tracking-widest text-neutral-500">
+        <p className="mt-10 font-mono text-xs uppercase tracking-widest text-foreground/60">
           Open roles
         </p>
         {teams.map((team) => (
@@ -67,7 +67,7 @@ export default function CareersPage() {
                       <p className="truncate text-sm font-semibold text-foreground">
                         {r.title}
                       </p>
-                      <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-neutral-500">
+                      <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-foreground/60">
                         <MapPin className="h-3 w-3" aria-hidden="true" />
                         {r.location} · {r.type}
                       </p>
@@ -86,7 +86,7 @@ export default function CareersPage() {
           <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
             Don&apos;t see your role?
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+          <p className="mt-2 text-sm leading-relaxed text-foreground/70">
             Email careers@bossnyumba.com with your CV and a one-paragraph
             note on what you would build here. We read every email.
           </p>

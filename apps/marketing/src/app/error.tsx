@@ -47,7 +47,7 @@ export default function GlobalError({
         </p>
 
         {isDev && error?.message ? (
-          <pre className="mt-6 overflow-x-auto rounded-md border border-border bg-background px-4 py-3 text-left font-mono text-xs text-neutral-500">
+          <pre className="mt-6 overflow-x-auto rounded-md border border-border bg-background px-4 py-3 text-left font-mono text-xs text-foreground/60">
             {truncate(error.message)}
             {error.digest ? `\n\ndigest: ${error.digest}` : ''}
           </pre>

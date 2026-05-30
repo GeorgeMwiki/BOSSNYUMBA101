@@ -42,7 +42,7 @@ export default function TrustPage() {
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           How we earn the trust to manage your rent.
         </h1>
-        <p className="mt-6 max-w-prose-wide text-lg leading-relaxed text-neutral-300">
+        <p className="mt-6 max-w-prose-wide text-lg leading-relaxed text-foreground/75">
           Property data is sensitive. Rent flows are real money. Boss
           Nyumba is built to be auditable from day one — not certified
           after the fact.
@@ -58,7 +58,7 @@ export default function TrustPage() {
               <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
                 {p.title}
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+              <p className="mt-2 text-sm leading-relaxed text-foreground/70">
                 {p.body}
               </p>
             </article>
@@ -68,11 +68,11 @@ export default function TrustPage() {
         <h2 className="mt-16 font-display text-2xl font-semibold tracking-tight text-foreground">
           The seven red-line guarantees
         </h2>
-        <p className="mt-3 max-w-prose-wide text-sm leading-relaxed text-neutral-400">
+        <p className="mt-3 max-w-prose-wide text-sm leading-relaxed text-foreground/70">
           There are seven things Boss Nyumba will never do, regardless
           of how the autonomy dial is configured.
         </p>
-        <ol className="mt-6 list-decimal space-y-3 pl-6 text-sm leading-relaxed text-neutral-400">
+        <ol className="mt-6 list-decimal space-y-3 pl-6 text-sm leading-relaxed text-foreground/70">
           <li>We will not evict a tenant without the owner&apos;s explicit signature.</li>
           <li>We will not move money without policy-approved authorisation.</li>
           <li>We will not file with a regulator without owner consent.</li>
@@ -86,7 +86,7 @@ export default function TrustPage() {
           <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
             Audit + compliance documents
           </h2>
-          <ul className="mt-4 space-y-2 text-sm leading-relaxed text-neutral-400">
+          <ul className="mt-4 space-y-2 text-sm leading-relaxed text-foreground/70">
             <li>
               <Link href="/security" className="text-signal-500 hover:underline">
                 Security policy

@@ -43,7 +43,7 @@ export default function StatusPage() {
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           Live system status.
         </h1>
-        <p className="mt-6 text-lg leading-relaxed text-neutral-300">
+        <p className="mt-6 text-lg leading-relaxed text-foreground/75">
           What is running, what is degraded, what is down. Updated
           every 60 seconds from our SRE telemetry. Subscribe to the RSS
           feed at <code className="font-mono text-sm text-signal-500">/status/feed.xml</code>
@@ -67,7 +67,7 @@ export default function StatusPage() {
             <p className="font-display text-lg font-semibold tracking-tight text-foreground">
               {allOperational ? 'All systems operational' : 'Some systems degraded'}
             </p>
-            <p className="text-sm text-neutral-400">Reported 60 seconds ago — EAT.</p>
+            <p className="text-sm text-foreground/70">Reported 60 seconds ago — EAT.</p>
           </div>
         </div>
 
@@ -81,11 +81,11 @@ export default function StatusPage() {
               >
                 <div>
                   <p className="text-sm font-semibold text-foreground">{c.name}</p>
-                  <p className="text-xs text-neutral-500">{c.description}</p>
+                  <p className="text-xs text-foreground/60">{c.description}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`inline-block h-2 w-2 rounded-full ${tone.dot}`} aria-hidden="true" />
-                  <span className="font-mono text-xs uppercase tracking-widest text-neutral-400">
+                  <span className="font-mono text-xs uppercase tracking-widest text-foreground/70">
                     {tone.label}
                   </span>
                 </div>
@@ -97,7 +97,7 @@ export default function StatusPage() {
         <h2 className="mt-16 font-display text-xl font-semibold tracking-tight text-foreground">
           Past 30 days
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+        <p className="mt-2 text-sm leading-relaxed text-foreground/70">
           99.97% uptime across all components. The full incident history is
           published at{' '}
           <code className="font-mono text-sm text-signal-500">/status/history</code>{' '}

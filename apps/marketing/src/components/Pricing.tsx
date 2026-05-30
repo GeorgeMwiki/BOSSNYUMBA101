@@ -300,7 +300,7 @@ export function Pricing({ locale = DEFAULT_LOCALE }: PricingProps = {}) {
         <h2 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           {copy.headline}
         </h2>
-        <p className="mx-auto mt-5 max-w-prose-wide text-lg leading-relaxed text-neutral-500">
+        <p className="mx-auto mt-5 max-w-prose-wide text-lg leading-relaxed text-foreground/60">
           {copy.subOne} {copy.subTwo}
         </p>
       </div>
@@ -325,7 +325,7 @@ export function Pricing({ locale = DEFAULT_LOCALE }: PricingProps = {}) {
               <header>
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <p className="font-mono text-[0.62rem] uppercase tracking-widest text-neutral-500">
+                    <p className="font-mono text-[0.62rem] uppercase tracking-widest text-foreground/60">
                       T{tier.position}
                     </p>
                     <h3 className="mt-0.5 font-display text-2xl font-medium tracking-tight">
@@ -338,7 +338,7 @@ export function Pricing({ locale = DEFAULT_LOCALE }: PricingProps = {}) {
                     </span>
                   )}
                 </div>
-                <p className="mt-2 min-h-[2.5rem] text-xs leading-snug text-neutral-500">
+                <p className="mt-2 min-h-[2.5rem] text-xs leading-snug text-foreground/60">
                   {tier.tagline[locale]}
                 </p>
               </header>
@@ -347,10 +347,10 @@ export function Pricing({ locale = DEFAULT_LOCALE }: PricingProps = {}) {
                 <p className="font-display text-3xl font-medium leading-none tracking-tight tabular-nums">
                   {price.primary}
                 </p>
-                <p className="mt-2 font-mono text-[0.65rem] uppercase tracking-widest text-neutral-500">
+                <p className="mt-2 font-mono text-[0.65rem] uppercase tracking-widest text-foreground/60">
                   {price.unit}
                 </p>
-                <ul className="mt-4 space-y-1 text-xs text-neutral-500">
+                <ul className="mt-4 space-y-1 text-xs text-foreground/60">
                   <li>{capCopy(tier, copy)}</li>
                   <li>{seatsCopy(tier, copy)}</li>
                   {overage && <li>{overage}</li>}
@@ -387,7 +387,7 @@ export function Pricing({ locale = DEFAULT_LOCALE }: PricingProps = {}) {
         })}
       </div>
 
-      <p className="mt-10 text-center text-xs text-neutral-500">
+      <p className="mt-10 text-center text-xs text-foreground/60">
         {copy.footnote}
       </p>
     </section>
