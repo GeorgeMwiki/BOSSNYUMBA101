@@ -21,27 +21,27 @@
     "requestPilot": "Anza sasa",
     "categories": {
       "operators": "Waendeshaji wa migodi",
-      "buyers": "Wanunuzi na off-takers",
+      "buyers": "Wanunuzi na tenants",
       "ecosystem": "Vyama na mfumo",
       "capital": "Mtaji na usimamizi"
     },
     "items": {
       "pml": "Wamiliki wa Individual Landlord",
-      "pmlDesc": "Wachimbaji wadogo wenye Leseni za Msingi.",
+      "pmlDesc": "Wamiliki wa mali wadogo wenye Leseni za Msingi.",
       "ml": "Wamiliki wa Portfolio Landlord",
       "mlDesc": "Waendeshaji wa kati wa Portfolio Landlord wa dhahabu na vito.",
       "sml": "Wamiliki wa Institutional",
-      "smlDesc": "Leseni za Pekee, uchimbaji mkubwa.",
-      "cooperatives": "Vyama vya wachimbaji",
-      "cooperativesDesc": "Vikundi vya Co-op na vya wachimbaji wadogo.",
+      "smlDesc": "Leseni za Pekee, uendeshaji wa mali mkubwa.",
+      "cooperatives": "Vyama vya wamiliki wa mali",
+      "cooperativesDesc": "Vikundi vya Co-op na vya wamiliki wa nyumba moja.",
       "buyers": "Wanunuzi na wauzaji nje",
-      "buyersDesc": "Wanunuzi wa madini waliothibitishwa, daraja la Vetted.",
+      "buyersDesc": "Wanunuzi wa mali waliothibitishwa, daraja la Vetted.",
       "smelters": "Wayeyushaji na warekebishaji",
       "smeltersDesc": "Wachakataji walioleseniwa na warekebishaji wa dore.",
       "investors": "Wawekezaji na wakopeshaji",
-      "investorsDesc": "Mtaji wa madini ukiwa na taarifa za kila siku.",
+      "investorsDesc": "Mtaji wa mali ukiwa na taarifa za kila siku.",
       "regulators": "Wadhibiti na wizara",
-      "regulatorsDesc": "NHC, NEMC, BoT, TRA usimamizi."
+      "regulatorsDesc": "NHC, NHC, BoT, TRA usimamizi."
     }
   },
   "audienceSwitcher": {
@@ -51,26 +51,26 @@
       "blurb": "Endesha mgodi wako. Briefing ya kila siku, kalenda ya leseni, drill-hole logger."
     },
     "buyers": {
-      "title": "Wanunuzi wa madini",
-      "blurb": "Pata madini ya Tanzania yaliyothibitishwa mwanzo hadi mwisho."
+      "title": "Wanunuzi wa mali",
+      "blurb": "Pata mali ya Tanzania yaliyothibitishwa mwanzo hadi mwisho."
     },
     "investors": {
       "title": "Wawekezaji / Wakopeshaji",
-      "blurb": "Mtaji wa madini ukiwa na taarifa za kila siku zenye ushahidi."
+      "blurb": "Mtaji wa mali ukiwa na taarifa za kila siku zenye ushahidi."
     }
   },
   "hero": {
-    "kicker": "Mfumo wa AI kwa Mali yote ya Madini",
+    "kicker": "Mfumo wa AI kwa Mali yote ya Mali",
     "swahiliFirstBadge": "Kiingereza-kwanza · Kiswahili",
     "pill": "Tanzania-kwanza · Inayoongozwa na AI",
-    "headline": "Endesha mali yote ya madini kwa otomatiki.",
-    "sub": "Mwl. Mwikila ni Mkurugenzi Mtendaji wa AI wa Madini. Leseni, mrabaha, wafanyakazi, hazina, utii, soko, holdings, subsidiaries, biashara za ziada (usafiri, chakula, mafuta, rejareja, ardhi, kukodi vifaa), family office, urithi, daftari la mali. Anaandaa, anafunga, anasimamia, anawasilisha. Wewe unasaini mara moja.",
+    "headline": "Endesha mali yote ya mali kwa otomatiki.",
+    "sub": "Mwl. Mwikila ni Mkurugenzi Mtendaji wa AI wa Mali. Leseni, kodi, wafanyakazi, hazina, utii, soko, holdings, subsidiaries, biashara za ziada (usafiri, chakula, mafuta, rejareja, ardhi, kukodi vifaa), family office, urithi, daftari la mali. Anaandaa, anafunga, anasimamia, anawasilisha. Wewe unasaini mara moja.",
     "ctaPilot": "Anza sasa",
     "ctaDemo": "Tazama demo ya sekunde 60",
     "trustline": "BRELA · TRA · NHC · BoT · M-Pesa",
     "chat": {
       "assistant": "Mwl. Mwikila",
-      "role": "Mkurugenzi Mtendaji wa AI wa Madini",
+      "role": "Mkurugenzi Mtendaji wa AI wa Mali",
       "live": "Hai",
       "ask": "Uliza BossNyumba chochote…",
       "timestamp": "Sasa hivi",
@@ -85,7 +85,7 @@
       "turns": [
         {
           "role": "ai",
-          "body": "Habari, mimi ni Mwl. Mwikila, Mkurugenzi Mtendaji wa AI wa Madini wa BossNyumba. Umekuja kwa nini leo?"
+          "body": "Habari, mimi ni Mwl. Mwikila, Mkurugenzi Mtendaji wa AI wa Mali wa BossNyumba. Umekuja kwa nini leo?"
         },
         {
           "role": "user",
@@ -93,7 +93,7 @@
         },
         {
           "role": "ai",
-          "body": "Wafanyakazi wanane, saa tatu kila mwezi kwenye karatasi za mrabaha. Ndio muundo wa Tume ya Madini ya Tanzania unaokula wiki yako. BossNyumba anaandaa kwa dakika mbili, anataja kila mstari, na unasaini mara moja. Ungependa kuona jinsi Jumatano halisi saa 06:00 inavyoonekana?"
+          "body": "Wafanyakazi wanane, saa tatu kila mwezi kwenye karatasi za kodi. Ndio muundo wa Tume ya Mali ya Tanzania unaokula wiki yako. BossNyumba anaandaa kwa dakika mbili, anataja kila mstari, na unasaini mara moja. Ungependa kuona jinsi Jumatano halisi saa 06:00 inavyoonekana?"
         }
       ]
     },
@@ -109,10 +109,10 @@
     "deepDive": "Soma zaidi",
     "claims": [
       {
-        "id": "tumemadini",
-        "title": "Royalty drafts za NHC zinapita ukaguzi wa kwanza.",
-        "body": "Kila royalty ya mwezi iliyoandaliwa na BossNyumba kwa muundo wa NHC inapita ukaguzi wa mamlaka bila kuandikwa upya. Takwimu kutoka uendeshaji wa mapema.",
-        "href": "/insights/tumemadini-format-compliance"
+        "id": "rent-compliance",
+        "title": "Rent drafts za NHC zinapita ukaguzi wa kwanza.",
+        "body": "Kila rent ya mwezi iliyoandaliwa na BossNyumba kwa muundo wa NHC inapita ukaguzi wa mamlaka bila kuandikwa upya. Takwimu kutoka uendeshaji wa mapema.",
+        "href": "/insights/rent-compliance-format-compliance"
       },
       {
         "id": "lbma-hedge",
@@ -129,12 +129,12 @@
     ]
   },
   "trust": {
-    "kicker": "Iliyoaminika katika madini ya Tanzania",
+    "kicker": "Iliyoaminika katika mali ya Tanzania",
     "logos": [
       "BRELA",
       "TRA",
       "NHC",
-      "NEMC",
+      "NHC",
       "Maabara za Vetted",
       "M-Pesa · Tigo · Airtel"
     ]
@@ -199,11 +199,11 @@
       },
       "marketplace": {
         "title": "Soko",
-        "blurb": "Wachimbaji wadogo, traders waliosajiliwa, smelters wenye leseni. KYC kwa kila mshiriki. Mkataba unaweza kuchapishwa."
+        "blurb": "Wamiliki wa mali wadogo, traders waliosajiliwa, smelters wenye leseni. KYC kwa kila mshiriki. Mkataba unaweza kuchapishwa."
       },
       "compliance": {
         "title": "Mfuko wa Compliance",
-        "blurb": "NEMC EIA, royalty returns, OSHA logs, audit chain. Tayari kuwasilisha kwa NHC na Mamlaka ya Mapato."
+        "blurb": "NHC EIA, rent returns, OSHA logs, audit chain. Tayari kuwasilisha kwa NHC na Mamlaka ya Mapato."
       }
     }
   },
@@ -288,15 +288,15 @@
         },
         {
           "time": "04:18",
-          "domain": "NEMC EIA · Songwe",
-          "body": "Quarterly emissions report imewasilishwa kwa NEMC. Acknowledgement #2604-A.",
+          "domain": "NHC EIA · Songwe",
+          "body": "Quarterly emissions report imewasilishwa kwa NHC. Acknowledgement #2604-A.",
           "tone": "good",
           "tag": "OK"
         },
         {
           "time": "05:42",
-          "domain": "Royalty return · TRA",
-          "body": "Royalty ya Aprili imeandaliwa: TZS 18.4M. Inahitaji saini yako kabla ya kupelekwa.",
+          "domain": "Rent return · TRA",
+          "body": "Rent ya Aprili imeandaliwa: TZS 18.4M. Inahitaji saini yako kabla ya kupelekwa.",
           "tone": "flag",
           "tag": "YOU"
         }
@@ -343,7 +343,7 @@
         "Otomatiki"
       ],
       "redLineKicker": "Mstari mwekundu",
-      "redLineBody": "Master Brain haweti kamwe royalty TRA peke yake, hatumi NEMC EIA peke yake, na hauziwi dhahabu zaidi ya uncia 200 bila idhini ya mtumiaji. Si kwa ngazi yoyote.",
+      "redLineBody": "Master Brain haweti kamwe rent TRA peke yake, hatumi NHC EIA peke yake, na hauziwi dhahabu zaidi ya uncia 200 bila idhini ya mtumiaji. Si kwa ngazi yoyote.",
       "redLineTag": "Mstari mwekundu · siyo otomatiki",
       "autonomousTag": "Otomatiki kwenye ngazi hii",
       "unlocksAtL": "Inafunguliwa L"
@@ -375,18 +375,18 @@
         "minLevel": 99
       },
       {
-        "id": "royalty",
-        "label": "Wasilisha royalty TRA",
+        "id": "rent",
+        "label": "Wasilisha rent TRA",
         "minLevel": 99
       },
       {
-        "id": "nemc",
-        "label": "Wasilisha NEMC EIA",
+        "id": "nhc",
+        "label": "Wasilisha NHC EIA",
         "minLevel": 99
       },
       {
         "id": "sale",
-        "label": "Uza dhahabu > 200 oz",
+        "label": "Uza nyumba > 200 vitengo",
         "minLevel": 99
       }
     ]
@@ -394,7 +394,7 @@
   "chain": {
     "kicker": "06 · Audit Chain",
     "heading": "Kila kitendo kimerekodiwa kwa cryptography.",
-    "sub": "Append-only log ikiwa na SHA-256 prev-hash na HMAC kwa kila entry. NHC, NEMC, na auditors wanaweza kuthibitisha bila kutuamini sisi.",
+    "sub": "Append-only log ikiwa na SHA-256 prev-hash na HMAC kwa kila entry. NHC, NHC, na auditors wanaweza kuthibitisha bila kutuamini sisi.",
     "fragmentHeader": "Chain fragment · thread th_18a · entries 4 za mwisho",
     "verifiedLabel": "Imehakikishwa",
     "depthFooter": "Chain depth: entries 18,429 · last signed 00:04 UTC · NHC-exportable NDJSON bundle",
@@ -569,30 +569,30 @@
   "home": {
     "frontierBanner": {
       "kicker": "Toleo la Frontier",
-      "title": "Miundombinu ya Mali ya Madini, imeandikwa upya kwa mwendeshaji.",
+      "title": "Miundombinu ya Mali ya Mali, imeandikwa upya kwa mwendeshaji.",
       "titleAccent": "Sio dashboard.",
-      "sub": "BossNyumba inaleta mfumo wa uendeshaji unaobadilisha leseni ya madini ya Tanzania kuwa Mali ya Madini yote tulivu, iliyokaguliwa, inayoongozwa na AI, ikifunika subsidiaries, holdings, family office, urithi, daftari la mali na kila biashara ya ziada; kwa lugha mbili tangu siku ya kwanza."
+      "sub": "BossNyumba inaleta mfumo wa uendeshaji unaobadilisha leseni ya mali ya Tanzania kuwa Mali ya Mali yote tulivu, iliyokaguliwa, inayoongozwa na AI, ikifunika subsidiaries, holdings, family office, urithi, daftari la mali na kila biashara ya ziada; kwa lugha mbili tangu siku ya kwanza."
     },
     "problemSolution": {
-      "kicker": "Kwa nini mfumo wa Mali ya Madini",
-      "title": "Mali za madini zinaendeshwa ukingoni.",
+      "kicker": "Kwa nini mfumo wa Mali ya Mali",
+      "title": "Mali za mali zinaendeshwa ukingoni.",
       "titleAccent": "BossNyumba inafunga pengo hilo mwanzo hadi mwisho.",
-      "subOne": "Mali za madini Tanzania bado zinaendeshwa kwa Excel, WhatsApp na mafaili ya kibinadamu ya compliance, kwenye leseni, kitabu cha mrabaha, wafanyakazi, hazina, soko, subsidiaries, family office na kila biashara ya ziada. Amana ni ya kiwango cha dunia. Miundombinu inayoizunguka sio.",
-      "subTwo": "BossNyumba ni mfumo wa uendeshaji wa Mali ya Madini wa AI ambao sekta imekuwa ikisubiri.",
+      "subOne": "Mali za mali Tanzania bado zinaendeshwa kwa Excel, WhatsApp na mafaili ya kibinadamu ya compliance, kwenye leseni, kitabu cha kodi, wafanyakazi, hazina, soko, subsidiaries, family office na kila biashara ya ziada. Amana ni ya kiwango cha dunia. Miundombinu inayoizunguka sio.",
+      "subTwo": "BossNyumba ni mfumo wa uendeshaji wa Mali ya Mali wa AI ambao sekta imekuwa ikisubiri.",
       "problem": {
-        "title": "Madini ukingoni",
+        "title": "Mali ukingoni",
         "items": [
           {
-            "title": "Royalty inawasilishwa kwa mkono",
+            "title": "Rent inawasilishwa kwa mkono",
             "desc": "Wamiliki wanawasilisha returns za NHC kwa Excel na kukosa dirisha la siku 47 la kuongeza muda kwa asilimia 18 ya wakati. Kila dirisha kukosekana huleta ada ya kuwasilisha tena na kuathiri uhusiano na mamlaka."
           },
           {
             "title": "Dirisha la dhahabu linabadilika 2.4% kwa siku",
-            "desc": "Wachimbaji wadogo wanafunga hedge kwa ujumbe wa WhatsApp kwenda madalali Dubai. Wanapoteza 4-6% ya faida kwa spread, muda, na utofauti wa habari kwa kila off-take."
+            "desc": "Wamiliki wa mali wadogo wanafunga hedge kwa ujumbe wa WhatsApp kwenda madalali Dubai. Wanapoteza 4-6% ya faida kwa spread, muda, na utofauti wa habari kwa kila off-take."
           },
           {
             "title": "Compliance imegawanyika",
-            "desc": "NHC, NEMC, Benki Kuu ya Tanzania, na TRA wanataka vitu tofauti kwa nyakati tofauti. Mmiliki anakuwa afisa wa compliance wa muda badala ya mchimbaji."
+            "desc": "NHC, NHC, Benki Kuu ya Tanzania, na TRA wanataka vitu tofauti kwa nyakati tofauti. Mmiliki anakuwa afisa wa compliance wa muda badala ya mchimbaji."
           },
           {
             "title": "Mtazamo wa wafanyakazi unaishia getini",
@@ -604,8 +604,8 @@
         "title": "BossNyumba inafanya kazi hiyo",
         "items": [
           {
-            "title": "Royalty kwa muundo wa NHC",
-            "desc": "Mwl. Mwikila anaandaa royalty yako ya kila mwezi kwa muundo rasmi wa NHC siku inayofuata dirisha la parcel ya dhahabu kufungwa. Saini moja, kutajwa kwa mistari yote."
+            "title": "Rent kwa muundo wa NHC",
+            "desc": "Mwl. Mwikila anaandaa rent yako ya kila mwezi kwa muundo rasmi wa NHC siku inayofuata dirisha la parcel ya dhahabu kufungwa. Saini moja, kutajwa kwa mistari yote."
           },
           {
             "title": "Hedge ya dirisha la dhahabu kwa Vetted fix",
@@ -613,7 +613,7 @@
           },
           {
             "title": "Compliance pack kwa kila ratiba",
-            "desc": "BossNyumba inawasilisha NHC, NEMC, BoT, na TRA kwa ratiba ya kila mamlaka. Imekaguliwa na hash-chain ili mamlaka iweze kuthibitisha bila ya kutuamini."
+            "desc": "BossNyumba inawasilisha NHC, NHC, BoT, na TRA kwa ratiba ya kila mamlaka. Imekaguliwa na hash-chain ili mamlaka iweze kuthibitisha bila ya kutuamini."
           },
           {
             "title": "Workforce console kwenye simu ya supervisor",
@@ -625,7 +625,7 @@
     "ecosystem": {
       "kicker": "Mamlaka · masoko · njia",
       "title": "Imeunganishwa na kila mshirika",
-      "titleAccent": "ambaye madini ya Tanzania anagusana naye.",
+      "titleAccent": "ambaye mali ya Tanzania anagusana naye.",
       "sub": "BossNyumba inaungana na kila mamlaka, soko, lab, na njia ya malipo ambayo mwendeshaji tayari anashughulika nayo. Hakuna portal mpya za kujifunza — kazi inapita kupitia mifumo ambayo Tanzania tayari inaamini.",
       "categories": [
         {
@@ -633,10 +633,10 @@
           "items": [
             {
               "name": "NHC",
-              "desc": "Mining commission · royalty returns, mzunguko wa Individual Landlord/Portfolio Landlord/Institutional"
+              "desc": "Real estate commission · rent returns, mzunguko wa Individual Landlord/Portfolio Landlord/Institutional"
             },
             {
-              "name": "NEMC",
+              "name": "NHC",
               "desc": "Baraza la Mazingira · EIA, taarifa za robo mwaka, audit pack"
             },
             {
@@ -645,7 +645,7 @@
             },
             {
               "name": "TRA",
-              "desc": "Mamlaka ya Mapato · royalty, VAT, PAYE, withholding"
+              "desc": "Mamlaka ya Mapato · rent, VAT, PAYE, withholding"
             },
             {
               "name": "BRELA",
@@ -697,7 +697,7 @@
       "kicker": "Lugha mbili · vifaa vingi · majukumu mengi",
       "title": "Kila artifact kwa Kiswahili kwanza.",
       "titleAccent": "Kiingereza kwa kubofya.",
-      "sub": "Kila supervisor kwenye simu. Kila mmiliki kwenye tablet. Kila mamlaka kwenye desktop. BossNyumba ndiyo mfumo pekee wa madini unaoletwa katika lugha za kazi za Tanzania kuanzia mstari wa kwanza wa kila skrini.",
+      "sub": "Kila supervisor kwenye simu. Kila mmiliki kwenye tablet. Kila mamlaka kwenye desktop. BossNyumba ndiyo mfumo pekee wa mali unaoletwa katika lugha za kazi za Tanzania kuanzia mstari wa kwanza wa kila skrini.",
       "cards": [
         {
           "title": "Kiswahili-kwanza by default",
@@ -709,7 +709,7 @@
         },
         {
           "title": "Desktop kwa mamlaka",
-          "body": "NHC, NEMC, TRA, na wateja wa audit-pack wanapata desktop console na export ya bofyo moja kwenda NDJSON, iliyosainiwa kicryptographically na inayothibitishika offline."
+          "body": "NHC, NHC, TRA, na wateja wa audit-pack wanapata desktop console na export ya bofyo moja kwenda NDJSON, iliyosainiwa kicryptographically na inayothibitishika offline."
         }
       ]
     },
@@ -717,16 +717,16 @@
       "kicker": "Kutana na Mwl. Mwikila",
       "title": "Modes saba, mwendeshaji mmoja mtulivu.",
       "titleAccent": "Bofya tabs kuwaona kazini.",
-      "sub": "Mwl. Mwikila ni Meneja wa Uendeshaji wa Madini wa AI wa BossNyumba. Anabadilika na wakati — anakujengea brief saa 06:00, anaandika royalty mwisho wa mwezi, anafunga dhahabu yako kwa dirisha la Vetted. Chagua mode kuona anavyofanya.",
+      "sub": "Mwl. Mwikila ni Meneja wa Uendeshaji wa Mali wa AI wa BossNyumba. Anabadilika na wakati — anakujengea brief saa 06:00, anaandika rent mwisho wa mwezi, anafunga dhahabu yako kwa dirisha la Vetted. Chagua mode kuona anavyofanya.",
       "modes": [
         {
           "id": "build",
           "label": "Jenga",
-          "headline": "Anasimamisha mining knowledge graph kwa saa 48",
+          "headline": "Anasimamisha real estate knowledge graph kwa saa 48",
           "capabilities": [
             "Anaingiza leseni za Individual Landlord/Portfolio Landlord/Institutional kwa OCR na anazifuatilia dhidi ya rejista ya Regulator",
             "Anaingiza ramani za pit kama GeoJSON au PDF na anaunganisha kila drill-hole na segment",
-            "Anajenga rejista za vendor, off-taker, na worker kutoka rekodi za M-Pesa na payroll",
+            "Anajenga rejista za vendor, tenant, na worker kutoka rekodi za M-Pesa na payroll",
             "Anatoa kila mwanachama wa timu credential ya jukumu — owner, manager, supervisor, employee"
           ]
         },
@@ -755,10 +755,10 @@
         {
           "id": "document",
           "label": "Nyaraka",
-          "headline": "Anaandika kila artifact — royalty, NEMC EIA, OSHA log",
+          "headline": "Anaandika kila artifact — rent, NHC EIA, OSHA log",
           "capabilities": [
-            "Drafts za royalty za NHC kwa muundo rasmi kila mwezi",
-            "NEMC EIA na taarifa za robo mwaka templates zinazojazwa kutoka telemetry",
+            "Drafts za rent za NHC kwa muundo rasmi kila mwezi",
+            "NHC EIA na taarifa za robo mwaka templates zinazojazwa kutoka telemetry",
             "OSHA shift log, incident report, na corrective-action notes",
             "Off-take contracts na biometric fingerprint signature workflow"
           ]
@@ -802,7 +802,7 @@
       "kicker": "Jinsi unavyozungumza na BossNyumba",
       "title": "Milango mitatu kwa ubongo huo huo.",
       "titleAccent": "Chagua moja inayofaa wakati.",
-      "sub": "BossNyumba iko kila mahali mmiliki wa madini anapomhitaji: kwenye ukurasa wa marketing unapomtathmini, kwenye home screen unapomjifunza, na kwenye gari ambapo huwezi kuangalia skrini.",
+      "sub": "BossNyumba iko kila mahali mmiliki wa mali anapomhitaji: kwenye ukurasa wa marketing unapomtathmini, kwenye home screen unapomjifunza, na kwenye gari ambapo huwezi kuangalia skrini.",
       "modes": [
         {
           "id": "marketing",
@@ -811,14 +811,14 @@
           "desc": "Chat unayoitumia sasa hivi. Mwl. Mwikila anajibu maswali yako kuhusu bei, mamlaka, na ratiba — na anakuongeza kusajiri ukiwa tayari.",
           "preview": {
             "user": "BossNyumba inafanya nini kwa Individual Landlord ya Mikocheni?",
-            "ai": "Anaandaa royalty yako ya NHC kwa muundo rasmi, anafunga dhahabu yako kwa Vetted fix, anaendesha shift roster yako kwa simu ya supervisor. Ungependa kuona jinsi Jumatano halisi saa 06:00 inavyoonekana?"
+            "ai": "Anaandaa rent yako ya NHC kwa muundo rasmi, anafunga dhahabu yako kwa Vetted fix, anaendesha shift roster yako kwa simu ya supervisor. Ungependa kuona jinsi Jumatano halisi saa 06:00 inavyoonekana?"
           }
         },
         {
           "id": "home",
           "title": "Home chat",
           "subtitle": "Inafundisha",
-          "desc": "Ukiwa ndani ya BossNyumba, home chat inakufundisha mfumo. Uliza kuhusu kalenda ya leseni, autonomy dial, au jinsi royalty inavyowasilishwa — anajibu kwa kutaja data yako.",
+          "desc": "Ukiwa ndani ya BossNyumba, home chat inakufundisha mfumo. Uliza kuhusu kalenda ya leseni, autonomy dial, au jinsi rent inavyowasilishwa — anajibu kwa kutaja data yako.",
           "preview": {
             "user": "Naongeza vipi Individual Landlord mpya?",
             "ai": "Fungua kalenda ya leseni, bofya +Individual Landlord, scan cover ya leseni kwa simu yako. OCR itajaza fields za NHC. Nitaalamisha field yoyote isiyolingana na rejista."
@@ -831,7 +831,7 @@
           "desc": "Garini kwenye haul road. Kwenye wash plant deck. Lango la pit ambapo mikono yote miwili ni mchafu. Bofya mic, ongea, na BossNyumba anajibu kwa Kiswahili au Kiingereza.",
           "preview": {
             "user": "Mwikila, ni gani limetokea usiku?",
-            "ai": "Zamu B imetoa tani 184 kwa daraja la 3.2 g/t. Gari moja la mafuta limepoteza saa mbili kwa breakdown. Hakuna ajali. Royalty ya Aprili iko tayari kusainiwa."
+            "ai": "Zamu B imetoa tani 184 kwa daraja la 3.2 g/t. Gari moja la mafuta limepoteza saa mbili kwa breakdown. Hakuna ajali. Rent ya Aprili iko tayari kusainiwa."
           }
         }
       ]
@@ -845,7 +845,7 @@
         {
           "title": "Owner Cockpit",
           "subtitle": "Tablet · desktop · skrini 22",
-          "desc": "Daily brief, kalenda ya leseni, treasury, drill-hole logger, compliance pack. Surface ya amri ya kistratejia kwa mmiliki wa madini.",
+          "desc": "Daily brief, kalenda ya leseni, treasury, drill-hole logger, compliance pack. Surface ya amri ya kistratejia kwa mmiliki wa mali.",
           "mockType": "kpi",
           "kpis": [
             {
@@ -888,7 +888,7 @@
         {
           "title": "Buyer Marketplace",
           "subtitle": "Web · simu · skrini 12",
-          "desc": "Wauzaji wa KYB-verified, vetted corporate assays, biometric off-take signatures. Marketplace ya wanunuzi wanaotafuta madini ya Tanzania yaliyothibitishwa.",
+          "desc": "Wauzaji wa KYB-verified, vetted corporate assays, biometric off-take signatures. Marketplace ya wanunuzi wanaotafuta mali ya Tanzania yaliyothibitishwa.",
           "mockType": "market",
           "listings": [
             {
@@ -919,7 +919,7 @@
         {
           "id": "audit",
           "title": "Audit chain",
-          "desc": "Kila hatua Mwl. Mwikila anayopendekeza inatua kwenye log ya SHA-256 hash-chained, HMAC-signed, append-only. NHC, NEMC, na mkopeshaji wako wanathibitisha offline, hakuna kuamini kunahitajika.",
+          "desc": "Kila hatua Mwl. Mwikila anayopendekeza inatua kwenye log ya SHA-256 hash-chained, HMAC-signed, append-only. NHC, NHC, na mkopeshaji wako wanathibitisha offline, hakuna kuamini kunahitajika.",
           "badge": "Kicryptographically"
         },
         {
@@ -935,9 +935,9 @@
           "badge": "Treasury"
         },
         {
-          "id": "royalty",
-          "title": "NHC royalty",
-          "desc": "Royalty ya kila mwezi inaandikwa kwa muundo rasmi wa NHC siku inayofuata dirisha la kila parcel kufungwa. Saini moja, audit chain kamili.",
+          "id": "rent",
+          "title": "NHC rent",
+          "desc": "Rent ya kila mwezi inaandikwa kwa muundo rasmi wa NHC siku inayofuata dirisha la kila parcel kufungwa. Saini moja, audit chain kamili.",
           "badge": "Auto-draft"
         },
         {
@@ -985,7 +985,7 @@
           "role": "Mmiliki · Mikocheni Individual Landlord · sites 4"
         },
         {
-          "body": "NHC royalty draft haijaandikwa upya na mamlaka hata mara moja. Miezi kumi na miwili ndani. Hiyo ni uthibitisho kwangu.",
+          "body": "NHC rent draft haijaandikwa upya na mamlaka hata mara moja. Miezi kumi na miwili ndani. Hiyo ni uthibitisho kwangu.",
           "name": "Hamisi Ngao",
           "role": "Mwenyekiti · Mererani co-op · wanachama 18"
         },
@@ -1029,7 +1029,7 @@
     }
   },
   "footer": {
-    "tagline": "Mfumo wa uendeshaji wa AI kwa madini ya Tanzania. Master Brain, audit chain, lugha mbili.",
+    "tagline": "Mfumo wa uendeshaji wa AI kwa mali ya Tanzania. Master Brain, audit chain, lugha mbili.",
     "product": "Bidhaa",
     "company": "Kampuni",
     "resources": "Rasilimali",
@@ -1041,7 +1041,7 @@
     "contactLocation": "Dar es Salaam, Tanzania",
     "complianceBadge": "Hifadhi ya Tanzania-region",
     "systemsOperational": "Mfumo unaendelea",
-    "regulatorStrip": "Imeoanishwa na NHC · NEMC · BoT · TRA · BRELA · Vetted",
+    "regulatorStrip": "Imeoanishwa na NHC · NHC · BoT · TRA · BRELA · Vetted",
     "tanzaniaStorage": "Hifadhi ya Tanzania-region · Dar es Salaam",
     "links": {
       "capabilities": "Uwezo",
@@ -1061,7 +1061,7 @@
   "pilotPage": {
     "kicker": "Anza sasa",
     "heading": "Andaa mali yako ya BossNyumba.",
-    "sub": "Jisajiri na taarifa za leseni yako ya madini. Tutatathibitisha biashara yako na NHC na Tume ya Madini ndani ya masaa 48. Unyumbufu kamili. Wewe unaweka kasi.",
+    "sub": "Jisajiri na taarifa za leseni yako ya mali. Tutatathibitisha biashara yako na NHC na Tume ya Mali ndani ya masaa 48. Unyumbufu kamili. Wewe unaweka kasi.",
     "contact": "Maswali? Tuma email kwa hello@bossnyumba.co.tz au piga +255 22 211 4000.",
     "fields": {
       "name": "Jina kamili",
@@ -1069,15 +1069,15 @@
       "email": "Anwani ya barua pepe",
       "phone": "Namba ya simu",
       "portfolioSize": "Idadi ya sites unazomiliki",
-      "mineralFocus": "Madini yako kuu"
+      "assetFocus": "Mali yako kuu"
     },
-    "minerals": [
-      "Dhahabu",
-      "Tanzanite",
-      "Almasi",
-      "Bati",
-      "Coltan",
-      "Ujao",
+    "assets": [
+      "Ghorofa za makazi",
+      "Nyumba zilizoambatana",
+      "Nyumba za pekee",
+      "Maduka na ofisi",
+      "Matumizi mchanganyiko",
+      "Ardhi",
       "Mengineyo"
     ],
     "submit": "Jisajiri",
@@ -1163,7 +1163,7 @@
     "sections": [
       {
         "title": "1. Tunakusanya nini",
-        "body": "BossNyumba inakusanya data ya biashara yako ya mgodi — leseni za Individual Landlord/Portfolio Landlord/Institutional, ramani za pit, drill-hole logs, shughuli za off-take, royalty returns, na ujumbe wa watumiaji wako. Hatukusanyi data za kibinafsi za wachimbaji binafsi isipokuwa ikiwa wameipakia wenyewe au mmiliki ametuagiza."
+        "body": "BossNyumba inakusanya data ya biashara yako ya mgodi — leseni za Individual Landlord/Portfolio Landlord/Institutional, ramani za pit, drill-hole logs, shughuli za off-take, rent returns, na ujumbe wa watumiaji wako. Hatukusanyi data za kibinafsi za wamiliki wa mali binafsi isipokuwa ikiwa wameipakia wenyewe au mmiliki ametuagiza."
       },
       {
         "title": "2. Kwa nini",
@@ -1178,8 +1178,8 @@
         "body": "Kwa mujibu wa Tanzania Personal Data Protection Act 2022, una haki ya kuangalia data yako, kurekebisha, kufuta, na kuhamisha kwa muuzaji mwingine. Tuma email kwa privacy@bossnyumba.co.tz."
       },
       {
-        "title": "5. NHC na NEMC",
-        "body": "Endapo mamlaka ya Tanzania (NHC, NEMC, TRA, FIU) inahitaji data yako kwa mujibu wa sheria, tutawapa lakini tutakuarifu ndani ya siku 5 isipokuwa amri inayotaka tunyamaze imewekwa na korti."
+        "title": "5. NHC na NHC",
+        "body": "Endapo mamlaka ya Tanzania (NHC, NHC, TRA, FIU) inahitaji data yako kwa mujibu wa sheria, tutawapa lakini tutakuarifu ndani ya siku 5 isipokuwa amri inayotaka tunyamaze imewekwa na korti."
       },
       {
         "title": "6. Mawasiliano",
@@ -1230,14 +1230,14 @@
     "ctaPricing": "Ona bei"
   },
   "buyersPage": {
-    "kicker": "Kwa wanunuzi wa madini na off-takers",
-    "heading": "Pata madini ya Tanzania yaliyothibitishwa. Mwanzo hadi mwisho.",
+    "kicker": "Kwa wanunuzi wa mali na tenants",
+    "heading": "Pata mali ya Tanzania yaliyothibitishwa. Mwanzo hadi mwisho.",
     "sub": "Wauzaji wa KYC, vipimo vya mnyororo wa ushahidi, saini za alama ya kidole. Nunua kwa uhakika.",
     "ctaSignup": "Jisajili kushiriki",
     "ctaTalk": "Ongea na timu ya sourcing",
     "ctaSignUpBuy": "Jisajili kununua",
     "ctaPricingFees": "Bei na ada",
-    "regionsHeading": "Mikoa ya uchimbaji",
+    "regionsHeading": "Mikoa ya uendeshaji wa mali",
     "regions": [
       "Mikocheni (dhahabu)",
       "Mererani (tanzanite)",
@@ -1256,7 +1256,7 @@
       "shortCards": [
         {
           "title": "Asili iliyothibitishwa",
-          "body": "Kila kifurushi cha madini kinapata mnyororo wa ushahidi tangu shimo la kuchimbia hadi pima ya mizani."
+          "body": "Kila kifurushi cha mali kinapata mnyororo wa ushahidi tangu shimo la kuchimbia hadi pima ya mizani."
         },
         {
           "title": "Wauzaji wameaminika",
@@ -1338,9 +1338,9 @@
   },
   "tenantSignupPage": {
     "metaTitle": "Jisajili kama mnunuzi — BossNyumba",
-    "metaDescription": "Jisajili kama mnunuzi wa madini kwenye BossNyumba. KYC, mnyororo wa ushahidi, na sahihi za alama ya kidole.",
+    "metaDescription": "Jisajili kama mnunuzi wa mali kwenye BossNyumba. KYC, mnyororo wa ushahidi, na sahihi za alama ya kidole.",
     "kicker": "Jisajili kama mnunuzi",
-    "heading": "Anza kununua madini yaliyothibitishwa.",
+    "heading": "Anza kununua mali iliyothibitishwa.",
     "sub": "Chagua aina ya akaunti yako. Akaunti binafsi kwa wanunuzi wa kawaida. Akaunti ya biashara kwa refineries, brokers, fabricators, na investors.",
     "steps": {
       "kind": "1. Aina",
@@ -1352,7 +1352,7 @@
       "subHeading": "How would you like to sign up?",
       "individualTitle": "Mimi ni mtu binafsi",
       "individualTitleEn": "I'm an individual buyer",
-      "individualSubtitle": "Mnunuzi wa kawaida wa madini.",
+      "individualSubtitle": "Mnunuzi wa kawaida wa mali.",
       "individualBullets": [
         "Jina kamili na simu",
         "Barua pepe",
@@ -1494,10 +1494,10 @@
   },
   "tenantSignInPage": {
     "metaTitle": "Ingia kama mnunuzi — BossNyumba",
-    "metaDescription": "Ingia kwenye akaunti yako ya mnunuzi wa madini ya BossNyumba.",
+    "metaDescription": "Ingia kwenye akaunti yako ya mnunuzi wa mali ya BossNyumba.",
     "kicker": "Ingia kama mnunuzi",
     "heading": "Karibu tena.",
-    "sub": "Ingia kwenye akaunti yako ya mnunuzi ili kuendelea kununua madini yaliyothibitishwa.",
+    "sub": "Ingia kwenye akaunti yako ya mnunuzi ili kuendelea kununua mali iliyothibitishwa.",
     "fields": {
       "email": "Barua pepe",
       "emailEn": "Email",
@@ -1519,7 +1519,7 @@
   },
   "investorsPage": {
     "kicker": "Kwa wawekezaji na wakopeshaji",
-    "heading": "Mtaji wa madini ukiwa na telemetry.",
+    "heading": "Mtaji wa mali ukiwa na telemetry.",
     "sub": "BossNyumba inawapa wakopeshaji na LPs briefs za kila siku zenye ushahidi kwenye kila deployment — uzalishaji, cash runway, FX exposure, hali ya mamlaka.",
     "ctaSchedule": "Panga simu",
     "ctaAuditPack": "Ona audit pack",
@@ -1538,7 +1538,7 @@
         },
         "auditPack": {
           "title": "Export ya audit-pack",
-          "blurb": "One-click export ya cryptographic audit chain, leseni, royalty returns, OSHA logs, na bank reconciliations kwa due diligence."
+          "blurb": "One-click export ya cryptographic audit chain, leseni, rent returns, OSHA logs, na bank reconciliations kwa due diligence."
         },
         "treasury": {
           "title": "Treasury simulation",
@@ -1587,7 +1587,7 @@
     "contact": {
       "kicker": "03 · Panga simu",
       "heading": "Maswali ya kitaasisi.",
-      "sub": "Kwa wakopeshaji, LPs, family offices, na DFIs wanaopenda exposure iliyoundwa kwa madini ya Tanzania pamoja na cryptographic audit chains.",
+      "sub": "Kwa wakopeshaji, LPs, family offices, na DFIs wanaopenda exposure iliyoundwa kwa mali ya Tanzania pamoja na cryptographic audit chains.",
       "fields": {
         "name": "Jina lako",
         "organisation": "Shirika",
@@ -1633,15 +1633,15 @@
   },
   "careers": {
     "kicker": "Ajira",
-    "heading": "Jenga mfumo wa uendeshaji ambao madini ya Tanzania yanastahili.",
-    "sub": "Timu ndogo, muktadha wa kina wa madini, Swahili-kwanza. Hybrid Dar es Salaam / remote. Tunaajiri kwa ladha, hukumu, na uangalifu.",
+    "heading": "Jenga mfumo wa uendeshaji ambao mali ya Tanzania yanastahili.",
+    "sub": "Timu ndogo, muktadha wa kina wa mali, Swahili-kwanza. Hybrid Dar es Salaam / remote. Tunaajiri kwa ladha, hukumu, na uangalifu.",
     "openRoles": "Nafasi zilizo wazi",
     "applyCta": "Omba kupitia careers@bossnyumba.co.tz",
     "roles": {
       "domain": {
-        "title": "Mtaalamu wa madini wa Tanzania",
+        "title": "Mtaalamu wa mali wa Tanzania",
         "location": "Dar es Salaam · hybrid",
-        "blurb": "Mining engineer mwandamizi au geologist mwenye uzoefu wa kina wa Individual Landlord/Portfolio Landlord/Institutional na NHC. Unakuwa mtoa-ukweli wa kile bidhaa yetu inapaswa kufanya."
+        "blurb": "Real estate engineer mwandamizi au geologist mwenye uzoefu wa kina wa Individual Landlord/Portfolio Landlord/Institutional na NHC. Unakuwa mtoa-ukweli wa kile bidhaa yetu inapaswa kufanya."
       },
       "engineer": {
         "title": "TypeScript engineer mwandamizi",
@@ -1666,12 +1666,12 @@
   },
   "about": {
     "kicker": "Kuhusu BossNyumba",
-    "heading": "Mfumo wa uendeshaji uliojengwa kwa na na madini ya Tanzania.",
+    "heading": "Mfumo wa uendeshaji uliojengwa kwa na na mali ya Tanzania.",
     "sub": "BossNyumba ilianzishwa na timu ndogo ya Tanzania na diaspora baada ya kuona kizazi kingine cha operators kikiendesha amana za kiwango cha kimataifa kwenye spreadsheets.",
     "originHeading": "Hadithi ya asili",
-    "originBody": "Tulikutana Mikocheni na Dar es Salaam mwaka 2024, tukibadilishana maelezo kuhusu kwa nini kila ERP ya madini ilihisi imeundwa kwa nchi ya mtu mwingine. Kufikia mwanzo wa 2026 tulikuwa na Master Brain inayofanya kazi na pilot kumi. Lengo lilibaki lilelile: mfumo wa uendeshaji unaoheshimu jinsi madini ya Tanzania yanavyofanya kazi kweli — KYC kwa wachimbaji wadogo, hesabu za royalty ambazo TRA inazitambua, briefings kwa Kiswahili saa 06:00.",
+    "originBody": "Tulikutana Mikocheni na Dar es Salaam mwaka 2024, tukibadilishana maelezo kuhusu kwa nini kila ERP ya mali ilihisi imeundwa kwa nchi ya mtu mwingine. Kufikia mwanzo wa 2026 tulikuwa na Master Brain inayofanya kazi na pilot kumi. Lengo lilibaki lilelile: mfumo wa uendeshaji unaoheshimu jinsi mali ya Tanzania yanavyofanya kazi kweli — KYC kwa wamiliki wa nyumba moja, hesabu za rent ambazo TRA inazitambua, briefings kwa Kiswahili saa 06:00.",
     "teamHeading": "Timu",
-    "teamSub": "Tanzania na diaspora. Madini, fintech, AI infrastructure. Hybrid Dar es Salaam.",
+    "teamSub": "Tanzania na diaspora. Mali, fintech, AI infrastructure. Hybrid Dar es Salaam.",
     "valuesHeading": "Maadili",
     "values": [
       {
@@ -1684,7 +1684,7 @@
       },
       {
         "title": "Mtulivu kwa default",
-        "body": "Madini hayahitaji dashibodi nyingine yenye rangi nyekundu. Master Brain anashughulika usiku. Operators wanapata brief wazi, mtulivu saa 06:00."
+        "body": "Mali hayahitaji dashibodi nyingine yenye rangi nyekundu. Master Brain anashughulika usiku. Operators wanapata brief wazi, mtulivu saa 06:00."
       }
     ],
     "contactHeading": "Wasiliana",
@@ -1727,21 +1727,21 @@
   },
   "audiencePages": {
     "pml": {
-      "metaTitle": "BossNyumba kwa wenye Individual Landlord, mfumo wa uchimbaji mdogo",
-      "metaDescription": "BossNyumba kwa wenye Leseni za Uchimbaji wa Msingi. Muhtasari wa kila siku, kalenda ya mrabaha, daftari la mashimo, malipo kupitia M-Pesa. Imejengwa kwa wachimbaji wadogo Tanzania. Majaribio ya bure ya siku 90.",
+      "metaTitle": "BossNyumba kwa wenye Individual Landlord, mfumo wa uendeshaji wa mali mdogo",
+      "metaDescription": "BossNyumba kwa wenye Leseni za Uendeshaji wa mali wa Msingi. Muhtasari wa kila siku, kalenda ya kodi, daftari la mashimo, malipo kupitia M-Pesa. Imejengwa kwa wamiliki wa nyumba moja Tanzania. Majaribio ya bure ya siku 90.",
       "heroKicker": "Kwa wenye Individual Landlord",
       "heroHeadline": "Endesha mgodi wako wa Individual Landlord kama",
       "heroHeadlineAccent": "mwendeshaji mkubwa",
-      "heroSub": "BossNyumba inawapa wachimbaji wadogo wa migodi muhtasari wa kila siku, kalenda ya mrabaha, daftari la ushahidi, na soko, vyote kwa Kiswahili kwanza. Tableti moja shambani inabadilisha lahajedwali sita.",
+      "heroSub": "BossNyumba inawapa wamiliki wa nyumba moja wa migodi muhtasari wa kila siku, kalenda ya kodi, daftari la ushahidi, na soko, vyote kwa Kiswahili kwanza. Tableti moja shambani inabadilisha lahajedwali sita.",
       "heroPrimaryCta": "Anza majaribio ya siku 90",
       "heroSecondaryCta": "Iangalie inavyofanya kazi",
       "trustline": [
-        "Inalingana na Tume ya Madini",
+        "Inalingana na Tume ya Mali",
         "Inafanya kazi kwenye tableti moja",
         "M-Pesa, Tigo Pesa, Airtel Money asilia"
       ],
       "statsHeading": "Namba tatu zinazoboresha mgodi wako.",
-      "statsSub": "Si ahadi. Ni vichocheo halisi ambavyo BossNyumba inaviendesha ndani ya operesheni ya uchimbaji mdogo.",
+      "statsSub": "Si ahadi. Ni vichocheo halisi ambavyo BossNyumba inaviendesha ndani ya operesheni ya uendeshaji wa mali mdogo.",
       "stats": [
         {
           "value": "06:00",
@@ -1755,8 +1755,8 @@
         },
         {
           "value": "Sufuri",
-          "label": "uwasilishaji uliokosa wa mrabaha",
-          "sub": "Tarehe za Tume ya Madini, mapato ya TRA, na malipo ya TZS yanafuatiliwa kiotomatiki. Mfumo unajiwasilisha wenyewe kwa TZS."
+          "label": "uwasilishaji uliokosa wa kodi",
+          "sub": "Tarehe za Tume ya Mali, mapato ya TRA, na malipo ya TZS yanafuatiliwa kiotomatiki. Mfumo unajiwasilisha wenyewe kwa TZS."
         }
       ],
       "stepsKicker": "Inavyofanya kazi",
@@ -1770,23 +1770,23 @@
         {
           "n": "02",
           "title": "Amka na muhtasari.",
-          "body": "Kila asubuhi, Mr. Mwikila anafupisha uzalishaji, hatari ya mrabaha, mishahara, na nini kinahitaji uamuzi wako leo. Lugha mbili sw na en."
+          "body": "Kila asubuhi, Mr. Mwikila anafupisha uzalishaji, hatari ya kodi, mishahara, na nini kinahitaji uamuzi wako leo. Lugha mbili sw na en."
         },
         {
           "n": "03",
           "title": "Wasilisha, lipa, uza.",
-          "body": "Mawasilisho ya mrabaha yanajiandika. Malipo yanaenda kupitia M-Pesa, Tigo Pesa, Airtel Money. Wanunuzi wanaona bidhaa yako sokoni."
+          "body": "Mawasilisho ya kodi yanajiandika. Malipo yanaenda kupitia M-Pesa, Tigo Pesa, Airtel Money. Wanunuzi wanaona bidhaa yako sokoni."
         }
       ],
       "problemKicker": "Kwa nini BossNyumba",
       "problemHeading": "Kwa nini migodi mingi ya Individual Landlord hupoteza pesa",
       "problemHeadingAccent": "iliyokwisha kuzipata.",
-      "problemSub": "Uchimbaji mdogo una madini mengi na rekodi chache. Uvujaji haupo shimoni, upo kwenye karatasi.",
+      "problemSub": "Uendeshaji wa mali mdogo una mali mengi na rekodi chache. Uvujaji haupo shimoni, upo kwenye karatasi.",
       "problemTitle": "Pesa zinavuja wapi",
       "problems": [
         {
-          "title": "Mapungufu ya mrabaha",
-          "desc": "Wenye Individual Landlord wengi hukosa muda wa kuwasilisha kwa sababu hakuna anayefuatilia tarehe za Tume ya Madini pamoja na uzalishaji. Adhabu zinaongezeka kimya."
+          "title": "Mapungufu ya kodi",
+          "desc": "Wenye Individual Landlord wengi hukosa muda wa kuwasilisha kwa sababu hakuna anayefuatilia tarehe za Tume ya Mali pamoja na uzalishaji. Adhabu zinaongezeka kimya."
         },
         {
           "title": "Mishahara ya pesa taslimu",
@@ -1805,15 +1805,15 @@
       "solutions": [
         {
           "title": "Muhtasari mmoja, ukweli mmoja",
-          "desc": "Mr. Mwikila anachanganya uzalishaji, hatari ya mrabaha, mishahara, na kalenda ya leseni katika muhtasari wa 06:00 simuni mwako. Lugha mbili sw na en."
+          "desc": "Mr. Mwikila anachanganya uzalishaji, hatari ya kodi, mishahara, na kalenda ya leseni katika muhtasari wa 06:00 simuni mwako. Lugha mbili sw na en."
         },
         {
           "title": "Mlolongo wa ushahidi wa simu",
-          "desc": "Kila kipimo kinapigwa picha, kuwekewa sauti, kuwekewa GPS, na muhuri wa muda. Rekodi ni yako, isiyobadilika, na tayari kwa Tume ya Madini."
+          "desc": "Kila kipimo kinapigwa picha, kuwekewa sauti, kuwekewa GPS, na muhuri wa muda. Rekodi ni yako, isiyobadilika, na tayari kwa Tume ya Mali."
         },
         {
           "title": "Soko lililothibitishwa",
-          "desc": "Orodhesha dore au madini yako sokoni ambapo wanunuzi waliothibitishwa hushindana kwa bei. Malipo kupitia M-Pesa au benki."
+          "desc": "Orodhesha dore au mali yako sokoni ambapo wanunuzi waliothibitishwa hushindana kwa bei. Malipo kupitia M-Pesa au benki."
         },
         {
           "title": "Imejengwa kwa tableti",
@@ -1825,12 +1825,12 @@
       "ctaPrimary": "Omba majaribio"
     },
     "ml": {
-      "metaTitle": "BossNyumba kwa waendeshaji wa Portfolio Landlord, mfumo wa uchimbaji wa kati",
-      "metaDescription": "BossNyumba kwa waendeshaji wa Leseni za Uchimbaji. Muunganisho wa migodi mingi, daftari za milipuko, telemetri za magari, otomatiki ya mrabaha, ripoti za bodi. Majaribio ya bure ya siku 90.",
+      "metaTitle": "BossNyumba kwa waendeshaji wa Portfolio Landlord, mfumo wa uendeshaji wa kati",
+      "metaDescription": "BossNyumba kwa waendeshaji wa Leseni za Uendeshaji wa mali. Muunganisho wa migodi mingi, daftari za milipuko, telemetri za magari, otomatiki ya kodi, ripoti za bodi. Majaribio ya bure ya siku 90.",
       "heroKicker": "Kwa waendeshaji wa Portfolio Landlord",
       "heroHeadline": "Migodi ya kati inastahili",
       "heroHeadlineAccent": "programu ya kati",
-      "heroSub": "BossNyumba inaunganisha mashimo, magari, na wakandarasi wengi katika dashibodi moja ya operesheni. Msaada wa uamuzi kila siku kwa mmiliki, rekodi inayotetewa kwa Tume ya Madini, ripoti tayari za bodi.",
+      "heroSub": "BossNyumba inaunganisha mashimo, magari, na wakandarasi wengi katika dashibodi moja ya operesheni. Msaada wa uamuzi kila siku kwa mmiliki, rekodi inayotetewa kwa Tume ya Mali, ripoti tayari za bodi.",
       "heroPrimaryCta": "Anza majaribio ya siku 90",
       "heroSecondaryCta": "Iangalie inavyofanya kazi",
       "trustline": [
@@ -1843,13 +1843,13 @@
       "stats": [
         {
           "value": "Mtazamo 1",
-          "label": "mashimo, magari, mrabaha",
-          "sub": "Mashimo yote, wakandarasi, masaa ya magari, na hatari ya mrabaha kwenye skrini moja. Ingia kwenye yoyote kwa mibofyo miwili."
+          "label": "mashimo, magari, kodi",
+          "sub": "Mashimo yote, wakandarasi, masaa ya magari, na hatari ya kodi kwenye skrini moja. Ingia kwenye yoyote kwa mibofyo miwili."
         },
         {
           "value": "3-5x",
           "label": "ufungaji wa mwezi haraka",
-          "sub": "Uzalishaji unajiunganisha kiotomatiki. Mrabaha unajiandika. Mhasibu anasaini, hakusanyii tena."
+          "sub": "Uzalishaji unajiunganisha kiotomatiki. Kodi unajiandika. Mhasibu anasaini, hakusanyii tena."
         },
         {
           "value": "Sufuri",
@@ -1867,8 +1867,8 @@
         },
         {
           "n": "02",
-          "title": "Mfafanulie mmiliki. Wasilisha mrabaha mapema.",
-          "body": "Kila asubuhi mmiliki anaona uzalishaji, hatari, mishahara, na maamuzi kumi muhimu leo. Faili la mrabaha linajiandika."
+          "title": "Mfafanulie mmiliki. Wasilisha kodi mapema.",
+          "body": "Kila asubuhi mmiliki anaona uzalishaji, hatari, mishahara, na maamuzi kumi muhimu leo. Faili la kodi linajiandika."
         },
         {
           "n": "03",
@@ -1891,8 +1891,8 @@
           "desc": "Wakandarasi wa usafirishaji wanawasilisha bili kwa lori. Bila telemetri, unalipa kwa safari ambazo hazikufanywa na kupoteza zile zilizofanywa."
         },
         {
-          "title": "Mrabaha kwa makadirio",
-          "desc": "Bila daftari moja la uzalishaji, mawasilisho ya mrabaha ni makadirio. Ukaguzi wa Tume ya Madini huadhibu mapungufu zaidi ya malipo ya ziada."
+          "title": "Kodi kwa makadirio",
+          "desc": "Bila daftari moja la uzalishaji, mawasilisho ya kodi ni makadirio. Ukaguzi wa Tume ya Mali huadhibu mapungufu zaidi ya malipo ya ziada."
         },
         {
           "title": "Pakiti ya bodi kwa hofu ya Ijumaa",
@@ -1910,8 +1910,8 @@
           "desc": "Programu ya dereva inaitikia safari, mizigo, na nyakati. Bili za mkandarasi zinalinganishwa na telemetri kabla ya mhasibu kuziona."
         },
         {
-          "title": "Otomatiki ya mrabaha",
-          "desc": "Daftari la uzalishaji huendesha faili la mrabaha. Inalingana na Tume ya Madini, kwa TZS, tayari kuwasilishwa tarehe 7."
+          "title": "Otomatiki ya kodi",
+          "desc": "Daftari la uzalishaji huendesha faili la kodi. Inalingana na Tume ya Mali, kwa TZS, tayari kuwasilishwa tarehe 7."
         },
         {
           "title": "Pakiti ya bodi kwa mahitaji",
@@ -1923,8 +1923,8 @@
       "ctaPrimary": "Omba majaribio"
     },
     "sml": {
-      "metaTitle": "BossNyumba kwa waendeshaji wa Institutional, mfumo wa uchimbaji mkubwa",
-      "metaDescription": "BossNyumba kwa wenye Leseni Maalum za Uchimbaji. Muunganisho wa migodi mingi, ulingano wa mazingira, daftari la jamii, utawala wa bodi, mlolongo wa ukaguzi wa msimamizi. Majaribio ya bure ya siku 90.",
+      "metaTitle": "BossNyumba kwa waendeshaji wa Institutional, mfumo wa uendeshaji wa mali mkubwa",
+      "metaDescription": "BossNyumba kwa wenye Leseni Maalum za Uendeshaji wa mali. Muunganisho wa migodi mingi, ulingano wa mazingira, daftari la jamii, utawala wa bodi, mlolongo wa ukaguzi wa msimamizi. Majaribio ya bure ya siku 90.",
       "heroKicker": "Kwa waendeshaji wa Institutional",
       "heroHeadline": "Leseni maalum zinastahili",
       "heroHeadlineAccent": "nidhamu maalum",
@@ -1977,7 +1977,7 @@
       "problemKicker": "Kwa nini BossNyumba",
       "problemHeading": "Operesheni za Institutional zinazama katika",
       "problemHeadingAccent": "ripoti hazikuzihitaji.",
-      "problemSub": "Leseni Maalum za Uchimbaji huja na ukaguzi maalum. Wasimamizi, wakopeshaji, jamii, na bodi wote wanataka namba sawa, kwa namna tofauti.",
+      "problemSub": "Leseni Maalum za Uendeshaji wa mali huja na ukaguzi maalum. Wasimamizi, wakopeshaji, jamii, na bodi wote wanataka namba sawa, kwa namna tofauti.",
       "problemTitle": "Biashara inavuja wapi",
       "problems": [
         {
@@ -2022,11 +2022,11 @@
     },
     "cooperatives": {
       "metaTitle": "BossNyumba kwa vyama vya ushirika, mfumo wa Co-op",
-      "metaDescription": "BossNyumba kwa vyama vya ushirika vya uchimbaji mdogo na Co-op. Daftari la wanachama, daftari la uzalishaji wa pamoja, mikopo ya pamoja, malipo ya pamoja. Imejengwa kwa vyama vya uchimbaji Tanzania. Majaribio ya bure ya siku 90.",
+      "metaDescription": "BossNyumba kwa vyama vya ushirika vya uendeshaji wa mali mdogo na Co-op. Daftari la wanachama, daftari la uzalishaji wa pamoja, mikopo ya pamoja, malipo ya pamoja. Imejengwa kwa vyama vya uendeshaji wa mali Tanzania. Majaribio ya bure ya siku 90.",
       "heroKicker": "Kwa vyama vya ushirika",
       "heroHeadline": "Nidhamu ya ushirika,",
       "heroHeadlineAccent": "heshima ya mtu mmoja mmoja",
-      "heroSub": "BossNyumba inaunganisha chama cha ushirika wa uchimbaji mdogo. Wanachama wanahifadhi utambulisho wao, chama kinaweka daftari, na kila gramu inafuatiliwa kutoka shimoni hadi malipo. Utawala wa Co-op, zana za kiwango cha uchimbaji.",
+      "heroSub": "BossNyumba inaunganisha chama cha ushirika wa uendeshaji wa mali mdogo. Wanachama wanahifadhi utambulisho wao, chama kinaweka daftari, na kila gramu inafuatiliwa kutoka shimoni hadi malipo. Utawala wa Co-op, zana za kiwango cha uendeshaji wa mali.",
       "heroPrimaryCta": "Anza majaribio ya siku 90",
       "heroSecondaryCta": "Iangalie inavyofanya kazi",
       "trustline": [
@@ -2035,7 +2035,7 @@
         "Tayari kwa ukaguzi kwa msingi"
       ],
       "statsHeading": "Namba tatu zinazoboresha chama chako.",
-      "statsSub": "Si ahadi. Ni vichocheo halisi ambavyo BossNyumba inaviendesha ndani ya chama cha uchimbaji.",
+      "statsSub": "Si ahadi. Ni vichocheo halisi ambavyo BossNyumba inaviendesha ndani ya chama cha uendeshaji wa mali.",
       "stats": [
         {
           "value": "Mtazamo 1",
@@ -2075,7 +2075,7 @@
       "problemKicker": "Kwa nini BossNyumba",
       "problemHeading": "Vyama vinabeba hatari,",
       "problemHeadingAccent": "wanachama wanabeba shaka.",
-      "problemSub": "Vyama vya ushirika vya uchimbaji mdogo ni injini ya uchimbaji wa Tanzania. Zana hazijaendana na jukumu.",
+      "problemSub": "Vyama vya ushirika vya uendeshaji wa mali mdogo ni injini ya uendeshaji wa Tanzania. Zana hazijaendana na jukumu.",
       "problemTitle": "Imani inavunjika wapi",
       "problems": [
         {
@@ -2088,7 +2088,7 @@
         },
         {
           "title": "Mshangao wa ukaguzi",
-          "desc": "TCDC, Tume ya Madini, na TRA kila mmoja anataka vipande tofauti vya data ile ile. Vyama vinatumia wiki kukusanya badala ya kuendesha."
+          "desc": "TCDC, Tume ya Mali, na TRA kila mmoja anataka vipande tofauti vya data ile ile. Vyama vinatumia wiki kukusanya badala ya kuendesha."
         },
         {
           "title": "Umeunganishwa, lakini si umeunganishwa",
@@ -2107,7 +2107,7 @@
         },
         {
           "title": "Tayari kwa ukaguzi kwa msingi",
-          "desc": "TCDC, Tume ya Madini, na TRA kila mmoja anapata kipande chake, kinachozalishwa kutoka daftari lile lile. Ukaguzi unachukua masaa, si wiki."
+          "desc": "TCDC, Tume ya Mali, na TRA kila mmoja anapata kipande chake, kinachozalishwa kutoka daftari lile lile. Ukaguzi unachukua masaa, si wiki."
         },
         {
           "title": "Dashibodi ya muungano",
@@ -2157,7 +2157,7 @@
         {
           "n": "01",
           "title": "Tunaonyesha eneo.",
-          "body": "Tunakusanya kila leseni, mkataba, haki ya madini, kampuni tanzu na akaunti ya mwanachama katika ubongo mmoja wenye uthibitisho unaoweza kukaguliwa."
+          "body": "Tunakusanya kila leseni, mkataba, haki ya mali, kampuni tanzu na akaunti ya mwanachama katika ubongo mmoja wenye uthibitisho unaoweza kukaguliwa."
         },
         {
           "n": "02",
@@ -2315,10 +2315,10 @@
       "ctaPrimary": "Eleza timu yetu"
     },
     "buyer": {
-      "metaTitle": "Kwa wanunuzi wa madini - BossNyumba",
-      "metaDescription": "BossNyumba kwa wanunuzi wa madini: usambazaji wa Tanzania uliothibitishwa kwa KYB, vifurushi vinavyofuatiliwa, malipo ya escrow, ushahidi wa biometric wa utoaji.",
-      "heroKicker": "Kwa wanunuzi wa madini",
-      "heroHeadline": "Madini ya Tanzania pamoja na",
+      "metaTitle": "Kwa wanunuzi wa mali - BossNyumba",
+      "metaDescription": "BossNyumba kwa wanunuzi wa mali: usambazaji wa Tanzania uliothibitishwa kwa KYB, vifurushi vinavyofuatiliwa, malipo ya escrow, ushahidi wa biometric wa utoaji.",
+      "heroKicker": "Kwa wanunuzi wa mali",
+      "heroHeadline": "Mali ya Tanzania pamoja na",
       "heroHeadlineAccent": "ushahidi",
       "heroSub": "Soko la BossNyumba linaorodhesha vifurushi vilivyothibitishwa kwa KYB pamoja na mfululizo kamili wa uhifadhi, ushahidi wa biometric wa utoaji, na malipo ya escrow tayari.",
       "heroPrimaryCta": "Vinjari sokoni",
@@ -2353,7 +2353,7 @@
         {
           "n": "01",
           "title": "Vinjari vifurushi vilivyothibitishwa.",
-          "body": "Chuja kwa madini, daraja, mkoa, na mmiliki wa leseni - kila kifurushi kinataja uchanganuzi wake na leseni yake."
+          "body": "Chuja kwa mali, daraja, mkoa, na mmiliki wa leseni - kila kifurushi kinataja uchanganuzi wake na leseni yake."
         },
         {
           "n": "02",
@@ -2369,7 +2369,7 @@
       "problemKicker": "Kwa nini wanunuzi wanahama",
       "problemHeading": "Kile kununua kupitia wapatanishi",
       "problemHeadingAccent": "kinagharimu kweli",
-      "problemSub": "Usambazaji wa madini wa Tanzania ni halisi - lakini njia kutoka kwa mmiliki wa leseni hadi mchukuaji imejaa wapatanishi wa kufichwa.",
+      "problemSub": "Usambazaji wa mali wa Tanzania ni halisi - lakini njia kutoka kwa mmiliki wa leseni hadi mchukuaji imejaa wapatanishi wa kufichwa.",
       "problemTitle": "Kile kinachoharibika leo",
       "problems": [
         {
@@ -2408,7 +2408,7 @@
           "desc": "Nukuu kwa TZS, USD au KES; sarafu ya malipo iko wazi kwa kila ofa."
         }
       ],
-      "ctaHeading": "Pata madini kwa ushahidi.",
+      "ctaHeading": "Pata mali kwa ushahidi.",
       "ctaSub": "Sajili wasifu wako wa mnunuzi. Vinjari soko kwenye data salama ya demo. Tunakueleza njia ya uthibitisho.",
       "ctaPrimary": "Sajili kama mnunuzi"
     },
@@ -2416,7 +2416,7 @@
       "metaTitle": "Kwa wachukuaji na wauza nje - BossNyumba",
       "metaDescription": "BossNyumba kwa wachukuaji: usambazaji uliokusanywa, vifurushi vinavyofuatiliwa, hati za uzingatiaji za BOT, malipo ya sarafu nyingi.",
       "heroKicker": "Kwa wachukuaji na wauza nje",
-      "heroHeadline": "Kusanya usambazaji wa madini wa Tanzania kwa",
+      "heroHeadline": "Kusanya usambazaji wa mali wa Tanzania kwa",
       "heroHeadlineAccent": "karatasi safi",
       "heroSub": "BossNyumba inakusanya vifurushi vilivyothibitishwa kwa KYB kutoka kwa wamiliki wa Individual Landlord na Portfolio Landlord kote nchini na inavipeleka pamoja na hati za uuzaji wa nje, ripoti za BOT, na mfululizo wa uhifadhi wanayohitaji wakaguzi.",
       "heroPrimaryCta": "Omba muhtasari wa usambazaji",
@@ -2467,7 +2467,7 @@
       "problemKicker": "Kwa nini wachukuaji wanahama",
       "problemHeading": "Kile usambazaji wa wachimba wadogo",
       "problemHeadingAccent": "hauwezi kutoa peke yake",
-      "problemSub": "PMLs na MLs wana madini - kile wanakosa ni mfululizo wa karatasi wa kiwango cha uuzaji wa nje unaohitajika na forodha na benki yako.",
+      "problemSub": "PMLs na MLs wana mali - kile wanakosa ni mfululizo wa karatasi wa kiwango cha uuzaji wa nje unaohitajika na forodha na benki yako.",
       "problemTitle": "Kile kinachoharibika leo",
       "problems": [
         {
@@ -2619,11 +2619,11 @@
       "heroSecondaryCta": "Iangalie ikifanya kazi",
       "trustline": [
         "Inalingana na uwasilishaji wa NHC",
-        "Mtiririko wa NEMC HSE",
+        "Mtiririko wa NHC HSE",
         "Mfululizo wa hash wa ukaguzi kwa kila kitu"
       ],
       "statsHeading": "Sababu tatu mdhibiti anajiunga mapema.",
-      "statsSub": "Vipengele halisi - kile usimamizi wa wakati halisi wa migodi unafungua kwa NHC, NEMC na Wizara ya Madini.",
+      "statsSub": "Vipengele halisi - kile usimamizi wa wakati halisi wa migodi unafungua kwa NHC, NHC na Wizara ya Mali.",
       "stats": [
         {
           "value": "T+0",
@@ -2633,7 +2633,7 @@
         {
           "value": "Hash",
           "label": "Vitu vya uwasilishaji havibadiliki",
-          "sub": "Kila uwasilishaji wa NHC / NEMC unabeba asili ya hash-chained - hakuna ubadilishaji wa nyuma."
+          "sub": "Kila uwasilishaji wa NHC / NHC unabeba asili ya hash-chained - hakuna ubadilishaji wa nyuma."
         },
         {
           "value": "Wakati halisi",
@@ -2652,7 +2652,7 @@
         {
           "n": "02",
           "title": "Mawasilisho yanafanyika kwenye reli.",
-          "body": "Ripoti za NHC na ripoti za NEMC HSE zinakusanywa na kusainiwa ndani ya mfumo wa uendeshaji wa BossNyumba."
+          "body": "Ripoti za NHC na ripoti za NHC HSE zinakusanywa na kusainiwa ndani ya mfumo wa uendeshaji wa BossNyumba."
         },
         {
           "n": "03",
@@ -2676,7 +2676,7 @@
         },
         {
           "title": "Mwonekano uliotawanyika.",
-          "desc": "NHC, NEMC, BOT na Wizara kila moja inashikilia sehemu tofauti ya mgodi mmoja - hakuna mwonekano uliokusanywa."
+          "desc": "NHC, NHC, BOT na Wizara kila moja inashikilia sehemu tofauti ya mgodi mmoja - hakuna mwonekano uliokusanywa."
         },
         {
           "title": "Giza la tukio la HSE.",
@@ -2687,7 +2687,7 @@
       "solutions": [
         {
           "title": "Uwasilishaji wa wakati halisi.",
-          "desc": "Ripoti za NHC, ripoti za NEMC, risiti za royalti za BOT - zote zimezalishwa na zimesainiwa ndani ya BossNyumba."
+          "desc": "Ripoti za NHC, ripoti za NHC, risiti za royalti za BOT - zote zimezalishwa na zimesainiwa ndani ya BossNyumba."
         },
         {
           "title": "Vitu vyenye hash-chained.",
@@ -2695,7 +2695,7 @@
         },
         {
           "title": "Hali iliyokusanywa.",
-          "desc": "Mtazamo mmoja katika eneo kwa kila mkoa, kwa kila madini, kwa kila aina ya leseni."
+          "desc": "Mtazamo mmoja katika eneo kwa kila mkoa, kwa kila mali, kwa kila aina ya leseni."
         },
         {
           "title": "Mtiririko wa HSE hai.",
@@ -2975,7 +2975,7 @@
   "securityPage": {
     "kicker": "Usalama na imani",
     "heading": "BossNyumba imejengwa kwa uchunguzi wa mdhibiti.",
-    "sub": "Mfumo wa usalama wa tabaka 5, mfululizo wa hash kwenye kila kitu, na hifadhi ya eneo la Tanzania. Imejengwa kwa BOT, NHC na NEMC, na inalingana na vidhibiti vya ISO 27001.",
+    "sub": "Mfumo wa usalama wa tabaka 5, mfululizo wa hash kwenye kila kitu, na hifadhi ya eneo la Tanzania. Imejengwa kwa BOT, NHC na NHC, na inalingana na vidhibiti vya ISO 27001.",
     "pillarsHeading": "Nguzo nne za mfumo wa usalama wa BossNyumba.",
     "pillars": [
       {
@@ -3011,7 +3011,7 @@
       },
       {
         "icon": "Shield",
-        "text": "NEMC inalingana"
+        "text": "NHC inalingana"
       },
       {
         "icon": "BadgeCheck",

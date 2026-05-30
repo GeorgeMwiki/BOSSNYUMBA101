@@ -214,7 +214,7 @@ export const COPY = {
     stepsKicker: 'How it works',
     stepsHeading: 'Wire up your prospects. Match. Place. Get paid.',
     steps: [
-      { n: '01', title: 'Sync prospects',  body: 'Bring corporate clients (banks, embassies, mining companies). BossNyumba builds a brief from their relocation requirements.' },
+      { n: '01', title: 'Sync prospects',  body: 'Bring corporate clients (banks, embassies, enterprise tenants). BossNyumba builds a brief from their relocation requirements.' },
       { n: '02', title: 'AI matcher',      body: "Mr. Mwikila ranks verified inventory against the brief — bedrooms, schools, security, commute, budget — in seconds." },
       { n: '03', title: 'Auto commission', body: 'Tenant signs, deposit lands in escrow, commission lands in your account the same day. No invoicing.' },
     ],
@@ -507,7 +507,7 @@ export const COPY = {
     heroHeadline: 'Housing for the people',
     heroHeadlineAccent: 'who build the city',
     heroSub:
-      'BossNyumba powers cooperative housing, community land trusts, and worker-housing partnerships for NGOs, mining-towns, and university campuses. Mr. Mwikila runs the dues, the allocations, the disputes, and the AGM.',
+      'BossNyumba powers cooperative housing, community land trusts, and worker-housing partnerships for NGOs, industrial towns, and university campuses. Mr. Mwikila runs the dues, the allocations, the disputes, and the AGM.',
     heroPrimaryCta: 'Apply for community tier',
     heroSecondaryCta: 'See the model',
     trustline: [

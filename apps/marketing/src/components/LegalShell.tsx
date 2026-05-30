@@ -86,7 +86,7 @@ export function LegalShell({
                 ))}
               </ol>
             </aside>
-            <div className="prose-mining max-w-prose space-y-10 text-base leading-relaxed text-neutral-300">
+            <div className="prose-legal max-w-prose space-y-10 text-base leading-relaxed text-neutral-300">
               {sections.map((s) => (
                 <section key={s.id} id={s.id}>
                   <h2 className="font-display text-2xl font-medium text-foreground">
