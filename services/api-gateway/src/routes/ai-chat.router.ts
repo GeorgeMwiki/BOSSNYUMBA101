@@ -50,6 +50,7 @@ import {
 } from '@bossnyumba/graph-sync';
 import { getBrainExtraSkills } from '../composition/brain-extensions';
 import { rateLimiter as sharedRateLimiter } from '../middleware/rate-limiter';
+import { bridgeTabTags } from '../lib/chat-tab-bridge';
 import { v4 as uuid } from 'uuid';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
@@ -154,7 +155,11 @@ function checkRate(key: string): boolean {
  */
 export async function pipeStreamTurnToSSE(
   stream,
-  iter: AsyncGenerator<StreamTurnEvent>
+  // Accepts any event with a `type` discriminator, so the tab-bridge
+  // wrapper (which yields `StreamTurnEvent | TabBridgeEvent`) composes
+  // without needing a wider union baked into the @bossnyumba/ai-copilot
+  // package surface.
+  iter: AsyncGenerator<StreamTurnEvent | { type: string; [k: string]: unknown }>
 ): Promise<void> {
   try {
     for await (const evt of iter) {
@@ -287,7 +292,13 @@ router.post('/chat', withSecurityEvents({ action: 'ai-chat.create', resource: 'a
       signal: abort.signal,
     });
 
-    await pipeStreamTurnToSSE(stream, iter);
+    // Wrap the raw orchestrator stream so inline `<spawn_tabs>` /
+    // `<tab_*>` control tags are lifted out of the visible deltas and
+    // re-emitted as their own SSE envelopes the owner-portal tab store
+    // can consume. Non-tab events pass through unchanged.
+    const bridged = bridgeTabTags(iter);
+
+    await pipeStreamTurnToSSE(stream, bridged);
   });
 }));
 

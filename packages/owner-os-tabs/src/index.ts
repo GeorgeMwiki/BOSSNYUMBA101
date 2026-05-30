@@ -49,6 +49,13 @@ export {
   type ScaleTierLabel,
 } from './scale-defaults.js';
 
+// `<spawn_tabs>` extractor — parses the brain's spawn-batch tag inline
+// with the chat reply. Used server-side by ai-chat.router.
+export {
+  extractSpawnTabs,
+  type ExtractSpawnResult,
+} from './spawn-extractor.js';
+
 // Persona-adaptive tab ordering — owner / manager / tenant see different
 // tabs bubble to the top, on the same scale-tier base.
 export {

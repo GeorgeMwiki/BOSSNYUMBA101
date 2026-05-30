@@ -86,6 +86,7 @@
     "@bossnyumba/property-voices-debate": "workspace:*",
     "@bossnyumba/cross-org-denial-recorder": "workspace:*",
     "@bossnyumba/observability": "workspace:*",
+    "@bossnyumba/owner-os-tabs": "workspace:*",
     "@bossnyumba/payments-ledger-service": "workspace:*",
     "@bossnyumba/payments-service": "workspace:*",
     "@bossnyumba/performance-toolkit": "workspace:*",

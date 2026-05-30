@@ -94,3 +94,10 @@ export * from './kernel/sandbox/index.js';
 // the `md:*` action namespace. See policy-gate/index.ts for the full
 // surface (assertTierPolicy, assertApproved, HIGH_RISK_LITERAL_ONLY_PREFIXES).
 export * from './policy-gate/index.js';
+
+// CT-1 inline-XML tab tags Mr. Mwikila streams alongside chat text —
+// `<tab_spawn>`, `<tab_update>`, `<tab_remove>`, `<tab_proposal>`. The
+// gateway lifts these out of the visible delta stream via
+// `services/api-gateway/src/lib/chat-tab-bridge.ts` and re-emits them
+// as discrete SSE envelopes the owner-portal tab store consumes.
+export * from './sse-tags/index.js';
