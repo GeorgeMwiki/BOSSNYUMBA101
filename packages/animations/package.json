@@ -1,0 +1,19 @@
+{
+  "name": "@bossnyumba/animations",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Framer Motion spring presets, transition presets, and CSS transition utility classes for consistent motion across BossNyumba surfaces. Verbatim port of LitFin's src/core/animations.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./spring-presets": "./src/spring-presets.ts",
+    "./transitions": "./src/transitions.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
