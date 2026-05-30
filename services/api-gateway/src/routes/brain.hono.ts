@@ -39,6 +39,7 @@ import {
   createGraphAgentToolkit,
 } from '@bossnyumba/graph-sync';
 import { getBrainExtraSkills } from '../composition/brain-extensions';
+import { auditChatResponse } from '../composition/chat-response-gate';
 import { scrubMessage } from '../utils/safe-error';
 import { rateLimiter as sharedRateLimiter } from '../middleware/rate-limiter';
 
@@ -321,8 +322,17 @@ brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource:
         return c.json({ error: result.error.message }, 500);
       }
       const turn = result.data.turn;
+      const newThreadId = result.data.thread.id;
+      const auditVerdict = await auditChatResponse({
+        tenantId: ctx.tenant.tenantId,
+        threadId: newThreadId,
+        userId: ctx.viewer.userId,
+        personaId: turn.finalPersonaId,
+        responseText: turn.responseText,
+        tokensUsed: turn.tokensUsed,
+      });
       return c.json({
-        threadId: result.data.thread.id,
+        threadId: newThreadId,
         finalPersonaId: turn.finalPersonaId,
         responseText: turn.responseText,
         handoffs: turn.handoffs,
@@ -330,6 +340,12 @@ brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource:
         advisorConsulted: turn.advisorConsulted,
         proposedAction: turn.proposedAction,
         tokensUsed: turn.tokensUsed,
+        audit: {
+          verdict: auditVerdict.verdict,
+          evidenceCount: auditVerdict.evidenceCount,
+          auditLogId: auditVerdict.auditLogId,
+          evidenceWarning: auditVerdict.evidenceWarning,
+        },
       });
     }
     const result = await brain.orchestrator.handleTurn({
@@ -343,6 +359,14 @@ brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource:
     if (!result.success) {
       return c.json({ error: result.error.message }, 500);
     }
+    const auditVerdict = await auditChatResponse({
+      tenantId: ctx.tenant.tenantId,
+      threadId: result.data.threadId,
+      userId: ctx.viewer.userId,
+      personaId: result.data.finalPersonaId,
+      responseText: result.data.responseText,
+      tokensUsed: result.data.tokensUsed,
+    });
     return c.json({
       threadId: result.data.threadId,
       finalPersonaId: result.data.finalPersonaId,
@@ -352,6 +376,12 @@ brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource:
       advisorConsulted: result.data.advisorConsulted,
       proposedAction: result.data.proposedAction,
       tokensUsed: result.data.tokensUsed,
+      audit: {
+        verdict: auditVerdict.verdict,
+        evidenceCount: auditVerdict.evidenceCount,
+        auditLogId: auditVerdict.auditLogId,
+        evidenceWarning: auditVerdict.evidenceWarning,
+      },
     });
   } catch (err) {
     return handleError(c, err);

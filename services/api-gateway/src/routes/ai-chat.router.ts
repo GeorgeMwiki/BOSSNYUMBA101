@@ -49,6 +49,7 @@ import {
   createGraphAgentToolkit,
 } from '@bossnyumba/graph-sync';
 import { getBrainExtraSkills } from '../composition/brain-extensions';
+import { auditChatResponse } from '../composition/chat-response-gate';
 import { rateLimiter as sharedRateLimiter } from '../middleware/rate-limiter';
 import { bridgeTabTags } from '../lib/chat-tab-bridge';
 import { v4 as uuid } from 'uuid';
@@ -298,7 +299,54 @@ router.post('/chat', withSecurityEvents({ action: 'ai-chat.create', resource: 'a
     // can consume. Non-tab events pass through unchanged.
     const bridged = bridgeTabTags(iter);
 
-    await pipeStreamTurnToSSE(stream, bridged);
+    // Wave-AC1: SOFT-mode auditor tap — accumulate `delta` text and
+    // final turn metadata so the post-stream audit log captures the
+    // evidence-chain verdict on every chat turn. Fires AFTER the
+    // pipe drains so it can never block the user-visible stream.
+    let accumulatedText = '';
+    let lastPersonaId: string | null = null;
+    let lastTokens = 0;
+    const auditingIter = (async function* () {
+      for await (const evt of bridged) {
+        const e = evt as { type?: unknown; content?: unknown; finalPersonaId?: unknown; totalTokens?: unknown };
+        if (e.type === 'delta' && typeof e.content === 'string') {
+          accumulatedText += e.content;
+        } else if (e.type === 'turn_end') {
+          if (typeof e.finalPersonaId === 'string') lastPersonaId = e.finalPersonaId;
+          if (typeof e.totalTokens === 'number') lastTokens = e.totalTokens;
+        }
+        yield evt;
+      }
+    })();
+
+    await pipeStreamTurnToSSE(stream, auditingIter);
+
+    try {
+      const verdict = await auditChatResponse({
+        tenantId: ctx.tenant.tenantId,
+        threadId,
+        userId: ctx.viewer.userId,
+        personaId: lastPersonaId ?? parsed.data.forcePersonaId ?? parsed.data.personaId,
+        responseText: accumulatedText,
+        tokensUsed: lastTokens,
+      });
+      // SOFT MODE — emit observability event so dashboards can chart
+      // evidence-chain violations without the front-end having to
+      // change behaviour. Best-effort: a closed stream is non-fatal.
+      await stream.writeSSE({
+        event: 'auditor',
+        data: JSON.stringify({
+          verdict: verdict.verdict,
+          evidenceCount: verdict.evidenceCount,
+          auditLogId: verdict.auditLogId,
+          evidenceWarning: verdict.evidenceWarning,
+        }),
+      });
+    } catch {
+      // Post-stream audit + write are observability-only — never throw
+      // back to the client. The structured log inside auditChatResponse
+      // is the canonical signal.
+    }
   });
 }));
 
