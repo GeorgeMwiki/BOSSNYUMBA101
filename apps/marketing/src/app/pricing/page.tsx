@@ -158,7 +158,7 @@ export default async function PricingPage() {
           >
             {copy.heroHeading}
           </h1>
-          <p className="mx-auto mt-6 max-w-prose-widest text-lg leading-relaxed text-neutral-400 sm:text-xl">
+          <p className="mx-auto mt-6 max-w-prose-widest text-lg leading-relaxed text-foreground/70 sm:text-xl">
             {copy.heroSubOne} {copy.heroSubTwo}
           </p>
           <div className="mt-8 flex justify-center">
@@ -175,14 +175,14 @@ export default async function PricingPage() {
         className="mx-auto max-w-4xl px-6 pb-12 pt-4 text-center lg:px-8"
         aria-label="Trust badges"
       >
-        <p className="mx-auto mb-6 max-w-xl font-mono text-xs uppercase tracking-widest text-neutral-500">
+        <p className="mx-auto mb-6 max-w-xl font-mono text-xs uppercase tracking-widest text-foreground/60">
           {copy.trustHeading}
         </p>
         <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
           {TRUST_BADGES.map((badge) => (
             <li
               key={badge}
-              className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500"
+              className="font-mono text-[0.68rem] uppercase tracking-widest text-foreground/60"
             >
               {badge}
             </li>
@@ -202,7 +202,7 @@ export default async function PricingPage() {
           >
             {copy.compareHeading}
           </h2>
-          <p className="mx-auto mt-3 max-w-prose-wide text-base leading-relaxed text-neutral-400">
+          <p className="mx-auto mt-3 max-w-prose-wide text-base leading-relaxed text-foreground/70">
             {copy.compareSub(tierLabel(highlightedTier, locale))}
           </p>
         </div>
@@ -211,7 +211,7 @@ export default async function PricingPage() {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-raised">
-                <th className="px-5 py-4 text-left font-mono text-[0.68rem] uppercase tracking-widest text-neutral-400">
+                <th className="px-5 py-4 text-left font-mono text-[0.68rem] uppercase tracking-widest text-foreground/70">
                   {copy.featureColumn}
                 </th>
                 {TIERS.map((tier) => (
@@ -219,7 +219,7 @@ export default async function PricingPage() {
                     key={tier.id}
                     className="px-3 py-4 text-center font-display text-sm font-medium tracking-tight text-foreground"
                   >
-                    <span className="block font-mono text-[0.6rem] uppercase tracking-widest text-neutral-500">
+                    <span className="block font-mono text-[0.6rem] uppercase tracking-widest text-foreground/60">
                       T{tier.position}
                     </span>
                     {tierLabel(tier, locale)}
@@ -297,7 +297,7 @@ export default async function PricingPage() {
           >
             {copy.faqHeading}
           </h2>
-          <p className="mx-auto mt-3 max-w-prose-wide text-base leading-relaxed text-neutral-400">
+          <p className="mx-auto mt-3 max-w-prose-wide text-base leading-relaxed text-foreground/70">
             {copy.faqSub}
           </p>
         </div>
@@ -318,7 +318,7 @@ export default async function PricingPage() {
           >
             {copy.ctaHeading}
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-neutral-400">
+          <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-foreground/70">
             {copy.ctaSub(tierLabel(smallholderTier, locale))}
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">

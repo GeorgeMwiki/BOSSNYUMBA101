@@ -113,7 +113,7 @@ export function AudiencePage({ copy, kickerIcon: KickerIcon }: AudiencePageProps
               .
             </h1>
 
-            <p className="mx-auto mt-6 max-w-prose-widest text-lg leading-relaxed text-neutral-400 sm:text-xl">
+            <p className="mx-auto mt-6 max-w-prose-widest text-lg leading-relaxed text-foreground/70 sm:text-xl">
               {copy.heroSub}
             </p>
 
@@ -134,7 +134,7 @@ export function AudiencePage({ copy, kickerIcon: KickerIcon }: AudiencePageProps
               </Link>
             </div>
 
-            <ul className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-neutral-500">
+            <ul className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-foreground/60">
               {copy.trustline.map((line, i) => {
                 const dotTone =
                   i === 0
@@ -173,7 +173,7 @@ export function AudiencePage({ copy, kickerIcon: KickerIcon }: AudiencePageProps
             >
               {copy.statsHeading}
             </h2>
-            <p className="mt-4 text-lg leading-relaxed text-neutral-400">
+            <p className="mt-4 text-lg leading-relaxed text-foreground/70">
               {copy.statsSub}
             </p>
           </div>
@@ -190,7 +190,7 @@ export function AudiencePage({ copy, kickerIcon: KickerIcon }: AudiencePageProps
                 <p className="mt-3 text-sm font-semibold text-foreground">
                   {s.label}
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                <p className="mt-2 text-sm leading-relaxed text-foreground/70">
                   {s.sub}
                 </p>
               </li>
@@ -230,7 +230,7 @@ export function AudiencePage({ copy, kickerIcon: KickerIcon }: AudiencePageProps
                 <h3 className="mt-3 font-display text-xl font-semibold tracking-tight text-foreground">
                   {step.title}
                 </h3>
-                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                <p className="mt-2 text-sm leading-relaxed text-foreground/70">
                   {step.body}
                 </p>
               </li>
@@ -256,7 +256,7 @@ export function AudiencePage({ copy, kickerIcon: KickerIcon }: AudiencePageProps
               {copy.problemHeading}{' '}
               <span className="text-signal-500">{copy.problemHeadingAccent}</span>
             </h2>
-            <p className="mx-auto mt-5 max-w-prose-wide text-lg leading-relaxed text-neutral-400">
+            <p className="mx-auto mt-5 max-w-prose-wide text-lg leading-relaxed text-foreground/70">
               {copy.problemSub}
             </p>
           </div>
@@ -288,7 +288,7 @@ export function AudiencePage({ copy, kickerIcon: KickerIcon }: AudiencePageProps
                       <span className="text-sm font-semibold text-foreground">
                         {item.title}
                       </span>
-                      <p className="mt-1 text-sm leading-relaxed text-neutral-400">
+                      <p className="mt-1 text-sm leading-relaxed text-foreground/70">
                         {item.desc}
                       </p>
                     </div>
@@ -322,7 +322,7 @@ export function AudiencePage({ copy, kickerIcon: KickerIcon }: AudiencePageProps
                       <span className="text-sm font-semibold text-foreground">
                         {item.title}
                       </span>
-                      <p className="mt-1 text-sm leading-relaxed text-neutral-400">
+                      <p className="mt-1 text-sm leading-relaxed text-foreground/70">
                         {item.desc}
                       </p>
                     </div>
@@ -346,7 +346,7 @@ export function AudiencePage({ copy, kickerIcon: KickerIcon }: AudiencePageProps
           >
             {copy.ctaHeading}
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-neutral-400">
+          <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-foreground/70">
             {copy.ctaSub}
           </p>
           <div className="mt-10 flex justify-center">

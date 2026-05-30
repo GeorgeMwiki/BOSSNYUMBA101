@@ -68,7 +68,7 @@ export default function SupportPage() {
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           We answer in Swahili by default.
         </h1>
-        <p className="mt-6 text-lg leading-relaxed text-neutral-300">
+        <p className="mt-6 text-lg leading-relaxed text-foreground/75">
           Mr. Mwikila is your first line; the human team is your second.
           For paid tiers, SLAs are baked into your contract. For free
           tier (Smallholder), we still aim to answer within one business day.
@@ -89,10 +89,10 @@ export default function SupportPage() {
               <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
                 {c.title}
               </h2>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-neutral-400">
+              <p className="mt-2 flex-1 text-sm leading-relaxed text-foreground/70">
                 {c.body}
               </p>
-              <p className="mt-3 font-mono text-[0.65rem] uppercase tracking-widest text-neutral-500">
+              <p className="mt-3 font-mono text-[0.65rem] uppercase tracking-widest text-foreground/60">
                 {c.sla}
               </p>
               <Link

@@ -47,7 +47,7 @@ export default function AboutPage() {
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           The AI operating system for East African real estate.
         </h1>
-        <p className="mt-6 text-lg leading-relaxed text-neutral-300">
+        <p className="mt-6 text-lg leading-relaxed text-foreground/75">
           Boss Nyumba is built in Dar es Salaam, for the property sector
           that houses the continent. We replace WhatsApp rent chase,
           paper leases, and ad-hoc bookkeeping with one Master Brain
@@ -57,7 +57,7 @@ export default function AboutPage() {
           <MwikilaChip />
         </div>
 
-        <div className="mt-12 space-y-8 text-sm leading-relaxed text-neutral-400">
+        <div className="mt-12 space-y-8 text-sm leading-relaxed text-foreground/70">
           {SECTIONS.map((s) => (
             <section key={s.title}>
               <h2 className="font-display text-xl font-semibold text-foreground">

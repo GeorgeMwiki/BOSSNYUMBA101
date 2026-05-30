@@ -17,7 +17,7 @@ export function MwikilaChip({
 }) {
   if (variant === 'compact') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-surface/60 px-2.5 py-1 text-xs text-neutral-400 backdrop-blur">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-surface/60 px-2.5 py-1 text-xs text-foreground/70 backdrop-blur">
         <span
           className="inline-flex h-1.5 w-1.5 rounded-full bg-signal-500"
           aria-hidden="true"
@@ -38,7 +38,7 @@ export function MwikilaChip({
         {MR_MWIKILA_CANONICAL_DISPLAY.name}
       </span>
       <span className="hidden h-3 w-px bg-border sm:inline-block" aria-hidden="true" />
-      <span className="hidden text-xs text-neutral-500 sm:inline">
+      <span className="hidden text-xs text-foreground/60 sm:inline">
         {MR_MWIKILA_CANONICAL_DISPLAY.title}
       </span>
     </div>

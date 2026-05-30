@@ -105,7 +105,7 @@ export default async function SignUpPage() {
             <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
               {copy.headline(smallholder)}
             </h1>
-            <p className="mx-auto mt-5 max-w-prose-wide text-base leading-relaxed text-neutral-400">
+            <p className="mx-auto mt-5 max-w-prose-wide text-base leading-relaxed text-foreground/70">
               {copy.sub}
             </p>
             <div className="mt-6 flex justify-center">
@@ -148,7 +148,7 @@ export default async function SignUpPage() {
                   placeholder="+255 7XX XXX XXX"
                   className="mt-2 block w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-neutral-600 focus:border-signal-500 focus:outline-none focus:ring-1 focus:ring-signal-500"
                 />
-                <p className="mt-1 text-xs text-neutral-500">
+                <p className="mt-1 text-xs text-foreground/60">
                   {copy.mpesaHelp}
                 </p>
               </div>
@@ -175,7 +175,7 @@ export default async function SignUpPage() {
                   required
                   className="mt-1 h-4 w-4 rounded border-border bg-background text-signal-500 focus:ring-signal-500"
                 />
-                <label htmlFor="signup-terms" className="text-xs leading-snug text-neutral-400">
+                <label htmlFor="signup-terms" className="text-xs leading-snug text-foreground/70">
                   {copy.agreePrefix}{' '}
                   <Link href="/terms" className="text-signal-500 underline-offset-4 hover:underline">
                     {copy.agreeTerms}
@@ -197,7 +197,7 @@ export default async function SignUpPage() {
             </form>
           </div>
 
-          <p className="mt-6 text-center text-sm text-neutral-400">
+          <p className="mt-6 text-center text-sm text-foreground/70">
             {copy.alreadyHave}{' '}
             <Link
               href="/sign-in"
@@ -207,7 +207,7 @@ export default async function SignUpPage() {
             </Link>
           </p>
 
-          <p className="mt-8 inline-flex w-full items-center justify-center gap-1.5 font-mono text-[0.65rem] uppercase tracking-widest text-neutral-500">
+          <p className="mt-8 inline-flex w-full items-center justify-center gap-1.5 font-mono text-[0.65rem] uppercase tracking-widest text-foreground/60">
             <ShieldCheck className="h-3 w-3 text-signal-500" aria-hidden="true" />
             SOC 2 Type II · ISO 27001 · TZ DPA aligned
           </p>

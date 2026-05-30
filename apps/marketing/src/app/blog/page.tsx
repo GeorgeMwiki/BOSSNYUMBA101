@@ -84,7 +84,7 @@ export default function BlogIndexPage() {
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           Field notes from the property frontier.
         </h1>
-        <p className="mt-6 text-lg leading-relaxed text-neutral-300">
+        <p className="mt-6 text-lg leading-relaxed text-foreground/75">
           Product launches, M-Pesa integrations, regulatory changes, and
           lessons from real portfolios in Tanzania and Kenya.
         </p>
@@ -100,14 +100,14 @@ export default function BlogIndexPage() {
                   <p className={`font-mono text-[0.65rem] uppercase tracking-widest ${TAG_TONE[post.tag]}`}>
                     {post.tag}
                   </p>
-                  <p className="font-mono text-[0.65rem] uppercase tracking-widest text-neutral-500 tabular-nums">
+                  <p className="font-mono text-[0.65rem] uppercase tracking-widest text-foreground/60 tabular-nums">
                     {post.date}
                   </p>
                 </div>
                 <h2 className="mt-2 font-display text-xl font-semibold tracking-tight text-foreground transition-colors group-hover:text-signal-500">
                   {post.title}
                 </h2>
-                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                <p className="mt-2 text-sm leading-relaxed text-foreground/70">
                   {post.excerpt}
                 </p>
               </Link>
@@ -115,7 +115,7 @@ export default function BlogIndexPage() {
           ))}
         </ul>
 
-        <p className="mt-10 text-center text-sm text-neutral-500">
+        <p className="mt-10 text-center text-sm text-foreground/60">
           Subscribe to the RSS feed at{' '}
           <code className="font-mono text-sm text-signal-500">/blog/feed.xml</code>
           {' '}or follow{' '}

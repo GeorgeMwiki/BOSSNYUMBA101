@@ -29,11 +29,28 @@ interface BossNyumbaWidgetMountProps {
   readonly locale?: 'en' | 'sw';
 }
 
+/**
+ * BossNyumba real-estate compliance copy. Landlords own properties — the
+ * Borjie mining variant says "mine owner". We pin "landlord" here so an
+ * unrelated edit (or a sibling chat-ui session targeting the mining
+ * domain) cannot revert it.
+ */
+const BOSSNYUMBA_DISCLAIMER_EN =
+  'AI-generated. Not legal advice. Decisions are made by the landlord.';
+const BOSSNYUMBA_DISCLAIMER_SW =
+  'AI-iliyotengenezwa . Si ushauri wa kisheria . Maamuzi yanafanywa na mwenye nyumba';
+
 export function BossNyumbaWidgetMount(
   _props: BossNyumbaWidgetMountProps = {},
 ): JSX.Element {
   return (
-    <LitFinAIProvider portalId="public" endpoint="/api/chat" initialRoute="/">
+    <LitFinAIProvider
+      portalId="public"
+      endpoint="/api/chat"
+      initialRoute="/"
+      disclaimerEn={BOSSNYUMBA_DISCLAIMER_EN}
+      disclaimerSw={BOSSNYUMBA_DISCLAIMER_SW}
+    >
       <LitFinWidget />
     </LitFinAIProvider>
   );

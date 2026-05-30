@@ -91,7 +91,7 @@ export default async function SignInPage() {
             <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
               {copy.headline}
             </h1>
-            <p className="mx-auto mt-5 max-w-prose-wide text-base leading-relaxed text-neutral-400">
+            <p className="mx-auto mt-5 max-w-prose-wide text-base leading-relaxed text-foreground/70">
               {copy.sub}
             </p>
             <div className="mt-6 flex justify-center">
@@ -150,7 +150,7 @@ export default async function SignInPage() {
             </form>
           </div>
 
-          <p className="mt-6 text-center text-sm text-neutral-400">
+          <p className="mt-6 text-center text-sm text-foreground/70">
             {copy.noAccount}{' '}
             <Link
               href="/sign-up"
@@ -160,7 +160,7 @@ export default async function SignInPage() {
             </Link>
           </p>
 
-          <p className="mt-8 inline-flex w-full items-center justify-center gap-1.5 font-mono text-[0.65rem] uppercase tracking-widest text-neutral-500">
+          <p className="mt-8 inline-flex w-full items-center justify-center gap-1.5 font-mono text-[0.65rem] uppercase tracking-widest text-foreground/60">
             <ShieldCheck className="h-3 w-3 text-signal-500" aria-hidden="true" />
             BRELA · TRA · Housing-regulator verified
           </p>

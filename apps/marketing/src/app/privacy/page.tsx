@@ -17,11 +17,11 @@ export default function PrivacyPage() {
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           Privacy Notice.
         </h1>
-        <p className="mt-2 font-mono text-xs uppercase tracking-widest text-neutral-500">
+        <p className="mt-2 font-mono text-xs uppercase tracking-widest text-foreground/60">
           Effective 2026-04-01 · Aligned with TZ DPA, GDPR, and Kenya DPA
         </p>
 
-        <p className="mt-8 text-lg leading-relaxed text-neutral-300">
+        <p className="mt-8 text-lg leading-relaxed text-foreground/75">
           Boss Nyumba (operated by Boss Nyumba Limited, registered in
           Tanzania) processes personal data on behalf of landlords,
           property managers, tenants, and partners. This notice explains
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
         <h2 className="mt-12 font-display text-xl font-semibold text-foreground">
           1. What we collect
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-neutral-400">
+        <p className="mt-3 text-sm leading-relaxed text-foreground/70">
           Account data (name, phone, email, NIDA/passport hash). Portfolio
           data (properties, leases, tenants, rent payments). Communications
           (chat with Mr. Mwikila, SMS, email). Telemetry (audit logs, IP
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
         <h2 className="mt-10 font-display text-xl font-semibold text-foreground">
           2. How we use it
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-neutral-400">
+        <p className="mt-3 text-sm leading-relaxed text-foreground/70">
           To provide the service (rent collection, owner statements,
           maintenance triage). To improve the platform (anonymised
           aggregates only). To comply with legal obligations (regulator
@@ -53,7 +53,7 @@ export default function PrivacyPage() {
         <h2 className="mt-10 font-display text-xl font-semibold text-foreground">
           3. Your rights
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-neutral-400">
+        <p className="mt-3 text-sm leading-relaxed text-foreground/70">
           Access, correct, export, delete, restrict, and object. Email{' '}
           <a href="mailto:privacy@bossnyumba.com" className="text-signal-500 hover:underline">
             privacy@bossnyumba.com
@@ -66,7 +66,7 @@ export default function PrivacyPage() {
         <h2 className="mt-10 font-display text-xl font-semibold text-foreground">
           4. Retention
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-neutral-400">
+        <p className="mt-3 text-sm leading-relaxed text-foreground/70">
           We retain account and portfolio data while your account is
           active and for 90 days after cancellation. Hash-chained audit
           logs are retained for 7 years per tax and compliance law. Chat
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
         <h2 className="mt-10 font-display text-xl font-semibold text-foreground">
           5. International transfers
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-neutral-400">
+        <p className="mt-3 text-sm leading-relaxed text-foreground/70">
           Primary processing is in EAT region. Some sub-processors are in
           the EU or US under appropriate safeguards (SCCs, adequacy
           decisions). The full list is at{' '}
@@ -89,7 +89,7 @@ export default function PrivacyPage() {
         <h2 className="mt-10 font-display text-xl font-semibold text-foreground">
           6. Contact
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-neutral-400">
+        <p className="mt-3 text-sm leading-relaxed text-foreground/70">
           Data Protection Officer: dpo@bossnyumba.com
           <br />
           Privacy questions: privacy@bossnyumba.com

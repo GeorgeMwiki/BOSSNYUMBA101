@@ -72,7 +72,7 @@ export default function ContactPage() {
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           Reach the right desk.
         </h1>
-        <p className="mt-6 text-lg leading-relaxed text-neutral-300">
+        <p className="mt-6 text-lg leading-relaxed text-foreground/75">
           We are in Dar es Salaam and Nairobi. EAT business hours. Mr.
           Mwikila is always on; humans are on weekdays 09:00-17:00 EAT
           and Saturdays 09:00-13:00 EAT.
@@ -88,7 +88,7 @@ export default function ContactPage() {
               <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
                 {c.heading}
               </h2>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-neutral-400">
+              <p className="mt-2 flex-1 text-sm leading-relaxed text-foreground/70">
                 {c.body}
               </p>
               <Link
@@ -107,7 +107,7 @@ export default function ContactPage() {
             <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
               Dar es Salaam (HQ)
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+            <p className="mt-2 text-sm leading-relaxed text-foreground/70">
               Plot 12, Msasani Peninsula
               <br />
               Dar es Salaam, Tanzania
@@ -120,7 +120,7 @@ export default function ContactPage() {
             <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
               Nairobi
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+            <p className="mt-2 text-sm leading-relaxed text-foreground/70">
               Westlands, Waiyaki Way
               <br />
               Nairobi, Kenya
@@ -130,7 +130,7 @@ export default function ContactPage() {
           </article>
         </div>
 
-        <p className="mt-12 inline-flex items-center gap-2 text-sm text-neutral-400">
+        <p className="mt-12 inline-flex items-center gap-2 text-sm text-foreground/70">
           <Phone className="h-4 w-4 text-signal-500" aria-hidden="true" />
           Switchboard:{' '}
           <a href="tel:+255222000000" className="font-semibold text-signal-500 hover:underline">

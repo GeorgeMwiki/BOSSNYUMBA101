@@ -49,7 +49,7 @@ export default function BookDemoPage() {
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           Twenty minutes. Real portfolio. Real cockpit.
         </h1>
-        <p className="mt-6 text-lg leading-relaxed text-neutral-300">
+        <p className="mt-6 text-lg leading-relaxed text-foreground/75">
           Bring a sample of your buildings, leases, or rent roll. We
           import it live and walk you through the cockpit you would land
           on tomorrow. No slide decks; no follow-up sales calls unless
@@ -66,7 +66,7 @@ export default function BookDemoPage() {
               <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
                 {c.title}
               </h2>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-neutral-400">
+              <p className="mt-2 flex-1 text-sm leading-relaxed text-foreground/70">
                 {c.body}
               </p>
               <Link
