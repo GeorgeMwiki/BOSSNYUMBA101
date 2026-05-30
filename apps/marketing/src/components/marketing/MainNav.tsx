@@ -26,13 +26,80 @@ import {
 } from 'lucide-react';
 
 import { Wordmark } from '@bossnyumba/design-system';
+import { type Locale } from '@/lib/i18n';
 
 /**
  * BossNyumba MainNav — carbon copy of LitFin's MainNav pattern
- * (LITFIN_PATH/src/components/marketing/MainNav.tsx) adapted to
- * BossNyumba's real-estate audience verticals. Scroll-aware backdrop,
- * "Who We Serve" mega-menu, smart CTA per page.
+ * adapted to BossNyumba's real-estate audience verticals. Scroll-aware
+ * backdrop, "Who We Serve" mega-menu, smart CTA per page. Locale-aware so
+ * EN and SW renders are pure.
  */
+
+interface NavLabels {
+  readonly whoWeServe: string;
+  readonly pricing: string;
+  readonly about: string;
+  readonly docs: string;
+  readonly support: string;
+  readonly login: string;
+  readonly getStarted: string;
+  readonly requestDemo: string;
+  readonly menuToggle: string;
+  readonly homeAria: string;
+  readonly categories: {
+    readonly individuals: string;
+    readonly operators: string;
+    readonly capital: string;
+    readonly public: string;
+    readonly enterprise: string;
+    readonly community: string;
+  };
+}
+
+function getLabels(locale: Locale): NavLabels {
+  if (locale === 'sw') {
+    return {
+      whoWeServe: 'Tunaowahudumia',
+      pricing: 'Bei',
+      about: 'Kuhusu',
+      docs: 'Nyaraka',
+      support: 'Msaada',
+      login: 'Ingia',
+      getStarted: 'Anza sasa',
+      requestDemo: 'Omba onyesho',
+      menuToggle: 'Funga/fungua menyu',
+      homeAria: 'Ukurasa wa nyumbani wa BossNyumba',
+      categories: {
+        individuals: 'Watu binafsi',
+        operators: 'Waendeshaji',
+        capital: 'Mtaji',
+        public: 'Umma',
+        enterprise: 'Mashirika',
+        community: 'Jamii',
+      },
+    };
+  }
+  return {
+    whoWeServe: 'Who We Serve',
+    pricing: 'Pricing',
+    about: 'About',
+    docs: 'Docs',
+    support: 'Support',
+    login: 'Log In',
+    getStarted: 'Get started',
+    requestDemo: 'Request demo',
+    menuToggle: 'Toggle menu',
+    homeAria: 'BossNyumba home',
+    categories: {
+      individuals: 'Individuals',
+      operators: 'Operators',
+      capital: 'Capital',
+      public: 'Public',
+      enterprise: 'Enterprise',
+      community: 'Community',
+    },
+  };
+}
 
 // ----------------------------------------------------------------------------
 // "Who We Serve" mega-menu — BossNyumba real-estate audiences only.
@@ -50,142 +117,184 @@ interface AudienceCategory {
   readonly items: ReadonlyArray<AudienceItem>;
 }
 
-const AUDIENCE_CATEGORIES: ReadonlyArray<AudienceCategory> = [
-  {
-    title: 'Individuals',
-    items: [
-      {
-        label: 'Individual landlord',
-        desc: 'One or two properties. Calm operator co-pilot.',
-        href: '/for-individual-landlord',
-        icon: Home,
-      },
-      {
-        label: 'Tenant',
-        desc: 'Lease, rent, maintenance — all in one place.',
-        href: '/for-tenant',
-        icon: UserCircle,
-      },
-    ],
-  },
-  {
-    title: 'Operators',
-    items: [
-      {
-        label: 'Portfolio landlord',
-        desc: 'Multi-property portfolios with treasury.',
-        href: '/for-portfolio-landlord',
-        icon: Building,
-      },
-      {
-        label: 'Leasing agency',
-        desc: 'Brokerage flows + commission accounting.',
-        href: '/for-leasing-agency',
-        icon: Briefcase,
-      },
-      {
-        label: 'Housing cooperative',
-        desc: 'Member governance + shared facilities.',
-        href: '/for-housing-cooperative',
-        icon: Users,
-      },
-    ],
-  },
-  {
-    title: 'Capital',
-    items: [
-      {
-        label: 'Real-estate investor',
-        desc: 'Cap-rate, yield, valuation, exit modelling.',
-        href: '/for-real-estate-investor',
-        icon: Building2,
-      },
-      {
-        label: 'Family office',
-        desc: 'Inter-generational estate stewardship.',
-        href: '/for-family-office',
-        icon: HeartHandshake,
-      },
-      {
-        label: 'Bank',
-        desc: 'Property-collateralised lending desk.',
-        href: '/for-bank',
-        icon: Landmark,
-      },
-    ],
-  },
-  {
-    title: 'Public',
-    items: [
-      {
-        label: 'Regulator',
-        desc: 'NHC / BRELA / TRA compliance signal.',
-        href: '/for-regulator',
-        icon: ShieldCheck,
-      },
-      {
-        label: 'Community housing',
-        desc: 'Affordable + non-profit housing operators.',
-        href: '/for-community-housing',
-        icon: HeartHandshake,
-      },
-      {
-        label: 'Government entity',
-        desc: 'Parastatals and ministries stewarding public property.',
-        href: '/for-government-entity',
-        icon: Landmark,
-      },
-    ],
-  },
-  {
-    title: 'Enterprise',
-    items: [
-      {
-        label: 'Corporate portfolio',
-        desc: 'Staff housing, branch offices, warehouses as one estate.',
-        href: '/for-corporate-portfolio',
-        icon: Building2,
-      },
-      {
-        label: 'REIT and property fund',
-        desc: 'Daily NAV, per-asset P&L, unitholder-grade audit.',
-        href: '/for-reit',
-        icon: LineChart,
-      },
-      {
-        label: 'University and hospital',
-        desc: 'Campus estate, per-faculty P&L, donor-grade audit.',
-        href: '/for-institutional-landlord',
-        icon: GraduationCap,
-      },
-    ],
-  },
-  {
-    title: 'Community',
-    items: [
-      {
-        label: 'Diplomatic mission and NGO',
-        desc: 'Multi-capital estate, donor-audit-ready ledger.',
-        href: '/for-embassy-ngo',
-        icon: Globe,
-      },
-      {
-        label: 'Religious organisation',
-        desc: 'Congregation-transparent dues + trustee statements.',
-        href: '/for-religious-organization',
-        icon: Church,
-      },
-      {
-        label: 'SACCO and cooperative',
-        desc: 'Member-visible ledger + registrar-ready filings.',
-        href: '/for-cooperative-sacco',
-        icon: Users,
-      },
-    ],
-  },
-] as const;
+function buildAudienceCategories(
+  labels: NavLabels,
+  sw: boolean,
+): ReadonlyArray<AudienceCategory> {
+  return [
+    {
+      title: labels.categories.individuals,
+      items: [
+        {
+          label: sw ? 'Mwenye nyumba binafsi' : 'Individual landlord',
+          desc: sw
+            ? 'Vyumba viwili vitatu. Mshirika tulivu wa uendeshaji.'
+            : 'One or two properties. Calm operator co-pilot.',
+          href: '/for-individual-landlord',
+          icon: Home,
+        },
+        {
+          label: sw ? 'Mpangaji' : 'Tenant',
+          desc: sw
+            ? 'Mkataba, kodi, matengenezo — kwenye eneo moja.'
+            : 'Lease, rent, maintenance — all in one place.',
+          href: '/for-tenant',
+          icon: UserCircle,
+        },
+      ],
+    },
+    {
+      title: labels.categories.operators,
+      items: [
+        {
+          label: sw ? 'Mwenye mali ya mfululizo' : 'Portfolio landlord',
+          desc: sw
+            ? 'Mali nyingi pamoja na hazina.'
+            : 'Multi-property portfolios with treasury.',
+          href: '/for-portfolio-landlord',
+          icon: Building,
+        },
+        {
+          label: sw ? 'Wakala wa upangishaji' : 'Leasing agency',
+          desc: sw
+            ? 'Mtiririko wa udalali pamoja na hesabu za kamisheni.'
+            : 'Brokerage flows + commission accounting.',
+          href: '/for-leasing-agency',
+          icon: Briefcase,
+        },
+        {
+          label: sw ? 'Ushirika wa nyumba' : 'Housing cooperative',
+          desc: sw
+            ? 'Utawala wa wanachama pamoja na huduma shirikishi.'
+            : 'Member governance + shared facilities.',
+          href: '/for-housing-cooperative',
+          icon: Users,
+        },
+      ],
+    },
+    {
+      title: labels.categories.capital,
+      items: [
+        {
+          label: sw ? 'Mwekezaji wa mali' : 'Real-estate investor',
+          desc: sw
+            ? 'Cap-rate, mavuno, thamani, mfumo wa kutoka.'
+            : 'Cap-rate, yield, valuation, exit modelling.',
+          href: '/for-real-estate-investor',
+          icon: Building2,
+        },
+        {
+          label: sw ? 'Ofisi ya familia' : 'Family office',
+          desc: sw
+            ? 'Usimamizi wa mali wa vizazi.'
+            : 'Inter-generational estate stewardship.',
+          href: '/for-family-office',
+          icon: HeartHandshake,
+        },
+        {
+          label: sw ? 'Benki' : 'Bank',
+          desc: sw
+            ? 'Dawati la mikopo iliyotegemea mali.'
+            : 'Property-collateralised lending desk.',
+          href: '/for-bank',
+          icon: Landmark,
+        },
+      ],
+    },
+    {
+      title: labels.categories.public,
+      items: [
+        {
+          label: sw ? 'Mdhibiti' : 'Regulator',
+          desc: sw
+            ? 'Ishara ya utii ya NHC / BRELA / TRA.'
+            : 'NHC / BRELA / TRA compliance signal.',
+          href: '/for-regulator',
+          icon: ShieldCheck,
+        },
+        {
+          label: sw ? 'Makazi ya jamii' : 'Community housing',
+          desc: sw
+            ? 'Waendeshaji wa makazi ya bei nafuu na yasiyo ya faida.'
+            : 'Affordable + non-profit housing operators.',
+          href: '/for-community-housing',
+          icon: HeartHandshake,
+        },
+        {
+          label: sw ? 'Taasisi ya serikali' : 'Government entity',
+          desc: sw
+            ? 'Mashirika ya serikali na wizara zinazohudumia mali za umma.'
+            : 'Parastatals and ministries stewarding public property.',
+          href: '/for-government-entity',
+          icon: Landmark,
+        },
+      ],
+    },
+    {
+      title: labels.categories.enterprise,
+      items: [
+        {
+          label: sw ? 'Mali za makampuni' : 'Corporate portfolio',
+          desc: sw
+            ? 'Nyumba za wafanyakazi, ofisi za matawi, maghala kama mali moja.'
+            : 'Staff housing, branch offices, warehouses as one estate.',
+          href: '/for-corporate-portfolio',
+          icon: Building2,
+        },
+        {
+          label: sw ? 'REIT na mfuko wa mali' : 'REIT and property fund',
+          desc: sw
+            ? 'NAV ya kila siku, faida na hasara kwa kila mali, ukaguzi wa kiwango cha wanahisa.'
+            : 'Daily NAV, per-asset P&L, unitholder-grade audit.',
+          href: '/for-reit',
+          icon: LineChart,
+        },
+        {
+          label: sw ? 'Chuo kikuu na hospitali' : 'University and hospital',
+          desc: sw
+            ? 'Mali ya kampasi, faida na hasara kwa kila kitivo, ukaguzi wa kiwango cha wafadhili.'
+            : 'Campus estate, per-faculty P&L, donor-grade audit.',
+          href: '/for-institutional-landlord',
+          icon: GraduationCap,
+        },
+      ],
+    },
+    {
+      title: labels.categories.community,
+      items: [
+        {
+          label: sw ? 'Ubalozi na NGO' : 'Diplomatic mission and NGO',
+          desc: sw
+            ? 'Mali katika miji mingi, leja iliyo tayari kwa ukaguzi wa wafadhili.'
+            : 'Multi-capital estate, donor-audit-ready ledger.',
+          href: '/for-embassy-ngo',
+          icon: Globe,
+        },
+        {
+          label: sw ? 'Taasisi ya kidini' : 'Religious organisation',
+          desc: sw
+            ? 'Michango iliyo wazi kwa waumini pamoja na taarifa za wadhamini.'
+            : 'Congregation-transparent dues + trustee statements.',
+          href: '/for-religious-organization',
+          icon: Church,
+        },
+        {
+          label: sw ? 'SACCO na ushirika' : 'SACCO and cooperative',
+          desc: sw
+            ? 'Leja inayoonekana kwa wanachama na taarifa zilizotayari kwa msajili.'
+            : 'Member-visible ledger + registrar-ready filings.',
+          href: '/for-cooperative-sacco',
+          icon: Users,
+        },
+      ],
+    },
+  ];
+}
 
-const ALL_AUDIENCE_HREFS = AUDIENCE_CATEGORIES.flatMap((cat) =>
+const AUDIENCE_CATEGORIES_FOR_HREFS: ReadonlyArray<AudienceCategory> =
+  buildAudienceCategories(getLabels('en'), false);
+
+const ALL_AUDIENCE_HREFS = AUDIENCE_CATEGORIES_FOR_HREFS.flatMap((cat) =>
   cat.items.map((item) => item.href),
 );
 
@@ -218,12 +327,12 @@ interface PageCTA {
   readonly href: string;
 }
 
-function getPageCTA(pathname: string): PageCTA | null {
+function getPageCTA(pathname: string, labels: NavLabels): PageCTA | null {
   if (TENANT_PAGES.has(pathname)) {
-    return { label: 'Get started', href: '/sign-up' };
+    return { label: labels.getStarted, href: '/sign-up' };
   }
   if (OPERATOR_PAGES.has(pathname)) {
-    return { label: 'Request demo', href: '/book-demo' };
+    return { label: labels.requestDemo, href: '/book-demo' };
   }
   return null;
 }
@@ -232,8 +341,15 @@ function cn(...classes: ReadonlyArray<string | false | null | undefined>): strin
   return classes.filter(Boolean).join(' ');
 }
 
-export function MainNav() {
+export interface MainNavProps {
+  readonly locale: Locale;
+}
+
+export function MainNav({ locale }: MainNavProps) {
   const pathname = usePathname();
+  const labels = getLabels(locale);
+  const sw = locale === 'sw';
+  const AUDIENCE_CATEGORIES = buildAudienceCategories(labels, sw);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [audienceDropdownOpen, setAudienceDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -259,7 +375,7 @@ export function MainNav() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const pageCTA = getPageCTA(pathname ?? '/');
+  const pageCTA = getPageCTA(pathname ?? '/', labels);
   const isOnAudiencePage = ALL_AUDIENCE_HREFS.includes(pathname ?? '');
 
   return (
@@ -273,7 +389,7 @@ export function MainNav() {
     >
       <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-2 px-4 sm:px-6">
         {/* Logo */}
-        <Link href="/" className="shrink-0" aria-label="BossNyumba home">
+        <Link href="/" className="shrink-0" aria-label={labels.homeAria}>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Wordmark size="sm" premium />
           </motion.div>
@@ -294,7 +410,7 @@ export function MainNav() {
               )}
             >
               <Users className="h-4 w-4" />
-              Who We Serve
+              {labels.whoWeServe}
               <ChevronDown
                 className={cn(
                   'h-3.5 w-3.5 transition-transform',
@@ -354,26 +470,26 @@ export function MainNav() {
             href="/pricing"
             className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
           >
-            Pricing
+            {labels.pricing}
           </Link>
           <Link
             href="/about"
             className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
           >
-            About
+            {labels.about}
           </Link>
           <Link
             href="/docs"
             className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
           >
-            Docs
+            {labels.docs}
           </Link>
           <Link
             href="/contact"
             className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
           >
             <HelpCircle className="h-4 w-4 inline mr-1" />
-            Support
+            {labels.support}
           </Link>
         </div>
 
@@ -383,13 +499,13 @@ export function MainNav() {
             href="/sign-in"
             className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
           >
-            Log In
+            {labels.login}
           </Link>
           <Link
             href={pageCTA?.href ?? '/sign-up'}
             className="inline-flex items-center gap-1.5 rounded-lg bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)] px-4 py-2 text-sm font-semibold text-primary-foreground shadow-[0_8px_20px_-4px_hsl(24_72%_50%/0.45),0_2px_6px_hsl(14_62%_30%/0.2)] transition-all hover:scale-[1.03] hover:shadow-[0_10px_24px_-4px_hsl(24_72%_50%/0.55),0_3px_8px_hsl(14_62%_30%/0.25)] active:scale-[0.97]"
           >
-            {pageCTA?.label ?? 'Sign Up'}
+            {pageCTA?.label ?? labels.getStarted}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -399,7 +515,7 @@ export function MainNav() {
           type="button"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-          aria-label="Toggle menu"
+          aria-label={labels.menuToggle}
         >
           {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -441,28 +557,28 @@ export function MainNav() {
                   onClick={() => setMobileMenuOpen(false)}
                   className="block py-2 text-sm font-medium text-foreground"
                 >
-                  Pricing
+                  {labels.pricing}
                 </Link>
                 <Link
                   href="/about"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block py-2 text-sm font-medium text-foreground"
                 >
-                  About
+                  {labels.about}
                 </Link>
                 <Link
                   href="/docs"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block py-2 text-sm font-medium text-foreground"
                 >
-                  Docs
+                  {labels.docs}
                 </Link>
                 <Link
                   href="/contact"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block py-2 text-sm font-medium text-foreground"
                 >
-                  Support
+                  {labels.support}
                 </Link>
               </div>
               <div className="pt-2 border-t border-border/30 flex gap-2">
@@ -471,14 +587,14 @@ export function MainNav() {
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex-1 text-center py-2 text-sm font-medium text-foreground rounded-lg border border-border"
                 >
-                  Log In
+                  {labels.login}
                 </Link>
                 <Link
                   href={pageCTA?.href ?? '/sign-up'}
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex-1 text-center py-2 text-sm font-semibold text-primary-foreground rounded-lg bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)]"
                 >
-                  {pageCTA?.label ?? 'Sign Up'}
+                  {pageCTA?.label ?? labels.getStarted}
                 </Link>
               </div>
             </div>

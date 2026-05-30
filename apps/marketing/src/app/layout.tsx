@@ -147,11 +147,11 @@ export default async function RootLayout({
             {t.skipToContent}
           </a>
           <div className="marketing-shell">
-            <MainNav />
+            <MainNav locale={locale} />
             <main id="main-content" tabIndex={-1} className="pt-16">
               {children}
             </main>
-            <MarketingFooter />
+            <MarketingFooter locale={locale} />
           </div>
           <CookieConsent locale={locale} />
           <MarketingWidgetSlot locale={locale} />

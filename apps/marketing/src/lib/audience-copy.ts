@@ -1,4 +1,91 @@
 import type { AudiencePageCopy } from '@/components/audience/AudiencePage';
+import type { Locale } from './i18n';
+
+/**
+ * Swahili variants — pragmatic per-audience port. We translate the
+ * highest-traffic stubs first (individualLandlord, portfolioLandlord,
+ * tenant). Audiences without a SW entry fall back to EN (and the
+ * existing English COPY) so the page still renders.
+ */
+const COPY_SW: Partial<Record<string, Readonly<AudiencePageCopy>>> = {
+  individualLandlord: {
+    heroKicker: 'Kwa mwenye nyumba binafsi',
+    heroHeadline: 'Endesha vyumba viwili',
+    heroHeadlineAccent: 'kama mali ya mfululizo',
+    heroSub:
+      'Ukimiliki vitengo 1 hadi 5, Mwl. Mwikila anakusanya kodi kupitia M-Pesa, anawakumbusha wapangaji waliochelewa kwa adabu, anakuwasilishia ushuru wa halmashauri, na kukutumia barua pepe ya muhtasari wa ukurasa mmoja kila tarehe 1. Unabaki bure kwenye kiwango cha Smallholder (T1).',
+    heroPrimaryCta: 'Jisajili — bure',
+    heroSecondaryCta: 'Inavyofanya kazi',
+    trustline: [
+      'Bure hadi vitengo 5',
+      'Kukusanya kodi kupitia M-Pesa',
+      'Hakuna kadi inayohitajika',
+    ],
+    statsHeading: 'Imejengwa kwa mwenye nyumba wa Kitanzania, sio REIT ya Wall Street.',
+    statsSub:
+      'Wenye nyumba binafsi hupoteza asilimia 18 ya kodi ya mwaka kwa malipo yanayochelewa, simu za kufuatilia kwa mikono, na risiti zinazokosekana. Mwl. Mwikila huziba pengo hilo kwa ubongo ule ule unaoendesha REITs — kwa gharama sifuri kwenye kiwango cha Smallholder.',
+    stats: [
+      { value: '18%', label: 'Wastani wa upotevu wa kodi', sub: 'Kwa wenye nyumba wasio na vifaa Dar es Salaam (BOT 2025).' },
+      { value: 'Masaa 4', label: 'Yameokolewa kwa mwezi', sub: 'Kwenye kufuatilia kodi, risiti na uhasibu.' },
+      { value: 'TZS 0', label: 'Kwenye kiwango cha Smallholder', sub: 'Hadi vitengo 5, kiti kimoja, shughuli za msingi za mali.' },
+    ],
+    stepsKicker: 'Inavyofanya kazi',
+    stepsHeading: 'Hatua tatu. Saa moja. Kisha inajiendesha yenyewe.',
+    steps: [
+      {
+        n: '01',
+        title: 'Ongeza vitengo vyako',
+        body: 'Piga picha ukurasa wa hati; Mwl. Mwikila huchimba data ya mali na mpangaji. Ongeza nambari yako ya M-Pesa kupokea kodi.',
+      },
+      {
+        n: '02',
+        title: 'Mwl. Mwikila anakusanya',
+        body: 'Wapangaji wanalipa kwa simu zao. Waliocheleweshwa hupata ukumbusho wa Kiswahili wa adabu. Wewe unapata arifa kila malipo yanapofika.',
+      },
+      {
+        n: '03',
+        title: 'Muhtasari wa mwenye nyumba tarehe 1',
+        body: 'Kila mwezi: kodi iliyopokelewa, ushuru wa halmashauri uliowasilishwa, matengenezo yanayodaiwa, salio kwa akaunti yako. PDF na barua pepe.',
+      },
+    ],
+    problemKicker: 'Mkazo',
+    problemHeading: 'Kufuatilia kwa mikono, risiti zinazokosekana,',
+    problemHeadingAccent: 'na tarehe za mwisho za halmashauri',
+    problemSub:
+      'Mwenye nyumba binafsi hulipia mifumo iliyokosekana kwa muda wake. Mwl. Mwikila hubadilisha lahajedwali, kufuatilia kwa WhatsApp, na hofu ya mwezi wa ushuru wa halmashauri.',
+    problemTitle: 'Bila BossNyumba',
+    problems: [
+      { title: 'Kufuatilia kwa WhatsApp', desc: 'Unatumia asubuhi ya Jumamosi kufuatilia kodi kutoka kwa wapangaji watatu wote wanaoahidi "kesho".' },
+      { title: 'Risiti zinazokosekana', desc: 'Mpangaji anadai amelipa; huwezi kupata SMS ya M-Pesa. Migogoro inaharibu uaminifu.' },
+      { title: 'Hofu ya ushuru wa halmashauri', desc: 'Unakumbuka ushuru unahitajika tarehe 28 unapoona WhatsApp kutoka manispaa.' },
+      { title: 'Karatasi za mwisho wa mwaka', desc: 'Kufungua ushuru hugeuka kuwa uchimbaji wa kiakiolojia wa siku kadhaa kwenye simu yako.' },
+    ],
+    solutionTitle: 'Na BossNyumba',
+    solutions: [
+      { title: 'Vikumbusho vya Kiswahili kiotomatiki', desc: 'Mwl. Mwikila anafuatilia wapangaji waliochelewa kwa toni sahihi — yenye adabu, thabiti, sio ya kuudhi.' },
+      { title: 'Risiti za kripto', desc: 'Kila malipo ya M-Pesa yanafika kwenye leja ya kuingia mara mbili. Mpangaji anasaini risiti ndani ya programu.' },
+      { title: 'Kalenda ya udhibiti', desc: 'Ushuru wa halmashauri, kodi ya mali, kurefusha mikataba — kila tarehe ya mwisho inafika kwenye simu yako siku 14 mapema.' },
+      { title: 'Mwisho wa mwaka tayari kwa ushuru', desc: 'Muhtasari wa wamiliki unaunganisha kuwa PDF tayari kwa TRA kwa sekunde 90.' },
+    ],
+    ctaHeading: 'Anza bure leo.',
+    ctaSub: 'Kiwango cha Smallholder ni bure hadi vitengo 5. Jisajili na nambari yako ya M-Pesa — hakuna kadi inayohitajika.',
+    ctaPrimary: 'Jisajili — bure',
+  },
+};
+
+/**
+ * Resolve audience copy by key + locale. Falls back to EN if SW
+ * translation does not exist yet for a given audience.
+ */
+export function getAudienceCopy(
+  key: keyof typeof COPY,
+  locale: Locale,
+): Readonly<AudiencePageCopy> {
+  if (locale === 'sw' && COPY_SW[String(key)]) {
+    return COPY_SW[String(key)] as Readonly<AudiencePageCopy>;
+  }
+  return COPY[key] as Readonly<AudiencePageCopy>;
+}
 
 /**
  * Per-audience-vertical copy for marketing pages. Ported from

@@ -93,7 +93,12 @@ const RoadmapCTASection = dynamic(
   { loading: () => <SectionSkeleton minHeight={480} cards={4} /> },
 );
 
-const PROBLEM_ITEMS = [
+interface ListItem {
+  readonly title: string;
+  readonly desc: string;
+}
+
+const PROBLEM_ITEMS_EN: ReadonlyArray<ListItem> = [
   {
     title: 'Disconnected operations',
     desc: 'Leases in Word, rent in Excel, maintenance in WhatsApp, tax in a folder. Every owner re-stitches the same flow every month.',
@@ -110,9 +115,28 @@ const PROBLEM_ITEMS = [
     title: 'Tenant invisibility',
     desc: 'Most tenants are good. A few are not. Without history, every screening starts from zero. Bad tenants cost the system.',
   },
-] as const;
+];
 
-const SOLUTION_ITEMS = [
+const PROBLEM_ITEMS_SW: ReadonlyArray<ListItem> = [
+  {
+    title: 'Shughuli zilizotenganishwa',
+    desc: 'Mikataba kwenye Word, kodi kwenye Excel, matengenezo kwenye WhatsApp, ushuru kwenye folda. Kila mmiliki anaunganisha tena mtiririko ule ule kila mwezi.',
+  },
+  {
+    title: 'Maeneo yasiyoonekana ya mtiririko wa fedha',
+    desc: 'Unaona tu kilicholipwa baada ya tukio. Hakuna onyo la mapema kwamba Kitengo 5 kinakaribia kushindwa kulipa.',
+  },
+  {
+    title: 'Mzigo wa utii',
+    desc: 'NHC, BRELA na TRA wote wanahitaji data ile ile katika maumbo tofauti. Wamiliki wanalipia wahasibu kukusanya kile ambacho kingepaswa kuwepo tayari.',
+  },
+  {
+    title: 'Wapangaji wasioonekana',
+    desc: 'Wapangaji wengi ni wazuri. Wachache si. Bila historia, kila uchunguzi unaanza kutoka sifuri. Wapangaji wabaya wanagharimu mfumo.',
+  },
+];
+
+const SOLUTION_ITEMS_EN: ReadonlyArray<ListItem> = [
   {
     title: 'One running estate brain',
     desc: 'Lease, rent, maintenance, treasury, compliance, holdings, asset register — one system, one source of truth. Mr. Mwikila is always aware of the full picture.',
@@ -129,13 +153,69 @@ const SOLUTION_ITEMS = [
     title: 'Built for Tanzania first',
     desc: 'M-Pesa, Airtel Money, Swahili-first. Then Kenya, Uganda, the rest of East Africa. Same operating system, jurisdiction-aware.',
   },
-] as const;
+];
+
+const SOLUTION_ITEMS_SW: ReadonlyArray<ListItem> = [
+  {
+    title: 'Ubongo mmoja wa mali unaoendesha',
+    desc: 'Mkataba, kodi, matengenezo, hazina, utii, milki na daftari la mali — mfumo mmoja, chanzo kimoja cha ukweli. Mwl. Mwikila daima anaona picha kamili.',
+  },
+  {
+    title: 'Kila malipo, kila ahadi, vimekaguliwa',
+    desc: 'Leja ya hash-chain. Inaweza kurudishwa tu kwa ingizo la kupinga. Upatanisho wa kiwango cha benki. Wadhibiti wanaweza kuthibitisha mstari wowote bila wewe kuhusika.',
+  },
+  {
+    title: 'AI inayoomba idhini ipasavyo',
+    desc: 'Mwl. Mwikila ni mshirika tulivu — anaandaa kurefusha, taarifa ya kuondoa, kuwasilisha BRELA, na kusubiri wewe kusaini. Hatendi kamwe kwa mamlaka yake mwenyewe.',
+  },
+  {
+    title: 'Imejengwa kwa Tanzania kwanza',
+    desc: 'M-Pesa, Airtel Money, Kiswahili-kwanza. Kisha Kenya, Uganda, Afrika Mashariki yote. Mfumo ule ule wa uendeshaji, unaotambua sheria za nchi.',
+  },
+];
+
+const BANNER_COPY_EN = {
+  frontierTitle: 'Property OS is the frontier.',
+  frontierAccent: 'BossNyumba is the operating system.',
+  frontierSub:
+    'Built for a market where the workflows themselves have not been digitised yet. Not a CRM. Not a spreadsheet. A brain that runs the estate.',
+  gapKicker: 'The gap we are closing',
+  gapHeadingFirst: 'Property management,',
+  gapHeadingAccent: 'from sprawl to system.',
+  gapSubOne:
+    'Most landlords run their estate the same way they did 30 years ago. The tools changed name; the workflow did not.',
+  gapSubTwo:
+    'BossNyumba is the operating system that finally puts the entire estate — every lease, every tenant, every shilling — under one brain.',
+  problemTitle: 'The problem today',
+  solutionTitle: 'What BossNyumba does',
+};
+
+const BANNER_COPY_SW = {
+  frontierTitle: 'Mfumo wa uendeshaji wa mali ndio mpaka.',
+  frontierAccent: 'BossNyumba ndio mfumo wa uendeshaji.',
+  frontierSub:
+    'Imejengwa kwa soko ambapo mtiririko wa kazi wenyewe haujadijitishwa bado. Sio CRM. Sio lahajedwali. Ni ubongo unaoendesha mali.',
+  gapKicker: 'Pengo tunalofunga',
+  gapHeadingFirst: 'Usimamizi wa mali,',
+  gapHeadingAccent: 'kutoka sambamba hadi mfumo.',
+  gapSubOne:
+    'Wamiliki wengi wa nyumba wanaendesha mali zao kwa njia ile ile waliyofanya miaka 30 iliyopita. Vifaa vilibadilisha jina; mtiririko wa kazi haukubadilika.',
+  gapSubTwo:
+    'BossNyumba ni mfumo wa uendeshaji unaoweka hatimaye mali yote — kila mkataba, kila mpangaji, kila shilingi — chini ya ubongo mmoja.',
+  problemTitle: 'Tatizo la leo',
+  solutionTitle: 'BossNyumba inafanya nini',
+};
 
 export interface HomePageProps {
   readonly locale: Locale;
 }
 
 export function HomePage({ locale }: HomePageProps) {
+  const sw = locale === 'sw';
+  const banner = sw ? BANNER_COPY_SW : BANNER_COPY_EN;
+  const problemItems = sw ? PROBLEM_ITEMS_SW : PROBLEM_ITEMS_EN;
+  const solutionItems = sw ? SOLUTION_ITEMS_SW : SOLUTION_ITEMS_EN;
+
   return (
     <div className="overflow-x-hidden">
       {/* FRONTIER BANNER (above-fold) */}
@@ -149,15 +229,13 @@ export function HomePage({ locale }: HomePageProps) {
             className="text-center"
           >
             <p className="text-xl tracking-[-0.015em] text-foreground sm:text-2xl font-semibold">
-              Property OS is the frontier.{' '}
+              {banner.frontierTitle}{' '}
               <span className="bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)] bg-clip-text text-transparent">
-                BossNyumba is the operating system.
+                {banner.frontierAccent}
               </span>
             </p>
             <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
-              Built for a market where the workflows themselves have not been
-              digitised yet. Not a CRM. Not a spreadsheet. A brain that runs the
-              estate.
+              {banner.frontierSub}
             </p>
           </motion.div>
         </div>
@@ -174,22 +252,19 @@ export function HomePage({ locale }: HomePageProps) {
             className="mx-auto mb-14 max-w-3xl text-center"
           >
             <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-primary">
-              The gap we are closing
+              {banner.gapKicker}
             </span>
             <h2 className="mt-3 text-4xl font-bold tracking-[-0.025em] text-foreground md:text-5xl">
-              Property management,{' '}
+              {banner.gapHeadingFirst}{' '}
               <span className="bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)] bg-clip-text text-transparent">
-                from sprawl to system.
+                {banner.gapHeadingAccent}
               </span>
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground">
-              Most landlords run their estate the same way they did 30 years
-              ago. The tools changed name; the workflow did not.
+              {banner.gapSubOne}
             </p>
             <p className="mx-auto mt-3 max-w-2xl text-lg font-medium text-foreground">
-              BossNyumba is the operating system that finally puts the entire
-              estate — every lease, every tenant, every shilling — under one
-              brain.
+              {banner.gapSubTwo}
             </p>
           </motion.div>
 
@@ -200,11 +275,11 @@ export function HomePage({ locale }: HomePageProps) {
                   <TrendingUp className="h-5 w-5 text-destructive" strokeWidth={1.75} />
                 </div>
                 <h3 className="text-xl font-semibold tracking-[-0.015em] text-foreground">
-                  The problem today
+                  {banner.problemTitle}
                 </h3>
               </div>
               <div className="space-y-5">
-                {PROBLEM_ITEMS.map((item, i) => (
+                {problemItems.map((item, i) => (
                   <div key={item.title} className="flex items-start gap-3">
                     <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-[11px] font-semibold text-destructive tabular-nums">
                       {i + 1}
@@ -228,11 +303,11 @@ export function HomePage({ locale }: HomePageProps) {
                   <Sparkles className="h-5 w-5 text-primary" strokeWidth={1.75} />
                 </div>
                 <h3 className="text-xl font-semibold tracking-[-0.015em] text-foreground">
-                  What BossNyumba does
+                  {banner.solutionTitle}
                 </h3>
               </div>
               <div className="space-y-5">
-                {SOLUTION_ITEMS.map((item) => (
+                {solutionItems.map((item) => (
                   <div key={item.title} className="flex items-start gap-3">
                     <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" strokeWidth={1.75} />
                     <div>
