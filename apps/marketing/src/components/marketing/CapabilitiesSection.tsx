@@ -22,14 +22,14 @@ import {
 } from 'lucide-react';
 
 import { Logomark } from '@bossnyumba/design-system';
+import { type Locale } from '@/lib/i18n';
 
 /**
  * Shared marketing capabilities section. Carbon copy of
- * LITFIN_PATH/src/components/marketing/CapabilitiesSection.tsx
- * adapted to BossNyumba's real-estate domain.
- *
- * Tells the reader WHAT BossNyumba actually does for their audience,
- * in concrete product terms: named features, integrations, metrics.
+ * LITFIN_PATH/src/components/marketing/CapabilitiesSection.tsx adapted
+ * to BossNyumba's real-estate domain. Locale-aware so EN/SW renders are
+ * pure (no leaks of opposite locale in card titles, descriptions, kicker,
+ * heading, or subhead).
  */
 
 export type CapabilityAudience =
@@ -267,8 +267,228 @@ const AUDIENCE_MAP: Record<CapabilityAudience, ReadonlyArray<Capability>> = {
   regulator: REGULATOR_CAPABILITIES,
 };
 
+// Locale-aware mirror map. The PLATFORM_CORE etc above stays as the
+// English source-of-truth. For Swahili we provide a parallel set of
+// Capability objects keyed off the same icon list. Bilingual rendering
+// just swaps the array at render time.
+const PLATFORM_CORE_SW: ReadonlyArray<Capability> = [
+  {
+    icon: Brain,
+    name: 'Mratibu wa AI wa watoa-huduma watatu',
+    description:
+      'Claude, OpenAI na DeepSeek wakichaguliwa kwa kazi. Opus kwa hoja za kina za mizozo ya mikataba, Haiku kwa uainishaji wa haraka, GPT-4 kwa uchimbaji wa data kutoka PDF.',
+  },
+  {
+    icon: Network,
+    name: 'Grafu hai ya maarifa ya mali',
+    description:
+      'Kila mali, mkataba, mpangaji, malipo na tiketi kama nodi zilizo na nyuzi za muda. Uliza kwa lugha ya kawaida; pata majibu yaliyotajwa yaliyojengwa kwa data yako halisi.',
+  },
+  {
+    icon: LineChart,
+    name: 'Utabiri wa mtiririko wa fedha',
+    description:
+      'Utabiri wa kodi kwa kila kitengo, kwa kila mwezi. Ishara ya mapema ya hatari ya kutolipa. Mfumo wa bajeti ya matengenezo wenye nyuzi zinazoeleweka.',
+  },
+  {
+    icon: ShieldCheck,
+    name: 'Usalama wa kiwango cha biashara',
+    description:
+      'RLS kwenye kila jedwali la mteja, AES-256-GCM ya kuficha sehemu, ukaguzi wa hash-chain. PDPA na GDPR tayari. SOC 2 Type II kwenye ramani.',
+  },
+  {
+    icon: Mic,
+    name: 'Sauti kwenye kila simu',
+    description:
+      'STT/TTS ya Kiswahili na Kiingereza, OpenAI Realtime kwa simu. Inafanya kazi kwenye simu za kawaida kupitia simu iliyopangwa pamoja na USSD. Mwl. Mwikila huzungumza kama Mtanzania.',
+  },
+  {
+    icon: Plug,
+    name: 'Njia za malipo za asili',
+    description:
+      'M-Pesa, Airtel Money, Tigo Pesa, Stripe, NHC, BRELA na TRA kupitia MCP. Circuit-breaker, kujaribu tena na idempotency kwenye kila webhook.',
+  },
+];
+
+const LANDLORD_CAPABILITIES_SW: ReadonlyArray<Capability> = [
+  {
+    icon: Workflow,
+    name: 'Injini ya mzunguko wa mkataba',
+    description:
+      'Maombi → uchunguzi → mkataba → kuingia → kurefusha → kuondoka. Kila hatua ina alama na inaweza kurudishwa.',
+  },
+  {
+    icon: HandCoins,
+    name: 'Hazina ya kodi',
+    description:
+      'Oanisha M-Pesa, miamala ya benki na pesa taslimu kiotomatiki. Salio la kila kitengo daima hai. Vikumbusho siku tatu kabla kwa Kiswahili. Sera ya ada ya ucheleweshaji inatekelezwa.',
+  },
+  {
+    icon: Wrench,
+    name: 'Usambazaji wa matengenezo',
+    description:
+      'Wapangaji wanaripoti tiketi kwa gumzo au picha. AI hutathmini ukali. Hupanga kwa mafundi unaowapendelea. Idhini ya matumizi kwa mguso wako.',
+  },
+  {
+    icon: FileCheck,
+    name: 'Kifurushi cha utii cha kiotomatiki',
+    description:
+      'Usajili wa BRELA, risiti za TRA na ripoti za NHC zinaundwa kiotomatiki. Zenye ushahidi, zinazoweza kusafirishwa, tayari kwa mdhibiti.',
+  },
+  {
+    icon: Home,
+    name: 'CRM ya mpangaji',
+    description:
+      'Rekodi moja kwa kila mpangaji ikiwa na historia, malipo, malalamiko na marejeo. Uwezekano wa kurefusha umewekewa alama. Wateja moto wanatambuliwa.',
+  },
+  {
+    icon: BarChart3,
+    name: 'Muhtasari wa mwenye nyumba',
+    description:
+      "Muhtasari wa dakika mbili saa 06:00: nani amelipa, nani hajalipa, kinachohitaji uangalifu wako, na kile Mwl. Mwikila alichofanya usiku.",
+  },
+];
+
+const TENANT_CAPABILITIES_SW: ReadonlyArray<Capability> = [
+  {
+    icon: KeyRound,
+    name: 'Malipo ya kodi kwa kibofyo kimoja',
+    description:
+      'STK push ya M-Pesa. Risiti hutolewa papo hapo. Salio daima hai. Lipa mapema kujenga alama yako ya upangaji.',
+  },
+  {
+    icon: Wrench,
+    name: 'Matengenezo kwenye gumzo',
+    description:
+      'Piga picha, andika tatizo kwa Kiswahili. AI hutathmini, mwenye nyumba wako huarifiwa, fundi sahihi anakuja. Bila kituo cha simu.',
+  },
+  {
+    icon: FileCheck,
+    name: 'Mkataba na risiti daima zipo',
+    description:
+      'Mkataba uliosainiwa, risiti za malipo, ripoti za ukaguzi. Vyote katika sehemu moja. Vinaweza kusafirishwa kwa maombi ya visa au mkopo.',
+  },
+];
+
+const AGENCY_CAPABILITIES_SW: ReadonlyArray<Capability> = [
+  {
+    icon: Workflow,
+    name: 'Mtiririko kutoka tangazo hadi kukabidhi',
+    description:
+      'Mteja → matembezi → ofa → mkataba → kamisheni iliyokokotolewa. Kila hatua imewekwa kumbukumbu.',
+  },
+  {
+    icon: HandCoins,
+    name: 'Hesabu ya kamisheni',
+    description:
+      'Mgawanyo kwa kila wakala. Kamisheni ya muendelezo inafuatiliwa katika mizunguko ya kurefusha. Taarifa zinatengenezwa kiotomatiki. Ankara zinazokubalika kwa TRA.',
+  },
+  {
+    icon: Building2,
+    name: 'Mamlaka ya mali nyingi',
+    description:
+      'Simamia wamiliki 5 hadi 500 chini ya kiweko kimoja. Imezungushiwa RLS. Ripoti kwa kila mamlaka. Dashibodi za kujihudumia za wamiliki.',
+  },
+];
+
+const COOPERATIVE_CAPABILITIES_SW: ReadonlyArray<Capability> = [
+  {
+    icon: HeartHandshake,
+    name: 'Utawala wa wanachama',
+    description:
+      'Orodha za wanachama, kupiga kura, kumbukumbu za AGM, leja za michango. Ripoti za Ofisi ya Ukaguzi wa Vyama vya Ushirika zinaundwa kiotomatiki.',
+  },
+  {
+    icon: HandCoins,
+    name: 'Ugawaji wa gharama za huduma za pamoja',
+    description:
+      'Gawanya maji, usalama na ukulima kwa vitengo kwa haki. Taarifa ya kila mwanachama daima hai.',
+  },
+  {
+    icon: BarChart3,
+    name: 'Dashibodi ya utendaji wa mwanachama',
+    description:
+      'Historia ya michango, matumizi ya mkopo, mifumo ya kutolipa na utabiri wa gawio — mwonekano mmoja hai.',
+  },
+];
+
+const INVESTOR_CAPABILITIES_SW: ReadonlyArray<Capability> = [
+  {
+    icon: LineChart,
+    name: 'Modeling ya cap-rate na mavuno',
+    description:
+      'Cap-rate, mavuno ya jumla, mavuno halisi na IRR kwa kila mali. Ulinganisho na Dar es Salaam, Nairobi, Kampala.',
+  },
+  {
+    icon: BarChart3,
+    name: 'Modeling ya kutoka',
+    description:
+      'Uchambuzi wa kushikilia-au-kuuza wenye usikivu wa riba, ujazo na mwendo wa cap-rate. Kiwango cha jarida la maamuzi.',
+  },
+  {
+    icon: Brain,
+    name: 'Mtafutaji wa upataji',
+    description:
+      'Mwl. Mwikila huchunga mikataba isiyo ya soko inayolingana na nadharia yako. Anataja ulinganisho. Anaonyesha hatari za muundo.',
+  },
+];
+
+const BANK_CAPABILITIES_SW: ReadonlyArray<Capability> = [
+  {
+    icon: ShieldCheck,
+    name: 'Ufuatiliaji wa dhamana ya mali',
+    description:
+      'Mtiririko wa fedha hai kwenye kila mali iliyolipiwa. Uwiano wa kufunika unakokotwa kila usiku. Ishara ya mapema kabla ya kuvunja sharti.',
+  },
+  {
+    icon: FileCheck,
+    name: 'Uthibitisho wa thamani na hati',
+    description:
+      'Kuangalia kiotomatiki hati ya BRELA, daftari la NHC na tathmini 3 za mwisho. Tofauti zinaonyeshwa kabla ya kutolewa pesa.',
+  },
+  {
+    icon: Scale,
+    name: '5Cs kwa mikopo ya mali',
+    description:
+      'Tabia, Uwezo, Mtaji, Dhamana, Mazingira — yaliyorekebishwa kwa mikopo ya mali. Uzito kwa kila bidhaa. Utambuzi wa migongano.',
+  },
+];
+
+const REGULATOR_CAPABILITIES_SW: ReadonlyArray<Capability> = [
+  {
+    icon: FileCheck,
+    name: 'Njia ya ukaguzi ya kiwango cha mdhibiti',
+    description:
+      'Hash-chain, kuongeza tu. Kila hatua na mhusika, muhuri wa muda, ushahidi. Tayari kusafirishwa kwa BRELA na ESRB.',
+  },
+  {
+    icon: Languages,
+    name: 'Ushahidi wa lugha mbili',
+    description:
+      'Kila rekodi inajitokeza kwa Kiswahili au Kiingereza kwa mguso. Tafsiri zimefungwa kwa hati ya chanzo, sio kutafsiriwa kila mwonekano.',
+  },
+  {
+    icon: ShieldCheck,
+    name: 'Faragha kwa muundo',
+    description:
+      'PDPA: ufikiaji wa mhusika wa data, ufutaji, ubebaji — yote ni API za asili. Leja ya ridhaa haibadiliki.',
+  },
+];
+
+const AUDIENCE_MAP_SW: Record<CapabilityAudience, ReadonlyArray<Capability>> = {
+  platform: PLATFORM_CORE_SW,
+  landlord: LANDLORD_CAPABILITIES_SW,
+  tenant: TENANT_CAPABILITIES_SW,
+  agency: AGENCY_CAPABILITIES_SW,
+  cooperative: COOPERATIVE_CAPABILITIES_SW,
+  investor: INVESTOR_CAPABILITIES_SW,
+  bank: BANK_CAPABILITIES_SW,
+  regulator: REGULATOR_CAPABILITIES_SW,
+};
+
 interface CapabilitiesSectionProps {
   readonly audience: CapabilityAudience;
+  readonly locale: Locale;
   readonly kicker?: string;
   readonly headline?: string;
   readonly subhead?: string;
@@ -329,15 +549,71 @@ const DEFAULT_COPY: Record<
   },
 };
 
+const DEFAULT_COPY_SW: Record<
+  CapabilityAudience,
+  { readonly kicker: string; readonly headline: string; readonly subhead: string }
+> = {
+  platform: {
+    kicker: 'BossNyumba ni nini, kwa uhalisia',
+    headline: 'Mfumo wa uendeshaji wa mali wenye AI ya asili.',
+    subhead:
+      'Sio gumzo lililobandikwa kwenye karatasi ya kuhesabu. Mifumo sita iliyofungamana, kila moja ipo katika uzalishaji. Iliyojengwa kwa mali ya Tanzania kwanza, baadaye iliyojumuishwa kote.',
+  },
+  landlord: {
+    kicker: 'Unachopata, kimetajwa',
+    headline: 'Kila kitu mwenye nyumba wa kisasa anachohitaji.',
+    subhead:
+      'Injini ya mkataba, hazina ya kodi, usambazaji wa matengenezo, kifurushi cha utii, CRM ya mpangaji, muhtasari wa mwenye nyumba. Mwl. Mwikila kama mshirika tulivu.',
+  },
+  tenant: {
+    kicker: 'Unachopata, kwa uhalisia',
+    headline: 'Upangaji, hatimaye uliostaarabika.',
+    subhead:
+      'Kodi kwa kibofyo kimoja, matengenezo kwenye gumzo, mkataba na risiti daima zipo mkononi. Bure kutumia. Mwenye nyumba wako analipia ubongo.',
+  },
+  agency: {
+    kicker: 'Iliyojengwa kwa wakala wa upangishaji',
+    headline: 'Udalali wako, umeshafanywa kiotomatiki.',
+    subhead:
+      'Mtiririko kutoka tangazo hadi kukabidhi, hesabu ya kamisheni, mamlaka ya mali nyingi, dashibodi za uzalishaji wa wakala.',
+  },
+  cooperative: {
+    kicker: 'Iliyojengwa kwa vyama vya ushirika wa nyumba',
+    headline: 'Utawala wa wanachama, umerahisishwa.',
+    subhead:
+      'Orodha za wanachama, kumbukumbu za AGM, ugawaji wa gharama za huduma za pamoja, dashibodi za utendaji, ripoti za ukaguzi wa ushirika.',
+  },
+  investor: {
+    kicker: 'Iliyojengwa kwa wawekezaji wa mali',
+    headline: 'Maamuzi unayoweza kuyatetea.',
+    subhead:
+      'Modeling ya cap-rate, uchambuzi wa kutoka, mtafutaji wa upataji, ulinganisho wa Afrika Mashariki.',
+  },
+  bank: {
+    kicker: 'Iliyojengwa kwa madawati ya dhamana ya mali',
+    headline: 'Dhamana hai, ufunikaji hai.',
+    subhead:
+      'Ufuatiliaji wa dhamana ya mali, kuangalia thamani, mfumo wa 5Cs uliorekebishwa kwa mikopo ya mali.',
+  },
+  regulator: {
+    kicker: 'Iliyojengwa kwa wadhibiti',
+    headline: 'Ushahidi hadi ngazi ya uwanjani.',
+    subhead:
+      'Njia ya ukaguzi yenye hash-chain, ushahidi wa lugha mbili, leja ya ridhaa ya PDPA. Mfumo wa uendeshaji wadhibiti wangependa waendeshaji watumie.',
+  },
+};
+
 export function CapabilitiesSection({
   audience,
+  locale,
   kicker,
   headline,
   subhead,
   className,
 }: CapabilitiesSectionProps) {
-  const capabilities = AUDIENCE_MAP[audience];
-  const copy = DEFAULT_COPY[audience];
+  const sw = locale === 'sw';
+  const capabilities = sw ? AUDIENCE_MAP_SW[audience] : AUDIENCE_MAP[audience];
+  const copy = sw ? DEFAULT_COPY_SW[audience] : DEFAULT_COPY[audience];
   const resolvedKicker = kicker ?? copy.kicker;
   const resolvedHeadline = headline ?? copy.headline;
   const resolvedSubhead = subhead ?? copy.subhead;

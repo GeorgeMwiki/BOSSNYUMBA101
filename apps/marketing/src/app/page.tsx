@@ -19,9 +19,9 @@ export default async function MarketingPage() {
   const locale = await getLocale();
   return (
     <>
-      <IgnitionHero />
+      <IgnitionHero locale={locale} />
       <BrainClaimsBanner locale={locale} />
-      <CapabilitiesSection audience="platform" />
+      <CapabilitiesSection audience="platform" locale={locale} />
       <HomePage locale={locale} />
     </>
   );

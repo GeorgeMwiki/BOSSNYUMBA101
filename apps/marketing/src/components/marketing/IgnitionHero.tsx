@@ -19,6 +19,7 @@ import {
   CHAT_USER_BUBBLE,
   CHAT_AI_BUBBLE,
 } from '@bossnyumba/chat-ui';
+import { getMessages, type Locale } from '@/lib/i18n';
 
 /**
  * IGNITION HERO — Live Fabric marketing pattern. Carbon copy of
@@ -39,31 +40,59 @@ function cn(...classes: ReadonlyArray<string | false | null | undefined>): strin
   return classes.filter(Boolean).join(' ');
 }
 
-const choreo: ReadonlyArray<{
+interface ChoreoTurn {
   readonly role: 'ai' | 'user';
   readonly body: string;
   readonly timestamp: string;
   readonly delay: number;
-}> = [
-  {
-    role: 'ai',
-    body: "Hi. I'm Mr. Mwikila, your AI Estate-Management Partner. What brings you here today?",
-    timestamp: 'Just now',
-    delay: 400,
-  },
-  {
-    role: 'user',
-    body: 'I run 14 units in Mikocheni, Dar es Salaam. Rent collection is messy.',
-    timestamp: 'Just now',
-    delay: 1800,
-  },
-  {
-    role: 'ai',
-    body: 'Got it. BossNyumba can put your 14 units on one rent-roll, auto-reconcile M-Pesa payments, and send Swahili reminders three days before each due date. Want to see how your March collection would have looked?',
-    timestamp: 'Just now',
-    delay: 3200,
-  },
-];
+}
+
+const DELAYS: readonly number[] = [400, 1800, 3200];
+
+function getChoreo(locale: Locale, timestamp: string): ReadonlyArray<ChoreoTurn> {
+  if (locale === 'sw') {
+    return [
+      {
+        role: 'ai',
+        body: "Habari. Mimi ni Mwl. Mwikila, Mshirika wako wa AI wa Usimamizi wa Mali. Umekuja kwa nini leo?",
+        timestamp,
+        delay: DELAYS[0],
+      },
+      {
+        role: 'user',
+        body: 'Ninaendesha vyumba 14 Mikocheni, Dar es Salaam. Ukusanyaji wa kodi una matatizo.',
+        timestamp,
+        delay: DELAYS[1],
+      },
+      {
+        role: 'ai',
+        body: 'Nimekuelewa. BossNyumba inaweza kuweka vyumba vyako 14 kwenye orodha moja ya kodi, kuoanisha malipo ya M-Pesa kiotomatiki, na kutuma vikumbusho kwa Kiswahili siku tatu kabla ya tarehe ya mwisho. Ungependa kuona jinsi makusanyo yako ya Machi yangeonekana?',
+        timestamp,
+        delay: DELAYS[2],
+      },
+    ];
+  }
+  return [
+    {
+      role: 'ai',
+      body: "Hi. I'm Mr. Mwikila, your AI Estate-Management Partner. What brings you here today?",
+      timestamp,
+      delay: DELAYS[0],
+    },
+    {
+      role: 'user',
+      body: 'I run 14 units in Mikocheni, Dar es Salaam. Rent collection is messy.',
+      timestamp,
+      delay: DELAYS[1],
+    },
+    {
+      role: 'ai',
+      body: 'Got it. BossNyumba can put your 14 units on one rent-roll, auto-reconcile M-Pesa payments, and send Swahili reminders three days before each due date. Want to see how your March collection would have looked?',
+      timestamp,
+      delay: DELAYS[2],
+    },
+  ];
+}
 
 function ChatTurn({
   role,
@@ -154,7 +183,15 @@ function MiniWaveform() {
   );
 }
 
-export function IgnitionHero() {
+export interface IgnitionHeroProps {
+  readonly locale: Locale;
+}
+
+export function IgnitionHero({ locale }: IgnitionHeroProps) {
+  const t = getMessages(locale).hero;
+  const chat = t.chat;
+  const sw = locale === 'sw';
+  const choreo = getChoreo(locale, chat.timestamp);
   const [shown, setShown] = useState<boolean[]>(choreo.map(() => false));
 
   useEffect(() => {
@@ -219,35 +256,43 @@ export function IgnitionHero() {
         <div className="flex flex-col justify-center">
           <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
             <MapPin className="h-3.5 w-3.5 text-primary" />
-            <span>
-              Starting in Tanzania &middot; Expanding across East Africa
-              &middot; Built for landlords, tenants, and operators
-            </span>
+            <span>{t.pill}</span>
           </div>
 
           <h1
             className="mt-6 text-5xl font-bold leading-[1.02] tracking-[-0.025em] text-foreground md:text-6xl lg:text-7xl"
             style={{ textWrap: 'balance' }}
           >
-            The world&rsquo;s first{' '}
-            <span className="relative inline-block">
-              <span className="bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)] bg-clip-text text-transparent">
-                AI Estate-Management Partner
-              </span>
-            </span>{' '}
-            that learns your portfolio.
+            {sw ? (
+              <>
+                Mfumo wa kwanza duniani wa{' '}
+                <span className="relative inline-block">
+                  <span className="bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)] bg-clip-text text-transparent">
+                    Mshirika wa AI wa Usimamizi wa Mali
+                  </span>
+                </span>{' '}
+                anayejifunza mali zako.
+              </>
+            ) : (
+              <>
+                The world&rsquo;s first{' '}
+                <span className="relative inline-block">
+                  <span className="bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)] bg-clip-text text-transparent">
+                    AI Estate-Management Partner
+                  </span>
+                </span>{' '}
+                that learns your portfolio.
+              </>
+            )}
           </h1>
 
           <p
             className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground md:text-xl"
             style={{ textWrap: 'pretty' }}
           >
-            BossNyumba is the only operating system built to run a single
-            landlord, a portfolio, a fund, a campus, a mission, or a
-            parastatal on the same calm brain. Mr. Mwikila handles leases,
-            rent, maintenance staff, treasury, compliance, and the morning
-            brief on your authority &mdash; bilingual, audit-grade, every
-            action signed.
+            {sw
+              ? 'BossNyumba ni mfumo pekee wa uendeshaji uliojengwa kusimamia mwenye nyumba binafsi, mali ya mfululizo, mfuko, kampasi, ujumbe, au shirika la umma kwa ubongo mmoja tulivu. Mwl. Mwikila anasimamia mikataba, kodi, wafanyakazi wa matengenezo, hazina, utii, na muhtasari wa asubuhi kwa idhini yako — kwa lugha mbili, kiwango cha ukaguzi, kila hatua imesainiwa.'
+              : 'BossNyumba is the only operating system built to run a single landlord, a portfolio, a fund, a campus, a mission, or a parastatal on the same calm brain. Mr. Mwikila handles leases, rent, maintenance staff, treasury, compliance, and the morning brief on your authority — bilingual, audit-grade, every action signed.'}
           </p>
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
@@ -255,33 +300,33 @@ export function IgnitionHero() {
               href="/sign-up"
               className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)] px-6 py-3.5 text-base font-semibold text-primary-foreground shadow-[0_8px_24px_-4px_hsl(24_72%_50%/0.45),0_2px_6px_hsl(14_62%_30%/0.2)] transition-all hover:scale-[1.03] hover:shadow-[0_12px_32px_-4px_hsl(24_72%_50%/0.55),0_4px_10px_hsl(14_62%_30%/0.25)] active:scale-[0.97]"
             >
-              Sign Up
+              {t.ctaPilot}
               <ArrowRight className="h-5 w-5" />
             </Link>
             <Link
               href="#how-it-works"
               className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-border bg-card/60 px-6 py-3.5 text-base font-semibold text-foreground transition-all hover:bg-card hover:border-primary/40"
             >
-              See it move
+              {sw ? 'Onyesha jinsi inavyofanya kazi' : 'See it move'}
             </Link>
           </div>
 
           <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-success" />
-              Enterprise-grade security
+              {sw ? 'Usalama wa kiwango cha biashara' : 'Enterprise-grade security'}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Swahili + English, native
+              {sw ? 'Kiswahili na Kiingereza, asili' : 'Swahili + English, native'}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-warning" />
-              Works offline, by voice, over USSD
+              {sw ? 'Inafanya kazi nje ya mtandao, kwa sauti, kupitia USSD' : 'Works offline, by voice, over USSD'}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-info" />
-              Every audience, first-class
+              {sw ? 'Kila hadhira, daraja la kwanza' : 'Every audience, first-class'}
             </span>
           </div>
         </div>
@@ -304,7 +349,7 @@ export function IgnitionHero() {
                   <Logomark size={20} variant="premium" />
                 </div>
                 <h3 className="text-base font-semibold leading-tight tracking-[-0.01em]">
-                  BossNyumba AI
+                  {chat.assistant}
                 </h3>
               </div>
               <div className="flex items-center gap-1.5">
@@ -322,12 +367,12 @@ export function IgnitionHero() {
                     <path d="M2 12h20" />
                     <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                   </svg>
-                  EN
+                  {chat.languageLabel}
                 </span>
                 <span className="h-3 w-px bg-primary-foreground/20" />
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
                   <span className="h-1 w-1 rounded-full bg-emerald-300 animate-pulse" />
-                  Live
+                  {chat.live}
                 </span>
               </div>
             </div>
@@ -353,8 +398,7 @@ export function IgnitionHero() {
                 aria-hidden
               />
               <p className="text-[10px] leading-snug tracking-[-0.005em] text-[hsl(14_30%_38%)] dark:text-[hsl(36_20%_72%)]">
-                AI-generated. Not legal advice. Decisions are made by the
-                owner.
+                {chat.disclaimer}
               </p>
             </div>
 
@@ -363,14 +407,14 @@ export function IgnitionHero() {
               <div className="flex items-end gap-2">
                 <button
                   type="button"
-                  aria-label="Voice input"
+                  aria-label={chat.voice}
                   className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
                 >
                   <Mic className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
-                  aria-label="Attach image"
+                  aria-label={chat.attach}
                   className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
                 >
                   <ImageIcon className="h-4 w-4" />
@@ -379,21 +423,21 @@ export function IgnitionHero() {
                   href="/sign-up"
                   className="group inline-flex h-10 flex-1 items-center gap-2 rounded-xl border border-border bg-background px-3 text-sm text-muted-foreground transition-colors hover:border-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 >
-                  <span className="flex-1">Ask Mr. Mwikila anything…</span>
+                  <span className="flex-1">{chat.ask}</span>
                 </Link>
                 <Link
                   href="/sign-up"
                   className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_78%_54%)_50%,hsl(14_62%_36%)_100%)] text-primary-foreground shadow-[0_8px_20px_-4px_hsl(24_72%_50%/0.45),0_2px_6px_hsl(14_62%_30%/0.2)] transition-all hover:scale-[1.04] hover:shadow-[0_10px_24px_-4px_hsl(24_72%_50%/0.55),0_3px_8px_hsl(14_62%_30%/0.25)] active:scale-[0.96]"
-                  aria-label="Send"
+                  aria-label={chat.send}
                 >
                   <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
                 </Link>
               </div>
               <div className="mt-2 flex items-center justify-between">
                 <span className="text-[10px] text-muted-foreground">
-                  Chat in <span className="font-medium text-primary">English</span>
+                  {chat.languageHint} <span className="font-medium text-primary">{chat.language}</span>
                 </span>
-                <span className="text-[10px] text-muted-foreground">Mic ready</span>
+                <span className="text-[10px] text-muted-foreground">{chat.micReady}</span>
               </div>
             </div>
 

@@ -12,6 +12,8 @@ import {
   COMPARISON,
   pricingFaq,
   tierLabel,
+  comparisonGroupLabel,
+  comparisonFeatureLabel,
   type TierId,
 } from '@/lib/pricing';
 
@@ -226,7 +228,14 @@ export default async function PricingPage() {
               </tr>
             </thead>
             <tbody>
-              {groups.flatMap((group) => [
+              {groups.flatMap((group) => {
+                // Pull the SW group label from the first row matching this
+                // group (every row in the group shares the same groupSw).
+                const sampleRow = COMPARISON.find((c) => c.group === group);
+                const groupLabelLocalised = sampleRow
+                  ? comparisonGroupLabel(sampleRow, locale)
+                  : group;
+                return [
                 <tr
                   key={`group-${group}`}
                   className="border-b border-border bg-surface-sunken"
@@ -235,7 +244,7 @@ export default async function PricingPage() {
                     colSpan={1 + TIERS.length}
                     className="px-5 py-2 font-mono text-[0.65rem] uppercase tracking-widest text-signal-500"
                   >
-                    {group}
+                    {groupLabelLocalised}
                   </td>
                 </tr>,
                 ...COMPARISON.filter((c) => c.group === group).map((row) => (
@@ -244,7 +253,7 @@ export default async function PricingPage() {
                     className="border-b border-border last:border-b-0"
                   >
                     <td className="px-5 py-3 text-left text-foreground">
-                      {row.feature}
+                      {comparisonFeatureLabel(row, locale)}
                     </td>
                     {TIERS.map((tier) => {
                       const has = tierShipsFeature(tier.id, row);
@@ -266,7 +275,8 @@ export default async function PricingPage() {
                     })}
                   </tr>
                 )),
-              ])}
+              ];
+              })}
             </tbody>
           </table>
         </div>
