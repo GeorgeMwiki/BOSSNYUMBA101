@@ -133,3 +133,30 @@ export type {
   ChatShellDisclaimerProps,
   ChatShellProps,
 } from './litfin-primitives.js';
+
+// Tab-spawning SSE parser — five envelope shapes the gateway emits to
+// drive the owner-portal tab store from chat-driven conversation. See
+// owner-portal/src/state/useOwnerTabs for the consumer + the wiring
+// inside MwikilaWidgetMount that pipes onEvent → handleTabSseFrame.
+export {
+  TAB_SSE_EVENTS,
+  tabSpawnPayloadSchema,
+  tabUpdatePayloadSchema,
+  tabRemovePayloadSchema,
+  tabProposalPayloadSchema,
+  spawnTabsBatchSchema,
+  spawnTabsCandidateSchema,
+  handleTabSseFrame,
+  isTabSseEvent,
+  isKnownTabKind,
+  pickPayloadTitle,
+  pickProposalReason,
+  type TabSseEvent,
+  type TabSseHandlers,
+  type TabSpawnPayload,
+  type TabUpdatePayload,
+  type TabRemovePayload,
+  type TabProposalPayload,
+  type SpawnTabsBatch,
+  type SpawnTabsCandidate,
+} from './lib/tab-sse-parser.js';

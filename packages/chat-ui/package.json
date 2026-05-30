@@ -31,8 +31,10 @@
     "@bossnyumba/api-sdk": "workspace:*",
     "@bossnyumba/design-system": "workspace:*",
     "@bossnyumba/genui": "workspace:*",
+    "@bossnyumba/owner-os-tabs": "workspace:*",
     "framer-motion": "^12.40.0",
-    "lucide-react": "^0.460.0"
+    "lucide-react": "^0.460.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.2.0",
