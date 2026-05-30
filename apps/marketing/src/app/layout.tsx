@@ -1,12 +1,23 @@
+// LitFin-rebase: marketing layout now mirrors LitFin's RSC + 5 client
+// islands shell. The layout itself stays out of the client bundle —
+// MainNav, MarketingFooter, ScrollProgressBar, MarketingWidgetSlot,
+// CookieConsent each hydrate independently as client islands.
+//
+// Source pattern this mirrors:
+//   LITFIN_PATH/src/app/(marketing)/layout.tsx
+
 import type { Metadata, Viewport } from 'next';
 import { Inter, Syne } from 'next/font/google';
 import './globals.css';
 import { getLocale } from '@/lib/locale';
 import { getMessages } from '@/lib/i18n';
 import { CookieConsent } from '@/components/CookieConsent';
-import { BossNyumbaWidgetMount } from '@/components/BossNyumbaWidgetMount';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
-import { ScrollProgressBar } from '@/components/animations/ScrollProgressBar';
+import { ScrollProgressBar } from '@/components/marketing/animations/ScrollProgressBar';
+import { MainNav } from '@/components/marketing/MainNav';
+import { MarketingFooter } from '@/components/marketing/MarketingFooter';
+import { MarketingWidgetSlot } from '@/components/marketing/MarketingWidgetSlot';
+import { ErrorBoundary } from '@bossnyumba/design-system';
 
 /**
  * Typography stack — LitFin parity:
@@ -98,6 +109,24 @@ export const viewport: Viewport = {
   colorScheme: 'dark',
 };
 
+/**
+ * Marketing Layout (RSC) — LitFin pattern.
+ *
+ * No OnboardingProvider here, onboarding walkthrough popups are portal-
+ * only (owner, tenant, agency, admin). The Mr. Mwikila widget still
+ * renders for interactive chat context on marketing pages, behind a
+ * client island that lazy-loads the widget bundle.
+ *
+ * Structure mirrors LITFIN_PATH/src/app/(marketing)/layout.tsx:
+ *   PortalErrorBoundary
+ *     > BossNyumbaAIProvider (lives inside MarketingWidgetSlot)
+ *       > ScrollProgressBar (client island)
+ *       > marketing-shell
+ *           > MainNav (client island)
+ *           > main #main-content
+ *           > MarketingFooter (client island)
+ *       > MarketingWidgetSlot (client island)
+ */
 export default async function RootLayout({
   children,
 }: {
@@ -108,23 +137,26 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`dark ${fontSans.variable} ${fontDisplay.variable}`}
+      className={`${fontSans.variable} ${fontDisplay.variable}`}
       suppressHydrationWarning
     >
       <body className="bg-background text-foreground antialiased min-h-screen font-sans">
-        <ScrollProgressBar />
-        <a href="#main-content" className="skip-link sr-only focus:not-sr-only">
-          {t.skipToContent}
-        </a>
-        {children}
-        <CookieConsent locale={locale} />
-        {/* The floating Mr. Mwikila bubble — always-visible across every
-            marketing page. Loaded via next/dynamic({ ssr: false }) so the
-            chat-ui bundle never enters the server-render graph. */}
-        <BossNyumbaWidgetMount locale={locale} />
-        {/* PWA — register the cache-first SW after hydration. Silent;
-            skipped in dev. See `public/sw.js`. */}
-        <ServiceWorkerRegister />
+        <ErrorBoundary>
+          <ScrollProgressBar />
+          <a href="#main-content" className="skip-link sr-only focus:not-sr-only">
+            {t.skipToContent}
+          </a>
+          <div className="marketing-shell">
+            <MainNav />
+            <main id="main-content" tabIndex={-1} className="pt-16">
+              {children}
+            </main>
+            <MarketingFooter />
+          </div>
+          <CookieConsent locale={locale} />
+          <MarketingWidgetSlot locale={locale} />
+          <ServiceWorkerRegister />
+        </ErrorBoundary>
       </body>
     </html>
   );

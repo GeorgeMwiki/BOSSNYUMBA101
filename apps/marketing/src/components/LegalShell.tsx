@@ -10,10 +10,11 @@
  * resolve. Per-page content passes in via `sections`.
  */
 
+// LitFin-rebase: the layout now owns MainNav + MarketingFooter. This
+// shell no longer renders them — it only renders the legal content
+// section so anchors and dual-locale aside stay intact.
 import type { ReactElement, ReactNode } from 'react';
 import Link from 'next/link';
-import { Nav } from '@/components/Nav';
-import { Footer } from '@/components/Footer';
 import type { Locale } from '@/lib/i18n';
 
 export interface LegalSection {
@@ -43,10 +44,8 @@ export function LegalShell({
 }: LegalShellProps): ReactElement {
   return (
     <>
-      <Nav />
-      <main id="main-content">
-        {/* Hero */}
-        <section className="border-b border-border/40 px-6 py-20 lg:px-8 lg:py-24">
+      {/* Hero */}
+      <section className="border-b border-border/40 px-6 py-20 lg:px-8 lg:py-24">
           <div className="mx-auto max-w-3xl text-center">
             <p className="font-mono text-xs uppercase tracking-widest text-signal-500">
               {kicker}
@@ -101,9 +100,7 @@ export function LegalShell({
               {children}
             </div>
           </div>
-        </section>
-      </main>
-      <Footer />
+      </section>
     </>
   );
 }

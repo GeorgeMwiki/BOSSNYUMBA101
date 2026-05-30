@@ -146,6 +146,23 @@
     --duration-base:   250ms;
     --duration-slow:   400ms;
     --duration-slower: 600ms;
+
+    /* ============================================================
+       LitFin-rebase: copper-on-cream signal palette overrides.
+       These HSL triples match LITFIN_PATH chat-ui CHAT_HEADER_GRADIENT
+       / CHAT_USER_BUBBLE / CHAT_AI_BUBBLE primitives byte-for-byte so
+       Mr. Mwikila reads as one continuous warm wash across mark,
+       header, bubble, send button, hero, capability hover halo.
+       ============================================================ */
+    --primary:               24 72% 50%;          /* copper mid */
+    --primary-foreground:    36 45% 97%;          /* cream */
+    --ring:                  24 72% 50%;
+
+    /* Mesh gradient for IGNITION hero background */
+    --gradient-mesh:
+      radial-gradient(at 22% 18%, hsl(36 86% 64% / 0.18) 0%, transparent 55%),
+      radial-gradient(at 78% 24%, hsl(24 72% 50% / 0.14) 0%, transparent 50%),
+      radial-gradient(at 50% 92%, hsl(14 62% 28% / 0.20) 0%, transparent 60%);
   }
 
   /* ============================================================
@@ -192,7 +209,9 @@
     --signal-900:            42 70% 92%;
     --signal-950:            44 55% 97%;
 
-    --primary:               34 85% 62%;
+    /* LitFin-rebase: copper primary in dark mode — brighter top stop
+       so it stays vivid on the warm-near-black operator surface. */
+    --primary:               36 86% 64%;
     --primary-foreground:    30 20% 8%;
 
     --secondary:             28 10% 14%;
