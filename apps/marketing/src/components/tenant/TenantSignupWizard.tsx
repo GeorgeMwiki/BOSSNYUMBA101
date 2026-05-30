@@ -1,0 +1,256 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { TenantKindStep } from './TenantKindStep';
+import { IndividualTenantStep } from './IndividualTenantStep';
+import { CorporateTenantStep } from './CorporateTenantStep';
+import { TenantSignupSchema, compactIndividual } from './schema';
+import type {
+  TenantAccountKind,
+  TenantSignupDraft,
+  TenantSignupError,
+  TenantSignupSuccess,
+  CorporateTenantDraft,
+  IndividualTenantDraft,
+} from './types';
+import { apiBaseUrl } from '@/lib/api';
+import { getCsrfHeaders } from '@/lib/csrf';
+import { getMessages, type Locale } from '@/lib/i18n';
+
+interface TenantSignupWizardProps {
+  readonly locale: Locale;
+}
+
+interface WizardState {
+  readonly step: 1 | 2;
+  readonly draft: TenantSignupDraft | null;
+  readonly submitting: boolean;
+  readonly serverError: string | null;
+}
+
+const INITIAL_INDIVIDUAL: IndividualTenantDraft = {
+  kind: 'individual',
+  country: 'TZ',
+  fullName: '',
+  phoneE164: '+255',
+  email: '',
+  preferredCurrency: 'TZS',
+  preferredLanguage: 'sw',
+  nationalIdNumber: '',
+};
+
+const INITIAL_BUSINESS: CorporateTenantDraft = {
+  kind: 'business',
+  country: 'TZ',
+  orgName: '',
+  businessKind: 'corporate-let',
+  businessRegistrationNumber: '',
+  taxId: '',
+  contactFullName: '',
+  contactPhoneE164: '+255',
+  contactEmail: '',
+  preferredCurrency: 'TZS',
+  preferredLanguage: 'sw',
+};
+
+const INITIAL_STATE: WizardState = {
+  step: 1,
+  draft: null,
+  submitting: false,
+  serverError: null,
+};
+
+/**
+ * Root client component for the tenant signup wizard.
+ *
+ * Two steps:
+ *   1. TenantKindStep         — pick INDIVIDUAL vs BUSINESS
+ *   2. IndividualTenantStep / CorporateTenantStep — collect details + POST
+ *
+ * Posts to `${apiBaseUrl()}/api/v1/tenants/signup`. On 201 redirects to
+ * `/tenants/sign-in?from=signup` so the tenant immediately authenticates;
+ * the api-gateway has already minted the Supabase auth user and
+ * triggered OTP, so the sign-in form lets the tenant settle the new
+ * password and land on the cockpit.
+ *
+ * On 4xx we surface the server's `message`/`error` payload inline.
+ * On 5xx we surface a generic "try again" error.
+ */
+export function TenantSignupWizard({ locale }: TenantSignupWizardProps) {
+  const router = useRouter();
+  const t = getMessages(locale).tenantSignupPage;
+  const [state, setState] = useState<WizardState>(INITIAL_STATE);
+
+  function onKindChosen(kind: TenantAccountKind): void {
+    setState((prev) => ({
+      ...prev,
+      step: 2,
+      serverError: null,
+      draft:
+        kind === 'individual'
+          ? prev.draft?.kind === 'individual'
+            ? prev.draft
+            : INITIAL_INDIVIDUAL
+          : prev.draft?.kind === 'business'
+            ? prev.draft
+            : INITIAL_BUSINESS,
+    }));
+  }
+
+  function onDraftChange(draft: TenantSignupDraft): void {
+    setState((prev) => ({ ...prev, draft, serverError: null }));
+  }
+
+  function onBack(): void {
+    setState((prev) => ({ ...prev, step: 1, serverError: null }));
+  }
+
+  function translateServerError(payload: TenantSignupError): string {
+    const errs = t.errors;
+    if (payload.error === 'email_already_registered') {
+      return errs.emailAlreadyRegistered;
+    }
+    if (payload.error === 'phone_already_registered') {
+      return errs.phoneAlreadyRegistered;
+    }
+    if (payload.error === 'auth_provider_unavailable') {
+      return errs.providerUnavailable;
+    }
+    if (payload.error === 'invalid_body' && payload.issues && payload.issues.length > 0) {
+      const first = payload.issues[0];
+      if (first) return `${first.path}: ${first.message}`;
+    }
+    if (payload.message) return payload.message;
+    return errs.submitFailed;
+  }
+
+  async function submitDraft(draft: TenantSignupDraft): Promise<void> {
+    setState((prev) => ({ ...prev, submitting: true, serverError: null }));
+
+    // Client-side zod parse against the same schema the server uses.
+    // Strip empty optional nationalIdNumber from individual drafts.
+    const payload =
+      draft.kind === 'individual' ? compactIndividual(draft) : draft;
+    const parsed = TenantSignupSchema.safeParse(payload);
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      setState((prev) => ({
+        ...prev,
+        submitting: false,
+        serverError:
+          first !== undefined
+            ? `${first.path.join('.')}: ${first.message}`
+            : t.errors.submitFailed,
+      }));
+      return;
+    }
+
+    try {
+      const res = await fetch(`${apiBaseUrl()}/api/v1/tenants/signup`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...getCsrfHeaders() },
+        body: JSON.stringify(parsed.data),
+      });
+      const json = (await res.json()) as
+        | TenantSignupSuccess
+        | TenantSignupError;
+      if (!res.ok) {
+        setState((prev) => ({
+          ...prev,
+          submitting: false,
+          serverError: translateServerError(json as TenantSignupError),
+        }));
+        return;
+      }
+      if (!('tenantId' in json)) {
+        setState((prev) => ({
+          ...prev,
+          submitting: false,
+          serverError: t.errors.submitFailed,
+        }));
+        return;
+      }
+      // Success → redirect to sign-in with a flag the form can read to
+      // show a "your account is created — sign in to continue" banner.
+      router.replace('/tenants/sign-in?from=signup');
+    } catch {
+      setState((prev) => ({
+        ...prev,
+        submitting: false,
+        serverError: t.errors.submitFailed,
+      }));
+    }
+  }
+
+  return (
+    <section
+      data-testid="tenant-signup-wizard"
+      data-step={state.step}
+      className="rounded-2xl border border-border bg-surface p-8 shadow-md sm:p-10"
+    >
+      <ol
+        aria-label={`${t.steps.kind} › ${t.steps.details}`}
+        className="mb-8 flex items-center justify-center gap-3 font-mono text-caption uppercase tracking-widest"
+      >
+        <li className="flex items-center gap-2">
+          <span
+            className={
+              state.step === 1
+                ? 'flex h-6 w-6 items-center justify-center rounded-full bg-signal-500 text-primary-foreground'
+                : 'flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface-raised text-neutral-400'
+            }
+          >
+            1
+          </span>
+          <span className={state.step === 1 ? 'text-foreground' : 'text-neutral-500'}>
+            {t.steps.kind}
+          </span>
+        </li>
+        <li aria-hidden="true" className="h-px w-8 bg-border" />
+        <li className="flex items-center gap-2">
+          <span
+            className={
+              state.step === 2
+                ? 'flex h-6 w-6 items-center justify-center rounded-full bg-signal-500 text-primary-foreground'
+                : 'flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface-raised text-neutral-400'
+            }
+          >
+            2
+          </span>
+          <span className={state.step === 2 ? 'text-foreground' : 'text-neutral-500'}>
+            {t.steps.details}
+          </span>
+        </li>
+      </ol>
+
+      {state.step === 1 && (
+        <TenantKindStep locale={locale} onPick={onKindChosen} />
+      )}
+
+      {state.step === 2 && state.draft?.kind === 'individual' && (
+        <IndividualTenantStep
+          locale={locale}
+          draft={state.draft}
+          onChange={onDraftChange}
+          onBack={onBack}
+          onSubmit={submitDraft}
+          submitting={state.submitting}
+          serverError={state.serverError}
+        />
+      )}
+
+      {state.step === 2 && state.draft?.kind === 'business' && (
+        <CorporateTenantStep
+          locale={locale}
+          draft={state.draft}
+          onChange={onDraftChange}
+          onBack={onBack}
+          onSubmit={submitDraft}
+          submitting={state.submitting}
+          serverError={state.serverError}
+        />
+      )}
+    </section>
+  );
+}
