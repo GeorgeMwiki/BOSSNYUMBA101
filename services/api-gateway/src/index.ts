@@ -328,6 +328,21 @@ import type {
 } from './workers/lease-expiry-alert-cron';
 import { createExecutiveBriefCron } from './workers/executive-brief-cron';
 import { createDecisionRetrospectiveWorker } from './workers/decision-retrospective-worker';
+// Wave CLOSED-LOOP — outcome reconciliation worker. Reads pending
+// brain predictions whose horizon has elapsed, asks the per-entity
+// resolver for the ground-truth state, and writes the matched/divergent
+// reconciliation row. Previously created but never started.
+import { sql as drizzleSql } from 'drizzle-orm';
+import { createReconciliationWorker } from './workers/outcome-reconciliation-worker';
+import { buildRealEstateOutcomeResolvers } from './workers/outcome-reconciliation-resolvers';
+// Wave AUTONOMY — Mr. Mwikila autonomous worker. Ticks every 15
+// minutes per active tenant; runtime resolves delegation tier,
+// kill-switch + four-eye + audit-chain enforced by handler-runtime.
+// Handlers ship empty initially — sibling commits wire the five
+// canonical handler ports (rent_scheduler, regulatory_filing,
+// lease_renewal, payroll_prep, listing_counter_offer) as their
+// domain adapters come online.
+import { createMwikilaAutonomousWorker } from './workers/mwikila-autonomous-worker';
 import { createDecisionRecorder } from './services/decision-journal/recorder';
 import {
   registerDomainEventSubscribers,
@@ -1611,6 +1626,127 @@ const decisionRetrospectiveWorker =
         },
       };
 
+// Wave CLOSED-LOOP — outcome reconciliation worker. Closed-loop
+// telemetry: for every brain prediction whose horizon has elapsed,
+// the worker reads the current ground-truth state through a per-entity
+// resolver (lease / rent_invoice / maintenance_ticket) and writes the
+// hash-chained matched/divergent/expired row. Without this wired call
+// site every prediction sits forever pending and the learning loop
+// stays dark.
+//
+// Real-estate resolvers ship in the same commit; sibling agents can
+// extend the map (`application`, `inspection`, etc.) as their domains
+// come online.
+const outcomeReconciliationWorker = serviceRegistry.db
+  ? createReconciliationWorker({
+      db: serviceRegistry.db as unknown as { execute(q: unknown): Promise<unknown> },
+      logger,
+      resolvers: buildRealEstateOutcomeResolvers(
+        serviceRegistry.db as unknown as { execute(q: unknown): Promise<unknown> },
+      ),
+      intervalMs:
+        Number(
+          process.env.BOSSNYUMBA_OUTCOME_RECONCILIATION_INTERVAL_MS ??
+            6 * 60 * 60 * 1000,
+        ) || 6 * 60 * 60 * 1000,
+    })
+  : {
+      start() {},
+      stop() {},
+      async tickOnce() {
+        // no-op stub for degraded mode (no DB)
+      },
+    };
+
+// Wave AUTONOMY — Mr. Mwikila autonomous worker. Wires the
+// per-tenant tick that walks every registered handler. Handlers
+// start empty in this commit because each handler's port adapters
+// (rent-scheduler invoice-already-exists check, regulatory-filing
+// portfolio snapshot, lease-renewal listing query, payroll attendance
+// rollup, listing-counter-offer open-bids reader) read from different
+// domain tables and land in follow-up commits per domain. The worker
+// timer is still armed so the cadence and shutdown path are exercised
+// from boot.
+//
+// `MwikilaTenantPort.listActiveTenants` reads `tenants WHERE status =
+// 'active'` so the cron iterates every active workspace exactly once
+// per tick. RLS is satisfied because `tenants` is public-read for the
+// platform's own service role.
+const mwikilaAutonomousWorker = serviceRegistry.db
+  ? createMwikilaAutonomousWorker({
+      // No runtime/handlers wired yet — see Wave AUTONOMY comment above.
+      // The runtime stub returns null so the tick has nothing to do
+      // until sibling commits land the ports + handler factory wiring.
+      runtime: {
+        async run() {
+          return null;
+        },
+      },
+      tenants: {
+        async listActiveTenants() {
+          try {
+            const db = serviceRegistry.db as unknown as {
+              execute(q: unknown): Promise<unknown>;
+            };
+            // Active tenants × their canonical owner. `tenants` carries
+            // no owner_user_id column; we derive it from `user_roles`
+            // joined on the system 'OWNER' role. Tenants without an
+            // explicit OWNER row are skipped (worker has nothing to act
+            // on their behalf). Filter ensures one row per tenant by
+            // picking the earliest created assignment.
+            const result = await db.execute(
+              drizzleSql`
+                SELECT DISTINCT ON (t.id)
+                  t.id AS tenant_id,
+                  ur.user_id AS owner_user_id
+                FROM tenants t
+                JOIN user_roles ur ON ur.tenant_id = t.id
+                JOIN roles r ON r.id = ur.role_id
+                WHERE t.status = 'active'
+                  AND r.is_system = true
+                  AND r.name = 'OWNER'
+                ORDER BY t.id, ur.id ASC
+              `,
+            );
+            const rows = Array.isArray(result)
+              ? (result as ReadonlyArray<{ tenant_id?: unknown; owner_user_id?: unknown }>)
+              : ((result as { rows?: ReadonlyArray<{ tenant_id?: unknown; owner_user_id?: unknown }> })
+                  ?.rows ?? []);
+            return rows
+              .filter((r) => r.tenant_id && r.owner_user_id)
+              .map((r) => ({
+                tenantId: String(r.tenant_id),
+                ownerUserId: String(r.owner_user_id),
+              }));
+          } catch (err) {
+            logger.warn(
+              { err: err instanceof Error ? err.message : String(err) },
+              'mwikila autonomous worker: listActiveTenants failed',
+            );
+            return [];
+          }
+        },
+      },
+      handlers: [],
+      logger,
+      intervalMs:
+        Number(
+          process.env.BOSSNYUMBA_MWIKILA_AUTONOMOUS_INTERVAL_MS ??
+            15 * 60 * 1000,
+        ) || 15 * 60 * 1000,
+    })
+  : {
+      start() {},
+      stop() {},
+      async tickOnce() {
+        return {
+          tenantsScanned: 0,
+          handlersInvoked: 0,
+          inboxRowsWritten: 0,
+        };
+      },
+    };
+
 // Graceful shutdown — documented and tested step-by-step:
 //  1. Flip a "shutting down" flag so the /health probe returns 503.
 //  2. Tell the HTTP server to stop accepting NEW connections.
@@ -1669,6 +1805,18 @@ async function gracefulShutdown(signal: string): Promise<void> {
     logger.info('shutdown: decision-retrospective worker stopped');
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: decision-retrospective stop failed');
+  }
+  try {
+    outcomeReconciliationWorker.stop();
+    logger.info('shutdown: outcome-reconciliation worker stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: outcome-reconciliation stop failed');
+  }
+  try {
+    mwikilaAutonomousWorker.stop();
+    logger.info('shutdown: mwikila autonomous worker stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: mwikila autonomous worker stop failed');
   }
   try {
     leaseExpiryCron.stop();
@@ -1789,6 +1937,24 @@ if (require.main === module) {
   // Degraded-mode (no DB) is internally a no-op stub; safe to call
   // unconditionally.
   decisionRetrospectiveWorker.start();
+  // Wave CLOSED-LOOP — start the outcome reconciliation worker. Ticks
+  // every 6h (configurable via BOSSNYUMBA_OUTCOME_RECONCILIATION_INTERVAL_MS),
+  // resolves predictions whose horizon has elapsed and writes the
+  // matched/divergent/expired reconciliation row. Degraded-mode (no DB)
+  // is internally a no-op stub.
+  if (process.env.NODE_ENV !== 'test' &&
+      process.env.BOSSNYUMBA_OUTCOME_RECONCILIATION_DISABLED !== 'true') {
+    outcomeReconciliationWorker.start();
+  }
+  // Wave AUTONOMY — start the Mr. Mwikila autonomous worker. Ticks every
+  // 15 minutes (configurable via BOSSNYUMBA_MWIKILA_AUTONOMOUS_INTERVAL_MS).
+  // Handlers list is empty at this commit — the timer is armed so the
+  // composition root + shutdown path exercise from boot; sibling commits
+  // wire each handler's port adapters.
+  if (process.env.NODE_ENV !== 'test' &&
+      process.env.BOSSNYUMBA_MWIKILA_AUTONOMOUS_DISABLED !== 'true') {
+    mwikilaAutonomousWorker.start();
+  }
   // K7 parity-litfin Gap H — wake-loop cron. Until this start() call the
   // supervisor was inert: the brain only woke when an out-of-band k8s
   // CronJob fired. In-process start arms an advisory-lock-guarded interval
