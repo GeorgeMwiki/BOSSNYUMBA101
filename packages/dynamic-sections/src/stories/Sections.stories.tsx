@@ -1,32 +1,33 @@
 /**
- * Storybook deck — every J1 seed section in three states:
- *   - Empty (no data; section is hidden from a real DynamicTabBar)
+ * Storybook deck — every real-estate seed section in three states:
+ *   - Empty (no signal; section is hidden from a real DynamicTabBar)
  *   - Loading (skeleton fallback)
- *   - Populated (the stub component rendered)
+ *   - Populated (the shell component rendered)
  *
  * Each section gets a story rather than a parameterised one so the
- * design QA pass can flip through them quickly + reviewers can
- * link to a specific section's story in PR comments.
+ * design QA pass can flip through them quickly + reviewers can link
+ * to a specific section's story in PR comments.
  */
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import {
-  EmployeesSection,
-  CustomersSection,
-  PropertiesSection,
-  LeadsSection,
-  DealsSection,
-  KraFilingsSection,
-  CampaignsSection,
-  RecommendationsSection,
+  ActiveLeasesSection,
+  RentDueSoonSection,
+  MaintenanceOpenSection,
+  LeaseRenewalWindowSection,
+  KraVatFilingSection,
+  TraVatFilingSection,
+  VacancyListingsSection,
+  AccountantMonthEndSection,
   InternalStaffSection,
 } from '../seed/section-components.js';
+import { sectionSignalKeys } from '../seed/seed-sections.js';
 import { SectionSkeleton } from '../components/SectionSkeleton.js';
 
 type Story = StoryObj;
 
 const meta: Meta = {
-  title: 'DynamicSections/J1 Seed Sections',
+  title: 'DynamicSections/Real-Estate Seed Sections',
   tags: ['autodocs'],
 };
 export default meta;
@@ -37,175 +38,214 @@ const baseProps = {
   scope: 'owner-customer' as const,
 };
 
-/* ---------------- Employees ---------------- */
+/* ---------------- Active Leases ---------------- */
 
-export const EmployeesEmpty: Story = {
-  name: 'Employees · Empty (no data)',
+export const ActiveLeasesEmpty: Story = {
+  name: 'Active Leases · Empty (no signal)',
   render: () => (
     <div className="rounded-lg border border-slate-200 p-6 text-sm text-slate-500">
-      The Employees tab is hidden when the tenant has zero employees.
-      This story documents the implicit empty state — the section is
-      simply not rendered.
+      Hidden when the tenant has zero active leases. The section appears
+      the moment the first lease activates.
     </div>
   ),
 };
 
-export const EmployeesLoading: Story = {
-  name: 'Employees · Loading',
-  render: () => <SectionSkeleton sectionLabel="Employees" />,
+export const ActiveLeasesLoading: Story = {
+  name: 'Active Leases · Loading',
+  render: () => <SectionSkeleton sectionLabel="Active Leases" />,
 };
 
-export const EmployeesPopulated: Story = {
-  name: 'Employees · Populated',
-  render: () => <EmployeesSection {...baseProps} entityType="employees" />,
+export const ActiveLeasesPopulated: Story = {
+  name: 'Active Leases · Populated',
+  render: () => (
+    <ActiveLeasesSection
+      {...baseProps}
+      entityType={sectionSignalKeys.activeLeases}
+    />
+  ),
 };
 
-/* ---------------- Customers ---------------- */
+/* ---------------- Rent Due Soon ---------------- */
 
-export const CustomersEmpty: Story = {
-  name: 'Customers · Empty (no data)',
+export const RentDueSoonEmpty: Story = {
+  name: 'Rent Due Soon · Empty',
   render: () => (
     <div className="rounded-lg border border-slate-200 p-6 text-sm text-slate-500">
-      Customers tab hidden until the first customer is created.
+      Hidden when no invoice is due in the next 7 days.
     </div>
   ),
 };
 
-export const CustomersLoading: Story = {
-  name: 'Customers · Loading',
-  render: () => <SectionSkeleton sectionLabel="Customers" />,
+export const RentDueSoonLoading: Story = {
+  name: 'Rent Due Soon · Loading',
+  render: () => <SectionSkeleton sectionLabel="Rent Due Soon" />,
 };
 
-export const CustomersPopulated: Story = {
-  name: 'Customers · Populated',
-  render: () => <CustomersSection {...baseProps} entityType="customers" />,
+export const RentDueSoonPopulated: Story = {
+  name: 'Rent Due Soon · Populated',
+  render: () => (
+    <RentDueSoonSection
+      {...baseProps}
+      entityType={sectionSignalKeys.rentDueSoon}
+    />
+  ),
 };
 
-/* ---------------- Properties ---------------- */
+/* ---------------- Maintenance Open ---------------- */
 
-export const PropertiesEmpty: Story = {
-  name: 'Properties · Empty',
+export const MaintenanceOpenEmpty: Story = {
+  name: 'Maintenance · Empty',
   render: () => (
     <div className="rounded-lg border border-slate-200 p-6 text-sm text-slate-500">
-      Properties tab hidden until the first property is registered.
+      Hidden when every maintenance ticket is closed.
     </div>
   ),
 };
 
-export const PropertiesLoading: Story = {
-  name: 'Properties · Loading',
-  render: () => <SectionSkeleton sectionLabel="Properties" />,
+export const MaintenanceOpenLoading: Story = {
+  name: 'Maintenance · Loading',
+  render: () => <SectionSkeleton sectionLabel="Open Maintenance" />,
 };
 
-export const PropertiesPopulated: Story = {
-  name: 'Properties · Populated',
-  render: () => <PropertiesSection {...baseProps} entityType="properties" />,
+export const MaintenanceOpenPopulated: Story = {
+  name: 'Maintenance · Populated',
+  render: () => (
+    <MaintenanceOpenSection
+      {...baseProps}
+      entityType={sectionSignalKeys.maintenanceOpen}
+    />
+  ),
 };
 
-/* ---------------- Leads ---------------- */
+/* ---------------- Lease Renewal Window ---------------- */
 
-export const LeadsEmpty: Story = {
-  name: 'Leads · Empty',
+export const LeaseRenewalWindowEmpty: Story = {
+  name: 'Renewals · Empty',
   render: () => (
     <div className="rounded-lg border border-slate-200 p-6 text-sm text-slate-500">
-      Leads tab hidden until top-of-funnel activity arrives.
+      Hidden when no lease is within 90 days of expiry.
     </div>
   ),
 };
 
-export const LeadsLoading: Story = {
-  name: 'Leads · Loading',
-  render: () => <SectionSkeleton sectionLabel="Leads" />,
+export const LeaseRenewalWindowLoading: Story = {
+  name: 'Renewals · Loading',
+  render: () => <SectionSkeleton sectionLabel="Renewals" />,
 };
 
-export const LeadsPopulated: Story = {
-  name: 'Leads · Populated',
-  render: () => <LeadsSection {...baseProps} entityType="leads" />,
+export const LeaseRenewalWindowPopulated: Story = {
+  name: 'Renewals · Populated',
+  render: () => (
+    <LeaseRenewalWindowSection
+      {...baseProps}
+      entityType={sectionSignalKeys.leaseRenewalWindow}
+    />
+  ),
 };
 
-/* ---------------- Deals ---------------- */
+/* ---------------- KRA VAT Filing ---------------- */
 
-export const DealsEmpty: Story = {
-  name: 'Deals · Empty',
+export const KraVatFilingEmpty: Story = {
+  name: 'KRA VAT · Outside filing window',
   render: () => (
     <div className="rounded-lg border border-slate-200 p-6 text-sm text-slate-500">
-      Deals tab hidden until an active negotiation exists.
+      Hidden outside the KRA VAT filing window (typically the 10th to
+      20th of the month, KE-jurisdiction tenants only).
     </div>
   ),
 };
 
-export const DealsLoading: Story = {
-  name: 'Deals · Loading',
-  render: () => <SectionSkeleton sectionLabel="Deals" />,
+export const KraVatFilingLoading: Story = {
+  name: 'KRA VAT · Loading',
+  render: () => <SectionSkeleton sectionLabel="KRA VAT Filing" />,
 };
 
-export const DealsPopulated: Story = {
-  name: 'Deals · Populated',
-  render: () => <DealsSection {...baseProps} entityType="deals" />,
+export const KraVatFilingPopulated: Story = {
+  name: 'KRA VAT · Window open',
+  render: () => (
+    <KraVatFilingSection
+      {...baseProps}
+      entityType={sectionSignalKeys.kraVatFilingWindow}
+    />
+  ),
 };
 
-/* ---------------- KRA Filings ---------------- */
+/* ---------------- TRA VAT Filing ---------------- */
 
-export const KraFilingsEmpty: Story = {
-  name: 'KRA Filings · Empty',
+export const TraVatFilingEmpty: Story = {
+  name: 'TRA VAT · Outside filing window',
   render: () => (
     <div className="rounded-lg border border-slate-200 p-6 text-sm text-slate-500">
-      KRA Filings tab hidden until the first statutory filing is submitted.
+      Hidden outside the TRA VAT filing window (TZ-jurisdiction tenants
+      only).
     </div>
   ),
 };
 
-export const KraFilingsLoading: Story = {
-  name: 'KRA Filings · Loading',
-  render: () => <SectionSkeleton sectionLabel="KRA Filings" />,
+export const TraVatFilingLoading: Story = {
+  name: 'TRA VAT · Loading',
+  render: () => <SectionSkeleton sectionLabel="TRA VAT Filing" />,
 };
 
-export const KraFilingsPopulated: Story = {
-  name: 'KRA Filings · Populated',
-  render: () => <KraFilingsSection {...baseProps} entityType="kra-filings" />,
+export const TraVatFilingPopulated: Story = {
+  name: 'TRA VAT · Window open',
+  render: () => (
+    <TraVatFilingSection
+      {...baseProps}
+      entityType={sectionSignalKeys.traVatFilingWindow}
+    />
+  ),
 };
 
-/* ---------------- Campaigns ---------------- */
+/* ---------------- Vacancy Listings ---------------- */
 
-export const CampaignsEmpty: Story = {
-  name: 'Campaigns · Empty',
+export const VacancyListingsEmpty: Story = {
+  name: 'Vacancies · Empty',
   render: () => (
     <div className="rounded-lg border border-slate-200 p-6 text-sm text-slate-500">
-      Campaigns tab hidden until the marketing-brain launches its first.
+      Hidden when every unit is occupied.
     </div>
   ),
 };
 
-export const CampaignsLoading: Story = {
-  name: 'Campaigns · Loading',
-  render: () => <SectionSkeleton sectionLabel="Campaigns" />,
+export const VacancyListingsLoading: Story = {
+  name: 'Vacancies · Loading',
+  render: () => <SectionSkeleton sectionLabel="Vacancies" />,
 };
 
-export const CampaignsPopulated: Story = {
-  name: 'Campaigns · Populated',
-  render: () => <CampaignsSection {...baseProps} entityType="campaigns" />,
+export const VacancyListingsPopulated: Story = {
+  name: 'Vacancies · Populated',
+  render: () => (
+    <VacancyListingsSection
+      {...baseProps}
+      entityType={sectionSignalKeys.vacancyListings}
+    />
+  ),
 };
 
-/* ---------------- Recommendations ---------------- */
+/* ---------------- Month-End Close ---------------- */
 
-export const RecommendationsEmpty: Story = {
-  name: 'Recommendations · Empty',
+export const AccountantMonthEndEmpty: Story = {
+  name: 'Month-End · Outside window',
   render: () => (
     <div className="rounded-lg border border-slate-200 p-6 text-sm text-slate-500">
-      Recommendations tab hidden until an AI suggestion is queued.
+      Hidden until the last 5 calendar days of the month.
     </div>
   ),
 };
 
-export const RecommendationsLoading: Story = {
-  name: 'Recommendations · Loading',
-  render: () => <SectionSkeleton sectionLabel="Recommendations" />,
+export const AccountantMonthEndLoading: Story = {
+  name: 'Month-End · Loading',
+  render: () => <SectionSkeleton sectionLabel="Month-End Close" />,
 };
 
-export const RecommendationsPopulated: Story = {
-  name: 'Recommendations · Populated',
+export const AccountantMonthEndPopulated: Story = {
+  name: 'Month-End · Window open',
   render: () => (
-    <RecommendationsSection {...baseProps} entityType="recommendations" />
+    <AccountantMonthEndSection
+      {...baseProps}
+      entityType={sectionSignalKeys.accountantMonthEnd}
+    />
   ),
 };
 
@@ -215,8 +255,8 @@ export const InternalStaffEmpty: Story = {
   name: 'Internal Staff · Empty (admin-only)',
   render: () => (
     <div className="rounded-lg border border-slate-200 p-6 text-sm text-slate-500">
-      Internal Staff tab is restricted to the internal-admin scope AND
-      requires the `platform_ops` role. Hidden by default.
+      Restricted to the internal-admin scope AND requires the
+      `platform_ops` or `platform_admin` role. Hidden by default.
     </div>
   ),
 };
@@ -232,7 +272,7 @@ export const InternalStaffPopulated: Story = {
     <InternalStaffSection
       tenantId="platform-ops-tenant"
       scope="internal-admin"
-      entityType="internal-staff"
+      entityType={sectionSignalKeys.internalStaff}
     />
   ),
 };

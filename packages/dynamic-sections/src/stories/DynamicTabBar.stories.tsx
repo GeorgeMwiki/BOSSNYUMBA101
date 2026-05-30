@@ -16,7 +16,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
 import { DynamicTabBar } from '../components/DynamicTabBar.js';
-import { seedSections } from '../seed/seed-sections.js';
+import { seedSections, sectionSignalKeys } from '../seed/seed-sections.js';
 import { useSectionRegistry } from '../hooks/use-section-registry.js';
 import { filterSections } from '../registry/filter.js';
 import {
@@ -75,12 +75,15 @@ export const FirstDayTenant: Story = {
 };
 
 export const TwoTabsTenant: Story = {
-  name: 'Owner · two entity types · two tabs',
+  name: 'Owner · two signals · two sections',
   render: () => (
     <StoryShell
       sections={seedSections}
       loader={makeStoryContextLoader({
-        entityCounts: { customers: 12, properties: 3 },
+        entityCounts: {
+          [sectionSignalKeys.activeLeases]: 12,
+          [sectionSignalKeys.rentDueSoon]: 3,
+        },
       })}
     >
       <HookedTabBar scope={DEMO_SCOPE_OWNER} />
@@ -89,13 +92,13 @@ export const TwoTabsTenant: Story = {
 };
 
 export const FullSeedAdmin: Story = {
-  name: 'Internal admin · platform_ops · all customer tabs visible',
+  name: 'Internal admin · platform_ops · all customer sections visible',
   render: () => (
     <StoryShell
       sections={seedSections}
       loader={makeStoryContextLoader({
         roles: ['platform_ops'],
-        entityCounts: { 'internal-staff': 4 },
+        entityCounts: { [sectionSignalKeys.internalStaff]: 4 },
       })}
     >
       <HookedTabBar scope={DEMO_SCOPE_ADMIN} />
@@ -104,10 +107,10 @@ export const FullSeedAdmin: Story = {
 };
 
 export const LiveAppearance: Story = {
-  name: 'Live appearance · simulated entity creation',
+  name: 'Live appearance · simulated signal arrival',
   render: () => {
-    // Simulate the MD creating entities via chat — first 0 tabs, then
-    // after 1.5s the customers tab appears, then after 3s properties.
+    // Simulate signals arriving — first 0 sections, then after 1.5s
+    // the active-leases section appears, then after 3s rent-due-soon.
     function LiveDemo() {
       const [tick, setTick] = useState(0);
       useEffect(() => {
@@ -122,8 +125,11 @@ export const LiveAppearance: Story = {
         tick === 0
           ? {}
           : tick === 1
-            ? { customers: 1 }
-            : { customers: 1, properties: 1 };
+            ? { [sectionSignalKeys.activeLeases]: 1 }
+            : {
+                [sectionSignalKeys.activeLeases]: 1,
+                [sectionSignalKeys.rentDueSoon]: 1,
+              };
       const ctx = {
         tenantId: DEMO_TENANT_ID,
         scope: DEMO_SCOPE_OWNER,
@@ -135,8 +141,8 @@ export const LiveAppearance: Story = {
       return (
         <div className="p-4">
           <div className="mb-3 text-xs text-slate-500">
-            Demo: tabs appear over 3 seconds as entities materialise.
-            tick={tick} · {visible.length} tabs.
+            Demo: sections appear over 3 seconds as signals arrive.
+            tick={tick} · {visible.length} sections.
           </div>
           <DynamicTabBar
             sections={visible}
@@ -159,7 +165,11 @@ export const MobileLayout: Story = {
     <StoryShell
       sections={seedSections}
       loader={makeStoryContextLoader({
-        entityCounts: { customers: 3, properties: 1, leads: 4 },
+        entityCounts: {
+          [sectionSignalKeys.activeLeases]: 3,
+          [sectionSignalKeys.rentDueSoon]: 1,
+          [sectionSignalKeys.maintenanceOpen]: 4,
+        },
       })}
     >
       <HookedTabBar scope={DEMO_SCOPE_OWNER} />

@@ -1,162 +1,199 @@
 /**
- * Seed sections for the J1 entity types.
+ * Seed sections — BossNyumba real-estate adaptive layout.
  *
- * Nine sections cover the J1 spec:
- *   - employees · customers · properties · leads · deals
- *   - kra-filings · campaigns · recommendations · internal-staff
+ * The dynamic-sections engine drives the OWNER PORTAL home shell and the
+ * ADMIN PLATFORM PORTAL home shell so cards / tabs only render when the
+ * underlying real-estate signal is meaningful. A landlord with zero
+ * active leases never sees a "Rent due soon" card; the moment a lease
+ * is signed the section materialises.
  *
- * Visibility rules (the heart of "tabs appear when data exists"):
- *   - All non-staff sections gate behind `has-entities` of their own
- *     entity_type. A first-day tenant sees zero tabs. The moment
- *     the MD's chat-driven kernel creates the first property /
- *     campaign / recommendation, the corresponding tab materialises.
- *   - `internal-staff` ALSO requires the viewer to hold a platform-
- *     ops role — wrapped in an `and` predicate.
- *   - Sections that should always be available to platform staff for
- *     "even an empty tenant" diagnostic visibility are exposed via
- *     an `or` of `has-entities` and `role-allowed: platform_ops`.
- *     This lets internal admins navigate to tabs that would
- *     otherwise be hidden — useful for support triage.
+ * Eight real-estate sections cover the Mr. Mwikila persona's day-to-day
+ * surfaces:
+ *   - active-leases            : visible when the tenant has >=1 active lease
+ *   - rent-due-soon            : visible when >=1 invoice is due within 7 days
+ *   - maintenance-open         : visible when >=1 maintenance ticket is open
+ *   - lease-renewal-window     : visible when >=1 lease expires within 90 days
+ *   - kra-vat-filing           : visible during the KE VAT filing window
+ *   - tra-vat-filing           : visible during the TZ VAT filing window
+ *   - vacancy-listings         : visible when >=1 unit is vacant
+ *   - accountant-month-end     : visible during the last 5 days of the month
  *
- * Scopes:
- *   - `owner-customer` portals see the MD-facing sections (the eight
- *     that matter to the tenant).
- *   - `internal-admin` sees all nine PLUS the support-override
- *     visibility on the customer sections.
+ * Plus one platform-staff section for the admin-platform-portal:
+ *   - internal-staff           : visible only to platform_ops/platform_admin
+ *
+ * Visibility rules:
+ *   - All customer sections gate behind `has-entities` of a real-estate
+ *     SIGNAL key. The host-app loader translates calendar windows and
+ *     query results into the boolean signals consumed here, so the
+ *     predicate sum-type stays simple + serialisable.
+ *   - Platform-ops operators see the customer sections regardless (for
+ *     triage), via the `customerSectionPredicate` OR.
+ *
+ * The signal keys (e.g. `active_leases_count`, `rent_due_soon_count`)
+ * are CONTRACT — the loader implementation in the owner-portal
+ * (`apps/owner-portal/src/lib/section-context-loader.ts`) and the
+ * admin-platform-portal (`apps/admin-platform-portal/src/lib/section-
+ * context-loader.ts`) must populate exactly these keys.
  */
 
 import type { Section } from '../contracts/section.js';
-
-// "KRA Filings" is a Kenya-specific tax-authority surface (Kenya Revenue
-// Authority — a proper noun). The seed exports this label as the default
-// for the section registry; consumer apps that have i18n wired up are
-// expected to translate the displayed label at render time using their
-// own message catalogue. The seed itself stays English so the
-// dynamic-sections package remains library-only (no i18n dependency).
-const KRA_FILINGS_LABEL = 'KRA Filings';
 import {
-  EmployeesSection,
-  CustomersSection,
-  PropertiesSection,
-  LeadsSection,
-  DealsSection,
-  KraFilingsSection,
-  CampaignsSection,
-  RecommendationsSection,
+  ActiveLeasesSection,
+  RentDueSoonSection,
+  MaintenanceOpenSection,
+  LeaseRenewalWindowSection,
+  KraVatFilingSection,
+  TraVatFilingSection,
+  VacancyListingsSection,
+  AccountantMonthEndSection,
   InternalStaffSection,
 } from './section-components.js';
 
 /**
- * Build a predicate that's true when EITHER the tenant has entities
- * of the given type OR the viewer is a platform support operator.
- * Captures the "internal admins can navigate to empty tabs for
- * triage" rule once instead of duplicating the OR everywhere.
+ * Build a predicate that is true when EITHER the tenant has signals of
+ * the given key OR the viewer is a platform support operator. Captures
+ * the "internal admins can navigate to empty cards for triage" rule
+ * once instead of duplicating the OR in every section.
  */
-function customerSectionPredicate(entityType: string) {
+function customerSectionPredicate(signalKey: string) {
   return {
     kind: 'or' as const,
     preds: [
-      { kind: 'has-entities' as const, entity_type: entityType },
+      { kind: 'has-entities' as const, entity_type: signalKey },
       { kind: 'role-allowed' as const, roles: ['platform_ops'] },
     ],
   };
 }
 
+/**
+ * Signal keys — exported for the loader implementations so the
+ * contract is type-checked at the producer side rather than only at
+ * the consumer side. Adding a new section means adding a key here AND
+ * populating it in every loader.
+ */
+export const sectionSignalKeys = {
+  activeLeases: 'active_leases_count',
+  rentDueSoon: 'rent_due_soon_count',
+  maintenanceOpen: 'maintenance_open_count',
+  leaseRenewalWindow: 'lease_renewal_window_count',
+  kraVatFilingWindow: 'kra_vat_filing_window_open',
+  traVatFilingWindow: 'tra_vat_filing_window_open',
+  vacancyListings: 'vacancy_listings_count',
+  accountantMonthEnd: 'accountant_month_end_window_open',
+  internalStaff: 'internal_staff_count',
+} as const;
+
+export type SectionSignalKey =
+  (typeof sectionSignalKeys)[keyof typeof sectionSignalKeys];
+
 export const seedSections: readonly Section[] = [
   {
-    key: 'employees',
-    label: 'Employees',
-    icon: 'users',
-    entity_type: 'employees',
+    key: 'active-leases',
+    label: 'Active Leases',
+    icon: 'file-signature',
+    entity_type: sectionSignalKeys.activeLeases,
     sort_order: 10,
-    visibility_predicate: customerSectionPredicate('employees'),
+    visibility_predicate: customerSectionPredicate(sectionSignalKeys.activeLeases),
     component_loader: () =>
-      Promise.resolve({ default: EmployeesSection }),
+      Promise.resolve({ default: ActiveLeasesSection }),
   },
   {
-    key: 'customers',
-    label: 'Customers',
-    icon: 'user-round',
-    entity_type: 'customers',
+    key: 'rent-due-soon',
+    label: 'Rent Due Soon',
+    icon: 'alarm-clock',
+    entity_type: sectionSignalKeys.rentDueSoon,
     sort_order: 20,
-    visibility_predicate: customerSectionPredicate('customers'),
+    visibility_predicate: customerSectionPredicate(sectionSignalKeys.rentDueSoon),
     component_loader: () =>
-      Promise.resolve({ default: CustomersSection }),
+      Promise.resolve({ default: RentDueSoonSection }),
   },
   {
-    key: 'properties',
-    label: 'Properties',
-    icon: 'building-2',
-    entity_type: 'properties',
+    key: 'maintenance-open',
+    label: 'Open Maintenance',
+    icon: 'wrench',
+    entity_type: sectionSignalKeys.maintenanceOpen,
     sort_order: 30,
-    visibility_predicate: customerSectionPredicate('properties'),
+    visibility_predicate: customerSectionPredicate(
+      sectionSignalKeys.maintenanceOpen,
+    ),
     component_loader: () =>
-      Promise.resolve({ default: PropertiesSection }),
+      Promise.resolve({ default: MaintenanceOpenSection }),
   },
   {
-    key: 'leads',
-    label: 'Leads',
-    icon: 'target',
-    entity_type: 'leads',
+    key: 'lease-renewal-window',
+    label: 'Renewals',
+    icon: 'refresh-cw',
+    entity_type: sectionSignalKeys.leaseRenewalWindow,
     sort_order: 40,
-    visibility_predicate: customerSectionPredicate('leads'),
+    visibility_predicate: customerSectionPredicate(
+      sectionSignalKeys.leaseRenewalWindow,
+    ),
     component_loader: () =>
-      Promise.resolve({ default: LeadsSection }),
+      Promise.resolve({ default: LeaseRenewalWindowSection }),
   },
   {
-    key: 'deals',
-    label: 'Deals',
-    icon: 'handshake',
-    entity_type: 'deals',
-    sort_order: 50,
-    visibility_predicate: customerSectionPredicate('deals'),
-    component_loader: () =>
-      Promise.resolve({ default: DealsSection }),
-  },
-  {
-    key: 'kra-filings',
-    label: KRA_FILINGS_LABEL,
+    key: 'kra-vat-filing',
+    label: 'KRA VAT Filing',
     icon: 'file-text',
-    entity_type: 'kra-filings',
+    entity_type: sectionSignalKeys.kraVatFilingWindow,
+    sort_order: 50,
+    visibility_predicate: customerSectionPredicate(
+      sectionSignalKeys.kraVatFilingWindow,
+    ),
+    component_loader: () =>
+      Promise.resolve({ default: KraVatFilingSection }),
+  },
+  {
+    key: 'tra-vat-filing',
+    label: 'TRA VAT Filing',
+    icon: 'file-text',
+    entity_type: sectionSignalKeys.traVatFilingWindow,
     sort_order: 60,
-    visibility_predicate: customerSectionPredicate('kra-filings'),
+    visibility_predicate: customerSectionPredicate(
+      sectionSignalKeys.traVatFilingWindow,
+    ),
     component_loader: () =>
-      Promise.resolve({ default: KraFilingsSection }),
+      Promise.resolve({ default: TraVatFilingSection }),
   },
   {
-    key: 'campaigns',
-    label: 'Campaigns',
-    icon: 'megaphone',
-    entity_type: 'campaigns',
+    key: 'vacancy-listings',
+    label: 'Vacancies',
+    icon: 'home',
+    entity_type: sectionSignalKeys.vacancyListings,
     sort_order: 70,
-    visibility_predicate: customerSectionPredicate('campaigns'),
+    visibility_predicate: customerSectionPredicate(
+      sectionSignalKeys.vacancyListings,
+    ),
     component_loader: () =>
-      Promise.resolve({ default: CampaignsSection }),
+      Promise.resolve({ default: VacancyListingsSection }),
   },
   {
-    key: 'recommendations',
-    label: 'Recommendations',
-    icon: 'sparkles',
-    entity_type: 'recommendations',
+    key: 'accountant-month-end',
+    label: 'Month-End Close',
+    icon: 'calendar-check',
+    entity_type: sectionSignalKeys.accountantMonthEnd,
     sort_order: 80,
-    visibility_predicate: customerSectionPredicate('recommendations'),
+    visibility_predicate: customerSectionPredicate(
+      sectionSignalKeys.accountantMonthEnd,
+    ),
     component_loader: () =>
-      Promise.resolve({ default: RecommendationsSection }),
+      Promise.resolve({ default: AccountantMonthEndSection }),
   },
   {
     key: 'internal-staff',
     label: 'Internal Staff',
     icon: 'shield',
-    entity_type: 'internal-staff',
+    entity_type: sectionSignalKeys.internalStaff,
     sort_order: 90,
     scopes: ['internal-admin'],
-    // Internal staff: visible only to internal-admin scope, and only when
-    // the viewer holds the platform_ops role. Belt-and-braces in case the
-    // section ever leaks into another scope by configuration error.
+    // Internal staff: visible only to internal-admin scope, and only
+    // when the viewer holds the platform_ops or platform_admin role.
+    // Belt-and-braces in case the section ever leaks into another
+    // scope by configuration error.
     visibility_predicate: {
       kind: 'and',
       preds: [
-        { kind: 'has-entities', entity_type: 'internal-staff' },
+        { kind: 'has-entities', entity_type: sectionSignalKeys.internalStaff },
         { kind: 'role-allowed', roles: ['platform_ops', 'platform_admin'] },
       ],
     },
@@ -167,8 +204,8 @@ export const seedSections: readonly Section[] = [
 
 /**
  * Sorted keys for the seed registry — exported for tests +
- * documentation. Stable order matters because portal URL slugs
- * derive from these keys.
+ * documentation. Stable order matters because portal URL slugs derive
+ * from these keys.
  */
 export const seedSectionKeys: readonly string[] = seedSections.map(
   (s) => s.key,

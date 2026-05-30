@@ -1,57 +1,64 @@
 /**
- * Seed section components for the J1 entity types.
+ * Seed section components — real-estate adaptive surfaces.
  *
- * Each component is a thin stub that:
- *   1. Renders a placeholder ag-ui-shaped surface (so the visual
- *      regression baseline for the host portals is already accurate).
- *   2. Declares the data slice it would fetch in production —
- *      annotated for the backlog so CL-B1's portal wiring follow-up has a
- *      clear hook point.
+ * Each component is a thin shell that:
+ *   1. Renders an adaptive card with a copy block + a deferred GenUI
+ *      mount point that the host portal swaps in (data table, kanban,
+ *      timeline, etc.). The card already paints with no data so the
+ *      visual regression baseline for the host portals is stable.
+ *   2. Carries `data-testid` + `data-section-key` so the portal-side
+ *      tests can target a section without coupling to its label copy.
  *
- * Why stubs: this package ships the FRAMEWORK. The portal-side
- * wiring (real data, real navigation) happens in a follow-up after
- * CL-B1's round-3 closure on owner-portal + admin-platform-portal
- * lands. The stubs are the contract — same prop shape, same data-
- * testid surface — so the wiring PR can drop in real implementations
- * without churn.
+ * Why shells (not full implementations): the dynamic-sections package
+ * ships the FRAMEWORK + the contract. The host portals (owner-portal,
+ * admin-platform-portal) drop in real implementations via React Query
+ * loaders and route navigation. The shells guarantee the same prop
+ * shape + the same testid surface so the wiring can evolve without
+ * churn.
  */
 
 import type { ReactElement } from 'react';
 import type { SectionComponentProps } from '../contracts/section.js';
 
-interface StubProps extends SectionComponentProps {
+interface ShellProps extends SectionComponentProps {
   readonly title: string;
   readonly description: string;
   readonly genUiPartKind: string;
+  readonly sectionKey: string;
 }
 
-function SectionStub({
+function SectionShell({
   title,
   description,
   genUiPartKind,
+  sectionKey,
   entityType,
   tenantId,
   scope,
   localisedTitle,
   localisedDescription,
-}: StubProps): ReactElement {
+}: ShellProps): ReactElement {
   return (
     <article
-      data-testid={`section-stub-${entityType}`}
+      data-testid={`section-shell-${sectionKey}`}
+      data-section-key={sectionKey}
       data-genui-kind={genUiPartKind}
       data-scope={scope}
       data-tenant-id={tenantId}
-      className="w-full p-4 md:p-6 space-y-3"
+      data-entity-type={entityType}
+      className="w-full p-4 md:p-6 space-y-3 rounded-lg border border-gray-200 bg-white"
     >
       <header className="space-y-1">
         <h2 className="text-lg md:text-xl font-semibold text-slate-900">
           {localisedTitle ?? title}
         </h2>
-        <p className="text-sm text-slate-600 max-w-prose">{localisedDescription ?? description}</p>
+        <p className="text-sm text-slate-600 max-w-prose">
+          {localisedDescription ?? description}
+        </p>
       </header>
       <div
-        data-testid={`section-stub-${entityType}-genui-frame`}
-        className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs font-mono text-slate-500"
+        data-testid={`section-shell-${sectionKey}-genui-frame`}
+        className="rounded-md border border-slate-200 bg-slate-50 p-4 text-xs font-mono text-slate-500"
       >
         {`<${genUiPartKind} tenantId="${tenantId}" entityType="${entityType}" scope="${scope}" />`}
       </div>
@@ -59,108 +66,128 @@ function SectionStub({
   );
 }
 
-export function EmployeesSection(props: SectionComponentProps): ReactElement {
+export function ActiveLeasesSection(
+  props: SectionComponentProps,
+): ReactElement {
   return (
-    <SectionStub
+    <SectionShell
       {...props}
-      title="Employees"
-      description="Roster of internal HR records — driven by the kra-resident workforce graph."
-      genUiPartKind="data-table"
+      sectionKey="active-leases"
+      title="Active Leases"
+      description="Currently in-effect tenancy agreements across your portfolio."
+      genUiPartKind="lease-table"
     />
   );
 }
 
-export function CustomersSection(props: SectionComponentProps): ReactElement {
+export function RentDueSoonSection(
+  props: SectionComponentProps,
+): ReactElement {
   return (
-    <SectionStub
+    <SectionShell
       {...props}
-      title="Customers"
-      description="Tenants, occupants, and individual lessees the MD has onboarded."
-      genUiPartKind="data-table"
+      sectionKey="rent-due-soon"
+      title="Rent Due Soon"
+      description="Invoices falling due in the next 7 days — chase before they become arrears."
+      genUiPartKind="invoice-stream"
     />
   );
 }
 
-export function PropertiesSection(props: SectionComponentProps): ReactElement {
+export function MaintenanceOpenSection(
+  props: SectionComponentProps,
+): ReactElement {
   return (
-    <SectionStub
+    <SectionShell
       {...props}
-      title="Properties"
-      description="Units, buildings, and the spatial graph the property-management stack operates on."
-      genUiPartKind="map"
+      sectionKey="maintenance-open"
+      title="Open Maintenance"
+      description="Active maintenance tickets — what your estate manager is closing this week."
+      genUiPartKind="ticket-kanban"
     />
   );
 }
 
-export function LeadsSection(props: SectionComponentProps): ReactElement {
+export function LeaseRenewalWindowSection(
+  props: SectionComponentProps,
+): ReactElement {
   return (
-    <SectionStub
+    <SectionShell
       {...props}
-      title="Leads"
-      description="Prospective tenants in the top-of-funnel pipeline."
-      genUiPartKind="kanban"
+      sectionKey="lease-renewal-window"
+      title="Renewals (next 90 days)"
+      description="Leases expiring within 90 days — start renegotiation now to avoid vacancy."
+      genUiPartKind="renewal-timeline"
     />
   );
 }
 
-export function DealsSection(props: SectionComponentProps): ReactElement {
+export function KraVatFilingSection(
+  props: SectionComponentProps,
+): ReactElement {
   return (
-    <SectionStub
+    <SectionShell
       {...props}
-      title="Deals"
-      description="Active negotiations + active leasing pipelines."
-      genUiPartKind="kanban"
+      sectionKey="kra-vat-filing"
+      title="KRA VAT Filing"
+      description="Kenya Revenue Authority VAT return — submit before the 20th of the month."
+      genUiPartKind="filing-checklist"
     />
   );
 }
 
-// "KRA Filings" is a Kenya-specific tax-authority surface (Kenya Revenue
-// Authority). The literal is the canonical name of the regulator and
-// only renders when the consumer does NOT pass `localisedTitle` — and
-// in that situation it is correct to render the English name (it is a
-// proper noun, like "IRS" in the US).
-const KRA_FILINGS_DEFAULT_TITLE = 'KRA Filings';
-
-export function KraFilingsSection(props: SectionComponentProps): ReactElement {
+export function TraVatFilingSection(
+  props: SectionComponentProps,
+): ReactElement {
   return (
-    <SectionStub
+    <SectionShell
       {...props}
-      title={KRA_FILINGS_DEFAULT_TITLE}
-      description="Statutory filings + their submission status to the tax authority."
-      genUiPartKind="timeline"
+      sectionKey="tra-vat-filing"
+      title="TRA VAT Filing"
+      description="Tanzania Revenue Authority VAT return — submit before the 20th of the month."
+      genUiPartKind="filing-checklist"
     />
   );
 }
 
-export function CampaignsSection(props: SectionComponentProps): ReactElement {
+export function VacancyListingsSection(
+  props: SectionComponentProps,
+): ReactElement {
   return (
-    <SectionStub
+    <SectionShell
       {...props}
-      title="Campaigns"
-      description="Marketing-brain outreach campaigns + open conversion funnels."
-      genUiPartKind="dashboard-grid"
+      sectionKey="vacancy-listings"
+      title="Vacancy Listings"
+      description="Vacant units across your portfolio — list, market, fill."
+      genUiPartKind="vacancy-grid"
     />
   );
 }
 
-export function RecommendationsSection(props: SectionComponentProps): ReactElement {
+export function AccountantMonthEndSection(
+  props: SectionComponentProps,
+): ReactElement {
   return (
-    <SectionStub
+    <SectionShell
       {...props}
-      title="Recommendations"
-      description="AI-generated actions queued for the MD's review."
-      genUiPartKind="evidence-card"
+      sectionKey="accountant-month-end"
+      title="Month-End Close"
+      description="Reconciliation, statements, and accruals due before month-end cutoff."
+      genUiPartKind="close-checklist"
     />
   );
 }
 
-export function InternalStaffSection(props: SectionComponentProps): ReactElement {
+export function InternalStaffSection(
+  props: SectionComponentProps,
+): ReactElement {
   return (
-    <SectionStub
+    <SectionShell
       {...props}
+      sectionKey="internal-staff"
       title="Internal Staff"
       description="Platform-side operators — visible only to the internal-admin scope."
-      genUiPartKind="data-table"
+      genUiPartKind="staff-table"
     />
   );
 }

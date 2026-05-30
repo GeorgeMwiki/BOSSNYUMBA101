@@ -101,5 +101,7 @@ export {
 export {
   seedSections,
   seedSectionKeys,
+  sectionSignalKeys,
   createSeedRegistry,
+  type SectionSignalKey,
 } from './seed/index.js';

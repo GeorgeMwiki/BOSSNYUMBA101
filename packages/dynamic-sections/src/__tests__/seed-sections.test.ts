@@ -1,7 +1,7 @@
 /**
- * Seed-registry shape tests — verify the J1 seed covers the spec's
- * nine entity types, scopes are correct, and the convenience
- * `createSeedRegistry` factory works.
+ * Seed-registry shape tests — verify the real-estate seed covers the
+ * eight customer signal sections + the platform-staff section, scopes
+ * are correct, and the `createSeedRegistry` factory works.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import {
   createSeedRegistry,
   seedSections,
   seedSectionKeys,
+  sectionSignalKeys,
 } from '../seed/index.js';
 import { filterSections } from '../registry/filter.js';
 import type { SectionContext } from '../contracts/section.js';
@@ -25,16 +26,16 @@ function ctx(over: Partial<SectionContext> = {}): SectionContext {
 }
 
 describe('seedSections', () => {
-  it('covers all nine J1 entity types', () => {
+  it('covers all nine real-estate seed sections', () => {
     const expected = [
-      'employees',
-      'customers',
-      'properties',
-      'leads',
-      'deals',
-      'kra-filings',
-      'campaigns',
-      'recommendations',
+      'active-leases',
+      'rent-due-soon',
+      'maintenance-open',
+      'lease-renewal-window',
+      'kra-vat-filing',
+      'tra-vat-filing',
+      'vacancy-listings',
+      'accountant-month-end',
       'internal-staff',
     ].sort();
     expect([...seedSectionKeys].sort()).toEqual(expected);
@@ -53,20 +54,48 @@ describe('seedSections', () => {
     }
   });
 
-  it('owner-customer with zero entities sees zero tabs', () => {
+  it('owner-customer with zero signals sees zero sections', () => {
     const visible = filterSections(seedSections, ctx());
     expect(visible).toEqual([]);
   });
 
-  it('owner-customer with two entity types sees exactly those two tabs', () => {
+  it('owner-customer with active-leases + rent-due-soon sees exactly those two sections', () => {
     const visible = filterSections(
       seedSections,
-      ctx({ entityCounts: { customers: 3, properties: 1 } }),
+      ctx({
+        entityCounts: {
+          [sectionSignalKeys.activeLeases]: 3,
+          [sectionSignalKeys.rentDueSoon]: 2,
+        },
+      }),
     );
-    expect(visible.map((s) => s.key)).toEqual(['customers', 'properties']);
+    expect(visible.map((s) => s.key)).toEqual([
+      'active-leases',
+      'rent-due-soon',
+    ]);
   });
 
-  it('internal-admin with zero entities + platform_ops role sees the customer-section override (all customer sections visible)', () => {
+  it('owner-customer in the KRA filing window sees the kra-vat-filing section', () => {
+    const visible = filterSections(
+      seedSections,
+      ctx({
+        entityCounts: { [sectionSignalKeys.kraVatFilingWindow]: 1 },
+      }),
+    );
+    expect(visible.map((s) => s.key)).toContain('kra-vat-filing');
+  });
+
+  it('owner-customer in the month-end window sees the accountant-month-end section', () => {
+    const visible = filterSections(
+      seedSections,
+      ctx({
+        entityCounts: { [sectionSignalKeys.accountantMonthEnd]: 1 },
+      }),
+    );
+    expect(visible.map((s) => s.key)).toContain('accountant-month-end');
+  });
+
+  it('internal-admin with zero signals + platform_ops role sees the eight customer-section overrides', () => {
     const visible = filterSections(
       seedSections,
       ctx({
@@ -74,50 +103,50 @@ describe('seedSections', () => {
         roles: ['platform_ops'],
       }),
     );
-    // Eight customer sections + internal-staff requires `has-entities`.
+    // Eight customer sections; internal-staff still requires `has-entities`.
     expect(visible.map((s) => s.key)).toEqual([
-      'employees',
-      'customers',
-      'properties',
-      'leads',
-      'deals',
-      'kra-filings',
-      'campaigns',
-      'recommendations',
+      'active-leases',
+      'rent-due-soon',
+      'maintenance-open',
+      'lease-renewal-window',
+      'kra-vat-filing',
+      'tra-vat-filing',
+      'vacancy-listings',
+      'accountant-month-end',
     ]);
   });
 
-  it('internal-admin with the internal-staff entity + platform_ops role sees the staff tab', () => {
+  it('internal-admin with internal-staff signal + platform_ops role sees the staff section', () => {
     const visible = filterSections(
       seedSections,
       ctx({
         scope: 'internal-admin',
         roles: ['platform_ops'],
-        entityCounts: { 'internal-staff': 4 },
+        entityCounts: { [sectionSignalKeys.internalStaff]: 4 },
       }),
     );
     expect(visible.map((s) => s.key)).toContain('internal-staff');
   });
 
-  it('owner-customer never sees the internal-staff tab even with entities', () => {
+  it('owner-customer never sees the internal-staff section even with signals', () => {
     const visible = filterSections(
       seedSections,
       ctx({
         scope: 'owner-customer',
         roles: ['platform_ops'],
-        entityCounts: { 'internal-staff': 4 },
+        entityCounts: { [sectionSignalKeys.internalStaff]: 4 },
       }),
     );
     expect(visible.map((s) => s.key)).not.toContain('internal-staff');
   });
 
-  it('internal-staff requires platform role, not just data presence', () => {
+  it('internal-staff requires platform role, not just signal presence', () => {
     const visible = filterSections(
       seedSections,
       ctx({
         scope: 'internal-admin',
-        roles: ['md'],
-        entityCounts: { 'internal-staff': 4 },
+        roles: ['owner'],
+        entityCounts: { [sectionSignalKeys.internalStaff]: 4 },
       }),
     );
     expect(visible.map((s) => s.key)).not.toContain('internal-staff');
@@ -137,7 +166,7 @@ describe('seedSections', () => {
     );
   });
 
-  it('sort_order is unique across the seed (deterministic tab ordering)', () => {
+  it('sort_order is unique across the seed (deterministic ordering)', () => {
     const orders = seedSections.map((s) => s.sort_order);
     expect(new Set(orders).size).toBe(orders.length);
   });
