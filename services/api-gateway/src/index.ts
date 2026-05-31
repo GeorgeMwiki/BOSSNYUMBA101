@@ -374,6 +374,10 @@ import {
 // WRITE brain tool appends a row so the owner gets a "Undo (4:58)" chip
 // on every chat-initiated write. Backs `bossnyumba.ui.undo_last_action`.
 import { ownerUndoJournalRouter } from './routes/owner/undo-journal.hono';
+// Wave SUPERPOWERS — chat-callable bulk operation surface. HIGH-risk
+// policy prefix (requiresPolicyRuleLiteral=true on the brain-tool).
+// Mounted at /api/v1/owner/superpowers/bulk-action.
+import { ownerSuperpowersBulkActionRouter } from './routes/owner/superpowers/bulk-action.hono';
 import { supportRouter } from './routes/owner/support.router';
 import { adminUsersRouter } from './routes/owner/admin-users.router';
 import { buildServices, type ServiceRegistry } from './composition/service-registry';
@@ -1338,6 +1342,11 @@ api.route('/public/share', publicShareResolverRouter);
 // Wave SUPERPOWERS — generic 5-min undo ledger (mig 0298). Tenant-
 // scoped via JWT + RLS FORCE. Backs `bossnyumba.ui.undo_last_action`.
 api.route('/owner/undo-journal', ownerUndoJournalRouter);
+// Wave SUPERPOWERS — chat-callable bulk operations. Tenant-scoped via
+// JWT + RLS FORCE. Backs `bossnyumba.ui.bulk_action` (HIGH-risk policy
+// prefix; the brain-tool enforces requiresPolicyRuleLiteral=true and
+// the route duplicates the BN whitelist matrix as a defense in depth).
+api.route('/owner/superpowers/bulk-action', ownerSuperpowersBulkActionRouter);
 api.route('/support', supportRouter);
 api.route('/admin', adminUsersRouter);
 // Unit subdivision + components — Manager-app dependency. Hono mounts
