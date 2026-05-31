@@ -1,0 +1,22 @@
+{
+  "name": "@bossnyumba/translation",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "translate() facade — DB-cached, Claude-backed. Mirrors @borjie/translation. Wraps Anthropic SDK with a translation_cache table so repeated string translations short-circuit before hitting Claude. Used by every non-chat surface that produces user-facing text: emails, PDFs, push, SMS, audit log render, decision-journal render, webhooks, cron workers. Real-estate (BossNyumba) domain hint in the system prompt; Tanzanian Swahili variant rule preserved.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.97.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

@@ -47,6 +47,7 @@
     "@bossnyumba/conformal-calibration-online": "workspace:*",
     "@bossnyumba/connectors": "workspace:*",
     "@bossnyumba/database": "workspace:*",
+    "@bossnyumba/translation": "workspace:*",
     "@bossnyumba/dispatch-router": "workspace:*",
     "@bossnyumba/document-ai": "workspace:*",
     "@bossnyumba/document-quality-guarantor": "workspace:*",

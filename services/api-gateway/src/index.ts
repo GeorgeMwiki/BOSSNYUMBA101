@@ -693,6 +693,15 @@ try {
   serviceRegistry = buildServices({ db: null });
 }
 
+// ----------------------------------------------------------------------------
+// Translation facade binding — runs once after the service registry is up so
+// every consumer of `translate(...)` in @bossnyumba/translation resolves to
+// the real Claude-backed + Drizzle-cached implementation. Fails open with a
+// logged warning when ANTHROPIC_API_KEY is missing.
+// ----------------------------------------------------------------------------
+import { wireTranslation } from './composition/translation-wiring';
+wireTranslation({ db: getDb(), logger });
+
 // Wave 12 — heartbeat engine + Wave 27 Agent F risk-recompute dispatcher.
 // Constructed here (ahead of the api routes) because the risk-recompute
 // router needs accessors to the dispatcher + in-memory job tracker the
