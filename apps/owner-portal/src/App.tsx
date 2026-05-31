@@ -6,6 +6,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SpotlightMount } from './components/SpotlightMount';
 import { MwikilaWidgetMount } from './components/MwikilaWidgetMount';
 import { Layout } from './components/Layout';
+import { OwnerTabsProvider } from './state/OwnerTabsProvider';
+import { SpawnedTabsStrip } from './components/SpawnedTabsStrip';
 
 // ── EAGER (kept in initial bundle) ──────────────────────────────────
 // Auth gates + login / register / invite must paint instantly because
@@ -256,6 +258,7 @@ function HomeRedirect() {
 function App() {
   return (
     <AuthProvider>
+      <OwnerTabsProvider>
       <MwikilaWidgetMount>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
@@ -273,6 +276,7 @@ function App() {
           element={
             <PrivateRoute>
               <Layout>
+                <SpawnedTabsStrip />
                 <Suspense fallback={<RouteSuspenseFallback />}>
                   <Routes>
                     <Route path="/" element={<HomeRedirect />} />
@@ -373,6 +377,7 @@ function App() {
       </Routes>
       <SpotlightMount />
       </MwikilaWidgetMount>
+      </OwnerTabsProvider>
     </AuthProvider>
   );
 }

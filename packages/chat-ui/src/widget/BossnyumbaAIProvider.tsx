@@ -19,6 +19,7 @@ import {
 import { buildRouteContext } from './route-context';
 import { useUnifiedChat } from './useUnifiedChat';
 import { useWidgetLanguage } from './useWidgetLanguage';
+import type { ChatStreamEvent } from '../hooks/useChatStream';
 
 interface BossnyumbaAIContextValue {
   readonly chat: UnifiedChat;
@@ -41,6 +42,17 @@ export interface BossnyumbaAIProviderProps {
     readonly en?: Partial<WidgetStrings>;
     readonly sw?: Partial<WidgetStrings>;
   };
+  /**
+   * Optional tap into the raw SSE event stream. Fires for every parsed
+   * frame (delta / tool_call / tab_spawn / spawn_tabs / turn_end …) so
+   * surfaces can subscribe to brain side-effects (e.g. the owner-portal
+   * tab store pipes this through `handleTabSseFrame` to spawn or augment
+   * tabs from chat-driven conversation).
+   *
+   * The chat-ui widget itself does NOT consume tab events — this prop
+   * keeps the chat surface domain-agnostic.
+   */
+  readonly onChatEvent?: (event: ChatStreamEvent) => void;
 }
 
 export function BossnyumbaAIProvider({
@@ -53,6 +65,7 @@ export function BossnyumbaAIProvider({
   featureEnabled = true,
   endpoint,
   strings,
+  onChatEvent,
 }: BossnyumbaAIProviderProps): JSX.Element {
   const { language, setLanguage } = useWidgetLanguage(defaultLanguage);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
@@ -71,6 +84,7 @@ export function BossnyumbaAIProvider({
     setSoundsEnabled,
     voiceEnabled,
     setVoiceEnabled,
+    onChatEvent,
   });
 
   const mergedStrings = useMemo<WidgetStrings>(() => {

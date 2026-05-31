@@ -34,6 +34,12 @@ export interface UseUnifiedChatOptions {
   readonly voiceEnabled: boolean;
   readonly setVoiceEnabled: (on: boolean) => void;
   readonly onReceive?: (msg: ChatMessage) => void;
+  /**
+   * Optional tap into the raw SSE event stream — fires for EVERY parsed
+   * frame in addition to the chat-ui's own delta-aggregation. Used by
+   * the owner-portal to route tab-spawning events into the tabs store.
+   */
+  readonly onChatEvent?: (event: ChatStreamEvent) => void;
 }
 
 /**
@@ -70,6 +76,7 @@ export function useUnifiedChat(options: UseUnifiedChatOptions): UnifiedChat {
     voiceEnabled,
     setVoiceEnabled,
     onReceive,
+    onChatEvent,
   } = options;
 
   const [messages, setMessages] = useState<readonly ChatMessage[]>([]);
@@ -102,8 +109,19 @@ export function useUnifiedChat(options: UseUnifiedChatOptions): UnifiedChat {
     [tenantId],
   );
 
+  // Stable ref so the outer subscriber callback can be passed without
+  // re-running the stream effect every render.
+  const onChatEventRef = useRef<typeof onChatEvent>(onChatEvent);
+  onChatEventRef.current = onChatEvent;
+
   const onEvent = useCallback(
     (event: ChatStreamEvent) => {
+      // Outer subscriber fires FIRST so it sees every event (including
+      // tab_spawn / spawn_tabs / etc.) before the chat-ui's own delta
+      // aggregation potentially short-circuits when no active assistant
+      // message exists (e.g. the brain emits a tab tag before the first
+      // delta).
+      onChatEventRef.current?.(event);
       const activeId = activeMwikilaIdRef.current;
       if (!activeId) return;
       if (event.type === 'delta') {
