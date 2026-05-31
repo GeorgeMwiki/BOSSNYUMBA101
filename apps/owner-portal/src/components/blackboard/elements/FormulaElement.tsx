@@ -14,13 +14,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
-import type { z } from 'zod';
-import { boardElementSchema, type Bilingual } from '@bossnyumba/chat-ui';
+import type { FormulaBoardElement, Bilingual } from '@bossnyumba/chat-ui';
 
-type FormulaPayload = Extract<
-  z.infer<typeof boardElementSchema>,
-  { type: 'formula' }
->;
+// Direct schema-inferred type — bypasses Extract<...> which collapses
+// to `never` under stricter TS inference of zod's discriminated union.
+type FormulaPayload = FormulaBoardElement;
 
 const TYPE_ON_MS_PER_CHAR = 28;
 

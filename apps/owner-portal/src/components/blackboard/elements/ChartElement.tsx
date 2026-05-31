@@ -23,13 +23,11 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { z } from 'zod';
-import { boardElementSchema, type Bilingual } from '@bossnyumba/chat-ui';
+import type { ChartBoardElement, Bilingual } from '@bossnyumba/chat-ui';
 
-type ChartPayload = Extract<
-  z.infer<typeof boardElementSchema>,
-  { type: 'chart' }
->;
+// Direct schema-inferred type — bypasses Extract<...> which collapses
+// to `never` under stricter TS inference of zod's discriminated union.
+type ChartPayload = ChartBoardElement;
 type SeriesColor = NonNullable<ChartPayload['series'][number]['color']>;
 
 const COLOR_HEX: Record<SeriesColor, string> = {

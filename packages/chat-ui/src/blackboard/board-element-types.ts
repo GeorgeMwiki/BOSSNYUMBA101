@@ -218,6 +218,21 @@ export const boardElementSchema = z.discriminatedUnion('type', [
 export type BoardElement = z.infer<typeof boardElementSchema>;
 export type BoardElementType = BoardElement['type'];
 
+// Per-variant element types. Inferring each schema directly (rather
+// than `Extract<BoardElement, { type: '…' }>`) preserves the literal
+// discriminator and the variant's narrowed property set under stricter
+// TS inference — components in apps/owner-portal/src/components/
+// blackboard/elements/ rely on these for prop typing.
+export type FormulaBoardElement = z.infer<typeof formulaSchema>;
+export type DiagramBoardElement = z.infer<typeof diagramSchema>;
+export type ChartBoardElement = z.infer<typeof chartSchema>;
+export type ComparisonBoardElement = z.infer<typeof comparisonSchema>;
+export type ImageBoardElement = z.infer<typeof imageSchema>;
+export type TextBoardElement = z.infer<typeof textSchema>;
+export type HighlightBoardElement = z.infer<typeof highlightSchema>;
+export type ArrowBoardElement = z.infer<typeof arrowSchema>;
+export type SketchBoardElement = z.infer<typeof sketchSchema>;
+
 export const BOARD_ELEMENT_TYPES: ReadonlyArray<BoardElementType> = [
   'formula',
   'diagram',

@@ -35,6 +35,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import { useFeatureFlag } from '../lib/useFeatureFlag';
 import { AdaptiveSectionsPanel } from './AdaptiveSectionsPanel';
+import { ROUTES } from '../lib/routes';
 
 interface LayoutProps {
   children: React.ReactNode;

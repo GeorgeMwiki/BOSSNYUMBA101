@@ -9,6 +9,15 @@ export {
   type BoardElementType,
   type BoardElementEnvelope,
   type Bilingual,
+  type FormulaBoardElement,
+  type DiagramBoardElement,
+  type ChartBoardElement,
+  type ComparisonBoardElement,
+  type ImageBoardElement,
+  type TextBoardElement,
+  type HighlightBoardElement,
+  type ArrowBoardElement,
+  type SketchBoardElement,
 } from './board-element-types.js';
 export {
   parseBoardElements,

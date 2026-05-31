@@ -8,13 +8,11 @@
  */
 
 import type { ReactElement } from 'react';
-import type { z } from 'zod';
-import { boardElementSchema, type Bilingual } from '@bossnyumba/chat-ui';
+import type { ComparisonBoardElement, Bilingual } from '@bossnyumba/chat-ui';
 
-type ComparisonPayload = Extract<
-  z.infer<typeof boardElementSchema>,
-  { type: 'comparison' }
->;
+// Direct schema-inferred type — bypasses Extract<...> which collapses
+// to `never` under stricter TS inference of zod's discriminated union.
+type ComparisonPayload = ComparisonBoardElement;
 type Card = ComparisonPayload['cardA'];
 
 function pick(b: Bilingual, lang: 'sw' | 'en'): string {

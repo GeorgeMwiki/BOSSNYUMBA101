@@ -13,13 +13,11 @@
  */
 
 import type { ReactElement } from 'react';
-import type { z } from 'zod';
-import { boardElementSchema, type Bilingual } from '@bossnyumba/chat-ui';
+import type { DiagramBoardElement, Bilingual } from '@bossnyumba/chat-ui';
 
-type DiagramPayload = Extract<
-  z.infer<typeof boardElementSchema>,
-  { type: 'diagram' }
->;
+// Direct schema-inferred type — bypasses Extract<...> which collapses
+// to `never` under stricter TS inference of zod's discriminated union.
+type DiagramPayload = DiagramBoardElement;
 type DiagramNode = DiagramPayload['nodes'][number];
 
 function pick(b: Bilingual, lang: 'sw' | 'en'): string {

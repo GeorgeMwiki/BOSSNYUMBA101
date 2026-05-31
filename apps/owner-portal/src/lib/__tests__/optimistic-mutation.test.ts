@@ -1,14 +1,23 @@
 /**
  * optimistic-mutation — onMutate/onError/onSettled lifecycle test.
+ *
+ * react-query v5 added a `MutationFunctionContext` arg to onMutate /
+ * onSuccess / onError / onSettled. We build a typed `mfContext` stub
+ * once and pass it everywhere so the test signatures match the v5
+ * `MutationOptions` declaration exactly.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, type MutationFunctionContext } from '@tanstack/react-query';
 
 import { buildOptimisticMutation } from '../optimistic-mutation';
 
 interface LeaseRow {
   readonly id: string;
   readonly status: string;
+}
+
+function makeContext(queryClient: QueryClient): MutationFunctionContext {
+  return { client: queryClient, meta: undefined };
 }
 
 describe('buildOptimisticMutation', () => {
@@ -33,13 +42,15 @@ describe('buildOptimisticMutation', () => {
         ),
     });
 
+    const mfContext = makeContext(queryClient);
+
     // Simulate onMutate manually since we are not running react-query.
-    const context = await options.onMutate?.({ leaseId: 'l-1' });
+    const context = await options.onMutate?.({ leaseId: 'l-1' }, mfContext);
     const optimistic = queryClient.getQueryData<LeaseRow[]>([...queryKey]);
     expect(optimistic?.[0]?.status).toBe('pending_termination');
 
     // Simulate onError rollback.
-    options.onError?.(new Error('boom'), { leaseId: 'l-1' }, context);
+    options.onError?.(new Error('boom'), { leaseId: 'l-1' }, context, mfContext);
     const rolledBack = queryClient.getQueryData<LeaseRow[]>([...queryKey]);
     expect(rolledBack?.[0]?.status).toBe('active');
   });
@@ -53,7 +64,7 @@ describe('buildOptimisticMutation', () => {
       mutationFn: vi.fn(),
       applyOptimistic: (prev) => prev,
     });
-    const context = await options.onMutate?.({ leaseId: 'x' });
+    const context = await options.onMutate?.({ leaseId: 'x' }, makeContext(queryClient));
     expect(context?.previous).toBeUndefined();
   });
 });

@@ -297,9 +297,12 @@ export function SuperpowerChips(
   );
 
   const onHighlight = useCallback((chip: UiHighlightChip) => {
+    // Build the message bilingual object explicitly so the HighlightEvent
+    // type sees concrete `en: string; sw: string` (zod's `.strict()`
+    // infers optional under exactOptionalPropertyTypes).
     publishHighlight({
       selector: chip.selector,
-      message: chip.message,
+      message: { en: chip.message.en, sw: chip.message.sw },
       ttl: chip.ttl ?? 8000,
       tone: chip.tone ?? 'info',
     });

@@ -9,29 +9,23 @@
  */
 
 import type { ReactElement } from 'react';
-import type { z } from 'zod';
-import { boardElementSchema, type Bilingual } from '@bossnyumba/chat-ui';
+import type {
+  Bilingual,
+  TextBoardElement,
+  ImageBoardElement,
+  HighlightBoardElement,
+  ArrowBoardElement,
+  SketchBoardElement,
+} from '@bossnyumba/chat-ui';
 
-type TextPayload = Extract<
-  z.infer<typeof boardElementSchema>,
-  { type: 'text' }
->;
-type ImagePayload = Extract<
-  z.infer<typeof boardElementSchema>,
-  { type: 'image' }
->;
-type HighlightPayload = Extract<
-  z.infer<typeof boardElementSchema>,
-  { type: 'highlight' }
->;
-type ArrowPayload = Extract<
-  z.infer<typeof boardElementSchema>,
-  { type: 'arrow' }
->;
-type SketchPayload = Extract<
-  z.infer<typeof boardElementSchema>,
-  { type: 'sketch' }
->;
+// Direct per-variant schema-inferred types — bypassing
+// `Extract<BoardElement, { type: '…' }>` which collapses to `never`
+// under stricter TS inference of zod's discriminated-union output.
+type TextPayload = TextBoardElement;
+type ImagePayload = ImageBoardElement;
+type HighlightPayload = HighlightBoardElement;
+type ArrowPayload = ArrowBoardElement;
+type SketchPayload = SketchBoardElement;
 
 function pick(b: Bilingual, lang: 'sw' | 'en'): string {
   return lang === 'sw' ? b.sw : b.en;
