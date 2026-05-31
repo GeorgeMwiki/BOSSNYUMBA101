@@ -12,6 +12,7 @@ import {
   formatSliceHint,
   type SliceState,
 } from '@/components/ask/SliceSelector';
+import { useOptionalAdminTabs } from '@/state/AdminTabsProvider';
 
 /**
  * AskChat — the industry-observer conversation surface.
@@ -111,8 +112,56 @@ export function AskChat({
     [input, sending],
   );
 
+  const adminTabs = useOptionalAdminTabs();
+
   const dispatchEvent = useCallback(
     (streamingId: string, event: SseEvent) => {
+      // Wave OWNER-OS — brain-emitted tab events spawn / augment the
+      // HQ tab strip. Same SSE shapes the owner-portal handles; the
+      // admin-platform-portal binds its own store via AdminTabsProvider.
+      if (event.event === 'tab_spawn' && adminTabs) {
+        try {
+          const payload = JSON.parse(event.data) as {
+            tabType?: string;
+            tabId?: string;
+            title?: string;
+            config?: Record<string, unknown>;
+          };
+          if (
+            typeof payload.tabType === 'string' &&
+            typeof payload.title === 'string'
+          ) {
+            const inputForSpawn: {
+              kind: string;
+              title: string;
+              explicitId?: string;
+              context?: Readonly<Record<string, unknown>>;
+            } = {
+              kind: payload.tabType,
+              title: payload.title,
+            };
+            if (typeof payload.tabId === 'string' && payload.tabId.length > 0) {
+              inputForSpawn.explicitId = payload.tabId;
+            }
+            if (payload.config !== undefined) {
+              inputForSpawn.context = payload.config;
+            }
+            adminTabs.spawnOrAugment(inputForSpawn);
+          }
+        } catch (error) {
+          console.error('tab_spawn parse failed:', error);
+        }
+        return;
+      }
+      if (event.event === 'tab_remove' && adminTabs) {
+        try {
+          const payload = JSON.parse(event.data) as { tabId?: string };
+          if (typeof payload.tabId === 'string') adminTabs.close(payload.tabId);
+        } catch (error) {
+          console.error('tab_remove parse failed:', error);
+        }
+        return;
+      }
       if (event.event === 'assistant.delta') {
         try {
           const { text } = JSON.parse(event.data) as { text?: string };
@@ -161,7 +210,7 @@ export function AskChat({
         );
       }
     },
-    [],
+    [adminTabs],
   );
 
   const send = useCallback(async () => {

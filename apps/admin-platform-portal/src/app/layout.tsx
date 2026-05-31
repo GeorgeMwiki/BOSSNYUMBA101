@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { SensoriumProvider } from '@/lib/sensorium/SensoriumProvider';
 import { SessionReplayProvider } from '@/components/SessionReplayProvider';
+import { AdminTabsProvider } from '@/state/AdminTabsProvider';
+import { SpawnedTabsStrip } from '@/components/SpawnedTabsStrip';
 
 export const metadata: Metadata = {
   title: 'BossNyumba HQ',
@@ -37,7 +39,15 @@ export default function RootLayout({
             at ≈20Hz lives here; it is NEVER fed into the LLM context. */}
         <SessionReplayProvider surface="admin-platform-portal">
           <SensoriumProvider surface="admin-platform-portal">
-            {children}
+            {/* Wave OWNER-OS — admin-platform-portal tab strip
+                store + SSE-driven brain tab spawner. Reuses the
+                shared owner_tabs DB table; HQ staff sit in the
+                platform tenant so the (tenant_id, user_id) PK
+                isolates strips. */}
+            <AdminTabsProvider>
+              <SpawnedTabsStrip />
+              {children}
+            </AdminTabsProvider>
           </SensoriumProvider>
         </SessionReplayProvider>
       </body>
