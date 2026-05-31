@@ -370,6 +370,10 @@ import {
   ownerShareLinksRouter,
   publicShareResolverRouter,
 } from './routes/owner/share-links.hono';
+// Wave SUPERPOWERS — generic 5-min undo ledger (migration 0298). Every
+// WRITE brain tool appends a row so the owner gets a "Undo (4:58)" chip
+// on every chat-initiated write. Backs `bossnyumba.ui.undo_last_action`.
+import { ownerUndoJournalRouter } from './routes/owner/undo-journal.hono';
 import { supportRouter } from './routes/owner/support.router';
 import { adminUsersRouter } from './routes/owner/admin-users.router';
 import { buildServices, type ServiceRegistry } from './composition/service-registry';
@@ -1331,6 +1335,9 @@ api.route('/owner/saved-searches', savedSearchesRouter);
 // separately under /public/share so it stays outside the auth gate.
 api.route('/owner/share-links', ownerShareLinksRouter);
 api.route('/public/share', publicShareResolverRouter);
+// Wave SUPERPOWERS — generic 5-min undo ledger (mig 0298). Tenant-
+// scoped via JWT + RLS FORCE. Backs `bossnyumba.ui.undo_last_action`.
+api.route('/owner/undo-journal', ownerUndoJournalRouter);
 api.route('/support', supportRouter);
 api.route('/admin', adminUsersRouter);
 // Unit subdivision + components — Manager-app dependency. Hono mounts
