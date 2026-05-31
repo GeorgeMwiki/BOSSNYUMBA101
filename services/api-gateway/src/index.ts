@@ -332,7 +332,8 @@ import { createDecisionRetrospectiveWorker } from './workers/decision-retrospect
 // brain predictions whose horizon has elapsed, asks the per-entity
 // resolver for the ground-truth state, and writes the matched/divergent
 // reconciliation row. Previously created but never started.
-import { sql as drizzleSql } from 'drizzle-orm';
+// drizzleSql import removed — the Mwikila tenant-lister moved to
+// composition/mwikila-autonomous-wiring.ts where it owns its own sql import.
 import { createReconciliationWorker } from './workers/outcome-reconciliation-worker';
 import { buildRealEstateOutcomeResolvers } from './workers/outcome-reconciliation-resolvers';
 // Wave AUTONOMY — Mr. Mwikila autonomous worker. Ticks every 15
@@ -342,7 +343,7 @@ import { buildRealEstateOutcomeResolvers } from './workers/outcome-reconciliatio
 // canonical handler ports (rent_scheduler, regulatory_filing,
 // lease_renewal, payroll_prep, listing_counter_offer) as their
 // domain adapters come online.
-import { createMwikilaAutonomousWorker } from './workers/mwikila-autonomous-worker';
+import { createMwikilaAutonomousWiring } from './composition/mwikila-autonomous-wiring';
 import { createDecisionRecorder } from './services/decision-journal/recorder';
 import {
   registerDomainEventSubscribers,
@@ -1718,94 +1719,35 @@ const outcomeReconciliationWorker = serviceRegistry.db
       },
     };
 
-// Wave AUTONOMY — Mr. Mwikila autonomous worker. Wires the
-// per-tenant tick that walks every registered handler. Handlers
-// start empty in this commit because each handler's port adapters
-// (rent-scheduler invoice-already-exists check, regulatory-filing
-// portfolio snapshot, lease-renewal listing query, payroll attendance
-// rollup, listing-counter-offer open-bids reader) read from different
-// domain tables and land in follow-up commits per domain. The worker
-// timer is still armed so the cadence and shutdown path are exercised
-// from boot.
+// Wave AUTONOMY — Mr. Mwikila autonomous worker. Wires the per-tenant
+// tick through `createMwikilaAutonomousWiring` (see
+// `./composition/mwikila-autonomous-wiring.ts`) which assembles the
+// five canonical handlers with REAL Drizzle-backed ports:
 //
-// `MwikilaTenantPort.listActiveTenants` reads `tenants WHERE status =
-// 'active'` so the cron iterates every active workspace exactly once
-// per tick. RLS is satisfied because `tenants` is public-read for the
-// platform's own service role.
-const mwikilaAutonomousWorker = serviceRegistry.db
-  ? createMwikilaAutonomousWorker({
-      // No runtime/handlers wired yet — see Wave AUTONOMY comment above.
-      // The runtime stub returns null so the tick has nothing to do
-      // until sibling commits land the ports + handler factory wiring.
-      runtime: {
-        async run() {
-          return null;
-        },
-      },
-      tenants: {
-        async listActiveTenants() {
-          try {
-            const db = serviceRegistry.db as unknown as {
-              execute(q: unknown): Promise<unknown>;
-            };
-            // Active tenants × their canonical owner. `tenants` carries
-            // no owner_user_id column; we derive it from `user_roles`
-            // joined on the system 'OWNER' role. Tenants without an
-            // explicit OWNER row are skipped (worker has nothing to act
-            // on their behalf). Filter ensures one row per tenant by
-            // picking the earliest created assignment.
-            const result = await db.execute(
-              drizzleSql`
-                SELECT DISTINCT ON (t.id)
-                  t.id AS tenant_id,
-                  ur.user_id AS owner_user_id
-                FROM tenants t
-                JOIN user_roles ur ON ur.tenant_id = t.id
-                JOIN roles r ON r.id = ur.role_id
-                WHERE t.status = 'active'
-                  AND r.is_system = true
-                  AND r.name = 'OWNER'
-                ORDER BY t.id, ur.id ASC
-              `,
-            );
-            const rows = Array.isArray(result)
-              ? (result as ReadonlyArray<{ tenant_id?: unknown; owner_user_id?: unknown }>)
-              : ((result as { rows?: ReadonlyArray<{ tenant_id?: unknown; owner_user_id?: unknown }> })
-                  ?.rows ?? []);
-            return rows
-              .filter((r) => r.tenant_id && r.owner_user_id)
-              .map((r) => ({
-                tenantId: String(r.tenant_id),
-                ownerUserId: String(r.owner_user_id),
-              }));
-          } catch (err) {
-            logger.warn(
-              { err: err instanceof Error ? err.message : String(err) },
-              'mwikila autonomous worker: listActiveTenants failed',
-            );
-            return [];
-          }
-        },
-      },
-      handlers: [],
-      logger,
-      intervalMs:
-        Number(
-          process.env.BOSSNYUMBA_MWIKILA_AUTONOMOUS_INTERVAL_MS ??
-            15 * 60 * 1000,
-        ) || 15 * 60 * 1000,
-    })
-  : {
-      start() {},
-      stop() {},
-      async tickOnce() {
-        return {
-          tenantsScanned: 0,
-          handlersInvoked: 0,
-          inboxRowsWritten: 0,
-        };
-      },
-    };
+//   rent-scheduler        → leases × invoices
+//   regulatory-filing     → tenant quarterly snapshot (units + invoices)
+//   lease-renewal         → leases.endDate (T-90/T-60/T-30 ladder)
+//   payroll-prep          → employees.baseSalary (attendance optional)
+//   listing-counter-offer → negotiations × negotiation_policies
+//
+// The runtime enforces kill-switch fail-closed, four-eye policy,
+// envelope thresholds, and the family-relation guard BEFORE any inbox
+// row lands. Each port catches its own errors so a single failing
+// query cannot crash the tick.
+const mwikilaAutonomousWorker = createMwikilaAutonomousWiring({
+  db: (serviceRegistry.db as unknown as {
+    execute(q: unknown): Promise<unknown>;
+  }) ?? null,
+  logger,
+  isKillSwitchOpen: () =>
+    Boolean(
+      (
+        serviceRegistry as unknown as {
+          killSwitch?: { isOpen?: () => boolean };
+        }
+      ).killSwitch?.isOpen?.(),
+    ),
+});
 
 // Graceful shutdown — documented and tested step-by-step:
 //  1. Flip a "shutting down" flag so the /health probe returns 503.
