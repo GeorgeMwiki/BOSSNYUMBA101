@@ -35,3 +35,8 @@ export {
   type ScanOptions,
 } from './scanner.js';
 export { scanAndPublishOpportunities } from './publish.js';
+
+export {
+  resolveScanState,
+  type ScanStateResolverDb,
+} from './resolver.js';

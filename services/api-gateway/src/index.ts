@@ -412,6 +412,7 @@ import {
   configureRiskScannerTools,
   type PersonaToolGate,
 } from './composition/brain-tools';
+import { resolveScanState } from './services/opportunity-scanner/resolver';
 // Loopback HTTP client — handlers that need a tenant-bound HTTP path
 // (cockpit reads, lease writes, rent payments) get routed through the
 // gateway's own routes so auth + RLS + audit + observability fire on
@@ -820,20 +821,24 @@ try {
     };
     // Wave UNWIRED-LOGIC-SWEEP — wire the opportunity + risk scanner
     // brain-tools before the catalog is built. The opportunity scanner
-    // takes a ScanState builder; we leave it unbound here (returns
-    // `null`) — the tool gracefully reports `resolverBound: false` until
-    // a sibling commit wires the Drizzle-backed ScanState resolver. The
-    // risk scanner already has a built-in `scanRisks(tenantId, deps)`
-    // entry point so we wire it with the tenant-scoped DB pool right
-    // now.
+    // now takes the real Drizzle-backed ScanState resolver
+    // (services/opportunity-scanner/resolver.ts) so the tool reports
+    // `resolverBound: true` and surfaces real BN portfolio / market /
+    // ops / marketplace / vendors signals. The risk scanner has its
+    // own DB-backed entry point.
     try {
       const dbForBrainTools = (serviceRegistry.db as unknown as {
         execute(q: unknown): Promise<unknown>;
       }) ?? null;
       if (dbForBrainTools) {
         configureRiskScannerTools({ db: dbForBrainTools });
+        configureOpportunityScannerTools({
+          buildScanState: (tenantId, nowIso) =>
+            resolveScanState(dbForBrainTools, tenantId, nowIso),
+        });
+      } else {
+        configureOpportunityScannerTools({});
       }
-      configureOpportunityScannerTools({});
     } catch (err) {
       logger.warn(
         { err: err instanceof Error ? err.message : String(err) },
