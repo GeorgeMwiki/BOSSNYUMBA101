@@ -378,6 +378,12 @@ import { ownerUndoJournalRouter } from './routes/owner/undo-journal.hono';
 // policy prefix (requiresPolicyRuleLiteral=true on the brain-tool).
 // Mounted at /api/v1/owner/superpowers/bulk-action.
 import { ownerSuperpowersBulkActionRouter } from './routes/owner/superpowers/bulk-action.hono';
+// Wave SUPERPOWERS — chat-emitted form prefill ack + per-field undo.
+// Audit-only on the ack (no DB write); /undo-field appends an undo
+// journal entry keyed by `prefill_field:<formId>` + fieldName so the FE
+// banner can surface per-field Cmd-Z. Mounted at
+// /api/v1/owner/superpowers/prefill.
+import { ownerSuperpowersPrefillRouter } from './routes/owner/superpowers/prefill.hono';
 import { supportRouter } from './routes/owner/support.router';
 import { adminUsersRouter } from './routes/owner/admin-users.router';
 import { buildServices, type ServiceRegistry } from './composition/service-registry';
@@ -1347,6 +1353,10 @@ api.route('/owner/undo-journal', ownerUndoJournalRouter);
 // prefix; the brain-tool enforces requiresPolicyRuleLiteral=true and
 // the route duplicates the BN whitelist matrix as a defense in depth).
 api.route('/owner/superpowers/bulk-action', ownerSuperpowersBulkActionRouter);
+// Wave SUPERPOWERS — chat-emitted form prefill ack + per-field undo.
+// Backs `bossnyumba.ui.prefill_form`. Tenant-scoped via JWT + RLS FORCE
+// on the per-field undo journal append.
+api.route('/owner/superpowers/prefill', ownerSuperpowersPrefillRouter);
 api.route('/support', supportRouter);
 api.route('/admin', adminUsersRouter);
 // Unit subdivision + components — Manager-app dependency. Hono mounts

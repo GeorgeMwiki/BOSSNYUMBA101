@@ -101,6 +101,14 @@ import { OPPORTUNITY_SCANNER_TOOLS } from './opportunity-scanner-tools.js';
 // that surface the 33-rule risk engine the brain previously had no way
 // to invoke. Cockpit `risk.changed` SSE event fires alongside the scan.
 import { RISK_SCANNER_TOOLS } from './risk-scanner-tools.js';
+// Wave SUPERPOWERS — chat-as-OS write tools (share_view / bulk_action /
+// undo_last_action / prefill_form). Backs the cross-cutting routes
+// /owner/share-links, /owner/superpowers/{bulk-action,prefill},
+// /owner/undo-journal. Owner + admin personas only (T1 + T2).
+// bulk_action carries requiresPolicyRuleLiteral=true (CLAUDE.md hard
+// rule: HIGH-risk prefixes must hit literal policy rules, no reason-
+// resolver generalisation).
+import { SUPERPOWERS_TOOLS } from './superpowers-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -143,6 +151,7 @@ export function buildPersonaToolHandlers(
       TENANT_TOOLS,
       OPPORTUNITY_SCANNER_TOOLS,
       RISK_SCANNER_TOOLS,
+      SUPERPOWERS_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -186,6 +195,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       TENANT_TOOLS,
       OPPORTUNITY_SCANNER_TOOLS,
       RISK_SCANNER_TOOLS,
+      SUPERPOWERS_TOOLS,
     ],
     undefined,
   );
