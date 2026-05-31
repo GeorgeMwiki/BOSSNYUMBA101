@@ -134,4 +134,67 @@ describe('brain-tools — boot integrity', () => {
     // No duplicates expected on a clean boot — this is a regression guard.
     expect(duplicates).toEqual([]);
   });
+
+  // ─── Wave OWNER-OS — server-side tab persistence brain tools ─────
+  it('registers the three owner-tabs brain tools', () => {
+    const ids = new Set(listPersonaToolDescriptors().map((d) => d.id));
+    expect(ids.has('bossnyumba.owner.tabs.spawn')).toBe(true);
+    expect(ids.has('bossnyumba.owner.tabs.close')).toBe(true);
+    expect(ids.has('bossnyumba.owner.tabs.update')).toBe(true);
+  });
+
+  it('owner-tabs tools are MEDIUM-stakes WRITE, owner+admin only', () => {
+    const wanted = new Set([
+      'bossnyumba.owner.tabs.spawn',
+      'bossnyumba.owner.tabs.close',
+      'bossnyumba.owner.tabs.update',
+    ]);
+    const descriptors = listPersonaToolDescriptors().filter((d) =>
+      wanted.has(d.id),
+    );
+    expect(descriptors.length).toBe(3);
+    for (const d of descriptors) {
+      expect([...d.personaSlugs].sort()).toEqual([
+        'T1_owner_strategist',
+        'T2_admin_strategist',
+      ]);
+      expect(d.stakes).toBe('MEDIUM');
+      expect(d.isWrite).toBe(true);
+    }
+  });
+
+  // ─── Wave OWNER-OS — admin-platform-portal four-eye brain tools ──
+  it('registers the four admin superpowers brain tools', () => {
+    const ids = new Set(listPersonaToolDescriptors().map((d) => d.id));
+    expect(ids.has('bossnyumba.admin.superpowers.bulk_action')).toBe(true);
+    expect(ids.has('bossnyumba.admin.superpowers.approve')).toBe(true);
+    expect(ids.has('bossnyumba.admin.superpowers.reject')).toBe(true);
+    expect(ids.has('bossnyumba.admin.superpowers.list_pending')).toBe(true);
+  });
+
+  it('admin superpowers tools are admin-persona-only and require policy literal', () => {
+    const wanted = new Set([
+      'bossnyumba.admin.superpowers.bulk_action',
+      'bossnyumba.admin.superpowers.approve',
+      'bossnyumba.admin.superpowers.reject',
+      'bossnyumba.admin.superpowers.list_pending',
+    ]);
+    const descriptors = listPersonaToolDescriptors().filter((d) =>
+      wanted.has(d.id),
+    );
+    expect(descriptors.length).toBe(4);
+    for (const d of descriptors) {
+      // NEVER callable from owner / field / tenant personas.
+      expect([...d.personaSlugs]).toEqual(['T2_admin_strategist']);
+      // HIGH-risk policy prefix per CLAUDE.md hard rule.
+      expect(d.requiresPolicyRuleLiteral).toBe(true);
+    }
+    // bulk_action / approve / reject are WRITE; list_pending is READ.
+    const writeIds = new Set(descriptors.filter((d) => d.isWrite).map((d) => d.id));
+    expect(writeIds.has('bossnyumba.admin.superpowers.bulk_action')).toBe(true);
+    expect(writeIds.has('bossnyumba.admin.superpowers.approve')).toBe(true);
+    expect(writeIds.has('bossnyumba.admin.superpowers.reject')).toBe(true);
+    const readIds = descriptors.filter((d) => !d.isWrite).map((d) => d.id);
+    expect(readIds).toEqual(['bossnyumba.admin.superpowers.list_pending']);
+  });
 });

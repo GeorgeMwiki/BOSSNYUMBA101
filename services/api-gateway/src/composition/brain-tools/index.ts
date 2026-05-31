@@ -115,6 +115,16 @@ import { SUPERPOWERS_TOOLS } from './superpowers-tools.js';
 // conditional-survey action-plan approval. Loopback-dispatched so the
 // same auth + RLS + audit + kill-switch guards apply.
 import { CHAT_KING_TOOLS } from './chat-king-tools.js';
+// Wave OWNER-OS — server-side tab persistence brain tools
+// (`bossnyumba.owner.tabs.spawn/close/update`). Owner + admin persona.
+// MEDIUM-stakes WRITE; loopback through /api/v1/owner/tabs.
+import { OWNER_TABS_TOOLS } from './owner-tabs-tools.js';
+// Wave OWNER-OS — admin-platform-portal four-eye superpowers brain
+// tools (`bossnyumba.admin.superpowers.bulk_action/approve/reject/
+// list_pending`). ADMIN persona ONLY; HIGH-stakes; carry
+// requiresPolicyRuleLiteral=true per CLAUDE.md hard rule. Loopback
+// through /api/v1/admin/superpowers/*.
+import { ADMIN_SUPERPOWERS_TOOLS } from './admin-superpowers-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -159,6 +169,8 @@ export function buildPersonaToolHandlers(
       RISK_SCANNER_TOOLS,
       SUPERPOWERS_TOOLS,
       CHAT_KING_TOOLS,
+      OWNER_TABS_TOOLS,
+      ADMIN_SUPERPOWERS_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -204,6 +216,8 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       RISK_SCANNER_TOOLS,
       SUPERPOWERS_TOOLS,
       CHAT_KING_TOOLS,
+      OWNER_TABS_TOOLS,
+      ADMIN_SUPERPOWERS_TOOLS,
     ],
     undefined,
   );
