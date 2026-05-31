@@ -60,17 +60,17 @@
     }
   },
   "hero": {
-    "kicker": "Mfumo wa AI kwa Mali yote ya Mali",
+    "kicker": "Mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili",
     "swahiliFirstBadge": "Kiingereza-kwanza · Kiswahili",
     "pill": "Tanzania-kwanza · Inayoongozwa na AI",
-    "headline": "Endesha mali yote ya mali kwa otomatiki.",
-    "sub": "Mwl. Mwikila ni Mkurugenzi Mtendaji wa AI wa Mali. Leseni, kodi, wafanyakazi wa matengenezo wa matengenezo, hazina, utii, soko, mali, kampuni tanzu, biashara za ziada (usafiri, chakula, huduma, rejareja, ardhi, kukodi vifaa), family office, urithi, daftari la mali. Anaandaa, anafunga, anasimamia, anawasilisha. Wewe unasaini mara moja.",
+    "headline": "BossNyumba ni mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Mr. Mwikila ni safu yake ya akili.",
+    "sub": "Mr. Mwikila — safu ya akili ndani ya BossNyumba, mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili — anaandaa, anafunga, anasimamia, anawasilisha. Mikataba, kodi, wafanyakazi wa matengenezo, hazina, utii, soko, holdings, kampuni tanzu, biashara za ziada (huduma, ulinzi, usafi, kukodi vifaa), ofisi ya familia, urithi, daftari la mali. Wewe unasaini mara moja.",
     "ctaPilot": "Anza sasa",
     "ctaDemo": "Tazama demo ya sekunde 60",
     "trustline": "BRELA · TRA · NHC · BoT · M-Pesa",
     "chat": {
-      "assistant": "Mwl. Mwikila",
-      "role": "Mkurugenzi Mtendaji wa AI wa Mali",
+      "assistant": "Mr. Mwikila",
+      "role": "Safu ya akili ndani ya BossNyumba",
       "live": "Hai",
       "ask": "Uliza BossNyumba chochote…",
       "timestamp": "Sasa hivi",
@@ -85,7 +85,7 @@
       "turns": [
         {
           "role": "ai",
-          "body": "Habari, mimi ni Mwl. Mwikila, Mkurugenzi Mtendaji wa AI wa Mali wa BossNyumba. Umekuja kwa nini leo?"
+          "body": "Habari, mimi ni Mr. Mwikila — safu ya akili ndani ya BossNyumba, mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Umekuja kwa nini leo?"
         },
         {
           "role": "user",
@@ -1029,7 +1029,7 @@
     }
   },
   "footer": {
-    "tagline": "Mfumo wa uendeshaji wa AI kwa mali ya Tanzania. Master Brain, audit chain, lugha mbili.",
+    "tagline": "Mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Mr. Mwikila ni safu yake ya akili.",
     "product": "Bidhaa",
     "company": "Kampuni",
     "resources": "Rasilimali",
@@ -1118,6 +1118,10 @@
     "faqHeading": "Maswali yanayoulizwa mara kwa mara",
     "faqSub": "Kila kitu unachohitaji kujua kuhusu bei ya BossNyumba, malipo, na jukwaa linajumuisha nini katika kila kiwango.",
     "faqs": [
+      {
+        "q": "BossNyumba ni nini?",
+        "a": "BossNyumba ni mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Mr. Mwikila ni safu yake ya akili. BossNyumba inaunganisha mikataba, kodi, matengenezo, hazina, utii, soko, holdings, kampuni tanzu, biashara za ziada, ofisi ya familia, urithi, na daftari kamili la mali — vyote vikiongozwa na Mr. Mwikila, safu ya akili ndani ya BossNyumba."
+      },
       {
         "q": "Mwanzo ni bure kweli?",
         "a": "Ndio. Mwanzo ni bure kabisa, hakuna kadi inayohitajika. Mmiliki mmoja, site moja, nyaraka 10 kwa mwezi, msaada wa jumuiya, na Bw. Mwikila katika hali ya ushauri. Pandisha tu wakati shughuli yako inahitaji reli za ziada."
