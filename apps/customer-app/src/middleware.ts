@@ -11,8 +11,12 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  const header = request.headers.get('accept-language') ?? '';
-  const detected = header.toLowerCase().includes('sw') ? 'sw' : DEFAULT_LOCALE;
+  // English default per CLAUDE.md "English default · bilingual sw/en"
+  // (added 2026-05). We no longer auto-detect Swahili from the
+  // accept-language header on first launch — users must explicitly
+  // toggle to `sw` from the settings panel. Toggle is absolute.
+  void request.headers.get('accept-language'); // intentionally unused
+  const detected = DEFAULT_LOCALE;
 
   response.cookies.set(LOCALE_COOKIE, detected, {
     path: '/',

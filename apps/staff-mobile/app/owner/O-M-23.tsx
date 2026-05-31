@@ -319,7 +319,9 @@ function SettingsAndBilling(): JSX.Element {
   const multiTenant = isTrue(branding?.multiTenant, true)
   const brandLock = isTrue(branding?.brandLock, true)
   const tzsPrimary = (branding?.primaryCurrency ?? 'TZS').toUpperCase() === 'TZS'
-  const swFirst = (branding?.defaultLang ?? 'sw') === 'sw'
+  // English default per CLAUDE.md (flipped 2026-05). Toggle defaults
+  // to OFF (i.e. English) until the org explicitly enables Swahili.
+  const swFirst = (branding?.defaultLang ?? 'en') === 'sw'
 
   const flipBranding = (key: keyof BrandingPayload, value: unknown): void => {
     updateBranding.mutate({ [key]: value } as BrandingPayload)

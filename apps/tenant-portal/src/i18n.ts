@@ -8,10 +8,15 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'en';
 export const LOCALE_COOKIE = 'NEXT_LOCALE';
 
+/**
+ * Pre-cookie locale parser. Kept on the call-graph for tests and the
+ * server hook but always returns DEFAULT_LOCALE per the CLAUDE.md
+ * "English default · bilingual sw/en" rule (added 2026-05): we no
+ * longer derive Swahili from the browser's accept-language on first
+ * visit — users must toggle to `sw` explicitly from the settings panel.
+ */
 function parseAcceptLanguage(value: string | null | undefined): Locale {
-  if (!value) return DEFAULT_LOCALE;
-  const lower = value.toLowerCase();
-  if (lower.includes('sw')) return 'sw';
+  void value; // accept-language no longer steers the default
   return DEFAULT_LOCALE;
 }
 

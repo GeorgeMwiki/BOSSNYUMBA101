@@ -57,7 +57,8 @@ export const ONBOARDING_STEPS: ReadonlyArray<OnboardingStepId> = [
 ]
 
 export const onboardingDraftSchema = z.object({
-  lang: langSchema.default('sw'),
+  // English default per CLAUDE.md (flipped 2026-05).
+  lang: langSchema.default('en'),
   phone: z.string().default(''),
   otpCode: z.string().default(''),
   otpVerified: z.boolean().default(false),

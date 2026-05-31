@@ -170,7 +170,8 @@ const ApplyBodySchema = z.object({
   applicantEmail: z.string().email().optional(),
   message: z.string().max(2000).optional(),
   offerPrice: z.number().int().positive().optional(),
-  locale: z.enum(['sw', 'en']).default('sw'),
+  // English default per CLAUDE.md (flipped 2026-05).
+  locale: z.enum(['sw', 'en']).default('en'),
 });
 
 // ---------------------------------------------------------------------------

@@ -21,9 +21,16 @@ function readCookie(name: string): string | undefined {
   return match ? decodeURIComponent(match.slice(name.length + 1)) : undefined;
 }
 
+/**
+ * Pre-cookie locale parser. Kept on the call-graph for tests but always
+ * returns DEFAULT_LOCALE per the CLAUDE.md "English default · bilingual
+ * sw/en" rule (added 2026-05): we no longer derive Swahili from
+ * navigator.language on first visit — users must toggle to `sw`
+ * explicitly from the settings panel.
+ */
 function parseAcceptLanguage(value: string | null | undefined): Locale {
-  if (!value) return DEFAULT_LOCALE;
-  return value.toLowerCase().includes('sw') ? 'sw' : DEFAULT_LOCALE;
+  void value; // accept-language no longer steers the default
+  return DEFAULT_LOCALE;
 }
 
 export function detectInitialLocale(): Locale {
@@ -31,9 +38,8 @@ export function detectInitialLocale(): Locale {
   if (cookie && (SUPPORTED_LOCALES as readonly string[]).includes(cookie)) {
     return cookie as Locale;
   }
-  if (typeof navigator !== 'undefined') {
-    return parseAcceptLanguage(navigator.language);
-  }
+  // navigator.language is no longer consulted — English default holds
+  // until the user toggles in settings.
   return DEFAULT_LOCALE;
 }
 

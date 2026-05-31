@@ -52,11 +52,12 @@ export const persons = pgTable(
     primaryEmail: text('primary_email'),
     displayName: text('display_name').notNull(),
     /**
-     * ISO-639-1 (sw|en|fr|...). Default `sw` keeps Swahili-first
-     * posture in East-Africa pilots; per-region rollout switches this
-     * default to the jurisdiction's primary language.
+     * ISO-639-1 (sw|en|fr|...). Default `en` per CLAUDE.md
+     * "English default · bilingual sw/en" (flipped 2026-05). Tanzanian
+     * users can opt into `sw` from the settings panel; toggle is
+     * absolute (no language mixing in renders).
      */
-    preferredLanguage: text('preferred_language').notNull().default('sw'),
+    preferredLanguage: text('preferred_language').notNull().default('en'),
     /**
      * Affirmative opt-in timestamp for cross-tenant federation.
      * NULL means the person has NOT opted in; tenant memories remain
