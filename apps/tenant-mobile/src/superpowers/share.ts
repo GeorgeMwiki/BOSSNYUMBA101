@@ -1,10 +1,10 @@
 /**
  * Superpower 4 — share (tenant persona).
  *
- * Tenant share target is typically a lease for co-tenant signature.
- * Server mints a share link; we then open the native share-sheet.
- * Backend lands via the parallel BN agent — until then the fallback
- * deep-link is enough to surface the entity in WhatsApp / email.
+ * Mints a real server-side share link via /api/v1/owner/share-links
+ * (the canonical Wave SUPERPOWERS route, reused for the tenant persona
+ * via the SHARE_ENTITY_TYPES enum widening). NO hardcoded fallback
+ * deep-link — backend errors surface to the caller.
  */
 import { Share, type ShareContent } from 'react-native'
 import * as Linking from 'expo-linking'
@@ -21,37 +21,42 @@ export interface ShareResult {
   readonly url?: string
   readonly cancelled?: boolean
   readonly error?: string
+  readonly code?: string
 }
 
 interface ShareLinkApiResponse {
   readonly success: boolean
-  readonly data?: { readonly url: string }
-}
-
-const FALLBACK_HOST = 'https://bossnyumba.app/tenant'
-
-function buildFallbackLink(req: ShareEntityRequest): string {
-  return `${FALLBACK_HOST}/${encodeURIComponent(req.entityType)}/${encodeURIComponent(req.entityId)}`
+  readonly data?: { readonly url?: string; readonly token?: string }
+  readonly error?: { readonly code?: string; readonly message?: string }
 }
 
 export async function shareEntity(req: ShareEntityRequest): Promise<ShareResult> {
-  let url = buildFallbackLink(req)
+  let url: string
   try {
-    const res = await apiFetch<ShareLinkApiResponse>('/api/v1/tenant/superpowers/share-links', {
+    const res = await apiFetch<ShareLinkApiResponse>('/api/v1/owner/share-links', {
       method: 'POST',
       body: {
         entityType: req.entityType,
         entityId: req.entityId,
-        persona: 'tenant',
         permission: req.entityType === 'lease' ? 'comment' : 'read',
-        expiresInHours: 168
+        expiresInHours: 168,
+        provenance: { persona: 'tenant', surface: 'tenant-mobile' }
       }
     })
-    if (res?.success && res.data?.url) {
-      url = res.data.url
+    if (!res?.success || !res.data?.url) {
+      return {
+        ok: false,
+        error: res?.error?.message ?? 'Share link API returned no URL',
+        code: res?.error?.code ?? 'SHARE_LINK_EMPTY'
+      }
     }
-  } catch {
-    // ignore — fallback link still works
+    url = res.data.url
+  } catch (cause) {
+    return {
+      ok: false,
+      error: cause instanceof Error ? cause.message : 'Share link request failed',
+      code: 'SHARE_LINK_NETWORK'
+    }
   }
   try {
     const content: ShareContent = { message: `${req.title}\n${url}`, url, title: req.title }
@@ -65,7 +70,12 @@ export async function shareEntity(req: ShareEntityRequest): Promise<ShareResult>
       await Linking.openURL(url)
       return { ok: true, url }
     } catch (cause) {
-      return { ok: false, url, error: cause instanceof Error ? cause.message : 'share failed' }
+      return {
+        ok: false,
+        url,
+        error: cause instanceof Error ? cause.message : 'share failed',
+        code: 'SHARE_SHEET_FAILED'
+      }
     }
   }
 }
