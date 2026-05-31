@@ -109,6 +109,12 @@ import { RISK_SCANNER_TOOLS } from './risk-scanner-tools.js';
 // rule: HIGH-risk prefixes must hit literal policy rules, no reason-
 // resolver generalisation).
 import { SUPERPOWERS_TOOLS } from './superpowers-tools.js';
+// Chat-King wave — close BN owner-portal chat-reachability gaps.
+// 5 HIGH-stakes WRITE tools wrap real existing gateway routes for
+// damage-deduction settle/respond, negotiation accept/reject, and
+// conditional-survey action-plan approval. Loopback-dispatched so the
+// same auth + RLS + audit + kill-switch guards apply.
+import { CHAT_KING_TOOLS } from './chat-king-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -152,6 +158,7 @@ export function buildPersonaToolHandlers(
       OPPORTUNITY_SCANNER_TOOLS,
       RISK_SCANNER_TOOLS,
       SUPERPOWERS_TOOLS,
+      CHAT_KING_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -196,6 +203,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       OPPORTUNITY_SCANNER_TOOLS,
       RISK_SCANNER_TOOLS,
       SUPERPOWERS_TOOLS,
+      CHAT_KING_TOOLS,
     ],
     undefined,
   );
@@ -296,3 +304,12 @@ export {
   riskListRulesTool,
   configureRiskScannerTools,
 } from './risk-scanner-tools.js';
+// Chat-King wave — re-exports for tests + audit walker.
+export {
+  CHAT_KING_TOOLS,
+  ownerDamageDeductionSettleTool,
+  ownerDamageDeductionRespondTool,
+  ownerNegotiationAcceptTool,
+  ownerNegotiationRejectTool,
+  ownerConditionalSurveyApprovePlanTool,
+} from './chat-king-tools.js';
