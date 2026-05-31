@@ -24,15 +24,18 @@
  * Auth: Supabase JWT via authMiddleware. Tenant scope bound via
  *       databaseMiddleware (app.current_tenant_id GUC for RLS).
  *
- * Idempotency: each Idempotency-Key header collapses to a single
- *              undo journal write per entity id via the provenance
- *              envelope; replaying the same key returns the same
- *              processed/failed manifest without double-writing.
+ * Idempotency: enforced server-side via the db-idempotency middleware
+ *              (closes H2 deferral). The `Idempotency-Key` header is
+ *              folded into `idempotency_keys` with a partial unique
+ *              index — a duplicate request collides and replays the
+ *              cached response without re-running the dispatchers.
  *
- * Per-entity dispatchers (mark_rent_paid → ledger, send_renewal_notice
- * → mailer, etc.) are NOT wired here — this route is the cross-cutting
- * undo-journal append surface only. Per-domain handlers register
- * follow-up workers behind the same composition root.
+ * Per-entity dispatchers are wired in `./bulk-action-dispatchers.ts`:
+ *   mark_rent_paid   -> payments row (status=completed)
+ *   send_renewal_notice / export_tax_statement -> event_outbox row
+ *   close_ticket / acknowledge -> maintenance_requests update
+ *   snooze           -> event_outbox nextRetryAt push
+ *   archive          -> inspections.deletedAt set
  */
 
 // @ts-nocheck — Hono v4 ContextVariableMap drift; same pattern as
@@ -44,7 +47,13 @@ import { z } from 'zod';
 import { undoJournal } from '@bossnyumba/database';
 import { authMiddleware } from '../../../middleware/hono-auth';
 import { databaseMiddleware } from '../../../middleware/database';
+import { createDbIdempotencyMiddleware } from '../../../middleware/db-idempotency.middleware';
 import { createLogger } from '../../../utils/logger';
+import {
+  dispatch,
+  type BulkAction,
+  type EntityKind,
+} from './bulk-action-dispatchers';
 
 const moduleLogger = createLogger('owner-superpowers-bulk');
 
@@ -100,12 +109,18 @@ const bulkSchema = z
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
+app.use(
+  '*',
+  createDbIdempotencyMiddleware({ resourceKind: 'owner.bulk-action' }),
+);
 
 // POST / — chat-callable bulk operation.
 //
-// Records an undo journal entry per processed id so the owner gets a
-// single Undo chip representing the batch. Per-row before/after state
-// capture lives in the entity-specific routes (out of scope here).
+// For each id in the batch, this:
+//   1. Records an undo-journal entry (so the owner gets a 5-min Undo chip).
+//   2. Invokes the real per-entity dispatcher (payments / outbox /
+//      maintenance update / inspections soft-delete).
+//   3. Records per-row outcomes for the FE failure-manifest panel.
 app.post('/', async (c: any) => {
   const auth = c.get('auth') as { tenantId: string; userId: string };
   const db = c.get('db');
@@ -138,10 +153,10 @@ app.post('/', async (c: any) => {
   }
   const input = parsed.data;
 
-  // Pick up Idempotency-Key from headers and fold into provenance so
-  // the same key trail can collapse on replay. The DB does NOT enforce
-  // uniqueness here — the chat orchestrator deduplicates via the
-  // provenance.idempotencyKey audit trail.
+  // The Idempotency-Key header is now ALSO enforced by the
+  // db-idempotency middleware (server-side hard uniqueness via
+  // idempotency_keys). We continue to fold it into provenance so the
+  // undo-journal carries the same audit trail.
   const idempotencyKey = c.req.header('idempotency-key') ?? null;
   const provenance = {
     ...input.provenance,
@@ -151,9 +166,17 @@ app.post('/', async (c: any) => {
   const undoIds: string[] = [];
   const processedIds: string[] = [];
   const failedRows: Array<{ readonly id: string; readonly reason: string }> = [];
+  const dispatchArtifacts: Array<{
+    readonly id: string;
+    readonly artifactId: string;
+    readonly artifactKind: string;
+  }> = [];
 
   for (const id of input.ids) {
     try {
+      // 1. Append undo-journal row first so the chip lights up even if
+      //    the dispatcher partially fails (the user can still Undo
+      //    the recorded intent and inspect the failure).
       const [row] = await db
         .insert(undoJournal)
         .values({
@@ -170,11 +193,48 @@ app.post('/', async (c: any) => {
         })
         .returning();
       undoIds.push(row.id);
-      processedIds.push(id);
+
+      // 2. Invoke the REAL per-entity dispatcher.
+      const outcome = await dispatch(
+        {
+          db,
+          tenantId: auth.tenantId,
+          actorId: auth.userId,
+          idempotencyKey,
+          reason: input.reason,
+        },
+        input.entityType as EntityKind,
+        input.action as BulkAction,
+        id,
+        input.payload,
+      );
+
+      if (outcome.ok) {
+        processedIds.push(id);
+        if (outcome.artifactId && outcome.artifactKind) {
+          dispatchArtifacts.push({
+            id,
+            artifactId: outcome.artifactId,
+            artifactKind: outcome.artifactKind,
+          });
+        }
+      } else {
+        failedRows.push({
+          id,
+          reason: outcome.reason ?? `dispatch failed for ${input.action}`,
+        });
+        moduleLogger.warn('owner-superpowers-bulk: dispatcher reported failure', {
+          tenantId: auth.tenantId,
+          entityType: input.entityType,
+          action: input.action,
+          id,
+          reason: outcome.reason,
+        });
+      }
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
       failedRows.push({ id, reason });
-      moduleLogger.warn('owner-superpowers-bulk: row failed', {
+      moduleLogger.warn('owner-superpowers-bulk: row threw', {
         tenantId: auth.tenantId,
         entityType: input.entityType,
         action: input.action,
@@ -206,6 +266,7 @@ app.post('/', async (c: any) => {
       processedIds,
       failedIds: failedRows,
       undoJournalIds: undoIds,
+      dispatchArtifacts,
     },
   });
 });
