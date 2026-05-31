@@ -59,30 +59,30 @@ const MWIKILA_MARKETING_GREETINGS: Readonly<
   Record<string, Readonly<{ en: string; sw: string }>>
 > = {
   '/pricing': {
-    en: "Hi, I'm Mr. Mwikila, BossNyumba's AI Real-Estate Director. I can help you find the right plan for your portfolio.",
-    sw: 'Habari, mimi ni Mr. Mwikila, Mkurugenzi wa Real-Estate wa AI kutoka BossNyumba. Naweza kukusaidia kupata mpango unaofaa portfolio yako.',
+    en: "Hi, I'm Mr. Mwikila — the brain layer within BossNyumba, an AI-native real estate operating system. I can help you find the right plan for your portfolio.",
+    sw: 'Habari, mimi ni Mr. Mwikila — safu ya akili ndani ya BossNyumba, mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Naweza kukusaidia kupata mpango unaofaa portfolio yako.',
   },
   '/for-bank': {
-    en: "Hi, I'm Mr. Mwikila, BossNyumba's AI Real-Estate Director. I can show you how BossNyumba helps banks underwrite, manage, and dispose of REO portfolios.",
-    sw: 'Habari, mimi ni Mr. Mwikila, Mkurugenzi wa Real-Estate wa AI kutoka BossNyumba. Naweza kukuonyesha jinsi BossNyumba inavyosaidia benki kusimamia mali.',
+    en: "Hi, I'm Mr. Mwikila — the brain layer within BossNyumba, an AI-native real estate operating system. I can show you how BossNyumba helps banks underwrite, manage, and dispose of REO portfolios.",
+    sw: 'Habari, mimi ni Mr. Mwikila — safu ya akili ndani ya BossNyumba, mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Naweza kukuonyesha jinsi BossNyumba inavyosaidia benki kusimamia mali.',
   },
   '/for-individual-landlord': {
-    en: "Hi, I'm Mr. Mwikila, BossNyumba's AI Real-Estate Director. I can help small landlords automate rent, leases, and tenant comms.",
-    sw: 'Habari, mimi ni Mr. Mwikila, Mkurugenzi wa Real-Estate wa AI kutoka BossNyumba. Naweza kuwasaidia wamiliki wadogo kuendesha kodi na mikataba.',
+    en: "Hi, I'm Mr. Mwikila — the brain layer within BossNyumba, an AI-native real estate operating system. I can help small landlords automate rent, leases, and tenant comms.",
+    sw: 'Habari, mimi ni Mr. Mwikila — safu ya akili ndani ya BossNyumba, mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Naweza kuwasaidia wamiliki wadogo kuendesha kodi na mikataba.',
   },
   '/for-portfolio-landlord': {
-    en: "Hi, I'm Mr. Mwikila, BossNyumba's AI Real-Estate Director. I can show you how multi-property owners scale operations without growing headcount.",
-    sw: 'Habari, mimi ni Mr. Mwikila, Mkurugenzi wa Real-Estate wa AI kutoka BossNyumba. Naweza kukuonyesha jinsi wamiliki wa portfolios wanaongeza ukubwa bila kuongeza wafanyakazi.',
+    en: "Hi, I'm Mr. Mwikila — the brain layer within BossNyumba, an AI-native real estate operating system. I can show you how multi-property owners scale operations without growing headcount.",
+    sw: 'Habari, mimi ni Mr. Mwikila — safu ya akili ndani ya BossNyumba, mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Naweza kukuonyesha jinsi wamiliki wa portfolios wanaongeza ukubwa bila kuongeza wafanyakazi.',
   },
   '/for-tenant': {
-    en: "Hi, I'm Mr. Mwikila, BossNyumba's AI Real-Estate Director. I can help tenants pay rent, request maintenance, and check lease terms.",
-    sw: 'Habari, mimi ni Mr. Mwikila, Mkurugenzi wa Real-Estate wa AI kutoka BossNyumba. Naweza kuwasaidia wapangaji kulipa kodi na kuomba matengenezo.',
+    en: "Hi, I'm Mr. Mwikila — the brain layer within BossNyumba, an AI-native real estate operating system. I can help tenants pay rent, request maintenance, and check lease terms.",
+    sw: 'Habari, mimi ni Mr. Mwikila — safu ya akili ndani ya BossNyumba, mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Naweza kuwasaidia wapangaji kulipa kodi na kuomba matengenezo.',
   },
 };
 
 const DEFAULT_GREETING: Readonly<Record<WidgetLanguage, string>> = {
-  en: "Hi, I'm Mr. Mwikila, BossNyumba's AI Real-Estate Director. Ask me anything about your portfolio.",
-  sw: 'Habari, mimi ni Mr. Mwikila, Mkurugenzi wa Real-Estate wa AI kutoka BossNyumba. Niulize chochote kuhusu portfolio yako.',
+  en: "Hi, I'm Mr. Mwikila — the brain layer within BossNyumba, an AI-native real estate operating system. Ask me anything about your portfolio.",
+  sw: 'Habari, mimi ni Mr. Mwikila — safu ya akili ndani ya BossNyumba, mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Niulize chochote kuhusu portfolio yako.',
 };
 
 export function getWidgetWelcomeMessage(

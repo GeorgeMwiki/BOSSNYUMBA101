@@ -46,9 +46,9 @@ describe('Widget canonical display lock — BossNyumba', () => {
     }
   });
 
-  it('canonical title matches "Boss Nyumba\'s AI Property Operations Manager"', () => {
+  it('canonical title carries the brain-layer + AI-native real estate operating system framing', () => {
     expect(MR_MWIKILA_CANONICAL_DISPLAY.title).toBe(
-      "Boss Nyumba's AI Property Operations Manager",
+      'The brain layer within BossNyumba — an AI-native real estate operating system',
     );
   });
 
