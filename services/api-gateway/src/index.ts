@@ -327,6 +327,7 @@ import type {
   NotificationSender as LeaseExpiryNotificationSender,
 } from './workers/lease-expiry-alert-cron';
 import { createExecutiveBriefCron } from './workers/executive-brief-cron';
+import { registerIdempotencySweeperCron } from './composition/idempotency-sweeper';
 import { createDecisionRetrospectiveWorker } from './workers/decision-retrospective-worker';
 // Wave CLOSED-LOOP — outcome reconciliation worker. Reads pending
 // brain predictions whose horizon has elapsed, asks the per-entity
@@ -371,6 +372,10 @@ import {
   ownerShareLinksRouter,
   publicShareResolverRouter,
 } from './routes/owner/share-links.hono';
+// Owner tab strip persistence (migration 0300). Backs the FE
+// `useOwnerTabs` hook so a spawned tab survives sign-out and the
+// landlord can roam between phone + laptop without losing layout.
+import { ownerTabsRouter } from './routes/owner/tabs.hono';
 // Wave SUPERPOWERS — generic 5-min undo ledger (migration 0298). Every
 // WRITE brain tool appends a row so the owner gets a "Undo (4:58)" chip
 // on every chat-initiated write. Backs `bossnyumba.ui.undo_last_action`.
@@ -648,6 +653,9 @@ assertApiKeyConfig();
 // endpoints start returning real rows.
 // ----------------------------------------------------------------------------
 let serviceRegistry: ServiceRegistry;
+// Hoisted so the graceful-shutdown closure (defined before the cron
+// is registered) can reference the stop handle without scope errors.
+let idempotencySweeperStop: (() => void) | undefined;
 try {
   serviceRegistry = buildServices({ db: getDb() });
   if (serviceRegistry.isLive) {
@@ -1351,6 +1359,10 @@ api.route('/owner/saved-searches', savedSearchesRouter);
 // separately under /public/share so it stays outside the auth gate.
 api.route('/owner/share-links', ownerShareLinksRouter);
 api.route('/public/share', publicShareResolverRouter);
+// Owner tab strip persistence (migration 0300). Tenant-scoped via JWT
+// + RLS FORCE. Backs the FE `useOwnerTabs` hook so spawned tabs
+// survive sign-out + roam cross-device.
+api.route('/owner/tabs', ownerTabsRouter);
 // Wave SUPERPOWERS — generic 5-min undo ledger (mig 0298). Tenant-
 // scoped via JWT + RLS FORCE. Backs `bossnyumba.ui.undo_last_action`.
 api.route('/owner/undo-journal', ownerUndoJournalRouter);
@@ -1861,6 +1873,12 @@ async function gracefulShutdown(signal: string): Promise<void> {
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: sovereign-ledger verify cron stop failed');
   }
+  try {
+    idempotencySweeperStop?.();
+    logger.info('shutdown: idempotency-sweeper cron stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: idempotency-sweeper cron stop failed');
+  }
 
   // Step 4 — close the HTTP server. Wrapped in a promise so we can
   // await the drain completion.
@@ -1982,6 +2000,22 @@ if (require.main === module) {
   // hash-chain on cadence (default 1h) and emits verified/tampered
   // events on the shared bus. Degraded-mode (no DB) is a no-op.
   serviceRegistry.sovereignLedgerVerifyCron?.start();
+  // H2 deferral closure — idempotency_keys sweeper. Hourly DELETE of
+  // rows past `expires_at` (24h TTL). The partial unique index keeps
+  // duplicate requests dedup'd even between sweeps; this just prevents
+  // unbounded growth. Module-scoped `idempotencySweeperStop` is set
+  // here so the graceful-shutdown handler above can stop it.
+  if (process.env.NODE_ENV !== 'test') {
+    const dbForSweeper = (serviceRegistry as unknown as { db?: unknown }).db;
+    if (dbForSweeper) {
+      idempotencySweeperStop = registerIdempotencySweeperCron({
+        db: dbForSweeper as never,
+      });
+      logger.info('idempotency-sweeper cron started');
+    } else {
+      logger.warn('idempotency-sweeper cron skipped — no db in service registry');
+    }
+  }
 
   // Start the outbox drainer + register domain-event subscribers. The
   // outbox publishes events into the in-process bus; the subscribers

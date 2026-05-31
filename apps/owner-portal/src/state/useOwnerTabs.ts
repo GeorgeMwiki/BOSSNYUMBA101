@@ -13,10 +13,13 @@
  * `handleTabSseFrame` from @bossnyumba/chat-ui into THIS store.
  *
  * Persistence:
- *   - `localStorage` only (fast hydration on next visit, even offline).
- *   - Server-side cross-device sync is a future enhancement — the
- *     `POST /api/v1/owner/tabs` route lives in Borjie but not in BN
- *     yet, so we deliberately keep this FE-only for the initial port.
+ *   - `localStorage` is the offline cache (instant hydration on cold
+ *     load + survives flaky network).
+ *   - `GET/PUT/POST /api/v1/owner/tabs` is the durable cross-device
+ *     source of truth (migration 0300, RLS-FORCE). Hydrate once on
+ *     mount; debounced PUT on every mutation keeps the server snapshot
+ *     in lockstep so the landlord roaming between phone and laptop
+ *     sees the same spawned tabs.
  *
  * Phase 2 refinement — DEDUP + AUGMENT-IN-PLACE:
  *
@@ -328,6 +331,20 @@ export interface UseOwnerTabsApi {
   rename(tabId: string, title: string): void;
 }
 
+// Debounce window for server-side PUT sync. Mirrors Borjie's
+// owner-tabs-store debounce so chains of rapid mutations (e.g. focus
+// then close then open) coalesce to one network round-trip.
+const SYNC_DEBOUNCE_MS = 800;
+
+interface ServerHydrateResponse {
+  readonly success?: boolean;
+  readonly data?: {
+    readonly state?: unknown;
+    readonly updatedAt?: string | null;
+    readonly hydratedFromDefault?: boolean;
+  };
+}
+
 export function useOwnerTabs(): UseOwnerTabsApi {
   const [state, dispatch] = useReducer(
     reducer,
@@ -337,14 +354,76 @@ export function useOwnerTabs(): UseOwnerTabsApi {
   const initial = useRef(true);
   const stateRef = useRef(state);
   stateRef.current = state;
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastServerSync = useRef<string | null>(null);
 
-  // Persist on every change.
+  // Hydrate from the server once on mount. If the server snapshot is
+  // newer than localStorage we replace state; otherwise we keep the
+  // local copy (and the next mutation will PUT it back to the server).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/v1/owner/tabs', {
+          method: 'GET',
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        if (cancelled || !res.ok) return;
+        const json = (await res.json()) as ServerHydrateResponse;
+        const serverState = json?.data?.state as Partial<OwnerTabsState> | undefined;
+        const serverUpdatedAt = json?.data?.updatedAt ?? null;
+        if (!serverState || !Array.isArray(serverState.tabs)) return;
+        const serverIso = serverUpdatedAt ?? new Date(0).toISOString();
+        const localIso = stateRef.current.updatedAt;
+        if (serverIso > localIso && serverState.tabs.length > 0) {
+          dispatch({
+            type: 'hydrate',
+            state: {
+              tabs: serverState.tabs as ReadonlyArray<OwnerTab>,
+              activeTabId: serverState.activeTabId ?? null,
+              updatedAt: serverIso,
+            },
+          });
+          lastServerSync.current = serverIso;
+        }
+      } catch {
+        // 401 / 503 / network — localStorage stays authoritative.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Persist + debounced server sync on every change.
   useEffect(() => {
     if (initial.current) {
       initial.current = false;
       return;
     }
     writeLocal(state);
+    if (debounce.current) clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => {
+      void fetch('/api/v1/owner/tabs', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ state }),
+      })
+        .then((res) => {
+          if (res.ok) lastServerSync.current = state.updatedAt;
+        })
+        .catch(() => {
+          // Best-effort — localStorage is the offline cache.
+        });
+    }, SYNC_DEBOUNCE_MS);
+    return () => {
+      if (debounce.current) clearTimeout(debounce.current);
+    };
   }, [state]);
 
   const open = useCallback(

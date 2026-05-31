@@ -572,3 +572,17 @@ export * from './personal-memory.schema.js';
 //                        bulk_action + prefill emissions also append here.
 export * from './share-links.schema.js';
 export * from './undo-journal.schema.js';
+//   - idempotency_keys : server-side hard uniqueness for mutation
+//                        requests (mig 0299, middleware:
+//                        services/api-gateway/src/middleware/db-idempotency.middleware.ts).
+//                        Closes H2 deferral: prior Redis cache could
+//                        not enforce uniqueness under split-brain.
+export * from './idempotency-keys.schema.js';
+
+// ─── Wave OWNER-OS — server-side tab persistence (migration 0300) ────
+//   - owner_tabs : per-(tenant, user) tab strip ledger. Closes commit
+//                  a935776e's deliberate localStorage-only deferral.
+//                  Routes: /api/v1/owner/tabs. Real-estate FE pins
+//                  lease/unit/maintenance_case/tenant/property
+//                  context shapes into jsonb `state.tabs[].context`.
+export * from './owner-tabs.schema.js';
