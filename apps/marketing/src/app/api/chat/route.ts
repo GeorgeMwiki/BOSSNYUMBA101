@@ -242,7 +242,13 @@ async function callAnthropic(message: string, language: 'en' | 'sw'): Promise<st
     .map((b) => b.text as string)
     .join('\n')
     .trim();
-  return reply || '(no response)';
+  if (reply.length === 0) {
+    // Empty Anthropic reply — fail loudly via thrown Error so the
+    // POST handler surfaces a structured 503 to the widget instead
+    // of showing a hardcoded "(no response)" string.
+    throw new Error('Anthropic returned empty content');
+  }
+  return reply;
 }
 
 export async function POST(req: Request): Promise<Response> {
