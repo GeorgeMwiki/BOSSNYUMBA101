@@ -539,6 +539,14 @@ export * from './entity-index.schema.js';
 export * from './pinned-items.schema.js';
 export * from './saved-searches.schema.js';
 
+// ─── Wave SUPERPOWERS — chat-as-OS backend routes (migration 0297) ──
+//   - share_links      : time-limited shareable URLs for entities
+//                        (mig 0297, route: /owner/share-links).
+//
+// undo_journal, bulk_action, and prefill schemas are introduced in
+// subsequent migrations in the same wave.
+export * from './share-links.schema.js';
+
 // ─── Federated Personal Knowledge Base (migration 0296, ported from Borjie) ─
 //   - persons                : canonical human identity (one row per
 //                              real human; opt-in unified-KB flag).
