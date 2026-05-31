@@ -131,16 +131,25 @@ export class AIPresenceManager {
     };
   }
 
-  /** Build contextual help payload for the current page. */
+  /**
+   * Build contextual help payload for the current page.
+   *
+   * The `language` argument enforces locale purity — the help text never
+   * mixes Swahili and English. Defaults to 'en' so existing callers that
+   * have not yet been threaded with the user's locale fall back to the
+   * English copy (no Swahili leakage). Pass 'sw' explicitly for
+   * Swahili-locale users.
+   */
   getContextualHelp(
     tenantId: string,
     userId: string,
+    language: 'en' | 'sw' = 'en',
   ): ContextualHelp | null {
     const state = this.getState(tenantId, userId);
     if (!state) return null;
     return {
       title: state.pageContext.pageName,
-      description: describePage(state.pageContext),
+      description: describePage(state.pageContext, language),
       quickActions: state.pageContext.availableActions
         .filter((a) => a.enabled)
         .slice(0, 4),
@@ -188,19 +197,47 @@ export interface ContextualHelp {
   readonly commonQuestions: readonly PageContext['commonQuestions'][number][];
 }
 
-function describePage(ctx: PageContext): string {
-  const descriptions: Record<PageContext['pageType'], string> = {
-    dashboard: 'Habari! I can summarise your portfolio in one minute.',
-    property_list: 'Let me help you filter and prioritise properties.',
-    property_detail: 'I have this property loaded — ask me anything about it.',
-    lease_form: 'I can auto-fill parts of this lease from the tenant profile.',
-    arrears_case: 'I can recommend the next step and draft notices for you.',
-    maintenance_triage: 'I rank tickets and suggest vendors.',
-    inspection_flow: 'I will walk you through the inspection checklist.',
-    financials: 'I can explain any figure or variance on this page.',
-    tenant_profile: 'Ask me about this tenant\u2019s history and risk signals.',
-    compliance: 'I track renewals and upcoming expiries.',
-    other: 'How can I help?',
-  };
+/**
+ * Per-page contextual help copy, strict per locale. NEVER mix languages
+ * (the user's interface language is the single source of truth — leaking
+ * a Swahili "Habari" into an English session is a hard bug).
+ */
+const PAGE_DESCRIPTIONS_EN: Record<PageContext['pageType'], string> = {
+  dashboard: 'Hello. I can summarise your portfolio in one minute.',
+  property_list: 'Let me help you filter and prioritise properties.',
+  property_detail: 'I have this property loaded — ask me anything about it.',
+  lease_form: 'I can auto-fill parts of this lease from the tenant profile.',
+  arrears_case: 'I can recommend the next step and draft notices for you.',
+  maintenance_triage: 'I rank tickets and suggest vendors.',
+  inspection_flow: 'I will walk you through the inspection checklist.',
+  financials: 'I can explain any figure or variance on this page.',
+  tenant_profile: 'Ask me about this tenant history and risk signals.',
+  compliance: 'I track renewals and upcoming expiries.',
+  other: 'How can I help?',
+};
+
+const PAGE_DESCRIPTIONS_SW: Record<PageContext['pageType'], string> = {
+  dashboard:
+    'Habari. Naweza kufanya muhtasari wa kapu lako la mali kwa dakika moja.',
+  property_list: 'Nikusaidie kuchuja na kupanga mali kwa kipaumbele.',
+  property_detail: 'Nimepakia mali hii — niulize chochote kuihusu.',
+  lease_form:
+    'Naweza kujaza sehemu za mkataba huu kutoka kwenye wasifu wa mpangaji.',
+  arrears_case:
+    'Naweza kupendekeza hatua inayofuata na kuandaa taarifa kwa niaba yako.',
+  maintenance_triage:
+    'Nakupanga tiketi kwa kipaumbele na kupendekeza wauzaji.',
+  inspection_flow:
+    'Nitakupitisha kwenye orodha ya ukaguzi hatua kwa hatua.',
+  financials: 'Naweza kueleza takwimu yoyote au tofauti kwenye ukurasa huu.',
+  tenant_profile:
+    'Niulize kuhusu historia ya mpangaji huyu na ishara za hatari.',
+  compliance: 'Nafuatilia upyaji wa mikataba na muda wa kuisha unaokuja.',
+  other: 'Nikusaidieje?',
+};
+
+function describePage(ctx: PageContext, language: 'en' | 'sw'): string {
+  const descriptions =
+    language === 'sw' ? PAGE_DESCRIPTIONS_SW : PAGE_DESCRIPTIONS_EN;
   return descriptions[ctx.pageType];
 }

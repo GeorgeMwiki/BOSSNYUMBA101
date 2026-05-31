@@ -67,7 +67,7 @@ test.describe('owner signup → first MD chat @owner-live', () => {
           threadId: 'thr_1',
           messageId: 'msg_welcome_1',
           greeting:
-            "Karibu! I'm Mr. Mwikila — the MD for Mwangi Estates.",
+            "Hi, I'm Mr. Mwikila — the MD for Mwangi Estates.",
           questions: [{ id: 'cashflow' }, { id: 'growth' }, { id: 'exit' }],
           suggestedSkills: [
             { slug: 'arrears-friday-digest', name: 'Arrears Friday digest' },

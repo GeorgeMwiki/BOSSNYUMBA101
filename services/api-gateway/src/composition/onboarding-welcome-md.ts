@@ -39,6 +39,12 @@ export interface WelcomeCoordinatorInput {
   readonly country: string;
   readonly ownerPrompt?: string;
   readonly previousIntent?: 'cashflow' | 'growth' | 'exit';
+  /**
+   * Owner's interface language. Drives the strict-locale greeting so we
+   * never mix Swahili and English in the same message. Defaults to 'en'
+   * when not provided (signup flow may not yet know the owner's pick).
+   */
+  readonly language?: 'en' | 'sw';
 }
 
 export interface WelcomeCoordinatorResult {
@@ -206,9 +212,18 @@ function inferIntent(prompt: string | undefined): 'cashflow' | 'growth' | 'exit'
 }
 
 function buildGreeting(input: WelcomeCoordinatorInput): string {
+  const language = input.language ?? 'en';
+  if (language === 'sw') {
+    const businessLabel = input.businessName || 'kapu lako la mali';
+    return [
+      `Karibu! Mimi ni Bwana Mwikila — Mkurugenzi Mtendaji wa ${businessLabel}.`,
+      `Nitahakikisha shughuli zako zinakwenda vizuri, kodi zinalipwa kwa wakati, na vitabu vyako viko tayari kwa ukaguzi.`,
+      `Ili kuchagua Skills sahihi za kuanzia, niambie ni ipi kati ya tatu inayofaa zaidi hali yako leo:`,
+    ].join(' ');
+  }
   const businessLabel = input.businessName || 'your portfolio';
   return [
-    `Karibu! I'm Mr. Mwikila — the MD for ${businessLabel}.`,
+    `Hi, I'm Mr. Mwikila — the MD for ${businessLabel}.`,
     `I'll keep your operations tight, your rent on time, and your books audit-ready.`,
     `To pick the right starter Skills, tell me which of the three best fits where you are today:`,
   ].join(' ');
@@ -237,6 +252,12 @@ export async function runWelcomeCoordinator(
   const skillPackKey: 'cashflow' | 'growth' | 'exit' =
     inferredIntent ?? 'cashflow'; // default to cashflow if we can't infer
 
+  const language = input.language ?? 'en';
+  const briefingText =
+    language === 'sw'
+      ? 'Je, ungependa ufupisho wa dakika 5 kila asubuhi saa 07:00 EAT? Naweza kutuma kwa WhatsApp, barua pepe, au programu.'
+      : 'Would you like a 5-minute daily briefing every morning at 07:00 EAT? I can send it to WhatsApp, email, or the app.';
+
   return {
     messageId: newMessageId(),
     greeting: buildGreeting(input),
@@ -244,8 +265,7 @@ export async function runWelcomeCoordinator(
     inferredIntent,
     suggestedSkills: SKILL_PACKS[skillPackKey],
     offerDailyBriefing: {
-      text:
-        'Would you like a 5-minute daily briefing every morning at 07:00 EAT? I can send it to WhatsApp, email, or the app.',
+      text: briefingText,
       defaultTime: '07:00',
       defaultChannel: 'whatsapp',
     },
