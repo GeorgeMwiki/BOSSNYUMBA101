@@ -7,6 +7,20 @@ assistant working in this repo.
 This file is the entry point for any LLM acting on this repository.
 Read the documents in this order before answering or editing.
 
+## About BossNyumba
+
+**BossNyumba is an AI-native real estate operating system. Mr. Mwikila
+is its brain layer.**
+
+The product is purpose-built for East African landlords, portfolio
+managers, leasing agents, housing cooperatives, REITs, and
+institutional property holders — leases, rent, maintenance,
+treasury, compliance, marketplace, holdings, subsidiaries, ancillary
+businesses (utilities, security, cleaning, gardening, equipment
+rental), family office, succession, and the full asset register —
+all orchestrated end-to-end by Mr. Mwikila, the brain layer within
+BossNyumba, an AI-native real estate operating system.
+
 ## Required reads (in order)
 
 1. [`Docs/MEMORY.md`](./Docs/MEMORY.md) — long-lived invariants,

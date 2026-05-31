@@ -1,12 +1,14 @@
 # BossNyumba
 
-> AI-native, multi-tenant property management SaaS — Tanzania-first, pan-African ambitions.
+> **BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer.**
+>
+> Purpose-built for East African landlords, portfolio managers, leasing agents, housing cooperatives, REITs, and institutional property holders — leases, rent, maintenance, treasury, compliance, marketplace, holdings, subsidiaries, ancillary businesses, family office, succession, and the full asset register.
 
 [![CI](https://img.shields.io/badge/CI-pending-lightgrey)](./.github/workflows) [![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey)](#testing) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
 **This repository is BossNyumba only. Pongezi is a separate project (different repo, different product). Do not conflate.** See [PROJECT_BOUNDARY.md](./PROJECT_BOUNDARY.md).
 
-BossNyumba is a comprehensive multi-tenant property management platform designed for property managers, landlords, tenants, and estate managers across East Africa. It pairs a deterministic policy core with AI personas ("the Brain") for negotiations, inspections, document generation, and migration.
+BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer. The platform serves property managers, landlords, tenants, and estate managers across East Africa, pairing a deterministic policy core with AI personas ("the Brain") for negotiations, inspections, document generation, and migration.
 
 ## Architecture
 
