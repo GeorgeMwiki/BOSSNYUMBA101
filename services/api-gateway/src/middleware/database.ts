@@ -375,6 +375,19 @@ export const databaseMiddleware = createMiddleware(async (c, next) => {
         await database.execute(
           sql`SELECT set_config('app.is_bossnyumba_internal_admin', ${isInternalAdmin ? 'true' : 'false'}, false)`
         );
+        // Wave OWNER-OS — admin_scope GUC for the admin-superpowers
+        // four-eye gate (migration 0301). The RLS policy
+        // `admin_four_eye_admin_scope` on
+        // `admin_superpower_pending_approvals` requires
+        // `app.admin_scope='true'` so non-admin sessions cannot read
+        // or write pending approvals even via raw SQL. Set from the
+        // JWT role; defense in depth alongside `requireRole` on the
+        // admin routes themselves.
+        const isAdminScope =
+          role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT';
+        await database.execute(
+          sql`SELECT set_config('app.admin_scope', ${isAdminScope ? 'true' : 'false'}, false)`
+        );
       } catch (error) {
         logger.error({ error, tenantId }, 'Failed to set RLS tenant context');
         return c.json(

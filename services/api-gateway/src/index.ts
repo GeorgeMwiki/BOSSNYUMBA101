@@ -307,7 +307,16 @@ import intelligenceRouter from './routes/intelligence.router';
 // owner-portal renders an empty state instead of stalling on a never-
 // resolving fetch. Follow-ups tracked in Docs/TODO_BACKLOG.md.
 import analyticsRouter from './routes/analytics.router';
+// Per-detail-page analytics aggregates (occupancy, revenue, expenses)
+// for the owner-portal. Real Drizzle grouped aggregates over the last
+// 12 months. Replaces the previous fixture fallbacks on the analytics
+// pages.
+import analyticsDetailRouter from './routes/analytics-detail.router';
 import portfolioRouter from './routes/portfolio.router';
+// Real Holt-Winters monthly revenue/expenses/NOI forecast (replaces
+// the previous honest-empty `/budgets/forecasts` placeholder in
+// `bff/owner-portal.ts`).
+import budgetForecastRouter from './routes/budget-forecast.router';
 // Estate-manager-app dependency — list/create unit subdivision children,
 // and list FAR / asset-component breakdown for a unit. Mounted under
 // /api/v1/units/:id/{subdivision,components}.
@@ -390,6 +399,17 @@ import { ownerSuperpowersBulkActionRouter } from './routes/owner/superpowers/bul
 // banner can surface per-field Cmd-Z. Mounted at
 // /api/v1/owner/superpowers/prefill.
 import { ownerSuperpowersPrefillRouter } from './routes/owner/superpowers/prefill.hono';
+// Wave OWNER-OS — server-side tab persistence (migration 0300). Closes
+// commit a935776e's deliberate localStorage-only deferral. Backs the
+// cross-device sync promise for `useOwnerTabs` on the owner-portal.
+// Mounted at /api/v1/owner/tabs.
+import { ownerTabsRouter } from './routes/owner/tabs.hono';
+// Wave OWNER-OS — admin platform-portal superpowers with four-eye
+// approval (migration 0301). Backs admin bulk actions (suspend tenant,
+// export regulator pack, force lease termination, force password
+// reset, etc.) — HIGH-risk verbs require a second admin approval.
+// Mounted at /api/v1/admin/superpowers.
+import { adminSuperpowersRouter } from './routes/admin/superpowers.hono';
 import { supportRouter } from './routes/owner/support.router';
 import { adminUsersRouter } from './routes/owner/admin-users.router';
 import { buildServices, type ServiceRegistry } from './composition/service-registry';
@@ -1339,7 +1359,16 @@ api.route(
 // the dashboard pages render the empty state cleanly. See each router
 // Aggregator follow-ups are tracked in Docs/TODO_BACKLOG.md.
 api.route('/analytics', analyticsRouter);
+// Real per-page analytics aggregates (occupancy / revenue / expenses).
+// Hono `route()` chains nested paths to the parent prefix, so this
+// mounts `/api/v1/analytics/occupancy`, `/revenue`, `/expenses`.
+api.route('/analytics', analyticsDetailRouter);
 api.route('/portfolio', portfolioRouter);
+// Real Holt-Winters forecast over monthly revenue + expense history.
+// Mounts `/api/v1/budgets/forecasts` — supersedes the placeholder in
+// bff/owner-portal.ts (the BFF route stays defined for path-priority,
+// but this router wins because it's registered first via /budgets).
+api.route('/budgets/forecasts', budgetForecastRouter);
 // Wave-4 D6 — owner-portal placeholder-page skeletons. Each line
 // answers an endpoint declared by a `MissingBackendNotice` page in
 // owner-portal (commit 0ee27a0). All return `{ data: [] }` with
@@ -1375,6 +1404,13 @@ api.route('/owner/superpowers/bulk-action', ownerSuperpowersBulkActionRouter);
 // Backs `bossnyumba.ui.prefill_form`. Tenant-scoped via JWT + RLS FORCE
 // on the per-field undo journal append.
 api.route('/owner/superpowers/prefill', ownerSuperpowersPrefillRouter);
+// Wave OWNER-OS — admin platform-portal superpowers with four-eye
+// approval (migration 0301). Tenant-scoped via the admin scope guard
+// (requireRole SUPER_ADMIN/ADMIN/SUPPORT). HIGH-risk verbs land as
+// pending_approval and require a second distinct admin via
+// POST /admin/superpowers/approve/:journalId. Hash-chained into the
+// canonical audit chain.
+api.route('/admin/superpowers', adminSuperpowersRouter);
 api.route('/support', supportRouter);
 api.route('/admin', adminUsersRouter);
 // Unit subdivision + components — Manager-app dependency. Hono mounts

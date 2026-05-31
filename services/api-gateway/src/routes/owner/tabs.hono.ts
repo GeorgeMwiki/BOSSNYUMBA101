@@ -277,18 +277,35 @@ app.post('/', async (c: any) => {
   const { tab, setActive } = parsed.data;
   const { state } = await loadState(db, auth.tenantId, auth.userId);
 
+  // exactOptional-friendly tab projection from the zod output (which
+  // includes `?: undefined` keys) into the narrower PersistedTab shape.
+  function projectTab(input: z.infer<typeof tabEntrySchema>): PersistedTab {
+    const out: { -readonly [K in keyof PersistedTab]: PersistedTab[K] } = {
+      id: input.id,
+      kind: input.kind,
+      title: input.title,
+    };
+    if (input.context !== undefined) out.context = input.context;
+    if (input.pinned !== undefined) out.pinned = input.pinned;
+    if (input.augmentedAt !== undefined) out.augmentedAt = input.augmentedAt;
+    if (input.pendingUpdates !== undefined) {
+      out.pendingUpdates = input.pendingUpdates;
+    }
+    return out;
+  }
+  const projected = projectTab(tab);
+
   const existingIndex = state.tabs.findIndex((t) => t.id === tab.id);
-  const merged: PersistedTab =
+  const mergedContext = mergeContext(
+    state.tabs[existingIndex]?.context,
+    projected.context,
+  );
+  const mergedBase: { -readonly [K in keyof PersistedTab]: PersistedTab[K] } =
     existingIndex >= 0
-      ? {
-          ...state.tabs[existingIndex],
-          ...tab,
-          context: mergeContext(
-            state.tabs[existingIndex]?.context,
-            tab.context,
-          ),
-        }
-      : tab;
+      ? { ...state.tabs[existingIndex], ...projected }
+      : { ...projected };
+  if (mergedContext !== undefined) mergedBase.context = mergedContext;
+  const merged: PersistedTab = mergedBase;
   const nextTabs =
     existingIndex >= 0
       ? state.tabs.map((t, i) => (i === existingIndex ? merged : t))
@@ -505,8 +522,25 @@ app.post('/sync', async (c: any) => {
       400,
     );
   }
+  // exactOptional-friendly projection — drop `?: undefined` keys.
+  function projectTabForSync(
+    input: z.infer<typeof tabEntrySchema>,
+  ): PersistedTab {
+    const out: { -readonly [K in keyof PersistedTab]: PersistedTab[K] } = {
+      id: input.id,
+      kind: input.kind,
+      title: input.title,
+    };
+    if (input.context !== undefined) out.context = input.context;
+    if (input.pinned !== undefined) out.pinned = input.pinned;
+    if (input.augmentedAt !== undefined) out.augmentedAt = input.augmentedAt;
+    if (input.pendingUpdates !== undefined) {
+      out.pendingUpdates = input.pendingUpdates;
+    }
+    return out;
+  }
   const nextState: PersistedState = {
-    tabs: parsed.data.state.tabs,
+    tabs: parsed.data.state.tabs.map(projectTabForSync),
     activeTabId: parsed.data.state.activeTabId,
   };
   const updatedAt = await writeState(
@@ -523,6 +557,160 @@ app.post('/sync', async (c: any) => {
   return c.json({
     success: true,
     data: { state: nextState, updatedAt: updatedAt.toISOString() },
+  });
+});
+
+// ─── POST /:id/close — chat-tool alias for DELETE /:id ────────────────
+// The minimal HTTP client surface on the brain-tool gate exposes
+// get/post only. This POST alias lets `bossnyumba.owner.tabs.close`
+// drive the same close logic without the dispatcher needing a DELETE
+// verb. Same auth + RLS + audit guards fire.
+app.post('/:id/close', async (c: any) => {
+  const auth = c.get('auth') as { tenantId: string; userId: string };
+  const db = c.get('db');
+  if (!db) return dbUnavailable(c);
+  const id = c.req.param('id');
+  if (!id) {
+    return c.json(
+      {
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Missing tab id' },
+      },
+      400,
+    );
+  }
+  const { state } = await loadState(db, auth.tenantId, auth.userId);
+  const existing = state.tabs.find((t) => t.id === id);
+  if (!existing) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'OWNER_TABS_NOT_FOUND',
+          message: 'Tab not found in current state',
+        },
+      },
+      404,
+    );
+  }
+  if (existing.pinned) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'OWNER_TABS_PINNED',
+          message: 'Pinned tabs cannot be closed',
+        },
+      },
+      409,
+    );
+  }
+  const nextTabs = state.tabs.filter((t) => t.id !== id);
+  const nextActive =
+    state.activeTabId === id ? nextTabs[0]?.id ?? null : state.activeTabId;
+  const nextState: PersistedState = {
+    tabs: nextTabs,
+    activeTabId: nextActive,
+  };
+  const updatedAt = await writeState(
+    db,
+    auth.tenantId,
+    auth.userId,
+    nextState,
+  );
+  moduleLogger.info('owner-tabs: tab closed via chat tool', {
+    tenantId: auth.tenantId,
+    userId: auth.userId,
+    tabId: id,
+  });
+  return c.json({
+    success: true,
+    data: {
+      closedTabId: id,
+      state: nextState,
+      updatedAt: updatedAt.toISOString(),
+    },
+  });
+});
+
+// ─── POST /:id/update — chat-tool alias for PATCH /:id ────────────────
+app.post('/:id/update', async (c: any) => {
+  const auth = c.get('auth') as { tenantId: string; userId: string };
+  const db = c.get('db');
+  if (!db) return dbUnavailable(c);
+  const id = c.req.param('id');
+  if (!id) {
+    return c.json(
+      {
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Missing tab id' },
+      },
+      400,
+    );
+  }
+  const raw = await c.req.json().catch(() => null);
+  const parsed = patchTabSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid patch payload',
+          issues: parsed.error.issues,
+        },
+      },
+      400,
+    );
+  }
+  const { state } = await loadState(db, auth.tenantId, auth.userId);
+  const existingIndex = state.tabs.findIndex((t) => t.id === id);
+  if (existingIndex < 0) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'OWNER_TABS_NOT_FOUND',
+          message: 'Tab not found in current state',
+        },
+      },
+      404,
+    );
+  }
+  const prev = state.tabs[existingIndex];
+  const next: PersistedTab = {
+    ...prev,
+    ...(parsed.data.title !== undefined && { title: parsed.data.title }),
+    ...(parsed.data.augmentedAt !== undefined && {
+      augmentedAt: parsed.data.augmentedAt,
+    }),
+    ...(parsed.data.pendingUpdates !== undefined && {
+      pendingUpdates: parsed.data.pendingUpdates,
+    }),
+    ...(parsed.data.context !== undefined && {
+      context: mergeContext(prev?.context, parsed.data.context),
+    }),
+  };
+  const nextTabs = state.tabs.map((t, i) => (i === existingIndex ? next : t));
+  const nextState: PersistedState = { ...state, tabs: nextTabs };
+  const updatedAt = await writeState(
+    db,
+    auth.tenantId,
+    auth.userId,
+    nextState,
+  );
+  moduleLogger.info('owner-tabs: tab patched via chat tool', {
+    tenantId: auth.tenantId,
+    userId: auth.userId,
+    tabId: id,
+  });
+  return c.json({
+    success: true,
+    data: {
+      tab: next,
+      state: nextState,
+      updatedAt: updatedAt.toISOString(),
+    },
   });
 });
 

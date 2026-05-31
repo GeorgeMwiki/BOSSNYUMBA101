@@ -185,6 +185,22 @@
       "dataLoss": true,
       "envs": ["dev", "staging"],
       "notes": "Undo journal is a transient 5-min reverse buffer; the immutable AI audit chain holds the durable record."
+    },
+    {
+      "up": "0300_owner_tabs.sql",
+      "down": "down/0300_down_owner_tabs.sql",
+      "reverses": "CREATE TABLE owner_tabs + updated_at idx + RLS policy owner_tabs_tenant_isolation",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Tab strip is rebuildable from chat + entity history; loss costs the landlord their drawer focus across devices. Production rollback must be coordinated by #ops."
+    },
+    {
+      "up": "0301_admin_four_eye_pending.sql",
+      "down": "down/0301_down_admin_four_eye_pending.sql",
+      "reverses": "CREATE TABLE admin_superpower_pending_approvals + journal/expires indexes + RLS policy admin_four_eye_admin_scope",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Pending approvals are short-lived (24h TTL); cancellation forces operators to re-propose. Production rollback must be coordinated with the platform-admin council."
     }
   ]
 }

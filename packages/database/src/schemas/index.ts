@@ -586,3 +586,14 @@ export * from './idempotency-keys.schema.js';
 //                  lease/unit/maintenance_case/tenant/property
 //                  context shapes into jsonb `state.tabs[].context`.
 export * from './owner-tabs.schema.js';
+
+// ─── Wave OWNER-OS — admin superpowers four-eye gate (migration 0301)─
+//   - admin_superpower_pending_approvals : two-phase ledger for the
+//     HIGH-risk admin verbs (suspend_tenant_org / reactivate_tenant_org
+//     / export_regulator_pack / force_lease_termination /
+//     force_password_reset / bulk_archive_maintenance_cases). Pending
+//     rows require a SECOND distinct admin to approve before the
+//     mutation fires. MEDIUM-risk verbs bypass this table and append
+//     directly to undo_journal.
+//     Routes: /api/v1/admin/superpowers/*.
+export * from './admin-superpower-pending-approvals.schema.js';
