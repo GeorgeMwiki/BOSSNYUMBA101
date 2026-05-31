@@ -34,6 +34,7 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import { useFeatureFlag } from '../lib/useFeatureFlag';
+import { AdaptiveSectionsPanel } from './AdaptiveSectionsPanel';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -263,8 +264,16 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </header>
 
-        {/* Page content */}
-        <main id="main-content" tabIndex={-1} className="p-4 sm:p-6 lg:p-8">{children}</main>
+        {/* Page content. The AdaptiveSectionsPanel mounts above the
+            route content as collapsible cards driven by the
+            @bossnyumba/dynamic-sections engine. Cards appear only when
+            their underlying real-estate signal is true — zero signals
+            = zero cards = zero layout shift, so this is safe to mount
+            globally on every route. */}
+        <main id="main-content" tabIndex={-1} className="p-4 sm:p-6 lg:p-8 space-y-6">
+          <AdaptiveSectionsPanel />
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -20,6 +20,22 @@
  *
  * Shortcuts are OPTIONAL — pass `shortcuts={[]}` to suppress that
  * surface entirely.
+ *
+ * --------------------------------------------------------------------
+ * RELATIONSHIP TO `<AdaptiveSectionsPanel>`:
+ *
+ *   OwnerDynamicUIOverlay   = mastery hints + progressive disclosure
+ *                             + learned-shortcuts (CHAT-UI surfaces).
+ *   AdaptiveSectionsPanel   = data-driven section visibility (which
+ *                             dashboard cards / panels render).
+ *
+ * These are ORTHOGONAL systems — both can mount on the same route
+ * without conflict. The overlay drives WHAT THE USER IS NUDGED ABOUT;
+ * the panel drives WHICH SURFACES EVEN EXIST in their layout right
+ * now. The engine for the latter lives in
+ * `@bossnyumba/dynamic-sections` and is wired through
+ * `src/components/AdaptiveSectionsPanel.tsx`.
+ * --------------------------------------------------------------------
  */
 
 import { useCallback, useMemo } from 'react';
