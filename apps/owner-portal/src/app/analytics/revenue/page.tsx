@@ -26,24 +26,20 @@ export default function RevenuePage() {
   const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { data = [], isLoading, error, refetch } = useRevenueAnalytics();
 
-  const chartData = data.length
-    ? data
-    : [
-        { month: 'Aug', rent: 7800000, other: 400000 },
-        { month: 'Sep', rent: 8200000, other: 450000 },
-        { month: 'Oct', rent: 8500000, other: 500000 },
-        { month: 'Nov', rent: 8800000, other: 480000 },
-        { month: 'Dec', rent: 9200000, other: 520000 },
-        { month: 'Jan', rent: 9100000, other: 420000 },
-        { month: 'Feb', rent: 9400000, other: 500000 },
-      ];
+  // Backend (`/api/v1/analytics/revenue`) returns 12 months of real
+  // payment aggregates, split into `rent` (invoice.type='rent') and
+  // `other`. No fixture fallback.
+  const chartData = data;
 
-  const bySource = [
-    { name: 'Rent', value: 9400000 },
-    { name: 'Parking', value: 280000 },
-    { name: 'Utilities', value: 420000 },
-    { name: 'Other', value: 500000 },
-  ];
+  // By-source pie is derived from the most recent month's split so it
+  // always matches the data already on screen, never hardcoded.
+  const latest = chartData[chartData.length - 1];
+  const bySource = latest
+    ? [
+        { name: 'Rent', value: latest.rent },
+        { name: 'Other', value: latest.other },
+      ]
+    : [];
 
   if (isLoading) {
     return (
@@ -91,7 +87,7 @@ export default function RevenuePage() {
             <span className="text-sm font-medium text-gray-500">{t('totalRevenue')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(chartData.reduce((a, d) => a + d.rent + d.other, 0) / chartData.length)}
+            {formatCurrency(chartData.length === 0 ? 0 : chartData.reduce((a, d) => a + d.rent + d.other, 0) / chartData.length)}
           </p>
           <p className="text-sm text-gray-500">{t('avgMonthly')}</p>
         </div>
@@ -103,7 +99,7 @@ export default function RevenuePage() {
             <span className="text-sm font-medium text-gray-500">{t('rentRevenue')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(chartData[chartData.length - 1]?.rent || 9400000)}
+            {formatCurrency(chartData[chartData.length - 1]?.rent ?? 0)}
           </p>
           <p className="text-sm text-gray-500">{t('thisMonth')}</p>
         </div>
@@ -115,7 +111,7 @@ export default function RevenuePage() {
             <span className="text-sm font-medium text-gray-500">{t('otherIncome')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(chartData[chartData.length - 1]?.other || 500000)}
+            {formatCurrency(chartData[chartData.length - 1]?.other ?? 0)}
           </p>
           <p className="text-sm text-gray-500">{t('thisMonth')}</p>
         </div>

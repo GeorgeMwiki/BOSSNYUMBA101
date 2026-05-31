@@ -26,25 +26,20 @@ export default function ExpensesPage() {
   const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { data = [], isLoading, error, refetch } = useExpensesAnalytics();
 
-  const chartData = data.length
-    ? data
-    : [
-        { month: 'Aug', maintenance: 450000, utilities: 320000, admin: 180000 },
-        { month: 'Sep', maintenance: 520000, utilities: 310000, admin: 190000 },
-        { month: 'Oct', maintenance: 480000, utilities: 340000, admin: 175000 },
-        { month: 'Nov', maintenance: 550000, utilities: 330000, admin: 200000 },
-        { month: 'Dec', maintenance: 420000, utilities: 360000, admin: 210000 },
-        { month: 'Jan', maintenance: 490000, utilities: 350000, admin: 195000 },
-        { month: 'Feb', maintenance: 510000, utilities: 340000, admin: 205000 },
-      ];
+  // Backend (`/api/v1/analytics/expenses`) returns 12 months of real
+  // work-order cost aggregates bucketed into maintenance / utilities /
+  // admin via the workOrders.category enum.
+  const chartData = data;
+  const latest = chartData[chartData.length - 1];
 
-  const byCategory = [
-    { name: 'Maintenance', value: 510000 },
-    { name: 'Utilities', value: 340000 },
-    { name: 'Admin', value: 205000 },
-    { name: 'Insurance', value: 120000 },
-    { name: 'Other', value: 180000 },
-  ];
+  // By-category pie derived from the most recent month's split.
+  const byCategory = latest
+    ? [
+        { name: 'Maintenance', value: latest.maintenance },
+        { name: 'Utilities', value: latest.utilities },
+        { name: 'Admin', value: latest.admin },
+      ]
+    : [];
 
   if (isLoading) {
     return (
@@ -93,7 +88,7 @@ export default function ExpensesPage() {
             <span className="text-sm font-medium text-gray-500">{t('maintenance')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(510000)}
+            {formatCurrency(latest?.maintenance ?? 0)}
           </p>
           <p className="text-sm text-gray-500">{t('thisMonth')}</p>
         </div>
@@ -105,7 +100,7 @@ export default function ExpensesPage() {
             <span className="text-sm font-medium text-gray-500">{t('utilities')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(340000)}
+            {formatCurrency(latest?.utilities ?? 0)}
           </p>
           <p className="text-sm text-gray-500">{t('thisMonth')}</p>
         </div>
@@ -117,7 +112,7 @@ export default function ExpensesPage() {
             <span className="text-sm font-medium text-gray-500">{t('admin')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(205000)}
+            {formatCurrency(latest?.admin ?? 0)}
           </p>
           <p className="text-sm text-gray-500">{t('thisMonth')}</p>
         </div>
@@ -126,12 +121,12 @@ export default function ExpensesPage() {
             <div className="p-2 bg-green-100 rounded-lg">
               <Shield className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">{t('insurance')}</span>
+            <span className="text-sm font-medium text-gray-500">{t('totalExpenses')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(120000)}
+            {formatCurrency((latest?.maintenance ?? 0) + (latest?.utilities ?? 0) + (latest?.admin ?? 0))}
           </p>
-          <p className="text-sm text-gray-500">monthly</p>
+          <p className="text-sm text-gray-500">{t('thisMonth')}</p>
         </div>
       </div>
 

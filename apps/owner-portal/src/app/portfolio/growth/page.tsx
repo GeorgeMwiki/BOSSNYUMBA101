@@ -22,17 +22,10 @@ export default function PortfolioGrowthPage() {
   const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { data = [], isLoading, error, refetch } = usePortfolioGrowth();
 
-  const chartData = data.length
-    ? data
-    : [
-        { month: 'Aug', revenue: 7800000, value: 125000000, occupancy: 85 },
-        { month: 'Sep', revenue: 8200000, value: 128000000, occupancy: 87 },
-        { month: 'Oct', revenue: 8500000, value: 130000000, occupancy: 89 },
-        { month: 'Nov', revenue: 8800000, value: 132000000, occupancy: 91 },
-        { month: 'Dec', revenue: 9200000, value: 135000000, occupancy: 92 },
-        { month: 'Jan', revenue: 9100000, value: 136000000, occupancy: 91 },
-        { month: 'Feb', revenue: 9500000, value: 138000000, occupancy: 93 },
-      ];
+  // No fixture fallback — backend (`/api/v1/portfolio/growth`) now
+  // returns real 12-month Drizzle aggregates of payments + active
+  // leases per month-end (portfolio value = Σ active rent × 12).
+  const chartData = data;
 
   if (isLoading) {
     return (
@@ -74,42 +67,60 @@ export default function PortfolioGrowthPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <TrendingUp className="h-5 w-5 text-green-600" />
+      {(() => {
+        // Compute KPI tiles from real data only — no fallbacks.
+        const recentSix = chartData.slice(-6);
+        const earlierSix = chartData.slice(-12, -6);
+        const recentSum = recentSix.reduce((a, d) => a + d.revenue, 0);
+        const earlierSum = earlierSix.reduce((a, d) => a + d.revenue, 0);
+        const growthPct =
+          earlierSum === 0
+            ? null
+            : Math.round(((recentSum - earlierSum) / earlierSum) * 1000) / 10;
+        const latest = chartData[chartData.length - 1];
+        const portfolioValue = latest?.value ?? 0;
+        const occupancyRate = latest?.occupancy ?? 0;
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <TrendingUp className="h-5 w-5 text-green-600" />
+                </div>
+                <span className="text-sm font-medium text-gray-500">{t('revenueGrowth')}</span>
+              </div>
+              <p className="mt-3 text-2xl font-semibold text-gray-900">
+                {growthPct == null ? '—' : `${growthPct > 0 ? '+' : ''}${growthPct}%`}
+              </p>
+              <p className="text-sm text-gray-500">{t('vsLast6Months')}</p>
             </div>
-            <span className="text-sm font-medium text-gray-500">{t('revenueGrowth')}</span>
-          </div>
-          <p className="mt-3 text-2xl font-semibold text-gray-900">+12.5%</p>
-          <p className="text-sm text-gray-500">{t('vsLast6Months')}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Target className="h-5 w-5 text-blue-600" />
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Target className="h-5 w-5 text-blue-600" />
+                </div>
+                <span className="text-sm font-medium text-gray-500">{t('portfolioValue')}</span>
+              </div>
+              <p className="mt-3 text-2xl font-semibold text-gray-900">
+                {formatCurrency(portfolioValue)}
+              </p>
+              <p className="text-sm text-gray-500">{t('currentEstimate')}</p>
             </div>
-            <span className="text-sm font-medium text-gray-500">{t('portfolioValue')}</span>
-          </div>
-          <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(chartData[chartData.length - 1]?.value || 138000000)}
-          </p>
-          <p className="text-sm text-gray-500">{t('currentEstimate')}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <TrendingUp className="h-5 w-5 text-purple-600" />
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <TrendingUp className="h-5 w-5 text-purple-600" />
+                </div>
+                <span className="text-sm font-medium text-gray-500">{t('occupancyTrend')}</span>
+              </div>
+              <p className="mt-3 text-2xl font-semibold text-gray-900">
+                {formatPercentage(occupancyRate)}
+              </p>
+              <p className="text-sm text-gray-500">{t('currentRate')}</p>
             </div>
-            <span className="text-sm font-medium text-gray-500">{t('occupancyTrend')}</span>
           </div>
-          <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatPercentage(chartData[chartData.length - 1]?.occupancy || 93)}
-          </p>
-          <p className="text-sm text-gray-500">{t('currentRate')}</p>
-        </div>
-      </div>
+        );
+      })()}
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('revenueTrend')}</h3>

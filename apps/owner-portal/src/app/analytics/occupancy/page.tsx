@@ -16,31 +16,30 @@ import {
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { formatPercentage } from '../../../lib/api';
-import { useOccupancyAnalytics } from '../../../lib/hooks';
+import { useOccupancyAnalytics, usePortfolioPerformance } from '../../../lib/hooks';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B'];
 
 export default function OccupancyPage() {
   const t = useTranslations('occupancyAnalyticsPage');
   const { data: trendData = [], isLoading, error, refetch } = useOccupancyAnalytics();
+  // Per-property occupancy split sourced from the real
+  // `/api/v1/portfolio/performance` aggregate (Drizzle join of
+  // properties → units → leases).
+  const { data: properties = [] } = usePortfolioPerformance();
 
-  const displayData = trendData.length
-    ? trendData
-    : [
-        { month: 'Aug', rate: 85 },
-        { month: 'Sep', rate: 87 },
-        { month: 'Oct', rate: 89 },
-        { month: 'Nov', rate: 92 },
-        { month: 'Dec', rate: 91 },
-        { month: 'Jan', rate: 93 },
-        { month: 'Feb', rate: 91 },
-      ];
+  // Backend (`/api/v1/analytics/occupancy`) returns 12 months of real
+  // occupancy rates derived from active leases vs total units per
+  // month-end. Each row also carries `totalUnits` / `occupiedUnits`.
+  const displayData = trendData;
 
-  const byProperty = [
-    { name: 'Property A', value: 92 },
-    { name: 'Property B', value: 88 },
-    { name: 'Property C', value: 95 },
-  ];
+  const byProperty = properties.map((p) => ({
+    name: p.name,
+    value: p.occupancy ?? 0,
+  }));
+  const latestPoint = displayData[displayData.length - 1] as
+    | { rate?: number; totalUnits?: number; occupiedUnits?: number }
+    | undefined;
 
   if (isLoading) {
     return (
@@ -88,7 +87,7 @@ export default function OccupancyPage() {
             <span className="text-sm font-medium text-gray-500">{t('currentRate')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatPercentage(displayData[displayData.length - 1]?.rate || 91)}
+            {formatPercentage(latestPoint?.rate ?? 0)}
           </p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -98,7 +97,9 @@ export default function OccupancyPage() {
             </div>
             <span className="text-sm font-medium text-gray-500">{t('vacantUnits')}</span>
           </div>
-          <p className="mt-3 text-2xl font-semibold text-gray-900">12</p>
+          <p className="mt-3 text-2xl font-semibold text-gray-900">
+            {(latestPoint?.totalUnits ?? 0) - (latestPoint?.occupiedUnits ?? 0)}
+          </p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
@@ -107,7 +108,9 @@ export default function OccupancyPage() {
             </div>
             <span className="text-sm font-medium text-gray-500">{t('occupiedUnits')}</span>
           </div>
-          <p className="mt-3 text-2xl font-semibold text-gray-900">128</p>
+          <p className="mt-3 text-2xl font-semibold text-gray-900">
+            {latestPoint?.occupiedUnits ?? 0}
+          </p>
         </div>
       </div>
 

@@ -294,18 +294,39 @@ function buildOwnerDashboardPayload(scope) {
       })),
   ].slice(0, 6);
 
+  // Aging buckets per industry-standard 30-day cohorts. Each invoice's
+  // age is computed from `dueDate` (not `createdAt`), so partial-payment
+  // and credit-memo flows don't reset the clock.
   const arrearsBuckets = {
     current: 0,
     overdue_30: 0,
     overdue_60: 0,
+    overdue_90: 0,
+    overdue_90_plus: 0,
+  };
+  const arrearsCounts = {
+    current: 0,
+    overdue_30: 0,
+    overdue_60: 0,
+    overdue_90: 0,
     overdue_90_plus: 0,
   };
 
   for (const invoice of overdueInvoices) {
     const ageDays = Math.floor((now.getTime() - new Date(invoice.dueDate).getTime()) / 86400000);
-    if (ageDays <= 30) arrearsBuckets.overdue_30 += invoice.amountDue;
-    else if (ageDays <= 60) arrearsBuckets.overdue_60 += invoice.amountDue;
-    else arrearsBuckets.overdue_90_plus += invoice.amountDue;
+    if (ageDays <= 30) {
+      arrearsBuckets.overdue_30 += invoice.amountDue;
+      arrearsCounts.overdue_30 += 1;
+    } else if (ageDays <= 60) {
+      arrearsBuckets.overdue_60 += invoice.amountDue;
+      arrearsCounts.overdue_60 += 1;
+    } else if (ageDays <= 90) {
+      arrearsBuckets.overdue_90 += invoice.amountDue;
+      arrearsCounts.overdue_90 += 1;
+    } else {
+      arrearsBuckets.overdue_90_plus += invoice.amountDue;
+      arrearsCounts.overdue_90_plus += 1;
+    }
   }
 
   return {
@@ -340,10 +361,11 @@ function buildOwnerDashboardPayload(scope) {
       totalTenants: new Set(leases.filter((lease) => lease.status === 'ACTIVE').map((lease) => lease.customerId)).size,
     },
     arrears: [
-      { bucket: 'Current', amount: arrearsBuckets.current },
-      { bucket: '1-30 Days', amount: arrearsBuckets.overdue_30 },
-      { bucket: '31-60 Days', amount: arrearsBuckets.overdue_60 },
-      { bucket: '90+ Days', amount: arrearsBuckets.overdue_90_plus },
+      { bucket: 'Current', amount: arrearsBuckets.current, count: arrearsCounts.current },
+      { bucket: '1-30 Days', amount: arrearsBuckets.overdue_30, count: arrearsCounts.overdue_30 },
+      { bucket: '31-60 Days', amount: arrearsBuckets.overdue_60, count: arrearsCounts.overdue_60 },
+      { bucket: '61-90 Days', amount: arrearsBuckets.overdue_90, count: arrearsCounts.overdue_90 },
+      { bucket: '90+ Days', amount: arrearsBuckets.overdue_90_plus, count: arrearsCounts.overdue_90_plus },
     ],
     recentActivity,
     alerts,

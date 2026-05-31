@@ -28,6 +28,8 @@
  */
 
 import { Hono } from 'hono';
+import { and, eq, gte, sql } from 'drizzle-orm';
+import { payments, workOrders } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { logger } from '../utils/logger';
@@ -102,22 +104,66 @@ analyticsRouter.get('/summary', async (c) => {
       .filter((inv) => inv.status !== 'paid')
       .reduce((sum, inv) => sum + Number(inv.amountDue ?? inv.amount ?? 0), 0);
 
+    // Real monthly revenue + expenses from payments / work_orders.
+    const db = c.get('db');
+    const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
+    const prevMonthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - 1, 1));
+
+    const [currentMonthRows, prevMonthRows, currentExpenseRows] = await Promise.all([
+      db.execute(sql`
+        SELECT COALESCE(SUM(${payments.amount}), 0)::bigint AS minor
+        FROM ${payments}
+        WHERE ${payments.tenantId} = ${auth.tenantId}
+          AND ${payments.status} = 'completed'
+          AND COALESCE(${payments.completedAt}, ${payments.createdAt}) >= ${monthStart}
+      `),
+      db.execute(sql`
+        SELECT COALESCE(SUM(${payments.amount}), 0)::bigint AS minor
+        FROM ${payments}
+        WHERE ${payments.tenantId} = ${auth.tenantId}
+          AND ${payments.status} = 'completed'
+          AND COALESCE(${payments.completedAt}, ${payments.createdAt}) >= ${prevMonthStart}
+          AND COALESCE(${payments.completedAt}, ${payments.createdAt}) < ${monthStart}
+      `),
+      db.execute(sql`
+        SELECT COALESCE(SUM(COALESCE(${workOrders.actualCost}, ${workOrders.estimatedCost}, 0)), 0)::bigint AS minor
+        FROM ${workOrders}
+        WHERE ${workOrders.tenantId} = ${auth.tenantId}
+          AND COALESCE(${workOrders.completedAt}, ${workOrders.createdAt}) >= ${monthStart}
+      `),
+    ]);
+
+    const currentRevenueMinor = Number(currentMonthRows.rows?.[0]?.minor ?? 0);
+    const prevRevenueMinor = Number(prevMonthRows.rows?.[0]?.minor ?? 0);
+    const currentExpensesMinor = Number(currentExpenseRows.rows?.[0]?.minor ?? 0);
+    const monthlyRevenue = currentRevenueMinor / 100;
+    const monthlyExpenses = currentExpensesMinor / 100;
+    const netOperatingIncome = (currentRevenueMinor - currentExpensesMinor) / 100;
+    const revenueGrowth =
+      prevRevenueMinor === 0
+        ? 0
+        : ((currentRevenueMinor - prevRevenueMinor) / prevRevenueMinor) * 100;
+    const totalInvoicedMinor = arrearsBalance * 100 + currentRevenueMinor;
+    const collectionRate =
+      totalInvoicedMinor === 0 ? 0 : (currentRevenueMinor / totalInvoicedMinor) * 100;
+
     return c.json({
       success: true,
       data: {
         occupancyRate,
-        monthlyRevenue: 0,
-        revenueGrowth: 0,
-        netOperatingIncome: 0,
+        monthlyRevenue,
+        revenueGrowth,
+        netOperatingIncome,
         arrearsBalance,
-        collectionRate: 0,
+        collectionRate,
         totalProperties: scopedProperties.length,
         totalUnits: scopedUnits.length,
         activeLeases,
-        meta: {
-          source: 'live',
-          note: 'partial: revenue/NOI aggregation pending dedicated read-model',
-        },
+        revenue: monthlyRevenue,
+        expenses: monthlyExpenses,
+        noi: netOperatingIncome,
+        occupancy: occupancyRate * 100,
+        meta: { source: 'live' },
       },
     });
   } catch (error) {

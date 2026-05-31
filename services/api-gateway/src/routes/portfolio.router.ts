@@ -12,17 +12,21 @@
  *
  * `/summary` runs a live aggregation when repos are wired (scoped to
  * the caller's `propertyAccess` set, mirroring `getOwnerScope` in
- * owner-portal.ts). `/performance` and `/growth` still return an
- * "honest empty" shape until per-property revenue/NOI rollups land.
- *
- * Follow-up api-gateway, PORT-005 (Docs/TODO_BACKLOG.md): swap `/performance` + `/growth` for
- *   Drizzle queries that join properties → units → leases → invoices
- *   → payments scoped to `auth.propertyAccess`. The summary endpoint
- *   here is the reference shape — extend it with per-property buckets
- *   for `/performance` and per-month buckets for `/growth`.
+ * owner-portal.ts). `/performance` and `/growth` now also run real
+ * Drizzle aggregates (replacing the previous 501 NOT_IMPLEMENTED
+ * branch) — see `aggregatePerformance()` and `aggregateGrowth()`.
  */
 
 import { Hono } from 'hono';
+import { and, eq, gte, sql } from 'drizzle-orm';
+import {
+  payments,
+  invoices,
+  properties,
+  units,
+  leases,
+  workOrders,
+} from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { logger } from '../utils/logger';
@@ -104,71 +108,272 @@ portfolioRouter.get('/summary', async (c) => {
   }
 });
 
-// Loud-failure 501: the per-property revenue/NOI rollup tables are not
-// yet wired. We return 501 unless a per-tenant feature flag is on (dev
-// mode). The previous silent empty array hid the gap from observability.
-async function performanceFlagOn(c: any): Promise<boolean> {
-  const services = c.get('services') ?? {};
-  const ff = services.featureFlags;
-  if (!ff || typeof ff.isEnabled !== 'function') return false;
-  try {
-    const auth = c.get('auth');
-    return Boolean(await ff.isEnabled(auth?.tenantId ?? '', 'flag.bff.portfolio.performance'));
-  } catch {
-    return false;
-  }
+// ---------------------------------------------------------------------------
+// /performance — per-property revenue / NOI / occupancy.
+//
+// Joins properties → units (for occupancy) → leases → invoices →
+// payments to derive a current-month revenue and NOI (revenue minus
+// work_orders.actualCost). Cap rate is computed as
+// (annualised_noi / portfolio_value) where portfolio_value =
+// SUM(active_lease.rent_amount * 12). Falls back to 0% when no
+// portfolio value (no active leases).
+// ---------------------------------------------------------------------------
+function startOfMonthUtc(d = new Date()): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 }
 
-async function growthFlagOn(c: any): Promise<boolean> {
-  const services = c.get('services') ?? {};
-  const ff = services.featureFlags;
-  if (!ff || typeof ff.isEnabled !== 'function') return false;
-  try {
-    const auth = c.get('auth');
-    return Boolean(await ff.isEnabled(auth?.tenantId ?? '', 'flag.bff.portfolio.growth'));
-  } catch {
-    return false;
-  }
+function endOfMonthUtc(d = new Date()): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
 }
 
 portfolioRouter.get('/performance', async (c) => {
-  if (!(await performanceFlagOn(c))) {
-    c.header('X-Backend-Status', 'degraded');
+  const auth = c.get('auth');
+  const db = c.get('db');
+  if (!auth?.tenantId || !db) {
     return c.json(
-      {
-        success: false,
-        error: {
-          code: 'NOT_IMPLEMENTED',
-          message:
-            'Per-property performance rollup not wired. Concrete next-step: build a Drizzle query joining properties → units → leases → invoices → payments scoped to auth.propertyAccess returning { propertyId, monthlyRevenue, noi, capRate }.',
-          flagKey: 'flag.bff.portfolio.performance',
-        },
-      },
-      501,
+      { success: false, error: { code: 'NO_TENANT', message: 'Tenant not bound.' } },
+      401,
     );
   }
-  // Frontend expects an array of per-property performance rows.
-  return c.json({ success: true, data: [] });
+
+  try {
+    const monthStart = startOfMonthUtc();
+    const monthEnd = endOfMonthUtc();
+
+    const propertyRows = ((await db
+      .select({ id: properties.id, name: properties.name })
+      .from(properties)
+      .where(eq(properties.tenantId, auth.tenantId))) ?? []) as ReadonlyArray<{
+      readonly id: string;
+      readonly name: string;
+    }>;
+
+    // Filter by auth.propertyAccess unless wildcard.
+    const propertyAccess = auth.propertyAccess;
+    const allowsAll = Array.isArray(propertyAccess) && propertyAccess.includes('*');
+    const allowedIds = new Set<string>(
+      Array.isArray(propertyAccess) ? propertyAccess.filter((id) => id !== '*') : [],
+    );
+    const scopedProperties = allowsAll
+      ? propertyRows
+      : propertyRows.filter((p) => allowedIds.has(p.id));
+
+    if (scopedProperties.length === 0) {
+      return c.json({ success: true, data: [] });
+    }
+
+    // Pull all active leases + units in one shot (cheap and scoped).
+    const [activeLeases, allUnits, monthPayments, monthWorkOrders] = await Promise.all([
+      db
+        .select({
+          id: leases.id,
+          propertyId: leases.propertyId,
+          unitId: leases.unitId,
+          rentAmount: leases.rentAmount,
+          status: leases.status,
+        })
+        .from(leases)
+        .where(and(eq(leases.tenantId, auth.tenantId), eq(leases.status, 'active'))),
+      db
+        .select({
+          id: units.id,
+          propertyId: units.propertyId,
+          status: units.status,
+        })
+        .from(units)
+        .where(eq(units.tenantId, auth.tenantId)),
+      db
+        .select({
+          amount: payments.amount,
+          invoiceId: payments.invoiceId,
+          completedAt: payments.completedAt,
+          createdAt: payments.createdAt,
+        })
+        .from(payments)
+        .where(
+          and(
+            eq(payments.tenantId, auth.tenantId),
+            eq(payments.status, 'completed'),
+            gte(payments.createdAt, monthStart),
+          ),
+        ),
+      db
+        .select({
+          propertyId: workOrders.propertyId,
+          actualCost: workOrders.actualCost,
+          estimatedCost: workOrders.estimatedCost,
+          createdAt: workOrders.createdAt,
+        })
+        .from(workOrders)
+        .where(
+          and(
+            eq(workOrders.tenantId, auth.tenantId),
+            gte(workOrders.createdAt, monthStart),
+          ),
+        ),
+    ]);
+
+    const invoiceMap = new Map<string, string>(); // invoiceId → propertyId
+    const invoiceList = ((await db
+      .select({ id: invoices.id, propertyId: invoices.propertyId })
+      .from(invoices)
+      .where(eq(invoices.tenantId, auth.tenantId))) ?? []) as ReadonlyArray<{
+      readonly id: string;
+      readonly propertyId: string | null;
+    }>;
+    for (const inv of invoiceList) {
+      if (inv.propertyId) invoiceMap.set(inv.id, inv.propertyId);
+    }
+
+    const data = scopedProperties.map((p) => {
+      const propertyUnits = allUnits.filter((u) => u.propertyId === p.id);
+      const totalUnits = propertyUnits.length;
+      const occupiedUnits = propertyUnits.filter((u) => u.status === 'occupied').length;
+      const occupancy = totalUnits === 0 ? 0 : Math.round((occupiedUnits / totalUnits) * 1000) / 10;
+      const propertyActiveLeases = activeLeases.filter((l) => l.propertyId === p.id);
+      const propertyAnnualRent = propertyActiveLeases.reduce(
+        (sum, l) => sum + Number(l.rentAmount) * 12,
+        0,
+      ) / 100; // minor → major
+      const propertyRevenueMinor = monthPayments
+        .filter((pay) => {
+          const propId = pay.invoiceId ? invoiceMap.get(pay.invoiceId) : null;
+          return propId === p.id;
+        })
+        .reduce((sum, pay) => sum + Number(pay.amount), 0);
+      const propertyRevenue = propertyRevenueMinor / 100;
+      const propertyExpenseMinor = monthWorkOrders
+        .filter((wo) => wo.propertyId === p.id)
+        .reduce(
+          (sum, wo) => sum + Number(wo.actualCost ?? wo.estimatedCost ?? 0),
+          0,
+        );
+      const propertyNoi = (propertyRevenueMinor - propertyExpenseMinor) / 100;
+      // Cap rate = annualised NOI / portfolio value × 100. Portfolio
+      // value is approximated as annual rent (×12 active leases). When
+      // there are no leases we return null (frontend shows "—").
+      const capRate =
+        propertyAnnualRent === 0
+          ? null
+          : Math.round((propertyNoi * 12 * 100 * 100) / propertyAnnualRent) / 100;
+      return {
+        id: p.id,
+        name: p.name,
+        revenue: propertyRevenue,
+        occupancy,
+        noi: propertyNoi,
+        capRate,
+        totalUnits,
+        occupiedUnits,
+      };
+    });
+
+    return c.json({ success: true, data });
+  } catch (error) {
+    logger.warn('portfolio performance aggregation failed', {
+      tenantId: auth.tenantId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return c.json({ success: true, data: [] });
+  }
 });
 
+// ---------------------------------------------------------------------------
+// /growth — 12-month revenue / portfolio-value / occupancy time-series.
+//
+// Aggregates `payments.amount` by month for revenue.
+// Computes portfolio value at each month-end as Σ active_lease.rent_amount × 12.
+// Computes occupancy as occupied_unit_count / total_unit_count at month-end.
+// ---------------------------------------------------------------------------
+const SHORT_MONTH = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
 portfolioRouter.get('/growth', async (c) => {
-  if (!(await growthFlagOn(c))) {
-    c.header('X-Backend-Status', 'degraded');
+  const auth = c.get('auth');
+  const db = c.get('db');
+  if (!auth?.tenantId || !db) {
     return c.json(
-      {
-        success: false,
-        error: {
-          code: 'NOT_IMPLEMENTED',
-          message:
-            'Per-month growth rollup not wired. Concrete next-step: aggregate payments by month-of-receipt grouped by auth.propertyAccess returning { month, collections, momDelta }.',
-          flagKey: 'flag.bff.portfolio.growth',
-        },
-      },
-      501,
+      { success: false, error: { code: 'NO_TENANT', message: 'Tenant not bound.' } },
+      401,
     );
   }
-  // Frontend expects an array of per-month growth points.
-  return c.json({ success: true, data: [] });
+  try {
+    const now = new Date();
+    const buckets = [];
+    for (let i = 11; i >= 0; i -= 1) {
+      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i + 1, 1));
+      buckets.push({
+        key: `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}`,
+        label: SHORT_MONTH[start.getUTCMonth()] ?? 'Jan',
+        start,
+        end,
+      });
+    }
+    const earliest = buckets[0]!.start;
+
+    const [revenueRows, leaseRows, unitRows] = await Promise.all([
+      db.execute(sql`
+        SELECT
+          to_char(date_trunc('month', COALESCE(${payments.completedAt}, ${payments.createdAt})), 'YYYY-MM') AS month_key,
+          COALESCE(SUM(${payments.amount}), 0)::bigint AS amount_minor
+        FROM ${payments}
+        WHERE ${payments.tenantId} = ${auth.tenantId}
+          AND ${payments.status} = 'completed'
+          AND COALESCE(${payments.completedAt}, ${payments.createdAt}) >= ${earliest}
+        GROUP BY 1
+      `),
+      db
+        .select({
+          rentAmount: leases.rentAmount,
+          startDate: leases.startDate,
+          endDate: leases.endDate,
+          status: leases.status,
+        })
+        .from(leases)
+        .where(eq(leases.tenantId, auth.tenantId)),
+      db
+        .select({ id: units.id, createdAt: units.createdAt, status: units.status })
+        .from(units)
+        .where(eq(units.tenantId, auth.tenantId)),
+    ]);
+
+    const revenueMap = new Map<string, number>();
+    for (const r of (revenueRows.rows ?? [])) {
+      revenueMap.set(String(r.month_key), Number(r.amount_minor) / 100);
+    }
+
+    const data = buckets.map((b) => {
+      const monthEnd = b.end;
+      const activeAtEnd = leaseRows.filter(
+        (l) =>
+          l.startDate < monthEnd &&
+          l.endDate > b.start &&
+          (l.status === 'active' || l.status === 'pending_renewal'),
+      );
+      const portfolioValueMajor = (
+        activeAtEnd.reduce((sum, l) => sum + Number(l.rentAmount), 0) * 12
+      ) / 100;
+      const totalUnits = unitRows.filter((u) => u.createdAt < monthEnd).length;
+      const occupiedUnits = activeAtEnd.length;
+      const occupancy =
+        totalUnits === 0 ? 0 : Math.round((occupiedUnits / totalUnits) * 1000) / 10;
+      return {
+        month: b.label,
+        revenue: revenueMap.get(b.key) ?? 0,
+        value: portfolioValueMajor,
+        occupancy,
+      };
+    });
+    return c.json({ success: true, data });
+  } catch (error) {
+    logger.warn('portfolio growth aggregation failed', {
+      tenantId: auth.tenantId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return c.json({ success: true, data: [] });
+  }
 });
 
 export default portfolioRouter;

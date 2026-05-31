@@ -23,13 +23,10 @@ export default function PortfolioPerformancePage() {
   const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { data = [], isLoading, error, refetch } = usePortfolioPerformance();
 
-  const chartData = data.length
-    ? data
-    : [
-        { name: 'Property A', revenue: 850000, occupancy: 92, noi: 620000 },
-        { name: 'Property B', revenue: 920000, occupancy: 88, noi: 580000 },
-        { name: 'Property C', revenue: 450000, occupancy: 95, noi: 320000 },
-      ];
+  // No fixture fallback — backend (`/api/v1/portfolio/performance`)
+  // now returns real per-property Drizzle aggregates joining
+  // properties → units → leases → invoices → payments.
+  const chartData = data;
 
   if (isLoading) {
     return (
@@ -97,8 +94,7 @@ export default function PortfolioPerformancePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {(data.length ? data : chartData.map((d, i) => ({ ...d, id: String(i), capRate: 6.5 + i }))).map(
-          (property) => (
+        {data.map((property) => (
             <div
               key={property.id}
               className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
@@ -131,20 +127,19 @@ export default function PortfolioPerformancePage() {
                 <div className="flex justify-between items-center pt-2 border-t">
                   <span className="text-sm text-gray-500">{t('capRate')}</span>
                   <span className="flex items-center gap-1 text-green-600 font-medium">
-                    {(property as { capRate?: number }).capRate ? (
+                    {(property as { capRate?: number | null }).capRate != null ? (
                       <>
                         <TrendingUp className="h-4 w-4" />
-                        {(property as { capRate?: number }).capRate}%
+                        {(property as { capRate?: number | null }).capRate}%
                       </>
                     ) : (
-                      <>6.5%</>
+                      <span className="text-gray-400 font-normal">—</span>
                     )}
                   </span>
                 </div>
               </div>
             </div>
-          )
-        )}
+          ))}
       </div>
     </div>
   );

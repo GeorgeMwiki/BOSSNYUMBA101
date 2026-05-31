@@ -23,18 +23,10 @@ export default function BudgetForecastsPage() {
   const { format: formatCurrency } = useTenantCurrencyFormatter();
   const { data = [], isLoading, error, refetch } = useBudgetForecasts();
 
-  const forecastData = data.length
-    ? data
-    : [
-        { month: 'Mar', projectedRevenue: 9600000, projectedExpenses: 2200000, projectedNoi: 7400000 },
-        { month: 'Apr', projectedRevenue: 9800000, projectedExpenses: 2200000, projectedNoi: 7600000 },
-        { month: 'May', projectedRevenue: 9800000, projectedExpenses: 2300000, projectedNoi: 7500000 },
-        { month: 'Jun', projectedRevenue: 9900000, projectedExpenses: 2300000, projectedNoi: 7600000 },
-        { month: 'Jul', projectedRevenue: 10000000, projectedExpenses: 2350000, projectedNoi: 7650000 },
-        { month: 'Aug', projectedRevenue: 10100000, projectedExpenses: 2350000, projectedNoi: 7750000 },
-        { month: 'Sep', projectedRevenue: 10200000, projectedExpenses: 2400000, projectedNoi: 7800000 },
-        { month: 'Oct', projectedRevenue: 10300000, projectedExpenses: 2400000, projectedNoi: 7900000 },
-      ];
+  // No fixture fallback — when the backend has no history yet, we render
+  // an explicit empty state. The shape comes from the real Holt-Winters
+  // route at `/api/v1/budgets/forecasts` (see budget-forecast.router.ts).
+  const forecastData = data;
 
   const totalProjectedRevenue = forecastData.reduce((a, d) => a + d.projectedRevenue, 0);
   const totalProjectedExpenses = forecastData.reduce((a, d) => a + d.projectedExpenses, 0);
@@ -62,6 +54,32 @@ export default function BudgetForecastsPage() {
           <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
+    );
+  }
+
+  // Honest empty state — the backend returns [] when there isn't enough
+  // history (< 6 months of completed payments) to fit Holt-Winters.
+  if (forecastData.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link to="/budgets" className="p-2 rounded-lg hover:bg-gray-100 text-gray-600">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+            <p className="text-gray-500">{t('subtitle')}</p>
+          </div>
+        </div>
+        <Alert>
+          <AlertDescription>
+            Not enough completed-payment history yet for a forecast. The
+            Holt-Winters projection needs at least six months of revenue
+            data. Once it's available, this page will render real
+            projections with 95% confidence intervals.
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
@@ -118,6 +136,9 @@ export default function BudgetForecastsPage() {
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('revenueVsExpensesForecast')}</h3>
+        <p className="text-xs text-gray-500 mb-2">
+          Holt-Winters projection · 95% confidence interval shaded
+        </p>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={forecastData}>
@@ -132,11 +153,36 @@ export default function BudgetForecastsPage() {
                 formatter={(value: number) => formatCurrency(value)}
                 contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }}
               />
+              {/* Revenue 95% band (rendered as a transparent area whose
+                  lower = projectedRevenueLower and upper - lower is its
+                  height; we cheat by rendering the upper area first then
+                  the lower mask). Recharts has no native band primitive,
+                  so we approximate with two stacked Areas: lower as a
+                  baseline, upper as the top edge. */}
+              <Area
+                type="monotone"
+                dataKey="projectedRevenueUpper"
+                stroke="transparent"
+                fill="#D1FAE5"
+                fillOpacity={0.4}
+                name="Revenue · upper 95%"
+                isAnimationActive={false}
+              />
+              <Area
+                type="monotone"
+                dataKey="projectedRevenueLower"
+                stroke="transparent"
+                fill="white"
+                fillOpacity={1}
+                name="Revenue · lower 95%"
+                isAnimationActive={false}
+              />
               <Area
                 type="monotone"
                 dataKey="projectedRevenue"
                 stroke="#10B981"
-                fill="#D1FAE5"
+                fill="#10B981"
+                fillOpacity={0.2}
                 strokeWidth={2}
                 name="Projected Revenue"
               />
@@ -144,7 +190,8 @@ export default function BudgetForecastsPage() {
                 type="monotone"
                 dataKey="projectedExpenses"
                 stroke="#F59E0B"
-                fill="#FEF3C7"
+                fill="#F59E0B"
+                fillOpacity={0.15}
                 strokeWidth={2}
                 name="Projected Expenses"
               />

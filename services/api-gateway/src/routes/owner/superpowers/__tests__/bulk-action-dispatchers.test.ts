@@ -12,6 +12,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { getTableName } from 'drizzle-orm';
 
 import {
   dispatch,
@@ -42,20 +43,11 @@ interface SelectCall {
 }
 
 function tableNameOf(obj: unknown): string {
-  if (typeof obj !== 'object' || obj === null) return 'unknown';
-  const sym = Object.getOwnPropertySymbols(obj).find(
-    (s) => s.description?.includes('OriginalName') ?? false,
-  );
-  if (sym) {
-    const v = (obj as Record<symbol, unknown>)[sym];
-    if (typeof v === 'string') return v;
+  try {
+    return getTableName(obj as never);
+  } catch {
+    return 'unknown';
   }
-  // Best-effort fallback — Drizzle tables hold the original name on
-  // a `_.tableName` field inside the symbol-keyed proxy.
-  const dict = obj as Record<string, unknown>;
-  const internal = dict['_'] as { name?: string } | undefined;
-  if (internal?.name) return internal.name;
-  return 'unknown';
 }
 
 function makeShim(opts: { leaseRow?: Record<string, unknown> } = {}) {

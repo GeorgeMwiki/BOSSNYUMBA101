@@ -366,9 +366,17 @@ export function usePropertyBudget(propertyId: string) {
 
 export interface BudgetForecast {
   month: string;
+  /** ISO timestamp for the projected period start (from server). */
+  t?: string;
   projectedRevenue: number;
+  projectedRevenueLower?: number;
+  projectedRevenueUpper?: number;
   projectedExpenses: number;
+  projectedExpensesLower?: number;
+  projectedExpensesUpper?: number;
   projectedNoi: number;
+  projectedNoiLower?: number;
+  projectedNoiUpper?: number;
 }
 
 export function useBudgetForecasts() {
