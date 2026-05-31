@@ -58,9 +58,18 @@ Read the documents in this order before answering or editing.
   resolver generalisation.
 - **OTel bootstrap runs first** in `services/api-gateway/src/index.ts`
   before any module emits spans.
-- **Multi-currency.** Every money render uses
-  `formatCurrency(amount, currencyCode)`. Never hard-code KES /
-  TZS / NGN.
+- **Multi-currency · TZ at launch · East Africa expansion.** Tanzania
+  is the starting jurisdiction at launch; Kenya / Uganda / Nigeria are
+  planned expansion markets. Every money render uses
+  `formatCurrency(amount, currencyCode)`. Never hard-code KES / TZS /
+  UGX / NGN in code paths.
+- **English default · bilingual sw/en.** Default user language is
+  `en`. Tanzanian users can toggle to `sw` (Swahili) in settings;
+  toggle is ABSOLUTE — when `en` selected zero Swahili appears
+  anywhere (chat, surfaces, greetings, errors, toasts) and vice
+  versa. Mr. Mwikila personas, junior prompts, and UI copy must have
+  complete EN and SW translations; greetings strictly single-language
+  per active locale (no "Habari! Hello there" mixing — ever).
 - **No `console.log` in services.** Pino logger only — it handles
   redaction.
 - **No reflective CORS.** Origin allowlist only.
