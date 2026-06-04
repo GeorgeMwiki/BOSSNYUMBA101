@@ -28,6 +28,9 @@ export interface LogomarkProps extends React.SVGProps<SVGSVGElement> {
   readonly variant?: LogomarkVariant;
   /** Renders the rounded dark backdrop tile (square app-icon framing). */
   readonly withBackdrop?: boolean;
+  /** Mark "lit" pulse. Defaults on for the premium (gradient) variant;
+   *  pass false to freeze it. Honours prefers-reduced-motion. */
+  readonly pulse?: boolean;
 }
 
 export const Logomark = React.forwardRef<SVGSVGElement, LogomarkProps>(

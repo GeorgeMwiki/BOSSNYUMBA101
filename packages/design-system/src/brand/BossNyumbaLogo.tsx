@@ -51,6 +51,9 @@ export interface BossNyumbaLogoProps extends React.HTMLAttributes<HTMLSpanElemen
   readonly label?: string;
   /** Accessible title — falls back to the canonical brand name. */
   readonly title?: string;
+  /** Mark "lit" pulse. Defaults on for the gradient tone; pass false to
+   *  freeze it. Honours prefers-reduced-motion. */
+  readonly pulse?: boolean;
 }
 
 /**
@@ -123,6 +126,7 @@ export function BossNyumbaLogo({
   tone = 'full',
   label = 'BossNyumba',
   title = 'BossNyumba',
+  pulse,
   style,
   ...rest
 }: BossNyumbaLogoProps): JSX.Element {
@@ -147,7 +151,13 @@ export function BossNyumbaLogo({
         aria-label={title}
         {...rest}
       >
-        <BossNyumbaMark size={Math.round(size * 1.35)} tone={tone} title={title} aria-hidden="true" />
+        <BossNyumbaMark
+          size={Math.round(size * 1.35)}
+          tone={tone}
+          title={title}
+          pulse={pulse}
+          aria-hidden="true"
+        />
         <BossNyumbaWordmarkText size={size} tone={tone} label={label} />
       </span>
     );
@@ -160,7 +170,7 @@ export function BossNyumbaLogo({
         aria-label={title}
         {...rest}
       >
-        <BossNyumbaMark size={size} tone={tone} title={title} aria-hidden="true" />
+        <BossNyumbaMark size={size} tone={tone} title={title} pulse={pulse} aria-hidden="true" />
         <BossNyumbaWordmarkText size={size} tone={tone} label={label} />
       </span>
     );
@@ -180,7 +190,7 @@ export function BossNyumbaLogo({
       aria-label={title}
       {...rest}
     >
-      <BossNyumbaMark size={size} tone={tone} title={title} />
+      <BossNyumbaMark size={size} tone={tone} title={title} pulse={pulse} />
     </span>
   );
 }

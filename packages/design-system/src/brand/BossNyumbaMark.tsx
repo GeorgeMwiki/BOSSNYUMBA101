@@ -34,15 +34,34 @@ export interface BossNyumbaMarkProps extends React.SVGProps<SVGSVGElement> {
   readonly title?: string;
   /** Renders the rounded dark backdrop tile (square app-icon framing). */
   readonly withBackdrop?: boolean;
+  /**
+   * When true (the default for the gradient `full` tone) the warm bloom
+   * slowly breathes — the "lit", alive-at-rest brand pulse. Self-contained
+   * via an inline `<style>`, so it animates anywhere the SVG renders with
+   * no external CSS, and is disabled under `prefers-reduced-motion`. Pass
+   * `false` for a fully static mark.
+   */
+  readonly pulse?: boolean;
 }
 
 export const BossNyumbaMark = React.forwardRef<SVGSVGElement, BossNyumbaMarkProps>(
   function BossNyumbaMark(
-    { size = 32, tone = 'full', title = 'BossNyumba', withBackdrop = false, ...rest },
+    { size = 32, tone = 'full', title = 'BossNyumba', withBackdrop = false, pulse, ...rest },
     ref,
   ) {
     const uid = React.useId().replace(/:/g, '');
     const palette = resolveTone(tone);
+
+    // The "lit" pulse rides on the warm bloom, so it only exists for the
+    // gradient tone. Default-on there; any consumer can opt out. Salted
+    // class + keyframes so multiple marks never clash, and a
+    // reduced-motion guard pins it to a calm static glow when requested.
+    const shouldPulse = (pulse ?? true) && palette.useGradient;
+    const litClass = `bn-lit-${uid}`;
+    const litCss =
+      `@keyframes ${litClass}{0%,100%{opacity:.42}50%{opacity:1}}` +
+      `.${litClass}{animation:${litClass} 3.4s ease-in-out infinite}` +
+      `@media(prefers-reduced-motion:reduce){.${litClass}{animation:none;opacity:.85}}`;
 
     const spineId = `bn-spine-${uid}`;
     const upperId = `bn-upper-${uid}`;
@@ -77,6 +96,7 @@ export const BossNyumbaMark = React.forwardRef<SVGSVGElement, BossNyumbaMarkProp
         {...rest}
       >
         <title>{title}</title>
+        {shouldPulse ? <style dangerouslySetInnerHTML={{ __html: litCss }} /> : null}
 
         {palette.useGradient ? (
           <defs>
@@ -98,8 +118,8 @@ export const BossNyumbaMark = React.forwardRef<SVGSVGElement, BossNyumbaMarkProp
               <stop offset="100%" stopColor="#FFF8E6" stopOpacity="0" />
             </linearGradient>
             <radialGradient id={bloomId} cx="32" cy="30" r="20" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#F7CC85" stopOpacity="0.3" />
-              <stop offset="60%" stopColor="#E5B26B" stopOpacity="0.05" />
+              <stop offset="0%" stopColor="#F7CC85" stopOpacity="0.42" />
+              <stop offset="60%" stopColor="#E5B26B" stopOpacity="0.07" />
               <stop offset="100%" stopColor="#E5B26B" stopOpacity="0" />
             </radialGradient>
             <linearGradient id={backdropId} x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
@@ -122,7 +142,13 @@ export const BossNyumbaMark = React.forwardRef<SVGSVGElement, BossNyumbaMarkProp
         ) : null}
 
         {palette.useGradient ? (
-          <circle cx="32" cy="30" r="19" fill={`url(#${bloomId})`} />
+          <circle
+            cx="32"
+            cy="30"
+            r="19"
+            fill={`url(#${bloomId})`}
+            className={shouldPulse ? litClass : undefined}
+          />
         ) : null}
 
         {/* Spine of the B */}
