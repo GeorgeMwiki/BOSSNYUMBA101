@@ -180,7 +180,8 @@ export async function emitSignal(input: EmitInput): Promise<EmissionResult> {
   });
   const notes: string[] = [];
   if (!isolation.ok) {
-    notes.push(`isolation blocked: ${isolation.reason}`);
+    const reason = 'reason' in isolation ? isolation.reason : 'unknown';
+    notes.push(`isolation blocked: ${reason}`);
     return Object.freeze({
       signal,
       routedTo: Object.freeze(['isolation-blocked'] as ReadonlyArray<SignalRoute>),

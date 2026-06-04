@@ -117,7 +117,7 @@ export const jurisdictionDiscoverTool: PersonaToolDescriptor<
   stakes: 'LOW',
   isWrite: false,
   requiresPolicyRuleLiteral: false,
-  async handler(input, ctx) {
+  async handler(input, ctx): Promise<z.infer<typeof DiscoverOutput>> {
     const client = ctx.httpClient;
     if (!client) {
       // Loopback unavailable — return a low-confidence stub so the
@@ -145,35 +145,7 @@ export const jurisdictionDiscoverTool: PersonaToolDescriptor<
           'internal admin approval).',
       };
     }
-    return client.post<{
-      countryCode: string;
-      countryName: string;
-      regulators: ReadonlyArray<{
-        name: string;
-        domain:
-          | 'rental_housing'
-          | 'revenue_tax'
-          | 'data_protection'
-          | 'tenant_tribunal'
-          | 'building_safety'
-          | 'unknown';
-        mandate?: string;
-        url?: string;
-      }>;
-      currency: string;
-      languages: ReadonlyArray<string>;
-      legalFramework?: string;
-      validityScore: number;
-      origin: 'seed' | 'cache' | 'discovered' | 'fallback';
-      lowConfidence: boolean;
-      sources: ReadonlyArray<{
-        kind: 'web_search' | 'corpus' | 'fallback';
-        id: string;
-        title: string;
-        snippet?: string;
-      }>;
-      promotionHint: string;
-    }>('/internal/jurisdiction-discovery/discover', {
+    return client.post<z.infer<typeof DiscoverOutput>>('/internal/jurisdiction-discovery/discover', {
       tenantId: ctx.tenantId,
       country: input.country,
     });

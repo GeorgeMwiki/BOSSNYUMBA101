@@ -384,6 +384,9 @@ import {
 // Owner tab strip persistence (migration 0300). Backs the FE
 // `useOwnerTabs` hook so a spawned tab survives sign-out and the
 // landlord can roam between phone + laptop without losing layout.
+// Wave OWNER-OS — closes commit a935776e's deliberate localStorage-only
+// deferral, delivering the cross-device sync promise for `useOwnerTabs`.
+// Mounted at /api/v1/owner/tabs.
 import { ownerTabsRouter } from './routes/owner/tabs.hono';
 // Wave SUPERPOWERS — generic 5-min undo ledger (migration 0298). Every
 // WRITE brain tool appends a row so the owner gets a "Undo (4:58)" chip
@@ -399,11 +402,6 @@ import { ownerSuperpowersBulkActionRouter } from './routes/owner/superpowers/bul
 // banner can surface per-field Cmd-Z. Mounted at
 // /api/v1/owner/superpowers/prefill.
 import { ownerSuperpowersPrefillRouter } from './routes/owner/superpowers/prefill.hono';
-// Wave OWNER-OS — server-side tab persistence (migration 0300). Closes
-// commit a935776e's deliberate localStorage-only deferral. Backs the
-// cross-device sync promise for `useOwnerTabs` on the owner-portal.
-// Mounted at /api/v1/owner/tabs.
-import { ownerTabsRouter } from './routes/owner/tabs.hono';
 // Wave OWNER-OS — admin platform-portal superpowers with four-eye
 // approval (migration 0301). Backs admin bulk actions (suspend tenant,
 // export regulator pack, force lease termination, force password

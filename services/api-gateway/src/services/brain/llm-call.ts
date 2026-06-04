@@ -233,7 +233,7 @@ export async function callBrainLlmJson<T>(
         parseRetriesUsed: attempt,
       };
     }
-    lastIssues = parsed.issues;
+    lastIssues = 'issues' in parsed ? parsed.issues : [];
   }
 
   const issues = lastIssues ?? [];

@@ -9,12 +9,16 @@ import {
   intelligenceCorpusChunks,
 } from '@bossnyumba/database';
 import type {
+  EmbeddedChunk,
+  Summary,
   CorpusDocSourceKind,
   CorpusDocStatus,
-  NewCorpusDocUploadRow,
-  NewCorpusDocSummaryRow,
-} from '@bossnyumba/database';
-import type { EmbeddedChunk, Summary } from './types.js';
+} from './types.js';
+
+// Insert-row types derived from the table values (which resolve cleanly), to
+// avoid the barrel's `export type` aliases that surface as namespaces (TS2709).
+type NewCorpusDocUploadRow = typeof corpusDocUploads.$inferInsert;
+type NewCorpusDocSummaryRow = typeof corpusDocSummaries.$inferInsert;
 
 export interface IngestionDb {
   insert(table: unknown): {

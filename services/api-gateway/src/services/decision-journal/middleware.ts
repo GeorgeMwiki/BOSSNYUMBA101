@@ -36,6 +36,7 @@ import { z } from 'zod';
 import type { DecisionRecorder } from './recorder.js';
 import type {
   DecidedByKind,
+  DecisionAlternative,
   DecisionProvenance,
   RecordDecisionInput,
 } from './types.js';
@@ -173,7 +174,18 @@ export function wrapBrainToolWithDecisionRecorder(
         toolId: options.toolId,
         input: strippedInput,
       },
-      ...(envelope.alternatives && { alternativesConsidered: envelope.alternatives }),
+      ...(envelope.alternatives && {
+        // The Zod `AlternativeShape` requires both fields, but its inferred type
+        // widens them to optional under strict:false; narrow back via a guard so
+        // the value satisfies `DecisionAlternative` without a cast (no-op at
+        // runtime — validation already guarantees option + whyNot are present).
+        alternativesConsidered: envelope.alternatives.flatMap(
+          (a): DecisionAlternative[] =>
+            a.option !== undefined && a.whyNot !== undefined
+              ? [{ option: a.option, whyNot: a.whyNot }]
+              : [],
+        ),
+      }),
       rationale: envelope.rationale,
       ...(envelope.confidence !== undefined && { confidence: envelope.confidence }),
       ...(envelope.scopeIds && { scopeIds: envelope.scopeIds }),
