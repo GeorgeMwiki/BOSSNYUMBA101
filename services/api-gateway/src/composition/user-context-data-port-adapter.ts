@@ -1,4 +1,3 @@
-// @ts-nocheck — Bridge between the role-aware-advisor `DataPort` and
 //   `@bossnyumba/user-context-store`. The two packages own near-identical
 //   shapes that differ only in role naming and snippet field names; the
 //   adapter is the single owner of the translation.

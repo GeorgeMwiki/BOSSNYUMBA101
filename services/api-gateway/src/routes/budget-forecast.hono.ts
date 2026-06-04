@@ -1,4 +1,3 @@
-// @ts-nocheck — Hono v4 status-code literal union widens c.json branches.
 
 /**
  * /api/v1/budgets/forecasts — real Holt-Winters projection of monthly

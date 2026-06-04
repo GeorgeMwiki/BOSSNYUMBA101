@@ -17,7 +17,6 @@
  *   - residency_proof_letter body: { documentId }
  */
 
-// @ts-nocheck — Hono context typing is open-ended; routers dispatch at runtime.
 
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';

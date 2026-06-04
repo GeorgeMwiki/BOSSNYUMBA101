@@ -31,7 +31,6 @@
  *              once the entry lands.
  */
 
-// @ts-nocheck — Hono v4 ContextVariableMap drift; same pattern as
 // share-links.hono.ts / pinned-items.hono.ts / mwikila-inbox.hono.ts.
 
 import { Hono } from 'hono';

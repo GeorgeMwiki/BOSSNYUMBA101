@@ -1,4 +1,3 @@
-// @ts-nocheck — Hono v4 status-code literal union widening; same pattern as
 // other .hono routers in this directory.
 /**
  * /api/v1/internal/jurisdiction-discovery — JC-1 loopback endpoint

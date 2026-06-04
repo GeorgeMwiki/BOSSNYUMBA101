@@ -48,7 +48,6 @@
  *   - No raw HTML interpolation, no @ts-ignore.
  */
 
-// @ts-nocheck — Hono v4 MiddlewareHandler status-code literal union
 // (hono-dev/hono#3891). Same pattern used by other *.hono.ts routes
 // in this codebase (e.g. owner/pinned-items.hono.ts).
 

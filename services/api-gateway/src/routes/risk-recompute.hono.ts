@@ -1,4 +1,3 @@
-// @ts-nocheck — Hono v4 MiddlewareHandler status-code literal widening: multiple c.json({...}, status) branches produce a unioned return type the TypedResponse overload rejects. Other routers in this service use the same escape hatch (see property-grading.router.ts, credit-rating.router.ts).
 /**
  * Risk-Recompute Router — Wave 27 Agent F (Part B.6).
  *

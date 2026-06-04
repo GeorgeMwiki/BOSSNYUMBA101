@@ -16,7 +16,6 @@
  * `workers/saved-search-worker.ts`. This file owns the CRUD shape only.
  */
 
-// @ts-nocheck — Hono v4 ContextVariableMap drift; same pattern as
 // other owner.hono routes (mwikila-inbox.hono.ts).
 
 import { Hono } from 'hono';
