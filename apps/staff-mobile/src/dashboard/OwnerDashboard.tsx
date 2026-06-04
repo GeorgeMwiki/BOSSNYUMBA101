@@ -4,7 +4,7 @@ import { PreviewBanner } from '../components/PreviewBanner'
 import { AiDailyBrief } from '../home/owner/AiDailyBrief'
 import { AlertQueue } from '../home/owner/AlertQueue'
 import { KpiStrip } from '../home/owner/KpiStrip'
-import { ProductionVsTarget } from '../home/owner/ProductionVsTarget'
+import { OccupancyVsTarget } from '../home/owner/OccupancyVsTarget'
 import { useOwnerBrief } from '../home/owner/useOwnerBrief'
 import { formatCurrency } from '../home/owner/format'
 import type { OwnerBrief } from '../home/owner/types'
@@ -18,7 +18,7 @@ import { fontSize, radius, spacing } from '../theme/spacing'
  *  1. AiDailyBrief (existing component)
  *  2. AlertQueue (existing component)
  *  3. KpiStrip (existing component)
- *  4. ProductionVsTarget (existing component)
+ *  4. OccupancyVsTarget (existing component)
  *  5. CashRunway — inline, runway days + USD-cliff exposure
  *  6. ComplianceSafety — inline, licence + incident pillar status
  *  7. QuickActions — inline, the four most-tapped owner verbs
@@ -44,7 +44,7 @@ export function OwnerDashboard(): JSX.Element {
       <AiDailyBrief brief={brief} lang={lang} />
       <AlertQueue items={brief.needsReview} lang={lang} />
       <KpiStrip brief={brief} lang={lang} />
-      <ProductionVsTarget production={brief.production} lang={lang} />
+      <OccupancyVsTarget occupancy={brief.occupancy} lang={lang} />
       <CashRunwaySlot brief={brief} lang={lang} />
       <ComplianceSafetySlot brief={brief} lang={lang} />
       <QuickActionsSlot lang={lang} />

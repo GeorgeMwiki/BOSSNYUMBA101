@@ -18,7 +18,7 @@ process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
 import { generateToken } from '../../middleware/auth';
 import { UserRole } from '../../types/user-role';
-import unitSubdivisionRouter from '../unit-subdivision.router';
+import unitSubdivisionRouter from '../unit-subdivision.hono';
 
 const TEST_TENANT = 'tenant-1';
 const TEST_USER = 'user-mgr-1';

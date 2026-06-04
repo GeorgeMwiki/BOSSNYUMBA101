@@ -4,8 +4,8 @@
  * Each primitive is small enough that grouping them keeps the file
  * count tight while preserving one-component-per-primitive separation.
  *
- * Ported from Borjie. BossNyumba uses plain `<img>` (Vite SPA, no
- * next/image) and `text-xs` instead of Borjie's `text-tiny` token.
+ * BossNyumba is a Vite SPA, so these use plain `<img>` (no next/image)
+ * and the `text-xs` token.
  */
 
 import type { ReactElement } from 'react';

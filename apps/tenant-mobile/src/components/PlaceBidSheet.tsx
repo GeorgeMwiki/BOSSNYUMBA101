@@ -34,7 +34,7 @@ export function PlaceBidSheet({ visible, onClose, listing }: PlaceBidSheetProps)
   const { control, handleSubmit, reset, formState } = useForm<PlaceBidFormInput>({
     resolver: zodResolver(placeBidSchema),
     defaultValues: {
-      bidPrice: String(listing.priceTzsPerKg),
+      bidPrice: String(listing.rentPerMonthTzs),
       paymentTerms: 'instant',
       notes: '',
       termsAccepted: false
@@ -44,13 +44,13 @@ export function PlaceBidSheet({ visible, onClose, listing }: PlaceBidSheetProps)
   useEffect(() => {
     if (visible) {
       reset({
-        bidPrice: String(listing.priceTzsPerKg),
+        bidPrice: String(listing.rentPerMonthTzs),
         paymentTerms: 'instant',
         notes: '',
         termsAccepted: false
       })
     }
-  }, [visible, listing.priceTzsPerKg, reset])
+  }, [visible, listing.rentPerMonthTzs, reset])
 
   const submitMutation = useMutation({
     mutationFn: placeBid,
@@ -77,8 +77,8 @@ export function PlaceBidSheet({ visible, onClose, listing }: PlaceBidSheetProps)
   const onSubmitRaw = handleSubmit((values) => {
     submitMutation.mutate({
       listingId: listing.id,
-      offerTzsPerKg: parseBidPrice(values.bidPrice),
-      quantityKg: listing.quantityKg,
+      offerRentPerMonthTzs: parseBidPrice(values.bidPrice),
+      floorAreaSqm: listing.floorAreaSqm,
       paymentTerms: values.paymentTerms,
       notes: values.notes ?? '',
       termsAccepted: true

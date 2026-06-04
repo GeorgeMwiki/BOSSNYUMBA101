@@ -28,7 +28,7 @@ import {
 } from '@/_persona-shim'
 import { request } from '../api/client'
 import { useI18n } from '../i18n/useI18n'
-import { tokens } from '../ui-litfin'
+import { tokens } from '../ui'
 import type { ResolvedWorkforceTab } from '../lib/hooks/useWorkforceTabConfig'
 
 export interface RequestTabChangeSheetProps {

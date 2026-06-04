@@ -6,7 +6,7 @@ import { Section } from '../../src/components/Section'
 import { BigNumber } from '../../src/components/StubBlocks'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi, request } from '../../src/api/client'
+import { managerApi, request } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { API_BASE_URL } from '../../src/api/config'
 import { colors } from '../../src/theme/colors'
@@ -63,7 +63,7 @@ interface Scenario {
   readonly burnRateTzs: number
 }
 
-const CASH_QUERY_KEY = ['mining', 'cockpit', 'cash-runway'] as const
+const CASH_QUERY_KEY = ['estate', 'cockpit', 'cash-runway'] as const
 const BILLING_QUERY_KEY = ['owner', 'billing', 'subscription'] as const
 
 function formatAmount(value: number, currencyCode: string): string {
@@ -88,7 +88,7 @@ function CashRunwayView(): JSX.Element {
   const cashQuery = useQuery<CashRunwayResponse['data'], ApiError>({
     queryKey: CASH_QUERY_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<CashRunwayResponse>('/cockpit/cash-runway', {
+      const response = await managerApi.get<CashRunwayResponse>('/cockpit/cash-runway', {
         signal
       })
       return response.data

@@ -11,7 +11,7 @@ import { fontSize, radius, spacing } from '../../src/theme/spacing'
 export default function RolePicker(): JSX.Element {
   const { t } = useI18n()
   const { setRole } = useAuth()
-  const tagline = (Constants.expoConfig?.extra?.['splashTagline'] as string | undefined) ?? 'BossNyumba · Ofisi ya Mgodi'
+  const tagline = (Constants.expoConfig?.extra?.['splashTagline'] as string | undefined) ?? 'BossNyumba · Estate OS'
 
   function choose(role: Role): void {
     setRole(role)

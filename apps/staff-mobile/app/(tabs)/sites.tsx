@@ -15,12 +15,12 @@ export default function SitesTab(): JSX.Element {
 
   return (
     <ScreenShell screenId={screenId}>
-      <Section title="Migodi yote">
+      <Section title="Mali yote">
         <PlaceholderList
           items={[
-            { id: 'site-a', primary: 'Mgodi A · Geita', secondary: 'PML 12345 · hai' },
-            { id: 'site-b', primary: 'Mgodi B · Chunya', secondary: 'PML 67890 · subiri' },
-            { id: 'site-c', primary: 'Mgodi C · Mwanza', secondary: 'PML 24680 · kazi' }
+            { id: 'site-a', primary: 'Mali A · Geita', secondary: 'Hati TD-12345 · hai' },
+            { id: 'site-b', primary: 'Mali B · Chunya', secondary: 'Hati TD-67890 · subiri' },
+            { id: 'site-c', primary: 'Mali C · Mwanza', secondary: 'Hati TD-24680 · kazi' }
           ]}
         />
       </Section>

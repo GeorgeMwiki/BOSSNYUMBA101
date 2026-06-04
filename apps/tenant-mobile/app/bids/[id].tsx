@@ -15,7 +15,7 @@ import { useTranslation } from '@/hooks/useTranslation'
 import { useDebouncedSubmit } from '@/hooks/useDebouncedSubmit'
 import { fetchBid, sendBidMessage, updateBidStatus } from '@/api/marketplace'
 import { queryKeys } from '@/api/queryKeys'
-import { formatKg, formatTzs } from '@/components/formatters'
+import { formatSqm, formatTzs } from '@/components/formatters'
 import { colors } from '@/theme/colors'
 import { radius, spacing, typography } from '@/theme/spacing'
 import type { BidStatus } from '@/types/listing'
@@ -126,8 +126,8 @@ export default function BidDetail() {
           <Text style={styles.cardTitle}>{t('bids.your_offer')}</Text>
           <Pill label={t(`bids.status.${bid.status}`)} tone={toneByStatus[bid.status]} />
         </View>
-        <KeyValueRow label={t('bids.your_offer')} value={`${formatTzs(bid.offerTzsPerKg)} / ${t('common.kg')}`} />
-        <KeyValueRow label={t('marketplace.quantity')} value={formatKg(bid.quantityKg)} />
+        <KeyValueRow label={t('bids.your_offer')} value={`${formatTzs(bid.offerRentPerMonthTzs)} / ${t('common.per_month')}`} />
+        <KeyValueRow label={t('marketplace.quantity')} value={formatSqm(bid.floorAreaSqm)} />
       </Card>
 
       <Card>
@@ -137,7 +137,7 @@ export default function BidDetail() {
             key={msg.id}
             from={msg.from}
             body={msg.body}
-            authorLabel={msg.from === 'buyer' ? t('profile.title') : 'Seller'}
+            authorLabel={msg.from === 'tenant' ? t('profile.title') : 'Landlord'}
           />
         ))}
         <View style={styles.composer}>

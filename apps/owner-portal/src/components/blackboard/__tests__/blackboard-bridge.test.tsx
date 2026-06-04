@@ -16,8 +16,7 @@
  *  4. Re-emit the same tag (parity with SSE re-delivery) — store
  *     dedupes by id.
  *
- * This is the BN parity test for Borjie's
- * `apps/owner-web/src/components/blackboard/__tests__/blackboard-bridge.test.tsx`.
+ * This is the BossNyumba blackboard ↔ chat bridge test.
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
@@ -33,7 +32,7 @@ afterEach(() => {
   cleanup();
 });
 
-const ROYALTY_FORMULA_TAG = `Let me walk you through how a residential lease is structured. <board_add>{"type":"formula","id":"f-yield","latex":"rent_yield = annual_income ÷ market_value × 100","label":{"en":"Rent yield formula","sw":"Fomula ya mavuno ya kodi"},"variables":[{"symbol":"annual_income","meaning":{"en":"Net rent collected over 12 months","sw":"Kodi halisi kwa miezi 12"}}]}</board_add> The yield reads as a percentage.`;
+const RENT_YIELD_FORMULA_TAG = `Let me walk you through how a residential lease is structured. <board_add>{"type":"formula","id":"f-yield","latex":"rent_yield = annual_income ÷ market_value × 100","label":{"en":"Rent yield formula","sw":"Fomula ya mavuno ya kodi"},"variables":[{"symbol":"annual_income","meaning":{"en":"Net rent collected over 12 months","sw":"Kodi halisi kwa miezi 12"}}]}</board_add> The yield reads as a percentage.`;
 
 const PORTFOLIO_DIAGRAM_TAG = `<board_add>{"type":"diagram","id":"d-lease-flow","kind":"flow","nodes":[{"id":"draft","label":{"en":"DRAFT","sw":"RASIMU"}},{"id":"sign","label":{"en":"SIGN","sw":"SAINI"}},{"id":"deposit","label":{"en":"DEPOSIT","sw":"AMANA"}},{"id":"handover","label":{"en":"HANDOVER","sw":"KABIDHI"}}]}</board_add>`;
 
@@ -63,7 +62,7 @@ describe('Blackboard ↔ learning-chat bridge (BossNyumba)', () => {
 
     // Streamed delta arrives carrying the rent-yield formula tag.
     act(() => {
-      rerender({ text: ROYALTY_FORMULA_TAG, id: 'msg-1' });
+      rerender({ text: RENT_YIELD_FORMULA_TAG, id: 'msg-1' });
     });
 
     // Board store mirrors the chat event.

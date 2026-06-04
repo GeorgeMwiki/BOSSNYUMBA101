@@ -1,6 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { z } from 'zod'
-import { miningApi } from '../../api/client'
+import { managerApi } from '../../api/client'
 import { ApiError } from '../../api/errors'
 import { classifyDelta, severityRank } from './format'
 import { MAX_DECISIONS, type DecisionItem, type OwnerBrief, type PillarStatus } from './types'
@@ -8,7 +8,7 @@ import { MAX_DECISIONS, type DecisionItem, type OwnerBrief, type PillarStatus } 
 /**
  * Tries the unified `/v1/owner/brief` endpoint first (one round-trip).
  * If it is missing (404 / 501 / 0-network on that path), composes the
- * same shape from the 6 existing mining cockpit + incidents endpoints
+ * same shape from the 6 existing cockpit + incidents endpoints
  * in parallel. The composed result is sorted + truncated to the spec's
  * MAX_DECISIONS cap on the client so AlertQueue is fed a clean list.
  */
@@ -17,7 +17,7 @@ export function useOwnerBrief(): UseQueryResult<OwnerBrief, Error> {
     queryKey: ['owner-brief'],
     queryFn: async ({ signal }) => {
       try {
-        const unified = await miningApi.get<unknown>('/owner/brief', { signal })
+        const unified = await managerApi.get<unknown>('/owner/brief', { signal })
         const parsed = OwnerBriefSchema.safeParse(unified)
         if (parsed.success) {
           return capDecisions(parsed.data as OwnerBrief)
@@ -54,14 +54,14 @@ function capDecisions(brief: OwnerBrief): OwnerBrief {
 async function composeFallback(signal: AbortSignal | undefined): Promise<OwnerBrief> {
   const [
     dailyBrief,
-    productionVsTarget,
+    occupancyVsTarget,
     cashRunway,
     cliffStatus,
     incidentsHigh,
     licenceHealth
   ] = await Promise.all([
     safeGet<unknown>('/cockpit/daily-brief', signal),
-    safeGet<unknown>('/cockpit/production-vs-target', signal),
+    safeGet<unknown>('/cockpit/occupancy-vs-target', signal),
     safeGet<unknown>('/cockpit/cash-runway', signal),
     safeGet<unknown>('/cockpit/27mar-cliff-status', signal),
     safeGet<unknown>('/incidents?status=open&severity=high', signal),
@@ -69,7 +69,7 @@ async function composeFallback(signal: AbortSignal | undefined): Promise<OwnerBr
   ])
   return buildBriefFromParts(
     dailyBrief,
-    productionVsTarget,
+    occupancyVsTarget,
     cashRunway,
     cliffStatus,
     incidentsHigh,
@@ -79,7 +79,7 @@ async function composeFallback(signal: AbortSignal | undefined): Promise<OwnerBr
 
 async function safeGet<T>(path: string, signal: AbortSignal | undefined): Promise<T | null> {
   try {
-    return await miningApi.get<T>(path, signal ? { signal } : {})
+    return await managerApi.get<T>(path, signal ? { signal } : {})
   } catch (error) {
     if (error instanceof ApiError && (error.status === 0 || error.status === 404)) {
       return null
@@ -106,30 +106,30 @@ function unwrap<T>(value: unknown): T | null {
 
 function buildBriefFromParts(
   rawDailyBrief: unknown,
-  rawProduction: unknown,
+  rawOccupancy: unknown,
   rawCash: unknown,
   rawCliff: unknown,
   rawIncidents: unknown,
   rawLicences: unknown
 ): OwnerBrief {
   const daily = unwrap<DailyBriefData>(rawDailyBrief)
-  const prod = unwrap<ProductionData>(rawProduction)
+  const occ = unwrap<OccupancyData>(rawOccupancy)
   const cash = unwrap<CashData>(rawCash)
   const cliff = unwrap<CliffData>(rawCliff)
   const incidents = unwrap<ReadonlyArray<IncidentRow>>(rawIncidents) ?? []
   const licences = unwrap<ReadonlyArray<LicenceRow>>(rawLicences) ?? []
 
   const generatedAtIso = new Date().toISOString()
-  const productionTonnes = (prod?.perSite ?? []).reduce(
-    (sum, row) => sum + (Number.isFinite(row.tonnes) ? (row.tonnes ?? 0) : 0),
+  const occupiedUnits = (occ?.perProperty ?? []).reduce(
+    (sum, row) => sum + (Number.isFinite(row.occupied) ? (row.occupied ?? 0) : 0),
     0
   )
-  const productionTarget = (prod?.perSite ?? []).reduce(
+  const targetUnits = (occ?.perProperty ?? []).reduce(
     (sum, row) => sum + (Number.isFinite(row.target) ? (row.target ?? 0) : 0),
     0
   )
-  const productionDelta = productionTarget > 0
-    ? ((productionTonnes - productionTarget) / productionTarget) * 100
+  const occupancyDelta = targetUnits > 0
+    ? ((occupiedUnits - targetUnits) / targetUnits) * 100
     : 0
   const ninetyDayNet = cash?.ninetyDayNetTzs ?? 0
   const dailyAvg = cash?.dailyAvgTzs ?? 0
@@ -148,20 +148,20 @@ function buildBriefFromParts(
   return {
     briefId: `composed-${generatedAtIso}`,
     generatedAtIso,
-    swText: buildSummarySw(daily, productionTonnes, openHigh, daysRemaining),
-    enText: buildSummaryEn(daily, productionTonnes, openHigh, daysRemaining),
+    swText: buildSummarySw(daily, occupiedUnits, openHigh, daysRemaining),
+    enText: buildSummaryEn(daily, occupiedUnits, openHigh, daysRemaining),
     evidenceIds: [],
     needsReview: composeDecisions(incidents, licences),
-    production: {
-      currentTonnes: productionTonnes,
-      targetTonnes: productionTarget,
-      deltaPct: productionDelta,
-      status: classifyDelta(productionDelta),
+    occupancy: {
+      currentUnits: occupiedUnits,
+      targetUnits: targetUnits,
+      deltaPct: occupancyDelta,
+      status: classifyDelta(occupancyDelta),
       sparkline7d: [],
-      perSite: (prod?.perSite ?? []).map((row) => ({
-        siteId: row.siteId ?? 'unknown',
-        siteName: row.siteName ?? row.siteId ?? 'Site',
-        tonnes: Number(row.tonnes ?? 0),
+      perProperty: (occ?.perProperty ?? []).map((row) => ({
+        propertyId: row.propertyId ?? 'unknown',
+        propertyName: row.propertyName ?? row.propertyId ?? 'Property',
+        occupied: Number(row.occupied ?? 0),
         target: Number(row.target ?? 0)
       }))
     },
@@ -192,7 +192,7 @@ function composeDecisions(
     (row): DecisionItem => ({
       id: `incident:${row.id ?? row.siteId ?? 'open'}`,
       severity: 'high',
-      titleSw: `Tukio la usalama · ${row.siteId ?? 'Mgodi'}`,
+      titleSw: `Tukio la usalama · ${row.siteId ?? 'Eneo'}`,
       titleEn: `Safety incident · ${row.siteId ?? 'Site'}`,
       kind: 'incident',
       primaryActionUrl: '/incidents'
@@ -203,7 +203,7 @@ function composeDecisions(
     .slice(0, MAX_DECISIONS)
     .map(
       (row): DecisionItem => ({
-        id: `licence:${row.id ?? row.licenceNumber ?? 'pml'}`,
+        id: `licence:${row.id ?? row.licenceNumber ?? 'lease'}`,
         severity: (row.daysToExpiry ?? 999) <= 30 ? 'high' : 'amber',
         titleSw: `Leseni ${row.licenceNumber ?? ''} inakwisha siku ${row.daysToExpiry ?? '—'}`,
         titleEn: `Licence ${row.licenceNumber ?? ''} expires in ${row.daysToExpiry ?? '—'} days`,
@@ -216,26 +216,26 @@ function composeDecisions(
 
 function buildSummarySw(
   daily: DailyBriefData | null,
-  tonnes: number,
+  occupiedUnits: number,
   openHigh: number,
   daysRemaining: number
 ): string {
   if (!daily) {
     return 'Brief haijapatikana bado. Hakikisha mtandao na jaribu tena.'
   }
-  return `Leo: shifti ${daily.shiftsToday ?? 0}, tani ${tonnes.toFixed(0)}, matukio ${openHigh}, siku za pesa ${daysRemaining}.`
+  return `Leo: shifti ${daily.shiftsToday ?? 0}, vitengo ${occupiedUnits.toFixed(0)}, matukio ${openHigh}, siku za pesa ${daysRemaining}.`
 }
 
 function buildSummaryEn(
   daily: DailyBriefData | null,
-  tonnes: number,
+  occupiedUnits: number,
   openHigh: number,
   daysRemaining: number
 ): string {
   if (!daily) {
     return 'Brief not available yet. Check connectivity and try again.'
   }
-  return `Today: ${daily.shiftsToday ?? 0} shifts, ${tonnes.toFixed(0)}t produced, ${openHigh} high-severity incidents, ${daysRemaining} cash days.`
+  return `Today: ${daily.shiftsToday ?? 0} shifts, ${occupiedUnits.toFixed(0)} units occupied, ${openHigh} high-severity incidents, ${daysRemaining} cash days.`
 }
 
 interface DailyBriefData {
@@ -246,12 +246,12 @@ interface DailyBriefData {
   readonly criticalIncidents?: number
 }
 
-interface ProductionData {
+interface OccupancyData {
   readonly window?: string
-  readonly perSite?: ReadonlyArray<{
-    readonly siteId?: string
-    readonly siteName?: string
-    readonly tonnes?: number
+  readonly perProperty?: ReadonlyArray<{
+    readonly propertyId?: string
+    readonly propertyName?: string
+    readonly occupied?: number
     readonly target?: number
   }>
 }
@@ -301,16 +301,16 @@ const OwnerBriefSchema = z.object({
   enText: z.string().min(1),
   evidenceIds: z.array(z.string()).readonly(),
   needsReview: z.array(DecisionItemSchema).readonly(),
-  production: z.object({
-    currentTonnes: z.number(),
-    targetTonnes: z.number(),
+  occupancy: z.object({
+    currentUnits: z.number(),
+    targetUnits: z.number(),
     deltaPct: z.number(),
     status: PillarStatusSchema,
     sparkline7d: z.array(z.number()).readonly(),
-    perSite: z.array(z.object({
-      siteId: z.string(),
-      siteName: z.string(),
-      tonnes: z.number(),
+    perProperty: z.array(z.object({
+      propertyId: z.string(),
+      propertyName: z.string(),
+      occupied: z.number(),
       target: z.number()
     })).readonly()
   }),

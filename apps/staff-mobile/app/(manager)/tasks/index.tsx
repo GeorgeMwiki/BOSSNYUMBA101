@@ -1,10 +1,11 @@
 /**
  * Commercial chain L4 — manager task-queue.
  *
- * Lists the tenant's open mining_tasks rows. Each row is tappable and
- * deep-links to `/(manager)/tasks/[id]/assign` for the assign-worker
- * flow. RFB-fulfilment rows are highlighted (`kind === 'rfb_fulfill'`)
- * so the manager can see the buyer pipeline at a glance.
+ * Lists the tenant's open maintenance_tasks (work-order) rows. Each row is
+ * tappable and deep-links to `/(manager)/tasks/[id]/assign` for the
+ * assign-worker flow. Application-fulfilment rows are highlighted
+ * (`kind === 'application_fulfil'`) so the manager can see the applicant
+ * pipeline at a glance.
  *
  * Bilingual sw/en throughout.
  */
@@ -26,17 +27,17 @@ export default function ManagerTasksScreen(): JSX.Element {
   const isSw = lang === 'sw'
 
   const tasks = tasksQuery.data ?? []
-  const rfbTasks = tasks.filter((t) => t.kind === 'rfb_fulfill')
-  const standardTasks = tasks.filter((t) => t.kind !== 'rfb_fulfill')
+  const applicationTasks = tasks.filter((t) => t.kind === 'application_fulfil')
+  const standardTasks = tasks.filter((t) => t.kind !== 'application_fulfil')
 
   return (
     <ScreenShell screenId={SCREEN_ID}>
       <Section
-        title={isSw ? 'RFB za wanunuzi' : 'Buyer RFB tasks'}
+        title={isSw ? 'Maombi ya wapangaji' : 'Applicant requests'}
         hint={
           isSw
-            ? 'Kazi zinazotokana na RFB za wanunuzi — zinapaswa kupewa wafanyakazi.'
-            : 'Tasks dispatched from buyer RFBs — assign these to workers first.'
+            ? 'Kazi zinazotokana na maombi ya wapangaji — zinapaswa kupewa wafanyakazi.'
+            : 'Tasks dispatched from applicant requests — assign these to workers first.'
         }
       >
         {tasksQuery.isPending ? (
@@ -49,15 +50,15 @@ export default function ManagerTasksScreen(): JSX.Element {
               ? 'Imeshindwa kupakia kazi.'
               : 'Failed to load tasks.'}
           </Text>
-        ) : rfbTasks.length === 0 ? (
+        ) : applicationTasks.length === 0 ? (
           <Text style={styles.empty}>
             {isSw
-              ? 'Hakuna kazi za RFB kwa sasa.'
-              : 'No RFB tasks right now.'}
+              ? 'Hakuna maombi ya wapangaji kwa sasa.'
+              : 'No applicant requests right now.'}
           </Text>
         ) : (
           <View style={styles.list}>
-            {rfbTasks.map((task) => (
+            {applicationTasks.map((task) => (
               <TaskCard
                 key={task.id}
                 task={task}

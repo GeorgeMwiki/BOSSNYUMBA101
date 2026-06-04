@@ -1,4 +1,4 @@
-# EAS Build Notes - @borjie/workforce-mobile
+# EAS Build Notes - @bossnyumba/staff-mobile
 
 This app uses several native modules that **will not run in Expo Go**. To exercise the full feature surface you must produce a custom dev client via `eas build --profile development`.
 
@@ -18,7 +18,7 @@ All call sites are wrapped in try/catch with a stub fallback so Expo Go does not
 ## How to build the dev client
 
 ```bash
-cd apps/workforce-mobile
+cd apps/staff-mobile
 eas init   # one-time, fills extra.eas.projectId
 eas build --profile development --platform ios
 eas build --profile development --platform android
@@ -35,4 +35,4 @@ When demoing in Expo Go, expect:
 - Voice recorder: silent fail, falls back to text note.
 - Biometric sign-off: returns `method: 'stub'`, flow completes without a real prompt.
 
-Everything else (auth role picker, tab navigation, i18n, query layer, offline sync queue, AskBorjie UI shell) works.
+Everything else (auth role picker, tab navigation, i18n, query layer, offline sync queue, AskMwikila UI shell) works.

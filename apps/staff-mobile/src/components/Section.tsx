@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import type { ReactNode } from 'react'
-import { tokens } from '../ui-litfin'
+import { tokens } from '../ui'
 
 export interface SectionProps {
   title: string
@@ -10,9 +10,9 @@ export interface SectionProps {
 }
 
 /**
- * LitFin-styled section — eyebrow-cap title in cream-on-navy with
+ * BossNyumba-styled section — eyebrow-cap title in cream-on-navy with
  * a soft gold ruling under the heading, then the body below. Mirrors
- * the LitFin web `SectionHeader` rhythm.
+ * the BossNyumba web `SectionHeader` rhythm.
  */
 export function Section({ title, hint, style, children }: SectionProps): JSX.Element {
   return (

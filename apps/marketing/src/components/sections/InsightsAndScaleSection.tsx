@@ -11,7 +11,7 @@ import { CountUp } from '@/components/animations/CountUp';
  *   LEFT  — "By the numbers" with four CountUp stats
  *   RIGHT — "Pilot voices" with three quote cards
  *
- * Mirrors LitFin's InsightsAndScaleSection editorial split: numerical
+ * Mirrors the upstream fork's InsightsAndScaleSection editorial split: numerical
  * evidence on one side, human evidence on the other. Both fade up on
  * view, respecting prefers-reduced-motion via the underlying CountUp
  * + framer-motion components.

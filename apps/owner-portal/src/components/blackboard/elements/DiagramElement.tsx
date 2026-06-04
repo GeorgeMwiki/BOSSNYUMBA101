@@ -8,8 +8,6 @@
  *
  * No external graph layout dep — handcrafted SVG so the bundle stays
  * lean and the renders deterministic for snapshot tests.
- *
- * Ported from Borjie.
  */
 
 import type { ReactElement } from 'react';

@@ -1,0 +1,22 @@
+{
+  "name": "@bossnyumba/ussd-engine",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Pure USSD menu-tree + session state machine. Feature-phone ingress for tenants (renters) and property owners on low-bandwidth networks (*123# -> menu -> action): check a lease, see rent due, submit a meter reading, check a maintenance request, browse vacant units. Bilingual en/sw, 182-char screen budget, 180s session TTL. Pure functions + injected ports (session store, identity resolver, data fetchers, clock) — no direct DB/SDK/env. Default-OFF feature flag with a single wireUssdEngine() composition export. Ported and fully re-skinned to the BossNyumba real-estate domain.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

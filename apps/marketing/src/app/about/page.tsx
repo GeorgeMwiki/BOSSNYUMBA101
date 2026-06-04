@@ -4,16 +4,16 @@ import { PageShell } from '@/components/shared/PageShell';
 import { MwikilaChip } from '@/components/shared/MwikilaChip';
 
 export const metadata: Metadata = {
-  title: 'About Boss Nyumba — built in Tanzania for African real estate',
+  title: 'About BossNyumba — AI-native real estate operating system',
   description:
-    "Boss Nyumba is an AI-native operating system for landlords, tenants, and property managers in Tanzania and East Africa. Built in Dar es Salaam, Swahili-first, audit-grade, M-Pesa native.",
+    "BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer. Built in Dar es Salaam, Swahili-first, audit-grade, M-Pesa native — for landlords, tenants, and property managers in Tanzania and East Africa.",
 };
 
 const SECTIONS: ReadonlyArray<{ title: string; body: string }> = [
   {
     title: 'Why BossNyumba exists',
     body:
-      'East African rental markets lose an estimated 18% of annual rent to manual chase, missing receipts, and disputes that never settle. Council-levy filings are paper-and-WhatsApp. Tenants pay over M-Pesa and walk away with no proof. Landlords keep books on phones that get replaced every two years. Boss Nyumba collapses that broken stack into one AI-native operating system — Mr. Mwikila, your AI Property Operations Manager, runs the business end-to-end alongside the owner.',
+      'East African rental markets lose an estimated 18% of annual rent to manual chase, missing receipts, and disputes that never settle. Council-levy filings are paper-and-WhatsApp. Tenants pay over M-Pesa and walk away with no proof. Landlords keep books on phones that get replaced every two years. BossNyumba is an AI-native real estate operating system that collapses that broken stack — and Mr. Mwikila, the brain layer within BossNyumba, runs the business end-to-end alongside the owner.',
   },
   {
     title: 'Who we serve',

@@ -30,13 +30,13 @@ import {
   getSupabaseClient,
   _resetSupabaseClientForTests
 } from '../auth/supabaseClient'
-import { parseSupabaseTokenForBuyer } from '../auth/buyerClaims'
+import { parseSupabaseTokenForTenant } from '../auth/tenantClaims'
 
-describe('supabaseClient (buyer)', () => {
+describe('supabaseClient (tenant)', () => {
   beforeEach(() => {
     createClientSpy.mockClear()
-    process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://buyer.supabase.co'
-    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'anon-buyer-key'
+    process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://tenant.supabase.co'
+    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'anon-tenant-key'
     _resetSupabaseClientForTests()
   })
 
@@ -55,8 +55,8 @@ describe('supabaseClient (buyer)', () => {
   it('passes URL + anon key + mobile auth options to createClient', () => {
     getSupabaseClient()
     expect(createClientSpy).toHaveBeenCalledWith(
-      'https://buyer.supabase.co',
-      'anon-buyer-key',
+      'https://tenant.supabase.co',
+      'anon-tenant-key',
       expect.objectContaining({
         auth: expect.objectContaining({
           autoRefreshToken: true,
@@ -75,34 +75,34 @@ describe('supabaseClient (buyer)', () => {
   })
 })
 
-describe('buyerClaims.parseSupabaseTokenForBuyer', () => {
+describe('tenantClaims.parseSupabaseTokenForTenant', () => {
   it('decodes tenant_id and phone from a real-shaped JWT', () => {
     const header = Buffer.from(JSON.stringify({ alg: 'HS256' })).toString('base64url')
     const payload = Buffer.from(
       JSON.stringify({
-        sub: 'buyer-uuid-1',
+        sub: 'tenant-uuid-1',
         phone: '+255712345678',
-        app_metadata: { tenant_id: 'tenant-buyer-1' }
+        app_metadata: { tenant_id: 'tenant-1' }
       })
     ).toString('base64url')
     const token = `${header}.${payload}.sig`
-    const claims = parseSupabaseTokenForBuyer(token)
+    const claims = parseSupabaseTokenForTenant(token)
     expect(claims).not.toBeNull()
-    expect(claims?.userId).toBe('buyer-uuid-1')
-    expect(claims?.tenantId).toBe('tenant-buyer-1')
+    expect(claims?.userId).toBe('tenant-uuid-1')
+    expect(claims?.tenantId).toBe('tenant-1')
     expect(claims?.phone).toBe('+255712345678')
   })
 
   it('returns null for malformed input', () => {
-    expect(parseSupabaseTokenForBuyer('')).toBeNull()
-    expect(parseSupabaseTokenForBuyer('not-a-jwt')).toBeNull()
+    expect(parseSupabaseTokenForTenant('')).toBeNull()
+    expect(parseSupabaseTokenForTenant('not-a-jwt')).toBeNull()
   })
 
   it('handles missing app_metadata gracefully', () => {
     const header = Buffer.from(JSON.stringify({ alg: 'HS256' })).toString('base64url')
     const payload = Buffer.from(JSON.stringify({ sub: 'u1' })).toString('base64url')
     const token = `${header}.${payload}.sig`
-    const claims = parseSupabaseTokenForBuyer(token)
+    const claims = parseSupabaseTokenForTenant(token)
     expect(claims).not.toBeNull()
     expect(claims?.tenantId).toBeNull()
     expect(claims?.phone).toBeNull()

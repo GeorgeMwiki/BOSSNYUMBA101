@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { Card } from '@/components/Card'
 import { summarisePipeline } from '@/marketplace/home/derivations'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import type { Bid } from '@/types/listing'
 
 export interface DealPipelineSectionProps {
@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.color.border,
     alignItems: 'center'
   },
-  statValue: { ...tokens.type.h2, color: tokens.color.gold },
+  statValue: { ...tokens.type.h2, color: tokens.color.accent },
   statLabel: {
     fontSize: 10,
     fontWeight: '700',

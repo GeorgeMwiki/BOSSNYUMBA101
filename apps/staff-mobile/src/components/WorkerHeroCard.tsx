@@ -20,7 +20,7 @@
 
 import { useEffect, useState, type ReactElement } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { tokens } from '../ui-litfin'
+import { tokens } from '../ui'
 import {
   formatTimerHms,
   selectShiftVisual,

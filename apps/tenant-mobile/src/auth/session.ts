@@ -2,23 +2,27 @@ import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { clearAuthToken, setAuthToken } from './token'
 import { getSupabaseClient } from './supabaseClient'
-import { parseSupabaseTokenForBuyer } from './buyerClaims'
-import type { BuyerUser } from '@/types/auth'
+import { parseSupabaseTokenForTenant } from './tenantClaims'
+import type { TenantUser } from '@/types/auth'
 import { registerPushToken } from '@/lib/notifications/push-register'
 
 // Reactive in-memory session store, backed by Supabase phone OTP.
 // The mobile UI consumes `useSession()` — when Supabase emits a session
-// change (sign-in, refresh, sign-out), we project it to a BuyerUser and
+// change (sign-in, refresh, sign-out), we project it to a TenantUser and
 // notify subscribers so React components re-render.
+//
+// The `role` value is an app-internal sentinel (`'tenant'`) type-locked to
+// `TenantRole`; it is never sent to the server (the Supabase JWT is the
+// canonical auth and is parsed FROM the gateway).
 //
 // `GUEST_USER` is the unauthenticated sentinel: it contains no PII and is
 // only used to keep screens that read `user.preferredLang` (i18n) and
 // `user.id` (KYC route param) from crashing before the user signs in.
 // Routing guards must use `isAuthenticated()` to redirect to /auth/login.
 
-const GUEST_USER: BuyerUser = {
+const GUEST_USER: TenantUser = {
   id: '',
-  role: 'buyer',
+  role: 'tenant',
   companyName: '',
   countryCode: 'TZ',
   preferredLang: 'en',
@@ -26,9 +30,9 @@ const GUEST_USER: BuyerUser = {
   phone: ''
 }
 
-type Listener = (user: BuyerUser | null) => void
+type Listener = (user: TenantUser | null) => void
 
-let currentUser: BuyerUser | null = null
+let currentUser: TenantUser | null = null
 let bootstrapped = false
 const listeners = new Set<Listener>()
 
@@ -38,18 +42,18 @@ function emit(): void {
   }
 }
 
-function projectSession(session: Session | null): BuyerUser | null {
+function projectSession(session: Session | null): TenantUser | null {
   if (!session) return null
   const accessToken = session.access_token
-  const claims = parseSupabaseTokenForBuyer(accessToken)
+  const claims = parseSupabaseTokenForTenant(accessToken)
   if (!claims) return null
   const phone = (claims.phone ?? session.user.phone ?? '').replace(/\s+/g, '')
   const phoneFormatted = phone.startsWith('+') ? phone : phone.length > 0 ? `+${phone}` : ''
   const companyName =
-    (session.user.user_metadata?.company_name as string | undefined) ?? 'Buyer'
+    (session.user.user_metadata?.company_name as string | undefined) ?? 'Tenant'
   return {
     id: claims.userId || session.user.id,
-    role: 'buyer',
+    role: 'tenant',
     companyName,
     countryCode: 'TZ',
     preferredLang: 'en',
@@ -94,7 +98,7 @@ async function ensureBootstrapped(): Promise<void> {
   }
 }
 
-export function getCurrentUser(): BuyerUser {
+export function getCurrentUser(): TenantUser {
   return currentUser ?? GUEST_USER
 }
 
@@ -102,12 +106,12 @@ export function isAuthenticated(): boolean {
   return Boolean(currentUser?.id)
 }
 
-export function setCurrentUser(user: BuyerUser): void {
+export function setCurrentUser(user: TenantUser): void {
   currentUser = user
   emit()
 }
 
-export function setPreferredLang(lang: BuyerUser['preferredLang']): void {
+export function setPreferredLang(lang: TenantUser['preferredLang']): void {
   if (!currentUser) {
     return
   }
@@ -135,7 +139,7 @@ function normaliseE164(phone: string): string {
   return phone.replace(/\s+/g, '')
 }
 
-export async function sendBuyerOtp(phoneE164: string): Promise<OtpResult> {
+export async function sendTenantOtp(phoneE164: string): Promise<OtpResult> {
   try {
     const supabase = getSupabaseClient()
     const { error } = await supabase.auth.signInWithOtp({
@@ -148,7 +152,7 @@ export async function sendBuyerOtp(phoneE164: string): Promise<OtpResult> {
   }
 }
 
-export async function verifyBuyerOtp(
+export async function verifyTenantOtp(
   phoneE164: string,
   code: string
 ): Promise<OtpResult> {
@@ -174,8 +178,8 @@ export function subscribe(listener: Listener): () => void {
   }
 }
 
-export function useSession(): BuyerUser {
-  const [user, setUser] = useState<BuyerUser>(() => getCurrentUser())
+export function useSession(): TenantUser {
+  const [user, setUser] = useState<TenantUser>(() => getCurrentUser())
   useEffect(() => subscribe((next) => setUser(next ?? GUEST_USER)), [])
   return user
 }

@@ -29,7 +29,7 @@ import { Wordmark } from '@bossnyumba/design-system';
 import { type Locale } from '@/lib/i18n';
 
 /**
- * BossNyumba MainNav — carbon copy of LitFin's MainNav pattern
+ * BossNyumba MainNav — carbon copy of the upstream fork's MainNav pattern
  * adapted to BossNyumba's real-estate audience verticals. Scroll-aware
  * backdrop, "Who We Serve" mega-menu, smart CTA per page. Locale-aware so
  * EN and SW renders are pure.

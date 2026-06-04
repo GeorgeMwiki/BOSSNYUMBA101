@@ -58,7 +58,7 @@ function stubName(role: Role): string {
     case 'owner':
       return 'Bwana Mkubwa (Dev)'
     case 'manager':
-      return 'Meneja wa Mgodi (Dev)'
+      return 'Meneja wa Mali (Dev)'
     case 'employee':
       return 'Mfanyakazi wa Shifti (Dev)'
     default:

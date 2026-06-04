@@ -13,7 +13,7 @@ import { fontSize, radius, spacing } from '../../src/theme/spacing'
 /**
  * Multi-select certification picker. Visible only for employees and managers
  * (owners skip; they manage workers' certs from the admin web). Captured
- * certifications flow into mining-shift-planner's OSHA-TZ rule evaluator.
+ * certifications flow into the shift-planner's safety rule evaluator.
  */
 export default function CertificationsStep(): JSX.Element {
   const { current, update, markStepComplete } = useOnboardingDraft()

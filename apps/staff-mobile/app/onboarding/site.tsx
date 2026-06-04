@@ -7,8 +7,11 @@ import { useOnboardingDraft } from '../../src/onboarding/state'
 import { pickStrings } from '../../src/i18n'
 
 /**
- * Adaptive site step. Owner → PML number (Tanzanian Primary Mining License).
- * Manager/Employee → site code of the mine they work at.
+ * Adaptive property step. Owner → title-deed reference. Manager/Employee →
+ * property site code of the building they work at.
+ *
+ * The underlying draft fields `titleDeedRef` / `siteCode` are defined in
+ * the shared onboarding state (`src/onboarding/state.ts`).
  */
 export default function SiteStep(): JSX.Element {
   const { current, update, markStepComplete } = useOnboardingDraft()
@@ -19,7 +22,7 @@ export default function SiteStep(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
 
   function next(): void {
-    const value = isOwner ? current.pmlNumber : current.siteCode
+    const value = isOwner ? current.titleDeedRef : current.siteCode
     if (value.trim().length < 3) {
       setError(t.common.required)
       return
@@ -34,20 +37,20 @@ export default function SiteStep(): JSX.Element {
 
   return (
     <WizardShell
-      badge={isOwner ? 'PML' : 'SITE'}
+      badge={isOwner ? 'DEED' : 'SITE'}
       title={copy.title}
       subtitle={isOwner ? copy.subtitleOwner : copy.subtitleWorker}
       footer={<Button label={copy.cta} onPress={next} />}
     >
       {isOwner ? (
         <Field
-          label={copy.pmlLabel}
-          value={current.pmlNumber}
+          label={copy.deedLabel}
+          value={current.titleDeedRef}
           onChangeText={(value) => {
             setError(null)
-            update({ pmlNumber: value.toUpperCase() })
+            update({ titleDeedRef: value.toUpperCase() })
           }}
-          placeholder={copy.pmlPlaceholder}
+          placeholder={copy.deedPlaceholder}
           autoCapitalize="characters"
           error={error}
         />

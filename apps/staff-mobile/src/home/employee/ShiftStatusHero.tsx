@@ -59,7 +59,7 @@ export function ShiftStatusHero({
       return (
         <View>
           <Text style={styles.headline}>Anza zamu</Text>
-          <Text style={styles.sub}>Start shift · {shift.siteName ?? 'Mgodi'}</Text>
+          <Text style={styles.sub}>Start shift · {shift.siteName ?? 'Eneo'}</Text>
           <Pressable
             onPress={onClockIn}
             accessibilityRole="button"
@@ -77,7 +77,7 @@ export function ShiftStatusHero({
         <View>
           <Text style={styles.timer}>{elapsedLabel(shift.elapsedSeconds)}</Text>
           <Text style={styles.sub}>
-            Zamu inaendelea · {shift.siteName ?? 'Mgodi'} / Shift in progress
+            Zamu inaendelea · {shift.siteName ?? 'Eneo'} / Shift in progress
           </Text>
           <Pressable
             onPress={onClockOut}

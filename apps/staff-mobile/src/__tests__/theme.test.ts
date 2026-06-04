@@ -3,7 +3,7 @@ import { colors } from '../theme/colors'
 import { workforcePersonaSpec } from '../roles/persona'
 
 describe('staff-mobile theme tokens', () => {
-  it('exposes the BossNyumba ore-green primary palette', () => {
+  it('exposes the BossNyumba warm-gold-on-slate primary palette', () => {
     expect(colors.gold).toMatch(/^#[0-9A-Fa-f]{6}$/)
     expect(colors.earth900).toMatch(/^#[0-9A-Fa-f]{6}$/)
   })

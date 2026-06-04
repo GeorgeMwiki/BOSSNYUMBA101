@@ -5,7 +5,7 @@ import { ProvenancePill } from '@/components/ProvenancePill'
 import { MarketplaceEmptyState } from '@/marketplace/home/MarketplaceEmptyState'
 import { selectActiveBids } from '@/marketplace/home/derivations'
 import { formatTzs } from '@/components/formatters'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import type { Bid, BidStatus } from '@/types/listing'
 
 export interface ActiveBidsSectionProps {
@@ -43,7 +43,7 @@ export function ActiveBidsSection({ bids, translate, onPressBid, onOpenChatSessi
                 </View>
                 <Text style={styles.rowMeta} numberOfLines={1}>
                   {translate('bids.your_offer')}:{' '}
-                  {formatTzs(bid.offerTzsPerKg * bid.quantityKg)}
+                  {formatTzs(bid.offerRentPerMonthTzs)}
                 </Text>
               </View>
               <View style={styles.actions}>
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.2,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     textTransform: 'uppercase'
   }
 })

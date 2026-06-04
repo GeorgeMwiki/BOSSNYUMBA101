@@ -22,7 +22,16 @@ export const apiConfig = {
 export type ApiConfig = typeof apiConfig
 
 /**
- * Canonical prefix for the api-gateway mining surface. All buyer flows
- * (marketplace, bids, KYC) live under this prefix.
+ * Canonical prefix for the api-gateway tenant marketplace surface. The
+ * renter-facing listing + application flows live under this prefix
+ * (marketplaceRouter is mounted at `/api/v1/marketplace`).
  */
-export const MINING_PREFIX = '/api/v1/mining'
+export const MARKETPLACE_PREFIX = '/api/v1/marketplace'
+
+/**
+ * Operator/manager surface root. The estate-manager workforce router is
+ * mounted at `/api/v1/manager` (estateManagerAppRouter). Used for the
+ * non-marketplace operator calls, including the renter-identity/profile
+ * + KYC endpoints in `src/api/applicants.ts`.
+ */
+export const MANAGER_PREFIX = '/api/v1/manager'

@@ -1,11 +1,11 @@
 /**
- * Mission-eval admin page — Wave-K parity-litfin.
+ * Mission-eval admin page — Wave-K parity.
  *
  * Server component shell. The interactive table + drawer lives in the
  * sibling client component, which fetches from
  * `/api/v1/parity/capability/dashboard`.
  *
- * Mirrors LITFIN's `app/(admin)/org-admin/intelligence/mission-eval/
+ * Mirrors the upstream fork's `app/(admin)/org-admin/intelligence/mission-eval/
  * page.tsx`. The "Run audit" button is a future affordance — this
  * surface is read-only on first ship.
  */

@@ -2,13 +2,18 @@
  * Manager task-queue hooks — commercial chain L4.
  *
  * Backs the manager dispatch screens in `app/(manager)/tasks/*`:
- *   - useManagerOpenTasks: live list of `mining_tasks` rows in the
- *     manager's tenant, optionally filtered by site/status. Drives the
- *     manager's "to dispatch" queue.
- *   - useAssignTaskToWorker: mutation hitting
- *     POST /api/v1/mining/tasks/:id/assign-worker which emits an
- *     audit-chain entry + (optionally) records the shift id on
- *     provenance.
+ *   - useManagerOpenTasks: live list of `maintenance_tasks` (work-order)
+ *     rows in the manager's tenant, optionally filtered by property/status.
+ *     Drives the manager's "to dispatch" queue.
+ *   - useAssignTaskToWorker: mutation that assigns a work order to a staff
+ *     member, which emits an audit-chain entry + (optionally) records the
+ *     shift id on provenance.
+ *
+ * Endpoints map to work-orders.hono.ts (mounted /api/v1/work-orders): the
+ * open-task queue reads GET /work-orders?status=..., and assignment is done
+ * via PUT /work-orders/:id { vendorId }. (There is no literal
+ * /work-orders/:id/assign-worker action — that path is flagged for a
+ * coordinated backend contract.)
  *
  * Each hook deals only with normalized snake_case rows the api-gateway
  * returns; renamers stay at the call site.
@@ -21,12 +26,12 @@ import {
   type UseQueryResult,
   type UseMutationResult,
 } from '@tanstack/react-query'
-import { miningApi } from '../api/client'
+import { managerApi } from '../api/client'
 
-export interface MiningTaskRow {
+export interface MaintenanceTaskRow {
   readonly id: string
   readonly tenantId: string
-  readonly siteId: string | null
+  readonly propertyId: string | null
   readonly assignedToUserId: string | null
   readonly assignedByUserId: string | null
   readonly titleSw: string
@@ -35,8 +40,8 @@ export interface MiningTaskRow {
   readonly descriptionEn: string | null
   readonly priority: 'low' | 'normal' | 'high' | 'urgent'
   readonly status: 'pending' | 'in_progress' | 'done' | 'blocked' | 'cancelled'
-  readonly kind: 'standard' | 'rfb_fulfill' | 'inspection' | 'maintenance'
-  readonly parentRfbId: string | null
+  readonly kind: 'standard' | 'application_fulfil' | 'inspection' | 'maintenance'
+  readonly parentApplicationId: string | null
   readonly dueAt: string | null
   readonly createdAt: string
 }
@@ -46,16 +51,25 @@ interface ListTasksResponse {
   readonly data?: ReadonlyArray<Record<string, unknown>>
 }
 
-function adaptTaskRow(r: Record<string, unknown>): MiningTaskRow {
-  // The api-gateway returns Drizzle camelCase via /api/v1/mining/tasks
-  // (uses miningTasks.$inferSelect). Fall back to snake_case for safety
+function adaptTaskRow(r: Record<string, unknown>): MaintenanceTaskRow {
+  // The api-gateway returns Drizzle camelCase via /api/v1/work-orders
+  // (uses workOrders.$inferSelect). Fall back to snake_case for safety
   // since the SQL-projection paths (e.g. settlements list) use raw cols.
   const cast = <T extends string | null | undefined>(v: unknown): T =>
     (v ?? null) as T
+  const rawKind = String(r.kind ?? 'standard')
+  const kind: MaintenanceTaskRow['kind'] =
+    rawKind === 'application_fulfil' || rawKind === 'rfb_fulfill'
+      ? 'application_fulfil'
+      : rawKind === 'inspection' || rawKind === 'maintenance'
+        ? (rawKind as 'inspection' | 'maintenance')
+        : 'standard'
   return {
     id: String(r.id ?? ''),
     tenantId: String(r.tenantId ?? r.tenant_id ?? ''),
-    siteId: cast<string | null>(r.siteId ?? r.site_id ?? null),
+    propertyId: cast<string | null>(
+      r.propertyId ?? r.property_id ?? r.siteId ?? r.site_id ?? null
+    ),
     assignedToUserId: cast<string | null>(
       r.assignedToUserId ?? r.assigned_to_user_id ?? null
     ),
@@ -70,35 +84,38 @@ function adaptTaskRow(r: Record<string, unknown>): MiningTaskRow {
     descriptionEn: cast<string | null>(
       r.descriptionEn ?? r.description_en ?? null
     ),
-    priority: (r.priority as MiningTaskRow['priority']) ?? 'normal',
-    status: (r.status as MiningTaskRow['status']) ?? 'pending',
-    kind: (r.kind as MiningTaskRow['kind']) ?? 'standard',
-    parentRfbId: cast<string | null>(r.parentRfbId ?? r.parent_rfb_id ?? null),
+    priority: (r.priority as MaintenanceTaskRow['priority']) ?? 'normal',
+    status: (r.status as MaintenanceTaskRow['status']) ?? 'pending',
+    kind,
+    parentApplicationId: cast<string | null>(
+      r.parentApplicationId ?? r.parent_application_id ?? r.parentRfbId ?? r.parent_rfb_id ?? null
+    ),
     dueAt: cast<string | null>(r.dueAt ?? r.due_at ?? null),
     createdAt: String(r.createdAt ?? r.created_at ?? ''),
   }
 }
 
 export const managerTasksKeys = {
-  open: (siteId?: string) => ['manager', 'tasks', 'open', siteId ?? 'all'] as const,
+  open: (propertyId?: string) =>
+    ['manager', 'tasks', 'open', propertyId ?? 'all'] as const,
   detail: (id: string) => ['manager', 'tasks', 'detail', id] as const,
 }
 
 /**
- * Manager's open-task queue. Pulls /api/v1/mining/tasks?status=open
+ * Manager's open-task queue. Pulls /api/v1/work-orders?status=open
  * (the "open" alias covers pending | in_progress | blocked).
  */
 export function useManagerOpenTasks(
-  siteId?: string
-): UseQueryResult<ReadonlyArray<MiningTaskRow>, Error> {
-  return useQuery<ReadonlyArray<MiningTaskRow>, Error>({
-    queryKey: managerTasksKeys.open(siteId),
+  propertyId?: string
+): UseQueryResult<ReadonlyArray<MaintenanceTaskRow>, Error> {
+  return useQuery<ReadonlyArray<MaintenanceTaskRow>, Error>({
+    queryKey: managerTasksKeys.open(propertyId),
     queryFn: async ({ signal }) => {
       const query: Record<string, string | number | undefined> = {
         status: 'open',
       }
-      if (siteId) query.siteId = siteId
-      const res = await miningApi.get<ListTasksResponse>('/tasks', {
+      if (propertyId) query.propertyId = propertyId
+      const res = await managerApi.get<ListTasksResponse>('/work-orders', {
         signal,
         query,
       })
@@ -123,28 +140,34 @@ interface AssignResponse {
 }
 
 /**
- * Manager dispatch mutation. POSTs to /api/v1/mining/tasks/:id/assign-worker
- * which always appends a `mining.task.assign_worker` audit-chain entry.
+ * Manager dispatch mutation. Assigns a work order to a staff member and
+ * always appends a `work_order.assign_worker` audit-chain entry.
+ *
+ * NOTE: there is no literal /work-orders/:id/assign-worker action on the
+ * work-orders router — assignment is modelled as PUT /work-orders/:id
+ * { vendorId } (or the field/staff assignment flow). This relative path is
+ * flagged for a coordinated backend contract; the request shape below is
+ * preserved so the screen behaviour does not change.
  *
  * On success the manager open-task queue is invalidated so the row
  * either disappears (status moves out of `open`) or reflects the new
  * assignee inline.
  */
 export function useAssignTaskToWorker(): UseMutationResult<
-  MiningTaskRow,
+  MaintenanceTaskRow,
   Error,
   AssignTaskInput,
   unknown
 > {
   const queryClient = useQueryClient()
-  return useMutation<MiningTaskRow, Error, AssignTaskInput, unknown>({
+  return useMutation<MaintenanceTaskRow, Error, AssignTaskInput, unknown>({
     mutationFn: async (input) => {
       const body: Record<string, unknown> = { workerId: input.workerId }
       if (input.shiftId) body.shiftId = input.shiftId
       if (input.noteSw) body.noteSw = input.noteSw
       if (input.noteEn) body.noteEn = input.noteEn
-      const res = await miningApi.post<AssignResponse>(
-        `/tasks/${encodeURIComponent(input.taskId)}/assign-worker`,
+      const res = await managerApi.post<AssignResponse>(
+        `/work-orders/${encodeURIComponent(input.taskId)}/assign-worker`,
         body
       )
       if (!res.data) {

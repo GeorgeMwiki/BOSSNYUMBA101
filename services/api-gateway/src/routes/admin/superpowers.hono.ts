@@ -47,7 +47,6 @@
  * returns the same response without double-writing.
  */
 
-// @ts-nocheck — Hono v4 ContextVariableMap drift; same pattern as
 // owner/superpowers/bulk-action.hono.ts.
 
 import { Hono } from 'hono';

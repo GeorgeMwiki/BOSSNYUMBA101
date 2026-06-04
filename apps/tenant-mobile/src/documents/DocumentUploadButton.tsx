@@ -82,7 +82,7 @@ export function DocumentUploadButton({
         style={({ pressed }) => [styles.paperclip, pressed ? styles.paperclipPressed : null]}
       >
         {busy ? (
-          <ActivityIndicator color={colors.gold} />
+          <ActivityIndicator color={colors.accent} />
         ) : (
           <Text style={styles.paperclipGlyph}>{'📎'}</Text>
         )}
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   },
   paperclipGlyph: {
     ...typography.heading,
-    color: colors.copper,
+    color: colors.accentDeep,
   },
   button: {
     backgroundColor: colors.forest,
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   },
   buttonGlyph: {
     ...typography.heading,
-    color: colors.gold,
+    color: colors.accent,
   },
   buttonLabel: {
     ...typography.bodyStrong,

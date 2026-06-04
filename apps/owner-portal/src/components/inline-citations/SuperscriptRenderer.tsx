@@ -1,8 +1,7 @@
 /**
- * R1 — inline citations renderer
- * Ported from Borjie owner-web (Next.js) to BossNyumba owner-portal
- * (Vite + React SPA). The `'use client'` directive is dropped — the
- * component lives in a pure client bundle.
+ * R1 — inline citations renderer for the BossNyumba owner-portal
+ * (Vite + React SPA). No `'use client'` directive — the component
+ * lives in a pure client bundle.
  *
  * Maps superscript Unicode digits (¹²³⁴⁵⁶⁷⁸⁹⁰) embedded inline within
  * a model-written brief sentence to clickable evidence chips that open

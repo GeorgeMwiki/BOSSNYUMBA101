@@ -1,7 +1,7 @@
 'use client';
 /**
  * BossNyumbaWidgetMount — marketing-site (anonymous) wrapper around the
- * @bossnyumba/chat-ui LitFin-style floating widget.
+ * @bossnyumba/chat-ui floating widget.
  *
  * Renders the floating "Mr. Mwikila — BossNyumba's AI Real-Estate
  * Director" bubble across every marketing page. Uses the `public`
@@ -11,7 +11,7 @@
 import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 
-const LitFinAIProvider = dynamic(
+const BnAIProvider = dynamic(
   () =>
     import('@bossnyumba/chat-ui').then((m) => ({
       default: m.LitFinAIProvider,
@@ -19,7 +19,7 @@ const LitFinAIProvider = dynamic(
   { ssr: false },
 );
 
-const LitFinWidget = dynamic(
+const BnWidget = dynamic(
   () =>
     import('@bossnyumba/chat-ui').then((m) => ({ default: m.LitFinWidget })),
   { ssr: false },
@@ -31,9 +31,9 @@ interface BossNyumbaWidgetMountProps {
 
 /**
  * BossNyumba real-estate compliance copy. Landlords own properties — the
- * Borjie mining variant says "mine owner". We pin "landlord" here so an
- * unrelated edit (or a sibling chat-ui session targeting the mining
- * domain) cannot revert it.
+ * parent fork's variant said "owner" of a different asset class. We pin
+ * "landlord" here so an unrelated edit (or a sibling chat-ui session)
+ * cannot revert it.
  */
 const BOSSNYUMBA_DISCLAIMER_EN =
   'AI-generated. Not legal advice. Decisions are made by the landlord.';
@@ -44,15 +44,15 @@ export function BossNyumbaWidgetMount(
   _props: BossNyumbaWidgetMountProps = {},
 ): JSX.Element {
   return (
-    <LitFinAIProvider
+    <BnAIProvider
       portalId="public"
       endpoint="/api/chat"
       initialRoute="/"
       disclaimerEn={BOSSNYUMBA_DISCLAIMER_EN}
       disclaimerSw={BOSSNYUMBA_DISCLAIMER_SW}
     >
-      <LitFinWidget />
-    </LitFinAIProvider>
+      <BnWidget />
+    </BnAIProvider>
   );
 }
 

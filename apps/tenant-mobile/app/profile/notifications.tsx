@@ -7,7 +7,7 @@ import { Card } from '@/components/Card'
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { useToast } from '@/components/Toast'
 import { useTranslation } from '@/hooks/useTranslation'
-import { updateNotificationPrefs, type NotificationPrefs } from '@/api/buyers'
+import { updateNotificationPrefs, type NotificationPrefs } from '@/api/applicants'
 import { colors } from '@/theme/colors'
 import { spacing, typography } from '@/theme/spacing'
 

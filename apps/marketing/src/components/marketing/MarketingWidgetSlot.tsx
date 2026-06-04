@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * MarketingWidgetSlot — carbon copy of LitFin's MarketingWidgetSlot
- * pattern (LITFIN_PATH/src/components/marketing/MarketingWidgetSlot.tsx).
+ * MarketingWidgetSlot — carbon copy of the upstream fork's MarketingWidgetSlot
+ * pattern (UPSTREAM_PATH/src/components/marketing/MarketingWidgetSlot.tsx).
  *
  * Thin client wrapper around the existing BossNyumba floating widget,
  * dynamically imported so the chat-ui bundle never enters the SSR

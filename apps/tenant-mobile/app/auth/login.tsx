@@ -8,9 +8,9 @@ import { FormField } from '@/components/FormField'
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { useToast } from '@/components/Toast'
 import { useTranslation } from '@/hooks/useTranslation'
-import { sendBuyerOtp, verifyBuyerOtp } from '@/auth/session'
+import { sendTenantOtp, verifyTenantOtp } from '@/auth/session'
 import { phoneSchema, otpSchema, type PhoneInput, type OtpInput } from '@/schemas/auth'
-import { greet, tokens } from '@/ui-litfin'
+import { greet, tokens } from '@/ui'
 
 type Stage = 'phone' | 'otp'
 
@@ -47,7 +47,7 @@ export default function AuthLogin() {
     setSending(true)
     try {
       const e164 = normaliseE164(values.phone)
-      const result = await sendBuyerOtp(e164)
+      const result = await sendTenantOtp(e164)
       if (result.error) {
         toast.show(result.error ?? t('auth.otp_failed'), 'error')
         return
@@ -63,7 +63,7 @@ export default function AuthLogin() {
   async function handleVerifyOtp(values: OtpInput): Promise<void> {
     setVerifying(true)
     try {
-      const result = await verifyBuyerOtp(phone, values.code)
+      const result = await verifyTenantOtp(phone, values.code)
       if (result.error) {
         toast.show(result.error ?? t('auth.verify_failed'), 'error')
         return
@@ -103,7 +103,7 @@ export default function AuthLogin() {
             )}
           />
           <View style={{ height: tokens.space.sm }} />
-          {sending ? <ActivityIndicator color={tokens.color.gold} style={styles.spinner} /> : null}
+          {sending ? <ActivityIndicator color={tokens.color.accent} style={styles.spinner} /> : null}
           <PrimaryButton
             label={t('auth.send_otp')}
             onPress={phoneForm.handleSubmit(handleSendOtp)}
@@ -129,7 +129,7 @@ export default function AuthLogin() {
             )}
           />
           <View style={{ height: tokens.space.sm }} />
-          {verifying ? <ActivityIndicator color={tokens.color.gold} style={styles.spinner} /> : null}
+          {verifying ? <ActivityIndicator color={tokens.color.accent} style={styles.spinner} /> : null}
           <PrimaryButton
             label={t('auth.verify')}
             onPress={otpForm.handleSubmit(handleVerifyOtp)}
@@ -147,12 +147,12 @@ const styles = StyleSheet.create({
   hero: { marginBottom: tokens.space.xxl, alignItems: 'center' },
   eyebrow: {
     ...tokens.type.eyebrow,
-    color: tokens.color.gold
+    color: tokens.color.accent
   },
   brand: {
     fontSize: 36,
     fontWeight: '800',
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     letterSpacing: 4,
     marginTop: tokens.space.sm
   },

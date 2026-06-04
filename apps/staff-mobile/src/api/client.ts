@@ -3,7 +3,7 @@ import {
   FIELD_PREFIX,
   OWNER_PREFIX,
   CHAT_PREFIX,
-  MINING_PREFIX,
+  MANAGER_PREFIX,
   DEFAULT_TIMEOUT_MS
 } from './config'
 import { ApiError } from './errors'
@@ -126,8 +126,8 @@ function chatUrl(path: string): string {
   return `${API_BASE_URL}${CHAT_PREFIX}${path.startsWith('/') ? path : `/${path}`}`
 }
 
-function miningUrl(path: string): string {
-  return `${API_BASE_URL}${MINING_PREFIX}${path.startsWith('/') ? path : `/${path}`}`
+function managerUrl(path: string): string {
+  return `${API_BASE_URL}${MANAGER_PREFIX}${path.startsWith('/') ? path : `/${path}`}`
 }
 
 export const fieldApi = {
@@ -151,15 +151,15 @@ export const chatApi = {
 }
 
 /**
- * Canonical client for the api-gateway mining surface. Used by the sync
- * queue flush and any new screens that need to talk to mining endpoints.
- * Prefer this over `fieldApi` / `ownerApi` for new code.
+ * Canonical client for the api-gateway estate-manager surface. Used by the
+ * sync queue flush and any screens that talk to the manager router. Prefer
+ * this over `fieldApi` / `ownerApi` for new code.
  */
-export const miningApi = {
+export const managerApi = {
   get: <T,>(path: string, options?: RequestOptions): Promise<T> =>
-    request<T>(miningUrl(path), { ...options, method: 'GET' }),
+    request<T>(managerUrl(path), { ...options, method: 'GET' }),
   post: <T,>(path: string, body: unknown, options?: RequestOptions): Promise<T> =>
-    request<T>(miningUrl(path), { ...options, method: 'POST', body })
+    request<T>(managerUrl(path), { ...options, method: 'POST', body })
 }
 
-export type MiningApi = typeof miningApi
+export type ManagerApi = typeof managerApi

@@ -4,9 +4,9 @@
  * Wired into `src/auth/session.ts` so every successful Supabase sign-in
  * (re-)posts the device's Expo push token to the api-gateway, which
  * stores it in `device_push_tokens` (migration 0139). The notification
- * dispatcher then resolves all active tokens for a buyer at fan-out
+ * dispatcher then resolves all active tokens for a tenant at fan-out
  * time so RFB-fulfilled / bid-accepted / settlement-paid pushes hit
- * every surface the buyer is signed-in on.
+ * every surface the tenant is signed-in on.
  *
  * Permission handling:
  *   - Gracefully no-ops when the user denies notification permission;

@@ -1,10 +1,12 @@
 /**
- * Worker certifications recognised by the BossNyumba onboarding wizard. The
- * literal values mirror the `Certification` enum in
- * `@bossnyumba/mining-shift-planner` (packages/mining-shift-planner/src/types.ts)
- * so that downstream OSHA-TZ rule evaluation can consume the captured set
- * verbatim once the planner package is wired into staff-mobile's
- * dependency graph. Keep this list in sync with the planner package.
+ * Worker certifications recognised by the BossNyumba onboarding wizard.
+ *
+ * NOTE: the literal id values below are a legacy identifier set still shared
+ * with `src/onboarding/state.ts` (zod enum) and the intelligence test fixture;
+ * the user-facing labels are fully property-domain (see i18n
+ * `onboarding.certifications.*`). A coordinated rename of these legacy ids to
+ * property-trade ids (and a matching shift-planner contract) is flagged for
+ * follow-up. Keep this list in sync with the onboarding state schema.
  */
 export const CERTIFICATIONS = [
   'haul-truck-license',

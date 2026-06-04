@@ -1,25 +1,26 @@
 import { StyleSheet, Text, View } from 'react-native'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 
 export interface MessageBubbleProps {
-  readonly from: 'buyer' | 'seller'
+  readonly from: 'tenant' | 'landlord'
   readonly body: string
   readonly authorLabel: string
 }
 
 /**
- * Buyer-seller message bubble — LitFin DNA. Buyer (right-aligned)
- * uses the warm-gold fill on navy text; seller (left-aligned) uses
- * the navy AI bubble with a soft gold top accent.
+ * Tenant-landlord message bubble — BossNyumba design DNA. The tenant
+ * side (right-aligned) uses the warm-gold fill on navy text; the
+ * counterparty (left-aligned) uses the navy AI bubble with a soft gold
+ * top accent.
  */
 export function MessageBubble({ from, body, authorLabel }: MessageBubbleProps) {
-  const isBuyer = from === 'buyer'
+  const isTenant = from === 'tenant'
   return (
-    <View style={[styles.bubble, isBuyer ? styles.bubbleBuyer : styles.bubbleSeller]}>
-      <Text style={[styles.author, { color: isBuyer ? tokens.color.userBubbleText : tokens.color.gold }]}>
+    <View style={[styles.bubble, isTenant ? styles.bubbleTenant : styles.bubbleLandlord]}>
+      <Text style={[styles.author, { color: isTenant ? tokens.color.userBubbleText : tokens.color.accent }]}>
         {authorLabel}
       </Text>
-      <Text style={[styles.body, { color: isBuyer ? tokens.color.userBubbleText : tokens.color.textPrimary }]}>
+      <Text style={[styles.body, { color: isTenant ? tokens.color.userBubbleText : tokens.color.textPrimary }]}>
         {body}
       </Text>
     </View>
@@ -35,13 +36,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     maxWidth: '88%'
   },
-  bubbleBuyer: {
+  bubbleTenant: {
     backgroundColor: tokens.color.userBubbleBg,
-    borderColor: tokens.color.goldDeep,
+    borderColor: tokens.color.accentDeep,
     alignSelf: 'flex-end',
     borderBottomRightRadius: 6
   },
-  bubbleSeller: {
+  bubbleLandlord: {
     backgroundColor: tokens.color.aiBubbleBg,
     borderColor: tokens.color.aiBubbleBorder,
     borderTopWidth: 2,

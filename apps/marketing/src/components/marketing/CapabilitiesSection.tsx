@@ -26,7 +26,7 @@ import { type Locale } from '@/lib/i18n';
 
 /**
  * Shared marketing capabilities section. Carbon copy of
- * LITFIN_PATH/src/components/marketing/CapabilitiesSection.tsx adapted
+ * UPSTREAM_PATH/src/components/marketing/CapabilitiesSection.tsx adapted
  * to BossNyumba's real-estate domain. Locale-aware so EN/SW renders are
  * pure (no leaks of opposite locale in card titles, descriptions, kicker,
  * heading, or subhead).

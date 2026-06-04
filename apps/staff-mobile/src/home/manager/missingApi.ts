@@ -38,7 +38,7 @@ export function endpointPathFromError(error: unknown): string {
     return ''
   }
   // ApiError.url is the absolute URL. Strip protocol+host so the surfaced
-  // path matches the spec wire format (/v1/mining/...).
+  // path matches the spec wire format (/v1/manager/...).
   try {
     const parsed = new URL(error.url)
     return parsed.pathname

@@ -1,0 +1,23 @@
+{
+  "name": "@bossnyumba/ledger-attestor",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Tamper-evidence control for the rent/treasury ledger and the AI audit chain. Computes a Merkle root over a hash-chain segment (built on @bossnyumba/audit-hash-chain), signs the root via an injected SignerPort, and publishes the signed checkpoint to a pluggable external sink (object-lock WORM store / transparency log). A scheduled worker re-attests each chain so any after-the-fact edit to a rent posting, deposit, or audit row is detectable against a previously published, signed root.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@bossnyumba/audit-hash-chain": "workspace:*",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

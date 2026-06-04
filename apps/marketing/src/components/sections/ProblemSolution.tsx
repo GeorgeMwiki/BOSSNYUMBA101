@@ -5,7 +5,7 @@ import { CheckCircle2, Sparkles, TrendingUp } from 'lucide-react';
 import { getMessages, type Locale } from '@/lib/i18n';
 
 /**
- * ProblemSolution — LitFin's "WHY CREDIT BUSINESS" pattern, ported to
+ * ProblemSolution — the upstream fork's "WHY CREDIT BUSINESS" pattern, ported to
  * BossNyumba's real-estate problem statement.
  *
  * Two-card grid:

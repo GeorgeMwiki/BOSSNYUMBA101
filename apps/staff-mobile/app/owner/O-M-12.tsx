@@ -5,7 +5,7 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -20,7 +20,7 @@ const COPY = Object.freeze({
   casual: 'Wa muda',
   contractors: 'Wakandarasi',
   sortBy: 'Panga kwa',
-  mines: 'Migodi',
+  properties: 'Mali',
   presentToday: 'Waliopo leo',
   permanentLine: 'Wa kudumu',
   casualLine: 'Wa muda',
@@ -37,7 +37,7 @@ type SortKey = 'name' | 'total' | 'present'
 
 const SORT_KEYS: ReadonlyArray<SortKey> = ['name', 'total', 'present']
 
-interface SiteHeadcount {
+interface PropertyStaff {
   readonly id: string
   readonly name: string
   readonly permanent: number
@@ -46,32 +46,32 @@ interface SiteHeadcount {
   readonly presentToday: number
 }
 
-interface HeadcountResponse {
+interface StaffCountResponse {
   readonly success?: boolean
-  readonly data?: ReadonlyArray<SiteHeadcount>
+  readonly data?: ReadonlyArray<PropertyStaff>
 }
 
 export default function Screen(): JSX.Element {
   return (
     <RoleGuard screenId={SCREEN_ID}>
       <ScreenShell screenId={SCREEN_ID}>
-        <PeopleByMine />
+        <PeopleByProperty />
       </ScreenShell>
     </RoleGuard>
   )
 }
 
-function totalOf(mine: SiteHeadcount): number {
-  return mine.permanent + mine.casual + mine.contractors
+function totalOf(property: PropertyStaff): number {
+  return property.permanent + property.casual + property.contractors
 }
 
-function useHeadcount(): UseQueryResult<ReadonlyArray<SiteHeadcount>, Error> {
-  return useQuery<ReadonlyArray<SiteHeadcount>, Error>({
-    queryKey: ['mining', 'attendance', 'headcount', 'site'],
+function useStaffCount(): UseQueryResult<ReadonlyArray<PropertyStaff>, Error> {
+  return useQuery<ReadonlyArray<PropertyStaff>, Error>({
+    queryKey: ['estate', 'attendance', 'staff-count', 'property'],
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<HeadcountResponse>(
-        '/attendance/headcount',
-        { signal, query: { groupBy: 'site' } }
+      const response = await managerApi.get<StaffCountResponse>(
+        '/attendance/staff-count',
+        { signal, query: { groupBy: 'property' } }
       )
       const rows = Array.isArray(response?.data) ? response.data : []
       return rows.map((row) => ({
@@ -87,12 +87,12 @@ function useHeadcount(): UseQueryResult<ReadonlyArray<SiteHeadcount>, Error> {
   })
 }
 
-function PeopleByMine(): JSX.Element {
+function PeopleByProperty(): JSX.Element {
   const [sortBy, setSortBy] = useState<SortKey>('total')
   const [expanded, setExpanded] = useState<string | null>(null)
-  const query = useHeadcount()
+  const query = useStaffCount()
 
-  const sorted = useMemo<ReadonlyArray<SiteHeadcount>>(() => {
+  const sorted = useMemo<ReadonlyArray<PropertyStaff>>(() => {
     const rows = query.data ?? []
     const copy = [...rows]
     if (sortBy === 'name') return copy.sort((a, b) => a.name.localeCompare(b.name))
@@ -172,31 +172,31 @@ function PeopleByMine(): JSX.Element {
           ))}
         </View>
       </Section>
-      <Section title={COPY.mines}>
-        {sorted.map((mine) => {
-          const isOpen = expanded === mine.id
-          const total = totalOf(mine)
-          const presentPct = total === 0 ? 0 : Math.round((mine.presentToday / total) * 100)
+      <Section title={COPY.properties}>
+        {sorted.map((property) => {
+          const isOpen = expanded === property.id
+          const total = totalOf(property)
+          const presentPct = total === 0 ? 0 : Math.round((property.presentToday / total) * 100)
           return (
             <Pressable
-              key={mine.id}
+              key={property.id}
               accessibilityRole="button"
-              accessibilityLabel={`Onyesha ${mine.name}`}
-              onPress={() => toggle(mine.id)}
-              style={[styles.mineRow, isOpen && styles.mineRowOpen]}
+              accessibilityLabel={`Onyesha ${property.name}`}
+              onPress={() => toggle(property.id)}
+              style={[styles.propertyRow, isOpen && styles.propertyRowOpen]}
             >
-              <View style={styles.mineHeader}>
-                <Text style={styles.mineName}>{mine.name}</Text>
-                <Text style={styles.mineTotal}>{total}</Text>
+              <View style={styles.propertyHeader}>
+                <Text style={styles.propertyName}>{property.name}</Text>
+                <Text style={styles.propertyTotal}>{total}</Text>
               </View>
-              <Text style={styles.mineMeta}>
-                {COPY.presentToday}: {mine.presentToday} ({presentPct}%)
+              <Text style={styles.propertyMeta}>
+                {COPY.presentToday}: {property.presentToday} ({presentPct}%)
               </Text>
               {isOpen ? (
-                <View style={styles.mineDetail}>
-                  <Text style={styles.detailLine}>{COPY.permanentLine}: {mine.permanent}</Text>
-                  <Text style={styles.detailLine}>{COPY.casualLine}: {mine.casual}</Text>
-                  <Text style={styles.detailLine}>{COPY.contractorsLine}: {mine.contractors}</Text>
+                <View style={styles.propertyDetail}>
+                  <Text style={styles.detailLine}>{COPY.permanentLine}: {property.permanent}</Text>
+                  <Text style={styles.detailLine}>{COPY.casualLine}: {property.casual}</Text>
+                  <Text style={styles.detailLine}>{COPY.contractorsLine}: {property.contractors}</Text>
                 </View>
               ) : null}
             </Pressable>
@@ -246,17 +246,17 @@ const styles = StyleSheet.create({
   sortChipActive: { backgroundColor: colors.gold, borderColor: colors.goldDark },
   sortLabel: { color: colors.textMuted, fontSize: fontSize.caption, fontWeight: '600' },
   sortLabelActive: { color: colors.earth900 },
-  mineRow: {
+  propertyRow: {
     padding: spacing.md,
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.md,
     marginBottom: spacing.sm
   },
-  mineRowOpen: { borderColor: colors.gold, borderWidth: 1 },
-  mineHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  mineName: { color: colors.text, fontSize: fontSize.lead, fontWeight: '700' },
-  mineTotal: { color: colors.goldDark, fontSize: fontSize.h3, fontWeight: '800' },
-  mineMeta: { color: colors.textMuted, fontSize: fontSize.body, marginTop: spacing.xs },
-  mineDetail: { marginTop: spacing.sm, paddingTop: spacing.sm, borderTopColor: colors.border, borderTopWidth: 1 },
+  propertyRowOpen: { borderColor: colors.gold, borderWidth: 1 },
+  propertyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  propertyName: { color: colors.text, fontSize: fontSize.lead, fontWeight: '700' },
+  propertyTotal: { color: colors.goldDark, fontSize: fontSize.h3, fontWeight: '800' },
+  propertyMeta: { color: colors.textMuted, fontSize: fontSize.body, marginTop: spacing.xs },
+  propertyDetail: { marginTop: spacing.sm, paddingTop: spacing.sm, borderTopColor: colors.border, borderTopWidth: 1 },
   detailLine: { color: colors.text, fontSize: fontSize.body, marginTop: spacing.xs }
 })

@@ -5,7 +5,7 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { useOnlineStatus } from '../../src/offline/useOnlineStatus'
 import { useAuth } from '../../src/auth/useAuth'
@@ -14,7 +14,9 @@ import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
 const SCREEN_ID = 'W-M-12'
-const MISSING_HISTORY_ENDPOINT = 'GET /api/v1/mining/attendance'
+// Per-self shift state is GET /api/v1/field/staff/me; a whole-crew attendance
+// roster (GET /attendance) is NOT implemented, so history stays env-missing.
+const MISSING_HISTORY_ENDPOINT = 'GET /api/v1/field/staff (attendance history)'
 
 const COPY = {
   loading: 'Inatuma... · Submitting...',
@@ -39,7 +41,7 @@ interface AttendanceResponse {
 
 interface CheckInPayload {
   readonly employeeId: string
-  readonly siteId: string
+  readonly propertyId: string
   readonly workDate: string
   readonly shiftKind: 'day' | 'night'
   readonly lat: number
@@ -81,7 +83,7 @@ function HoursLog(): JSX.Element {
 
   const checkInMutation = useMutation<AttendanceRow, ApiError, CheckInPayload>({
     mutationFn: async (input) => {
-      const resp = await miningApi.post<AttendanceResponse>('/attendance/check-in', input)
+      const resp = await managerApi.post<AttendanceResponse>('/attendance/check-in', input)
       return resp.data
     },
     onSuccess: (row) => {
@@ -115,7 +117,7 @@ function HoursLog(): JSX.Element {
 
   const checkOutMutation = useMutation<AttendanceRow, ApiError, CheckOutPayload>({
     mutationFn: async (input) => {
-      const resp = await miningApi.post<AttendanceResponse>('/attendance/check-out', input)
+      const resp = await managerApi.post<AttendanceResponse>('/attendance/check-out', input)
       return resp.data
     },
     onSuccess: (row) => {
@@ -154,7 +156,7 @@ function HoursLog(): JSX.Element {
     const today = new Date().toISOString().slice(0, 10)
     checkInMutation.mutate({
       employeeId: user.id,
-      siteId: user.tenantId,
+      propertyId: user.tenantId,
       workDate: today,
       shiftKind: 'day',
       lat: 0,

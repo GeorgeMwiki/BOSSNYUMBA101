@@ -1,7 +1,7 @@
 /**
  * SectionSkeleton — minimal animated placeholder used as a Suspense
  * fallback for marketing sections that ship via `next/dynamic` or
- * similar code-splitting. Mirrors LitFin's SectionSkeleton: a single
+ * similar code-splitting. Mirrors the upstream fork's SectionSkeleton: a single
  * pulsing surface tile with reserved height so layout shift stays at
  * zero before the lazy chunk arrives.
  *

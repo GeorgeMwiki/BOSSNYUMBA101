@@ -3,10 +3,10 @@ import { Field } from './Field'
 import { Button } from './Button'
 import { colors } from '../theme/colors'
 import { fontSize, radius, spacing } from '../theme/spacing'
-import type { DrillLayer } from './schemas/drillHole'
+import type { InspectionItem } from './schemas/inspection'
 
 export interface LayerListProps {
-  layers: ReadonlyArray<DrillLayer>
+  layers: ReadonlyArray<InspectionItem>
   draft: DraftLayer
   onChangeDraft: (next: DraftLayer) => void
   onAdd: () => void

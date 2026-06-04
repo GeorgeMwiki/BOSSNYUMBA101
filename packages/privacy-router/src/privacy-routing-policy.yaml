@@ -1,0 +1,196 @@
+# Privacy Routing Policy (BossNyumba real-estate operating system)
+# Tanzania-specific rules for BOT Act / PDPA data-residency compliance.
+#
+# Governs how AI inference requests are routed based on data-sensitivity
+# classification. Tanzania is the launch jurisdiction; Kenya / Uganda /
+# Nigeria are planned expansion markets — operators clone and re-jurisdiction
+# this file rather than hard-coding any market in code.
+#
+# Regulatory references:
+#   - Bank of Tanzania Act, 2006 (treasury / disbursement flows)
+#   - Tanzania Personal Data Protection Act (PDPA), 2022
+#   - Land Act, 1999 (Cap. 113) + Land Registration Act (title / tenancy records)
+#   - Anti-Money Laundering Act, 2006 (beneficial-owner / sanctions)
+#   - BOT Guidelines on Information Security, 2019
+
+version: "1.0.0"
+effective_date: "2026-06-04"
+last_reviewed: "2026-06-04"
+next_review: "2026-09-04"
+jurisdiction: "United Republic of Tanzania"
+
+# ---------------------------------------------------------------------------
+# Classification tiers
+# ---------------------------------------------------------------------------
+classification_tiers:
+  RESTRICTED:
+    display_name: "Restricted"
+    description: >
+      Data whose unauthorized disclosure could cause severe regulatory,
+      legal, or financial harm. Includes raw KYC / beneficial-owner
+      records, sanctions-screening results, and compliance-investigation
+      notes. Processed by the local model only; never sent to cloud.
+    cloud_allowed: false
+    local_model_allowed: true
+    pii_stripping: required_even_for_local
+    encryption: AES-256-GCM
+    audit_level: every_access_with_justification
+    retention_years: 10
+    export_allowed: false
+
+  CONFIDENTIAL:
+    display_name: "Confidential"
+    description: >
+      Tenant and owner PII, rent assessments, lease reviews, disbursement
+      narratives, treasury analysis, and property valuation interpretation.
+      May be processed by approved cloud providers only after PII stripping
+      and with transport encryption.
+    cloud_allowed: true
+    pii_stripping: mandatory_before_cloud
+    encryption: AES-256-GCM
+    audit_level: every_view
+    retention_years: 7
+    export_allowed: true
+    export_requires_approval: true
+
+  INTERNAL:
+    display_name: "Internal"
+    description: >
+      Operational data such as arrears forecasts, platform insight, and
+      aggregate analytics. Not for public disclosure but carries no PII.
+    cloud_allowed: true
+    pii_stripping: not_required
+    encryption: TLS_1_3
+    audit_level: aggregate_only
+    retention_years: 5
+    export_allowed: true
+
+  PUBLIC:
+    display_name: "Public"
+    description: >
+      Publicly available information such as marketplace listing copy,
+      general real-estate education materials, and public disclosures.
+    cloud_allowed: true
+    pii_stripping: not_required
+    encryption: TLS_1_3
+    audit_level: none
+    retention_years: 3
+    export_allowed: true
+
+# ---------------------------------------------------------------------------
+# Task category -> minimum classification (consumed by the router)
+# ---------------------------------------------------------------------------
+task_category_classification:
+  learning_teaching: PUBLIC
+  marketplace_listing_copy: PUBLIC
+  public_disclosure: PUBLIC
+  blog_generation: PUBLIC
+
+  platform_insight: INTERNAL
+  arrears_forecast: INTERNAL
+  data_aggregation: INTERNAL
+  batch_processing: INTERNAL
+
+  rent_assessment: CONFIDENTIAL
+  lease_review: CONFIDENTIAL
+  disbursement_narrative: CONFIDENTIAL
+  treasury_analysis: CONFIDENTIAL
+  workforce_advisory: CONFIDENTIAL
+  valuation_interpretation: CONFIDENTIAL
+  document_extraction: CONFIDENTIAL
+
+  compliance_investigation: RESTRICTED
+  sanctions_screening: RESTRICTED
+  computer_use: RESTRICTED
+
+# ---------------------------------------------------------------------------
+# Restricted field prefixes — any field path starting with these is
+# elevated to RESTRICTED, overriding task-category classification.
+# ---------------------------------------------------------------------------
+restricted_field_prefixes:
+  - "compliance."
+  - "sanctions."
+  - "investigation."
+  - "kyc.raw"
+  - "beneficial_owner.raw"
+
+# ---------------------------------------------------------------------------
+# Local model requirements
+# ---------------------------------------------------------------------------
+local_model:
+  provider: ollama
+  base_url_env: "OLLAMA_BASE_URL"
+  health_check_path: "/api/tags"
+  health_check_timeout_ms: 3000
+  required_for_restricted: true
+  deny_if_unavailable: true
+
+# ---------------------------------------------------------------------------
+# PII stripping configuration
+# ---------------------------------------------------------------------------
+pii_stripping:
+  supported_types:
+    - email_addresses
+    - phone_numbers_tz
+    - nida_national_ids
+    - tin_numbers
+    - bank_account_numbers
+    - lease_id_numbers
+    - explicit_names
+  token_format: "[{TYPE}_{COUNTER}]"
+  reversible: true
+  pii_in_audit_logs: never
+
+# ---------------------------------------------------------------------------
+# Approved cloud providers (first is the default; order matters)
+# ---------------------------------------------------------------------------
+approved_cloud_providers:
+  - claude
+  - openai
+
+# ---------------------------------------------------------------------------
+# Audit and compliance
+# ---------------------------------------------------------------------------
+audit:
+  in_memory_buffer_size: 1000
+  log_fields:
+    - timestamp
+    - classification
+    - endpoint
+    - pii_stripped
+    - stripped_field_count
+    - task_category
+    - reason
+  exclude_from_logs:
+    - pii_mappings
+    - processed_text
+    - raw_request_text
+
+# ---------------------------------------------------------------------------
+# Regulatory references
+# ---------------------------------------------------------------------------
+regulatory_references:
+  - name: "Tanzania PDPA, 2022"
+    section: "Part IV, Section 17-23 (Processing of Personal Data)"
+    requirement: >
+      Personal data processing requires lawful basis, purpose limitation,
+      and data minimization. Cross-border transfer requires adequacy
+      determination or appropriate safeguards.
+
+  - name: "Land Act, 1999 (Cap. 113)"
+    section: "Title, tenancy, and beneficial-ownership records"
+    requirement: >
+      Title and beneficial-owner records are sensitive regulatory data and
+      must not be processed outside approved infrastructure.
+
+  - name: "Anti-Money Laundering Act, 2006"
+    section: "Part III (Customer Due Diligence)"
+    requirement: >
+      CDD and sanctions-screening data must be handled with the highest
+      confidentiality. Unauthorized disclosure is a criminal offense.
+
+  - name: "BOT Information Security Guidelines, 2019"
+    section: "Section 7 (Data Classification)"
+    requirement: >
+      Institutions must classify data into sensitivity tiers and apply
+      proportionate security controls.

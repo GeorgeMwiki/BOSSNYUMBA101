@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 
 export type PillTone = 'neutral' | 'success' | 'warning' | 'danger' | 'gold'
 
@@ -9,16 +9,16 @@ export interface PillProps {
 }
 
 /**
- * Status pill — LitFin badge family. 14% tone tint on a soft hairline
- * border, full-saturation text. Same recipe as the LitFin web badges
+ * Status pill — BossNyumba badge family. 14% tone tint on a soft hairline
+ * border, full-saturation text. Same recipe as the BossNyumba web badges
  * on the borrower dashboard.
  */
 const toneStyles: Record<PillTone, { bg: string; fg: string; border: string }> = {
   neutral: { bg: 'rgba(255, 255, 255, 0.06)', fg: tokens.color.textSecondary, border: tokens.color.border },
   success: { bg: 'rgba(46, 189, 133, 0.16)', fg: tokens.color.success, border: 'rgba(46, 189, 133, 0.32)' },
-  warning: { bg: 'rgba(255, 200, 87, 0.14)', fg: tokens.color.gold, border: tokens.color.borderGold },
+  warning: { bg: 'rgba(255, 200, 87, 0.14)', fg: tokens.color.accent, border: tokens.color.borderAccent },
   danger: { bg: 'rgba(225, 75, 75, 0.14)', fg: tokens.color.danger, border: 'rgba(225, 75, 75, 0.36)' },
-  gold: { bg: 'rgba(255, 200, 87, 0.18)', fg: tokens.color.gold, border: tokens.color.borderGold }
+  gold: { bg: 'rgba(255, 200, 87, 0.18)', fg: tokens.color.accent, border: tokens.color.borderAccent }
 }
 
 export function Pill({ label, tone = 'neutral' }: PillProps) {

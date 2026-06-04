@@ -17,7 +17,7 @@ import { useTheme, type Theme } from '../theme/ThemeProvider'
  *
  * Most workforce screens are tuned for sunlit field readability (gold
  * on slate) so dark stays the default, but the toggle ships now so
- * cross-app preference (web + mobile) stays consistent and the buyer
+ * cross-app preference (web + mobile) stays consistent and the tenant
  * app inherits the same control verbatim.
  */
 

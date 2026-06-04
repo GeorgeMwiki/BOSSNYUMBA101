@@ -1,14 +1,14 @@
 /**
- * Buyer-mobile live event stream — parity with owner-web cockpit-sse
- * and workforce-mobile event-stream. Foreground-only SSE consumer of
+ * Tenant-mobile live event stream — parity with owner-web cockpit-sse
+ * and staff-mobile event-stream. Foreground-only SSE consumer of
  * the api-gateway's /api/v1/cockpit/stream.
  *
  * When the app backgrounds we close the socket; out-of-app delivery
  * happens via push notifications (`device_push_tokens`).
  *
- * Buyer-relevant event kinds focus on the marketplace + RFB +
+ * Tenant-relevant event kinds focus on the marketplace + application +
  * settlement chain. Other kinds (payroll, safety, etc.) are filtered
- * out so the in-memory ring doesn't fill with noise the buyer
+ * out so the in-memory ring doesn't fill with noise the tenant
  * cannot act on.
  */
 
@@ -20,7 +20,7 @@ import EventSourceImpl from 'react-native-sse'
 import { apiConfig } from '@/api/config'
 import { getAuthToken } from '@/auth/token'
 
-export const BUYER_EVENT_KINDS = [
+export const TENANT_EVENT_KINDS = [
   'rfb.dispatched',
   'bid.placed',
   'settlement.initiated',
@@ -28,7 +28,7 @@ export const BUYER_EVENT_KINDS = [
   'reminder.fired'
 ] as const
 
-export type BuyerEventKind = (typeof BUYER_EVENT_KINDS)[number]
+export type TenantEventKind = (typeof TENANT_EVENT_KINDS)[number]
 
 export interface BaseLiveEvent {
   readonly tenantId: string
@@ -36,7 +36,7 @@ export interface BaseLiveEvent {
 }
 
 export interface LiveEvent extends BaseLiveEvent {
-  readonly kind: BuyerEventKind
+  readonly kind: TenantEventKind
   readonly [key: string]: unknown
 }
 
@@ -71,7 +71,7 @@ function parseEvent(raw: unknown): LiveEvent | null {
     const parsed = JSON.parse(raw) as Record<string, unknown> | null
     if (!parsed || typeof parsed !== 'object') return null
     if (typeof parsed.kind !== 'string') return null
-    if (!BUYER_EVENT_KINDS.includes(parsed.kind as BuyerEventKind)) {
+    if (!TENANT_EVENT_KINDS.includes(parsed.kind as TenantEventKind)) {
       return null
     }
     if (typeof parsed.tenantId !== 'string' || parsed.tenantId.length === 0) {
@@ -85,7 +85,7 @@ function parseEvent(raw: unknown): LiveEvent | null {
 }
 
 /**
- * Subscribe to the cockpit SSE stream for the buyer app. Returns
+ * Subscribe to the cockpit SSE stream for the tenant app. Returns
  * connection state + a bounded in-memory ring of the most recent events.
  */
 export function useEventStream(
@@ -142,7 +142,7 @@ export function useEventStream(
         }
         return
       }
-      const url = `${apiConfig.baseUrl}/api/v1/cockpit/stream?role=buyer`
+      const url = `${apiConfig.baseUrl}/api/v1/cockpit/stream?role=tenant`
       let source: MutableESInstance
       try {
         source = new (EventSourceImpl as unknown as new (
@@ -170,7 +170,7 @@ export function useEventStream(
         if (cancelled) return
         setState((prev) => ({ ...prev, connected: true, error: null }))
       })
-      for (const kind of BUYER_EVENT_KINDS) {
+      for (const kind of TENANT_EVENT_KINDS) {
         source.addEventListener(kind, (...args: unknown[]) => {
           if (cancelled) return
           const raw = (args[0] as { data?: unknown } | undefined)?.data

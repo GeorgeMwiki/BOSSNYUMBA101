@@ -12,11 +12,11 @@ import { Appearance, useColorScheme as useSystemScheme } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 /**
- * Buyer-mobile ThemeProvider — mirrors workforce-mobile's contract
- * one-to-one. Persists under the same `BossNyumba-theme` AsyncStorage key
+ * Tenant-mobile ThemeProvider — mirrors staff-mobile's contract
+ * one-to-one. Persists under the same `bossnyumba-theme` AsyncStorage key
  * so the operator's choice in one app is honoured in the other.
  *
- * The buyer surface ships a bone-coloured marketplace and a slate-on-
+ * The tenant surface ships a bone-coloured marketplace and a slate-on-
  * gold checkout; light vs dark mode toggles which one is the default
  * pane background. Most cards are scheme-aware via the existing
  * `colors` module — this provider simply exposes the *current* mode

@@ -43,7 +43,7 @@ import { ApiError } from '../api/errors'
 import { resolveWorkforcePersona, workforcePersonaSpec } from '../roles/persona'
 import { colors } from '../theme/colors'
 import { fontSize, radius, spacing } from '../theme/spacing'
-import { greet } from '../ui-litfin'
+import { greet } from '../ui'
 // Wave WORKFORCE-FIXED-TABS — workers cannot mutate tabs locally. When
 // the brain detects a tab/access-change intent we open the request
 // sheet instead of opening a brain stream. The sheet posts to
@@ -114,7 +114,7 @@ export function HomeChat(): JSX.Element {
   const [tabSheetReasonSeed, setTabSheetReasonSeed] = useState<string>('')
   const workforceRoleId: WorkforceRoleId =
     (tabConfig.config?.role as WorkforceRoleId | undefined) ??
-    (role === 'owner' ? 'owner' : role === 'manager' ? 'manager' : 'pit_operator')
+    (role === 'owner' ? 'owner' : role === 'manager' ? 'manager' : 'field_technician')
 
   // Persona resolution: prefer the fine-grained tab-config role (8
   // workforce roles). Falls back through the safe supervisor persona
@@ -466,7 +466,7 @@ function GreetingCard({
   const primary = lang === 'sw' ? greetingSw : greetingEn
   return (
     <View style={styles.greetingCard} testID="home-chat-greeting">
-      <Text style={styles.greetingEyebrow}>MR. MWIKILA · MINING MD</Text>
+      <Text style={styles.greetingEyebrow}>MR. MWIKILA · ESTATE MD</Text>
       <Text style={styles.greetingDayPart}>{greeting}</Text>
       <Text style={styles.greetingPrimary}>{primary}</Text>
       {lang === 'sw' ? (

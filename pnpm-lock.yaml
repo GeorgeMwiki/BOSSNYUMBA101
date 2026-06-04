@@ -49,6 +49,9 @@ overrides:
   '@types/react-dom': 18.3.0
   uuid: '>=14.0.0'
   lodash: '>=4.18.1'
+  '@xmldom/xmldom@<0.8.13': '>=0.8.13'
+  tmp@<0.2.6: '>=0.2.6'
+  '@remix-run/server-runtime@<2.17.5': '>=2.17.5'
 
 importers:
 
@@ -572,6 +575,9 @@ importers:
       '@bossnyumba/observability':
         specifier: workspace:^
         version: link:../../packages/observability
+      '@bossnyumba/owner-os-tabs':
+        specifier: workspace:*
+        version: link:../../packages/owner-os-tabs
       '@bossnyumba/performance-toolkit':
         specifier: workspace:*
         version: link:../../packages/performance-toolkit
@@ -1336,7 +1342,39 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
 
+  packages/belief-engine:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
+
   packages/bias-handling:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
+
+  packages/blind-review:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^25.8.0
@@ -1489,6 +1527,22 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
 
+  packages/channel-gateway:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
+
   packages/chat-ui:
     dependencies:
       '@bossnyumba/api-sdk':
@@ -1500,6 +1554,9 @@ importers:
       '@bossnyumba/genui':
         specifier: workspace:*
         version: link:../genui
+      '@bossnyumba/owner-os-tabs':
+        specifier: workspace:*
+        version: link:../owner-os-tabs
       framer-motion:
         specifier: ^12.40.0
         version: 12.40.0(react-dom@18.3.1)(react@18.3.1)
@@ -1512,6 +1569,9 @@ importers:
       react-dom:
         specifier: ^18.0.0
         version: 18.3.1(react@18.3.1)
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^6.2.0
@@ -1948,6 +2008,22 @@ importers:
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
 
   packages/document-quality-guarantor:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
+
+  packages/document-reconciliation:
     dependencies:
       zod:
         specifier: ^3.25.76
@@ -2624,6 +2700,41 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
 
+  packages/learning-signal-emitter:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
+
+  packages/ledger-attestor:
+    dependencies:
+      '@bossnyumba/audit-hash-chain':
+        specifier: workspace:*
+        version: link:../audit-hash-chain
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
+
   packages/lifecycle-advisor:
     dependencies:
       zod:
@@ -3221,6 +3332,28 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
 
+  packages/privacy-router:
+    dependencies:
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.1
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
+
   packages/proactive-intel:
     dependencies:
       zod:
@@ -3348,6 +3481,22 @@ importers:
       '@anthropic-ai/sdk':
         specifier: '>=0.97.0'
         version: 0.97.1(zod@3.25.76)
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
+
+  packages/regulator-sim:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^25.8.0
@@ -3699,6 +3848,25 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
 
+  packages/translation:
+    dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.97.1
+        version: 0.97.1(zod@3.25.76)
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
+
   packages/truth-engine:
     dependencies:
       zod:
@@ -3732,6 +3900,22 @@ importers:
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
 
   packages/user-context-store:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.8.0
+        version: 25.8.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.7)(vite@6.4.2)
+
+  packages/ussd-engine:
     dependencies:
       zod:
         specifier: ^3.25.76
@@ -3832,6 +4016,12 @@ importers:
       '@bossnyumba/authz-policy':
         specifier: workspace:*
         version: link:../../packages/authz-policy
+      '@bossnyumba/belief-engine':
+        specifier: workspace:*
+        version: link:../../packages/belief-engine
+      '@bossnyumba/blind-review':
+        specifier: workspace:*
+        version: link:../../packages/blind-review
       '@bossnyumba/brain-llm-router':
         specifier: workspace:*
         version: link:../../packages/brain-llm-router
@@ -3841,6 +4031,9 @@ importers:
       '@bossnyumba/central-intelligence':
         specifier: workspace:*
         version: link:../../packages/central-intelligence
+      '@bossnyumba/channel-gateway':
+        specifier: workspace:*
+        version: link:../../packages/channel-gateway
       '@bossnyumba/compliance-pack':
         specifier: workspace:*
         version: link:../../packages/compliance-pack
@@ -3868,6 +4061,9 @@ importers:
       '@bossnyumba/document-quality-guarantor':
         specifier: workspace:*
         version: link:../../packages/document-quality-guarantor
+      '@bossnyumba/document-reconciliation':
+        specifier: workspace:*
+        version: link:../../packages/document-reconciliation
       '@bossnyumba/domain-models':
         specifier: workspace:*
         version: link:../../packages/domain-models
@@ -3916,6 +4112,12 @@ importers:
       '@bossnyumba/knowledge-graph':
         specifier: workspace:*
         version: link:../../packages/knowledge-graph
+      '@bossnyumba/learning-signal-emitter':
+        specifier: workspace:*
+        version: link:../../packages/learning-signal-emitter
+      '@bossnyumba/ledger-attestor':
+        specifier: workspace:*
+        version: link:../../packages/ledger-attestor
       '@bossnyumba/lifecycle-advisor':
         specifier: workspace:*
         version: link:../../packages/lifecycle-advisor
@@ -3979,6 +4181,12 @@ importers:
       '@bossnyumba/persona-runtime':
         specifier: workspace:*
         version: link:../../packages/persona-runtime
+      '@bossnyumba/portal-genui':
+        specifier: workspace:*
+        version: link:../../packages/portal-genui
+      '@bossnyumba/privacy-router':
+        specifier: workspace:*
+        version: link:../../packages/privacy-router
       '@bossnyumba/probe-runners':
         specifier: workspace:*
         version: link:../../packages/probe-runners
@@ -3991,6 +4199,9 @@ importers:
       '@bossnyumba/realtime-rooms':
         specifier: workspace:*
         version: link:../../packages/realtime-rooms
+      '@bossnyumba/regulator-sim':
+        specifier: workspace:*
+        version: link:../../packages/regulator-sim
       '@bossnyumba/role-aware-advisor':
         specifier: workspace:*
         version: link:../../packages/role-aware-advisor
@@ -4015,9 +4226,15 @@ importers:
       '@bossnyumba/sustainability-advisor':
         specifier: workspace:*
         version: link:../../packages/sustainability-advisor
+      '@bossnyumba/translation':
+        specifier: workspace:*
+        version: link:../../packages/translation
       '@bossnyumba/user-context-store':
         specifier: workspace:*
         version: link:../../packages/user-context-store
+      '@bossnyumba/ussd-engine':
+        specifier: workspace:*
+        version: link:../../packages/ussd-engine
       '@bossnyumba/workflow-engine':
         specifier: workspace:*
         version: link:../../packages/workflow-engine
@@ -8459,7 +8676,7 @@ packages:
   /@expo/plist@0.1.3:
     resolution: {integrity: sha512-GW/7hVlAylYg1tUrEASclw1MMk9FP4ZwyFAY/SUTJIhPDQHtfOlXREyWV3hhrHdX/K+pS73GNgdfT6E/e+kBbg==}
     dependencies:
-      '@xmldom/xmldom': 0.7.13
+      '@xmldom/xmldom': 0.9.10
       base64-js: 1.5.1
       xmlbuilder: 14.0.0
     dev: false
@@ -14264,7 +14481,7 @@ packages:
       typescript:
         optional: true
     dependencies:
-      '@remix-run/server-runtime': 2.17.4(typescript@5.3.3)
+      '@remix-run/server-runtime': 2.17.5(typescript@5.3.3)
       '@remix-run/web-fetch': 4.4.2
       '@web3-storage/multipart-parser': 1.0.0
       cookie-signature: 1.2.2
@@ -14279,8 +14496,13 @@ packages:
     engines: {node: '>=14.0.0'}
     dev: false
 
-  /@remix-run/server-runtime@2.17.4(typescript@5.3.3):
-    resolution: {integrity: sha512-oCsFbPuISgh8KpPKsfBChzjcntvTz5L+ggq9VNYWX8RX3yA7OgQpKspRHOSxb05bw7m0Hx+L1KRHXjf3juKX8w==}
+  /@remix-run/router@1.23.3:
+    resolution: {integrity: sha512-4An71tdz9X8+3sI4Qqqd2LWd9vS39J7sqd9EU4Scw7TJE/qB10Flv/UuqbPVgfQV9XoK8Np6jNquZitnZq5i+Q==}
+    engines: {node: '>=14.0.0'}
+    dev: false
+
+  /@remix-run/server-runtime@2.17.5(typescript@5.3.3):
+    resolution: {integrity: sha512-SyJ5n2pQyo4ERGvjjLvL2PpRWBzlC2qzO5KkkOE2ygOiNcgOu9WQnnom9GI8KgsTRCO8JnIeLHFRcmxZnVBjfw==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       typescript: ^5.1.0
@@ -14288,7 +14510,7 @@ packages:
       typescript:
         optional: true
     dependencies:
-      '@remix-run/router': 1.23.2
+      '@remix-run/router': 1.23.3
       '@types/cookie': 0.6.0
       '@web3-storage/multipart-parser': 1.0.0
       cookie: 0.7.2
@@ -18014,12 +18236,6 @@ packages:
     resolution: {integrity: sha512-6aN99yL695Hi9SuIk1oC88l9o0gmxL1nGWWQ/kNy81HigJ0FoaoTXpytCj6ItzgyCEwA9kF1wixsTuv5cjsgng==}
     dev: true
 
-  /@xmldom/xmldom@0.7.13:
-    resolution: {integrity: sha512-lm2GW5PkosIzccsaZIz7tp8cPADSIlIHWDFTR1N0SzfinhhYgeIQjFMz4rYzanCScr3DqQLeomUDArp6MWKm+g==}
-    engines: {node: '>=10.0.0'}
-    deprecated: this version has critical issues, please update to the latest version
-    dev: false
-
   /@xmldom/xmldom@0.9.10:
     resolution: {integrity: sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw==}
     engines: {node: '>=14.6'}
@@ -21114,7 +21330,7 @@ packages:
       jszip: 3.10.1
       readable-stream: 3.6.2
       saxes: 5.0.1
-      tmp: 0.2.5
+      tmp: 0.2.7
       unzipper: 0.10.14
       uuid: 14.0.0
     dev: false
@@ -29739,8 +29955,8 @@ packages:
       tldts-core: 6.1.86
     dev: true
 
-  /tmp@0.2.5:
-    resolution: {integrity: sha512-voyz6MApa1rQGUxT3E+BK7/ROe8itEx7vD8/HEvt4xwXucvQ5G5oeEiHkmHZJuBO21RpOf+YYm9MOivj709jow==}
+  /tmp@0.2.7:
+    resolution: {integrity: sha512-e0votIpp4Uo2AJYSzVHV6xCcawuiez3DzqDAbrTc3YxBkplN6e+dM13ZeIcZnDg/QpSuU2zfZ3rzwY8ukEnaXw==}
     engines: {node: '>=14.14'}
     dev: false
 

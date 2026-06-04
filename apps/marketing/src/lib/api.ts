@@ -1,7 +1,7 @@
 /**
  * API base-URL resolver for the marketing site.
  *
- * The marketing site is the public surface; outbound writes (buyer
+ * The marketing site is the public surface; outbound writes (lead
  * signup) go to the api-gateway. In production the gateway is reached
  * via a same-origin proxy and the empty base URL works. In local dev
  * the gateway runs on 127.0.0.1:4001 so a NEXT_PUBLIC_API_GATEWAY_URL

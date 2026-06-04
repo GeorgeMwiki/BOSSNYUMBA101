@@ -14,7 +14,7 @@ import type { SiteFence } from '../fence'
 export const FIXTURE_SITE_FENCES: ReadonlyArray<SiteFence> = [
   {
     siteId: 'site-geita-1',
-    siteName: 'Geita Pit 2',
+    siteName: 'Geita Estate 2',
     centerLat: -3.4287,
     centerLng: 32.9183,
     radiusMeters: 2500,

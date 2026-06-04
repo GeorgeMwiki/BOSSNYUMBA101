@@ -61,17 +61,17 @@ const CATEGORIES: ReadonlyArray<CategorySpec> = [
   {
     id: 'pricing',
     label: 'Pricing',
-    hint: 'Mabadiliko ya bei ya dhahabu, shaba, tanzanite'
+    hint: 'Mabadiliko ya kodi na bei ya soko'
   },
   {
     id: 'safety',
     label: 'Safety',
-    hint: 'Matukio ya hatari migodini'
+    hint: 'Matukio ya hatari kwenye majengo'
   },
   {
     id: 'compliance',
     label: 'Compliance',
-    hint: 'PML, hati za ushuru, ripoti za mdhibiti'
+    hint: 'Leseni, hati za ushuru, ripoti za mdhibiti'
   },
   {
     id: 'crew',

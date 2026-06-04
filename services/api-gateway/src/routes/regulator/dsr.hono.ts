@@ -40,7 +40,6 @@
  *   not transform either — it returns both for the FE to render.
  */
 
-// @ts-nocheck — Hono v4 ContextVariableMap drift; same pattern as
 // dsar.router.ts.
 
 import { Hono } from 'hono';

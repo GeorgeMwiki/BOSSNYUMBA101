@@ -1,10 +1,10 @@
-// LitFin-rebase: marketing layout now mirrors LitFin's RSC + 5 client
+// marketing-rebase: marketing layout now mirrors the upstream fork's RSC + 5 client
 // islands shell. The layout itself stays out of the client bundle —
 // MainNav, MarketingFooter, ScrollProgressBar, MarketingWidgetSlot,
 // CookieConsent each hydrate independently as client islands.
 //
 // Source pattern this mirrors:
-//   LITFIN_PATH/src/app/(marketing)/layout.tsx
+//   UPSTREAM_PATH/src/app/(marketing)/layout.tsx
 
 import type { Metadata, Viewport } from 'next';
 import { Inter, Syne } from 'next/font/google';
@@ -20,7 +20,7 @@ import { MarketingWidgetSlot } from '@/components/marketing/MarketingWidgetSlot'
 import { ErrorBoundary } from '@bossnyumba/design-system';
 
 /**
- * Typography stack — LitFin parity:
+ * Typography stack — the upstream marketing fork parity:
  *   - Display: Syne (geometric sans, distinctive weight curve)
  *   - Sans:    Inter (variable, optical-size aware)
  * Shipped from `next/font/google` with subset-latin only so the initial
@@ -58,27 +58,26 @@ function resolveSiteUrl(): string {
 const SITE_URL = resolveSiteUrl();
 
 export const metadata: Metadata = {
-  title: 'BossNyumba — Property portfolios, amplified',
+  title: 'BossNyumba — AI-native real estate operating system',
   description:
-    'BossNyumba is the autonomous operating system for property portfolios. A brain that boots, listens, acts, remembers, and asks permission correctly. Ten domains, one calm operator, across 232 jurisdictions and 11 languages.',
+    'BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer. Leases, rent, maintenance staff, treasury, compliance, marketplace, holdings, subsidiaries, ancillary businesses, family office, succession, asset register. Multi-tenant. Multi-lingual.',
   applicationName: 'BossNyumba',
   metadataBase: new URL(SITE_URL),
   keywords: [
+    'AI-native real estate operating system',
+    'BossNyumba',
+    'Mr. Mwikila',
     'property management Tanzania',
-    'AI-native property OS',
     'property lease management',
     'rent-collection treasury',
-    'property-management compliance Tanzania',
+    'real-estate compliance Tanzania',
     'NHC',
     'BRELA',
-    'Mr. Mwikila',
-    'BossNyumba',
-    'real-estate operating system',
   ],
   openGraph: {
-    title: 'BossNyumba — Property portfolios, amplified',
+    title: 'BossNyumba — AI-native real estate operating system',
     description:
-      'Run your entire Property Portfolio on autopilot. Leases, rent, maintenance staff, treasury, compliance, marketplace, holdings, subsidiaries, ancillary businesses, family office, succession, asset register. Bilingual sw/en.',
+      'BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer. Run your entire real estate portfolio on autopilot. Bilingual sw/en.',
     type: 'website',
     siteName: 'BossNyumba',
     locale: 'en_US',
@@ -87,9 +86,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'BossNyumba — AI Real-Estate Managing Director',
+    title: 'BossNyumba — AI-native real estate operating system',
     description:
-      'Run your entire Property Portfolio on autopilot. Bilingual sw/en. Multi-tenant. NHC + BRELA + TRA aware.',
+      'BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer. Bilingual sw/en. Multi-tenant. NHC + BRELA + TRA aware.',
     creator: '@bossnyumba_tz',
   },
   alternates: {
@@ -110,14 +109,14 @@ export const viewport: Viewport = {
 };
 
 /**
- * Marketing Layout (RSC) — LitFin pattern.
+ * Marketing Layout (RSC) — the upstream marketing fork pattern.
  *
  * No OnboardingProvider here, onboarding walkthrough popups are portal-
  * only (owner, tenant, agency, admin). The Mr. Mwikila widget still
  * renders for interactive chat context on marketing pages, behind a
  * client island that lazy-loads the widget bundle.
  *
- * Structure mirrors LITFIN_PATH/src/app/(marketing)/layout.tsx:
+ * Structure mirrors UPSTREAM_PATH/src/app/(marketing)/layout.tsx:
  *   PortalErrorBoundary
  *     > BossNyumbaAIProvider (lives inside MarketingWidgetSlot)
  *       > ScrollProgressBar (client island)

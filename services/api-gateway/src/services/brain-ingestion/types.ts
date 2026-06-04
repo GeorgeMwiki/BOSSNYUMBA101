@@ -3,12 +3,14 @@
  * Ported from Borjie services/api-gateway/src/services/brain-ingestion/types.ts.
  */
 
-import type {
-  CorpusDocSourceKind,
-  CorpusDocStatus,
-} from '@bossnyumba/database';
+import { CORPUS_DOC_SOURCE_KINDS, CORPUS_DOC_STATUSES } from '@bossnyumba/database/schemas';
 
-export type { CorpusDocSourceKind, CorpusDocStatus };
+// Derived from the exported const arrays via the `/schemas` subpath, whose
+// `exports.types` resolves to source. The bare `@bossnyumba/database` barrel
+// resolves to dist (no co-located d.ts) and surfaces these as `any`/namespace
+// (TS2709 / never-widening); the subpath gives the real string-literal union.
+export type CorpusDocSourceKind = (typeof CORPUS_DOC_SOURCE_KINDS)[number];
+export type CorpusDocStatus = (typeof CORPUS_DOC_STATUSES)[number];
 
 export interface IncomingDoc {
   readonly originalFilename: string;

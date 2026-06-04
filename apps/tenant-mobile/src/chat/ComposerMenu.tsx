@@ -1,6 +1,6 @@
 /**
  * ComposerMenu — RN-native sibling of @bossnyumba/chat-ui/composer's
- * SlashMenu + AtMenu. Renders an inline pop-up above the buyer chat
+ * SlashMenu + AtMenu. Renders an inline pop-up above the tenant chat
  * composer with up to MAX_ROWS rows. Tap a row to select.
  *
  * Web composer primitives are <div>+CSS only (per the chat-first
@@ -43,7 +43,7 @@ function emptyLabel(locale: 'en' | 'sw', kind: 'cmd' | 'entity'): string {
 export function SlashMenu({ commands, locale, onSelect }: SlashMenuProps) {
   const rows = commands.slice(0, MAX_ROWS)
   return (
-    <View style={styles.menu} testID="buyer-chat-slash-menu">
+    <View style={styles.menu} testID="tenant-chat-slash-menu">
       {rows.length === 0 ? (
         <Text style={styles.emptyText}>{emptyLabel(locale, 'cmd')}</Text>
       ) : (
@@ -51,7 +51,7 @@ export function SlashMenu({ commands, locale, onSelect }: SlashMenuProps) {
           {rows.map((cmd) => (
             <Pressable
               key={cmd.id}
-              testID={`buyer-chat-slash-${cmd.id}`}
+              testID={`tenant-chat-slash-${cmd.id}`}
               onPress={() => onSelect(cmd)}
               accessibilityRole="button"
               accessibilityLabel={cmd.label[locale]}
@@ -75,7 +75,7 @@ export function SlashMenu({ commands, locale, onSelect }: SlashMenuProps) {
 export function AtMenu({ entities, locale, onSelect }: AtMenuProps) {
   const rows = entities.slice(0, MAX_ROWS)
   return (
-    <View style={styles.menu} testID="buyer-chat-at-menu">
+    <View style={styles.menu} testID="tenant-chat-at-menu">
       {rows.length === 0 ? (
         <Text style={styles.emptyText}>{emptyLabel(locale, 'entity')}</Text>
       ) : (
@@ -83,7 +83,7 @@ export function AtMenu({ entities, locale, onSelect }: AtMenuProps) {
           {rows.map((entity) => (
             <Pressable
               key={entity.id}
-              testID={`buyer-chat-at-${entity.id}`}
+              testID={`tenant-chat-at-${entity.id}`}
               onPress={() => onSelect(entity)}
               accessibilityRole="button"
               accessibilityLabel={entity.label[locale]}

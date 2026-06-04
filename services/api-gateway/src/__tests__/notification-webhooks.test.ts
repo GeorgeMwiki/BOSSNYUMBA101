@@ -12,7 +12,7 @@ import { createHmac } from 'node:crypto';
 import {
   __internal,
   createNotificationWebhookRouter,
-} from '../routes/notification-webhooks.router.js';
+} from '../routes/notification-webhooks.hono.js';
 
 describe('notification-webhooks signature verification', () => {
   const body = '{"ok":true}';

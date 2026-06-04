@@ -2,15 +2,15 @@
  * use-blackboard-store — immutable state for the BossNyumba blackboard.
  *
  * Pure useReducer + module-level pub/sub so the store survives unmounts
- * across the chat ↔ board boundary (parity with LitFin's
+ * across the chat ↔ board boundary (parity with the upstream fork's
  * `smartboardReducer`, but local rather than provider-based).
  *
  * Every action returns a NEW state object; no field is ever mutated.
  * `appendElement` dedupes by element id (re-emits update in place) so
  * the brain can safely re-emit an element across reconnects.
  *
- * Ported from Borjie (`apps/owner-web/src/components/blackboard/`) and
- * domain-stripped — BossNyumba is real-estate-only, no mining vocab.
+ * Domain-neutral: BossNyumba is real-estate-only and this store works
+ * for any board element the brain emits.
  */
 
 import { useEffect, useState } from 'react';

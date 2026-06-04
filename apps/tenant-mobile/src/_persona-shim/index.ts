@@ -7,7 +7,7 @@
  * the mobile-only catalogue from the broader monorepo so sibling agents
  * can edit the shared package without colliding with mobile work.
  *
- * Files in this folder were copied from the Borjie source tree during
+ * Files in this folder were copied from the upstream source tree during
  * the May 2026 mobile port. Once the shared package adopts these
  * surfaces (post-mobile-port stabilisation) swap the imports back to
  * `from '@bossnyumba/persona-runtime'` and delete this folder.

@@ -7,7 +7,7 @@
  * persona — a blocker for the live pilot.
  *
  * Key format: `bossnyumba.persona.{namespace}.{sessionId}` where
- * namespace is 'buyer' (this app) or 'workforce' (sibling app).
+ * namespace is 'tenant' (this app) or 'workforce' (sibling app).
  *
  * Failure mode: storage errors are quietly swallowed. A get failure
  * returns null (treated as "no persona bound, ask the user"); a set

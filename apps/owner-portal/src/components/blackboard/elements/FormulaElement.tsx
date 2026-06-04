@@ -8,8 +8,6 @@
  * compact LaTeX-lite expression that reads cleanly in monospace
  * (`rent_yield = annual_income ÷ market_value × 100`). A future wave
  * can plug KaTeX in by feature-detecting `katex` at module load.
- *
- * Ported from Borjie.
  */
 
 import { useEffect, useMemo, useState } from 'react';

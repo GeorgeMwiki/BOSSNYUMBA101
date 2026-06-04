@@ -1,0 +1,24 @@
+{
+  "name": "@bossnyumba/privacy-router",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Sensitivity-tier AI routing for the BossNyumba real-estate operating system. Routes inference requests by data-sensitivity tier to satisfy Tanzania BOT Act / PDPA data-residency rules: RESTRICTED -> local model only (deny if unavailable), CONFIDENTIAL -> approved cloud provider after mandatory PII stripping, INTERNAL / PUBLIC -> approved cloud. Policy is YAML-driven and operator-editable. Wire-agnostic pure leaf: PII stripping, local-endpoint health, field classification, audit, and the clock are all injected ports, so the package reads no DB, no network, and no environment.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

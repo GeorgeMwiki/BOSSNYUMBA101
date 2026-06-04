@@ -1,8 +1,8 @@
 /**
  * HandoffCard — tenant-mobile renderer for the K-A cross-role handoff.
  *
- * Mirrors apps/workforce-mobile/src/components/chat/HandoffCard.tsx
- * so the buyer sees the same model when a seller / owner / concierge
+ * Mirrors apps/staff-mobile/src/components/chat/HandoffCard.tsx
+ * so the tenant sees the same model when a seller / owner / concierge
  * routes them a contextual handoff ("Re: 50t cobalt buy request").
  *
  * Bilingual sw/en per the BossNyumba hard rule.

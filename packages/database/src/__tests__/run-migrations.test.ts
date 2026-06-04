@@ -56,3 +56,72 @@ describe('run-migrations module', () => {
     expect(exitCalls).toBe(0);
   });
 });
+
+describe('stripWrappingTransaction', () => {
+  it('strips a leading BEGIN; and trailing COMMIT;', async () => {
+    const { stripWrappingTransaction } = await import('../run-migrations.js');
+    const out = stripWrappingTransaction(
+      'BEGIN;\nCREATE TABLE x (id int);\nCOMMIT;',
+    );
+    expect(out).not.toMatch(/\bBEGIN\b/i);
+    expect(out).not.toMatch(/\bCOMMIT\b/i);
+    expect(out).toContain('CREATE TABLE x');
+  });
+
+  it('strips a wrapper preceded by SQL comments, keeping the comment', async () => {
+    const { stripWrappingTransaction } = await import('../run-migrations.js');
+    const out = stripWrappingTransaction('-- header\nBEGIN;\nSELECT 1;\nEND;\n');
+    expect(out).toContain('SELECT 1;');
+    expect(out).toContain('-- header');
+    expect(out).not.toMatch(/\bBEGIN\b/i);
+    expect(out).not.toMatch(/\bEND\b/i);
+  });
+
+  it('accepts START TRANSACTION … COMMIT WORK as the wrapper', async () => {
+    const { stripWrappingTransaction } = await import('../run-migrations.js');
+    const out = stripWrappingTransaction(
+      'START TRANSACTION;\nALTER TABLE x ADD c int;\nCOMMIT WORK;',
+    );
+    expect(out).toContain('ALTER TABLE x ADD c int;');
+    expect(out).not.toMatch(/TRANSACTION/i);
+  });
+
+  it('returns the body unchanged when there is no wrapping transaction', async () => {
+    const { stripWrappingTransaction } = await import('../run-migrations.js');
+    const body = 'CREATE INDEX idx ON t (a);';
+    expect(stripWrappingTransaction(body)).toBe(body);
+  });
+
+  it('does not strip a BEGIN that is not the leading wrapper', async () => {
+    const { stripWrappingTransaction } = await import('../run-migrations.js');
+    const body = 'CREATE TABLE x (id int);\n-- BEGIN is only mentioned here\n';
+    expect(stripWrappingTransaction(body)).toBe(body);
+  });
+
+  it('throws on inputs above the 10 MB safety ceiling', async () => {
+    const { stripWrappingTransaction } = await import('../run-migrations.js');
+    const huge = 'a'.repeat(10_000_001);
+    expect(() => stripWrappingTransaction(huge)).toThrow('10 MB');
+  });
+});
+
+describe('requiresOutOfTransaction', () => {
+  it('flags CREATE INDEX CONCURRENTLY', async () => {
+    const { requiresOutOfTransaction } = await import('../run-migrations.js');
+    expect(
+      requiresOutOfTransaction('CREATE INDEX CONCURRENTLY idx ON t (a);'),
+    ).toBe(true);
+  });
+
+  it('flags DROP INDEX CONCURRENTLY, VACUUM, and REINDEX', async () => {
+    const { requiresOutOfTransaction } = await import('../run-migrations.js');
+    expect(requiresOutOfTransaction('DROP INDEX CONCURRENTLY idx;')).toBe(true);
+    expect(requiresOutOfTransaction('VACUUM ANALYZE t;')).toBe(true);
+    expect(requiresOutOfTransaction('REINDEX TABLE t;')).toBe(true);
+  });
+
+  it('does NOT flag a plain CREATE INDEX (transaction-safe)', async () => {
+    const { requiresOutOfTransaction } = await import('../run-migrations.js');
+    expect(requiresOutOfTransaction('CREATE INDEX idx ON t (a);')).toBe(false);
+  });
+});

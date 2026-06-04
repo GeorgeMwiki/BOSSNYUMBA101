@@ -1,11 +1,11 @@
 /**
- * Buyer-mobile — L8 sign-delivery screen.
+ * Tenant-mobile — L8 lease-activation screen.
  *
- * Buyer reviews the accepted RFB response, taps "Sign delivery" with a
- * deterministic checksum, and the api-gateway runs the settlement
- * orchestrator end-to-end (math → LedgerService.post() → M-Pesa B2C
- * payout). Result is shown in a success banner with the gross/royalty/
- * fee/net breakdown.
+ * The applicant reviews the accepted application response, taps "Sign
+ * lease" with a deterministic checksum, and the api-gateway runs the
+ * settlement orchestrator end-to-end (math → LedgerService.post() →
+ * M-Pesa B2C payout). Result is shown in a success banner with the
+ * gross/deduction/fee/net breakdown.
  *
  * Bilingual sw/en throughout.
  */
@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTranslation } from '@/hooks/useTranslation'
 import { Card } from '@/components/Card'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import { apiFetch } from '@/api/client'
 
 interface SignDeliveryResponse {
@@ -27,7 +27,7 @@ interface SignDeliveryResponse {
     readonly settlementId: string
     readonly status: string
     readonly grossTzs: number
-    readonly royaltyTzs: number
+    readonly deductionTzs: number
     readonly feeTzs: number
     readonly netTzs: number
     readonly ledgerTxnId: string | null
@@ -70,9 +70,9 @@ function formatTzs(amount: number, isSw: boolean): string {
 
 /**
  * Deterministic checksum stub — the real screen would compute this
- * from the parcel's CoC chain (sha256 over each step's audit hash).
- * For now we derive a value that's stable for the (rfbId, deviceTs)
- * pair so idempotent replays from the same buyer collapse.
+ * from the unit's ownership-history chain (sha256 over each step's audit
+ * hash). For now we derive a value that's stable for the (rfbId,
+ * deviceTs) pair so idempotent replays from the same applicant collapse.
  */
 function deriveChecksum(rfbId: string): string {
   // Stable within the screen session — re-tapping "Sign" within the
@@ -109,17 +109,17 @@ export default function SignDeliveryScreen(): JSX.Element {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.header}>
           <Text style={styles.eyebrow}>
-            {isSw ? 'Saini ya Uwasilishaji' : 'Sign Delivery'}
+            {isSw ? 'Saini ya Mkataba' : 'Sign Lease'}
           </Text>
           <Text style={styles.title}>
             {isSw
-              ? 'Thibitisha kupokea madini yako'
-              : 'Confirm receipt of your minerals'}
+              ? 'Thibitisha kuanza upangaji wako'
+              : 'Confirm your tenancy'}
           </Text>
           <Text style={styles.subtitle}>
             {isSw
-              ? 'Kusaini kutaanzisha malipo kwa muuzaji moja kwa moja kupitia M-Pesa.'
-              : 'Signing initiates payment to the seller via M-Pesa instantly.'}
+              ? 'Kusaini kutaanzisha malipo kwa mwenye nyumba moja kwa moja kupitia M-Pesa.'
+              : 'Signing initiates payment to the landlord via M-Pesa instantly.'}
           </Text>
         </View>
 
@@ -166,9 +166,9 @@ export default function SignDeliveryScreen(): JSX.Element {
               </Text>
             </View>
             <View style={styles.row}>
-              <Text style={styles.label}>{isSw ? 'Mrabaha' : 'Royalty'}</Text>
+              <Text style={styles.label}>{isSw ? 'Makato' : 'Deduction'}</Text>
               <Text style={styles.value}>
-                {formatTzs(mutation.data.royaltyTzs, isSw)}
+                {formatTzs(mutation.data.deductionTzs, isSw)}
               </Text>
             </View>
             <View style={styles.row}>
@@ -179,7 +179,7 @@ export default function SignDeliveryScreen(): JSX.Element {
             </View>
             <View style={[styles.row, styles.rowEmphasis]}>
               <Text style={styles.labelEmphasis}>
-                {isSw ? 'Muuzaji atalipwa' : 'Seller receives'}
+                {isSw ? 'Mwenye nyumba atapokea' : 'Landlord receives'}
               </Text>
               <Text style={styles.valueEmphasis}>
                 {formatTzs(mutation.data.netTzs, isSw)}
@@ -232,8 +232,8 @@ export default function SignDeliveryScreen(): JSX.Element {
                   ? 'Imefanyika'
                   : 'Done'
                 : isSw
-                  ? 'Saini Uwasilishaji'
-                  : 'Sign Delivery'}
+                  ? 'Saini Mkataba'
+                  : 'Sign Lease'}
           </Text>
         </Pressable>
 
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   header: { marginBottom: tokens.space.md },
   eyebrow: {
     ...tokens.type.bodySm,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   value: { ...tokens.type.body, color: tokens.color.textPrimary },
   valueEmphasis: {
     ...tokens.type.bodyStrong,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
   },
   valueMono: {
     ...tokens.type.bodySm,
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     ...tokens.type.bodyStrong,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     marginBottom: tokens.space.sm,
   },
   errorTitle: {
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   },
   errorBody: { ...tokens.type.body, color: tokens.color.danger },
   cta: {
-    backgroundColor: tokens.color.gold,
+    backgroundColor: tokens.color.accent,
     borderRadius: tokens.radius.xl,
     padding: tokens.space.lg,
     alignItems: 'center',

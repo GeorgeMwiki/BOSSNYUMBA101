@@ -5,13 +5,13 @@ import type { AiTone } from './state'
 
 /**
  * Intelligence layer for the onboarding wizard. Today these are deterministic
- * keyword classifiers tuned for the Tanzanian ASM vocabulary; tomorrow each
- * function is a stable interface that `@bossnyumba/brain-llm-router` can swap
- * with an LLM-backed implementation without changing call sites. The wizard
- * is the pluggable boundary — keep the input/output shapes stable.
+ * keyword classifiers tuned for Tanzanian property-trade vocabulary; tomorrow
+ * each function is a stable interface that `@bossnyumba/brain-llm-router` can
+ * swap with an LLM-backed implementation without changing call sites. The
+ * wizard is the pluggable boundary — keep the input/output shapes stable.
  *
  * Evidence-required AI: every classification returns the matched keywords so
- * the `@bossnyumba/cognitive-composition` auditor can verify the decision later.
+ * the audit layer can verify the decision later.
  */
 
 export interface RoleClassification {
@@ -32,9 +32,9 @@ interface BilingualRoleLexicon {
 }
 
 /**
- * Swahili lexicon — sourced from real-world ASM vocabulary (mwenye = owner,
- * meneja/msimamizi = manager, mfanyakazi/mchimba = field worker). Weights
- * favour role-defining titles over generic verbs.
+ * Swahili lexicon — sourced from real-world Tanzanian workforce vocabulary
+ * (mwenye = owner, meneja/msimamizi = manager, mfanyakazi = field worker).
+ * Weights favour role-defining titles over generic verbs.
  */
 const SW_LEXICON: BilingualRoleLexicon = {
   owner: [
@@ -44,7 +44,7 @@ const SW_LEXICON: BilingualRoleLexicon = {
     { token: 'tajiri', weight: 2 },
     { token: 'mwekezaji', weight: 2 },
     { token: 'mkurugenzi', weight: 2 },
-    { token: 'pml', weight: 2 },
+    { token: 'hati', weight: 2 },
     { token: 'leseni', weight: 1 }
   ],
   manager: [
@@ -59,13 +59,13 @@ const SW_LEXICON: BilingualRoleLexicon = {
   ],
   employee: [
     { token: 'mfanyakazi', weight: 3 },
-    { token: 'mchimba', weight: 3 },
-    { token: 'mchimbaji', weight: 3 },
+    { token: 'fundi', weight: 3 },
+    { token: 'mhudumu', weight: 3 },
     { token: 'shifti', weight: 2 },
-    { token: 'chimba', weight: 2 },
+    { token: 'mlinzi', weight: 2 },
     { token: 'opareta', weight: 2 },
     { token: 'dereva', weight: 2 },
-    { token: 'mfua', weight: 2 },
+    { token: 'msafishaji', weight: 2 },
     { token: 'mtumishi', weight: 1 }
   ]
 }
@@ -96,13 +96,13 @@ const EN_LEXICON: BilingualRoleLexicon = {
   ],
   employee: [
     { token: 'worker', weight: 3 },
-    { token: 'miner', weight: 3 },
+    { token: 'technician', weight: 3 },
     { token: 'operator', weight: 3 },
     { token: 'driver', weight: 2 },
     { token: 'labourer', weight: 2 },
     { token: 'laborer', weight: 2 },
     { token: 'crew', weight: 2 },
-    { token: 'digger', weight: 2 },
+    { token: 'caretaker', weight: 2 },
     { token: 'hand', weight: 1 }
   ]
 }
@@ -203,7 +203,7 @@ function clamp01(value: number): number {
 /**
  * Suggest certifications for a free-text role hint. Returns a stable,
  * deduplicated readonly tuple drawn from the canonical `CERTIFICATIONS`
- * list. The mining-shift-planner package consumes the same enum for OSHA-TZ
+ * list. The shift-planner contract consumes the same enum for safety
  * constraint evaluation, so anything captured here becomes a real constraint
  * on the worker's shift plan downstream.
  */

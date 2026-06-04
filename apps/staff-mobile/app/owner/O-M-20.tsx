@@ -6,7 +6,7 @@ import { Section } from '../../src/components/Section'
 import { PlaceholderList } from '../../src/components/PlaceholderList'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -15,7 +15,7 @@ const SCREEN_ID = 'O-M-20'
 
 const COPY = Object.freeze({
   loading: 'Inapakia matangazo…',
-  filterTitle: 'Chuja kwa aina ya madini',
+  filterTitle: 'Chuja kwa aina ya mali',
   verifiedToggleLabel: 'Walioidhinishwa na BossNyumba tu',
   resultsPrefix: 'Matokeo (',
   resultsSuffix: ')',
@@ -24,21 +24,21 @@ const COPY = Object.freeze({
   ratingPrefix: 'ukadiriaji ',
   ratingSuffix: ' / 5',
   filterAll: 'Zote',
-  filterGold: 'Dhahabu',
-  filterCopper: 'Shaba',
-  filterTanzanite: 'Tanzanite',
-  filterCoal: 'Makaa',
+  filterApartment: 'Aparti',
+  filterHouse: 'Nyumba',
+  filterCommercial: 'Biashara',
+  filterLand: 'Ardhi',
   filterOther: 'Nyingine'
 })
 
-type MineralFilter = 'all' | 'gold' | 'copper' | 'tanzanite' | 'coal' | 'other'
+type CategoryFilter = 'all' | 'apartment' | 'house' | 'commercial' | 'land' | 'other'
 
-const FILTER_ORDER: ReadonlyArray<{ kind: MineralFilter; label: string; queryValue?: string }> = [
+const FILTER_ORDER: ReadonlyArray<{ kind: CategoryFilter; label: string; queryValue?: string }> = [
   { kind: 'all', label: COPY.filterAll },
-  { kind: 'gold', label: COPY.filterGold, queryValue: 'gold' },
-  { kind: 'copper', label: COPY.filterCopper, queryValue: 'copper' },
-  { kind: 'tanzanite', label: COPY.filterTanzanite, queryValue: 'tanzanite' },
-  { kind: 'coal', label: COPY.filterCoal, queryValue: 'coal' },
+  { kind: 'apartment', label: COPY.filterApartment, queryValue: 'apartment' },
+  { kind: 'house', label: COPY.filterHouse, queryValue: 'house' },
+  { kind: 'commercial', label: COPY.filterCommercial, queryValue: 'commercial' },
+  { kind: 'land', label: COPY.filterLand, queryValue: 'land' },
   { kind: 'other', label: COPY.filterOther }
 ]
 
@@ -100,10 +100,10 @@ export default function Screen(): JSX.Element {
 }
 
 function MarketplaceView(): JSX.Element {
-  const [filter, setFilter] = useState<MineralFilter>('all')
+  const [filter, setFilter] = useState<CategoryFilter>('all')
   const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false)
 
-  const queryKey = useMemo(() => ['mining', 'marketplace', 'listings', filter] as const, [filter])
+  const queryKey = useMemo(() => ['owner', 'marketplace', 'listings', filter] as const, [filter])
 
   const listingsQuery = useQuery<ReadonlyArray<ListingRow>, ApiError>({
     queryKey,
@@ -111,9 +111,9 @@ function MarketplaceView(): JSX.Element {
       const queryParams: Record<string, string> = {}
       const filterDef = FILTER_ORDER.find((f) => f.kind === filter)
       if (filterDef?.queryValue) {
-        queryParams.mineral = filterDef.queryValue
+        queryParams.category = filterDef.queryValue
       }
-      const response = await miningApi.get<ListingsResponse>('/marketplace/listings', {
+      const response = await managerApi.get<ListingsResponse>('/marketplace/listings', {
         signal,
         query: queryParams
       })

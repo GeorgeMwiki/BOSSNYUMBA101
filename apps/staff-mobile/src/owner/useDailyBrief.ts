@@ -25,7 +25,7 @@ const FALLBACK: DailyBriefResponse = {
       kind: 'today_blockers',
       title: "Today's blockers",
       value: '3',
-      caption: 'Geita Pit 2 · pump failure'
+      caption: 'Mwanza Block A · pump failure'
     }
   ]
 }

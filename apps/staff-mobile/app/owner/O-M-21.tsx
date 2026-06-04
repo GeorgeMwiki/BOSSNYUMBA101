@@ -76,7 +76,7 @@ function SignOffView(): JSX.Element {
       <Section title={t.fingerprintSign.title}>
         <PlaceholderList
           items={[
-            { id: 'd', primary: 'Driver letter · LV-2231', secondary: 'Tani 7 · Geita -> Mwanza' }
+            { id: 'd', primary: 'Driver letter · LV-2231', secondary: 'Gate pass · Mwanza Block A' }
           ]}
         />
       </Section>

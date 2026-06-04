@@ -4,8 +4,6 @@
  * Recharts is already a dependency in BN owner-portal so we get full
  * chart rendering with zero added bundle cost. Color band maps
  * BossNyumba's design tokens onto a hex palette known to recharts.
- *
- * Ported from Borjie.
  */
 
 import type { ReactElement } from 'react';

@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store'
 
-const TOKEN_KEY = 'bossnyumba.buyer.auth.token.v2'
+const TOKEN_KEY = 'bossnyumba.tenant.auth.token.v2'
 
 let memoryToken: string | null = null
 

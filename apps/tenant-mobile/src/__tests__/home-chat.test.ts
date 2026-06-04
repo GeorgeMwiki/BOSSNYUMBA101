@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BrainTurnRequestSchema,
   BrainTurnResponseSchema,
-  isBuyerToolName,
+  isTenantToolName,
   type ChatTurn
 } from '../chat/types'
 import {
@@ -14,8 +14,8 @@ import {
   extractPayload
 } from '../chat/toolPayloads'
 import {
-  buyerGreeting,
-  buyerSuggestions,
+  tenantGreeting,
+  tenantSuggestions,
   composerPlaceholder,
   errorLabel,
   loadingLabel
@@ -57,16 +57,16 @@ describe('chat/types — request/response schemas', () => {
   })
 })
 
-describe('chat/types — buyer tool registry', () => {
+describe('chat/types — renter tool registry', () => {
   it('classifies known tool names', () => {
-    expect(isBuyerToolName('marketplace.recommended')).toBe(true)
-    expect(isBuyerToolName('kyc.status')).toBe(true)
-    expect(isBuyerToolName('bids.recommend')).toBe(true)
+    expect(isTenantToolName('marketplace.recommended')).toBe(true)
+    expect(isTenantToolName('kyc.status')).toBe(true)
+    expect(isTenantToolName('bids.recommend')).toBe(true)
   })
 
   it('rejects unknown tool names so the renderer falls back to JSON', () => {
-    expect(isBuyerToolName('marketplace.unknown')).toBe(false)
-    expect(isBuyerToolName('')).toBe(false)
+    expect(isTenantToolName('marketplace.unknown')).toBe(false)
+    expect(isTenantToolName('')).toBe(false)
   })
 })
 
@@ -76,12 +76,12 @@ describe('chat/toolPayloads — schema gate', () => {
       listings: [
         {
           id: 'L1',
-          mineral: 'gold_concentrate',
-          title: 'Geita gold',
-          grade: '12%',
-          quantityKg: 60,
-          originRegion: 'Geita',
-          seller: { id: 'S1', name: 'Mwana Mining' },
+          propertyType: 'two_bedroom',
+          title: 'Mwanza 2-bed apartment',
+          grade: 'A',
+          floorAreaSqm: 60,
+          originRegion: 'Mwanza',
+          landlord: { id: 'S1', name: 'Lakeview Estates' },
           priceHintTzs: 240_000_000,
           listedAt: '2026-05-20T10:00:00Z',
           status: 'open'
@@ -97,10 +97,10 @@ describe('chat/toolPayloads — schema gate', () => {
         {
           id: 'B1',
           listingId: 'L1',
-          listingTitle: 'Geita gold',
-          mineral: 'gold_concentrate',
-          offerTzsPerKg: 2_000_000,
-          quantityKg: 60,
+          listingTitle: 'Mwanza 2-bed apartment',
+          propertyType: 'two_bedroom',
+          offerRentPerMonthTzs: 2_000_000,
+          floorAreaSqm: 60,
           status: 'pending',
           placedAt: '2026-05-25T11:00:00Z'
         }
@@ -117,9 +117,9 @@ describe('chat/toolPayloads — schema gate', () => {
     expect(
       BidRecommendationResultSchema.safeParse({
         listingId: 'L1',
-        listingTitle: 'Geita gold',
-        recommendedTzsPerKg: 1_900_000,
-        quantityKg: 60
+        listingTitle: 'Mwanza 2-bed apartment',
+        recommendedRentPerMonthTzs: 1_900_000,
+        floorAreaSqm: 60
       }).success
     ).toBe(true)
   })
@@ -136,14 +136,14 @@ describe('chat/greeting — bilingual persona surface', () => {
     // Marketplace Director persona — Swahili default, English on request.
     // Match stable persona-role substrings (not the legacy "Karibu, Mnunuzi"
     // copy that pre-dated the Mr. Mwikila persona).
-    expect(buyerGreeting('sw')).toMatch(/Mkurugenzi wako wa Soko la BossNyumba/)
-    expect(buyerGreeting('en')).toMatch(/BossNyumba Marketplace Director/)
+    expect(tenantGreeting('sw')).toMatch(/Mkurugenzi wako wa Soko la BossNyumba/)
+    expect(tenantGreeting('en')).toMatch(/BossNyumba Marketplace Director/)
   })
 
-  it('exposes three buyer-intent suggestion chips per language', () => {
-    expect(buyerSuggestions('sw').length).toBe(3)
-    expect(buyerSuggestions('en').length).toBe(3)
-    expect(buyerSuggestions('sw')[0]?.prompt).toBe('Dhahabu inayouzwa sasa')
+  it('exposes three renter-intent suggestion chips per language', () => {
+    expect(tenantSuggestions('sw').length).toBe(3)
+    expect(tenantSuggestions('en').length).toBe(3)
+    expect(tenantSuggestions('sw')[0]?.prompt).toBe('Nyumba zinazopatikana sasa')
   })
 
   it('exposes Swahili loading + error + placeholder copy', () => {
@@ -157,15 +157,15 @@ describe('chat/HomeChat — pure settle/fail reducers', () => {
   const pendingUserTurn: ChatTurn = {
     id: 'user-1',
     role: 'user',
-    text: 'Bei ya tanzanite leo',
+    text: 'Bei ya kodi leo',
     pending: true,
     createdAt: '2026-05-27T08:00:00Z'
   }
 
   it('settles the optimistic user turn and appends a brain turn', () => {
-    const next = settle([pendingUserTurn], 'Bei ya tanzanite leo', {
+    const next = settle([pendingUserTurn], 'Bei ya kodi leo', {
       threadId: 'thr-1',
-      responseText: 'Bei ya leo ni TZS 1.2M/g',
+      responseText: 'Kodi ya leo ni TZS 1.2M kwa mwezi',
       toolCalls: [{ name: 'marketplace.lobby', result: { listings: [] } }]
     })
     expect(next.length).toBe(2)
@@ -176,7 +176,7 @@ describe('chat/HomeChat — pure settle/fail reducers', () => {
   })
 
   it('fail() flags the pending turn and appends a system error', () => {
-    const next = fail([pendingUserTurn], 'Bei ya tanzanite leo', 'connection lost')
+    const next = fail([pendingUserTurn], 'Bei ya kodi leo', 'connection lost')
     expect(next.length).toBe(2)
     expect(next[0]?.pending).toBe(false)
     expect(next[0]?.error).toBe('connection lost')
@@ -186,7 +186,7 @@ describe('chat/HomeChat — pure settle/fail reducers', () => {
 
   it('settle is immutable — original history is not mutated', () => {
     const original: readonly ChatTurn[] = [pendingUserTurn]
-    settle(original, 'Bei ya tanzanite leo', {
+    settle(original, 'Bei ya kodi leo', {
       threadId: 'thr-1',
       responseText: 'ok'
     })

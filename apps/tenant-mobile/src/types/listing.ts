@@ -1,22 +1,27 @@
-export type Mineral =
-  | 'gold_concentrate'
-  | 'tanzanite_rough'
-  | 'coltan'
-  | 'copper_concentrate'
-  | 'gemstone_mixed'
-  | 'gold_dore'
-  | 'tin_cassiterite'
-  | 'silver_concentrate'
+// Shared domain model for the tenant-mobile marketplace, imported by
+// app/marketplace/[id].tsx, components/PlaceBidSheet, dashboard/sections/*,
+// marketplace/home/derivations, ToolCallRenderer, app/(tabs)/bids. The
+// real-estate domain models a unit listing a landlord posts and a renter's
+// application (bid) against it.
+export type PropertyType =
+  | 'studio'
+  | 'one_bedroom'
+  | 'two_bedroom'
+  | 'three_bedroom'
+  | 'four_bedroom_plus'
+  | 'commercial'
+  | 'industrial'
+  | 'mixed_use'
 
-export interface Seller {
+export interface Landlord {
   readonly id: string
   readonly name: string
-  readonly pmlNumber: string
+  readonly licenceNumber: string
   readonly rating: number
   readonly verified: boolean
 }
 
-export interface AssayResult {
+export interface InspectionResult {
   readonly element: string
   readonly grade: string
   readonly method: string
@@ -24,19 +29,19 @@ export interface AssayResult {
 
 export interface Listing {
   readonly id: string
-  readonly mineral: Mineral
+  readonly propertyType: PropertyType
   readonly title: string
   readonly grade: string
-  readonly quantityKg: number
-  readonly originSite: string
+  readonly floorAreaSqm: number
+  readonly propertyAddress: string
   readonly originRegion: string
-  readonly seller: Seller
-  readonly priceTzsPerKg: number
+  readonly landlord: Landlord
+  readonly rentPerMonthTzs: number
   readonly priceHintTzs: number
   readonly photos: readonly string[]
-  readonly assayPdfUrl: string
-  readonly assayResults: readonly AssayResult[]
-  readonly chainOfCustody: readonly string[]
+  readonly inspectionReportUrl: string
+  readonly inspectionResults: readonly InspectionResult[]
+  readonly ownershipHistory: readonly string[]
   readonly listedAt: string
   readonly status: 'open' | 'reserved' | 'closed'
 }
@@ -45,7 +50,7 @@ export type BidStatus = 'pending' | 'accepted' | 'rejected' | 'countered'
 
 export interface BidMessage {
   readonly id: string
-  readonly from: 'buyer' | 'seller'
+  readonly from: 'tenant' | 'landlord'
   readonly body: string
   readonly sentAt: string
 }
@@ -67,17 +72,17 @@ export interface Bid {
   readonly id: string
   readonly listingId: string
   readonly listingTitle: string
-  readonly mineral: Mineral
-  readonly offerTzsPerKg: number
-  readonly quantityKg: number
+  readonly propertyType: PropertyType
+  readonly offerRentPerMonthTzs: number
+  readonly floorAreaSqm: number
   readonly status: BidStatus
   readonly placedAt: string
   readonly thread: readonly BidMessage[]
   /**
-   * Chat-as-OS bidirectional parity. When `via === 'chat'` the buyer
-   * sees a small "via Mr. Mwikila" pill next to the bid in the My
-   * Bids list; tapping it opens the chat session at the originating
-   * turn.
+   * Chat-as-OS bidirectional parity. When `via === 'chat'` the tenant
+   * sees a small "via Mr. Mwikila" pill next to the application in the
+   * My Applications list; tapping it opens the chat session at the
+   * originating turn.
    */
   readonly provenance?: ProvenanceEnvelope
 }

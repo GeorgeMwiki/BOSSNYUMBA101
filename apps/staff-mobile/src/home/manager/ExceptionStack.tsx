@@ -1,6 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
-import { miningApi } from '../../api/client'
+import { managerApi } from '../../api/client'
 import { PreviewBanner } from '../../components/PreviewBanner'
 import { Section } from '../../components/Section'
 import { useI18n } from '../../i18n/useI18n'
@@ -32,7 +32,7 @@ function useIncidents(siteId: string | null): UseQueryResult<IncidentsResponse, 
   return useQuery<IncidentsResponse, Error>({
     queryKey: ['manager', 'incidents', siteId ?? 'auto'],
     queryFn: ({ signal }) =>
-      miningApi.get<IncidentsResponse>('/incidents', {
+      managerApi.get<IncidentsResponse>('/incidents', {
         signal,
         query: {
           status: 'open',
@@ -52,7 +52,7 @@ function useMaintenance(
   return useQuery<MaintenanceResponse, Error>({
     queryKey: ['manager', 'maintenance', siteId ?? 'auto'],
     queryFn: ({ signal }) =>
-      miningApi.get<MaintenanceResponse>('/maintenance', {
+      managerApi.get<MaintenanceResponse>('/maintenance', {
         signal,
         query: {
           healthStatus: 'warning,critical',

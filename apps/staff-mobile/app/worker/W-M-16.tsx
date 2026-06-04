@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { useMutation } from '@tanstack/react-query'
 import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
-import { AskBossNyumba } from '../../src/components/AskBossNyumba'
+import { AskMwikila } from '../../src/components/AskMwikila'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
 import { workforcePersonaSpec } from '../../src/roles/persona'
@@ -69,13 +69,13 @@ export default function Screen(): JSX.Element {
   return (
     <RoleGuard screenId={SCREEN_ID}>
       <ScreenShell screenId={SCREEN_ID}>
-        <AskBossNyumbaChat />
+        <AskMwikilaChat />
       </ScreenShell>
     </RoleGuard>
   )
 }
 
-function AskBossNyumbaChat(): JSX.Element {
+function AskMwikilaChat(): JSX.Element {
   const personaSlug = workforcePersonaSpec('employee').slug
   const [turns, setTurns] = useState<ReadonlyArray<AskTurn>>([])
   const [draft, setDraft] = useState<string>('')
@@ -105,7 +105,7 @@ function AskBossNyumbaChat(): JSX.Element {
   return (
     <View>
       <Section title={COPY.voiceTitle}>
-        <AskBossNyumba />
+        <AskMwikila />
       </Section>
       <Section title={COPY.composerTitle}>
         <View style={styles.composer}>

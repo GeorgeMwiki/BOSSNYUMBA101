@@ -11,10 +11,9 @@
  * Export / Clear controls. Body holds the stacked elements in
  * emission order.
  *
- * Parity: equivalent to LitFin's `BlackboardScene` host plus its
- * artifact persistence layer. BossNyumba ports the Borjie owner-web
- * implementation and strips mining vocabulary — the empty state and
- * sample prompts use rent / lease / portfolio / maintenance language.
+ * Host for the board scene plus its artifact persistence layer. The
+ * empty state and sample prompts use real-estate language — rent /
+ * lease / portfolio / maintenance.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

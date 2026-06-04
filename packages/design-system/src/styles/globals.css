@@ -90,8 +90,8 @@
     --signal-200:            28 50%  82%;
     --signal-300:            26 55%  70%;
     --signal-400:            24 60%  58%;
-    --signal-450:            24 58%  48%;         /* legacy hero copper — pre-contrast bump */
-    --signal-500:            18 70%  38%;         /* hero copper (AA-safe on cream) */
+    --signal-450:            24 58%  48%;         /* LitFin-exact copper (3.72:1 on cream — FAILS AA body text); use only for large/glow/dark surfaces */
+    --signal-500:            18 70%  38%;         /* hero copper (AA-safe on cream, ≈4.9:1) — deliberately 1 hair deeper than LitFin's 24 58% 48% for WCAG AA */
     --signal-600:            22 60%  40%;
     --signal-700:            18 62%  32%;
     --signal-800:            14 62%  28%;

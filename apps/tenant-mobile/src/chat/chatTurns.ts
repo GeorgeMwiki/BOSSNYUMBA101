@@ -1,8 +1,8 @@
 /**
  * chatTurns — pure state machines + R7 timing constants for the
- * streaming buyer HomeChat surface.
+ * streaming tenant HomeChat surface.
  *
- * Mirrors the workforce-mobile reducer model but uses the buyer
+ * Mirrors the staff-mobile reducer model but uses the tenant
  * `ChatTurn` (role/text). The HomeChat surface keeps at most one
  * `LiveTurn` in flight and an array of `SettledTurn` for history.
  */
@@ -184,8 +184,8 @@ export function smartReplyChips(
   const sw = lang === 'sw'
   if (toolCallName === 'marketplace.recommended') {
     return [
-      { id: 'narrow-region', label: sw ? 'Eneo gani?' : 'Which region?', prompt: sw ? 'Onyesha za Geita pekee' : 'Show Geita only' },
-      { id: 'narrow-grade', label: sw ? 'Daraja la juu' : 'Higher grade', prompt: sw ? 'Onyesha za daraja juu zaidi' : 'Show higher grade parcels' }
+      { id: 'narrow-region', label: sw ? 'Eneo gani?' : 'Which area?', prompt: sw ? 'Onyesha za eneo hili pekee' : 'Show this area only' },
+      { id: 'narrow-grade', label: sw ? 'Daraja la juu' : 'Higher rated', prompt: sw ? 'Onyesha za daraja juu zaidi' : 'Show higher-rated units' }
     ]
   }
   if (toolCallName === 'bids.active') {

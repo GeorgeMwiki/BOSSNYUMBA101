@@ -8,7 +8,7 @@ export interface UnknownToolCardProps {
   readonly payload: unknown
 }
 
-// Fallback renderer for tool names the buyer surface doesn't recognise.
+// Fallback renderer for tool names the tenant surface doesn't recognise.
 // We dump the payload as JSON so support can debug from the device,
 // without leaking the raw error path through the chat bubble.
 

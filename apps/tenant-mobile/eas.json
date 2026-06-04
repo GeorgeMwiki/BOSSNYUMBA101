@@ -7,7 +7,7 @@
     "base": {
       "node": "20.18.0",
       "env": {
-        "EXPO_PUBLIC_APP_VARIANT": "buyer"
+        "EXPO_PUBLIC_APP_VARIANT": "tenant"
       }
     },
     "development": {
@@ -71,7 +71,7 @@
         "serviceAccountKeyPath": "./secrets/google-play-service-account.json"
       },
       "ios": {
-        "ascAppId": "BOSSNYUMBA_BUYER_APPLE_APP_ID",
+        "ascAppId": "BOSSNYUMBA_TENANT_APPLE_APP_ID",
         "appleTeamId": "BOSSNYUMBA_APPLE_TEAM_ID"
       }
     }

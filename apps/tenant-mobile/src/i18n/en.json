@@ -44,11 +44,11 @@
     "quantity": "Floor area",
     "origin": "Neighbourhood",
     "price_hint": "Listed rent",
-    "per_kg": "per month",
+    "per_month": "per month",
     "place_bid": "Apply now",
-    "view_assay": "View inspection report",
+    "view_inspection": "View inspection report",
     "seller_rating": "Landlord rating",
-    "chain_of_custody": "Ownership trail",
+    "ownership_trail": "Ownership trail",
     "empty": "No listings available right now",
     "loading": "Loading listings",
     "load_failed": "Could not load listings",
@@ -58,20 +58,20 @@
     "sort_price_asc": "Price low",
     "sort_price_desc": "Price high",
     "sort_grade": "Bedrooms",
-    "mineral_filter": "Property type",
+    "property_type_filter": "Property type",
     "region_filter": "Neighbourhood",
     "grade_filter": "Bedrooms",
     "min_grade": "Min bedrooms",
     "max_grade": "Max bedrooms",
-    "all_minerals": "All property types",
+    "all_property_types": "All property types",
     "all_regions": "All neighbourhoods",
     "trust": {
       "gov_licensed": "Title verified",
-      "lab_assayed": "Inspection passed",
-      "lab_assayed_stale": "Inspection > 30 days old",
+      "inspection_passed": "Inspection passed",
+      "inspection_stale": "Inspection > 30 days old",
       "bossnyumba_vetted": "BossNyumba-vetted",
-      "chain_of_custody": "Ownership chain",
-      "seller_history": "Landlord history"
+      "ownership_trail": "Ownership chain",
+      "landlord_history": "Landlord history"
     }
   },
   "wallet": {
@@ -81,15 +81,15 @@
     "loading": "Loading balance…",
     "toggle_secondary": "Switch currency"
   },
-  "minerals": {
-    "gold_concentrate": "Apartment",
-    "tanzanite_rough": "Bungalow",
-    "coltan": "Townhouse",
-    "copper_concentrate": "Studio",
-    "gemstone_mixed": "Mixed-use",
-    "gold_dore": "Penthouse",
-    "tin_cassiterite": "Duplex",
-    "silver_concentrate": "Villa"
+  "unitTypes": {
+    "studio": "Studio",
+    "one_bedroom": "One bedroom",
+    "two_bedroom": "Two bedroom",
+    "three_bedroom": "Three bedroom",
+    "four_bedroom_plus": "Four+ bedroom",
+    "commercial": "Commercial",
+    "industrial": "Industrial",
+    "mixed_use": "Mixed-use"
   },
   "bids": {
     "title": "My applications",
@@ -235,7 +235,7 @@
     "confirm": "Confirm",
     "retry": "Retry",
     "tzs": "TZS",
-    "kg": "month",
+    "per_month": "month",
     "yes": "Yes",
     "no": "No"
   },
@@ -244,10 +244,10 @@
     "subtitle": "Tell landlords what you want; matching listings come to you.",
     "create_cta": "Post new request",
     "create_title": "Post a new request",
-    "mineral_label": "Property type",
+    "unit_type_label": "Property type",
     "grade_label": "Minimum bedrooms (optional)",
-    "tonnage_min_label": "Floor area required (m²)",
-    "tonnage_max_label": "Floor area ceiling (optional)",
+    "floor_area_min_label": "Floor area required (m²)",
+    "floor_area_max_label": "Floor area ceiling (optional)",
     "unit_price_label": "Max rent per month (TZS)",
     "delivery_by_label": "Move-in by date",
     "delivery_by_placeholder": "YYYY-MM-DD",
@@ -268,8 +268,44 @@
     "cancel_cta": "Cancel request",
     "cancel_success": "Request cancelled.",
     "cancel_failed": "Could not cancel the request.",
-    "tonnage_required_invalid": "Floor area required must be greater than 0.",
+    "floor_area_required_invalid": "Floor area required must be greater than 0.",
     "unit_price_invalid": "Max rent per month must be greater than 0.",
     "delivery_in_past": "Move-in date must be in the future."
+  },
+  "applicant_signup": {
+    "kyc": {
+      "identity": {
+        "title": "Identity",
+        "description": "Capture your NIDA or passport so the landlord can verify who is renting."
+      },
+      "address": {
+        "title": "Current address",
+        "description": "Confirm where you live now and how we can reach you."
+      },
+      "bank_account": {
+        "title": "Bank or mobile money",
+        "description": "Add a payout account for deposits and refunds. You can skip this for now."
+      },
+      "source_of_funds": {
+        "title": "Source of income",
+        "description": "Tell us how you fund the rent — salary, business, or remittance."
+      },
+      "company_docs": {
+        "title": "Business documents",
+        "description": "Upload the certificate of registration and proof of address for the company."
+      },
+      "tax_compliance": {
+        "title": "Tax compliance",
+        "description": "Provide the TIN and a current tax clearance for the business."
+      },
+      "beneficial_owners": {
+        "title": "Beneficial owners",
+        "description": "List the people who ultimately own or control the business."
+      },
+      "aml_screening": {
+        "title": "AML screening",
+        "description": "Consent to sanctions and anti-money-laundering checks before you sign a lease."
+      }
+    }
   }
 }

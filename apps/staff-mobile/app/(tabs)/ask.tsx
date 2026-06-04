@@ -1,6 +1,6 @@
 import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
-import { AskBossNyumba } from '../../src/components/AskBossNyumba'
+import { AskMwikila } from '../../src/components/AskMwikila'
 import { useAuth } from '../../src/auth/useAuth'
 
 export default function AskTab(): JSX.Element {
@@ -9,7 +9,7 @@ export default function AskTab(): JSX.Element {
   return (
     <ScreenShell screenId={screenId}>
       <Section title="Bonyeza ujumbe">
-        <AskBossNyumba />
+        <AskMwikila />
       </Section>
     </ScreenShell>
   )

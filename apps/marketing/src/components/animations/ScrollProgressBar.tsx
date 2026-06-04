@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 /**
  * ScrollProgressBar — 2px fixed top bar that fills as the user scrolls
- * the page. Mirrors the LitFin marketing pattern: a thin gold gradient
+ * the page. Mirrors the upstream marketing pattern: a thin gold gradient
  * tracking `scrollY / (docHeight - viewportHeight)` from 0 to 1.
  *
  * Respects `prefers-reduced-motion`: when reduced motion is requested we

@@ -10,8 +10,8 @@ import { LazyVisible } from '@/components/LazyVisible';
 import type { Locale } from '@/lib/i18n';
 
 /**
- * HomePage — carbon copy of LitFin's HomePage pattern
- * (LITFIN_PATH/src/components/home/HomePage.tsx) adapted to
+ * HomePage — carbon copy of the upstream fork's HomePage pattern
+ * (UPSTREAM_PATH/src/components/home/HomePage.tsx) adapted to
  * BossNyumba's real-estate narrative.
  *
  * Eager above-fold of HomePage:

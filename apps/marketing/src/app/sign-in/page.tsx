@@ -70,7 +70,7 @@ const COPY: Record<Locale, SignInCopy> = {
  * #226. We surface the entry point + the canonical Mr. Mwikila chip +
  * a clear "no account yet" path to /sign-up.
  *
- * No "trial" language per Borjie discipline — CTAs are Log In and
+ * No "trial" language per product discipline — CTAs are Log In and
  * Sign Up only.
  */
 export default async function SignInPage() {

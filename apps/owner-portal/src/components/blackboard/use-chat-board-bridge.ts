@@ -7,11 +7,9 @@
  * seen tag-ids are tracked so each element is only pushed once even
  * though `assistantText` grows on every SSE delta.
  *
- * This is the BossNyumba parity layer for Borjie's
- * `apps/owner-web/.../HomeChatTeach.tsx` SSE `board_element` handler.
- * Borjie has the api-gateway re-emit a dedicated `board_element`
- * event; BN parses the same tags client-side so no server change is
- * needed to enable the chat ↔ board hook.
+ * Rather than have the api-gateway re-emit a dedicated `board_element`
+ * event, BossNyumba parses the same tags client-side so no server
+ * change is needed to enable the chat ↔ board hook.
  *
  * Lifecycle:
  *  - The hook is bound to a single `messageId` so reused state never

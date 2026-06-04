@@ -25,7 +25,6 @@
  * WITH CHECK guard.
  */
 
-// @ts-nocheck — Hono v4 ContextVariableMap drift; same pattern as
 // dsar.router.ts.
 
 import { Hono } from 'hono';

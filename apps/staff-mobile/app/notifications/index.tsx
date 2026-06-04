@@ -26,7 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useRouter } from 'expo-router'
 
 import { useI18n } from '../../src/i18n/useI18n'
-import { tokens } from '../../src/ui-litfin'
+import { tokens } from '../../src/ui'
 import {
   useInbox,
   markRead,

@@ -25,7 +25,7 @@ export function FailureDot({
       onPress={onPress}
       style={styles.target}
       hitSlop={12}
-      testID="buyer-chat-failure-dot"
+      testID="tenant-chat-failure-dot"
     >
       <View style={styles.dot} />
     </Pressable>

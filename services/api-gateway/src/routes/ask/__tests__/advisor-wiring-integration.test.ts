@@ -36,7 +36,7 @@ delete process.env.DEEPSEEK_API_KEY;
 delete process.env.DATABASE_URL;
 
 import { Hono } from 'hono';
-import askRouter from '../ask.router';
+import askRouter from '../ask.hono';
 import { generateToken } from '../../../middleware/auth';
 import { UserRole } from '../../../types/user-role';
 import {

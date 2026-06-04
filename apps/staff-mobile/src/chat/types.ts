@@ -67,7 +67,7 @@ export type BrainTurnResponse = z.infer<typeof BrainTurnResponseSchema>
 /**
  * Citation chip emitted at the bottom of an assistant bubble.
  * Per R7 §5.5 (Perplexity anchor pattern) the chip row sits at the
- * BOTTOM of the bubble — mining workers want the answer first, source
+ * BOTTOM of the bubble — field staff want the answer first, source
  * second. Optional `url` lets the chip open a corpus modal sheet.
  */
 export interface Citation {

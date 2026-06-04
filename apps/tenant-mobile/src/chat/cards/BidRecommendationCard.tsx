@@ -25,7 +25,7 @@ export interface BidRecommendationCardProps {
 }
 
 // `bids.recommend` tool. Renders an AI bid recommendation as a
-// slide-to-confirm card (R4 §3 Swiggy pattern) — the buyer drags the
+// slide-to-confirm card (R4 §3 Swiggy pattern) — the tenant drags the
 // thumb to the right to authorize. We never auto-submit; the slider's
 // completion guarantees explicit consent before hitting the gateway.
 
@@ -44,8 +44,8 @@ export function BidRecommendationCard({ payload, translate }: BidRecommendationC
     mutationFn: async (rec: BidRecommendation) => {
       return placeBid({
         listingId: rec.listingId,
-        offerTzsPerKg: rec.recommendedTzsPerKg,
-        quantityKg: rec.quantityKg,
+        offerRentPerMonthTzs: rec.recommendedRentPerMonthTzs,
+        floorAreaSqm: rec.floorAreaSqm,
         paymentTerms: rec.paymentTerms as PaymentTerms,
         notes: rec.rationale,
         termsAccepted: true
@@ -96,7 +96,7 @@ export function BidRecommendationCard({ payload, translate }: BidRecommendationC
   }
 
   const rec = parsed.data
-  const total = rec.recommendedTzsPerKg * rec.quantityKg
+  const total = rec.recommendedRentPerMonthTzs
 
   function handleLayout(event: LayoutChangeEvent): void {
     setTrackWidth(event.nativeEvent.layout.width)
@@ -111,8 +111,8 @@ export function BidRecommendationCard({ payload, translate }: BidRecommendationC
         <Pill label="AI" tone="gold" />
       </View>
       <View style={styles.rows}>
-        <Row label={translate('bids.bid_price')} value={`${formatTzs(rec.recommendedTzsPerKg)} / kg`} />
-        <Row label={translate('marketplace.quantity')} value={`${rec.quantityKg} kg`} />
+        <Row label={translate('bids.bid_price')} value={`${formatTzs(rec.recommendedRentPerMonthTzs)} / ${translate('common.per_month')}`} />
+        <Row label={translate('marketplace.quantity')} value={`${rec.floorAreaSqm} m²`} />
         <Row label={translate('bids.payment_terms')} value={paymentTermLabel(rec.paymentTerms, translate)} />
         <Row label={translate('documents.total')} value={formatTzs(total)} strong />
       </View>

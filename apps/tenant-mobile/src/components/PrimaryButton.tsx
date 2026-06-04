@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 
 export interface PrimaryButtonProps {
   readonly label: string
@@ -15,8 +15,8 @@ export interface PrimaryButtonProps {
 }
 
 /**
- * Buyer primary button — LitFin pill family.
- *  - primary | gold : warm gold fill, navy text (LitFin hero CTA)
+ * Tenant primary button — BossNyumba pill family.
+ *  - primary | gold : warm gold fill, navy text (hero CTA)
  *  - ghost          : transparent, cream text, gold hairline border
  */
 export function PrimaryButton({
@@ -56,9 +56,9 @@ export function PrimaryButton({
 }
 
 const palettes = {
-  primary: { bg: tokens.color.gold, border: tokens.color.goldDeep, fg: tokens.color.userBubbleText },
-  gold: { bg: tokens.color.gold, border: tokens.color.goldDeep, fg: tokens.color.userBubbleText },
-  ghost: { bg: 'transparent', border: tokens.color.borderGold, fg: tokens.color.gold }
+  primary: { bg: tokens.color.accent, border: tokens.color.accentDeep, fg: tokens.color.userBubbleText },
+  gold: { bg: tokens.color.accent, border: tokens.color.accentDeep, fg: tokens.color.userBubbleText },
+  ghost: { bg: 'transparent', border: tokens.color.borderAccent, fg: tokens.color.accent }
 } as const
 
 const styles = StyleSheet.create({

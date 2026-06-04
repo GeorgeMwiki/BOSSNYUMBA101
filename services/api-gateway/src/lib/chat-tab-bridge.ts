@@ -32,7 +32,10 @@
  * persistence for now (the tab store writes to localStorage).
  */
 
-import { extractSpawnTabs } from '@bossnyumba/owner-os-tabs';
+import {
+  extractSpawnTabs,
+  type OwnerOSSpawnBatch,
+} from '@bossnyumba/owner-os-tabs';
 import { extractTabTags } from '@bossnyumba/central-intelligence';
 import type { StreamTurnEvent } from '@bossnyumba/ai-copilot';
 
@@ -43,7 +46,7 @@ import type { StreamTurnEvent } from '@bossnyumba/ai-copilot';
 export type TabBridgeEvent =
   | {
       readonly type: 'spawn_tabs';
-      readonly batch: { readonly tabs: ReadonlyArray<unknown> };
+      readonly batch: OwnerOSSpawnBatch;
       readonly at: string;
     }
   | {

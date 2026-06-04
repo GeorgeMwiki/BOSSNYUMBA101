@@ -9,7 +9,7 @@ import { getMessages, type Locale } from '@/lib/i18n';
 
 /**
  * BossNyumba MarketingFooter — locale-aware so EN and SW renders are pure.
- * Carbon copy of LitFin's MarketingFooter pattern.
+ * Carbon copy of the upstream fork's MarketingFooter pattern.
  */
 
 interface FooterLink {

@@ -54,7 +54,7 @@ export function ChatSkeleton({ visible = true }: ChatSkeletonProps) {
 
   return (
     <View
-      testID="buyer-chat-skeleton"
+      testID="tenant-chat-skeleton"
       accessibilityLabel="BossNyumba inajibu"
       accessibilityRole="progressbar"
       style={styles.wrap}

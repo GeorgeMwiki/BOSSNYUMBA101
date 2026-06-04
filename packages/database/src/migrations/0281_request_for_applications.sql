@@ -34,7 +34,9 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS request_for_applications (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  -- tenant_id is TEXT to match tenants.id (TEXT) — a UUID column cannot FK to a
+  -- TEXT primary key (Postgres rejects the constraint as "cannot be implemented").
+  tenant_id           TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   /** The landlord / property-manager user posting the listing. */
   landlord_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   /** Property type — residential / commercial / mixed / industrial / student_housing. */
@@ -128,7 +130,9 @@ CREATE INDEX IF NOT EXISTS rfa_expires_at_idx
 CREATE TABLE IF NOT EXISTS request_for_application_responses (
   id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   rfa_id               UUID NOT NULL REFERENCES request_for_applications(id) ON DELETE CASCADE,
-  tenant_id            UUID NOT NULL,
+  -- TEXT to match the tenant model (tenants.id is TEXT); the RLS policy below
+  -- compares tenant_id against the app.current_tenant_id GUC (also text).
+  tenant_id            TEXT NOT NULL,
   /** The prospective tenant applying. */
   applicant_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   /** Offered monthly rent (may differ from listing — negotiation). */

@@ -1,29 +1,32 @@
-import type { Mineral } from '@/types/listing'
+import type { PropertyType } from '@/types/listing'
 import type { SortKey } from '@/api/marketplace'
 import type { ChipOption } from '@/components/ChipGroup'
 
-export const mineralOptionsKeys: readonly Mineral[] = [
-  'gold_concentrate',
-  'tanzanite_rough',
-  'coltan',
-  'copper_concentrate',
-  'gemstone_mixed',
-  'gold_dore',
-  'tin_cassiterite',
-  'silver_concentrate'
+// Unit-type filter options, keyed on the `PropertyType` domain enum. Labels
+// resolve from the `unitTypes.*` i18n namespace. The region list is the
+// property-domain neighbourhood set.
+export const unitTypeOptionKeys: readonly PropertyType[] = [
+  'studio',
+  'one_bedroom',
+  'two_bedroom',
+  'three_bedroom',
+  'four_bedroom_plus',
+  'commercial',
+  'industrial',
+  'mixed_use'
 ] as const
 
 export const regionOptionsKeys: readonly string[] = [
-  'Geita',
-  'Manyara',
-  'Shinyanga',
+  'Dar es Salaam',
+  'Arusha',
+  'Mwanza',
+  'Dodoma',
   'Mbeya',
-  'Ruvuma',
-  'Kagera'
+  'Zanzibar'
 ] as const
 
-export function buildMineralOptions(translate: (key: string) => string): readonly ChipOption<Mineral>[] {
-  return mineralOptionsKeys.map((value) => ({ value, label: translate(`minerals.${value}`) }))
+export function buildUnitTypeOptions(translate: (key: string) => string): readonly ChipOption<PropertyType>[] {
+  return unitTypeOptionKeys.map((value) => ({ value, label: translate(`unitTypes.${value}`) }))
 }
 
 export function buildRegionOptions(): readonly ChipOption<string>[] {
@@ -37,13 +40,16 @@ export const sortOptions: readonly { readonly value: SortKey; readonly key: stri
   { value: 'grade', key: 'marketplace.sort_grade' }
 ] as const
 
-export const mineralGlyph: Readonly<Record<Mineral, string>> = {
-  gold_concentrate: 'Au',
-  tanzanite_rough: 'Tz',
-  coltan: 'Ta',
-  copper_concentrate: 'Cu',
-  gemstone_mixed: 'Gm',
-  gold_dore: 'Au',
-  tin_cassiterite: 'Sn',
-  silver_concentrate: 'Ag'
+// Short unit-type glyphs shown on the listing card avatar. Keyed on the
+// `PropertyType` enum literal; each value mirrors the property label
+// rendered from the `unitTypes.*` i18n namespace.
+export const unitTypeGlyph: Readonly<Record<PropertyType, string>> = {
+  studio: 'Std',
+  one_bedroom: '1Bd',
+  two_bedroom: '2Bd',
+  three_bedroom: '3Bd',
+  four_bedroom_plus: '4Bd',
+  commercial: 'Com',
+  industrial: 'Ind',
+  mixed_use: 'Mix'
 }

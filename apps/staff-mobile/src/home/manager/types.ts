@@ -3,11 +3,11 @@
  *
  * Wire-level spec: Docs/research/manager-dispatch-sota.md §9.
  *
- * Endpoints (api-gateway, prefix /api/v1/mining) are being built in parallel
- * by the B-Manager agent. When a path returns 404/501 the corresponding card
- * renders a PreviewBanner kind='env-missing' so the manager sees the missing
- * surface explicitly rather than fake data. React-query will auto-recover
- * the next time the endpoint resolves.
+ * Endpoints (api-gateway, operator prefix /api/v1/manager) are being built
+ * in parallel by the manager-surface team. When a path returns 404/501 the
+ * corresponding card renders a PreviewBanner kind='env-missing' so the
+ * manager sees the missing surface explicitly rather than fake data.
+ * React-query will auto-recover the next time the endpoint resolves.
  */
 
 import type { Lang } from '../../auth/types'

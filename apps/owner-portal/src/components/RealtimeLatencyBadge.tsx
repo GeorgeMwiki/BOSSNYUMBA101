@@ -1,5 +1,5 @@
 /**
- * M-1 — owner cockpit "Live sync" badge (ported from Borjie RT-3).
+ * M-1 — owner cockpit "Live sync" badge.
  *
  * Polls /api/v1/observability/realtime every POLL_INTERVAL_MS and
  * renders the P95 cockpit-event round-trip latency. Tiny, unobtrusive,

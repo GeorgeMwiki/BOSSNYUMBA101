@@ -1,8 +1,14 @@
 /**
- * recentEntities — fetcher for the buyer composer @-menu. Resolves a
- * tenant-scoped list of recent scope nodes (parcels / licences /
- * counterparties / scope_nodes) the buyer can @-mention. Returns an
+ * recentEntities — fetcher for the tenant composer @-menu. Resolves a
+ * tenant-scoped list of recent scope nodes (units / leases /
+ * counterparties / scope_nodes) the renter can @-mention. Returns an
  * empty list on any error so the composer stays operational offline.
+ *
+ * NOTE (flagged): the `RecentEntityKind` members and the `KIND_MAP` /
+ * EntityItem.kind literals ('parcel', 'licence', 'site') are sent to /
+ * received from `/api/v1/scope/recent-entities` and are also consumed by
+ * the non-owned ToolCallRenderer, so the rename to unit/lease/property is
+ * a coordinated follow-up.
  */
 import { apiFetch } from '@/api/client'
 import type { EntityItem } from './composer-triggers'

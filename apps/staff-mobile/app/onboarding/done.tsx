@@ -52,7 +52,7 @@ export default function DoneStep(): JSX.Element {
         <SummaryRow label={copy.summaryPhone} value={current.phone} />
         <SummaryRow label={copy.summaryRole} value={roleLabel(current.role, t)} />
         {current.role === 'owner' ? (
-          <SummaryRow label={copy.summaryPml} value={current.pmlNumber} />
+          <SummaryRow label={copy.summaryDeed} value={current.titleDeedRef} />
         ) : (
           <SummaryRow label={copy.summarySite} value={current.siteCode} />
         )}

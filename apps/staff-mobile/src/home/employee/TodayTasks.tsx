@@ -41,7 +41,7 @@ export function TodayTasks({
       if (!userId) {
         return
       }
-      void enqueueWrite('toolbox_ack', { kind: 'task_complete', taskId, userId, at: Date.now() })
+      void enqueueWrite('task_ack', { kind: 'task_complete', taskId, userId, at: Date.now() })
     },
     [userId]
   )

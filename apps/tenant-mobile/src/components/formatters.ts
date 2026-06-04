@@ -11,14 +11,11 @@ export function formatTzs(amount: number): string {
   return `TZS ${amount.toFixed(0)}`
 }
 
-export function formatKg(kg: number): string {
-  if (kg < 1) {
-    return `${(kg * 1000).toFixed(0)} g`
+export function formatSqm(sqm: number): string {
+  if (sqm >= 10_000) {
+    return `${(sqm / 10_000).toFixed(2)} ha`
   }
-  if (kg >= 1000) {
-    return `${(kg / 1000).toFixed(1)} t`
-  }
-  return `${kg.toFixed(kg < 10 ? 2 : 0)} kg`
+  return `${sqm.toFixed(sqm < 10 ? 1 : 0)} m²`
 }
 
 export function formatDate(iso: string): string {

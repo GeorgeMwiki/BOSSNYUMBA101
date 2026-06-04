@@ -1,11 +1,11 @@
-// LitFin-rebase: this wrapper is now a Server Component. The four
+// marketing-rebase: this wrapper is now a Server Component. The four
 // children below remain client components ("use client" at the top of
 // each file) — Next.js mounts client children from an RSC parent. The
 // wrapper itself stays out of the client bundle so the children stream
 // independently.
 //
 // Source pattern this mirrors:
-//   LITFIN_PATH/src/app/(marketing)/page.tsx (lean 4-component
+//   UPSTREAM_PATH/src/app/(marketing)/page.tsx (lean 4-component
 //   composition: IgnitionHero + BrainClaimsBanner + CapabilitiesSection
 //   + HomePage).
 

@@ -1,6 +1,5 @@
 /**
- * R1 — superscript citation parser
- * Ported from Borjie, domain-neutral.
+ * R1 — superscript citation parser (domain-neutral).
  *
  * Splits a brief sentence into an ordered list of `text` and `citation`
  * tokens. Citation tokens preserve the raw glyph (so the renderer can

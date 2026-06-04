@@ -5,12 +5,16 @@ import { getMessages, type Locale } from '@/lib/i18n';
 
 /**
  * PlatformShowcaseSection — three product-surface mockup tiles
- * (Owner Portal · Maintenance staff Mobile · Buyer Marketplace).
+ * (Owner Cockpit · Maintenance Mobile · Tenant Marketplace).
  *
  * NO screenshots. Each tile is real DOM — gold-accented mock-frame
  * with a title bar (three traffic-light dots + caption), then a tiny
- * KPI strip / shift log / market listing depending on the tile type.
- * BossNyumba palette only.
+ * KPI strip / operations log / listing strip depending on the tile
+ * type. BossNyumba palette only.
+ *
+ * NOTE: the `mockType` discriminant values ('kpi' | 'shift' | 'market')
+ * are mirrored verbatim in apps/marketing/src/i18n/{en,sw}.json tile
+ * data, so the union members are not renamed here — see "flagged".
  */
 
 type Tile = {

@@ -1,7 +1,7 @@
 /**
- * Buyer-mobile Sentry wrapper — init safety contract.
+ * Tenant-mobile Sentry wrapper — init safety contract.
  *
- * Twin of `apps/workforce-mobile/src/observability/sentry-init.test.ts`.
+ * Twin of `apps/staff-mobile/src/observability/sentry-init.test.ts`.
  * Verifies the wrapper imports cleanly, init resolves under the no-DSN
  * path, and capture helpers tolerate any input without throwing.
  *
@@ -125,6 +125,6 @@ describe('tenant-mobile sentry wrapper init safety', () => {
 
   it('setPilotUser does not throw when called before init', () => {
     delete process.env.EXPO_PUBLIC_SENTRY_DSN;
-    expect(() => setPilotUser('pilot-1', 'tanzanite-beta')).not.toThrow();
+    expect(() => setPilotUser('pilot-1', 'tenant-beta')).not.toThrow();
   });
 });

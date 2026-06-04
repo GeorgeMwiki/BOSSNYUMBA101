@@ -4,7 +4,7 @@
  * Sibling module to capability-registry.ts. Holds per-jurisdiction
  * overrides for capability entries whose user_outcome /
  * public_description / example_response_pattern reference a
- * specific regulator / currency / licence type that changes
+ * specific regulator / currency / tenancy regime that changes
  * per country.
  *
  * Used by:
@@ -15,8 +15,8 @@
  *
  * Design rules:
  *   1. Overrides are PER FIELD, not per-entry. Most capabilities
- *      don't need an override — only the ones that mention PCCB /
- *      TZS / Mining Commission / etc.
+ *      don't need an override — only the ones that mention a housing
+ *      regulator / TZS / a tenancy authority / etc.
  *   2. When no override is found for a (capability_id, country)
  *      pair, the default entry's value is returned. The TZ default
  *      lives in the canonical entry itself (we are TZS-first).
@@ -50,109 +50,109 @@ export const CAPABILITY_JURISDICTION_OVERRIDES: Readonly<
   Record<string, Readonly<Record<string, CapabilityJurisdictionOverride>>>
 > = Object.freeze({
   // ─────────────────────────────────────────────────────────────
-  // Licence tracking — PML/ML/SML are TZ types; other jurisdictions
-  // use their own licence ladders.
+  // Lease tracking — the tenancy regime / registry differs per
+  // country. TZ default lives in the canonical registry entry.
   // ─────────────────────────────────────────────────────────────
-  'mwikila.track.licences': Object.freeze({
+  'mwikila.track.leases': Object.freeze({
     KE: Object.freeze({
-      user_outcome: 'Owner sees every Mining Office licence and its days-to-expiry at a glance.',
+      user_outcome: 'Owner sees every tenancy agreement and its days-to-expiry at a glance.',
       public_description: Object.freeze({
-        en: 'Prospecting Licence, Retention Licence, Mining Licence — Mr. Mwikila tracks every active permit issued by the State Department of Mining (Kenya), the days remaining, and pre-fills the quarterly review and renewal forms.',
-        sw: 'Leseni ya Utafutaji, Leseni ya Uhifadhi, Leseni ya Madini — Mwikila hufuatilia kila leseni iliyotolewa na Idara ya Madini (Kenya), siku zilizobaki, na kujaza fomu za ukaguzi wa robo mwaka na upyaji.',
+        en: 'Fixed-term and periodic tenancies — Mr. Mwikila tracks every active lease under the Kenyan Landlord and Tenant Act, the days remaining, and pre-fills the renewal and rent-review notices.',
+        sw: 'Mikataba ya muda maalum na ya kawaida — Mwikila hufuatilia kila mkataba chini ya sheria ya wapangaji ya Kenya, siku zilizobaki, na kujaza notisi za upyaji na mapitio ya kodi.',
       }),
     }),
     UG: Object.freeze({
       public_description: Object.freeze({
-        en: 'Location Licence, Mining Lease — Mr. Mwikila tracks every active permit issued by Uganda DGSM, the days remaining, and pre-fills the renewal form.',
-        sw: 'Leseni ya Mahali, Mkataba wa Madini — Mwikila hufuatilia kila leseni iliyotolewa na DGSM ya Uganda, siku zilizobaki, na kujaza fomu ya upyaji.',
+        en: 'Fixed-term tenancies and ground leases — Mr. Mwikila tracks every active lease under Ugandan landlord-tenant law, the days remaining, and pre-fills the renewal notice.',
+        sw: 'Mikataba ya muda maalum na ya ardhi — Mwikila hufuatilia kila mkataba chini ya sheria ya wapangaji ya Uganda, siku zilizobaki, na kujaza notisi ya upyaji.',
       }),
     }),
     NG: Object.freeze({
-      user_outcome: 'Owner sees every Mining Cadastre title and its days-to-expiry at a glance.',
+      user_outcome: 'Owner sees every registered tenancy and its days-to-expiry at a glance.',
       public_description: Object.freeze({
-        en: 'Reconnaissance Permit, Exploration Licence, Small-Scale Mining Lease, Mining Lease, Quarry Lease — Mr. Mwikila tracks every active mining title issued by the Mining Cadastre Office (Nigeria), the days remaining, and drafts the renewal to the Federal Ministry of Mines and Steel Development.',
-        sw: 'Idhini ya Utambuzi, Leseni ya Uchunguzi, Mkataba wa Madini Madogo, Mkataba wa Madini, Mkataba wa Mawe — Mwikila hufuatilia kila hati ya madini iliyotolewa na Ofisi ya Cadastre ya Madini (Nigeria), siku zilizobaki, na huandaa upyaji.',
+        en: 'Tenancy agreements and Certificates of Occupancy — Mr. Mwikila tracks every active tenancy under the relevant state Tenancy Law (e.g. Lagos), the days remaining, and drafts the renewal and statutory notices.',
+        sw: 'Mikataba ya upangaji na Hati za Umiliki — Mwikila hufuatilia kila mkataba chini ya sheria ya upangaji ya jimbo (mfano Lagos), siku zilizobaki, na huandaa notisi za upyaji.',
       }),
     }),
     ZA: Object.freeze({
       public_description: Object.freeze({
-        en: 'Prospecting Right, Mining Right — Mr. Mwikila tracks every active right under the South African Mineral and Petroleum Resources Development Act, the days remaining, and pre-fills the DMRE renewal application.',
-        sw: 'Haki ya Utafutaji, Haki ya Madini — Mwikila hufuatilia kila haki chini ya sheria ya MPRDA, siku zilizobaki, na kujaza maombi ya upyaji ya DMRE.',
+        en: 'Residential and commercial leases — Mr. Mwikila tracks every active lease under the South African Rental Housing Act, the days remaining, and pre-fills the renewal application.',
+        sw: 'Mikataba ya makazi na biashara — Mwikila hufuatilia kila mkataba chini ya sheria ya makazi ya kupanga ya Afrika Kusini, siku zilizobaki, na kujaza maombi ya upyaji.',
       }),
     }),
     AU: Object.freeze({
       public_description: Object.freeze({
-        en: 'Exploration Licence, Mining Lease — Mr. Mwikila tracks every active title under the relevant state mining authority (DMIRS WA / DRDMW QLD / NSW DPI / NT DITT), the days remaining, and pre-fills the renewal application.',
-        sw: 'Leseni ya Uchunguzi, Mkataba wa Madini — Mwikila hufuatilia kila hati chini ya mamlaka husika ya jimbo, siku zilizobaki, na kujaza maombi ya upyaji.',
+        en: 'Residential and retail leases — Mr. Mwikila tracks every active lease under the relevant state tenancy authority (e.g. NSW Fair Trading / Consumer Affairs Victoria), the days remaining, and pre-fills the renewal application.',
+        sw: 'Mikataba ya makazi na biashara — Mwikila hufuatilia kila mkataba chini ya mamlaka husika ya jimbo, siku zilizobaki, na kujaza maombi ya upyaji.',
       }),
     }),
     CL: Object.freeze({
       public_description: Object.freeze({
-        en: 'Concesión de Exploración, Concesión de Explotación — Mr. Mwikila tracks every active concession registered with Sernageomin, the days remaining, and pre-fills the annual fee submission.',
-        sw: 'Concesión de Exploración, Concesión de Explotación — Mwikila hufuatilia kila concesión iliyosajiliwa Sernageomin, siku zilizobaki, na kujaza ada ya mwaka.',
+        en: 'Contratos de Arrendamiento — Mr. Mwikila tracks every active lease registered under Chilean tenancy law, the days remaining, and pre-fills the renewal and annual adjustment.',
+        sw: 'Contratos de Arrendamiento — Mwikila hufuatilia kila mkataba chini ya sheria ya upangaji ya Chile, siku zilizobaki, na kujaza upyaji na marekebisho ya mwaka.',
       }),
     }),
     ID: Object.freeze({
       public_description: Object.freeze({
-        en: 'IUP Eksplorasi, IUP Operasi Produksi — Mr. Mwikila tracks every active permit (Izin Usaha Pertambangan) issued by ESDM, the days remaining, and pre-fills the renewal form.',
-        sw: 'IUP Eksplorasi, IUP Operasi Produksi — Mwikila hufuatilia kila kibali (IUP) kilichotolewa na ESDM, siku zilizobaki, na kujaza fomu ya upyaji.',
+        en: 'Sewa / Kontrak tenancies — Mr. Mwikila tracks every active lease under Indonesian tenancy regulation, the days remaining, and pre-fills the renewal form.',
+        sw: 'Mikataba ya Sewa / Kontrak — Mwikila hufuatilia kila mkataba chini ya kanuni za upangaji za Indonesia, siku zilizobaki, na kujaza fomu ya upyaji.',
       }),
     }),
   }),
 
   // ─────────────────────────────────────────────────────────────
-  // Licence renewal alerts — same ladder days, different regulator.
+  // Lease renewal alerts — same ladder days, different regulator.
   // ─────────────────────────────────────────────────────────────
-  'mwikila.alert.licence': Object.freeze({
+  'mwikila.alert.lease': Object.freeze({
     KE: Object.freeze({
       public_description: Object.freeze({
-        en: 'Mr. Mwikila warns you 90, 60, 47, 30, and 7 days before any Kenyan mining permit expires, with the State Department of Mining renewal form already pre-filled.',
-        sw: 'Mwikila hukutahadharisha siku 90, 60, 47, 30, na 7 kabla ya leseni ya Kenya kuisha, fomu ya Idara ya Madini imeshajazwa.',
+        en: 'Mr. Mwikila warns you 90, 60, 47, 30, and 7 days before any Kenyan tenancy expires, with the statutory renewal and rent-review notice already pre-filled.',
+        sw: 'Mwikila hukutahadharisha siku 90, 60, 47, 30, na 7 kabla ya mkataba wa Kenya kuisha, notisi ya upyaji imeshajazwa.',
       }),
     }),
     UG: Object.freeze({
       public_description: Object.freeze({
-        en: 'Mr. Mwikila warns you 90, 60, 47, 30, and 7 days before any Ugandan mining permit expires, with the DGSM renewal form already pre-filled.',
-        sw: 'Mwikila hukutahadharisha siku 90, 60, 47, 30, na 7 kabla ya leseni ya Uganda kuisha, fomu ya DGSM imeshajazwa.',
+        en: 'Mr. Mwikila warns you 90, 60, 47, 30, and 7 days before any Ugandan tenancy expires, with the renewal notice already pre-filled.',
+        sw: 'Mwikila hukutahadharisha siku 90, 60, 47, 30, na 7 kabla ya mkataba wa Uganda kuisha, notisi ya upyaji imeshajazwa.',
       }),
     }),
     NG: Object.freeze({
       public_description: Object.freeze({
-        en: 'Mr. Mwikila warns you 365, 180, 90, 47, and 30 days before any Nigerian mining title expires (titles renew annually), with the Mining Cadastre Office renewal already drafted to the Federal Ministry of Mines and Steel Development.',
-        sw: 'Mwikila hukutahadharisha siku 365, 180, 90, 47, na 30 kabla ya hati ya Nigeria kuisha (hupyaiwa kila mwaka), upyaji wa MCO ushaaandaliwa.',
+        en: 'Mr. Mwikila warns you 365, 180, 90, 47, and 30 days before any Nigerian tenancy expires (tenancies often renew annually), with the statutory renewal notice already drafted.',
+        sw: 'Mwikila hukutahadharisha siku 365, 180, 90, 47, na 30 kabla ya mkataba wa Nigeria kuisha (mara nyingi hupyaiwa kila mwaka), notisi ya upyaji ushaaandaliwa.',
       }),
     }),
     ZA: Object.freeze({
       public_description: Object.freeze({
-        en: 'Mr. Mwikila warns you 365, 90, 47, 30, and 7 days before any South African mining right expires, with the DMRE renewal application already drafted.',
-        sw: 'Mwikila hukutahadharisha siku 365, 90, 47, 30, na 7 kabla ya haki ya madini ya Afrika Kusini kuisha.',
+        en: 'Mr. Mwikila warns you 365, 90, 47, 30, and 7 days before any South African lease expires, with the renewal application already drafted.',
+        sw: 'Mwikila hukutahadharisha siku 365, 90, 47, 30, na 7 kabla ya mkataba wa Afrika Kusini kuisha.',
       }),
     }),
     AU: Object.freeze({
       public_description: Object.freeze({
-        en: 'Mr. Mwikila warns you 365, 90, 47, 30, and 7 days before any Australian mining tenement expires, with the state-authority renewal application already drafted.',
-        sw: 'Mwikila hukutahadharisha kabla ya hati ya madini ya Australia kuisha.',
+        en: 'Mr. Mwikila warns you 365, 90, 47, 30, and 7 days before any Australian lease expires, with the renewal application already drafted.',
+        sw: 'Mwikila hukutahadharisha kabla ya mkataba wa Australia kuisha.',
       }),
     }),
     CL: Object.freeze({
       public_description: Object.freeze({
-        en: 'Mr. Mwikila warns you 90, 47, 30, and 7 days before any Chilean concesión annual fee is due, with the Sernageomin payment already queued.',
-        sw: 'Mwikila hukutahadharisha kabla ya ada ya mwaka ya concesión ya Chile kufika.',
+        en: 'Mr. Mwikila warns you 90, 47, 30, and 7 days before any Chilean lease renewal or annual adjustment is due, with the paperwork already queued.',
+        sw: 'Mwikila hukutahadharisha kabla ya upyaji au marekebisho ya mwaka ya mkataba wa Chile kufika.',
       }),
     }),
     ID: Object.freeze({
       public_description: Object.freeze({
-        en: 'Mr. Mwikila warns you 180, 90, 47, 30, and 7 days before any Indonesian IUP expires, with the ESDM renewal form already pre-filled.',
-        sw: 'Mwikila hukutahadharisha kabla ya IUP ya Indonesia kuisha.',
+        en: 'Mr. Mwikila warns you 180, 90, 47, 30, and 7 days before any Indonesian lease expires, with the renewal form already pre-filled.',
+        sw: 'Mwikila hukutahadharisha kabla ya mkataba wa Indonesia kuisha.',
       }),
     }),
   }),
 
   // ─────────────────────────────────────────────────────────────
-  // PCCB-named anti-corruption capability — the bureau name is
-  // TZ-specific; other jurisdictions have their own equivalents.
+  // Anti-graft / ownership-disclosure capability — the regulator
+  // name is TZ-specific; other jurisdictions have their own.
   // ─────────────────────────────────────────────────────────────
-  'mwikila.compliance.pccb': Object.freeze({
+  'mwikila.compliance.anti-graft': Object.freeze({
     KE: Object.freeze({
       user_outcome: 'Owner files anti-corruption disclosures to EACC on time.',
       public_description: Object.freeze({
@@ -180,7 +180,7 @@ export const CAPABILITY_JURISDICTION_OVERRIDES: Readonly<
 /**
  * Resolve the jurisdiction-specific copy for a capability field.
  *
- * @param capabilityId the canonical id (e.g. `mwikila.track.licences`)
+ * @param capabilityId the canonical id (e.g. `mwikila.track.leases`)
  * @param country ISO-3166-1 alpha-2 (e.g. `KE`); TZ returns the default
  * @returns the override bundle or null when no override exists
  */

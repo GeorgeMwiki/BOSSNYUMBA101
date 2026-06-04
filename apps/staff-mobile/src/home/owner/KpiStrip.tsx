@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { colors } from '../../theme/colors'
 import { fontSize, radius, spacing } from '../../theme/spacing'
-import { formatCurrency, formatDelta, formatTonnes } from './format'
+import { formatCurrency, formatDelta, formatUnits } from './format'
 import type { OwnerBrief, PillarStatus } from './types'
 
 export interface KpiStripProps {
@@ -11,7 +11,7 @@ export interface KpiStripProps {
 }
 
 /**
- * Slot 3 — Pillar KPI strip. Five glanceable cards: production, cash
+ * Slot 3 — Pillar KPI strip. Five glanceable cards: occupancy, cash
  * runway, safety, licence health, FX exposure. KPI font ≥24pt (uses
  * theme `fontSize.h1` 28pt) per spec engineering rule. Status colours
  * paired with textual status labels (anti-pattern §3: never colour-only).
@@ -50,27 +50,27 @@ function buildItems(
   currencyCode: string
 ): ReadonlyArray<KpiItem> {
   const swLabels = {
-    production: 'Uzalishaji',
+    occupancy: 'Ukaaji',
     cash: 'Pesa',
     safety: 'Usalama',
     licence: 'Leseni',
-    fx: 'USD-cliff'
+    fx: 'Hatari ya FX'
   }
   const enLabels = {
-    production: 'Production',
+    occupancy: 'Occupancy',
     cash: 'Cash',
     safety: 'Safety',
     licence: 'Licences',
-    fx: 'USD-cliff'
+    fx: 'FX risk'
   }
   const labels = lang === 'sw' ? swLabels : enLabels
   return [
     {
-      key: 'production',
-      label: labels.production,
-      value: `${formatTonnes(brief.production.currentTonnes)} ${formatDelta(brief.production.deltaPct)}`,
-      status: brief.production.status,
-      statusLabel: statusLabel(brief.production.status, lang)
+      key: 'occupancy',
+      label: labels.occupancy,
+      value: `${formatUnits(brief.occupancy.currentUnits)} ${formatDelta(brief.occupancy.deltaPct)}`,
+      status: brief.occupancy.status,
+      statusLabel: statusLabel(brief.occupancy.status, lang)
     },
     {
       key: 'cash',

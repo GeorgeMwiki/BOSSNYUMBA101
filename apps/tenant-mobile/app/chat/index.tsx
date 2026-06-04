@@ -14,9 +14,10 @@ import { queryKeys } from '@/api/queryKeys'
 import { colors } from '@/theme/colors'
 import { radius, spacing, typography } from '@/theme/spacing'
 
-// The chat screen is scoped to an active bid (the seller is implied by the
-// bid). If no bidId comes in via params we default to the first active bid
-// so the screen is still reachable from the bottom nav / deep link.
+// The chat screen is scoped to an active application (the landlord is
+// implied by the application). If no bidId comes in via params we default
+// to the first active application so the screen is still reachable from
+// the bottom nav / deep link.
 export default function ChatIndex() {
   const { t } = useTranslation()
   const toast = useToast()
@@ -116,7 +117,7 @@ export default function ChatIndex() {
                 key={msg.id}
                 from={msg.from}
                 body={msg.body}
-                authorLabel={msg.from === 'buyer' ? t('profile.title') : 'Seller'}
+                authorLabel={msg.from === 'tenant' ? t('profile.title') : 'Landlord'}
               />
             ))
           )}

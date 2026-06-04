@@ -7,7 +7,7 @@ import { BigNumber } from '../../src/components/StubBlocks'
 import { PlaceholderList } from '../../src/components/PlaceholderList'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -50,7 +50,7 @@ interface CliffStatusResponse {
 
 interface SaleRow {
   readonly id: string
-  readonly buyerId: string | null
+  readonly tenantId: string | null
   readonly route: string
   readonly grossPriceUsd: string | null
   readonly grossPriceTzs: string | null
@@ -63,8 +63,8 @@ interface SalesResponse {
   readonly data: ReadonlyArray<SaleRow>
 }
 
-const CLIFF_KEY = ['mining', 'cockpit', '27mar-cliff'] as const
-const SALES_KEY = ['mining', 'sales', 'cliff'] as const
+const CLIFF_KEY = ['estate', 'cockpit', '27mar-cliff'] as const
+const SALES_KEY = ['estate', 'sales', 'cliff'] as const
 
 export default function Screen(): JSX.Element {
   return (
@@ -80,7 +80,7 @@ function CliffStatusView(): JSX.Element {
   const cliffQuery = useQuery<CliffStatusResponse['data'], ApiError>({
     queryKey: CLIFF_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<CliffStatusResponse>('/cockpit/27mar-cliff-status', {
+      const response = await managerApi.get<CliffStatusResponse>('/cockpit/27mar-cliff-status', {
         signal
       })
       return response.data
@@ -90,7 +90,7 @@ function CliffStatusView(): JSX.Element {
   const salesQuery = useQuery<ReadonlyArray<SaleRow>, ApiError>({
     queryKey: SALES_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<SalesResponse>('/sales', { signal })
+      const response = await managerApi.get<SalesResponse>('/sales', { signal })
       return response.data
     }
   })

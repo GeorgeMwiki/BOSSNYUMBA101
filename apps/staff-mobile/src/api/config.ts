@@ -20,31 +20,37 @@ function resolveBaseUrl(): string {
 export const API_BASE_URL: string = resolveBaseUrl()
 export const DEFAULT_TIMEOUT_MS = 5_000
 
-// Legacy prefixes — kept so existing field/owner/chat call sites continue to
-// compile while screens migrate to the canonical mining prefix.
+// Legacy worker/owner prefixes — kept so existing field/owner/chat call
+// sites keep compiling while screens migrate to the canonical operator
+// prefix. The api-gateway exposes the worker self-service surface under
+// '/api/v1/field/staff' and the owner cockpit under '/api/v1/owner/*'.
 export const FIELD_PREFIX = '/api/v1/field'
 export const OWNER_PREFIX = '/api/v1/owner'
-// Master Brain SSE entry — authenticated workforce chat. Public-buyer
-// equivalent lives at '/api/v1/public/chat' (used by buyer-mobile).
-export const CHAT_PREFIX = '/api/v1/mining/chat'
+// Master Brain SSE entry — authenticated workforce chat. The canonical
+// streaming transport the chat UIs consume is POST /api/v1/ai/chat
+// (ai-chat.router.ts). Public/unauthenticated chat lives at
+// '/api/v1/public/sandbox' (used by the public sandbox surface).
+export const CHAT_PREFIX = '/api/v1/ai/chat'
 
 /**
- * Canonical prefix for the api-gateway mining surface. All new wiring
- * (sync queue flushes, screen fetches) must go through this prefix; legacy
- * prefixes above are deprecated and will be removed once callers migrate.
+ * Canonical prefix for the api-gateway estate-manager surface. The
+ * staff-mobile operator screens reach the workforce surface through the
+ * BossNyumba manager router (api.route('/manager', estateManagerAppRouter)).
+ * All new wiring (sync queue flushes, screen fetches) goes through this
+ * prefix; the legacy field/owner prefixes above are kept for migration.
  */
-export const MINING_PREFIX = '/api/v1/mining'
+export const MANAGER_PREFIX = '/api/v1/manager'
 
 export interface ApiPaths {
   readonly field: string
   readonly owner: string
   readonly chat: string
-  readonly mining: string
+  readonly operator: string
 }
 
 export const apiPaths: ApiPaths = {
   field: `${API_BASE_URL}${FIELD_PREFIX}`,
   owner: `${API_BASE_URL}${OWNER_PREFIX}`,
   chat: `${API_BASE_URL}${CHAT_PREFIX}`,
-  mining: `${API_BASE_URL}${MINING_PREFIX}`
+  operator: `${API_BASE_URL}${MANAGER_PREFIX}`
 }

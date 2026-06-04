@@ -1,11 +1,11 @@
 /**
  * TrustChipStack — Airbnb-style trust-above-the-fold chip row for
- * every parcel card and parcel detail screen.
+ * every unit card and unit detail screen.
  *
  * Closes G2 in `Docs/AUDIT/RESEARCH_GAPS_2026-05-29.md` — wires the
- * trust signals researched in `Docs/RESEARCH/buyer-marketplace-sota.md`
- * §7 (gov-licensed, lab-assayed, bossnyumba-vetted, chain-of-custody,
- * seller-history).
+ * trust signals researched in `Docs/RESEARCH/tenant-marketplace-sota.md`
+ * §7 (landlord-verified, inspection-verified, bossnyumba-vetted,
+ * ownership-verified, landlord-history).
  *
  * Derivation logic lives in `./trustChips.ts` so it can be unit-
  * tested without pulling React Native into the JSDOM rig.
@@ -13,7 +13,7 @@
 
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import type { Listing } from '@/types/listing'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import { deriveTrustChips, type TrustChip } from './trustChips'
 
 export type { TrustChip, TrustChipKind } from './trustChips'
@@ -50,7 +50,7 @@ export function TrustChipStack({ listing, translate, onChipPress }: TrustChipSta
 function toneStyle(tone: TrustChip['tone']) {
   switch (tone) {
     case 'verified':
-      return { borderColor: tokens.color.borderGold, backgroundColor: 'rgba(255,200,87,0.08)' }
+      return { borderColor: tokens.color.borderAccent, backgroundColor: 'rgba(255,200,87,0.08)' }
     case 'attention':
       return { borderColor: 'rgba(255,184,0,0.42)', backgroundColor: 'rgba(255,184,0,0.06)' }
     case 'neutral':
@@ -61,7 +61,7 @@ function toneStyle(tone: TrustChip['tone']) {
 function toneTextStyle(tone: TrustChip['tone']) {
   switch (tone) {
     case 'verified':
-      return { color: tokens.color.gold }
+      return { color: tokens.color.accent }
     case 'attention':
       return { color: tokens.color.warn }
     case 'neutral':

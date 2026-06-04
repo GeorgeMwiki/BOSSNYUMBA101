@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 
 export interface MarketplaceEmptyStateProps {
   readonly message: string
@@ -14,8 +14,8 @@ const toneStyles = {
   },
   warning: {
     bg: 'rgba(255, 200, 87, 0.14)',
-    fg: tokens.color.gold,
-    border: tokens.color.borderGold
+    fg: tokens.color.accent,
+    border: tokens.color.borderAccent
   },
   error: {
     bg: 'rgba(225, 75, 75, 0.14)',

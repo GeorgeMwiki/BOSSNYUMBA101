@@ -1,13 +1,13 @@
 import { Redirect } from 'expo-router'
 import Constants from 'expo-constants'
 import { useAuth } from '../src/auth/useAuth'
-import { LitFinSplash } from '../src/ui-litfin'
+import { BnSplash } from '../src/ui'
 
 /**
  * Splash gate. Decides whether to send the user to the role picker
  * (no user) or into the role-aware tab navigator (signed in).
  *
- * LitFin-styled — navy slate ground, gold wordmark reveal, gold
+ * BossNyumba-styled — navy slate ground, gold wordmark reveal, gold
  * spinner. Matches the marketing-site hero rhythm so the first paint
  * feels continuous with the web brand.
  */
@@ -15,9 +15,9 @@ export default function IndexRoute(): JSX.Element {
   const { user, ready } = useAuth()
   const tagline =
     (Constants.expoConfig?.extra?.['splashTagline'] as string | undefined) ??
-    'Ofisi ya Mgodi. Estate intelligence.'
+    'Estate intelligence, in your pocket.'
   if (!ready) {
-    return <LitFinSplash wordmark="BOSSNYUMBA" tagline={tagline} showSpinner />
+    return <BnSplash wordmark="BOSSNYUMBA" tagline={tagline} showSpinner />
   }
   if (!user) {
     return <Redirect href="/onboarding/welcome" />

@@ -1,9 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import type { ProvenanceEnvelope } from '@/types/listing'
 
 /**
- * Buyer-mobile equivalent of the owner-web ProvenancePill.
+ * Tenant-mobile equivalent of the owner-web ProvenancePill.
  *
  * Implements principle 5 of the Chat-as-OS Bidirectional Parity
  * Manifesto: every bid / inquiry / kyc row in a tenant-mobile list
@@ -33,7 +33,7 @@ export function ProvenancePill({ provenance, onPress }: ProvenancePillProps) {
   if (provenance.via === 'legacy' || provenance.via === 'unknown') return null
 
   const tone =
-    provenance.via === 'chat' ? tokens.color.gold : tokens.color.textMuted
+    provenance.via === 'chat' ? tokens.color.accent : tokens.color.textMuted
   const label = LABEL[provenance.via]
   const tappable = provenance.via === 'chat' && !!provenance.sessionId && !!onPress
 

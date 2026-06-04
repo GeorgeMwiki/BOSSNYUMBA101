@@ -8,7 +8,7 @@
  * shape so the swap is mechanical.
  *
  * Source for label conventions: research doc §9 (Brand-lock alignment) and
- * §0/§1/§4/§5 (terminology — "Mgodi", "Zamu", "Anza muhtasari", etc.).
+ * §0/§1/§4/§5 (terminology — "Eneo", "Zamu", "Anza muhtasari", etc.).
  */
 
 import type { Lang } from '../../auth/types'
@@ -16,7 +16,7 @@ import type { LocalizedCopy } from './types'
 
 export const COPY = Object.freeze({
   title: { sw: 'Muhtasari wa Meneja', en: 'Manager Cockpit' },
-  bandSitePulse: { sw: 'Mapigo ya Mgodi', en: 'Site Pulse' },
+  bandSitePulse: { sw: 'Mapigo ya Eneo', en: 'Site Pulse' },
   bandExceptions: { sw: 'Vikwazo vya Sasa', en: 'Live Exceptions' },
   bandCrew: { sw: 'Wafanyakazi wa Zamu', en: 'Crew Roster' },
   bandTasks: { sw: 'Foleni ya Kazi', en: 'Task Queue' },

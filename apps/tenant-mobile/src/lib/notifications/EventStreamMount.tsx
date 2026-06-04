@@ -7,7 +7,7 @@ import { appendIncomingEvent } from './inbox-store'
 
 /**
  * Mountable side-effect — opens the cockpit SSE socket while the app is
- * foregrounded and pipes every buyer-relevant event into the inbox store.
+ * foregrounded and pipes every tenant-relevant event into the inbox store.
  * Renders nothing.
  */
 export function EventStreamMount(): null {

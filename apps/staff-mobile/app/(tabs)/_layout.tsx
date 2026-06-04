@@ -18,7 +18,7 @@
 import { useMemo } from 'react'
 import { Tabs } from 'expo-router'
 import { useI18n } from '../../src/i18n/useI18n'
-import { tokens } from '../../src/ui-litfin'
+import { tokens } from '../../src/ui'
 import { useWorkforceTabConfig } from '../../src/lib/hooks/useWorkforceTabConfig'
 
 /**
@@ -37,7 +37,7 @@ const CATALOG_TO_SCREEN: Readonly<Record<string, string>> = {
   dispatch: 'sites',
   incidents: 'decisions',
   'drill-log': 'sites',
-  assay: 'docs',
+  inspection: 'docs',
   treasury: 'cash',
   compliance: 'docs',
   chat: 'home',

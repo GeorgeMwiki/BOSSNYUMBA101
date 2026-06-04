@@ -9,14 +9,16 @@ import {
   selectRecommended,
   summarisePipeline
 } from '../marketplace/home/derivations'
-import { summariseBuyerPerformance } from '../marketplace/home/performance'
+import { summariseTenantPerformance } from '../marketplace/home/performance'
 import type { Bid, Listing } from '../types/listing'
-import type { BuyerUser } from '../types/auth'
+import type { TenantUser } from '../types/auth'
 
-const baseSeller = {
+// `TenantUser` + the `role: 'tenant'` sentinel mirror the auth-session
+// identity layer the dashboard composes against.
+const baseLandlord = {
   id: 's1',
-  name: 'Geita Cooperative',
-  pmlNumber: 'PML-001',
+  name: 'Mwanza Cooperative',
+  licenceNumber: 'LIC-001',
   rating: 4.6,
   verified: true
 } as const
@@ -24,19 +26,19 @@ const baseSeller = {
 function buildListing(overrides: Partial<Listing> = {}): Listing {
   return {
     id: overrides.id ?? 'L1',
-    mineral: 'gold_concentrate',
-    title: overrides.title ?? 'Geita gold lot A',
-    grade: '12 g/t',
-    quantityKg: 25,
-    originSite: 'Geita site 1',
-    originRegion: 'Geita',
-    seller: baseSeller,
-    priceTzsPerKg: 2_500_000,
+    propertyType: 'two_bedroom',
+    title: overrides.title ?? 'Mwanza 2-bed lot A',
+    grade: 'A',
+    floorAreaSqm: 25,
+    propertyAddress: 'Mwanza block 1',
+    originRegion: 'Mwanza',
+    landlord: baseLandlord,
+    rentPerMonthTzs: 2_500_000,
     priceHintTzs: 62_500_000,
     photos: [],
-    assayPdfUrl: 'https://example.invalid/a.pdf',
-    assayResults: [],
-    chainOfCustody: [],
+    inspectionReportUrl: 'https://example.invalid/a.pdf',
+    inspectionResults: [],
+    ownershipHistory: [],
     listedAt: '2026-05-25T08:00:00Z',
     status: 'open',
     ...overrides
@@ -47,10 +49,10 @@ function buildBid(overrides: Partial<Bid> = {}): Bid {
   return {
     id: overrides.id ?? 'B1',
     listingId: 'L1',
-    listingTitle: 'Geita gold lot A',
-    mineral: 'gold_concentrate',
-    offerTzsPerKg: 2_400_000,
-    quantityKg: 20,
+    listingTitle: 'Mwanza 2-bed lot A',
+    propertyType: 'two_bedroom',
+    offerRentPerMonthTzs: 2_400_000,
+    floorAreaSqm: 20,
     status: overrides.status ?? 'pending',
     placedAt: overrides.placedAt ?? '2026-05-20T08:00:00Z',
     thread: overrides.thread ?? [],
@@ -58,10 +60,10 @@ function buildBid(overrides: Partial<Bid> = {}): Bid {
   }
 }
 
-const authedUser: BuyerUser = {
-  id: 'buyer-uuid-1',
-  role: 'buyer',
-  companyName: 'Acme Refining',
+const authedUser: TenantUser = {
+  id: 'tenant-uuid-1',
+  role: 'tenant',
+  companyName: 'Acme Holdings',
   countryCode: 'TZ',
   preferredLang: 'sw',
   kycStatus: 'approved',
@@ -99,14 +101,14 @@ describe('dashboard i18n', () => {
   })
 })
 
-describe('BuyerDashboard composition (section selection)', () => {
+describe('TenantDashboard composition (section selection)', () => {
   it('exposes data for all six dashboard sections without crashing', () => {
     const listings: readonly Listing[] = [
       buildListing({ id: 'L1', listedAt: '2026-05-25T08:00:00Z' }),
       buildListing({
         id: 'L2',
         listedAt: '2026-05-24T08:00:00Z',
-        seller: { ...baseSeller, id: 's2', rating: 4.9 }
+        landlord: { ...baseLandlord, id: 's2', rating: 4.9 }
       })
     ]
     const bids: readonly Bid[] = [
@@ -129,11 +131,11 @@ describe('BuyerDashboard composition (section selection)', () => {
     expect(pipeline.total).toBe(2)
     expect(pipeline.accepted).toBe(1)
     // 6. performance
-    const perf = summariseBuyerPerformance(bids, Date.parse('2026-05-26T00:00:00Z'))
+    const perf = summariseTenantPerformance(bids, Date.parse('2026-05-26T00:00:00Z'))
     expect(perf.bidsPlaced).toBeGreaterThanOrEqual(0)
   })
 
-  it('shows empty state when buyer has no bids', () => {
+  it('shows empty state when tenant has no applications', () => {
     const pipeline = summarisePipeline([])
     expect(pipeline.total).toBe(0)
     expect(pipeline.negotiating).toBe(0)
@@ -141,7 +143,7 @@ describe('BuyerDashboard composition (section selection)', () => {
     expect(pipeline.closed).toBe(0)
     const active = selectActiveBids([], 5)
     expect(active.length).toBe(0)
-    const perf = summariseBuyerPerformance([])
+    const perf = summariseTenantPerformance([])
     expect(perf.bidsPlaced).toBe(0)
     expect(perf.winRatePct).toBe(0)
     expect(perf.dealVolumeTzs).toBe(0)
@@ -152,8 +154,8 @@ describe('dashboardGuard (tenant isolation)', () => {
   it('allows the matching tenant', () => {
     const outcome = evaluateDashboardGuard({
       user: authedUser,
-      expectedTenantId: 'tenant-buyer-1',
-      currentTenantId: 'tenant-buyer-1'
+      expectedTenantId: 'tenant-1',
+      currentTenantId: 'tenant-1'
     })
     expect(outcome.kind).toBe('allow')
   })
@@ -161,8 +163,8 @@ describe('dashboardGuard (tenant isolation)', () => {
   it('redirects to /auth/login when tenant mismatches', () => {
     const outcome = evaluateDashboardGuard({
       user: authedUser,
-      expectedTenantId: 'tenant-buyer-1',
-      currentTenantId: 'tenant-buyer-2'
+      expectedTenantId: 'tenant-1',
+      currentTenantId: 'tenant-2'
     })
     expect(outcome).toEqual({ kind: 'redirect', to: '/auth/login' })
   })

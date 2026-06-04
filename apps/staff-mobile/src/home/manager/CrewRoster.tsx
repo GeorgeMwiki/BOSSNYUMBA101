@@ -1,6 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
-import { miningApi } from '../../api/client'
+import { managerApi } from '../../api/client'
 import { PreviewBanner } from '../../components/PreviewBanner'
 import { Section } from '../../components/Section'
 import { useI18n } from '../../i18n/useI18n'
@@ -29,7 +29,7 @@ function useAttendance(siteId: string | null): UseQueryResult<AttendanceResponse
   return useQuery<AttendanceResponse, Error>({
     queryKey: ['manager', 'attendance', siteId ?? 'auto'],
     queryFn: ({ signal }) =>
-      miningApi.get<AttendanceResponse>('/attendance', {
+      managerApi.get<AttendanceResponse>('/attendance', {
         signal,
         query: {
           shift: 'current',

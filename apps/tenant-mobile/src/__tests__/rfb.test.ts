@@ -4,35 +4,35 @@ import en from '../i18n/en.json'
 import sw from '../i18n/sw.json'
 import { translate } from '../i18n'
 
-// `../api/rfb` re-exports RFB_MINERAL_KINDS but pulls expo-secure-store
+// `../api/rfb` re-exports RFB_UNIT_TYPES but pulls expo-secure-store
 // transitively via api/client → auth/token, which trips the vitest
 // rollup parser. Inline the catalog (it is intentionally duplicated in
 // the source so the gateway zod enum and the FE constants stay in
 // lock-step — a divergence test ensures they don't drift).
-const RFB_MINERAL_KINDS = [
-  'gold',
-  'tanzanite',
-  'diamond',
-  'copper',
-  'cobalt',
-  'nickel',
-  'iron',
-  'coal',
-  'silver',
-  'rare_earth',
-  'limestone',
-  'gypsum',
-  'salt',
-  'gemstone_other'
+const RFB_UNIT_TYPES = [
+  'studio',
+  'one_bedroom',
+  'two_bedroom',
+  'three_bedroom',
+  'four_bedroom_plus',
+  'five_bedroom_plus',
+  'commercial',
+  'industrial',
+  'mixed_use',
+  'retail',
+  'office',
+  'warehouse',
+  'land',
+  'other'
 ] as const
 
-describe('R11 — RFB mineral kinds catalog', () => {
-  it('exposes the 14 mineral kinds the gateway accepts', () => {
-    expect(RFB_MINERAL_KINDS.length).toBe(14)
-    expect(RFB_MINERAL_KINDS).toContain('gold')
-    expect(RFB_MINERAL_KINDS).toContain('tanzanite')
-    expect(RFB_MINERAL_KINDS).toContain('copper')
-    expect(RFB_MINERAL_KINDS).toContain('rare_earth')
+describe('R11 — RFB unit types catalog', () => {
+  it('exposes the 14 unit types the gateway accepts', () => {
+    expect(RFB_UNIT_TYPES.length).toBe(14)
+    expect(RFB_UNIT_TYPES).toContain('studio')
+    expect(RFB_UNIT_TYPES).toContain('two_bedroom')
+    expect(RFB_UNIT_TYPES).toContain('commercial')
+    expect(RFB_UNIT_TYPES).toContain('mixed_use')
   })
 })
 
@@ -43,8 +43,8 @@ describe('R11 — RFB i18n bundle', () => {
       'subtitle',
       'create_cta',
       'create_title',
-      'mineral_label',
-      'tonnage_min_label',
+      'unit_type_label',
+      'floor_area_min_label',
       'unit_price_label',
       'delivery_by_label',
       'delivery_by_placeholder',
@@ -62,7 +62,7 @@ describe('R11 — RFB i18n bundle', () => {
       'status_cancelled',
       'response_count_one',
       'response_count_other',
-      'tonnage_required_invalid',
+      'floor_area_required_invalid',
       'unit_price_invalid',
       'delivery_in_past'
     ] as const

@@ -36,7 +36,6 @@
  *   language is `sw` per the global hard rule.
  */
 
-// @ts-nocheck — Hono v4 ContextVariableMap drift; same pattern as
 // dsar.router.ts + head-briefing.router.ts.
 
 import { Hono } from 'hono';

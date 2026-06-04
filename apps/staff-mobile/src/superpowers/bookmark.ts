@@ -2,7 +2,7 @@
  * Superpower 8 — bookmark / pin a ticket / unit for the day's run.
  */
 import { useCallback } from 'react'
-import { miningApi } from '../api/client'
+import { managerApi } from '../api/client'
 import { enqueueUndoToast } from './undo'
 import { rememberRecentSearch } from './search'
 import type { NavigateTarget } from './navigate'
@@ -23,7 +23,7 @@ export function useBookmarkGesture(): (b: BookmarkInput) => Promise<void> {
   return useCallback(async (b) => {
     let pinnedId = ''
     try {
-      const res = await miningApi.post<PinApiResponse>('/superpowers/pinned-items', {
+      const res = await managerApi.post<PinApiResponse>('/superpowers/pinned-items', {
         entityType: b.entityType,
         entityId: b.entityId,
         label: b.label,

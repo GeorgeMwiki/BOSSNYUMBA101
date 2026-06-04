@@ -1,4 +1,4 @@
-import { API_BASE_URL, MINING_PREFIX, DEFAULT_TIMEOUT_MS } from '../api/config'
+import { API_BASE_URL, MANAGER_PREFIX, DEFAULT_TIMEOUT_MS } from '../api/config'
 import { getAuthToken } from '../auth/session'
 import {
   PhotoAdvisorRequestSchema,
@@ -63,7 +63,7 @@ export async function analyzePhoto(
     throw asError('UNAUTHENTICATED', 'missing_auth_token')
   }
 
-  const url = `${API_BASE_URL}${MINING_PREFIX}${VISION_TURN_PATH}`
+  const url = `${API_BASE_URL}${MANAGER_PREFIX}${VISION_TURN_PATH}`
   const controller = new AbortController()
   const timer = setTimeout(() => {
     controller.abort()
@@ -96,7 +96,7 @@ export async function analyzePhoto(
     throw asError(
       'BACKEND_VISION_UNAVAILABLE',
       `vision_endpoint_not_wired_${response.status}`,
-      { path: `${MINING_PREFIX}${VISION_TURN_PATH}` }
+      { path: `${MANAGER_PREFIX}${VISION_TURN_PATH}` }
     )
   }
 

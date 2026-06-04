@@ -12,4 +12,4 @@
  *   DELETE /api/v1/portal-genui/tabs/:id
  */
 
-export { default as portalGenUIRouter } from './portal-genui.router.js';
+export { default as portalGenUIRouter } from './portal-genui.hono.js';

@@ -6,7 +6,7 @@ import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { Button } from '../../src/forms/Button'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { useOnlineStatus } from '../../src/offline/useOnlineStatus'
 import { useAuth } from '../../src/auth/useAuth'
@@ -19,29 +19,29 @@ const HISTORY_LIMIT = 10
 
 const COPY = {
   loading: 'Inapakia historia... · Loading history...',
-  empty: 'Bado hujahesabu scoop. · No scoops counted yet.',
+  empty: 'Bado hujahesabu kitengo. · No units counted yet.',
   errorPrefix: 'Hitilafu: ',
-  scoopOk: 'Scoop imerekodiwa kwenye seva.',
-  scoopQueued: 'Scoop imehifadhiwa offline.'
+  unitOk: 'Kitengo kimerekodiwa kwenye seva.',
+  unitQueued: 'Kitengo kimehifadhiwa offline.'
 } as const
 
-interface OreParcel {
+interface UnitCheck {
   readonly id: string
-  readonly siteId: string
-  readonly massKg: string | null
-  readonly storageLocation: string | null
+  readonly propertyId: string
+  readonly areaSqm: string | null
+  readonly location: string | null
   readonly createdAt: string
 }
 
 interface ListResponse {
   readonly success: true
-  readonly data: ReadonlyArray<OreParcel>
+  readonly data: ReadonlyArray<UnitCheck>
 }
 
-interface CreateParcelInput {
-  readonly siteId: string
-  readonly massKg?: string
-  readonly storageLocation?: string
+interface CreateUnitCheckInput {
+  readonly propertyId: string
+  readonly areaSqm?: string
+  readonly location?: string
   readonly attributes?: Record<string, unknown>
 }
 
@@ -49,27 +49,27 @@ export default function Screen(): JSX.Element {
   return (
     <RoleGuard screenId={SCREEN_ID}>
       <ScreenShell screenId={SCREEN_ID}>
-        <ExcavatorCounter />
+        <UnitCounter />
       </ScreenShell>
     </RoleGuard>
   )
 }
 
-function ExcavatorCounter(): JSX.Element {
+function UnitCounter(): JSX.Element {
   const { user } = useAuth()
   const { online } = useOnlineStatus()
   const queryClient = useQueryClient()
-  const queryKey = useMemo(() => [SCREEN_ID, 'ore-parcels', user?.tenantId ?? ''], [user?.tenantId])
+  const queryKey = useMemo(() => [SCREEN_ID, 'unit-checks', user?.tenantId ?? ''], [user?.tenantId])
 
   const history = useQuery<ListResponse, ApiError>({
     queryKey,
-    queryFn: () => miningApi.get<ListResponse>('/ore-parcels', { query: { limit: HISTORY_LIMIT } }),
+    queryFn: () => managerApi.get<ListResponse>('/unit-checks', { query: { limit: HISTORY_LIMIT } }),
     enabled: Boolean(user)
   })
 
-  const mutation = useMutation<OreParcel, ApiError, CreateParcelInput>({
+  const mutation = useMutation<UnitCheck, ApiError, CreateUnitCheckInput>({
     mutationFn: async (input) => {
-      const resp = await miningApi.post<{ success: true; data: OreParcel }>('/ore-parcels', input)
+      const resp = await managerApi.post<{ success: true; data: UnitCheck }>('/unit-checks', input)
       return resp.data
     },
     onSuccess: () => {
@@ -85,8 +85,8 @@ function ExcavatorCounter(): JSX.Element {
   const onTap = useCallback((): void => {
     if (!user) return
     mutation.mutate({
-      siteId: user.tenantId,
-      storageLocation: 'excavator-tap',
+      propertyId: user.tenantId,
+      location: 'unit-tap',
       attributes: { source: 'W-M-06', tapAtIso: new Date().toISOString() }
     })
   }, [mutation, user])
@@ -97,17 +97,17 @@ function ExcavatorCounter(): JSX.Element {
 
   return (
     <View>
-      <Section title="Hesabu ya leo" hint="Bonyeza kitufe kikubwa kwa kila scoop">
+      <Section title="Hesabu ya leo" hint="Bonyeza kitufe kikubwa kwa kila kitengo">
         <View style={styles.countBox}>
           <Text style={styles.countValue}>{rows.length}</Text>
-          <Text style={styles.countLabel}>Scoops</Text>
+          <Text style={styles.countLabel}>Vitengo</Text>
           <Text style={styles.countCaption}>
-            Scoop ya mwisho: {rows[0] ? formatHMS(rows[0].createdAt) : '—'}
+            Kitengo cha mwisho: {rows[0] ? formatHMS(rows[0].createdAt) : '—'}
           </Text>
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Ongeza scoop moja"
+          accessibilityLabel="Ongeza kitengo kimoja"
           onPress={onTap}
           disabled={mutation.isPending}
           style={({ pressed }) => [
@@ -121,7 +121,7 @@ function ExcavatorCounter(): JSX.Element {
           ) : (
             <>
               <Text style={styles.fabPlus}>+</Text>
-              <Text style={styles.fabLabel}>SCOOP</Text>
+              <Text style={styles.fabLabel}>KITENGO</Text>
             </>
           )}
         </Pressable>
@@ -130,7 +130,7 @@ function ExcavatorCounter(): JSX.Element {
           <Text style={styles.errorText}>{COPY.errorPrefix}{mutation.error.message}</Text>
         ) : null}
         {mutation.isSuccess ? (
-          <Text style={styles.successText}>{COPY.scoopOk}</Text>
+          <Text style={styles.successText}>{COPY.unitOk}</Text>
         ) : null}
       </Section>
       <Section title={`Historia ya hivi karibuni (${rows.length}/${HISTORY_LIMIT})`}>
@@ -150,10 +150,10 @@ function ExcavatorCounter(): JSX.Element {
             <Text style={styles.muted}>{COPY.empty}</Text>
           </View>
         ) : null}
-        {rows.map((parcel, idx) => (
-          <View key={parcel.id} style={styles.histRow}>
+        {rows.map((unit, idx) => (
+          <View key={unit.id} style={styles.histRow}>
             <Text style={styles.histIndex}>#{rows.length - idx}</Text>
-            <Text style={styles.histTime}>{formatHMS(parcel.createdAt)}</Text>
+            <Text style={styles.histTime}>{formatHMS(unit.createdAt)}</Text>
           </View>
         ))}
       </Section>

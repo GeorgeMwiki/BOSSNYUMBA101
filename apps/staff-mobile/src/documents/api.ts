@@ -1,12 +1,21 @@
 /**
- * Workforce-mobile wire client for /api/v1/mining/document-intelligence.
+ * Staff-mobile wire client for the document Q&A + upload surface.
  *
- * Builds on the canonical `miningApi` helpers in `../api/client.ts` so the
+ * The Q&A / summarise flow maps to doc-chat.router.ts (mounted
+ * /api/v1/doc-chat): POST /sessions, POST /sessions/:id/ask,
+ * GET /sessions, GET /sessions/:id/messages. Upload registration + listing
+ * map to documents.hono.ts (mounted /api/v1/documents): POST / and GET /.
+ *
+ * Builds on the shared operator client helpers in `../api/client.ts` so the
  * bearer token, timeouts, and error envelope are handled identically to
- * every other mining surface.
+ * every other operator surface.
+ *
+ * NOTE: doc-chat and documents live under top-level /api/v1 routers, while
+ * the shared client wrapper prefixes the operator base; the cross-router
+ * base for these calls is flagged for coordinated follow-up.
  */
 
-import { miningApi } from '../api/client'
+import { managerApi } from '../api/client'
 import type {
   AskResponse,
   DocumentSession,
@@ -30,8 +39,11 @@ export interface UploadInput {
 }
 
 export async function registerUpload(input: UploadInput): Promise<UploadResult> {
-  const response = await miningApi.post<Envelope<UploadResult>>(
-    '/document-intelligence/upload',
+  // documents.hono.ts POST / registers the pre-uploaded blob. (It expects
+  // `name`/`url`; the fileName/mimeType/fileSize shape below is preserved
+  // and the field-name delta is flagged for the backend contract.)
+  const response = await managerApi.post<Envelope<UploadResult>>(
+    '/documents',
     input,
   )
   if (!response.success || !response.data) {
@@ -41,8 +53,8 @@ export async function registerUpload(input: UploadInput): Promise<UploadResult> 
 }
 
 export async function listDocuments(limit = 50): Promise<ReadonlyArray<UploadedDocument>> {
-  const response = await miningApi.get<Envelope<{ documents: ReadonlyArray<UploadedDocument> }>>(
-    `/document-intelligence/documents?limit=${encodeURIComponent(String(limit))}`,
+  const response = await managerApi.get<Envelope<{ documents: ReadonlyArray<UploadedDocument> }>>(
+    `/documents?limit=${encodeURIComponent(String(limit))}`,
   )
   if (!response.success || !response.data) {
     return []
@@ -59,9 +71,9 @@ export interface CreateSessionInput {
 export async function createSession(
   input: CreateSessionInput,
 ): Promise<{ readonly sessionId: string; readonly session: DocumentSession }> {
-  const response = await miningApi.post<
+  const response = await managerApi.post<
     Envelope<{ sessionId: string; session: DocumentSession }>
-  >('/document-intelligence/sessions', input)
+  >('/doc-chat/sessions', input)
   if (!response.success || !response.data) {
     throw new Error(response.error?.message ?? 'Failed to open session')
   }
@@ -75,8 +87,8 @@ export interface AskInput {
 }
 
 export async function askSession(input: AskInput): Promise<AskResponse> {
-  const response = await miningApi.post<Envelope<AskResponse>>(
-    `/document-intelligence/sessions/${encodeURIComponent(input.sessionId)}/ask`,
+  const response = await managerApi.post<Envelope<AskResponse>>(
+    `/doc-chat/sessions/${encodeURIComponent(input.sessionId)}/ask`,
     // English default per CLAUDE.md (flipped 2026-05).
     { question: input.question, language: input.language ?? 'en' },
   )
@@ -92,8 +104,12 @@ export interface SummaryInput {
 }
 
 export async function summariseDocument(input: SummaryInput): Promise<SummaryResponse> {
-  const response = await miningApi.post<Envelope<SummaryResponse>>(
-    `/document-intelligence/documents/${encodeURIComponent(input.documentId)}/summary`,
+  // FLAGGED: per-document summary (POST /documents/:id/summary) is NOT
+  // implemented on doc-chat; this path is preserved pending a backend
+  // contract. The session ask flow (createSession + askSession) is the
+  // available summarise path today.
+  const response = await managerApi.post<Envelope<SummaryResponse>>(
+    `/doc-chat/documents/${encodeURIComponent(input.documentId)}/summary`,
     // English default per CLAUDE.md (flipped 2026-05).
     { language: input.language ?? 'en' },
   )

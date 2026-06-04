@@ -77,14 +77,14 @@ describe('WorkerHeroCardData shape (compile-time contract)', () => {
   it('accepts a fully populated worker payload', () => {
     const data: WorkerHeroCardData = {
       workerName: 'Asha M.',
-      roleLabel: 'Pit operator',
+      roleLabel: 'Field technician',
       shiftStatus: 'active',
       shiftDetail: 'Morning 06:00–14:00',
       nextTask: {
         id: 'task-1',
-        titleEn: 'Inspect blast safety zone',
-        titleSw: 'Kagua eneo la usalama wa kulipua',
-        location: 'Pit 3 · 200 m',
+        titleEn: 'Inspect fire safety zone',
+        titleSw: 'Kagua eneo la usalama wa moto',
+        location: 'Block C · 200 m',
         startedAt: '2026-05-29T07:15:00+03:00',
       },
     }
@@ -94,7 +94,7 @@ describe('WorkerHeroCardData shape (compile-time contract)', () => {
   it('accepts a null nextTask (between-tasks state)', () => {
     const data: WorkerHeroCardData = {
       workerName: 'Asha M.',
-      roleLabel: 'Pit operator',
+      roleLabel: 'Field technician',
       shiftStatus: 'on_break',
       nextTask: null,
     }
@@ -116,12 +116,12 @@ describe('buildHeroData', () => {
 
   it('prefers swahili role label when locale is sw', () => {
     const data = buildHeroData(
-      { roleLabel: 'Pit operator', roleLabelSw: 'Mchimbaji wa shimo' },
+      { roleLabel: 'Field technician', roleLabelSw: 'Fundi wa eneo' },
       null,
       'Asha',
       'sw',
     )
-    expect(data.roleLabel).toBe('Mchimbaji wa shimo')
+    expect(data.roleLabel).toBe('Fundi wa eneo')
   })
 
   it('returns a populated next task when ids and titles are present', () => {

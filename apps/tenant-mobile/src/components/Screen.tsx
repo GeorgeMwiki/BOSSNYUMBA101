@@ -1,7 +1,7 @@
 import { ReactNode } from 'react'
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 
 export interface ScreenProps {
   readonly children: ReactNode
@@ -12,7 +12,7 @@ export interface ScreenProps {
 }
 
 /**
- * LitFin-themed shell — navy-slate ground (the marketing + owner-web
+ * BossNyumba-themed shell — navy-slate ground (the marketing + owner-web
  * foundation), gold pull-to-refresh tint, no inner padding by default
  * so screens own their hero rhythm.
  */
@@ -23,7 +23,7 @@ export function Screen({ children, scroll = true, padded = true, refreshing, onR
       <RefreshControl
         refreshing={Boolean(refreshing)}
         onRefresh={onRefresh}
-        tintColor={tokens.color.gold}
+        tintColor={tokens.color.accent}
       />
     ) : undefined
   return (

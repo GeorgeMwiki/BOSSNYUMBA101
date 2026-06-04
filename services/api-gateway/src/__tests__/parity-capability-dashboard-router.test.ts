@@ -13,7 +13,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Hono } from 'hono';
 import jwt from 'jsonwebtoken';
-import { parityCapabilityDashboardRouter } from '../routes/parity-capability-dashboard.router';
+import { parityCapabilityDashboardRouter } from '../routes/parity-capability-dashboard.hono';
 import { getJwtSecret } from '../config/jwt';
 
 function mintJwt(role: 'TENANT_ADMIN' | 'ADMIN' | 'SUPER_ADMIN' = 'TENANT_ADMIN'): string {

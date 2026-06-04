@@ -5,7 +5,7 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -71,7 +71,7 @@ interface MaintenanceMutationVars {
   readonly nextStatus: MaintenanceStatus
 }
 
-const QUERY_KEY = ['mining', 'maintenance', 'open'] as const
+const QUERY_KEY = ['estate', 'maintenance', 'open'] as const
 
 export default function Screen(): JSX.Element {
   return (
@@ -88,7 +88,7 @@ function ScheduledApprovals(): JSX.Element {
   const query = useQuery<ReadonlyArray<MaintenanceEvent>, ApiError>({
     queryKey: QUERY_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<MaintenanceListResponse>('/maintenance/', {
+      const response = await managerApi.get<MaintenanceListResponse>('/maintenance/', {
         signal,
         query: { status: 'open' }
       })
@@ -103,7 +103,7 @@ function ScheduledApprovals(): JSX.Element {
     { previous: ReadonlyArray<MaintenanceEvent> | undefined }
   >({
     mutationFn: async ({ event, nextStatus }) => {
-      const response = await miningApi.post<{ success: true; data: MaintenanceEvent }>(
+      const response = await managerApi.post<{ success: true; data: MaintenanceEvent }>(
         '/maintenance/',
         {
           assetId: event.assetId,

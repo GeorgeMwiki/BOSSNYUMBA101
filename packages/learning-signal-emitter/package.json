@@ -1,0 +1,22 @@
+{
+  "name": "@bossnyumba/learning-signal-emitter",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Emits one LearningSignal per (action, outcome) pair: a pure reward model scores the outcome into [-1, 1], a per-power-tier isolation gate enforces user/org/platform boundaries (k-anonymity before any platform rollup), then the signal fans out to injected belief / reflexion / mastery / pattern / persona-prompt / preference sinks. Real-estate domain (leases, rent, maintenance, compliance) — the emitter never writes a belief directly; the belief sink owns that path. No DB/env/network: every side effect is an injected port.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

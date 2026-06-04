@@ -1,6 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
-import { miningApi } from '../../api/client'
+import { managerApi } from '../../api/client'
 import { PreviewBanner } from '../../components/PreviewBanner'
 import { useI18n } from '../../i18n/useI18n'
 import { colors } from '../../theme/colors'
@@ -24,7 +24,7 @@ function fetchSitePulse(
   siteId: string | null,
   signal: AbortSignal
 ): Promise<SitePulseData> {
-  return miningApi.get<SitePulseData>('/cockpit', {
+  return managerApi.get<SitePulseData>('/cockpit', {
     signal,
     ...(siteId ? { query: { siteId } } : {})
   })

@@ -21,7 +21,7 @@ export {
   createMarketplaceRouter,
   __defaultStoreForTests,
   type MarketplaceRouterDeps,
-} from './marketplace.router.js';
+} from './marketplace.hono.js';
 export type {
   ApiEnvelope,
   ApplicationRecord,

@@ -9,11 +9,8 @@ import { fontSize, radius, spacing } from '../../src/theme/spacing'
 const FIELD_LINKS: ReadonlyArray<string> = [
   'W-M-02',
   'W-M-04',
-  'W-M-05',
   'W-M-06',
   'W-M-07',
-  'W-M-08',
-  'W-M-09',
   'W-M-11',
   'W-M-12',
   'W-M-17',

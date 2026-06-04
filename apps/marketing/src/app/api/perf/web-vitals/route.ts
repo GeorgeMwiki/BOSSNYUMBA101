@@ -37,7 +37,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: 'bad-shape' }, { status: 400 });
     }
-    console.log('[perf:web-vitals]', JSON.stringify(parsed.data)); // eslint-disable-line no-console -- reason: perf telemetry sink fallback; @borjie/observability adapter wired in a follow-up wave
+    console.log('[perf:web-vitals]', JSON.stringify(parsed.data)); // eslint-disable-line no-console -- reason: perf telemetry sink fallback; @bossnyumba/observability adapter (from the parent fork) wired in a follow-up wave
     return NextResponse.json({ ok: true }, { status: 202 });
   } catch (error) {
     console.error('[perf:web-vitals] handler failed:', error); // eslint-disable-line no-console -- reason: edge route error path

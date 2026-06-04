@@ -17,7 +17,6 @@
  * Auth: Supabase JWT via authMiddleware. Tenant + owner-scoped.
  */
 
-// @ts-nocheck — Hono v4 ContextVariableMap drift; same pattern as
 // other owner.hono routes (mwikila-inbox.hono.ts).
 
 import { Hono } from 'hono';

@@ -7,18 +7,18 @@ import { EmployeeDashboard } from '../../src/dashboard/EmployeeDashboard'
 import { ManagerDashboard } from '../../src/dashboard/ManagerDashboard'
 import { OwnerDashboard } from '../../src/dashboard/OwnerDashboard'
 import {
-  LitFinPageHero,
-  LitFinButton,
+  BnPageHero,
+  BnButton,
   greet,
   tokens
-} from '../../src/ui-litfin'
+} from '../../src/ui'
 
 const SCREEN_ID = 'dashboard'
 
 /**
  * Dashboard tab — Dashibodi (Swahili) / Dashboard (English).
  *
- * LitFin-styled — opens with the borrower-dashboard hero rhythm
+ * BossNyumba-styled — opens with the borrower-dashboard hero rhythm
  * (eyebrow + display title + warm bilingual greeting + CTAs), then
  * routes into the role-aware composed status surface. The Home tab
  * remains chat-first.
@@ -31,8 +31,8 @@ export default function DashboardTab(): JSX.Element {
   const eyebrow = lang === 'sw' ? 'Dashibodi · BossNyumba' : 'Operator dashboard'
   const subtitle = role === 'owner'
     ? lang === 'sw'
-      ? 'Hali ya mgodi wako kwa mtazamo mmoja: pesa, uzalishaji, leseni, na maamuzi.'
-      : 'Your mine at a glance — cash, production, licences, and decisions.'
+      ? 'Hali ya mali yako kwa mtazamo mmoja: pesa, ukaaji, mikataba, na maamuzi.'
+      : 'Your portfolio at a glance — cash, occupancy, leases, and decisions.'
     : role === 'manager'
       ? lang === 'sw'
         ? 'Hali ya tovuti: timu, matukio na vifaa kwa wakati halisi.'
@@ -46,20 +46,20 @@ export default function DashboardTab(): JSX.Element {
   return (
     <RoleGuard screenId={SCREEN_ID}>
       <ScreenShell screenId={SCREEN_ID}>
-        <LitFinPageHero
+        <BnPageHero
           eyebrow={eyebrow}
           title={greet(lang, firstName)}
           subtitle={subtitle}
           actions={
             <>
-              <LitFinButton
+              <BnButton
                 label={primaryCtaLabel}
                 onPress={() => undefined}
                 variant="primary"
                 size="md"
                 leadingIcon="*"
               />
-              <LitFinButton
+              <BnButton
                 label={secondaryCtaLabel}
                 onPress={() => undefined}
                 variant="secondary"

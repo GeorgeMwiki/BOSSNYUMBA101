@@ -82,7 +82,7 @@ const COPY: Record<Locale, SignUpCopy> = {
  *
  * Static form skeleton. POST handler owned by API agent #226. We
  * deliberately use "Sign Up" language only — no "Start a free trial"
- * (Borjie discipline).
+ * (product discipline).
  */
 export default async function SignUpPage() {
   const locale = await getLocale();

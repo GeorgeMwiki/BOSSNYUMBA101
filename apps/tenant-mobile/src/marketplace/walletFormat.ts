@@ -3,10 +3,10 @@
  *
  * BossNyumba hard rule: every money render uses currency-aware formatting,
  * never hard-coded "TZS". We keep this scoped to the three currencies
- * the buyer marketplace touches (TZS primary, USD + KES secondary).
+ * the tenant marketplace touches (TZS primary, USD + KES secondary).
  *
  * Domestic non-TZS contracts are rejected at the API layer; this
- * formatter is display-only for the buyer's own wallet.
+ * formatter is display-only for the tenant's own wallet.
  */
 
 export type WalletCurrency = 'TZS' | 'USD' | 'KES'

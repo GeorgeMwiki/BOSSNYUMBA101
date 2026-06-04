@@ -45,7 +45,7 @@ export function selectLiveLobby(
   return sorted.slice(0, limit)
 }
 
-// Recommended feed seed: we currently rank by seller rating then price
+// Recommended feed seed: we currently rank by landlord rating then price
 // hint, deterministic so React Query caches stably. ML rank will land on
 // the gateway later (per BossNyumba cognitive composition); when it does, the
 // home swaps in the ranked feed without changing component contracts.
@@ -55,8 +55,8 @@ export function selectRecommended(
 ): readonly Listing[] {
   const open = listings.filter((listing) => listing.status === 'open')
   const sorted = [...open].sort((a, b) => {
-    if (b.seller.rating !== a.seller.rating) {
-      return b.seller.rating - a.seller.rating
+    if (b.landlord.rating !== a.landlord.rating) {
+      return b.landlord.rating - a.landlord.rating
     }
     return a.priceHintTzs - b.priceHintTzs
   })

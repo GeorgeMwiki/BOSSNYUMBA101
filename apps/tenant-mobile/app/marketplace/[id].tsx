@@ -15,7 +15,7 @@ import { PlaceBidSheet } from '@/components/PlaceBidSheet'
 import { useTranslation } from '@/hooks/useTranslation'
 import { fetchListing } from '@/api/marketplace'
 import { queryKeys } from '@/api/queryKeys'
-import { formatKg, formatTzs } from '@/components/formatters'
+import { formatSqm, formatTzs } from '@/components/formatters'
 import { mockDistanceKm, formatKm } from '@/marketplace/distance'
 import { colors } from '@/theme/colors'
 import { radius, spacing, typography } from '@/theme/spacing'
@@ -71,7 +71,7 @@ export default function MarketplaceDetail() {
     )
   }
 
-  const timelineItems = listing.chainOfCustody.map((step, idx) => ({
+  const timelineItems = listing.ownershipHistory.map((step, idx) => ({
     id: `step-${idx}`,
     title: step
   }))
@@ -79,7 +79,7 @@ export default function MarketplaceDetail() {
   return (
     <>
       <Screen>
-        <SectionHeader title={listing.title} subtitle={`${listing.originSite} · ${listing.originRegion}`} />
+        <SectionHeader title={listing.title} subtitle={`${listing.propertyAddress} · ${listing.originRegion}`} />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photos}>
           {listing.photos.map((url) => (
@@ -89,32 +89,32 @@ export default function MarketplaceDetail() {
 
         <Card>
           <KeyValueRow label={t('marketplace.grade')} value={listing.grade} />
-          <KeyValueRow label={t('marketplace.quantity')} value={formatKg(listing.quantityKg)} />
-          <KeyValueRow label={t('marketplace.origin')} value={listing.originSite} />
+          <KeyValueRow label={t('marketplace.quantity')} value={formatSqm(listing.floorAreaSqm)} />
+          <KeyValueRow label={t('marketplace.origin')} value={listing.propertyAddress} />
           <KeyValueRow label={t('marketplace.distance')} value={formatKm(mockDistanceKm(listing.originRegion))} />
           <KeyValueRow
             label={t('marketplace.price_hint')}
-            value={`${formatTzs(listing.priceTzsPerKg)} / ${t('common.kg')}`}
+            value={`${formatTzs(listing.rentPerMonthTzs)} / ${t('common.per_month')}`}
           />
         </Card>
 
         <Card>
           <Text style={styles.cardTitle}>{t('marketplace.seller_rating')}</Text>
           <View style={styles.sellerRow}>
-            <Text style={styles.sellerName}>{listing.seller.name}</Text>
+            <Text style={styles.sellerName}>{listing.landlord.name}</Text>
             <Pill
-              label={listing.seller.verified ? 'verified' : 'unverified'}
-              tone={listing.seller.verified ? 'success' : 'warning'}
+              label={listing.landlord.verified ? 'verified' : 'unverified'}
+              tone={listing.landlord.verified ? 'success' : 'warning'}
             />
           </View>
           <Text style={styles.meta}>
-            PML {listing.seller.pmlNumber} · {listing.seller.rating.toFixed(1)} / 5
+            Licence {listing.landlord.licenceNumber} · {listing.landlord.rating.toFixed(1)} / 5
           </Text>
         </Card>
 
         <Card>
-          <Text style={styles.cardTitle}>Assay</Text>
-          {listing.assayResults.map((result) => (
+          <Text style={styles.cardTitle}>{t('marketplace.view_inspection')}</Text>
+          {listing.inspectionResults.map((result) => (
             <KeyValueRow
               key={result.element}
               label={`${result.element} (${result.method})`}
@@ -122,12 +122,12 @@ export default function MarketplaceDetail() {
             />
           ))}
           <View style={{ marginTop: spacing.md }}>
-            <PdfViewer url={listing.assayPdfUrl} title="Assay PDF" />
+            <PdfViewer url={listing.inspectionReportUrl} title={t('marketplace.view_inspection')} />
           </View>
         </Card>
 
         <Card>
-          <Text style={styles.cardTitle}>{t('marketplace.chain_of_custody')}</Text>
+          <Text style={styles.cardTitle}>{t('marketplace.ownership_trail')}</Text>
           <Timeline items={timelineItems} />
         </Card>
 

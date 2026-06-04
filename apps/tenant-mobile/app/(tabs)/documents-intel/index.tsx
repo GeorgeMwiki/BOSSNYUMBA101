@@ -11,9 +11,9 @@ import { colors } from '@/theme/colors'
 import { radius, spacing, typography } from '@/theme/spacing'
 
 /**
- * B-DOC-INTEL-01 — Buyer Documents Intelligence tab.
+ * B-DOC-INTEL-01 — Tenant Documents Intelligence tab.
  *
- * Lists every document the buyer has uploaded — counterparty contracts,
+ * Lists every document the tenant has uploaded — counterparty contracts,
  * RFPs, letters. Tapping a row navigates to the DocumentExplorer route.
  * The upload CTA is the canonical DocumentUploadButton — the same
  * component the chat composer uses as a paperclip.

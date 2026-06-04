@@ -5,7 +5,7 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { useOnlineStatus } from '../../src/offline/useOnlineStatus'
 import { useAuth } from '../../src/auth/useAuth'
@@ -14,13 +14,13 @@ import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
 const SCREEN_ID = 'W-M-20'
-const MISSING_LIST_ENDPOINT = 'GET /api/v1/mining/documents (orodha)'
+const MISSING_LIST_ENDPOINT = 'GET /api/v1/documents (orodha)'
 
 const COPY = {
   loading: 'Inatengeneza barua... · Creating letter...',
   errorPrefix: 'Hitilafu: ',
   missing: `Endpoint ya orodha haijaundwa: ${MISSING_LIST_ENDPOINT}`,
-  hint: 'Weka taarifa za safari, kisha tuma kuingia kwenye seva. Hii itarekodiwa kama document upload.',
+  hint: 'Weka taarifa za uletaji, kisha tuma kuingia kwenye seva. Hii itarekodiwa kama document upload.',
   letterOk: 'Barua imehifadhiwa kwenye seva.',
   letterQueued: 'Barua imehifadhiwa offline kwa sync.'
 } as const
@@ -42,8 +42,8 @@ interface UploadResponse {
 interface LetterDraft {
   readonly truckReg: string
   readonly driverName: string
-  readonly mineral: string
-  readonly tonnage: string
+  readonly itemType: string
+  readonly quantity: string
   readonly routeFrom: string
   readonly routeTo: string
 }
@@ -64,8 +64,8 @@ function DriverLetterView(): JSX.Element {
   const [draft, setDraft] = useState<LetterDraft>({
     truckReg: '',
     driverName: '',
-    mineral: '',
-    tonnage: '',
+    itemType: '',
+    quantity: '',
     routeFrom: '',
     routeTo: ''
   })
@@ -74,20 +74,20 @@ function DriverLetterView(): JSX.Element {
 
   const mutation = useMutation<DocumentRow, ApiError, LetterDraft>({
     mutationFn: async (input) => {
-      const filename = `driver-letter-${input.truckReg.trim() || Date.now()}.pdf`
-      const resp = await miningApi.post<UploadResponse>('/documents/upload', {
+      const filename = `delivery-note-${input.truckReg.trim() || Date.now()}.pdf`
+      const resp = await managerApi.post<UploadResponse>('/documents', {
         fileName: filename,
         fileSize: 0,
         mimeType: 'application/pdf',
         documentType: 'other',
-        entityType: 'driver_letter',
+        entityType: 'delivery_note',
         entityId: user?.id ?? null,
-        tags: ['driver_letter', SCREEN_ID],
+        tags: ['delivery_note', SCREEN_ID],
         metadata: {
           truckReg: input.truckReg.trim(),
           driverName: input.driverName.trim(),
-          mineral: input.mineral.trim(),
-          tonnage: input.tonnage.trim(),
+          itemType: input.itemType.trim(),
+          quantity: input.quantity.trim(),
           routeFrom: input.routeFrom.trim(),
           routeTo: input.routeTo.trim(),
           issuedAtIso: new Date().toISOString()
@@ -104,10 +104,10 @@ function DriverLetterView(): JSX.Element {
         const queued = await enqueueWrite('driver_letter_ack', input)
         setIssued({
           id: queued.id,
-          fileName: `driver-letter-${input.truckReg || queued.id}.pdf`,
+          fileName: `delivery-note-${input.truckReg || queued.id}.pdf`,
           fileUrl: '',
           documentType: 'other',
-          entityType: 'driver_letter',
+          entityType: 'delivery_note',
           entityId: user?.id ?? null
         })
         setConfirmation('queued')
@@ -138,12 +138,12 @@ function DriverLetterView(): JSX.Element {
 
   return (
     <View>
-      <Section title="Barua ya dereva" hint="Itahifadhiwa kama document upload kwenye seva">
+      <Section title="Hati ya uletaji" hint="Itahifadhiwa kama document upload kwenye seva">
         <PreviewBanner kind="env-missing" />
         <Text style={styles.missing}>{COPY.missing}</Text>
         <Text style={styles.muted}>{COPY.hint}</Text>
       </Section>
-      <Section title="Maelezo ya safari">
+      <Section title="Maelezo ya uletaji">
         {Object.entries(FIELDS).map(([key, label]) => (
           <View key={key} style={styles.fieldRow}>
             <Text style={styles.label}>{label}</Text>
@@ -200,8 +200,8 @@ function DriverLetterView(): JSX.Element {
 const FIELDS: Readonly<Record<keyof LetterDraft, string>> = {
   truckReg: 'Namba ya gari',
   driverName: 'Jina la dereva',
-  mineral: 'Aina ya madini',
-  tonnage: 'Uzito (tani)',
+  itemType: 'Aina ya bidhaa',
+  quantity: 'Kiasi',
   routeFrom: 'Kutoka',
   routeTo: 'Kwenda'
 }

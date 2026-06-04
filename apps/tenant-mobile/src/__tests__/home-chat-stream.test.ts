@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * Buyer-mobile SSE streaming + R7 polish tests.
+ * Tenant-mobile SSE streaming + R7 polish tests.
  *
  * Coverage:
  *   • `parseFrame` decodes every SSE event kind tenant-mobile cares about.
@@ -159,7 +159,7 @@ function frame(record: Record<string, unknown>): string {
   return JSON.stringify(record)
 }
 
-describe('parseFrame — SSE envelope decoding (buyer)', () => {
+describe('parseFrame — SSE envelope decoding (tenant)', () => {
   it('decodes a turn.accepted frame and emits the threadId', () => {
     const parsed = parseFrame({ data: frame({ event: 'turn.accepted', threadId: 'thr-1' }) })
     expect(parsed?.kind).toBe('accepted')
@@ -198,7 +198,7 @@ describe('parseFrame — SSE envelope decoding (buyer)', () => {
     expect(parsed?.kind).toBe('message_chunk')
   })
 
-  it('decodes a tool_call frame using the buyer ToolCall schema', () => {
+  it('decodes a tool_call frame using the tenant ToolCall schema', () => {
     const parsed = parseFrame({
       data: frame({
         event: 'tool_call',
@@ -238,7 +238,7 @@ describe('parseFrame — SSE envelope decoding (buyer)', () => {
   })
 })
 
-describe('chatTurns — buyer reducer state machine', () => {
+describe('chatTurns — tenant reducer state machine', () => {
   it('optimisticTurn starts in pending with empty text', () => {
     const t = optimisticTurn('Habari')
     expect(t.kind).toBe('pending')
@@ -355,7 +355,7 @@ describe('shouldAutoScroll — only when at-bottom (R7 §11.2.b)', () => {
   })
 })
 
-describe('R7 timing constants — match the research doc (buyer)', () => {
+describe('R7 timing constants — match the research doc (tenant)', () => {
   it('exposes every value the HomeChat surface relies on', () => {
     expect(R7_TIMINGS['SKELETON_ONSET_MS']).toBe(200)
     expect(R7_TIMINGS['SLOW_INDICATOR_MS']).toBe(3_000)

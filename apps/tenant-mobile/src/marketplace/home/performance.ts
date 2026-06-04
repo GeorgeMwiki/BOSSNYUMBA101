@@ -1,12 +1,13 @@
 import type { Bid } from '@/types/listing'
 
-// Buyer performance is derived client-side from bid history per §6 of the
-// SOTA spec: win rate (rolling 90d), response time (median time-to-counter
-// when buyer is responding to a counter offer), and deal volume (sum of
-// accepted-bid notional). No dedicated endpoint exists yet — when one
-// lands, this module remains the single read-side aggregator.
+// Tenant performance is derived client-side from application history per
+// §6 of the SOTA spec: win rate (rolling 90d), response time (median
+// time-to-counter when the tenant is responding to a counter offer), and
+// deal volume (sum of accepted-application notional). No dedicated
+// endpoint exists yet — when one lands, this module remains the single
+// read-side aggregator.
 
-export interface BuyerPerformanceSummary {
+export interface TenantPerformanceSummary {
   readonly bidsPlaced: number
   readonly bidsAccepted: number
   readonly winRatePct: number
@@ -39,42 +40,42 @@ function median(values: readonly number[]): number | null {
   return isOdd ? right : (left + right) / 2
 }
 
-function buyerResponseLatencies(bid: Bid): readonly number[] {
-  // Median time from a seller's last message to the buyer's next reply.
-  // Bound at the bid level so a single hot thread can't dominate.
+function tenantResponseLatencies(bid: Bid): readonly number[] {
+  // Median time from a landlord's last message to the tenant's next reply.
+  // Bound at the application level so a single hot thread can't dominate.
   const out: number[] = []
-  let lastSellerAt: number | null = null
+  let lastLandlordAt: number | null = null
   for (const message of bid.thread) {
     const ts = Date.parse(message.sentAt)
     if (Number.isNaN(ts)) {
       continue
     }
-    if (message.from === 'seller') {
-      lastSellerAt = ts
-    } else if (lastSellerAt !== null) {
-      const delta = ts - lastSellerAt
+    if (message.from === 'landlord') {
+      lastLandlordAt = ts
+    } else if (lastLandlordAt !== null) {
+      const delta = ts - lastLandlordAt
       if (delta >= 0) {
         out.push(delta)
       }
-      lastSellerAt = null
+      lastLandlordAt = null
     }
   }
   return out
 }
 
-export function summariseBuyerPerformance(
+export function summariseTenantPerformance(
   bids: readonly Bid[],
   now: number = Date.now()
-): BuyerPerformanceSummary {
+): TenantPerformanceSummary {
   const recent = bids.filter((bid) => isWithinWindow(bid.placedAt, now, NINETY_DAYS_MS))
   const accepted = recent.filter((bid) => bid.status === 'accepted')
   const bidsPlaced = recent.length
   const bidsAccepted = accepted.length
   const winRatePct = bidsPlaced === 0 ? 0 : Math.round((bidsAccepted / bidsPlaced) * 100)
-  const latencies = recent.flatMap(buyerResponseLatencies)
+  const latencies = recent.flatMap(tenantResponseLatencies)
   const medianResponseMs = median(latencies)
   const dealVolumeTzs = accepted.reduce(
-    (sum, bid) => sum + bid.offerTzsPerKg * bid.quantityKg,
+    (sum, bid) => sum + bid.offerRentPerMonthTzs,
     0
   )
   return {

@@ -21,7 +21,7 @@ import { usePhotoPicker, type CapturedMedia } from '../../src/media/usePhotoPick
 import { useVoiceRecorder } from '../../src/media/useVoiceRecorder'
 import { useLocation } from '../../src/location/useLocation'
 import { useOnlineStatus } from '../../src/offline/useOnlineStatus'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import {
   incidentFullSchema,
@@ -161,7 +161,7 @@ function IncidentForm(): JSX.Element {
       try {
         const local = buildPayload(values)
         const remote = toRemotePayload(local)
-        const response = await miningApi.post<{ id?: string }>('/incidents', remote)
+        const response = await managerApi.post<{ id?: string }>('/incidents', remote)
         const reference = response?.id ?? `local_${local.submittedAt}`
         setSubmitted({ reference })
       } catch (error) {

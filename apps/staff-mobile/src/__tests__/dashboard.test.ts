@@ -63,7 +63,7 @@ vi.mock('@tanstack/react-query', () => ({
 }))
 
 vi.mock('../api/client', () => ({
-  miningApi: { get: vi.fn(async () => ({})) }
+  managerApi: { get: vi.fn(async () => ({})) }
 }))
 
 vi.mock('../sync/queue', () => ({
@@ -130,11 +130,11 @@ describe('OwnerDashboard composition', () => {
     expect(source).toContain('AiDailyBrief')
   })
 
-  it('wires AlertQueue + KpiStrip + ProductionVsTarget (slots 2-4)', () => {
+  it('wires AlertQueue + KpiStrip + OccupancyVsTarget (slots 2-4)', () => {
     const source = OwnerDashboard.toString()
     expect(source).toContain('AlertQueue')
     expect(source).toContain('KpiStrip')
-    expect(source).toContain('ProductionVsTarget')
+    expect(source).toContain('OccupancyVsTarget')
   })
 
   it('plants the owner-dashboard testID for e2e targeting', () => {

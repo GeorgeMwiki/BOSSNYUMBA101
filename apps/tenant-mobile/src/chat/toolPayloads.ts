@@ -1,35 +1,35 @@
 import { z } from 'zod'
 
-// Each buyer-context tool call carries a different result envelope. We
+// Each tenant-context tool call carries a different result envelope. We
 // keep the schemas here (not in `types.ts`) so the renderer can opt into
 // strict parsing while the chat history stays loose. A renderer that
 // can't safely parse falls back to a JSON dump and a friendly note.
 
 // --- Marketplace listings ---------------------------------------------------
 
-const SellerSchema = z.object({
+const LandlordSchema = z.object({
   id: z.string(),
   name: z.string(),
-  pmlNumber: z.string().optional().default(''),
+  licenceNumber: z.string().optional().default(''),
   rating: z.number().min(0).max(5).optional().default(0),
   verified: z.boolean().optional().default(false)
 })
 
 const ListingSchema = z.object({
   id: z.string(),
-  mineral: z.string(),
+  propertyType: z.string(),
   title: z.string(),
   grade: z.string(),
-  quantityKg: z.number(),
-  originSite: z.string().optional().default(''),
+  floorAreaSqm: z.number(),
+  propertyAddress: z.string().optional().default(''),
   originRegion: z.string(),
-  seller: SellerSchema,
-  priceTzsPerKg: z.number().optional().default(0),
+  landlord: LandlordSchema,
+  rentPerMonthTzs: z.number().optional().default(0),
   priceHintTzs: z.number(),
   photos: z.array(z.string()).optional().default([]),
-  assayPdfUrl: z.string().optional().default(''),
-  assayResults: z.array(z.unknown()).optional().default([]),
-  chainOfCustody: z.array(z.string()).optional().default([]),
+  inspectionReportUrl: z.string().optional().default(''),
+  inspectionResults: z.array(z.unknown()).optional().default([]),
+  ownershipHistory: z.array(z.string()).optional().default([]),
   listedAt: z.string(),
   status: z.enum(['open', 'reserved', 'closed'])
 })
@@ -44,7 +44,7 @@ export type MarketplaceListing = z.infer<typeof ListingSchema>
 
 const BidMessageSchema = z.object({
   id: z.string(),
-  from: z.enum(['buyer', 'seller']),
+  from: z.enum(['tenant', 'landlord']),
   body: z.string(),
   sentAt: z.string()
 })
@@ -53,9 +53,9 @@ const BidSchema = z.object({
   id: z.string(),
   listingId: z.string(),
   listingTitle: z.string(),
-  mineral: z.string(),
-  offerTzsPerKg: z.number(),
-  quantityKg: z.number(),
+  propertyType: z.string(),
+  offerRentPerMonthTzs: z.number(),
+  floorAreaSqm: z.number(),
   status: z.enum(['pending', 'accepted', 'rejected', 'countered']),
   placedAt: z.string(),
   thread: z.array(BidMessageSchema).optional().default([])
@@ -79,9 +79,9 @@ export const KycStatusResultSchema = z.object({
 export const BidRecommendationResultSchema = z.object({
   listingId: z.string(),
   listingTitle: z.string(),
-  mineral: z.string().optional(),
-  recommendedTzsPerKg: z.number(),
-  quantityKg: z.number(),
+  propertyType: z.string().optional(),
+  recommendedRentPerMonthTzs: z.number(),
+  floorAreaSqm: z.number(),
   paymentTerms: z.enum(['instant', '30d', '60d']).optional().default('instant'),
   rationale: z.string().optional()
 })
@@ -100,7 +100,7 @@ export const DealPipelineResultSchema = z.object({
 // Helpers ------------------------------------------------------------------
 //
 // We always parse the *result* slot if present, otherwise the *args* slot.
-// Buyer-side tools surface results, but the orchestrator sometimes only
+// Tenant-side tools surface results, but the orchestrator sometimes only
 // echoes the planned args before execution — we accept both shapes.
 
 export function extractPayload(toolCall: { readonly args?: unknown; readonly result?: unknown }): unknown {

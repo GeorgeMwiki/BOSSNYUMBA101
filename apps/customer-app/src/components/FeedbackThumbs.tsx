@@ -3,7 +3,7 @@
 /**
  * FeedbackThumbs — per-Jarvis-turn feedback widget.
  *
- * LITFIN parity gap B (`.planning/parity-litfin/02-memory-learning.md`):
+ * Upstream parity gap B (`.planning/parity/02-memory-learning.md`):
  *   BOSSNYUMBA built the entire feedback backend (kernel_feedback table,
  *   POST /feedback route, recordFeedback SDK method, renderFeedbackFragment
  *   in the kernel) but no UI surface mounted it. This component closes
@@ -24,7 +24,7 @@
  *   - The 👎 reason input is opt-in: clicking 👎 immediately fires the
  *     onFeedback('down') call AND reveals the reason input. If the user
  *     types a correction and submits, a SECOND call goes out with the
- *     reason. This matches LITFIN's emoji-tap-then-amplify flow.
+ *     reason. This matches the upstream fork's emoji-tap-then-amplify flow.
  */
 
 import { useCallback, useEffect, useState } from 'react';

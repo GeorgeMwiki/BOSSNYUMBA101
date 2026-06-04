@@ -16,7 +16,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 }))
 
 import { analyzePhoto, VISION_TURN_PATH } from '../pipeline'
-import { MINING_PREFIX } from '../../api/config'
+import { MANAGER_PREFIX } from '../../api/config'
 import * as session from '../../auth/session'
 import type { AnalyzePhotoArgs } from '../types'
 
@@ -63,14 +63,14 @@ afterEach(() => {
 describe('analyzePhoto — happy path', () => {
   it('posts the captured photo + GPS + prompt and decodes the typed reply', async () => {
     const body = {
-      summary: 'Eneo lina dalili za uchimbaji wa wazi.',
-      reasoning: 'Picha inaonyesha mashimo mawili na lori la mzigo.',
+      summary: 'Jengo lina dalili za nyufa kwenye ukuta wa nje.',
+      reasoning: 'Picha inaonyesha nyufa mbili na unyevu kwenye dari.',
       suggestions: ['Weka uzio wa usalama', 'Ongeza taa za jioni'],
       citations: [
         {
-          evidenceId: 'corpus_TZ_open_pit_001',
-          source: 'Tanzania Mining Act 2010, s.42',
-          excerpt: 'Open-pit operations must maintain a 30m setback…'
+          evidenceId: 'corpus_TZ_building_safety_001',
+          source: 'Tanzania Building Regulations 2010, s.42',
+          excerpt: 'Residential structures must maintain a 30m setback…'
         }
       ]
     }
@@ -80,10 +80,10 @@ describe('analyzePhoto — happy path', () => {
 
     expect(result.summary).toBe(body.summary)
     expect(result.suggestions).toHaveLength(2)
-    expect(result.citations[0]?.evidenceId).toBe('corpus_TZ_open_pit_001')
+    expect(result.citations[0]?.evidenceId).toBe('corpus_TZ_building_safety_001')
 
     const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? []
-    expect(String(calledUrl)).toContain(`${MINING_PREFIX}${VISION_TURN_PATH}`)
+    expect(String(calledUrl)).toContain(`${MANAGER_PREFIX}${VISION_TURN_PATH}`)
     expect(calledInit?.method).toBe('POST')
     expect((calledInit?.headers as Record<string, string>).Authorization).toBe(
       'Bearer test-token-xyz'

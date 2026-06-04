@@ -1,9 +1,9 @@
 /**
- * R11 — buyer lists their RFBs.
+ * R11 — applicant lists their requests for applications.
  *
  * Mounted at /rfb. Shows status + pending response count for each
- * RFB the buyer has posted, most-recent first. Top CTA opens the
- * create screen.
+ * request the applicant has posted, most-recent first. Top CTA opens
+ * the create screen.
  */
 import { useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
@@ -85,7 +85,7 @@ export default function RfbIndex() {
         <Card key={rfb.id}>
           <View style={styles.row}>
             <Text style={styles.title}>
-              {rfb.mineral_kind} · {rfb.tonnage_min} t
+              {rfb.unit_type} · {rfb.floor_area_min} m²
             </Text>
             <Pill
               label={t(`rfb.status_${rfb.status}`)}

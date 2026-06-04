@@ -1,9 +1,8 @@
 /**
  * BossNyumba blackboard — public surface (owner-portal local).
  *
- * Mirrors Borjie's owner-web blackboard so the chat ↔ board hook
- * lives in the same shape across repos. Other modules import only
- * from this index to keep the internal layout free to evolve.
+ * Other modules import only from this index so the internal layout
+ * stays free to evolve.
  */
 
 export { Blackboard } from './Blackboard';
