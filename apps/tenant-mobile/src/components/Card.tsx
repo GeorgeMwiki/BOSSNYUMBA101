@@ -8,9 +8,9 @@ export interface CardProps {
 }
 
 /**
- * Buyer card — LitFin signature: rounded 24, hairline white-on-navy
+ * Tenant card — signature: rounded 24, hairline white-on-navy
  * border, deep raised navy ground, soft drop shadow. Matches the
- * borrower portal "rounded-3xl bg-navy/60" recipe.
+ * tenant portal "rounded-3xl bg-navy/60" recipe.
  */
 export function Card({ children, onPress }: CardProps) {
   if (onPress) {

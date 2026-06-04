@@ -9,9 +9,9 @@ import {
 
 /**
  * AudiencePage — shared audience-vertical template for BossNyumba
- * marketing. Ported from Borjie's `audience/AudiencePage.tsx`, retuned
- * for real-estate vocabulary (landlords, tenants, leasing agencies)
- * and using only the design-system tokens already present in
+ * marketing. Ported from the parent fork's `audience/AudiencePage.tsx`,
+ * retuned for real-estate vocabulary (landlords, tenants, leasing
+ * agencies) and using only the design-system tokens already present in
  * BossNyumba (`surface`, `surface-sunken`, `signal-500`, `signal-700`,
  * `destructive`, `border`, `foreground`).
  *
@@ -26,7 +26,7 @@ import {
  *
  * Everything is presentational. The page that mounts this template
  * passes a typed copy object so audience-vertical files stay tiny
- * (38 LOC like Borjie's `for-pml/page.tsx`).
+ * (~38 LOC, e.g. the for-landlords vertical page).
  */
 
 export interface AudienceStat {

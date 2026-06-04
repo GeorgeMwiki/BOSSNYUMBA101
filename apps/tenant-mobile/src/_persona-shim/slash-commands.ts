@@ -30,8 +30,8 @@ const MANAGER: ReadonlyArray<string> = [
   'T3_module_manager',
 ];
 const SUPERVISOR: ReadonlyArray<string> = ['T1_supervisor_shift'];
-const PIT: ReadonlyArray<string> = ['T1_pit_operator', 'T4_field_employee'];
-const GEO: ReadonlyArray<string> = ['T1_geologist'];
+const FIELD: ReadonlyArray<string> = ['T1_field_technician', 'T4_field_employee'];
+const INSPECTOR: ReadonlyArray<string> = ['T1_inspector'];
 const TREASURY: ReadonlyArray<string> = ['T1_treasury_clerk'];
 const SAFETY: ReadonlyArray<string> = ['T1_safety_officer'];
 const COMPLIANCE: ReadonlyArray<string> = ['T1_compliance_clerk'];
@@ -74,7 +74,7 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
     {
       id: 'dispatch',
       label: { en: 'Dispatch board', sw: 'Bodi ya utumaji' },
-      hint: { en: 'Equipment routing', sw: 'Utumaji wa vifaa' },
+      hint: { en: 'Work-order routing', sw: 'Utumaji wa kazi' },
       personaSlugs: MANAGER,
     },
     {
@@ -94,56 +94,56 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
       id: 'shift',
       label: { en: 'My shift today', sw: 'Zamu yangu leo' },
       hint: { en: 'Roster + tasks', sw: 'Zamu na kazi' },
-      personaSlugs: [...SUPERVISOR, ...PIT],
+      personaSlugs: [...SUPERVISOR, ...FIELD],
     },
     {
       id: 'clock-in',
       label: { en: 'Clock in', sw: 'Ingia kazini' },
       hint: { en: 'Start your shift', sw: 'Anza zamu' },
-      personaSlugs: [...SUPERVISOR, ...PIT],
+      personaSlugs: [...SUPERVISOR, ...FIELD],
     },
     {
       id: 'clock-out',
       label: { en: 'Clock out', sw: 'Toka kazini' },
       hint: { en: 'End your shift', sw: 'Maliza zamu' },
-      personaSlugs: [...SUPERVISOR, ...PIT],
+      personaSlugs: [...SUPERVISOR, ...FIELD],
     },
     {
       id: 'tasks',
       label: { en: 'My tasks', sw: 'Kazi zangu' },
       hint: { en: 'Open work items', sw: 'Kazi zilizoanzishwa' },
-      personaSlugs: [...SUPERVISOR, ...PIT, ...GEO],
+      personaSlugs: [...SUPERVISOR, ...FIELD, ...INSPECTOR],
     },
     {
       id: 'toolbox',
-      label: { en: 'Toolbox talk', sw: 'Mazungumzo ya usalama' },
+      label: { en: 'Safety check-in', sw: 'Ukaguzi wa usalama' },
       hint: { en: 'Acknowledge today', sw: 'Thibitisha leo' },
-      personaSlugs: [...SUPERVISOR, ...PIT, ...SAFETY],
+      personaSlugs: [...SUPERVISOR, ...FIELD, ...SAFETY],
     },
     {
       id: 'incident-report',
       label: { en: 'Report incident', sw: 'Ripoti ajali' },
       hint: { en: 'Log a safety event', sw: 'Andika tukio la usalama' },
-      personaSlugs: [...SUPERVISOR, ...PIT, ...SAFETY],
+      personaSlugs: [...SUPERVISOR, ...FIELD, ...SAFETY],
     },
-    // Geologist
+    // Inspector
     {
       id: 'sample',
-      label: { en: 'Submit sample', sw: 'Wasilisha sampuli' },
-      hint: { en: 'Drill core or grab', sw: 'Sampuli ya kuchimba' },
-      personaSlugs: GEO,
+      label: { en: 'Submit inspection', sw: 'Wasilisha ukaguzi' },
+      hint: { en: 'Unit condition note', sw: 'Hali ya nyumba' },
+      personaSlugs: INSPECTOR,
     },
     {
       id: 'drill-log',
-      label: { en: 'Drill log', sw: 'Logi ya kuchimba' },
-      hint: { en: 'Today depth + grade', sw: 'Kina na ubora wa leo' },
-      personaSlugs: GEO,
+      label: { en: 'Condition log', sw: 'Logi ya hali' },
+      hint: { en: 'Today findings + grade', sw: 'Matokeo na daraja la leo' },
+      personaSlugs: INSPECTOR,
     },
     {
       id: 'assay',
-      label: { en: 'Assay results', sw: 'Matokeo ya uchunguzi' },
-      hint: { en: 'Latest lab reports', sw: 'Ripoti za karakana' },
-      personaSlugs: GEO,
+      label: { en: 'Inspection results', sw: 'Matokeo ya ukaguzi' },
+      hint: { en: 'Latest reports', sw: 'Ripoti za hivi karibuni' },
+      personaSlugs: INSPECTOR,
     },
     // Treasury
     {
@@ -160,8 +160,8 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
     },
     {
       id: 'royalty',
-      label: { en: 'Royalty status', sw: 'Hali ya kodi ya mrahaba' },
-      hint: { en: 'Government dues', sw: 'Madeni ya serikali' },
+      label: { en: 'Rent status', sw: 'Hali ya kodi' },
+      hint: { en: 'Collections + arrears', sw: 'Makusanyo na malimbikizo' },
       personaSlugs: TREASURY,
     },
     // Safety officer
@@ -180,7 +180,7 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
     // Compliance clerk
     {
       id: 'licences',
-      label: { en: 'Licences', sw: 'Leseni' },
+      label: { en: 'Leases', sw: 'Mikataba ya pango' },
       hint: { en: 'Expiry + status', sw: 'Kuisha muda na hali' },
       personaSlugs: COMPLIANCE,
     },
@@ -199,46 +199,49 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
   ]);
 
 /**
- * Buyer slash-command catalog. Used by the buyer-mobile chat composer.
+ * Renter slash-command catalog. Used by the tenant-mobile chat composer.
  * Personas: T1_buyer_marketplace_director (face) + T5_customer_concierge
- * (legacy fallback).
+ * (legacy fallback). NOTE (flagged): the `chain-of-custody` command id
+ * is resolved by the brain to a tool id, so the id string is kept while
+ * the label is reframed to a property concept; renaming the id needs a
+ * coordinated tool-catalog change.
  */
 export const BUYER_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
   Object.freeze([
     {
       id: 'search',
-      label: { en: 'Search parcels', sw: 'Tafuta mizigo' },
-      hint: { en: 'By mineral + price', sw: 'Kwa madini na bei' },
+      label: { en: 'Search units', sw: 'Tafuta nyumba' },
+      hint: { en: 'By type + rent', sw: 'Kwa aina na kodi' },
       personaSlugs: BUYER,
     },
     {
       id: 'listing',
       label: { en: 'Listing detail', sw: 'Maelezo ya orodha' },
-      hint: { en: 'Open a parcel', sw: 'Fungua mzigo' },
+      hint: { en: 'Open a unit', sw: 'Fungua nyumba' },
       personaSlugs: BUYER,
     },
     {
       id: 'place-bid',
-      label: { en: 'Place a bid', sw: 'Weka zabuni' },
-      hint: { en: 'Submit a price', sw: 'Wasilisha bei' },
+      label: { en: 'Apply', sw: 'Wasilisha maombi' },
+      hint: { en: 'Submit an application', sw: 'Tuma maombi' },
       personaSlugs: BUYER,
     },
     {
       id: 'my-bids',
-      label: { en: 'My bids', sw: 'Zabuni zangu' },
+      label: { en: 'My applications', sw: 'Maombi yangu' },
       hint: { en: 'Active + history', sw: 'Hai na historia' },
       personaSlugs: BUYER,
     },
     {
       id: 'market-intel',
       label: { en: 'Market intel', sw: 'Habari za soko' },
-      hint: { en: 'LBMA + trend', sw: 'Bei na mwelekeo' },
+      hint: { en: 'Rent + trend', sw: 'Kodi na mwelekeo' },
       personaSlugs: BUYER,
     },
     {
       id: 'chain-of-custody',
-      label: { en: 'Chain of custody', sw: 'Mlolongo wa umiliki' },
-      hint: { en: 'Parcel timeline', sw: 'Historia ya mzigo' },
+      label: { en: 'Listing history', sw: 'Historia ya orodha' },
+      hint: { en: 'Unit timeline', sw: 'Historia ya nyumba' },
       personaSlugs: BUYER,
     },
     {

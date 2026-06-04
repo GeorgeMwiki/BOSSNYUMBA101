@@ -1,9 +1,15 @@
 import { z } from 'zod'
 
-// Each buyer-context tool call carries a different result envelope. We
+// Each tenant-context tool call carries a different result envelope. We
 // keep the schemas here (not in `types.ts`) so the renderer can opt into
 // strict parsing while the chat history stays loose. A renderer that
 // can't safely parse falls back to a JSON dump and a friendly note.
+//
+// NOTE (flagged): the schema field names below (`mineral`, `pmlNumber`,
+// `originSite`, `assayPdfUrl`, `assayResults`, `quantityKg`, the
+// `'buyer' | 'seller'` enum) mirror the api-gateway wire response and
+// are kept as-is; renaming them to the property domain requires a
+// coordinated change to the gateway payloads.
 
 // --- Marketplace listings ---------------------------------------------------
 
@@ -100,7 +106,7 @@ export const DealPipelineResultSchema = z.object({
 // Helpers ------------------------------------------------------------------
 //
 // We always parse the *result* slot if present, otherwise the *args* slot.
-// Buyer-side tools surface results, but the orchestrator sometimes only
+// Tenant-side tools surface results, but the orchestrator sometimes only
 // echoes the planned args before execution — we accept both shapes.
 
 export function extractPayload(toolCall: { readonly args?: unknown; readonly result?: unknown }): unknown {

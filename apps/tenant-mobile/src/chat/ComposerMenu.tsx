@@ -1,6 +1,6 @@
 /**
  * ComposerMenu — RN-native sibling of @bossnyumba/chat-ui/composer's
- * SlashMenu + AtMenu. Renders an inline pop-up above the buyer chat
+ * SlashMenu + AtMenu. Renders an inline pop-up above the tenant chat
  * composer with up to MAX_ROWS rows. Tap a row to select.
  *
  * Web composer primitives are <div>+CSS only (per the chat-first

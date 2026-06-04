@@ -9,11 +9,11 @@
 import type { Listing } from '@/types/listing'
 
 export type TrustChipKind =
-  | 'gov-licensed'
-  | 'lab-assayed'
+  | 'landlord-verified'
+  | 'inspection-verified'
   | 'bossnyumba-vetted'
-  | 'chain-of-custody'
-  | 'seller-history'
+  | 'ownership-verified'
+  | 'landlord-history'
 
 export interface TrustChip {
   readonly kind: TrustChipKind
@@ -42,8 +42,15 @@ export interface DeriveTrustChipsArgs {
 const ASSAY_FRESHNESS_DAYS = 30
 
 /**
- * Returns the chip list given the fixture. Order is stable: gov → lab
- * → BossNyumba → custody → history.
+ * Returns the chip list given the fixture. Order is stable:
+ * landlord-verified → inspection-verified → BossNyumba-vetted →
+ * ownership-verified → landlord-history.
+ *
+ * NOTE (flagged): the `translate('marketplace.trust.*')` i18n keys and
+ * the `listing.seller.pmlNumber` / `assayPdfUrl` / `chainOfCustody` wire
+ * fields still carry legacy names; they live in non-owned i18n JSON and
+ * the shared `Listing` type, so they are kept pending a coordinated
+ * rename.
  */
 export function deriveTrustChips(args: DeriveTrustChipsArgs): ReadonlyArray<TrustChip> {
   const { listing, translate, now } = args
@@ -52,7 +59,7 @@ export function deriveTrustChips(args: DeriveTrustChipsArgs): ReadonlyArray<Trus
 
   if (listing.seller.pmlNumber.length > 0) {
     chips.push({
-      kind: 'gov-licensed',
+      kind: 'landlord-verified',
       label: translate('marketplace.trust.gov_licensed'),
       tone: 'verified',
       evidenceHandle: listing.seller.pmlNumber
@@ -66,7 +73,7 @@ export function deriveTrustChips(args: DeriveTrustChipsArgs): ReadonlyArray<Trus
     )
     const isFresh = Number.isFinite(ageDays) && ageDays <= ASSAY_FRESHNESS_DAYS
     chips.push({
-      kind: 'lab-assayed',
+      kind: 'inspection-verified',
       label: translate(
         isFresh ? 'marketplace.trust.lab_assayed' : 'marketplace.trust.lab_assayed_stale'
       ),
@@ -85,7 +92,7 @@ export function deriveTrustChips(args: DeriveTrustChipsArgs): ReadonlyArray<Trus
 
   if (listing.chainOfCustody.length > 0) {
     chips.push({
-      kind: 'chain-of-custody',
+      kind: 'ownership-verified',
       label: translate('marketplace.trust.chain_of_custody'),
       tone: 'verified',
       evidenceHandle: listing.chainOfCustody[0]
@@ -96,7 +103,7 @@ export function deriveTrustChips(args: DeriveTrustChipsArgs): ReadonlyArray<Trus
   if (rating > 0) {
     const tone: TrustChip['tone'] = rating >= 4.0 ? 'verified' : 'attention'
     const label = translate('marketplace.trust.seller_history') + ` · ${rating.toFixed(1)}★`
-    chips.push({ kind: 'seller-history', label, tone })
+    chips.push({ kind: 'landlord-history', label, tone })
   }
 
   return chips

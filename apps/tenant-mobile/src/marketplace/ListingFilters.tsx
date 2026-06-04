@@ -5,6 +5,10 @@ import { buildMineralOptions, buildRegionOptions, sortOptions } from './options'
 import { colors } from '@/theme/colors'
 import { radius, spacing, typography } from '@/theme/spacing'
 import type { ListingFilters, SortKey } from '@/api/marketplace'
+// NOTE (flagged): `Mineral` + `filters.mineral` come from the shared
+// wire `Listing` type, and `marketplace.mineral_filter` is a non-owned
+// i18n key; both keep legacy names pending the coordinated type +
+// i18n rename to PropertyType / property_type_filter.
 import type { Mineral } from '@/types/listing'
 
 export interface ListingFiltersBarProps {

@@ -27,7 +27,7 @@ export interface DocumentUploadButtonProps {
  * Behaviour:
  *   1) Calls expo-document-picker with the allowed mime list.
  *   2) Validates the picked file's size + mime defensively.
- *   3) POSTs to /api/v1/mining/document-intelligence/upload.
+ *   3) POSTs to /api/v1/documents (registers the pre-uploaded blob).
  *   4) Fires onUploaded with the server's UploadResult.
  *
  * The component is pure UI — no global state, no react-query. Caller

@@ -137,7 +137,7 @@ export default function BidDetail() {
             key={msg.id}
             from={msg.from}
             body={msg.body}
-            authorLabel={msg.from === 'buyer' ? t('profile.title') : 'Seller'}
+            authorLabel={msg.from === 'buyer' ? t('profile.title') : 'Landlord'}
           />
         ))}
         <View style={styles.composer}>

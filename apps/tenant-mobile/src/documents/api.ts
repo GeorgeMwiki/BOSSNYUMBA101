@@ -1,5 +1,13 @@
 /**
- * Buyer-mobile wire client for /api/v1/mining/document-intelligence.
+ * Tenant-mobile wire client for the document Q&A surface.
+ *
+ * Two backend routers back this client:
+ *   - document registration + listing → documents.hono.ts, mounted at
+ *     `/api/v1/documents` (DOCUMENTS_PREFIX).
+ *   - chat-with-your-documents sessions + ask → doc-chat.router.ts,
+ *     mounted at `/api/v1/doc-chat` (DOC_CHAT_PREFIX): POST `/sessions`,
+ *     POST `/sessions/:id/ask`, GET `/sessions`, GET
+ *     `/sessions/:id/messages`.
  *
  * Builds on the apiFetch helper so the bearer token + envelope handling
  * stay identical to every other tenant-mobile API call.
@@ -20,7 +28,8 @@ interface Envelope<T> {
   readonly error?: { readonly code?: string; readonly message?: string }
 }
 
-const BASE = '/api/v1/mining/document-intelligence'
+const DOCUMENTS_PREFIX = '/api/v1/documents'
+const DOC_CHAT_PREFIX = '/api/v1/doc-chat'
 
 export interface UploadInput {
   readonly fileName: string
@@ -31,7 +40,11 @@ export interface UploadInput {
 }
 
 export async function registerUpload(input: UploadInput): Promise<UploadResult> {
-  const response = await apiFetch<Envelope<UploadResult>>(`${BASE}/upload`, {
+  // NOTE (flagged): documents.hono POST `/` expects { name, mimeType,
+  // size, url } for a pre-uploaded blob; this client still sends the
+  // legacy { fileName, fileSize, textSample, tags } shape. The request
+  // body needs reconciling with the real schema in a follow-up.
+  const response = await apiFetch<Envelope<UploadResult>>(`${DOCUMENTS_PREFIX}`, {
     method: 'POST',
     body: input,
   })
@@ -43,7 +56,7 @@ export async function registerUpload(input: UploadInput): Promise<UploadResult> 
 
 export async function listDocuments(limit = 50): Promise<ReadonlyArray<UploadedDocument>> {
   const response = await apiFetch<Envelope<{ documents: ReadonlyArray<UploadedDocument> }>>(
-    `${BASE}/documents?limit=${encodeURIComponent(String(limit))}`,
+    `${DOCUMENTS_PREFIX}?limit=${encodeURIComponent(String(limit))}`,
   )
   if (!response.success || !response.data) {
     return []
@@ -61,7 +74,7 @@ export async function createSession(
   input: CreateSessionInput,
 ): Promise<{ readonly sessionId: string; readonly session: DocumentSession }> {
   const response = await apiFetch<Envelope<{ sessionId: string; session: DocumentSession }>>(
-    `${BASE}/sessions`,
+    `${DOC_CHAT_PREFIX}/sessions`,
     { method: 'POST', body: input },
   )
   if (!response.success || !response.data) {
@@ -78,7 +91,7 @@ export interface AskInput {
 
 export async function askSession(input: AskInput): Promise<AskResponse> {
   const response = await apiFetch<Envelope<AskResponse>>(
-    `${BASE}/sessions/${encodeURIComponent(input.sessionId)}/ask`,
+    `${DOC_CHAT_PREFIX}/sessions/${encodeURIComponent(input.sessionId)}/ask`,
     {
       method: 'POST',
       body: { question: input.question, language: input.language ?? 'en' },
@@ -96,8 +109,12 @@ export interface SummaryInput {
 }
 
 export async function summariseDocument(input: SummaryInput): Promise<SummaryResponse> {
+  // NOTE (flagged): there is no per-document summary endpoint on the
+  // doc-chat router today (only session create + ask). This points at
+  // the doc-chat family for when it lands; until then it resolves to a
+  // 404, same as the prior path. Prefer createSession + askSession.
   const response = await apiFetch<Envelope<SummaryResponse>>(
-    `${BASE}/documents/${encodeURIComponent(input.documentId)}/summary`,
+    `${DOC_CHAT_PREFIX}/documents/${encodeURIComponent(input.documentId)}/summary`,
     {
       method: 'POST',
       body: { language: input.language ?? 'en' },

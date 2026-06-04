@@ -1,24 +1,23 @@
-// BossNyumba tenant-mobile palette — LitFin-aligned (2026-05).
+// BossNyumba tenant-mobile palette (2026-05).
 //
 // Direction: "Midnight Slate Ledger with Warm-Gold Signal" — matches
 // the marketing site, owner-web, and admin-web. Dark-navy slate
 // foundation (#0B0F19), warm gold as the only signal, cream off-white
 // type, emerald success, warm-red danger. Earth tones retained as
-// soft accents so mining-context cards (provenance, weighbridge) still
-// feel grounded.
+// soft accents so provenance / verification cards still feel grounded.
 //
 // Field-tested for outdoor readability on cheap Android devices — the
 // gold/cream contrast on the slate background lands at WCAG AA in
 // direct sunlight tests.
 
 export const colors = {
-  // Foundation — LitFin navy-slate family
+  // Foundation — navy-slate family
   forest: '#0B0F19',          // navy-slate primary background (was forest green)
-  forestDeep: '#070A12',      // deeper pit / scroll well
+  forestDeep: '#070A12',      // deeper well / scroll well
   forestSoft: '#11151F',      // raised card / surface
 
   // Signal — warm gold (one brand color)
-  gold: '#FFC857',            // LitFin hero gold (#FFC857)
+  gold: '#FFC857',            // hero gold (#FFC857)
   goldSoft: '#F5B23E',        // hover / pressed
   copper: '#FFD888',          // softer gold accent for runs
   earth: '#1E2330',           // hairline / divider on dark surfaces

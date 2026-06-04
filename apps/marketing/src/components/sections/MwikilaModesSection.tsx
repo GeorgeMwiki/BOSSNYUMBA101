@@ -16,7 +16,8 @@ import {
 import { getMessages, type Locale } from '@/lib/i18n';
 
 /**
- * MwikilaModesSection — BossNyumba's equivalent of LitFin's AIOfficerTabs.
+ * MwikilaModesSection — BossNyumba's AI Director mode switcher (the
+ * parent fork shipped an equivalent AIOfficerTabs surface).
  *
  * Seven tabs across the top: Build · Strategy · Operations · Document
  * · Finance · Risk · Compliance. Click a tab to swap the demo panel
@@ -249,9 +250,9 @@ function BuildMock() {
 }
 
 const SCENARIOS = [
-  { name: 'Bear · USD 1,750/oz', value: 'TZS 9.2B' },
-  { name: 'Base · USD 1,920/oz', value: 'TZS 10.4B' },
-  { name: 'Bull · USD 2,100/oz', value: 'TZS 11.6B' },
+  { name: 'Bear · 88% occupancy', value: 'TZS 9.2B' },
+  { name: 'Base · 94% occupancy', value: 'TZS 10.4B' },
+  { name: 'Bull · 98% occupancy', value: 'TZS 11.6B' },
 ] as const;
 function StrategyMock() {
   return (
@@ -278,10 +279,10 @@ function StrategyMock() {
 }
 
 const SHIFTS = [
-  { label: 'Shift A · Geita', value: '212 t', tone: 'good' as const },
-  { label: 'Shift B · Geita', value: '184 t', tone: 'good' as const },
-  { label: 'Diesel burned', value: '412 L', tone: 'warn' as const },
-  { label: 'Incidents', value: '0', tone: 'good' as const },
+  { label: 'Rent collected · Estate A', value: '212', tone: 'good' as const },
+  { label: 'Rent collected · Estate B', value: '184', tone: 'good' as const },
+  { label: 'Arrears flagged', value: '4', tone: 'warn' as const },
+  { label: 'Maintenance incidents', value: '0', tone: 'good' as const },
 ];
 function OperationsMock() {
   return (
@@ -313,10 +314,10 @@ function OperationsMock() {
 
 function DocumentMock() {
   const docs = [
-    'Regulator rent · April · TZS 18.4M',
-    'NHC EIA · Q1 emissions',
-    'OSHA shift log · 28 days',
-    'Off-take · Pamoja Refinery · 60 oz',
+    'Rent invoice · April · TZS 18.4M',
+    'Compliance filing · Q1 returns',
+    'Inspection log · 28 days',
+    'Vendor contract · Pamoja Facilities',
   ];
   return (
     <div className="space-y-2">
@@ -349,7 +350,7 @@ function FinanceMock() {
         {[
           { l: 'TZS', v: '412M' },
           { l: 'USD', v: '184k' },
-          { l: 'Au oz', v: '184' },
+          { l: 'Units', v: '184' },
         ].map((b) => (
           <div
             key={b.l}
@@ -365,7 +366,7 @@ function FinanceMock() {
         ))}
       </div>
       <div className="rounded-md border border-signal-500/30 bg-signal-500/5 px-3 py-2 text-xs text-foreground">
-        Vetted hedge proposal — 60 oz @ AM-fix
+        Vetted deposit sweep — TZS 60M @ mid-rate
       </div>
     </div>
   );
@@ -404,9 +405,9 @@ function RiskMock() {
 
 function ComplianceMock() {
   const entries = [
-    { seq: 18429, action: 'mine.turn_done', hash: '2e…440' },
-    { seq: 18430, action: 'mine.rent.draft', hash: '7c…918' },
-    { seq: 18431, action: 'mine.licence.scan', hash: 'a3…4c1' },
+    { seq: 18429, action: 'mwikila.turn_done', hash: '2e…440' },
+    { seq: 18430, action: 'mwikila.rent.draft', hash: '7c…918' },
+    { seq: 18431, action: 'mwikila.lease.scan', hash: 'a3…4c1' },
   ];
   return (
     <div className="space-y-2">

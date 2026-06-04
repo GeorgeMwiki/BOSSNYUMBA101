@@ -1,16 +1,16 @@
 /**
- * KYC atom catalogue for the buyer self-signup wizard.
+ * KYC atom catalogue for the tenant self-signup wizard.
  *
- * Mirrors the server-side `initialKycAtomsFor()` in
- * `packages/database/src/schemas/buyer-extensions.schema.ts`. We
- * intentionally redeclare the values here (instead of importing the
- * database package into the Expo bundle, which would pull
+ * Mirrors the server-side `initialKycAtomsFor()` in the database
+ * schema package (the `*-extensions.schema.ts` applicant-extensions
+ * source). We intentionally redeclare the values here (instead of
+ * importing the database package into the Expo bundle, which would pull
  * Drizzle / Postgres into a mobile build) — the test suite asserts the
  * two lists stay in lock-step.
  *
  * Each atom carries the i18n keys for its title/description plus a
- * `blocking` flag. Blocking atoms gate marketplace bidding; non-blocking
- * atoms can be skipped at signup time and completed later.
+ * `blocking` flag. Blocking atoms gate marketplace applications;
+ * non-blocking atoms can be skipped at signup time and completed later.
  */
 
 import type { LanguageCode } from '@/types/auth'
@@ -111,7 +111,7 @@ const SHARED_BUSINESS: ReadonlyArray<BuyerKycAtomSpec> = [
 ]
 
 /**
- * Return the ordered atom list for a buyer of the given kind.
+ * Return the ordered atom list for a tenant of the given kind.
  *
  * Returned array is immutable (frozen) — callers compose new arrays
  * rather than mutating the catalogue.

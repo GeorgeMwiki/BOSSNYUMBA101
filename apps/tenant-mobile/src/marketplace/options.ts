@@ -2,6 +2,10 @@ import type { Mineral } from '@/types/listing'
 import type { SortKey } from '@/api/marketplace'
 import type { ChipOption } from '@/components/ChipGroup'
 
+// NOTE (flagged): `mineralOptionsKeys` + `mineralGlyph` + the
+// `minerals.${value}` i18n keys are keyed on the shared wire `Mineral`
+// type; they keep legacy names pending the coordinated type + i18n
+// rename to PropertyType. The region list below is now property-domain.
 export const mineralOptionsKeys: readonly Mineral[] = [
   'gold_concentrate',
   'tanzanite_rough',
@@ -14,12 +18,12 @@ export const mineralOptionsKeys: readonly Mineral[] = [
 ] as const
 
 export const regionOptionsKeys: readonly string[] = [
-  'Geita',
-  'Manyara',
-  'Shinyanga',
+  'Dar es Salaam',
+  'Arusha',
+  'Mwanza',
+  'Dodoma',
   'Mbeya',
-  'Ruvuma',
-  'Kagera'
+  'Zanzibar'
 ] as const
 
 export function buildMineralOptions(translate: (key: string) => string): readonly ChipOption<Mineral>[] {

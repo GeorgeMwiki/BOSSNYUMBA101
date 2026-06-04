@@ -16,7 +16,7 @@ interface StatusComponent {
 
 const COMPONENTS: ReadonlyArray<StatusComponent> = [
   { name: 'Owner web cockpit',     description: 'Owner portal at app.bossnyumba.com',                status: 'operational' },
-  { name: 'Tenant + buyer mobile', description: 'iOS and Android apps',                              status: 'operational' },
+  { name: 'Tenant mobile',         description: 'iOS and Android apps',                              status: 'operational' },
   { name: 'API gateway',           description: 'Public + partner API at api.bossnyumba.com',       status: 'operational' },
   { name: 'Master Brain',          description: 'Mr. Mwikila reasoning + retrieval',                status: 'operational' },
   { name: 'M-Pesa connector',      description: 'TZ + KE rent collection rail',                     status: 'operational' },

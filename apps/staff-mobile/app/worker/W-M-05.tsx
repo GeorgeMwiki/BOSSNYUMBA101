@@ -13,11 +13,14 @@ import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
 const SCREEN_ID = 'W-M-05'
-const MISSING_ENDPOINT = 'GET /api/v1/mining/cockpit/sic-pings'
+// FLAGGED (unresolved): safety-officer presence check-ins have no property
+// resource. The live cockpit channel is GET /api/v1/cockpit/stream (carries
+// no such event kind today). Kept as a permanent env-missing state.
+const MISSING_ENDPOINT = 'GET /api/v1/cockpit/stream (safety check-ins)'
 
 const COPY = {
-  loading: 'Inapakia pings... · Loading pings...',
-  empty: 'Hakuna ping mpya. Endelea na kazi. · No new pings.',
+  loading: 'Inapakia ujumbe... · Loading messages...',
+  empty: 'Hakuna ujumbe mpya. Endelea na kazi. · No new messages.',
   errorPrefix: 'Hitilafu: ',
   missing: `Endpoint haijaundwa: ${MISSING_ENDPOINT}`,
   replyOk: 'Jibu limetumwa kwenye seva.',
@@ -47,9 +50,9 @@ function PingsView(): JSX.Element {
   const [blockers, setBlockers] = useState<string>('')
   const [confirmation, setConfirmation] = useState<'idle' | 'ok' | 'queued'>('idle')
 
-  // Reply mutation always uses the offline queue because no online SIC ping
-  // endpoint exists yet — sync queue flush will route to the canonical
-  // `/api/v1/mining/sic-pings` once the route lands.
+  // Reply mutation always uses the offline queue because no online safety
+  // check-in endpoint exists yet (FLAGGED unresolved) — the sync queue flush
+  // routes via the operator surface once such a route lands.
   const mutation = useMutation<{ id: string }, ApiError, PingReplyPayload>({
     mutationFn: async (input) => {
       const queued = await enqueueWrite('sic_ping', input)
@@ -76,13 +79,13 @@ function PingsView(): JSX.Element {
 
   return (
     <View>
-      <Section title="Pings zinazosubiri" hint="Endpoint ya orodha haijaundwa">
+      <Section title="Ujumbe unaosubiri" hint="Endpoint ya orodha haijaundwa">
         <PreviewBanner kind="env-missing" />
         <Text style={styles.missing}>{COPY.missing}</Text>
         <Text style={styles.muted}>{COPY.empty}</Text>
       </Section>
       <Section title="Tuma jibu la haraka" hint="Itahifadhiwa kwa sync ukirudi mtandaoni">
-        <Text style={styles.fieldLabel}>Mizigo iliyofanyika</Text>
+        <Text style={styles.fieldLabel}>Ukaguzi uliofanyika</Text>
         <TextInput
           value={loads}
           onChangeText={setLoads}
@@ -90,13 +93,13 @@ function PingsView(): JSX.Element {
           placeholder="mfano: 8"
           placeholderTextColor={colors.textMuted}
           style={styles.input}
-          accessibilityLabel="Mizigo"
+          accessibilityLabel="Ukaguzi"
         />
         <Text style={styles.fieldLabel}>Vizuizi (kama vipo)</Text>
         <TextInput
           value={blockers}
           onChangeText={setBlockers}
-          placeholder="mfano: tairi limepasuka"
+          placeholder="mfano: bomba limevuja"
           placeholderTextColor={colors.textMuted}
           style={[styles.input, styles.inputMulti]}
           multiline

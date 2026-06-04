@@ -1,21 +1,26 @@
 /**
- * Buyer-mobile API — commercial chain L7 notifications.
+ * Tenant-mobile API — commercial chain L7 notifications.
  *
- * Backed by /api/v1/buyer/notifications on the api-gateway. Each row
- * represents an L7 fulfilment notification (RFB fulfilled, settlement
- * paid, response received) the seller-side handlers enqueued.
+ * Backed by /api/v1/notifications on the api-gateway. Each row represents
+ * an L7 fulfilment notification (application fulfilled, settlement paid,
+ * response received) the operator-side handlers enqueued.
+ *
+ * NOTE (flagged): the wire field names below (buyer_tenant_id,
+ * buyer_user_id, seller_tenant_id, rfb_id) mirror the server JSON and so
+ * are kept as-is; renaming them to applicant_/operator_/application_id
+ * requires a coordinated backend payload change.
  */
 
 import { apiFetch } from './client'
 
-const NOTIFICATIONS_PREFIX = '/api/v1/buyer/notifications'
+const NOTIFICATIONS_PREFIX = '/api/v1/notifications'
 
-export type BuyerNotificationKind =
+export type TenantNotificationKind =
   | 'rfb_fulfilled'
   | 'rfb_response_received'
   | 'settlement_paid'
 
-export interface BuyerNotificationRow {
+export interface TenantNotificationRow {
   readonly id: string
   readonly buyer_tenant_id: string
   readonly buyer_user_id: string
@@ -23,7 +28,7 @@ export interface BuyerNotificationRow {
   readonly rfb_id: string
   readonly response_id: string | null
   readonly task_id: string | null
-  readonly kind: BuyerNotificationKind
+  readonly kind: TenantNotificationKind
   readonly title_sw: string
   readonly title_en: string
   readonly body_sw: string
@@ -40,19 +45,19 @@ export interface ListNotificationsInput {
 }
 
 export interface ListNotificationsResult {
-  readonly notifications: ReadonlyArray<BuyerNotificationRow>
+  readonly notifications: ReadonlyArray<TenantNotificationRow>
   readonly nextCursor: string | null
 }
 
 interface ListResponse {
   readonly success?: boolean
   readonly data?: {
-    readonly notifications?: ReadonlyArray<BuyerNotificationRow>
+    readonly notifications?: ReadonlyArray<TenantNotificationRow>
     readonly nextCursor?: string | null
   }
 }
 
-export async function listBuyerNotifications(
+export async function listTenantNotifications(
   input: ListNotificationsInput = {},
 ): Promise<ListNotificationsResult> {
   const query: Record<string, string | number | boolean | undefined> = {}
@@ -67,7 +72,7 @@ export async function listBuyerNotifications(
   }
 }
 
-export async function markBuyerNotificationRead(id: string): Promise<void> {
+export async function markTenantNotificationRead(id: string): Promise<void> {
   await apiFetch<{ success: boolean }>(
     `${NOTIFICATIONS_PREFIX}/${encodeURIComponent(id)}/read`,
     { method: 'POST' },

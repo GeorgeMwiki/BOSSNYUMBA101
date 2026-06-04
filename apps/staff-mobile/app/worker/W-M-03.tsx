@@ -15,11 +15,14 @@ import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
 const SCREEN_ID = 'W-M-03'
-const MISSING_ENDPOINT = 'GET /api/v1/mining/attendance/toolbox-topics'
+// FLAGGED (unresolved): pre-shift safety briefings have no dedicated
+// property-domain resource. Recommendation: fold daily briefings into
+// /api/v1/notifications (broadcast). Kept as a permanent env-missing state.
+const MISSING_ENDPOINT = 'GET /api/v1/notifications (safety briefings)'
 
 const COPY = {
-  loading: 'Inapakia mada za toolbox... · Loading briefing topics...',
-  empty: 'Hakuna mada za toolbox bado. · No toolbox topics yet.',
+  loading: 'Inapakia mada za usalama... · Loading briefing topics...',
+  empty: 'Hakuna mada za usalama bado. · No safety topics yet.',
   errorPrefix: 'Hitilafu: ',
   missing: `Endpoint haijaundwa: ${MISSING_ENDPOINT}`,
   ackOk: 'Briefing imethibitishwa kwenye seva.',
@@ -28,7 +31,7 @@ const COPY = {
 
 interface CheckInRequest {
   readonly employeeId: string
-  readonly siteId: string
+  readonly propertyId: string
   readonly workDate: string
   readonly shiftKind: 'day' | 'night'
   readonly lat: number
@@ -75,7 +78,7 @@ function BriefingView(): JSX.Element {
     const today = new Date().toISOString().slice(0, 10)
     mutation.mutate({
       employeeId: user.id,
-      siteId: user.tenantId,
+      propertyId: user.tenantId,
       workDate: today,
       shiftKind: 'day',
       lat: 0,
@@ -97,7 +100,7 @@ function BriefingView(): JSX.Element {
 
   return (
     <View>
-      <Section title="Mada za toolbox">
+      <Section title="Mada za usalama">
         <PreviewBanner kind="env-missing" />
         <Text style={styles.missing}>{COPY.missing}</Text>
         <Text style={styles.empty}>{COPY.empty}</Text>

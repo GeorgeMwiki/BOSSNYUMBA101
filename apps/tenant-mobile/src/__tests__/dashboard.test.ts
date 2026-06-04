@@ -13,10 +13,13 @@ import { summariseBuyerPerformance } from '../marketplace/home/performance'
 import type { Bid, Listing } from '../types/listing'
 import type { BuyerUser } from '../types/auth'
 
+// NOTE (flagged): wire field names from the shared `Listing`/`BuyerUser`
+// types (`mineral`, `pmlNumber`, `originSite`, `assay*`, `role: 'buyer'`)
+// are kept; only display values are property-domain.
 const baseSeller = {
   id: 's1',
-  name: 'Geita Cooperative',
-  pmlNumber: 'PML-001',
+  name: 'Mwanza Cooperative',
+  pmlNumber: 'LIC-001',
   rating: 4.6,
   verified: true
 } as const
@@ -25,11 +28,11 @@ function buildListing(overrides: Partial<Listing> = {}): Listing {
   return {
     id: overrides.id ?? 'L1',
     mineral: 'gold_concentrate',
-    title: overrides.title ?? 'Geita gold lot A',
-    grade: '12 g/t',
+    title: overrides.title ?? 'Mwanza 2-bed lot A',
+    grade: 'A',
     quantityKg: 25,
-    originSite: 'Geita site 1',
-    originRegion: 'Geita',
+    originSite: 'Mwanza block 1',
+    originRegion: 'Mwanza',
     seller: baseSeller,
     priceTzsPerKg: 2_500_000,
     priceHintTzs: 62_500_000,
@@ -47,7 +50,7 @@ function buildBid(overrides: Partial<Bid> = {}): Bid {
   return {
     id: overrides.id ?? 'B1',
     listingId: 'L1',
-    listingTitle: 'Geita gold lot A',
+    listingTitle: 'Mwanza 2-bed lot A',
     mineral: 'gold_concentrate',
     offerTzsPerKg: 2_400_000,
     quantityKg: 20,
@@ -59,9 +62,9 @@ function buildBid(overrides: Partial<Bid> = {}): Bid {
 }
 
 const authedUser: BuyerUser = {
-  id: 'buyer-uuid-1',
+  id: 'tenant-uuid-1',
   role: 'buyer',
-  companyName: 'Acme Refining',
+  companyName: 'Acme Holdings',
   countryCode: 'TZ',
   preferredLang: 'sw',
   kycStatus: 'approved',
@@ -133,7 +136,7 @@ describe('BuyerDashboard composition (section selection)', () => {
     expect(perf.bidsPlaced).toBeGreaterThanOrEqual(0)
   })
 
-  it('shows empty state when buyer has no bids', () => {
+  it('shows empty state when tenant has no applications', () => {
     const pipeline = summarisePipeline([])
     expect(pipeline.total).toBe(0)
     expect(pipeline.negotiating).toBe(0)
@@ -152,8 +155,8 @@ describe('dashboardGuard (tenant isolation)', () => {
   it('allows the matching tenant', () => {
     const outcome = evaluateDashboardGuard({
       user: authedUser,
-      expectedTenantId: 'tenant-buyer-1',
-      currentTenantId: 'tenant-buyer-1'
+      expectedTenantId: 'tenant-1',
+      currentTenantId: 'tenant-1'
     })
     expect(outcome.kind).toBe('allow')
   })
@@ -161,8 +164,8 @@ describe('dashboardGuard (tenant isolation)', () => {
   it('redirects to /auth/login when tenant mismatches', () => {
     const outcome = evaluateDashboardGuard({
       user: authedUser,
-      expectedTenantId: 'tenant-buyer-1',
-      currentTenantId: 'tenant-buyer-2'
+      expectedTenantId: 'tenant-1',
+      currentTenantId: 'tenant-2'
     })
     expect(outcome).toEqual({ kind: 'redirect', to: '/auth/login' })
   })

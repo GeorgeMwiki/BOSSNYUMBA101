@@ -1,12 +1,17 @@
 /**
- * Typed wrappers around the buyer self-signup endpoints.
+ * Typed wrappers around the applicant/renter self-signup endpoints.
  *
- *   - POST /api/v1/buyers/signup                        — create buyer org
- *   - POST /api/v1/mining/buyers/kyc/atoms/:atomType    — upload one atom
+ *   - POST /api/v1/onboarding/signup                  — create the org
+ *   - POST /api/v1/documents (per identity fragment)  — upload one KYC
+ *     verification document
  *
- * The KYC atom-upload route lives under /mining/buyers/ because it predates
- * this surface and the schema is shared with the workforce / admin consoles.
- * We don't recreate it here — just expose a typed wrapper.
+ * NOTE (flagged): the original "KYC atoms" route had no property-domain
+ * equivalent (it was a mineral-buyer identity-fragment API). Renter
+ * identity verification is closest to document verification on
+ * `/api/v1/documents`; the atom-upload wrapper points there pending a
+ * dedicated applicant-onboarding KYC endpoint. The Buyer* symbol names +
+ * `buyer_signup.*` i18n keys still need renaming to applicant/tenant in a
+ * coordinated pass (the i18n JSON is outside this file's ownership).
  */
 
 import { apiFetch } from '@/api/client'
@@ -25,7 +30,7 @@ export interface BuyerSignupResponse {
 export async function submitBuyerSignup(
   body: Record<string, unknown>
 ): Promise<BuyerSignupResponse> {
-  return apiFetch<BuyerSignupResponse>('/api/v1/buyers/signup', {
+  return apiFetch<BuyerSignupResponse>('/api/v1/onboarding/signup', {
     method: 'POST',
     body
   })
@@ -49,7 +54,7 @@ export async function uploadKycAtom(
   input: UploadAtomInput
 ): Promise<UploadAtomResponse> {
   return apiFetch<UploadAtomResponse>(
-    `/api/v1/mining/buyers/kyc/atoms/${input.atomType}`,
+    `/api/v1/documents/kyc/${input.atomType}`,
     {
       method: 'POST',
       body: input.payload

@@ -9,10 +9,10 @@ import { z } from 'zod'
 import { miningApi, ownerApi } from '../api/client'
 import { ApiError } from '../api/errors'
 import type {
-  Licence,
-  LicenceBucket,
-  LicenceRenewalResponse,
-  LicencesResponse
+  Lease,
+  LeaseBucket,
+  LeaseRenewalResponse,
+  LeasesResponse
 } from './types'
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
@@ -36,7 +36,7 @@ export function daysUntilExpiry(expiresAt: string, now: number = Date.now()): nu
  * we deliberately accept the number so the function stays trivially
  * testable.
  */
-export function classifyBucket(daysLeft: number): LicenceBucket {
+export function classifyBucket(daysLeft: number): LeaseBucket {
   if (!Number.isFinite(daysLeft) || daysLeft < 0) {
     return 'expired'
   }
@@ -49,14 +49,14 @@ export function classifyBucket(daysLeft: number): LicenceBucket {
   return 't90'
 }
 
-const FALLBACK: LicencesResponse = {
+const FALLBACK: LeasesResponse = {
   generatedAt: new Date().toISOString(),
-  licences: [
+  leases: [
     {
       id: 'l-12345',
-      pmlNumber: 'PML 12345',
-      siteName: 'Geita Pit 2',
-      mineral: 'Gold',
+      leaseRef: 'LSE-12345',
+      propertyName: 'Oyster Bay Block A',
+      unitLabel: 'Unit 2',
       expiresOn: '2026-08-12',
       expiresAt: '2026-08-12T00:00:00Z',
       daysLeft: 79,
@@ -64,9 +64,9 @@ const FALLBACK: LicencesResponse = {
     },
     {
       id: 'l-67890',
-      pmlNumber: 'PML 67890',
-      siteName: 'Mwanza Block A',
-      mineral: 'Gold',
+      leaseRef: 'LSE-67890',
+      propertyName: 'Masaki Court',
+      unitLabel: 'Unit A',
       expiresOn: '2026-06-22',
       expiresAt: '2026-06-22T00:00:00Z',
       daysLeft: 28,
@@ -74,9 +74,9 @@ const FALLBACK: LicencesResponse = {
     },
     {
       id: 'l-24680',
-      pmlNumber: 'PML 24680',
-      siteName: 'Shinyanga East',
-      mineral: 'Tanzanite',
+      leaseRef: 'LSE-24680',
+      propertyName: 'Mikocheni East',
+      unitLabel: 'Unit 5',
       expiresOn: '2026-06-01',
       expiresAt: '2026-06-01T00:00:00Z',
       daysLeft: 7,
@@ -86,27 +86,31 @@ const FALLBACK: LicencesResponse = {
 }
 
 /**
- * Owner licence calendar. Bucket + daysLeft are recomputed defensively
+ * Owner lease calendar. Bucket + daysLeft are recomputed defensively
  * on the client from `expiresAt` (falling back to `expiresOn`) against
  * Date.now() so stale server values can never out-of-sync the UI.
+ *
+ * Expiry/renewal tracking is a compliance concern (GET /api/v1/compliance);
+ * the legacy single-resource lease endpoint shape is preserved here and
+ * the exact compliance contract is flagged for follow-up.
  */
-export function useLicences(): UseQueryResult<LicencesResponse, Error> {
-  return useQuery<LicencesResponse, Error>({
-    queryKey: ['mining', 'licences'],
+export function useLeases(): UseQueryResult<LeasesResponse, Error> {
+  return useQuery<LeasesResponse, Error>({
+    queryKey: ['owner', 'leases'],
     queryFn: async ({ signal }) => {
       try {
-        const response = await ownerApi.get<LicencesResponse>('/mining/licences', {
+        const response = await ownerApi.get<LeasesResponse>('/leases', {
           signal
         })
         return {
           ...response,
-          licences: response.licences.map(reconcileLicence)
+          leases: response.leases.map(reconcileLease)
         }
       } catch (error) {
         if (error instanceof ApiError && (error.status === 0 || error.status === 404)) {
           return {
             ...FALLBACK,
-            licences: FALLBACK.licences.map(reconcileLicence)
+            leases: FALLBACK.leases.map(reconcileLease)
           }
         }
         throw error
@@ -116,33 +120,33 @@ export function useLicences(): UseQueryResult<LicencesResponse, Error> {
   })
 }
 
-function reconcileLicence(licence: Licence): Licence {
-  const isoExpiry = licence.expiresAt ?? licence.expiresOn
+function reconcileLease(lease: Lease): Lease {
+  const isoExpiry = lease.expiresAt ?? lease.expiresOn
   const computed = daysUntilExpiry(isoExpiry)
-  const daysLeft = Number.isFinite(computed) ? computed : licence.daysLeft
+  const daysLeft = Number.isFinite(computed) ? computed : lease.daysLeft
   return {
-    ...licence,
+    ...lease,
     daysLeft,
     bucket: classifyBucket(daysLeft)
   }
 }
 
 export function groupByBucket(
-  licences: ReadonlyArray<Licence>
-): Readonly<Record<LicenceBucket, ReadonlyArray<Licence>>> {
-  const t7: Licence[] = []
-  const t30: Licence[] = []
-  const t90: Licence[] = []
-  const expired: Licence[] = []
-  for (const licence of licences) {
-    if (licence.bucket === 't7') {
-      t7.push(licence)
-    } else if (licence.bucket === 't30') {
-      t30.push(licence)
-    } else if (licence.bucket === 't90') {
-      t90.push(licence)
+  leases: ReadonlyArray<Lease>
+): Readonly<Record<LeaseBucket, ReadonlyArray<Lease>>> {
+  const t7: Lease[] = []
+  const t30: Lease[] = []
+  const t90: Lease[] = []
+  const expired: Lease[] = []
+  for (const lease of leases) {
+    if (lease.bucket === 't7') {
+      t7.push(lease)
+    } else if (lease.bucket === 't30') {
+      t30.push(lease)
+    } else if (lease.bucket === 't90') {
+      t90.push(lease)
     } else {
-      expired.push(licence)
+      expired.push(lease)
     }
   }
   return { t7, t30, t90, expired }
@@ -150,25 +154,25 @@ export function groupByBucket(
 
 const RenewalResponseSchema = z.object({
   renewalId: z.string().min(1),
-  licenceId: z.string().min(1),
+  leaseId: z.string().min(1),
   status: z.enum(['queued', 'submitted', 'accepted']),
   submittedAt: z.string().min(1)
 })
 
 /**
- * Licence-renewal mutation. POSTs to the mining surface and invalidates
- * the licences query on success so the calendar refreshes.
+ * Lease-renewal mutation. Posts the renewal request and invalidates the
+ * leases query on success so the calendar refreshes.
  */
-export function useRenewLicence(): UseMutationResult<
-  LicenceRenewalResponse,
+export function useRenewLease(): UseMutationResult<
+  LeaseRenewalResponse,
   Error,
   string
 > {
   const queryClient = useQueryClient()
-  return useMutation<LicenceRenewalResponse, Error, string>({
-    mutationFn: async (licenceId: string) => {
+  return useMutation<LeaseRenewalResponse, Error, string>({
+    mutationFn: async (leaseId: string) => {
       const response = await miningApi.post<unknown>(
-        `/licences/${encodeURIComponent(licenceId)}/renew`,
+        `/leases/${encodeURIComponent(leaseId)}/renew`,
         {}
       )
       const parsed = RenewalResponseSchema.safeParse(response)
@@ -178,7 +182,7 @@ export function useRenewLicence(): UseMutationResult<
       return parsed.data
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['mining', 'licences'] })
+      await queryClient.invalidateQueries({ queryKey: ['owner', 'leases'] })
     }
   })
 }

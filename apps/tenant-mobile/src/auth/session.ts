@@ -11,6 +11,13 @@ import { registerPushToken } from '@/lib/notifications/push-register'
 // change (sign-in, refresh, sign-out), we project it to a BuyerUser and
 // notify subscribers so React components re-render.
 //
+// NOTE (flagged): the BuyerUser type, the BuyerRole='buyer' literal, the
+// role: 'buyer' value, and the sendBuyerOtp/verifyBuyerOtp/
+// parseSupabaseTokenForBuyer symbols carry the legacy "buyer" token. They
+// are consumed by non-owned auth/dashboard files (and the role value is
+// type-locked to BuyerRole), so renaming them to tenant/applicant is a
+// coordinated follow-up.
+//
 // `GUEST_USER` is the unauthenticated sentinel: it contains no PII and is
 // only used to keep screens that read `user.preferredLang` (i18n) and
 // `user.id` (KYC route param) from crashing before the user signs in.
@@ -46,7 +53,7 @@ function projectSession(session: Session | null): BuyerUser | null {
   const phone = (claims.phone ?? session.user.phone ?? '').replace(/\s+/g, '')
   const phoneFormatted = phone.startsWith('+') ? phone : phone.length > 0 ? `+${phone}` : ''
   const companyName =
-    (session.user.user_metadata?.company_name as string | undefined) ?? 'Buyer'
+    (session.user.user_metadata?.company_name as string | undefined) ?? 'Tenant'
   return {
     id: claims.userId || session.user.id,
     role: 'buyer',

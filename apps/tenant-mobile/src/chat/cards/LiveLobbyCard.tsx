@@ -15,7 +15,7 @@ export interface LiveLobbyCardProps {
 }
 
 // `marketplace.lobby` tool. Renders a compact horizontal lobby of
-// freshly-listed open parcels — pressed rows deep-link into the parcel
+// freshly-listed open units — pressed rows deep-link into the unit
 // detail screen.
 
 export function LiveLobbyCard({ payload, translate }: LiveLobbyCardProps) {

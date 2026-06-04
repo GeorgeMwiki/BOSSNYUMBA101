@@ -1,7 +1,7 @@
 /**
- * Buyer-mobile Sentry wrapper — pilot-mode aware.
+ * Tenant-mobile Sentry wrapper — pilot-mode aware.
  *
- * Twin of `apps/workforce-mobile/src/observability/sentry.ts` — they
+ * Twin of `apps/staff-mobile/src/observability/sentry.ts` — they
  * stay parallel by design so one doc patch updates both. The only
  * difference is `service: 'tenant-mobile'` on every log line and the
  * `screen` context-key naming.
@@ -24,7 +24,7 @@ const SERVICE_NAME = 'tenant-mobile';
  *
  * These are deliberately inlined (vs. importing from
  * `@bossnyumba/observability`) so the mobile bundle does not pull in
- * the Node-only telemetry surface. Once the workforce-mobile twin
+ * the Node-only telemetry surface. Once the staff-mobile twin
  * sibling lands the same helpers under the platform package, swap
  * these calls back out.
  */

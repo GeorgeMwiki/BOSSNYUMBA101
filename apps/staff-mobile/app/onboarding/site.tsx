@@ -7,8 +7,12 @@ import { useOnboardingDraft } from '../../src/onboarding/state'
 import { pickStrings } from '../../src/i18n'
 
 /**
- * Adaptive site step. Owner → PML number (Tanzanian Primary Mining License).
- * Manager/Employee → site code of the mine they work at.
+ * Adaptive property step. Owner → title-deed reference. Manager/Employee →
+ * property site code of the building they work at.
+ *
+ * NOTE: the underlying draft fields `pmlNumber` / `siteCode` are defined in
+ * the shared onboarding state (`src/onboarding/state.ts`); a coordinated
+ * rename of `pmlNumber` → `titleDeedRef` is flagged for follow-up.
  */
 export default function SiteStep(): JSX.Element {
   const { current, update, markStepComplete } = useOnboardingDraft()
@@ -34,7 +38,7 @@ export default function SiteStep(): JSX.Element {
 
   return (
     <WizardShell
-      badge={isOwner ? 'PML' : 'SITE'}
+      badge={isOwner ? 'DEED' : 'SITE'}
       title={copy.title}
       subtitle={isOwner ? copy.subtitleOwner : copy.subtitleWorker}
       footer={<Button label={copy.cta} onPress={next} />}

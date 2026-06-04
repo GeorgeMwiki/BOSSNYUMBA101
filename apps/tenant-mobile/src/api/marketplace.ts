@@ -1,6 +1,16 @@
 import { apiFetch } from './client'
-import { MINING_PREFIX } from './config'
+import { MARKETPLACE_PREFIX } from './config'
 import type { Bid, BidMessage, Listing, Mineral } from '@/types/listing'
+
+/**
+ * Bidding/application surface. The property domain models a renter's
+ * offer on a listing as an APPLICATION; the api-gateway nests these under
+ * the tenders router (POST/GET `/:id/bids`, POST `/:id/award`). This flat
+ * client predates that shape — see flagged: the bid endpoints below need
+ * a parent tender/listing id and should migrate to
+ * `/api/v1/marketplace/listings/:id/applications`.
+ */
+const TENDERS_PREFIX = '/api/v1/tenders'
 
 export type SortKey = 'newest' | 'price_asc' | 'price_desc' | 'grade'
 
@@ -22,7 +32,7 @@ interface ListingResponse {
 }
 
 export async function fetchListings(filters: ListingFilters = {}): Promise<readonly Listing[]> {
-  const response = await apiFetch<ListingsResponse>(`${MINING_PREFIX}/marketplace/listings`, {
+  const response = await apiFetch<ListingsResponse>(`${MARKETPLACE_PREFIX}/listings`, {
     query: {
       mineral: filters.mineral,
       region: filters.region,
@@ -37,7 +47,7 @@ export async function fetchListings(filters: ListingFilters = {}): Promise<reado
 
 export async function fetchListing(id: string): Promise<Listing | undefined> {
   const response = await apiFetch<ListingResponse>(
-    `${MINING_PREFIX}/marketplace/listings/${encodeURIComponent(id)}`
+    `${MARKETPLACE_PREFIX}/listings/${encodeURIComponent(id)}`
   )
   return response.data
 }
@@ -58,10 +68,11 @@ interface BidResponse {
 }
 
 /**
- * Payload shape the api-gateway expects for POST /api/v1/mining/bids.
- * Mirrors `PlaceBidSchema` in services/api-gateway/src/routes/mining/bids.hono.ts.
- * The buyer enters a per-kg price; we surface a total `bidPriceTzs` so the
- * gateway has a single canonical number to validate and persist.
+ * Payload shape the api-gateway expects when posting a bid/application.
+ * Mirrors the bid schema on the tenders router
+ * (services/api-gateway/src/routes/tenders.router.ts, POST `/:id/bids`).
+ * The applicant enters a per-unit price; we surface a total `bidPriceTzs`
+ * so the gateway has a single canonical number to validate and persist.
  */
 interface GatewayBidPayload {
   readonly listingId: string
@@ -80,7 +91,7 @@ function toGatewayBidPayload(input: PlaceBidInput): GatewayBidPayload {
 }
 
 export async function placeBid(input: PlaceBidInput): Promise<Bid> {
-  const response = await apiFetch<BidResponse>(`${MINING_PREFIX}/bids`, {
+  const response = await apiFetch<BidResponse>(`${TENDERS_PREFIX}/bids`, {
     method: 'POST',
     body: toGatewayBidPayload(input)
   })
@@ -88,12 +99,12 @@ export async function placeBid(input: PlaceBidInput): Promise<Bid> {
 }
 
 export async function fetchBids(): Promise<readonly Bid[]> {
-  const response = await apiFetch<{ readonly data: readonly Bid[] }>(`${MINING_PREFIX}/bids`)
+  const response = await apiFetch<{ readonly data: readonly Bid[] }>(`${TENDERS_PREFIX}/bids`)
   return response.data
 }
 
 export async function fetchBid(id: string): Promise<Bid | undefined> {
-  const response = await apiFetch<BidResponse>(`${MINING_PREFIX}/bids/${encodeURIComponent(id)}`)
+  const response = await apiFetch<BidResponse>(`${TENDERS_PREFIX}/bids/${encodeURIComponent(id)}`)
   return response.data
 }
 
@@ -104,7 +115,7 @@ export interface SendBidMessageInput {
 
 export async function sendBidMessage(input: SendBidMessageInput): Promise<BidMessage> {
   const response = await apiFetch<{ readonly data: BidMessage }>(
-    `${MINING_PREFIX}/bids/${encodeURIComponent(input.bidId)}/messages`,
+    `${TENDERS_PREFIX}/bids/${encodeURIComponent(input.bidId)}/messages`,
     {
       method: 'POST',
       body: { body: input.body }
@@ -120,7 +131,7 @@ export async function updateBidStatus(input: {
   readonly action: BidAction
 }): Promise<Bid | undefined> {
   const response = await apiFetch<BidResponse>(
-    `${MINING_PREFIX}/bids/${encodeURIComponent(input.bidId)}/${input.action}`,
+    `${TENDERS_PREFIX}/bids/${encodeURIComponent(input.bidId)}/${input.action}`,
     { method: 'POST' }
   )
   return response.data

@@ -30,13 +30,13 @@ export default function Screen(): JSX.Element {
   return (
     <RoleGuard screenId={SCREEN_ID}>
       <ScreenShell screenId={SCREEN_ID}>
-        <WeighbridgeFormView />
+        <DeliveryFormView />
       </ScreenShell>
     </RoleGuard>
   )
 }
 
-function WeighbridgeFormView(): JSX.Element {
+function DeliveryFormView(): JSX.Element {
   const { t } = useI18n()
   const { online } = useOnlineStatus()
   const photoPicker = usePhotoPicker()
@@ -81,8 +81,9 @@ function WeighbridgeFormView(): JSX.Element {
       }
       const entry = await enqueueWrite('weighbridge_capture', payload)
       setSubmitted({ queueId: entry.id })
-    } catch (error) {
-      console.error('Weighbridge submit failed:', error)
+    } catch {
+      // Delivery capture failed to enqueue; surfaced via the unchanged
+      // submitting state. (No logger in this RN screen.)
     } finally {
       setSubmitting(false)
     }

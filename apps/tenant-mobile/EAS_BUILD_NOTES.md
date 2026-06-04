@@ -1,4 +1,4 @@
-# EAS Build Notes - @borjie/buyer-mobile
+# EAS Build Notes - @bossnyumba/tenant-mobile
 
 This app uses several native modules that **will not run in Expo Go**. To exercise the full feature surface you must produce a custom dev client via `eas build --profile development`.
 
@@ -16,7 +16,7 @@ All call sites are wrapped in try/catch with a structured failure result so Expo
 ## How to build the dev client
 
 ```bash
-cd apps/buyer-mobile
+cd apps/tenant-mobile
 eas init   # one-time, fills extra.eas.projectId
 eas build --profile development --platform ios
 eas build --profile development --platform android

@@ -12,7 +12,7 @@ import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
 const SCREEN_ID = 'O-M-03'
-const MISSING_ENDPOINT = '/api/v1/mining/cockpit/decisions'
+const MISSING_ENDPOINT = '/api/v1/owner/mwikila-inbox'
 
 const COPY = Object.freeze({
   loading: 'Inapakia maamuzi…',
@@ -66,9 +66,11 @@ export default function Screen(): JSX.Element {
 function PendingDecisions(): JSX.Element {
   const queryClient = useQueryClient()
   const query = useQuery<ReadonlyArray<DecisionRow>, ApiError>({
-    queryKey: ['mining', 'cockpit', 'decisions'],
+    queryKey: ['owner', 'mwikila-inbox', 'decisions'],
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<DecisionsResponse>('/cockpit/decisions', {
+      // The cockpit decision queue maps to mwikila-inbox.hono.ts
+      // (GET / lists pending Mr. Mwikila decisions).
+      const response = await miningApi.get<DecisionsResponse>('/mwikila-inbox', {
         signal
       })
       return response.data
@@ -82,34 +84,38 @@ function PendingDecisions(): JSX.Element {
     { previous: ReadonlyArray<DecisionRow> | undefined }
   >({
     mutationFn: async ({ id, outcome }) => {
+      // mwikila-inbox resolves decisions via POST /:id/approve and
+      // POST /:id/deny. Map the local 'approved'/'rejected' outcome to the
+      // router verb. (Cross-router base + verb alignment flagged.)
+      const verb = outcome === 'approved' ? 'approve' : 'deny'
       const result = await miningApi.post<{ success: true; data: DecisionRow }>(
-        `/cockpit/decisions/${encodeURIComponent(id)}/${outcome}`,
+        `/mwikila-inbox/${encodeURIComponent(id)}/${verb}`,
         {}
       )
       return result.data
     },
     onMutate: async ({ id, outcome }) => {
-      await queryClient.cancelQueries({ queryKey: ['mining', 'cockpit', 'decisions'] })
+      await queryClient.cancelQueries({ queryKey: ['owner', 'mwikila-inbox', 'decisions'] })
       const previous = queryClient.getQueryData<ReadonlyArray<DecisionRow>>([
-        'mining',
-        'cockpit',
+        'owner',
+        'mwikila-inbox',
         'decisions'
       ])
       if (previous) {
         const next: ReadonlyArray<DecisionRow> = previous.map((row) =>
           row.id === id ? { ...row, status: outcome } : row
         )
-        queryClient.setQueryData(['mining', 'cockpit', 'decisions'], next)
+        queryClient.setQueryData(['owner', 'mwikila-inbox', 'decisions'], next)
       }
       return { previous }
     },
     onError: (_error, _vars, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(['mining', 'cockpit', 'decisions'], context.previous)
+        queryClient.setQueryData(['owner', 'mwikila-inbox', 'decisions'], context.previous)
       }
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['mining', 'cockpit', 'decisions'] })
+      void queryClient.invalidateQueries({ queryKey: ['owner', 'mwikila-inbox', 'decisions'] })
     }
   })
 

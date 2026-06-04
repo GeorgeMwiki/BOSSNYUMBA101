@@ -5,21 +5,25 @@ import type { EntityType } from './queue'
  * `<entityType>s` plural rule. Kept tiny on purpose — anything not listed
  * here flows through `endpointFor` and gets the default pluralisation.
  *
- * `weighbridge` lands on `/samples` because the api-gateway treats
- * weighbridge captures as sample submissions in the mining surface.
+ * `weighbridge_capture` lands on `/deliveries` because the api-gateway
+ * treats delivery captures as delivery submissions on the operator surface.
+ *
+ * NOTE: the `EntityType` union (and some of these legacy segment names) are
+ * defined in `./queue` and shared across non-owned call sites; a coordinated
+ * rename of the residual entity keys is flagged for follow-up.
  */
 const ENDPOINT_OVERRIDES: Readonly<Partial<Record<EntityType, string>>> = {
   shift_report: 'shift-reports',
-  drill_hole: 'drill-holes',
-  fuel_log: 'fuel-logs',
+  drill_hole: 'inspections',
+  fuel_log: 'materials-logs',
   attendance: 'attendance',
-  weighbridge_capture: 'samples'
+  weighbridge_capture: 'deliveries'
 }
 
 /**
  * Resolve the api-gateway path segment for a queued entity. Returns the
  * relative path (no leading slash) so callers can compose against
- * `${API_BASE_URL}/api/v1/mining/<path>`.
+ * `${API_BASE_URL}/api/v1/manager/<path>`.
  *
  * Default rule: convert snake_case → kebab-case and append 's' unless the
  * type is in ENDPOINT_OVERRIDES.
@@ -37,15 +41,15 @@ export function endpointFor(entityType: EntityType): string {
  * Backwards-compatible map for callers that prefer a static lookup. New
  * code should call `endpointFor()` so override behaviour stays in one
  * place. Each value is a relative path (no leading slash) under the
- * mining prefix.
+ * operator prefix.
  */
 export const ENTITY_ENDPOINTS: Readonly<Record<EntityType, string>> = {
   shift_report: 'shift-reports',
   incident: endpointFor('incident'),
   attendance: 'attendance',
   fingerprint_sign: endpointFor('fingerprint_sign'),
-  sample: 'samples',
-  fuel_log: 'fuel-logs',
+  sample: 'condition-reports',
+  fuel_log: 'materials-logs',
   machine_hour: endpointFor('machine_hour'),
   photo_upload: endpointFor('photo_upload'),
   inventory_move: endpointFor('inventory_move'),
@@ -55,6 +59,6 @@ export const ENTITY_ENDPOINTS: Readonly<Record<EntityType, string>> = {
   toolbox_ack: endpointFor('toolbox_ack'),
   ppe_receipt: endpointFor('ppe_receipt'),
   excavator_count: endpointFor('excavator_count'),
-  drill_hole: 'drill-holes',
-  weighbridge_capture: 'samples'
+  drill_hole: 'inspections',
+  weighbridge_capture: 'deliveries'
 }

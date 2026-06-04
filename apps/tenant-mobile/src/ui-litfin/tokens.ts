@@ -1,11 +1,17 @@
 /**
- * LitFin DNA design tokens for tenant-mobile — RN-native rebrand of
- * the LitFin Tailwind tokens for direct use in StyleSheet.
+ * BossNyumba design tokens for tenant-mobile — RN-native adaptation of
+ * the parent fork's Tailwind tokens for direct use in StyleSheet.
  *
- * Single-sources from the existing buyer palette so colour truth
- * stays in `src/theme/colors.ts`. Adds the LitFin gold-on-navy
- * gradients, type ramp, radii, and shadow recipes adapted for
- * React Native's flat StyleSheet model.
+ * Single-sources from the tenant palette so colour truth stays in
+ * `src/theme/colors.ts`. Adds the gold-on-navy gradients, type ramp,
+ * radii, and shadow recipes adapted for React Native's flat StyleSheet
+ * model.
+ *
+ * NOTE (flagged): the exported `LitFinTokens` type name and the
+ * `ui-litfin/` module + its `LitFin*` components carry a foreign brand
+ * token. They are consumed by the non-owned `ui-litfin/index.ts` barrel
+ * and many screens, so the rename to a BossNyumba name is deferred to a
+ * coordinated pass.
  */
 import { colors } from '@/theme/colors'
 

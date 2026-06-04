@@ -12,6 +12,11 @@
  *   owner | manager | supervisor | pit_operator | geologist | treasury |
  *   safety_officer | compliance_clerk
  *
+ * NOTE: `pit_operator` and `geologist` are legacy role ids still shared with
+ * several non-owned call sites (persona map, tab-config hook, chat); a
+ * coordinated rename to property-trade roles (e.g. field_operator / surveyor)
+ * is flagged for follow-up. User-facing tab labels are already property copy.
+ *
  * The 'chat' tab uses the special role marker '*' (every role). It is
  * a HARD CONSTRAINT that the owner can never disable it — Mr. Mwikila
  * (the MD persona on workforce-mobile) must always be reachable.
@@ -76,12 +81,12 @@ export const WORKFORCE_TAB_CATALOG: ReadonlyArray<WorkforceTabSpec> = [
   {
     id: 'drill-log',
     roles: ['geologist'],
-    label: { en: 'Drill log', sw: 'Logi ya kuchimba' },
+    label: { en: 'Site log', sw: 'Logi ya tovuti' },
   },
   {
     id: 'assay',
     roles: ['geologist'],
-    label: { en: 'Assay', sw: 'Uchunguzi' },
+    label: { en: 'Survey', sw: 'Tathmini' },
   },
   {
     id: 'treasury',

@@ -25,7 +25,7 @@ export interface BidRecommendationCardProps {
 }
 
 // `bids.recommend` tool. Renders an AI bid recommendation as a
-// slide-to-confirm card (R4 §3 Swiggy pattern) — the buyer drags the
+// slide-to-confirm card (R4 §3 Swiggy pattern) — the tenant drags the
 // thumb to the right to authorize. We never auto-submit; the slider's
 // completion guarantees explicit consent before hitting the gateway.
 

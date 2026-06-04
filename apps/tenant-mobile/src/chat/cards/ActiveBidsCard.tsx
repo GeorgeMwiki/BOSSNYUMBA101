@@ -21,7 +21,7 @@ const STATUS_TONE: Readonly<Record<Bid['status'], PillTone>> = {
   rejected: 'danger'
 }
 
-// `bids.active` tool. Picks the buyer's most recent pending/countered
+// `bids.active` tool. Picks the tenant's most recent pending/countered
 // bids using the existing `selectActiveBids` derivation.
 
 export function ActiveBidsCard({ payload, translate }: ActiveBidsCardProps) {

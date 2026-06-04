@@ -9,6 +9,11 @@ import { translate } from '../i18n'
 // rollup parser. Inline the catalog (it is intentionally duplicated in
 // the source so the gateway zod enum and the FE constants stay in
 // lock-step — a divergence test ensures they don't drift).
+//
+// NOTE (flagged): RFB_MINERAL_KINDS and the `rfb.mineral_label` /
+// `rfb.tonnage_*` i18n keys mirror the not-yet-renamed gateway RFB enum +
+// the shared i18n bundle, so they are asserted as-is. They must be
+// renamed together with the backend RFB surface in a coordinated pass.
 const RFB_MINERAL_KINDS = [
   'gold',
   'tanzanite',

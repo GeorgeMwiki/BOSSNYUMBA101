@@ -3,7 +3,7 @@ import { tokens } from '@/ui-litfin'
 import type { ProvenanceEnvelope } from '@/types/listing'
 
 /**
- * Buyer-mobile equivalent of the owner-web ProvenancePill.
+ * Tenant-mobile equivalent of the owner-web ProvenancePill.
  *
  * Implements principle 5 of the Chat-as-OS Bidirectional Parity
  * Manifesto: every bid / inquiry / kyc row in a tenant-mobile list

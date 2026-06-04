@@ -12,8 +12,8 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { useI18n } from '../../src/i18n/useI18n'
-import { groupByBucket, useLicences, useRenewLicence } from '../../src/owner/useLicences'
-import type { Licence, LicenceBucket } from '../../src/owner/types'
+import { groupByBucket, useLeases, useRenewLease } from '../../src/owner/useLicences'
+import type { Lease, LeaseBucket } from '../../src/owner/types'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
@@ -24,7 +24,7 @@ export default function Screen(): JSX.Element {
   return (
     <RoleGuard screenId={SCREEN_ID}>
       <ScreenShell screenId={SCREEN_ID} scroll={false}>
-        <LicenceCalendarView />
+        <LeaseCalendarView />
       </ScreenShell>
     </RoleGuard>
   )
@@ -32,14 +32,14 @@ export default function Screen(): JSX.Element {
 
 type RenewStatus =
   | { kind: 'idle' }
-  | { kind: 'pending'; licenceId: string }
-  | { kind: 'success'; licenceId: string }
-  | { kind: 'error'; licenceId: string; message: string }
+  | { kind: 'pending'; leaseId: string }
+  | { kind: 'success'; leaseId: string }
+  | { kind: 'error'; leaseId: string; message: string }
 
-function LicenceCalendarView(): JSX.Element {
+function LeaseCalendarView(): JSX.Element {
   const { t } = useI18n()
-  const query = useLicences()
-  const renewal = useRenewLicence()
+  const query = useLeases()
+  const renewal = useRenewLease()
   const [refreshing, setRefreshing] = useState<boolean>(false)
   const [status, setStatus] = useState<RenewStatus>({ kind: 'idle' })
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -62,11 +62,11 @@ function LicenceCalendarView(): JSX.Element {
   }, [query])
 
   const onRenew = useCallback(
-    (licence: Licence): void => {
-      setStatus({ kind: 'pending', licenceId: licence.id })
-      renewal.mutate(licence.id, {
+    (lease: Lease): void => {
+      setStatus({ kind: 'pending', leaseId: lease.id })
+      renewal.mutate(lease.id, {
         onSuccess: () => {
-          setStatus({ kind: 'success', licenceId: licence.id })
+          setStatus({ kind: 'success', leaseId: lease.id })
           if (toastTimer.current) {
             clearTimeout(toastTimer.current)
           }
@@ -77,7 +77,7 @@ function LicenceCalendarView(): JSX.Element {
         onError: (error: Error) => {
           setStatus({
             kind: 'error',
-            licenceId: licence.id,
+            leaseId: lease.id,
             message: error.message
           })
         }
@@ -103,7 +103,7 @@ function LicenceCalendarView(): JSX.Element {
     )
   }
 
-  const buckets = groupByBucket(query.data.licences)
+  const buckets = groupByBucket(query.data.leases)
 
   return (
     <View style={styles.container}>
@@ -130,7 +130,7 @@ function LicenceCalendarView(): JSX.Element {
         <BucketSection
           title={t.licenceCalendar.t7}
           bucket="t7"
-          licences={buckets.t7}
+          leases={buckets.t7}
           status={status}
           strings={t.licenceCalendar}
           onRenew={onRenew}
@@ -138,7 +138,7 @@ function LicenceCalendarView(): JSX.Element {
         <BucketSection
           title={t.licenceCalendar.t30}
           bucket="t30"
-          licences={buckets.t30}
+          leases={buckets.t30}
           status={status}
           strings={t.licenceCalendar}
           onRenew={onRenew}
@@ -146,7 +146,7 @@ function LicenceCalendarView(): JSX.Element {
         <BucketSection
           title={t.licenceCalendar.t90}
           bucket="t90"
-          licences={buckets.t90}
+          leases={buckets.t90}
           status={status}
           strings={t.licenceCalendar}
           onRenew={onRenew}
@@ -156,7 +156,7 @@ function LicenceCalendarView(): JSX.Element {
   )
 }
 
-interface LicenceCalendarStrings {
+interface LeaseCalendarStrings {
   empty: string
   renewAction: string
   renewActionEn: string
@@ -168,30 +168,30 @@ interface LicenceCalendarStrings {
 
 interface BucketSectionProps {
   title: string
-  bucket: LicenceBucket
-  licences: ReadonlyArray<Licence>
+  bucket: LeaseBucket
+  leases: ReadonlyArray<Lease>
   status: RenewStatus
-  strings: LicenceCalendarStrings
-  onRenew: (licence: Licence) => void
+  strings: LeaseCalendarStrings
+  onRenew: (lease: Lease) => void
 }
 
 function BucketSection({
   title,
   bucket,
-  licences,
+  leases,
   status,
   strings,
   onRenew
 }: BucketSectionProps): JSX.Element {
   return (
     <Section title={title}>
-      {licences.length === 0 ? (
+      {leases.length === 0 ? (
         <Text style={styles.empty}>{strings.empty}</Text>
       ) : (
-        licences.map((licence) => (
-          <LicenceRow
-            key={licence.id}
-            licence={licence}
+        leases.map((lease) => (
+          <LeaseRow
+            key={lease.id}
+            lease={lease}
             bucket={bucket}
             status={status}
             strings={strings}
@@ -203,38 +203,38 @@ function BucketSection({
   )
 }
 
-interface LicenceRowProps {
-  licence: Licence
-  bucket: LicenceBucket
+interface LeaseRowProps {
+  lease: Lease
+  bucket: LeaseBucket
   status: RenewStatus
-  strings: LicenceCalendarStrings
-  onRenew: (licence: Licence) => void
+  strings: LeaseCalendarStrings
+  onRenew: (lease: Lease) => void
 }
 
-function LicenceRow({
-  licence,
+function LeaseRow({
+  lease,
   bucket,
   status,
   strings,
   onRenew
-}: LicenceRowProps): JSX.Element {
-  const isPending = status.kind === 'pending' && status.licenceId === licence.id
-  const isError = status.kind === 'error' && status.licenceId === licence.id
+}: LeaseRowProps): JSX.Element {
+  const isPending = status.kind === 'pending' && status.leaseId === lease.id
+  const isError = status.kind === 'error' && status.leaseId === lease.id
   const renewLabel = `${strings.renewAction} / ${strings.renewActionEn}`
   return (
     <View style={[styles.card, BUCKET_STYLES[bucket]]}>
       <View style={styles.cardTop}>
         <View style={styles.cardLeft}>
-          <Text style={styles.cardTitle}>{licence.pmlNumber}</Text>
-          <Text style={styles.cardSite}>{licence.siteName}</Text>
-          {licence.mineral ? (
+          <Text style={styles.cardTitle}>{lease.leaseRef}</Text>
+          <Text style={styles.cardSite}>{lease.propertyName}</Text>
+          {lease.unitLabel ? (
             <Text style={styles.cardMineral}>
-              {strings.mineralLabel}: {licence.mineral}
+              {strings.mineralLabel}: {lease.unitLabel}
             </Text>
           ) : null}
         </View>
         <View style={styles.cardRight}>
-          <Text style={styles.cardDays}>{licence.daysLeft}</Text>
+          <Text style={styles.cardDays}>{lease.daysLeft}</Text>
           <Text style={styles.cardDaysLabel}>{strings.daysLeft}</Text>
         </View>
       </View>
@@ -243,7 +243,7 @@ function LicenceRow({
         accessibilityLabel={renewLabel}
         accessibilityState={{ disabled: isPending, busy: isPending }}
         disabled={isPending}
-        onPress={() => onRenew(licence)}
+        onPress={() => onRenew(lease)}
         style={({ pressed }) => [
           styles.renewButton,
           isPending ? styles.renewButtonPending : null,
@@ -272,7 +272,7 @@ function LicenceRow({
 }
 
 const BUCKET_STYLES: Readonly<
-  Record<LicenceBucket, { borderLeftColor: string; backgroundColor: string }>
+  Record<LeaseBucket, { borderLeftColor: string; backgroundColor: string }>
 > = {
   t7: { borderLeftColor: colors.danger, backgroundColor: colors.surfaceAlt },
   t30: { borderLeftColor: colors.warn, backgroundColor: colors.surfaceAlt },

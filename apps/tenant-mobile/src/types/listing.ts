@@ -1,3 +1,17 @@
+// NOTE (flagged — coordinated follow-up): this whole module is the
+// shared wire/domain model for the marketplace and is imported by many
+// NON-owned files (app/marketplace/[id].tsx, components/PlaceBidSheet,
+// dashboard/sections/*, marketplace/home/derivations, ToolCallRenderer,
+// app/(tabs)/bids). The mining vocabulary in the TYPE + FIELD names
+// (`Mineral` + its members, `Seller.pmlNumber`, `AssayResult`,
+// `originSite`, `assayPdfUrl`, `assayResults`, `chainOfCustody`,
+// `quantityKg`, `priceTzsPerKg`, the `'buyer' | 'seller'` union) cannot
+// be renamed here without breaking those files and the gateway wire
+// contract. The property-domain rename (Mineral→PropertyType,
+// pmlNumber→licenceNumber, originSite→propertyAddress,
+// assay*→inspection*, chainOfCustody→ownershipHistory,
+// buyer/seller→tenant/landlord, etc.) must land in a coordinated pass
+// across this type + every consumer + the api-gateway payloads.
 export type Mineral =
   | 'gold_concentrate'
   | 'tanzanite_rough'
@@ -74,10 +88,10 @@ export interface Bid {
   readonly placedAt: string
   readonly thread: readonly BidMessage[]
   /**
-   * Chat-as-OS bidirectional parity. When `via === 'chat'` the buyer
-   * sees a small "via Mr. Mwikila" pill next to the bid in the My
-   * Bids list; tapping it opens the chat session at the originating
-   * turn.
+   * Chat-as-OS bidirectional parity. When `via === 'chat'` the tenant
+   * sees a small "via Mr. Mwikila" pill next to the application in the
+   * My Applications list; tapping it opens the chat session at the
+   * originating turn.
    */
   readonly provenance?: ProvenanceEnvelope
 }

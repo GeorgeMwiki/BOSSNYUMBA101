@@ -1,9 +1,14 @@
 /**
- * R11 — buyer lists their RFBs.
+ * R11 — applicant lists their requests for applications.
  *
  * Mounted at /rfb. Shows status + pending response count for each
- * RFB the buyer has posted, most-recent first. Top CTA opens the
- * create screen.
+ * request the applicant has posted, most-recent first. Top CTA opens
+ * the create screen.
+ *
+ * NOTE (flagged): the `rfb.*` route segment, the `rfb.mineral_kind` /
+ * `rfb.tonnage_min` wire fields, and the `rfb.*` i18n keys carry legacy
+ * naming and are kept pending a coordinated rename of the gateway RFB
+ * surface to request_for_applications.
  */
 import { useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'

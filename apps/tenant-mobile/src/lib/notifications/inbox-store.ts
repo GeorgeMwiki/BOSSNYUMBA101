@@ -1,30 +1,30 @@
 /**
- * Buyer-mobile in-memory inbox store.
+ * Tenant-mobile in-memory inbox store.
  *
- * Mirrors workforce-mobile's pattern. Buyer-relevant cross-actor events
- * (RFB dispatched, bid placed, settlement initiated, chat handoffs,
- * reminders) are appended via `appendIncomingEvent`. Read state is
- * persisted in AsyncStorage so the badge survives a foreground/
+ * Mirrors staff-mobile's pattern. Tenant-relevant cross-actor events
+ * (request dispatched, application placed, settlement initiated, chat
+ * handoffs, reminders) are appended via `appendIncomingEvent`. Read
+ * state is persisted in AsyncStorage so the badge survives a foreground/
  * background cycle.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useEffect, useState } from 'react'
 
-import type { BuyerEventKind as ImportedKind } from './event-stream'
+import type { TenantEventKind as ImportedKind } from './event-stream'
 
-export type BuyerEventKind = ImportedKind
+export type TenantEventKind = ImportedKind
 
 export interface InboxItem {
   readonly id: string
-  readonly kind: BuyerEventKind
+  readonly kind: TenantEventKind
   readonly tenantId: string
   readonly emittedAt: string
   readonly payload: Readonly<Record<string, unknown>>
 }
 
 const MAX_ITEMS = 200
-const READ_IDS_KEY = 'bossnyumba.buyer.inbox.readIds.v1'
+const READ_IDS_KEY = 'bossnyumba.tenant.inbox.readIds.v1'
 
 interface InboxState {
   readonly items: ReadonlyArray<InboxItem>
@@ -45,7 +45,7 @@ function emit(): void {
   }
 }
 
-function buildId(kind: BuyerEventKind, emittedAt: string): string {
+function buildId(kind: TenantEventKind, emittedAt: string): string {
   return `${kind}::${emittedAt}`
 }
 
@@ -80,7 +80,7 @@ async function persistReadIds(): Promise<void> {
 }
 
 export interface AppendIncomingEventInput {
-  readonly kind: BuyerEventKind
+  readonly kind: TenantEventKind
   readonly tenantId: string
   readonly emittedAt: string
   readonly payload: Readonly<Record<string, unknown>>

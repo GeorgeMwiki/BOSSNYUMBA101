@@ -16,11 +16,13 @@ import { DealPipelineSection } from './sections/DealPipelineSection'
 import { BuyerPerformanceSection } from './sections/BuyerPerformanceSection'
 
 /**
- * Dashibodi — the buyer's at-a-glance dashboard. Six sections compose from
- * the same React Query caches that the marketplace and bids tabs already
- * hydrate, so navigation between tabs is free of redundant network calls.
- * Pure derivations live under `@/marketplace/home/*` so this screen stays
- * presentational and the dashboard / chat / future cards share one truth.
+ * Dashibodi — the tenant's at-a-glance dashboard. Six sections compose from
+ * the same React Query caches that the marketplace and applications tabs
+ * already hydrate, so navigation between tabs is free of redundant network
+ * calls. Pure derivations live under `@/marketplace/home/*` so this screen
+ * stays presentational and the dashboard / chat / future cards share one
+ * truth. NOTE (flagged): the exported `BuyerDashboard` component name keeps
+ * its identifier pending a coordinated route + symbol rename.
  */
 
 export function BuyerDashboard() {
@@ -62,10 +64,10 @@ export function BuyerDashboard() {
     void bidsQuery.refetch()
   }
 
-  const heroEyebrow = lang === 'sw' ? 'Dashibodi · BossNyumba' : 'Buyer dashboard'
+  const heroEyebrow = lang === 'sw' ? 'Dashibodi · BossNyumba' : 'Renter dashboard'
   const heroSubtitle = lang === 'sw'
-    ? 'Soko la madini: minada hai, mauzo yanayofuata, na mwenendo wa kibiashara.'
-    : 'Mining market — live auctions, upcoming deals, and your buyer pulse.'
+    ? 'Soko la nyumba: nyumba zinazopatikana, maombi yanayofuata, na mwenendo wa kodi.'
+    : 'Property marketplace — available units, your applications, and rent trends.'
 
   const renderHero = (): JSX.Element => (
     <LitFinPageHero

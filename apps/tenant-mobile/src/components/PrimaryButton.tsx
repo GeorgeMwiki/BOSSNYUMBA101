@@ -15,8 +15,8 @@ export interface PrimaryButtonProps {
 }
 
 /**
- * Buyer primary button — LitFin pill family.
- *  - primary | gold : warm gold fill, navy text (LitFin hero CTA)
+ * Tenant primary button — BossNyumba pill family.
+ *  - primary | gold : warm gold fill, navy text (hero CTA)
  *  - ghost          : transparent, cream text, gold hairline border
  */
 export function PrimaryButton({

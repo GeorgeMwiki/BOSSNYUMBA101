@@ -1,10 +1,10 @@
-# @borjie/buyer-mobile - Production Readiness
+# @bossnyumba/tenant-mobile - Production Readiness
 
 Snapshot of where the app actually is, not where we'd like it to be. Updated as part of the mobile-app audit. Honest about what is wired, what is stubbed, and what blocks a demo / EAS submission.
 
 ## TL;DR
 
-- TypeScript strict: passes (`pnpm -F @borjie/buyer-mobile typecheck`).
+- TypeScript strict: passes (`pnpm -F @bossnyumba/tenant-mobile typecheck`).
 - App boots in Expo Go for the marketplace, bids, profile, and chat shells.
 - Sign-in flow exists (`app/auth/login.tsx`) using OTP via api-gateway (`/api/v1/auth/otp` + `/api/v1/auth/verify`). Session persists in `AsyncStorage` via `src/auth/token.ts`.
 - KYC document picker, image picker, and biometric sign-off require an **EAS dev build**.
@@ -15,7 +15,7 @@ Snapshot of where the app actually is, not where we'd like it to be. Updated as 
 | --- | --- |
 | App boots, expo-router renders tab shell | yes |
 | OTP login flow (`app/auth/login.tsx`) compiles and posts to gateway | yes (auth route must be running) |
-| `useSession()` hydrates a stub buyer (`preferredLang: 'en'`) so screens render before login completes | yes |
+| `useSession()` hydrates a stub tenant (`preferredLang: 'en'`) so screens render before login completes | yes |
 | Marketplace listing screen + filter rail + listing detail | yes (renders empty-state when no data) |
 | Place-bid sheet, bids tab, bid detail | yes |
 | Chat-per-bid screen with thread + composer | yes (uses `fetchBid`/`sendBidMessage`, not LLM SSE) |
@@ -42,10 +42,10 @@ Snapshot of where the app actually is, not where we'd like it to be. Updated as 
 | Supabase Auth client | **not wired** | App uses OTP via gateway (`requestOtp`/`verifyOtp`) - which itself rides Supabase server-side, but no mobile-side `@supabase/supabase-js` client. If product wants Supabase magic-link / OAuth on the device, port it in. |
 | Token storage uses `AsyncStorage` not `expo-secure-store` | **insecure** | `src/auth/token.ts` writes plain `AsyncStorage`. Should move to `expo-secure-store` for the OTP/Supabase bearer. |
 | EAS project | **not provisioned** | `app.json` has `extra.eas.projectId = "REPLACE_WITH_EAS_PROJECT_ID"`. Run `eas init`. |
-| App icons / splash | **placeholder** | Assets directory was empty; this audit copied workforce-mobile's placeholder PNGs in so bundling resolves. Replace before submission. |
-| Apple/Google service account secrets | **not provisioned** | `eas.json` references `./secrets/google-play-service-account.json`, `BORJIE_BUYER_APPLE_APP_ID`, `BORJIE_APPLE_TEAM_ID`. |
-| Floating "Ask Borjie" widget | **not present** | Workforce app has a stub button (`AskBorjie.tsx`); buyer app has none. Task references a sibling agent porting the floating widget - add `src/components/AskBorjie.tsx` pointing to `/api/v1/public/chat` for anonymous-browse screens and `/api/v1/mining/chat` for authenticated buyers when that lands. |
-| `mockDistanceKm` in `src/marketplace/distance.ts` | **hardcoded** | Listing card shows fake km-from-buyer. Replace with real geocode + Haversine when the listing payload carries seller coords. |
+| App icons / splash | **placeholder** | Assets directory was empty; this audit copied staff-mobile's placeholder PNGs in so bundling resolves. Replace before submission. |
+| Apple/Google service account secrets | **not provisioned** | `eas.json` references `./secrets/google-play-service-account.json`, `BOSSNYUMBA_TENANT_APPLE_APP_ID`, `BOSSNYUMBA_APPLE_TEAM_ID`. |
+| Floating "Ask Mwikila" widget | **not present** | Staff app has a stub button (`AskMwikila.tsx`); tenant app has none. Task references a sibling agent porting the floating widget - add `src/components/AskMwikila.tsx` pointing to `/api/v1/public/chat` for anonymous-browse screens and `/api/v1/ai/chat` for authenticated tenants when that lands. |
+| `mockDistanceKm` in `src/marketplace/distance.ts` | **hardcoded** | Listing card shows fake km-from-tenant. Replace with real geocode + Haversine when the listing payload carries seller coords. |
 
 ## Fixes applied in this pass
 
@@ -53,7 +53,7 @@ Snapshot of where the app actually is, not where we'd like it to be. Updated as 
 2. `eas.json` development profile: `EXPO_PUBLIC_API_GATEWAY_URL` flipped to `http://localhost:4001`.
 3. `src/api/config.ts`: `FALLBACK_GATEWAY` updated from `:3001` to `:4001`.
 4. `src/auth/biometric.ts`: wrapped the whole `authenticateForSignature` body in try/catch so a missing native module no longer throws into the JS runtime - returns `{ok: false, reason: 'unavailable'}` instead.
-5. `assets/`: copied placeholder PNGs from workforce-mobile so `app.json` icon/splash/adaptive-icon paths resolve.
+5. `assets/`: copied placeholder PNGs from staff-mobile so `app.json` icon/splash/adaptive-icon paths resolve.
 
 No code changes touched any feature behaviour.
 
@@ -61,12 +61,12 @@ No code changes touched any feature behaviour.
 
 ```bash
 # 1. Provision the EAS project.
-cd apps/buyer-mobile
+cd apps/tenant-mobile
 eas init
 # (manually copy the printed projectId into app.json extra.eas.projectId AND updates.url)
 
 # 2. Local dev (Expo Go) - covers everything except camera launch + biometric prompt.
-pnpm -F @borjie/buyer-mobile start
+pnpm -F @bossnyumba/tenant-mobile start
 
 # 3. EAS dev build (unlocks camera capture + biometric).
 eas build --profile development --platform ios
@@ -85,10 +85,10 @@ eas submit --profile production --platform android
 
 ## Outstanding before EAS submission
 
-- Replace 4 placeholder PNGs in `assets/` (currently borrowed from workforce-mobile).
+- Replace 4 placeholder PNGs in `assets/` (currently borrowed from staff-mobile).
 - Replace `REPLACE_WITH_EAS_PROJECT_ID` in `app.json`.
 - Port `src/auth/token.ts` from `AsyncStorage` to `expo-secure-store`.
 - Decide whether to add `@supabase/supabase-js` directly on mobile, or keep OTP-via-gateway as the only auth path.
 - Replace `mockDistanceKm` with real distance computation.
-- Add a floating "Ask Borjie" component if the buyer flow needs it; route anonymous traffic to `/api/v1/public/chat` and authenticated buyers to `/api/v1/mining/chat`.
+- Add a floating "Ask Mwikila" component if the tenant flow needs it; route anonymous traffic to `/api/v1/public/chat` and authenticated tenants to `/api/v1/ai/chat`.
 - Replace placeholder Apple/Google submission credentials.

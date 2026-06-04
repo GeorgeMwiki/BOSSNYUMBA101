@@ -1,5 +1,5 @@
 /**
- * BossNyumba staff-mobile palette — LitFin-aligned (2026-05).
+ * BossNyumba staff-mobile palette — aligned with the parent fork (2026-05).
  *
  * Same direction as buyer-mobile + marketing + owner-web:
  * "Midnight Slate Ledger with Warm-Gold Signal." Navy-slate dark
@@ -8,12 +8,12 @@
  *
  * Tuned for outdoor field readability on cheap Android devices.
  * The gold/cream stack on slate hits WCAG AA in direct sunlight
- * tests; the earth-ramp tokens are retained as map / chart accents
- * (ore stope, drill-hole, geology layers) where mining context
- * still benefits from a brown undertone.
+ * tests; the warm-brown ramp token is retained as a map / chart accent
+ * (building footprints, block boundaries, site layers) where a brown
+ * undertone reads well against slate.
  */
 export const colors = {
-  // Foundation — LitFin navy-slate
+  // Foundation — navy-slate
   earth900: '#070A12',
   earth800: '#0B0F19',          // primary background
   earth700: '#11151F',          // raised surface
@@ -23,9 +23,9 @@ export const colors = {
 
   // Signal — warm gold
   goldDark: '#F5B23E',
-  gold: '#FFC857',              // LitFin hero gold
+  gold: '#FFC857',              // hero gold
   goldLight: '#FFD888',
-  ore: '#B7651F',               // legacy mining accent for charts
+  clay: '#B7651F',              // warm-brown chart / map accent
 
   // Cream foundation for light cards
   surface: '#F5F5F0',           // cream

@@ -11,7 +11,7 @@ export interface TrustBalanceStripCardProps {
 }
 
 // Renders kyc.status tool output as a compact trust strip. The strip
-// doubles as the buyer's "balance" indicator until a real escrow balance
+// doubles as the tenant's "balance" indicator until a real escrow balance
 // endpoint ships — we display the KYC stage as the limiting factor.
 
 const STATUS_TONE: Readonly<Record<string, PillTone>> = {

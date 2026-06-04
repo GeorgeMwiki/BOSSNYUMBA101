@@ -1,7 +1,7 @@
 /**
- * Magic-link mobile login for BossNyumba Buyers — Wave MAGIC-LINK-LOGIN.
+ * Magic-link mobile login for BossNyumba tenants — Wave MAGIC-LINK-LOGIN.
  *
- * Mirror of the workforce-mobile flow with buyer-specific copy and
+ * Mirror of the staff-mobile flow with tenant-specific copy and
  * the `bossnyumba-tenant://auth-callback` scheme handler. Supabase OTP
  * sends an email; the user taps the link; the app exchanges the code
  * for a session stored via expo-secure-store through the supabase

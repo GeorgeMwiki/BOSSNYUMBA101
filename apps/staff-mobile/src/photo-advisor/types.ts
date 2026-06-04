@@ -5,7 +5,7 @@ import { z } from 'zod'
  *
  * The feature captures a single still image plus optional natural-language
  * prompt plus optional GPS fix, and asks the Brain to return contextual
- * mining advice for the depicted site / building / area.
+ * property advice for the depicted property / building / unit.
  *
  * Today the Brain `POST /api/v1/brain/turn` endpoint only accepts a
  * `userText: string` body — there is no `attachments`, `media`, or
@@ -19,6 +19,8 @@ import { z } from 'zod'
  * pipeline below intentionally surfaces a `BACKEND_VISION_UNAVAILABLE`
  * empty state instead of round-tripping a half-built request. The schemas
  * still ship today so that backend integration is a single endpoint swap.
+ * (The vision-turn endpoint itself is FLAGGED as unresolved — do not
+ * silently repoint to ai-native/analyze.)
  */
 
 export const PhotoAdvisorLocationSchema = z.object({
@@ -99,11 +101,11 @@ export interface AnalyzePhotoArgs {
  */
 export const REQUIRED_BACKEND_CONTRACT = {
   method: 'POST',
-  path: '/api/v1/mining/brain/vision-turn',
+  path: '/api/v1/estate/brain/vision-turn',
   requestExample: {
-    userText: 'Niambie kuhusu eneo hili',
+    userText: 'Niambie kuhusu jengo hili',
     lang: 'sw',
-    location: { latitude: -3.4287, longitude: 32.9183, accuracyMetres: 8 },
+    location: { latitude: -6.7924, longitude: 39.2083, accuracyMetres: 8 },
     image: { base64: '<jpeg-base64>', mimeType: 'image/jpeg' }
   },
   responseShape: {

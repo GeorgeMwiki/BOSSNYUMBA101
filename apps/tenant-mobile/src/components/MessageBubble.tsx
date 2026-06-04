@@ -8,9 +8,12 @@ export interface MessageBubbleProps {
 }
 
 /**
- * Buyer-seller message bubble — LitFin DNA. Buyer (right-aligned)
- * uses the warm-gold fill on navy text; seller (left-aligned) uses
- * the navy AI bubble with a soft gold top accent.
+ * Tenant-landlord message bubble — BossNyumba design DNA. The tenant
+ * side (right-aligned) uses the warm-gold fill on navy text; the
+ * counterparty (left-aligned) uses the navy AI bubble with a soft gold
+ * top accent. NOTE (flagged): the `from: 'buyer' | 'seller'` prop union
+ * mirrors the wire `BidMessage` type and is kept until that type is
+ * renamed in a coordinated pass.
  */
 export function MessageBubble({ from, body, authorLabel }: MessageBubbleProps) {
   const isBuyer = from === 'buyer'

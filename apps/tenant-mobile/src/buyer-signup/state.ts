@@ -1,8 +1,8 @@
 /**
- * Buyer signup wizard state machine.
+ * Applicant signup wizard state machine.
  *
  * AsyncStorage-backed React Context so a resumed app session returns the
- * buyer to the screen they left, with every field they had filled. The
+ * applicant to the screen they left, with every field they had filled. The
  * machine is intentionally immutable — every transition returns a new
  * state object via the spread operator. No callsite mutates state.
  *

@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 // Validated payloads exchanged with the api-gateway /api/v1/brain/turn
 // endpoint. The brain orchestrator returns a flexible `toolCalls` array —
-// each entry has a `name` (used to dispatch a buyer-context renderer) plus
+// each entry has a `name` (used to dispatch a tenant-context renderer) plus
 // an `args`/`result` envelope. Schemas are intentionally permissive on the
 // inside (`unknown` for nested args) and strict at the boundary so the
 // renderer can fall through to a generic JSON view for unknown tools.
@@ -52,9 +52,15 @@ export interface ChatTurn {
   readonly createdAt: string
 }
 
-// Buyer-specific tool name registry. Adding a new card means adding a new
+// Tenant-specific tool name registry. Adding a new card means adding a new
 // entry here and a new branch in `ToolCallRenderer`. Unknown names fall
 // through to the generic JSON code-block view.
+//
+// NOTE (flagged): the BUYER_TOOL_NAMES / BuyerToolName / isBuyerToolName
+// symbols keep the legacy "buyer" token — they are consumed by the
+// non-owned ToolCallRenderer, so the rename is a coordinated follow-up.
+// The tool-name string VALUES below are the canonical brain wire names
+// and stay as-is.
 
 export const BUYER_TOOL_NAMES = [
   'marketplace.recommended',

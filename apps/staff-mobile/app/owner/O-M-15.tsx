@@ -12,12 +12,12 @@ import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
 const SCREEN_ID = 'O-M-15'
-const CLEAR_ENDPOINT_PATH = '/api/v1/mining/incidents/{id}/close'
+const CLEAR_ENDPOINT_PATH = '/api/v1/cases/{id}/resolve'
 
 const COPY = Object.freeze({
   loading: 'Inapakia data ya usalama…',
   highLabel: 'Hatari ya juu wazi',
-  highCaptionSafe: 'Mgodi salama',
+  highCaptionSafe: 'Mali salama',
   highCaptionAction: 'Hatua zinahitajika',
   totalLabel: 'Jumla wazi',
   controlsTitle: 'Vidhibiti vya hatari',
@@ -66,7 +66,7 @@ interface IncidentsResponse {
   readonly data: ReadonlyArray<IncidentRow>
 }
 
-const QUERY_KEY = ['mining', 'incidents', 'open'] as const
+const QUERY_KEY = ['owner', 'cases', 'open'] as const
 
 const SEVERITY_COLOR: Readonly<Record<IncidentSeverity, string>> = {
   critical: colors.danger,
@@ -91,7 +91,7 @@ function SafetyAndEhs(): JSX.Element {
   const query = useQuery<ReadonlyArray<IncidentRow>, ApiError>({
     queryKey: QUERY_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<IncidentsResponse>('/incidents/', {
+      const response = await miningApi.get<IncidentsResponse>('/cases', {
         signal,
         query: { status: 'open' }
       })

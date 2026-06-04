@@ -73,9 +73,9 @@ describe('useChatTabBridge → useOwnerTabs', () => {
       result.current.bridge.onEvent({
         type: 'tab_spawn',
         payload: {
-          tabId: 'geology|siteId:mererani',
-          tabType: 'geology', // Borjie mining-only kind
-          title: 'Geology',
+          tabId: 'unsupported-kind|propertyId:estate-7',
+          tabType: 'unsupported-kind', // kind the parent fork emitted but BN does not register
+          title: 'Unsupported Kind',
           config: {},
           source: 'brain',
         },

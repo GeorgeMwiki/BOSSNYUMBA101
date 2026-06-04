@@ -31,7 +31,7 @@
       "ml": "Portfolio landlords",
       "mlDesc": "Mid-portfolio managers across apartments and townhouses.",
       "sml": "Institutional landlords",
-      "smlDesc": "Institutional housing operators, large-format operations.",
+      "smlDesc": "Institutional housing operators, large-format portfolios.",
       "cooperatives": "Housing cooperatives",
       "cooperativesDesc": "Housing cooperatives, federated tenant associations.",
       "buyers": "Tenants and prospects",
@@ -48,7 +48,7 @@
     "kicker": "Choose your view",
     "owners": {
       "title": "Real estate owners",
-      "blurb": "Run your portfolio. Daily brief, lease calendar, maintenance logger."
+      "blurb": "Run your portfolio. Daily brief, lease calendar, maintenance log."
     },
     "buyers": {
       "title": "Tenants",
@@ -116,14 +116,14 @@
       },
       {
         "id": "bot-hedge",
-        "title": "Gold-window hedge against currency volatility.",
-        "body": "BossNyumba hedges your treasury at the BoT FX window automatically. Indicative saving of 1.4% vs spot at delivery.",
+        "title": "FX-window hedge against currency volatility.",
+        "body": "BossNyumba hedges your treasury at the BoT FX window automatically. Indicative saving of 1.4% vs spot at settlement.",
         "href": "/insights/bot-window-hedging"
       },
       {
         "id": "biometric",
         "title": "Biometric attendance lifts shift productivity 18%.",
-        "body": "Fingerprint clock-in at the building entrance cuts maintenance leakage and lifts deliverable tonnes per shift. Data from early operations across Mikocheni and Songwe.",
+        "body": "Fingerprint clock-in at the building entrance cuts maintenance leakage and lifts work completed per shift. Data from early operations across Mikocheni and Mbezi.",
         "href": "/insights/biometric-attendance-roi"
       }
     ]
@@ -142,10 +142,10 @@
   "stats": {
     "kicker": "By the numbers",
     "heading": "Numbers from our early operations.",
-    "sub": "Twelve weeks of co-development with property operators across Mikocheni, Mererani, and Songwe. Indicative figures from live telemetry, refreshed weekly.",
+    "sub": "Twelve weeks of co-development with property operators across Mikocheni, Masaki, and Mbezi. Indicative figures from live telemetry, refreshed weekly.",
     "items": [
       {
-        "label": "Sites under live brain",
+        "label": "Properties under live brain",
         "value": "47",
         "delta": "+12 this quarter"
       },
@@ -203,7 +203,7 @@
       },
       "compliance": {
         "title": "Compliance pack",
-        "blurb": "NHC EIA, management-fee returns, safety logs, audit chain. Ready for submission to Regulator and TRA."
+        "blurb": "NHC compliance, management-fee returns, safety logs, audit chain. Ready for submission to Regulator and TRA."
       }
     }
   },
@@ -223,12 +223,12 @@
       },
       "two": {
         "label": "Import",
-        "title": "Bring your licences and sites.",
-        "body": "Upload individual, portfolio, and institutional landlord registrations, site maps, maintenance logs. Your property's knowledge graph builds itself.",
+        "title": "Bring your leases and properties.",
+        "body": "Upload individual, portfolio, and institutional landlord registrations, building plans, maintenance logs. Your property's knowledge graph builds itself.",
         "bullets": [
           "Individual Landlord, Portfolio Landlord, Institutional upload with OCR",
-          "Site plans as GeoJSON or PDF",
-          "Drill-hole logs as CSV or laboratory PDF"
+          "Building plans as GeoJSON or PDF",
+          "Inspection logs as CSV or PDF"
         ]
       },
       "three": {
@@ -249,7 +249,7 @@
     "sub": "The Master Brain handled overnight operations. Here's what it did, what it flagged, and what the numbers say.",
     "demo": {
       "greeting": "Good morning, Mr. Salim.",
-      "intro": "Mine is calm. Three decisions need you before 09:00.",
+      "intro": "The estate is calm. Three decisions need you before 09:00.",
       "stats": {
         "overnightActions": "Overnight actions",
         "decisions": "Decisions",
@@ -260,22 +260,22 @@
       "lines": [
         {
           "time": "22:14",
-          "domain": "Mikocheni apartments · shift B",
-          "body": "Shift B delivered 184 t at 3.2 g/t. Logged to maintenance log MR-241.",
+          "domain": "Mikocheni apartments · block B",
+          "body": "Block B logged 18 turnovers and 4 move-ins. Written to maintenance log MR-241.",
           "tone": "good",
           "tag": "OK"
         },
         {
           "time": "23:47",
-          "domain": "Mererani vendor",
-          "body": "Vendor \"Kahama Logistics\" delayed payment on 12 t. Routed to you for extension approval.",
+          "domain": "Masaki vendor",
+          "body": "Vendor \"Kahama Facilities\" delayed payment on 12 work orders. Routed to you for extension approval.",
           "tone": "warn",
           "tag": "!"
         },
         {
           "time": "01:33",
-          "domain": "Registration 0241/2023 · Kahama",
-          "body": "Licence expires in 47 days. Regulator renewal form drafted for your review.",
+          "domain": "Lease 0241/2023 · Mbezi",
+          "body": "Lease expires in 47 days. Regulator renewal form drafted for your review.",
           "tone": "warn",
           "tag": "!"
         },
@@ -288,8 +288,8 @@
         },
         {
           "time": "04:18",
-          "domain": "NHC EIA · Songwe",
-          "body": "Quarterly emissions report submitted to NHC. Acknowledgement #2604-A.",
+          "domain": "NHC compliance · Mbezi",
+          "body": "Quarterly safety-and-environment report submitted to NHC. Acknowledgement #2604-A.",
           "tone": "good",
           "tag": "OK"
         },
@@ -304,19 +304,19 @@
     }
   },
   "ask": {
-    "kicker": "04 · Talk to your mine",
+    "kicker": "04 · Talk to your estate",
     "heading": "Ask. It answers.",
-    "sub": "Not a chatbot. The mine itself speaking in the first person, grounded in its knowledge graph, with clickable citations.",
+    "sub": "Not a chatbot. The estate itself speaking in the first person, grounded in its knowledge graph, with clickable citations.",
     "question": "What's my cash runway?",
     "answerPlan": [
       "Query TZS balances across all bank accounts",
-      "Fetch gold inventory and live BoT FX spot",
+      "Fetch rent receivables and live BoT FX spot",
       "Compute trailing 4-week burn rate"
     ],
-    "answer": "You hold TZS 412M in cash and 184 units of gold worth TZS 1.18B at today's spot. Trailing 4-week burn is TZS 87M/wk. That gives you 18.3 weeks of runway — or 22 weeks if the February Mikocheni tenancy settles on time.",
+    "answer": "You hold TZS 412M in cash and TZS 1.18B in rent receivables at today's rates. Trailing 4-week burn is TZS 87M/wk. That gives you 18.3 weeks of runway — or 22 weeks if the February Mikocheni tenancy settles on time.",
     "evidence": "Evidence: TRA bank-feed · BoT FX spot · tenancy MR-241",
     "showcase": {
-      "kicker": "Ask your mine",
+      "kicker": "Ask your estate",
       "title": "I am the property.",
       "subtitle": "First-person · grounded in the knowledge graph",
       "youAsked": "You asked",
@@ -343,7 +343,7 @@
         "Autonomous"
       ],
       "redLineKicker": "Red-line guarantee",
-      "redLineBody": "The Master Brain never auto-files rent to TRA, never auto-submits NHC EIA, and never auto-sells rent above 200 units. At any autonomy level. Ever.",
+      "redLineBody": "The Master Brain never auto-files rent to TRA, never auto-submits NHC compliance, and never auto-lets units above 200 in a batch. At any autonomy level. Ever.",
       "redLineTag": "Red-line · never autonomous",
       "autonomousTag": "Autonomous at this level",
       "unlocksAtL": "Unlocks at L"
@@ -381,7 +381,7 @@
       },
       {
         "id": "nhc",
-        "label": "Submit NHC EIA",
+        "label": "Submit NHC compliance filing",
         "minLevel": 99
       },
       {
@@ -427,7 +427,7 @@
         "actor": "master_brain",
         "decision": "executed",
         "decisionTone": "success",
-        "action": "property.tool.graph_lookup · gold_inventory=184oz",
+        "action": "property.tool.graph_lookup · rent_receivable=TZS1.18B",
         "prev": "8c…d04",
         "hash": "b1…7ae",
         "sig": "hmac:5d…c1"
@@ -543,25 +543,25 @@
   "testimonial": {
     "kicker": "09 · Early voices",
     "heading": "Quotes from early operators.",
-    "sub": "We're working with property operators across Mikocheni, Mererani, and Songwe who are running live on BossNyumba. Here's what they're seeing.",
+    "sub": "We're working with property operators across Mikocheni, Masaki, and Mbezi who are running live on BossNyumba. Here's what they're seeing.",
     "placeholderBadge": "Early operator",
     "cards": [
       {
         "name": "Joyce Mhagama",
         "initials": "JM",
-        "role": "Owner · Mikocheni landlord · 4 sites",
+        "role": "Owner · Mikocheni landlord · 4 properties",
         "placeholder": "Quote coming soon from our early operators."
       },
       {
         "name": "Hamisi Ngao",
         "initials": "HN",
-        "role": "Chair · Mererani tanzanite co-op · 18 members",
+        "role": "Chair · Mbezi housing co-op · 18 members",
         "placeholder": "Quote coming soon from our early operators."
       },
       {
         "name": "Asha Mwakajila",
         "initials": "AM",
-        "role": "CFO · Songwe trading group · 9 sites",
+        "role": "CFO · Masaki property group · 9 properties",
         "placeholder": "Quote coming soon from our early operators."
       }
     ]
@@ -577,7 +577,7 @@
       "kicker": "Why a Property Portfolio OS",
       "title": "Real estate estates run on the margin.",
       "titleAccent": "BossNyumba closes that gap end-to-end.",
-      "subOne": "Tanzanian property portfolios still run on Excel, WhatsApp and physical compliance binders across the licence, the rent book, the maintenance staff, the treasury, the marketplace, the subsidiaries, the family office and every ancillary business. The deposit is world-class. The infrastructure around it is not.",
+      "subOne": "Tanzanian property portfolios still run on Excel, WhatsApp and physical compliance binders across the lease, the rent book, the maintenance staff, the treasury, the marketplace, the subsidiaries, the family office and every ancillary business. The opportunity is world-class. The infrastructure around it is not.",
       "subTwo": "BossNyumba is the AI-native Property Portfolio operating system the sector has been waiting for.",
       "problem": {
         "title": "Real estate at the margin",
@@ -587,12 +587,12 @@
             "desc": "Owners file Regulator returns in Excel and miss the 47-day renewal window 18% of the time. Every missed window costs a re-filing fee and burns goodwill with the regulator."
           },
           {
-            "title": "The gold window swings 2.4% a day",
-            "desc": "Small miners hedge with WhatsApp messages to brokers in Dubai. They lose 4-6% of margin to spread, timing, and information asymmetry on every tenancy."
+            "title": "The FX window swings 2.4% a day",
+            "desc": "Small landlords hedge foreign-currency rent with WhatsApp messages to brokers in Dubai. They lose 4-6% of margin to spread, timing, and information asymmetry on every settlement."
           },
           {
             "title": "Compliance is fragmented",
-            "desc": "Regulator, NHC, Bank of Tanzania, and TRA all want different artifacts on different cadences. The owner becomes a part-time compliance officer instead of a miner."
+            "desc": "Regulator, NHC, Bank of Tanzania, and TRA all want different artifacts on different cadences. The owner becomes a part-time compliance officer instead of a property operator."
           },
           {
             "title": "Maintenance visibility ends at the building gate",
@@ -608,16 +608,16 @@
             "desc": "Mr. Mwikila drafts your monthly management fee in the official Regulator format the day after each month-end window closes. One-tap signature, cited line-by-line."
           },
           {
-            "title": "Gold-window hedge at BoT FX fix",
-            "desc": "The treasury desk hedges the BoT USD/gold window automatically — every hedge cited to the BoT AM-fix. Pilot saving of 1.4% versus walk-in spot."
+            "title": "FX-window hedge at BoT FX fix",
+            "desc": "The treasury desk hedges the BoT USD/TZS window automatically — every hedge cited to the BoT AM-fix. Pilot saving of 1.4% versus walk-in spot."
           },
           {
             "title": "Compliance pack on every cadence",
             "desc": "BossNyumba files Regulator, NHC, BoT, and TRA on each authority's own cadence. Hash-chain audited so the regulator can verify offline without trusting us."
           },
           {
-            "title": "Maintenance console on the foreman's phone",
-            "desc": "Run shifts, attendance, service logs, and incidents from the foreman's pocket. Biometric clock-in at the building entrance lifts shift productivity by 18% on pilot sites."
+            "title": "Maintenance console on the supervisor's phone",
+            "desc": "Run shifts, attendance, service logs, and incidents from the supervisor's pocket. Biometric clock-in at the building entrance lifts shift productivity by 18% on pilot properties."
           }
         ]
       }
@@ -637,7 +637,7 @@
             },
             {
               "name": "NHC",
-              "desc": "Environmental Council · EIA, quarterly emissions, audit pack"
+              "desc": "National Housing Corporation · compliance, quarterly safety reports, audit pack"
             },
             {
               "name": "Bank of Tanzania",
@@ -658,15 +658,15 @@
           ]
         },
         {
-          "title": "Markets & labs",
+          "title": "Markets & valuers",
           "items": [
             {
-              "name": "Vetted",
-              "desc": "London Bullion Market Association · AM-fix window for gold"
+              "name": "BoT FX desk",
+              "desc": "Bank of Tanzania · AM-fix window for foreign-currency rent settlement"
             },
             {
-              "name": "ICA Brussels",
-              "desc": "East-African REIT Council · building-grade certification"
+              "name": "East-African REIT Council",
+              "desc": "Building-grade certification and valuation standards"
             },
             {
               "name": "Regulator",
@@ -725,7 +725,7 @@
           "headline": "Stands up your property knowledge graph in 48 hours",
           "capabilities": [
             "Imports individual, portfolio, and institutional landlord registrations via OCR and reconciles them against the Regulator registry",
-            "Ingests site plans as GeoJSON or PDF and links every maintenance ticket to a segment",
+            "Ingests building plans as GeoJSON or PDF and links every maintenance ticket to a unit",
             "Builds your vendor, tenant, and worker registries from existing M-Pesa and payroll records",
             "Issues every team member their role-gated credential — owner, manager, supervisor, employee"
           ]
@@ -735,30 +735,30 @@
           "label": "Strategy",
           "headline": "Models the long arc — portfolio, treasury, tenants, market",
           "capabilities": [
-            "Simulates 12-month production against three gold-price scenarios",
+            "Simulates 12-month rent income against three occupancy scenarios",
             "Projects cash runway from current burn, hedge book, and tenancy pipeline",
-            "Flags landlord renewals 90, 60, and 30 days out with Regulator drafts pre-filled",
+            "Flags lease renewals 90, 60, and 30 days out with Regulator drafts pre-filled",
             "Recommends fleet, contractor, and supply purchases against quarterly plan"
           ]
         },
         {
           "id": "operations",
           "label": "Operations",
-          "headline": "Runs the day from the building entrance to the wash plant",
+          "headline": "Runs the day from the building entrance to the back office",
           "capabilities": [
             "Schedules shifts and tracks biometric clock-in on the supervisor's phone",
             "Logs every maintenance ticket, inspection, and snag-list entry to the chain",
-            "Tracks utility, supply, and equipment consumption against unit segments",
+            "Tracks utility, supply, and equipment consumption against units",
             "Surfaces overnight incidents, near-misses, and equipment downtime by 06:00"
           ]
         },
         {
           "id": "document",
           "label": "Document",
-          "headline": "Drafts every artifact — rent, NHC EIA, safety log",
+          "headline": "Drafts every artifact — rent, NHC compliance, safety log",
           "capabilities": [
             "Regulator rent drafts in the official format every month",
-            "NHC EIA and quarterly emissions report templates auto-populated from telemetry",
+            "NHC compliance and quarterly safety-and-environment report templates auto-populated from telemetry",
             "OSHA shift log, incident report, and corrective-action notes",
             "Tenancy contracts with biometric fingerprint signature workflow"
           ]
@@ -768,8 +768,8 @@
           "label": "Finance",
           "headline": "Hedges the treasury window, watches the cash, files the tax",
           "capabilities": [
-            "Hedges gold at the BoT AM-fix automatically inside policy",
-            "Tracks TZS · USD · gold-ounce balances against the BoT USD cliff",
+            "Hedges foreign-currency rent at the BoT AM-fix automatically inside policy",
+            "Tracks TZS · USD balances against the BoT USD cliff",
             "Drafts VAT, PAYE, and withholding-tax returns ready for TRA filing",
             "Settles vendor wallets through M-Pesa, Tigo Pesa, and Airtel Money"
           ]
@@ -811,27 +811,27 @@
           "desc": "The chat you're using right now. Mr. Mwikila answers your questions about pricing, regulators, and timelines — and guides you to sign up when you're ready.",
           "preview": {
             "user": "What does BossNyumba do for a Mikocheni landlord?",
-            "ai": "Drafts your Regulator rent in the official format, hedges your treasury at the BoT FX fix, runs your shift roster on the supervisor's phone. Want to see how a real Wednesday at 06:00 looks?"
+            "ai": "Drafts your Regulator rent in the official format, hedges your treasury at the BoT FX fix, runs your staff roster on the supervisor's phone. Want to see how a real Wednesday at 06:00 looks?"
           }
         },
         {
           "id": "home",
           "title": "Home chat",
           "subtitle": "Teaches",
-          "desc": "Once you're inside BossNyumba, the home chat teaches you the system. Ask about the licence calendar, the autonomy dial, or how rent is filed — it answers with citations to your own data.",
+          "desc": "Once you're inside BossNyumba, the home chat teaches you the system. Ask about the lease calendar, the autonomy dial, or how rent is filed — it answers with citations to your own data.",
           "preview": {
-            "user": "How do I add a new Individual Landlord?",
-            "ai": "Open the licence calendar, tap +Property, scan the lease cover with your phone. OCR populates the Regulator fields. I'll flag any field that doesn't match the registry."
+            "user": "How do I add a new lease?",
+            "ai": "Open the lease calendar, tap +Property, scan the lease cover with your phone. OCR populates the Regulator fields. I'll flag any field that doesn't match the registry."
           }
         },
         {
           "id": "voice",
           "title": "Voice",
           "subtitle": "Hands-free",
-          "desc": "In the truck on the haul road. On the wash plant deck. At the building entrance when both hands are dirty. Tap the mic, talk, and BossNyumba answers in Swahili or English.",
+          "desc": "In the van between properties. On the service round. At the building entrance when both hands are full. Tap the mic, talk, and BossNyumba answers in Swahili or English.",
           "preview": {
             "user": "Mwikila, ni gani limetokea usiku?",
-            "ai": "Zamu B imetoa tani 184 kwa daraja la 3.2 g/t. Gari moja la mafuta limepoteza saa mbili kwa breakdown. Hakuna ajali. Rent ya Aprili iko tayari kusainiwa."
+            "ai": "Block B imerekodi mauzo 18 na waingiaji wapya 4. Gari moja la huduma limepoteza saa mbili kwa breakdown. Hakuna ajali. Rent ya Aprili iko tayari kusainiwa."
           }
         }
       ]
@@ -840,7 +840,7 @@
       "kicker": "Three product surfaces, one OS",
       "title": "Where BossNyumba lives.",
       "titleAccent": "On every screen the property needs.",
-      "sub": "The Owner Cockpit, the Maintenance Mobile app, and the Buyer Marketplace are three windows into the same audited data fabric. The owner runs the business. The supervisor runs the shift. The buyer sources the parcel.",
+      "sub": "The Owner Cockpit, the Maintenance Mobile app, and the Tenant Marketplace are three windows into the same audited data fabric. The owner runs the business. The supervisor runs the shift. The tenant sources the unit.",
       "tiles": [
         {
           "title": "Owner Cockpit",
@@ -849,15 +849,15 @@
           "mockType": "kpi",
           "kpis": [
             {
-              "label": "Oz Au this month",
-              "value": "184"
+              "label": "Rent collected this month",
+              "value": "TZS 184M"
             },
             {
               "label": "Cash runway (wks)",
               "value": "18.3"
             },
             {
-              "label": "Days to renew registration",
+              "label": "Days to renew lease",
               "value": "47"
             }
           ]
@@ -869,8 +869,8 @@
           "mockType": "shift",
           "rows": [
             {
-              "label": "Shift B · unit segment 4",
-              "value": "184 t",
+              "label": "Block B · unit 4",
+              "value": "18 turnovers",
               "tone": "good"
             },
             {
@@ -886,18 +886,18 @@
           ]
         },
         {
-          "title": "Buyer Marketplace",
+          "title": "Tenant Marketplace",
           "subtitle": "Web · mobile · 12 screens",
-          "desc": "KYB-verified sellers, vetted corporate inspections, biometric tenancy signatures. The marketplace for buyers sourcing verified Tanzanian properties.",
+          "desc": "KYB-verified landlords, vetted corporate inspections, biometric tenancy signatures. The marketplace for tenants sourcing verified Tanzanian properties.",
           "mockType": "market",
           "listings": [
             {
-              "label": "Mikocheni doré · 60 units",
+              "label": "Mikocheni apartments · 60 units",
               "value": "TZS 142M",
               "tone": "live"
             },
             {
-              "label": "Mwanza building · Block-D",
+              "label": "Mwanza office block · Block-D",
               "value": "TZS 88M",
               "tone": "live"
             },
@@ -931,13 +931,13 @@
         {
           "id": "hedge",
           "title": "BoT FX window hedge",
-          "desc": "BossNyumba hedges your treasury against the BoT USD/gold window at the BoT AM-fix. Every hedge cited to the fix price, indicative pilot saving of 1.4% versus spot.",
+          "desc": "BossNyumba hedges your treasury against the BoT USD/TZS window at the BoT AM-fix. Every hedge cited to the fix price, indicative pilot saving of 1.4% versus spot.",
           "badge": "Treasury"
         },
         {
           "id": "rent",
           "title": "Regulator rent",
-          "desc": "Monthly rent drafted in the official Regulator format the day after each parcel window closes. One-tap signature, full audit chain.",
+          "desc": "Monthly rent drafted in the official Regulator format the day after each billing window closes. One-tap signature, full audit chain.",
           "badge": "Auto-draft"
         },
         {
@@ -952,7 +952,7 @@
       "kicker": "By the numbers · early voices",
       "title": "What early operators are telling us.",
       "titleAccent": "Indicative, refreshed weekly.",
-      "sub": "Operators across Mikocheni, Mererani, and Songwe are running live on BossNyumba. Below: numbers from telemetry on the left, and what operators are saying on the right.",
+      "sub": "Operators across Mikocheni, Masaki, and Mbezi are running live on BossNyumba. Below: numbers from telemetry on the left, and what operators are saying on the right.",
       "statsHeading": "By the numbers",
       "stats": [
         {
@@ -974,7 +974,7 @@
           "value": 4.2,
           "suffix": "B",
           "decimals": 1,
-          "label": "TZS hedged at gold window"
+          "label": "TZS hedged at FX window"
         }
       ],
       "quotesHeading": "Early operator voices",
@@ -982,34 +982,34 @@
         {
           "body": "The 06:00 brief in Swahili changed how my Wednesday starts. I used to spend two hours pulling reports. Now I sign three decisions and head to the building.",
           "name": "Joyce Mhagama",
-          "role": "Owner · Mikocheni landlord · 4 sites"
+          "role": "Owner · Mikocheni landlord · 4 properties"
         },
         {
           "body": "The Regulator rent draft has not been rewritten by the regulator once. Twelve months in. That's the proof for me.",
           "name": "Hamisi Ngao",
-          "role": "Chair · Mererani co-op · 18 members"
+          "role": "Chair · Mbezi housing co-op · 18 members"
         },
         {
           "body": "Biometric clock-in killed our maintenance leakage in one week. The supervisor finally has a phone that does the job, not just makes calls.",
           "name": "Asha Mwakajila",
-          "role": "CFO · Songwe trading group · 9 sites"
+          "role": "CFO · Masaki property group · 9 properties"
         }
       ]
     },
     "roadmap": {
       "kicker": "Roadmap · what's next",
-      "title": "Run your mine on autopilot.",
+      "title": "Run your estate on autopilot.",
       "titleAccent": "Here's the year ahead.",
       "sub": "BossNyumba ships in waves. We're expanding operations across 2026 with four new capabilities. Each pill below maps to a quarter; each is shipping into the same hash-chained audit fabric.",
       "pills": [
         {
           "label": "Q1 2026",
-          "title": "Early operators — ten live mines",
+          "title": "Early operators — ten live estates",
           "tone": "active"
         },
         {
           "label": "Q2 2026",
-          "title": "Licence radar — 47-day pre-fill",
+          "title": "Lease radar — 47-day pre-fill",
           "tone": "next"
         },
         {
@@ -1019,7 +1019,7 @@
         },
         {
           "label": "Q4 2026",
-          "title": "Buyer marketplace — public beta",
+          "title": "Tenant marketplace — public beta",
           "tone": "later"
         }
       ],
@@ -1128,7 +1128,7 @@
       },
       {
         "q": "How does Mkulima differ from Mfanyabiashara?",
-        "a": "Mkulima is for a single Individual Landlord holder running one or two sites with one or two supervisors. Mfanyabiashara unlocks multi-site, multi-licence, treasury rails, and Sovereign Agent for high-risk actions. If you run more than one mine, choose Mfanyabiashara."
+        "a": "Mkulima is for a single Individual Landlord holder running one or two properties with one or two supervisors. Mfanyabiashara unlocks multi-property, multi-lease, treasury rails, and Sovereign Agent for high-risk actions. If you run more than one property, choose Mfanyabiashara."
       },
       {
         "q": "What payment methods do you accept?",
@@ -1228,8 +1228,8 @@
   },
   "ownersPage": {
     "kicker": "For landlords",
-    "heading": "Run your mine like the world's best.",
-    "sub": "Master Brain, licence calendar, maintenance logger, FX/treasury, marketplace and compliance — all in one calm operator.",
+    "heading": "Run your estate like the world's best.",
+    "sub": "Master Brain, lease calendar, maintenance log, FX/treasury, marketplace and compliance — all in one calm operator.",
     "ctaPilot": "Get started",
     "ctaPricing": "See pricing"
   },
@@ -1303,7 +1303,7 @@
           "tag": "Apartment portfolio",
           "buyer": "Pamoja REIT",
           "location": "Dar es Salaam",
-          "blurb": "Sources 40-60 units per quarter of Class-A apartments from Mikocheni and Kahama landlord clusters. BossNyumba chain-of-custody lets the REIT skip its own field due diligence."
+          "blurb": "Sources 40-60 units per quarter of Class-A apartments from Mikocheni and Masaki landlord clusters. BossNyumba chain-of-custody lets the REIT skip its own field due diligence."
         },
         "tanzanite": {
           "tag": "Townhouse complex",
@@ -1364,11 +1364,11 @@
       ],
       "businessTitle": "I represent a company",
       "businessTitleEn": "Mimi nina kampuni / shirika",
-      "businessSubtitle": "Refinery, broker, fabricator, or investor.",
+      "businessSubtitle": "Serviced-apartment operator, relocation agency, broker, or investor.",
       "businessBullets": [
         "Company name + BRELA registration",
         "Tax ID (TIN)",
-        "Business type (refiner / broker / fabricator / investor)",
+        "Business type (serviced-apartment / relocation agency / broker / investor)",
         "Contact full name, phone, and email"
       ],
       "continue": "Continue"
@@ -1464,8 +1464,8 @@
     "heading": "Start with BossNyumba.",
     "sub": "Spin up your real-estate operating system in under two minutes.",
     "fields": {
-      "orgName": "Mine or company name",
-      "orgNameSub": "Jina la mgodi",
+      "orgName": "Estate or company name",
+      "orgNameSub": "Jina la kampuni",
       "ownerFullName": "Your full name",
       "ownerFullNameSub": "Jina lako kamili",
       "email": "Email",
@@ -1486,7 +1486,7 @@
       "submitting": "Creating"
     },
     "errors": {
-      "orgNameRequired": "Mine or company name is required",
+      "orgNameRequired": "Estate or company name is required",
       "ownerFullNameRequired": "Enter your full name",
       "emailRequired": "Enter a valid email address",
       "passwordTooShort": "Password must be at least 8 characters",
@@ -1534,7 +1534,7 @@
       "cards": {
         "dailyBrief": {
           "title": "Daily evidence-cited reports",
-          "blurb": "Every morning at 06:00 each portfolio mine produces a brief covering production, cash, licence status, and incidents. Cited line-by-line to source data."
+          "blurb": "Every morning at 06:00 each portfolio property produces a brief covering rent income, cash, lease status, and incidents. Cited line-by-line to source data."
         },
         "usdCliff": {
           "title": "27-Mar-2026 USD cliff remediation",
@@ -1542,11 +1542,11 @@
         },
         "auditPack": {
           "title": "Audit-pack export",
-          "blurb": "One-click export of the cryptographic audit chain, licences, management-fee returns, safety logs, and bank reconciliations for due diligence."
+          "blurb": "One-click export of the cryptographic audit chain, leases, management-fee returns, safety logs, and bank reconciliations for due diligence."
         },
         "treasury": {
           "title": "Treasury simulation",
-          "blurb": "Stress-test tenancy timing, gold price moves, and TZS/USD swings. See the impact on covenant ratios before they happen."
+          "blurb": "Stress-test tenancy timing, rent escalation, and TZS/USD swings. See the impact on covenant ratios before they happen."
         }
       }
     },
@@ -1562,18 +1562,18 @@
         },
         "cluster": {
           "label": "Cluster",
-          "value": "Mikocheni landlord · 9 sites"
+          "value": "Mikocheni landlord · 9 properties"
         },
         "production": {
           "label": "Run-rate",
-          "value": "184 units Au / mo"
+          "value": "TZS 184M rent / mo"
         },
         "runway": {
           "label": "Cash runway",
           "value": "18.3 weeks"
         },
         "ltv": {
-          "label": "LTV (proven ounces)",
+          "label": "LTV (appraised value)",
           "value": "32%"
         },
         "covenant": {
@@ -1583,7 +1583,7 @@
       },
       "bullets": [
         "Daily 06:00 brief delivered to lender dashboard",
-        "Cryptographic audit chain over every Individual Landlord transfer",
+        "Cryptographic audit chain over every lease transfer",
         "Indicative DSCR re-projected each morning",
         "USD cliff exposure tracked weekly"
       ]
@@ -1608,7 +1608,7 @@
   "blog": {
     "kicker": "Blog",
     "heading": "Field notes from Tanzanian real estate.",
-    "sub": "Writing on licences, treasury, geology, and the slow build of an AI-native operating system for the sector.",
+    "sub": "Writing on leases, treasury, property markets, and the slow build of an AI-native operating system for the sector.",
     "readMore": "Read article",
     "minRead": "min read",
     "backToBlog": "Back to all articles",
@@ -1631,7 +1631,7 @@
   "caseStudies": {
     "kicker": "Case studies",
     "heading": "Pilot case studies arriving Q3 2026.",
-    "sub": "Ten pioneer operators across Mikocheni, Mererani, and Songwe are running 12-week pilots. Once the first cohort completes we'll publish full case studies — production lift, cash-cycle compression, audit findings.",
+    "sub": "Ten pioneer operators across Mikocheni, Masaki, and Mbezi are running 12-week pilots. Once the first cohort completes we'll publish full case studies — occupancy lift, cash-cycle compression, audit findings.",
     "placeholderBadge": "In flight",
     "back": "Back to home"
   },
@@ -1671,7 +1671,7 @@
   "about": {
     "kicker": "About BossNyumba",
     "heading": "An operating system built for and by Tanzanian real estate.",
-    "sub": "BossNyumba was started by a small Tanzanian and diaspora team after watching another generation of operators run world-class deposits on spreadsheets.",
+    "sub": "BossNyumba was started by a small Tanzanian and diaspora team after watching another generation of operators run world-class property portfolios on spreadsheets.",
     "originHeading": "Origin story",
     "originBody": "We met across Mikocheni and Dar es Salaam in 2024, swapping notes on why every property ERP felt designed for someone else's country. By early 2026 we had a working Master Brain and ten pilots. The mission stayed the same: an operating system that respects how Tanzanian real estate actually works — KYC for single landlords, rent maths the TRA recognises, briefings in Swahili at 06:00.",
     "teamHeading": "Team",
@@ -1732,11 +1732,11 @@
   "audiencePages": {
     "pml": {
       "metaTitle": "BossNyumba for Individual landlords — single-landlord real-estate OS",
-      "metaDescription": "BossNyumba for Primary Portfolio Licence holders. Daily brief, rent calendar, maintenance logger, M-Pesa payouts. Built for Tanzanian single landlords. 90-day free pilot.",
+      "metaDescription": "BossNyumba for individual landlords. Daily brief, lease calendar, maintenance log, M-Pesa payouts. Built for Tanzanian single landlords. 90-day free pilot.",
       "heroKicker": "For Individual landlords",
-      "heroHeadline": "Run your Individual Landlord site like a",
+      "heroHeadline": "Run your property like a",
       "heroHeadlineAccent": "mid-tier operator",
-      "heroSub": "BossNyumba gives small-scale artisanal mines a daily brief, a rent calendar, a chain-of-custody log, and a marketplace, all in Swahili first. One tablet on site replaces six spreadsheets.",
+      "heroSub": "BossNyumba gives small-scale landlords a daily brief, a lease calendar, a maintenance and inspection log, and a marketplace, all in Swahili first. One tablet on site replaces six spreadsheets.",
       "heroPrimaryCta": "Get started",
       "heroSecondaryCta": "See it move",
       "trustline": [
@@ -1744,18 +1744,18 @@
         "Works on a single shared tablet",
         "M-Pesa, Tigo Pesa, Airtel Money native"
       ],
-      "statsHeading": "Three numbers that move your site.",
-      "statsSub": "Not promises. The specific levers BossNyumba pulls inside a small artisanal operation.",
+      "statsHeading": "Three numbers that move your property.",
+      "statsSub": "Not promises. The specific levers BossNyumba pulls inside a small property operation.",
       "stats": [
         {
           "value": "06:00",
           "label": "daily brief on your phone",
-          "sub": "Mr. Mwikila assembles the night's production, payroll status, and licence calendar before the first shift starts."
+          "sub": "Mr. Mwikila assembles the night's rent collection, payroll status, and lease calendar before the first shift starts."
         },
         {
           "value": "60s",
-          "label": "to log a drill hole or weigh-slip",
-          "sub": "Camera capture, voice memo, GPS pinned. The chain of custody starts at the unit, not at the office."
+          "label": "to log an inspection or maintenance ticket",
+          "sub": "Camera capture, voice memo, GPS pinned. The condition record starts at the unit, not at the office."
         },
         {
           "value": "Zero",
@@ -1768,71 +1768,71 @@
       "steps": [
         {
           "n": "01",
-          "title": "Log production in Swahili.",
-          "body": "Your site manager records each weigh-slip with a photo, a voice note, and a GPS pin. BossNyumba keeps the audit trail in your name."
+          "title": "Log condition in Swahili.",
+          "body": "Your property manager records each inspection with a photo, a voice note, and a GPS pin. BossNyumba keeps the audit trail in your name."
         },
         {
           "n": "02",
           "title": "Wake to the brief.",
-          "body": "Every morning, Mr. Mwikila summarises production, rent exposure, payroll, and what needs your decision today. Bilingual sw and en."
+          "body": "Every morning, Mr. Mwikila summarises rent collection, arrears exposure, payroll, and what needs your decision today. Bilingual sw and en."
         },
         {
           "n": "03",
-          "title": "File, pay, sell.",
-          "body": "Rent filings draft themselves. Payouts move via M-Pesa, Tigo Pesa, Airtel Money. Buyers see your inventory in the marketplace."
+          "title": "File, pay, lease.",
+          "body": "Rent filings draft themselves. Payouts move via M-Pesa, Tigo Pesa, Airtel Money. Tenants see your vacant units in the marketplace."
         }
       ],
       "problemKicker": "Why BossNyumba",
-      "problemHeading": "Why most Individual Landlord sites lose money",
+      "problemHeading": "Why most small landlords lose money",
       "problemHeadingAccent": "they already earned.",
-      "problemSub": "Artisanal real estate is rich in occupancy and poor in records. The leaks are not in the building, they are in the paperwork.",
+      "problemSub": "Small-scale real estate is rich in occupancy and poor in records. The leaks are not in the building, they are in the paperwork.",
       "problemTitle": "Where the money leaks",
       "problems": [
         {
           "title": "Rent compliance gaps",
-          "desc": "Most Individual landlords miss filing windows because no one is tracking Regulator deadlines in the same place as production. Penalties stack quietly."
+          "desc": "Most Individual landlords miss filing windows because no one is tracking Regulator deadlines in the same place as rent collection. Penalties stack quietly."
         },
         {
           "title": "Cash-in-hand payroll",
-          "desc": "Wages paid in cash leave no audit trail. When a licence audit lands, nobody can prove who worked which shift, who got paid what."
+          "desc": "Wages paid in cash leave no audit trail. When a compliance audit lands, nobody can prove who worked which shift, who got paid what."
         },
         {
-          "title": "Unverified buyers",
-          "desc": "Tenants walk on site, weigh, pay below spot, and disappear. Without a verified marketplace, your gold leaves the country at a discount."
+          "title": "Unverified tenants",
+          "desc": "Tenants view a unit, sign on a scrap of paper, pay below market, and disappear. Without a verified marketplace, your rent income leaks away at a discount."
         },
         {
           "title": "Lost institutional memory",
-          "desc": "When a site manager leaves, the production history walks with them. New hires start from zero. No drill logs, no chain of custody, no records."
+          "desc": "When a property manager leaves, the tenancy history walks with them. New hires start from zero. No condition records, no audit trail, no records."
         }
       ],
       "solutionTitle": "What BossNyumba does",
       "solutions": [
         {
           "title": "One brief, one truth",
-          "desc": "Mr. Mwikila pulls production, rent exposure, payroll status, and licence calendar into a single 06:00 brief on your phone. Bilingual sw and en."
+          "desc": "Mr. Mwikila pulls rent collection, arrears exposure, payroll status, and lease calendar into a single 06:00 brief on your phone. Bilingual sw and en."
         },
         {
-          "title": "Mobile-first chain of custody",
-          "desc": "Every weigh-slip is photographed, voice-tagged, GPS-pinned, and timestamped. The audit trail is yours, immutable, and Regulator-ready."
+          "title": "Mobile-first condition record",
+          "desc": "Every inspection is photographed, voice-tagged, GPS-pinned, and timestamped. The audit trail is yours, immutable, and Regulator-ready."
         },
         {
           "title": "Verified marketplace",
-          "desc": "List your building portfolios or vacant-unit listings in a marketplace where KYB-cleared buyers compete on price. Settlement via mobile money or bank."
+          "desc": "List your buildings or vacant-unit listings in a marketplace where KYB-cleared tenants compete on price. Settlement via mobile money or bank."
         },
         {
           "title": "Built for the tablet",
-          "desc": "The site manager runs it on one tablet. The owner reads it on the phone. The accountant exports it to TRA. One system, three roles."
+          "desc": "The property manager runs it on one tablet. The owner reads it on the phone. The accountant exports it to TRA. One system, three roles."
         }
       ],
-      "ctaHeading": "See it on your site in 90 days.",
-      "ctaSub": "Sign up today. No commitment. BossNyumba reads your last 90 days of weigh-slips and shows you the brief running on your own data.",
+      "ctaHeading": "See it on your property in 90 days.",
+      "ctaSub": "Sign up today. No commitment. BossNyumba reads your last 90 days of records and shows you the brief running on your own data.",
       "ctaPrimary": "Get started"
     },
     "ml": {
       "metaTitle": "BossNyumba for Portfolio Landlord operators — mid-tier real-estate OS",
-      "metaDescription": "BossNyumba for portfolio-licence operators across apartments and townhouses. Multi-pit production rollups, inspection logs, vendor telemetry, rent automation, board-ready reporting. 90-day free pilot.",
+      "metaDescription": "BossNyumba for portfolio-licence operators across apartments and townhouses. Multi-property rent rollups, inspection logs, vendor telemetry, rent automation, board-ready reporting. 90-day free pilot.",
       "heroKicker": "For Portfolio Landlord operators",
-      "heroHeadline": "Mid-tier mines deserve",
+      "heroHeadline": "Mid-tier portfolios deserve",
       "heroHeadlineAccent": "mid-tier software",
       "heroSub": "BossNyumba consolidates multiple properties, contractors, and vendors into one operations console. Daily decision support for the owner, defensible audit trail for Regulator, board-ready reporting on demand.",
       "heroPrimaryCta": "Get started",
@@ -1843,36 +1843,36 @@
         "TZS-first, multi-currency aware"
       ],
       "statsHeading": "Three numbers that move your P&L.",
-      "statsSub": "Not opinions. The specific levers BossNyumba pulls inside an Portfolio Landlord-scale operation.",
+      "statsSub": "Not opinions. The specific levers BossNyumba pulls inside a Portfolio Landlord-scale operation.",
       "stats": [
         {
           "value": "1 view",
           "label": "units, contractors, rents",
-          "sub": "All pits, contractors, contractor hours, and rent exposure on one screen. Drill into any tile in two clicks."
+          "sub": "All properties, contractors, contractor hours, and rent exposure on one screen. Drill into any tile in two clicks."
         },
         {
           "value": "3-5x",
           "label": "faster month-end close",
-          "sub": "Production rolls up automatically. Rent drafts itself. The accountant signs off, they no longer assemble."
+          "sub": "Rent rolls up automatically. The rent return drafts itself. The accountant signs off, they no longer assemble."
         },
         {
           "value": "Zero",
-          "label": "untracked blast events",
-          "sub": "Every blast logged, every cycle timed, every inspection chained back to the source drill hole. The audit trail writes itself."
+          "label": "untracked maintenance jobs",
+          "sub": "Every work order logged, every cycle timed, every inspection chained back to the source unit. The audit trail writes itself."
         }
       ],
       "stepsKicker": "How it works",
-      "stepsHeading": "Three moves from blast to board pack.",
+      "stepsHeading": "Three moves from work order to board pack.",
       "steps": [
         {
           "n": "01",
           "title": "Connect the properties.",
-          "body": "Your building managers log occupancy, contractor hours, and inspections from the tablet. BossNyumba consolidates across sites in real time."
+          "body": "Your building managers log occupancy, contractor hours, and inspections from the tablet. BossNyumba consolidates across properties in real time."
         },
         {
           "n": "02",
           "title": "Brief the owner. Pre-file the rent.",
-          "body": "Each morning the owner sees production, exposure, payroll, and the ten decisions that matter today. The rent file drafts itself."
+          "body": "Each morning the owner sees rent collection, exposure, payroll, and the ten decisions that matter today. The rent file drafts itself."
         },
         {
           "n": "03",
@@ -1883,20 +1883,20 @@
       "problemKicker": "Why BossNyumba",
       "problemHeading": "Portfolio Landlord operators run on",
       "problemHeadingAccent": "duct tape and Excel.",
-      "problemSub": "Mid-tier mines are too big for paper and too small for SAP. The gap is where the value leaks.",
+      "problemSub": "Mid-tier portfolios are too big for paper and too small for SAP. The gap is where the value leaks.",
       "problemTitle": "Where the leaks live",
       "problems": [
         {
-          "title": "Pit-level data, no rollup",
+          "title": "Property-level data, no rollup",
           "desc": "Each property keeps its own spreadsheet. The owner reconciles them on Sunday night. The board sees last month's numbers next quarter."
         },
         {
           "title": "Contractor blind spots",
-          "desc": "Hauling contractors invoice by the truck. Without telemetry, you pay for trips that never happened and lose trips that did."
+          "desc": "Maintenance contractors invoice by the call-out. Without telemetry, you pay for visits that never happened and lose visits that did."
         },
         {
           "title": "Rent by guesswork",
-          "desc": "Without a unified production ledger, rent filings are estimates. Regulator audits punish gaps far harder than overpayments."
+          "desc": "Without a unified rent ledger, rent filings are estimates. Regulator audits punish gaps far harder than overpayments."
         },
         {
           "title": "Board packs by Friday panic",
@@ -1907,7 +1907,7 @@
       "solutions": [
         {
           "title": "Multi-property rollups, live",
-          "desc": "Every pit's production, fleet, and inspections roll into one view. The owner reads one number; the manager owns one pit."
+          "desc": "Every property's rent income, fleet, and inspections roll into one view. The owner reads one number; the manager owns one property."
         },
         {
           "title": "Fleet telemetry without retrofits",
@@ -1915,14 +1915,14 @@
         },
         {
           "title": "Rent automation",
-          "desc": "Production ledger drives the rent file. Regulator-compliant, TZS-denominated, ready to file on the 7th."
+          "desc": "Rent ledger drives the rent file. Regulator-compliant, TZS-denominated, ready to file on the 7th."
         },
         {
           "title": "Board-pack on demand",
           "desc": "The deck regenerates from live data. Owner reviews on Friday evening. Operations team keeps their weekend."
         }
       ],
-      "ctaHeading": "Run your Portfolio Landlord site like a public company.",
+      "ctaHeading": "Run your Portfolio Landlord portfolio like a public company.",
       "ctaSub": "Sign up today. No commitment. BossNyumba reads your last quarter and shows you the cockpit running on your own data.",
       "ctaPrimary": "Get started"
     },
@@ -1964,8 +1964,8 @@
       "steps": [
         {
           "n": "01",
-          "title": "Consolidate every site.",
-          "body": "Pits, processing plants, tailings dams, exploration camps. All on one operations canvas, role-gated and audit-chained."
+          "title": "Consolidate every property.",
+          "body": "Apartment blocks, commercial premises, mixed-use estates, ancillary facilities. All on one operations canvas, role-gated and audit-chained."
         },
         {
           "n": "02",
@@ -2030,7 +2030,7 @@
       "heroKicker": "For cooperatives",
       "heroHeadline": "Cooperative discipline,",
       "heroHeadlineAccent": "individual dignity",
-      "heroSub": "BossNyumba federates the artisanal cooperative. Members keep their identity, the cooperative keeps the ledger, and every gram is tagged from pit to payout. Co-op-style governance, real estate-grade tooling.",
+      "heroSub": "BossNyumba federates the housing cooperative. Members keep their identity, the cooperative keeps the ledger, and every unit is tagged from intake to payout. Co-op-style governance, real estate-grade tooling.",
       "heroPrimaryCta": "Get started",
       "heroSecondaryCta": "See it move",
       "trustline": [
@@ -2043,18 +2043,18 @@
       "stats": [
         {
           "value": "1 view",
-          "label": "members, production, advances",
-          "sub": "Every member's contribution this season, the cooperative's pooled output, and the bulk advance against it. One view, board and field."
+          "label": "members, rent income, advances",
+          "sub": "Every member's contribution this period, the cooperative's pooled rent income, and the bulk advance against it. One view, board and field."
         },
         {
           "value": "48h",
           "label": "bulk advance to individual payouts",
-          "sub": "The cooperative borrows against pooled building inventory. Members receive their share via mobile money before the weekend closes."
+          "sub": "The cooperative borrows against pooled rent receivables. Members receive their share via mobile money before the weekend closes."
         },
         {
           "value": "Zero",
-          "label": "double-counted grams",
-          "sub": "Every gram tagged to a named member. No ghost weigh-slips, no double advances, no inspection surprises."
+          "label": "double-counted units",
+          "sub": "Every unit tagged to a named member. No ghost listings, no double advances, no inspection surprises."
         }
       ],
       "stepsKicker": "How it works",
@@ -2067,19 +2067,19 @@
         },
         {
           "n": "02",
-          "title": "Aggregate the season, price the advance.",
-          "body": "BossNyumba tallies deliveries, reads the market, and proposes a bulk advance the tenant or lender can underwrite in one file."
+          "title": "Aggregate the period, price the advance.",
+          "body": "BossNyumba tallies rent collected, reads the market, and proposes a bulk advance the financier or lender can underwrite in one file."
         },
         {
           "n": "03",
-          "title": "Distribute to members, track to the gram.",
-          "body": "Each member receives their share, scored on their own delivery and repayment history. The ledger closes itself at season end."
+          "title": "Distribute to members, track to the unit.",
+          "body": "Each member receives their share, scored on their own contribution and repayment history. The ledger closes itself at period end."
         }
       ],
       "problemKicker": "Why BossNyumba",
       "problemHeading": "Housing cooperatives carry the risk,",
       "problemHeadingAccent": "members carry the doubt.",
-      "problemSub": "Federated artisanal groups are the engine of Tanzanian real estate. The tooling has not kept up with the responsibility.",
+      "problemSub": "Federated housing groups are the engine of Tanzanian real estate. The tooling has not kept up with the responsibility.",
       "problemTitle": "Where trust breaks",
       "problems": [
         {
@@ -2088,7 +2088,7 @@
         },
         {
           "title": "Bulk advances, unfair splits",
-          "desc": "Tenants advance against pooled output. Members suspect (often correctly) that the split favours the well-connected."
+          "desc": "Financiers advance against pooled rent income. Members suspect (often correctly) that the split favours the well-connected."
         },
         {
           "title": "Inspection surprises",
@@ -2096,14 +2096,14 @@
         },
         {
           "title": "Federated, but not connected",
-          "desc": "Each member runs their own pit. The cooperative aggregates by phone calls. Nobody sees the federation in one place, in real time."
+          "desc": "Each member runs their own property. The cooperative aggregates by phone calls. Nobody sees the federation in one place, in real time."
         }
       ],
       "solutionTitle": "What BossNyumba does",
       "solutions": [
         {
           "title": "Member-aware ledger",
-          "desc": "Every delivery tagged to a named member, time-stamped, location-pinned, photo-attached. The audit trail is the cooperative's, not a notebook."
+          "desc": "Every contribution tagged to a named member, time-stamped, location-pinned, photo-attached. The audit trail is the cooperative's, not a notebook."
         },
         {
           "title": "Transparent split",
@@ -2177,7 +2177,7 @@
       "problemKicker": "Why a Real estate OS",
       "problemHeading": "What family-office paper",
       "problemHeadingAccent": "cannot solve",
-      "problemSub": "When a family owns more than one mine and more than one name, every spreadsheet becomes a liability.",
+      "problemSub": "When a family owns more than one property and more than one name, every spreadsheet becomes a liability.",
       "problemTitle": "What goes wrong today",
       "problems": [
         {
@@ -2222,11 +2222,11 @@
     },
     "investor": {
       "metaTitle": "For investors and lenders, BossNyumba",
-      "metaDescription": "BossNyumba for investors and real estate lenders: daily evidence-cited telemetry, covenant tracking, and ground-truth on every mine in your book.",
+      "metaDescription": "BossNyumba for investors and real estate lenders: daily evidence-cited telemetry, covenant tracking, and ground-truth on every property in your book.",
       "heroKicker": "For investors and lenders",
       "heroHeadline": "Real-estate capital with daily",
       "heroHeadlineAccent": "evidence",
-      "heroSub": "BossNyumba streams production telemetry, treasury exposure, licence posture and HSE incidents from every mine in your book, bilingual, evidence-cited, audit-grade.",
+      "heroSub": "BossNyumba streams rent telemetry, treasury exposure, lease posture and HSE incidents from every property in your book, bilingual, evidence-cited, audit-grade.",
       "heroPrimaryCta": "Request a portfolio brief",
       "heroSecondaryCta": "See it move",
       "trustline": [
@@ -2240,7 +2240,7 @@
         {
           "value": "T+0",
           "label": "Daily portfolio telemetry",
-          "sub": "Production, treasury, compliance and HSE posture from every borrower mine in one dashboard."
+          "sub": "Rent income, treasury, compliance and HSE posture from every borrower property in one dashboard."
         },
         {
           "value": "100%",
@@ -2307,7 +2307,7 @@
         },
         {
           "title": "One source of truth across every borrower.",
-          "desc": "Every mine in your book exposes the same shape of data, no per-borrower spreadsheet wrangling."
+          "desc": "Every property in your book exposes the same shape of data, no per-borrower spreadsheet wrangling."
         },
         {
           "title": "Multi-currency, TZS-primary.",
@@ -2315,133 +2315,133 @@
         }
       ],
       "ctaHeading": "Underwrite real estate with eyes open.",
-      "ctaSub": "Brief our team. We connect a sandbox mine, scope the covenant set, and show you the daily telemetry on safe data.",
+      "ctaSub": "Brief our team. We connect a sandbox property, scope the covenant set, and show you the daily telemetry on safe data.",
       "ctaPrimary": "Brief our team"
     },
     "buyer": {
       "metaTitle": "For tenants, BossNyumba",
-      "metaDescription": "BossNyumba for tenants: KYB-verified Tanzanian supply, traceable parcels, escrow-ready settlement, biometric proof-of-delivery.",
+      "metaDescription": "BossNyumba for tenants: KYB-verified Tanzanian supply, traceable listings, escrow-ready settlement, biometric proof-of-handover.",
       "heroKicker": "For tenants",
-      "heroHeadline": "Tanzanian assets with",
+      "heroHeadline": "Tanzanian properties with",
       "heroHeadlineAccent": "proof",
-      "heroSub": "BossNyumba's marketplace lists KYB-verified parcels with end-to-end chain-of-custody, biometric proof-of-delivery, and escrow-ready settlement.",
+      "heroSub": "BossNyumba's marketplace lists KYB-verified properties with end-to-end provenance, biometric proof-of-handover, and escrow-ready settlement.",
       "heroPrimaryCta": "Browse the marketplace",
       "heroSecondaryCta": "See it move",
       "trustline": [
-        "KYB-verified sellers",
+        "KYB-verified landlords",
         "Escrow-ready settlement",
-        "Biometric proof-of-delivery"
+        "Biometric proof-of-handover"
       ],
-      "statsHeading": "Three reasons buyers route through BossNyumba.",
+      "statsHeading": "Three reasons tenants route through BossNyumba.",
       "statsSub": "Concrete numbers, the things you can verify before you commit a single dollar.",
       "stats": [
         {
           "value": "100%",
-          "label": "KYB-verified sellers",
-          "sub": "Every seller is biometrically registered, licensed, and audit-trail attached."
+          "label": "KYB-verified landlords",
+          "sub": "Every landlord is biometrically registered, licensed, and audit-trail attached."
         },
         {
           "value": "Hash",
-          "label": "Chain-of-custody on every parcel",
-          "sub": "Assay report, weigh-in, transit, delivery, every step hashed and signed."
+          "label": "Provenance on every listing",
+          "sub": "Inspection report, condition check, handover, every step hashed and signed."
         },
         {
           "value": "Escrow",
           "label": "Settlement only after acceptance",
-          "sub": "Funds release on buyer-side acknowledgement, not on shipper invoice."
+          "sub": "Funds release on tenant-side acknowledgement, not on landlord invoice."
         }
       ],
       "stepsKicker": "How it works",
-      "stepsHeading": "Three moves from listing to delivery.",
+      "stepsHeading": "Three moves from listing to handover.",
       "steps": [
         {
           "n": "01",
-          "title": "Browse verified parcels.",
-          "body": "Filter by asset, grade, region, and licence holder, every parcel cites its inspection and licence."
+          "title": "Browse verified properties.",
+          "body": "Filter by property type, grade, region, and lease holder, every listing cites its inspection and lease."
         },
         {
           "n": "02",
-          "title": "Bid in escrow.",
-          "body": "Place a bid; funds are held in escrow with full visibility to both sides."
+          "title": "Apply in escrow.",
+          "body": "Place an application with deposit held in escrow with full visibility to both sides."
         },
         {
           "n": "03",
-          "title": "Accept on delivery.",
-          "body": "Biometric proof-of-delivery releases funds. Disputes flow through the Sovereign Agent."
+          "title": "Accept on handover.",
+          "body": "Biometric proof-of-handover releases funds. Disputes flow through the Sovereign Agent."
         }
       ],
-      "problemKicker": "Why buyers switch",
-      "problemHeading": "What buying through brokers",
+      "problemKicker": "Why tenants switch",
+      "problemHeading": "What leasing through brokers",
       "problemHeadingAccent": "actually costs",
-      "problemSub": "Tanzanian asset supply is real, but the path from licence holder to tenant is full of opaque middlemen.",
+      "problemSub": "Tanzanian property supply is real, but the path from lease holder to tenant is full of opaque middlemen.",
       "problemTitle": "What goes wrong today",
       "problems": [
         {
-          "title": "Unverified sellers.",
-          "desc": "Every parcel needs a phone call to confirm the licence is real and the seller is the holder."
+          "title": "Unverified landlords.",
+          "desc": "Every listing needs a phone call to confirm the lease is real and the landlord is the holder."
         },
         {
-          "title": "Broken chain-of-custody.",
-          "desc": "Assays arrive on paper, parcels are repacked in transit, by the time you receive, the chain is opaque."
+          "title": "Broken provenance.",
+          "desc": "Inspections arrive on paper, listings change between viewing and signing, by the time you commit, the record is opaque."
         },
         {
           "title": "No escrow.",
-          "desc": "Pay-in-advance is the norm, and the loss when supply does not arrive is total."
+          "desc": "Pay-in-advance is the norm, and the loss when the unit isn't as described is total."
         },
         {
           "title": "Currency friction.",
-          "desc": "TZS / USD / KES quoting confusion eats spread on every parcel."
+          "desc": "TZS / USD / KES quoting confusion eats spread on every listing."
         }
       ],
       "solutionTitle": "How BossNyumba changes the math",
       "solutions": [
         {
-          "title": "Every seller KYB-verified.",
-          "desc": "Biometric registration, licence cross-check with Regulator, audit-trail signed."
+          "title": "Every landlord KYB-verified.",
+          "desc": "Biometric registration, lease cross-check with Regulator, audit-trail signed."
         },
         {
-          "title": "Chain-of-custody on every parcel.",
-          "desc": "Assay, weigh-in, transit and delivery hashes are signed and presented inline."
+          "title": "Provenance on every listing.",
+          "desc": "Inspection, condition check, handover hashes are signed and presented inline."
         },
         {
           "title": "Escrow with biometric release.",
-          "desc": "Funds release on buyer-side acknowledgement; disputes are routed through the Sovereign Agent."
+          "desc": "Funds release on tenant-side acknowledgement; disputes are routed through the Sovereign Agent."
         },
         {
           "title": "Multi-currency quoting.",
           "desc": "Quote in TZS, USD or KES; settlement currency is explicit on every offer."
         }
       ],
-      "ctaHeading": "Source assets with proof.",
-      "ctaSub": "Register your buyer profile. Browse the marketplace on safe demo data. We brief you on the verification path.",
-      "ctaPrimary": "Register as a buyer"
+      "ctaHeading": "Source properties with proof.",
+      "ctaSub": "Register your tenant profile. Browse the marketplace on safe demo data. We brief you on the verification path.",
+      "ctaPrimary": "Register as a tenant"
     },
     "offTaker": {
-      "metaTitle": "For tenants and exporters, BossNyumba",
-      "metaDescription": "BossNyumba for tenants: aggregated supply, traceable parcels, BOT compliance documentation, multi-currency settlement.",
-      "heroKicker": "For tenants and exporters",
-      "heroHeadline": "Aggregate Tanzanian asset supply with",
+      "metaTitle": "For corporate tenants and relocation agencies, BossNyumba",
+      "metaDescription": "BossNyumba for corporate tenants: aggregated housing supply, traceable units, BOT compliance documentation, multi-currency settlement.",
+      "heroKicker": "For corporate tenants and relocation agencies",
+      "heroHeadline": "Aggregate Tanzanian housing supply with",
       "heroHeadlineAccent": "clean papers",
-      "heroSub": "BossNyumba aggregates KYB-verified parcels from Individual Landlord and Portfolio landlords across the country and delivers them with the export documentation, BOT filings, and chain-of-custody auditors require.",
+      "heroSub": "BossNyumba aggregates KYB-verified units from Individual Landlord and Portfolio landlords across the country and delivers them with the lease documentation, BOT filings, and provenance auditors require.",
       "heroPrimaryCta": "Request a supply brief",
       "heroSecondaryCta": "See it move",
       "trustline": [
-        "BOT-aligned export packs",
+        "BOT-aligned lease packs",
         "Multi-tenant supply rails",
         "TZS / USD multi-currency"
       ],
-      "statsHeading": "Three reasons tenants consolidate on BossNyumba.",
-      "statsSub": "Concrete numbers, the things that close the gap between artisanal supply and a clean Bill of Lading.",
+      "statsHeading": "Three reasons corporate tenants consolidate on BossNyumba.",
+      "statsSub": "Concrete numbers, the things that close the gap between scattered housing supply and a clean lease portfolio.",
       "stats": [
         {
           "value": "100+",
-          "label": "Individual Landlord / Portfolio Landlord licence holders networked",
-          "sub": "Every seller is biometrically verified and licence-cross-checked with Regulator."
+          "label": "Individual Landlord / Portfolio Landlord lease holders networked",
+          "sub": "Every landlord is biometrically verified and lease-cross-checked with Regulator."
         },
         {
           "value": "Full",
-          "label": "Export documentation pack",
-          "sub": "Rent proof, certificate of origin, inspection, BOT filings, assembled per parcel."
+          "label": "Lease documentation pack",
+          "sub": "Rent proof, certificate of title, inspection, BOT filings, assembled per unit."
         },
         {
           "value": "Multi-FX",
@@ -2450,68 +2450,68 @@
         }
       ],
       "stepsKicker": "How it works",
-      "stepsHeading": "Three moves from licence holder to export.",
+      "stepsHeading": "Three moves from lease holder to portfolio.",
       "steps": [
         {
           "n": "01",
           "title": "BossNyumba aggregates verified supply.",
-          "body": "Every Individual Landlord / Portfolio Landlord holder on the platform exposes parcels with hash-chained provenance."
+          "body": "Every Individual Landlord / Portfolio Landlord holder on the platform exposes units with hash-chained provenance."
         },
         {
           "n": "02",
-          "title": "You contract per parcel.",
-          "body": "Bid into escrow; the tenancy contract is signed end-to-end with biometric attestation."
+          "title": "You contract per unit.",
+          "body": "Apply into escrow; the tenancy contract is signed end-to-end with biometric attestation."
         },
         {
           "n": "03",
-          "title": "BossNyumba packs the export.",
-          "body": "Rent receipt, inspection, BOT filings and chain-of-custody hashes, all assembled into one signed export pack."
+          "title": "BossNyumba packs the lease bundle.",
+          "body": "Rent receipt, inspection, BOT filings and provenance hashes, all assembled into one signed lease pack."
         }
       ],
-      "problemKicker": "Why tenants switch",
-      "problemHeading": "What artisanal supply",
+      "problemKicker": "Why corporate tenants switch",
+      "problemHeading": "What scattered housing supply",
       "problemHeadingAccent": "cannot deliver alone",
-      "problemSub": "PMLs and MLs have the propertyrals, what they lack is the export-grade paper trail customs and your bank require.",
+      "problemSub": "Individual and portfolio landlords have the units, what they lack is the audit-grade paper trail your finance team and bank require.",
       "problemTitle": "What goes wrong today",
       "problems": [
         {
           "title": "Fragmented supply.",
-          "desc": "Twenty licence holders, twenty conversations, twenty paper trails, none of them stitched together."
+          "desc": "Twenty lease holders, twenty conversations, twenty paper trails, none of them stitched together."
         },
         {
-          "title": "Missing export papers.",
-          "desc": "Rent receipts, inspections and origin certificates arrive late or in inconsistent formats."
+          "title": "Missing lease papers.",
+          "desc": "Rent receipts, inspections and title certificates arrive late or in inconsistent formats."
         },
         {
           "title": "Currency mismatch.",
-          "desc": "Tenancy contracts in USD, supplier invoicing in TZS, no audit of the FX leak."
+          "desc": "Tenancy contracts in USD, landlord invoicing in TZS, no audit of the FX leak."
         },
         {
           "title": "BOT compliance gaps.",
-          "desc": "Filings happen late and incomplete, penalties stack up on every shipment."
+          "desc": "Filings happen late and incomplete, penalties stack up on every settlement."
         }
       ],
       "solutionTitle": "How BossNyumba changes the math",
       "solutions": [
         {
-          "title": "One contract surface for every supplier.",
-          "desc": "All Individual Landlord / Portfolio landlords on BossNyumba expose parcels in the same shape, with the same KYB stack behind them."
+          "title": "One contract surface for every landlord.",
+          "desc": "All Individual Landlord / Portfolio landlords on BossNyumba expose units in the same shape, with the same KYB stack behind them."
         },
         {
-          "title": "Export pack auto-assembled.",
-          "desc": "Rent receipt, inspection, certificate of origin, BOT filing, all packed per parcel."
+          "title": "Lease pack auto-assembled.",
+          "desc": "Rent receipt, inspection, certificate of title, BOT filing, all packed per unit."
         },
         {
           "title": "FX-explicit settlement.",
-          "desc": "Every parcel carries its currency, FX gate, and P&L attribution."
+          "desc": "Every unit carries its currency, FX gate, and P&L attribution."
         },
         {
           "title": "BOT-aligned out of the box.",
-          "desc": "Every parcel exports with the BOT filing already filed and stamped, no late penalties."
+          "desc": "Every unit settles with the BOT filing already filed and stamped, no late penalties."
         }
       ],
-      "ctaHeading": "Aggregate Tanzanian supply, ship clean.",
-      "ctaSub": "Brief our team. We map your tenancy contract, configure the export pack, and show you a parcel running end-to-end.",
+      "ctaHeading": "Aggregate Tanzanian housing, lease clean.",
+      "ctaSub": "Brief our team. We map your tenancy contract, configure the lease pack, and show you a unit running end-to-end.",
       "ctaPrimary": "Brief our team"
     },
     "bank": {
@@ -2539,7 +2539,7 @@
         {
           "value": "T+0",
           "label": "Covenant tracker live",
-          "sub": "Production, treasury, rent assignment, every covenant is monitored daily."
+          "sub": "Rent income, treasury, rent assignment, every covenant is monitored daily."
         },
         {
           "value": "100%",
@@ -2558,7 +2558,7 @@
         {
           "n": "02",
           "title": "Underwriting on signed data.",
-          "body": "Your officer sees licence proof, production telemetry, treasury posture and rent-assignment status with hash provenance."
+          "body": "Your officer sees lease proof, rent telemetry, treasury posture and rent-assignment status with hash provenance."
         },
         {
           "n": "03",
@@ -2585,14 +2585,14 @@
           "desc": "Quarterly reporting means the bank learns of a slippage 60 days after it happened."
         },
         {
-          "title": "No BOT-aligned export pack.",
-          "desc": "When the borrower ships and clears, the bank cannot match the export to the underlying loan."
+          "title": "No BOT-aligned settlement pack.",
+          "desc": "When the borrower collects and settles rent, the bank cannot match the cash flow to the underlying loan."
         }
       ],
       "solutionTitle": "How BossNyumba changes the math",
       "solutions": [
         {
-          "title": "Licence-verified collateral.",
+          "title": "Lease-verified collateral.",
           "desc": "Cross-check with Regulator, biometric holder attestation, hash-signed proof in the underwriting pack."
         },
         {
@@ -2604,8 +2604,8 @@
           "desc": "Every drawdown is monitored against the covenant set; breaches surface the morning they appear."
         },
         {
-          "title": "BOT-aligned export visibility.",
-          "desc": "Every parcel shipped under the loan ties back to the drawdown, full audit-grade traceability."
+          "title": "BOT-aligned settlement visibility.",
+          "desc": "Every rent settlement under the loan ties back to the drawdown, full audit-grade traceability."
         }
       ],
       "ctaHeading": "Lend to real estate with eyes open.",
@@ -2680,7 +2680,7 @@
         },
         {
           "title": "Fragmented visibility.",
-          "desc": "Regulator, NHC, BOT and the Ministry each hold a different slice of the same mine, no consolidated view."
+          "desc": "Regulator, NHC, BOT and the Ministry each hold a different slice of the same property, no consolidated view."
         },
         {
           "title": "HSE incident black-out.",
@@ -2841,12 +2841,12 @@
     "faqHeading": "Frequently asked questions",
     "faqs": [
       {
-        "q": "How do I onboard my mine?",
+        "q": "How do I onboard my property?",
         "a": "Sign up for Mwanzo (free) or Mkulima. Upload your Individual Landlord / Portfolio Landlord certificate and a recent rent receipt. Mr. Mwikila takes you through the first-week brief. For Mfanyabiashara and above, a BossNyumba engineer schedules an onboarding call within two business days."
       },
       {
         "q": "Can I import my existing spreadsheets?",
-        "a": "Yes. Production logs, payroll runs, treasury statements and licence calendars import via a guided CSV / XLSX flow. Master Brain validates as you go and flags any rows that need review before they enter the ledger."
+        "a": "Yes. Rent rolls, payroll runs, treasury statements and lease calendars import via a guided CSV / XLSX flow. Master Brain validates as you go and flags any rows that need review before they enter the ledger."
       },
       {
         "q": "What languages does the platform support?",
@@ -2927,9 +2927,9 @@
     "formEmailLabel": "Email",
     "formEmailPlaceholder": "you@company.co.tz",
     "formOrgLabel": "Organization",
-    "formOrgPlaceholder": "Mine or company name",
+    "formOrgPlaceholder": "Estate or company name",
     "formMessageLabel": "Message",
-    "formMessagePlaceholder": "Tell us about your mine, your team, and what you need.",
+    "formMessagePlaceholder": "Tell us about your estate, your team, and what you need.",
     "formSubmit": "Send message",
     "formSubmitting": "Sending...",
     "formSuccess": "Thank you. We will reply within one business day.",

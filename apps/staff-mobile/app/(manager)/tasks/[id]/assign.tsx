@@ -4,9 +4,9 @@
  * Screen-id: M-M-02. Reached from /(manager)/tasks via tap.
  *
  * The picker accepts a worker UUID + optional shift UUID + optional
- * bilingual note. On submit hits `useAssignTaskToWorker` which posts
- * to /api/v1/mining/tasks/:id/assign-worker. Success routes back to
- * the manager queue with a toast-like banner.
+ * bilingual note. On submit hits `useAssignTaskToWorker` which assigns
+ * the work order on the operator surface. Success routes back to the
+ * manager queue with a toast-like banner.
  *
  * No worker-roster query yet (the worker list endpoint is rolling
  * out under workforce/invites); the manager pastes the worker id

@@ -16,11 +16,11 @@ import { colors } from '@/theme/colors'
 import { radius, spacing, typography } from '@/theme/spacing'
 
 /**
- * Stub wallet snapshot used until the buyer-wallet endpoint ships.
+ * Stub wallet snapshot used until the tenant-wallet endpoint ships.
  * Per BossNyumba hard rule we never hard-code real FX rates — these
  * values are explicit placeholder constants that the gateway will
- * replace once `/v1/mining/buyers/wallet` lands (G3 roadmap item:
- * full endpoint wiring is sibling-owned).
+ * replace once the tenant wallet endpoint (e.g. `/api/v1/wallet`) lands
+ * (G3 roadmap item: full endpoint wiring is sibling-owned).
  */
 const WALLET_STUB: WalletSnapshot = {
   tzs: 0,

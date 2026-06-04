@@ -11,35 +11,36 @@ export interface DailyBriefResponse {
   cards: ReadonlyArray<DailyBriefCard>
 }
 
-export type LicenceBucket = 't7' | 't30' | 't90' | 'expired'
+export type LeaseBucket = 't7' | 't30' | 't90' | 'expired'
 
-export interface Licence {
+export interface Lease {
   id: string
-  pmlNumber: string
-  siteName: string
-  /** Optional mineral type (gold, copper, gemstone, etc.). */
-  mineral?: string
+  leaseRef: string
+  propertyName: string
+  /** Optional unit label (e.g. unit number, block). */
+  unitLabel?: string
   /** ISO-8601 expiry; preferred over `expiresOn` for client-side bucketing. */
   expiresAt?: string
   /** Legacy date-only expiry string. */
   expiresOn: string
   daysLeft: number
-  bucket: LicenceBucket
+  bucket: LeaseBucket
 }
 
-export interface LicencesResponse {
+export interface LeasesResponse {
   generatedAt: string
-  licences: ReadonlyArray<Licence>
+  leases: ReadonlyArray<Lease>
 }
 
 /**
- * Server response for POST /api/v1/mining/licences/:id/renew.
+ * Server response for the lease-renewal request (expiry tracking lives on
+ * /api/v1/compliance; lease renewal is queued there).
  * Echoed back so the UI can confirm the queued renewal id and the new
  * expiry it will apply on success.
  */
-export interface LicenceRenewalResponse {
+export interface LeaseRenewalResponse {
   renewalId: string
-  licenceId: string
+  leaseId: string
   status: 'queued' | 'submitted' | 'accepted'
   submittedAt: string
 }

@@ -13,7 +13,11 @@ import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
 const SCREEN_ID = 'O-M-16'
-const CSR_ENDPOINT_PATH = '/api/v1/mining/csr-plans'
+// FLAGGED (unresolved): community-commitment tracking has no property-domain
+// CRUD endpoint. The closest surfaces are the read-only advisory routers
+// (/api/v1/sustainability-advisor, /api/v1/green-angle-advisor); this screen
+// keeps the section in a permanent env-missing state until one is wired.
+const CSR_ENDPOINT_PATH = '/api/v1/sustainability-advisor'
 
 const COPY = Object.freeze({
   loading: 'Inapakia data ya jamii…',
@@ -83,7 +87,7 @@ interface GrievancesResponse {
   readonly data: ReadonlyArray<GrievanceRow>
 }
 
-const QUERY_KEY = ['mining', 'grievances', 'all'] as const
+const QUERY_KEY = ['owner', 'grievances', 'all'] as const
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 export default function Screen(): JSX.Element {
@@ -101,7 +105,7 @@ function CommunityRelations(): JSX.Element {
   const query = useQuery<ReadonlyArray<GrievanceRow>, ApiError>({
     queryKey: QUERY_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<GrievancesResponse>('/grievances/', { signal })
+      const response = await miningApi.get<GrievancesResponse>('/grievances', { signal })
       return response.data
     }
   })

@@ -1,10 +1,14 @@
 import type { Bid } from '@/types/listing'
 
-// Buyer performance is derived client-side from bid history per §6 of the
-// SOTA spec: win rate (rolling 90d), response time (median time-to-counter
-// when buyer is responding to a counter offer), and deal volume (sum of
-// accepted-bid notional). No dedicated endpoint exists yet — when one
-// lands, this module remains the single read-side aggregator.
+// Tenant performance is derived client-side from application history per
+// §6 of the SOTA spec: win rate (rolling 90d), response time (median
+// time-to-counter when the tenant is responding to a counter offer), and
+// deal volume (sum of accepted-application notional). No dedicated
+// endpoint exists yet — when one lands, this module remains the single
+// read-side aggregator. NOTE (flagged): the exported
+// BuyerPerformanceSummary / summariseBuyerPerformance symbols are
+// consumed by a non-owned dashboard section and keep their names pending
+// a coordinated rename.
 
 export interface BuyerPerformanceSummary {
   readonly bidsPlaced: number
@@ -40,8 +44,8 @@ function median(values: readonly number[]): number | null {
 }
 
 function buyerResponseLatencies(bid: Bid): readonly number[] {
-  // Median time from a seller's last message to the buyer's next reply.
-  // Bound at the bid level so a single hot thread can't dominate.
+  // Median time from a landlord's last message to the tenant's next reply.
+  // Bound at the application level so a single hot thread can't dominate.
   const out: number[] = []
   let lastSellerAt: number | null = null
   for (const message of bid.thread) {

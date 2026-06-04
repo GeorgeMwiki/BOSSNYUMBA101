@@ -90,9 +90,14 @@ const SKELETON_ONSET_MS = R7_TIMINGS['SKELETON_ONSET_MS'] ?? 200
 const SLOW_INDICATOR_MS = R7_TIMINGS['SLOW_INDICATOR_MS'] ?? 3_000
 const ENTRY_DURATION_MS = R7_TIMINGS['BUBBLE_ENTRY_DURATION_MS'] ?? 200
 
-// Marketplace Director — every buyer turn forces this persona. The
-// brain dispatches the 10 marketplace tools from buyer-tools.ts under
-// the persona's `toolCatalogIds`.
+// Marketplace Director — every renter turn forces this persona. The
+// brain dispatches the marketplace tools under the persona's
+// `toolCatalogIds`.
+// NOTE (flagged): this persona slug is a wire value sent to the brain
+// and is not present in the canonical persona-runtime seeds (which use
+// T5_customer_concierge for the renter-facing concierge). It still
+// carries the legacy "buyer" token; renaming it requires a coordinated
+// backend persona-seed change, so it is left as-is for now.
 const BUYER_PERSONA_SLUG = 'T1_buyer_marketplace_director'
 
 export function HomeChat() {

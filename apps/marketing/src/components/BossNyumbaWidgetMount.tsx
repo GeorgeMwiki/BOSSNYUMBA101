@@ -1,7 +1,7 @@
 'use client';
 /**
  * BossNyumbaWidgetMount — marketing-site (anonymous) wrapper around the
- * @bossnyumba/chat-ui LitFin-style floating widget.
+ * @bossnyumba/chat-ui floating widget.
  *
  * Renders the floating "Mr. Mwikila — BossNyumba's AI Real-Estate
  * Director" bubble across every marketing page. Uses the `public`
@@ -31,9 +31,9 @@ interface BossNyumbaWidgetMountProps {
 
 /**
  * BossNyumba real-estate compliance copy. Landlords own properties — the
- * Borjie mining variant says "mine owner". We pin "landlord" here so an
- * unrelated edit (or a sibling chat-ui session targeting the mining
- * domain) cannot revert it.
+ * parent fork's variant said "owner" of a different asset class. We pin
+ * "landlord" here so an unrelated edit (or a sibling chat-ui session)
+ * cannot revert it.
  */
 const BOSSNYUMBA_DISCLAIMER_EN =
   'AI-generated. Not legal advice. Decisions are made by the landlord.';

@@ -24,7 +24,7 @@ const COPY = Object.freeze({
   loading: 'Inapakia maktaba ya ripoti…',
   errorInline: 'Imeshindwa kupakua orodha ya ripoti.',
   emptyHint: 'Hakuna ripoti za maingiliano zilizopatikana kwenye akaunti yako.',
-  shareMissing: 'POST /api/v1/mining/reports/{id}/share haipatikani kwa sasa.',
+  shareMissing: 'Kushiriki ripoti hufanyika kupitia /api/v1/owner/share-links (POST /api/v1/reports/{id}/share haipo).',
   sectionFilter: 'Chuja kwa aina ya render',
   sectionReports: 'Ripoti za maingiliano',
   shareLabel: 'Fungua kiunga (signed URL)',

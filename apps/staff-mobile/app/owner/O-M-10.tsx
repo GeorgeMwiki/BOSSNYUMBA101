@@ -13,40 +13,40 @@ import { fontSize, radius, spacing } from '../../src/theme/spacing'
 const SCREEN_ID = 'O-M-10'
 
 const COPY = Object.freeze({
-  loading: 'Inapakia mauzo…',
+  loading: 'Inapakia upangishaji…',
   filterTitle: 'Chuja kwa hatua',
   totalsPrefix: 'Jumla · ',
-  totalsParcels: ' kontena',
-  marketPriceLabel: 'Bei ya soko ya wastani: ',
+  totalsParcels: ' vitengo',
+  marketPriceLabel: 'Kodi ya soko ya wastani: ',
   variancePrefix: 'Tofauti dhidi ya soko: ',
-  noBuyer: 'Bila mnunuzi',
+  noBuyer: 'Bila mpangaji',
   stageAll: 'Zote',
-  stageSampling: 'Sampuli',
-  stageOffer: 'Bei imepokelewa',
-  stageShipped: 'Imesafirishwa',
+  stageSampling: 'Imetangazwa',
+  stageOffer: 'Ombi limepokelewa',
+  stageShipped: 'Imeingiwa',
   statusPending: 'Inasubiri malipo',
   statusPartial: 'Sehemu',
   statusPaid: 'Imelipwa',
   statusCancelled: 'Imefutwa'
 })
 
-type ParcelStatus = 'in_stockpile' | 'in_transit' | 'at_buyer' | 'sold' | 'spoiled'
+type UnitStatus = 'vacant' | 'reserved' | 'moving_in' | 'occupied' | 'withdrawn'
 type PaymentStatus = 'pending' | 'partial' | 'paid' | 'cancelled'
 
-interface ParcelRow {
+interface UnitRow {
   readonly id: string
-  readonly siteId: string
-  readonly massKg: string | null
+  readonly propertyId: string
+  readonly areaSqm: string | null
   readonly grade: Record<string, unknown>
-  readonly status: ParcelStatus
+  readonly status: UnitStatus
   readonly attributes: Record<string, unknown>
   readonly createdAt: string
 }
 
-interface SaleRow {
+interface LeaseRow {
   readonly id: string
-  readonly parcelId: string
-  readonly buyerId: string | null
+  readonly unitId: string
+  readonly tenantId: string | null
   readonly route: string
   readonly grossPriceUsd: string | null
   readonly grossPriceTzs: string | null
@@ -56,14 +56,14 @@ interface SaleRow {
   readonly ts: string
 }
 
-interface ParcelsResponse {
+interface UnitsResponse {
   readonly success: true
-  readonly data: ReadonlyArray<ParcelRow>
+  readonly data: ReadonlyArray<UnitRow>
 }
 
-interface SalesResponse {
+interface LeasesResponse {
   readonly success: true
-  readonly data: ReadonlyArray<SaleRow>
+  readonly data: ReadonlyArray<LeaseRow>
 }
 
 type StageFilter = 'all' | 'sampling' | 'offer' | 'shipped' | 'sold'
@@ -71,14 +71,14 @@ type StageFilter = 'all' | 'sampling' | 'offer' | 'shipped' | 'sold'
 interface JoinedRow {
   readonly id: string
   readonly stage: StageFilter
-  readonly mineralLabel: string
-  readonly massKg: number
+  readonly unitLabel: string
+  readonly areaSqm: number
   readonly netTzs: number
   readonly grossUsd: number
   readonly fxRate: number
   readonly paymentStatus: PaymentStatus | null
-  readonly buyerId: string | null
-  readonly siteId: string
+  readonly tenantId: string | null
+  readonly propertyId: string
   readonly createdAt: string
 }
 
@@ -99,8 +99,8 @@ const PAYMENT_LABEL: Readonly<Record<PaymentStatus, string>> = {
   cancelled: COPY.statusCancelled
 }
 
-const PARCELS_KEY = ['mining', 'ore-parcels'] as const
-const SALES_KEY = ['mining', 'sales'] as const
+const PARCELS_KEY = ['owner', 'units'] as const
+const SALES_KEY = ['owner', 'leases'] as const
 
 function toNumber(value: string | null | undefined): number {
   if (value == null) return 0
@@ -108,19 +108,19 @@ function toNumber(value: string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-function pickMineralLabel(grade: Record<string, unknown>, attributes: Record<string, unknown>): string {
-  const mineralFromAttrs = typeof attributes.mineral === 'string' ? attributes.mineral : null
-  if (mineralFromAttrs) return mineralFromAttrs
+function pickUnitLabel(grade: Record<string, unknown>, attributes: Record<string, unknown>): string {
+  const unitFromAttrs = typeof attributes.unit === 'string' ? attributes.unit : null
+  if (unitFromAttrs) return unitFromAttrs
   const keys = Object.keys(grade)
   if (keys.length === 0) return '-'
   const firstKey = keys[0]!
   return firstKey
 }
 
-function stageFromParcelStatus(status: ParcelStatus, hasSale: boolean): StageFilter {
-  if (status === 'in_stockpile') return hasSale ? 'offer' : 'sampling'
-  if (status === 'in_transit' || status === 'at_buyer') return 'shipped'
-  if (status === 'sold') return 'sold'
+function stageFromUnitStatus(status: UnitStatus, hasLease: boolean): StageFilter {
+  if (status === 'vacant') return hasLease ? 'offer' : 'sampling'
+  if (status === 'reserved' || status === 'moving_in') return 'shipped'
+  if (status === 'occupied') return 'sold'
   return 'sampling'
 }
 
@@ -138,18 +138,18 @@ function SalesPipeline(): JSX.Element {
   const [filter, setFilter] = useState<StageFilter>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const parcelsQuery = useQuery<ReadonlyArray<ParcelRow>, ApiError>({
+  const parcelsQuery = useQuery<ReadonlyArray<UnitRow>, ApiError>({
     queryKey: PARCELS_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<ParcelsResponse>('/ore-parcels', { signal })
+      const response = await miningApi.get<UnitsResponse>('/units', { signal })
       return response.data
     }
   })
 
-  const salesQuery = useQuery<ReadonlyArray<SaleRow>, ApiError>({
+  const salesQuery = useQuery<ReadonlyArray<LeaseRow>, ApiError>({
     queryKey: SALES_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<SalesResponse>('/sales', { signal })
+      const response = await miningApi.get<LeasesResponse>('/leases', { signal })
       return response.data
     }
   })
@@ -160,32 +160,32 @@ function SalesPipeline(): JSX.Element {
 
   const joinedRows = useMemo<ReadonlyArray<JoinedRow>>(() => {
     if (!parcelsQuery.data || !salesQuery.data) return []
-    const salesByParcel = new Map<string, SaleRow>()
-    for (const sale of salesQuery.data) {
-      salesByParcel.set(sale.parcelId, sale)
+    const leasesByUnit = new Map<string, LeaseRow>()
+    for (const lease of salesQuery.data) {
+      leasesByUnit.set(lease.unitId, lease)
     }
-    return parcelsQuery.data.map((parcel) => {
-      const sale = salesByParcel.get(parcel.id) ?? null
+    return parcelsQuery.data.map((unit) => {
+      const lease = leasesByUnit.get(unit.id) ?? null
       return {
-        id: parcel.id,
-        stage: stageFromParcelStatus(parcel.status, sale !== null),
-        mineralLabel: pickMineralLabel(parcel.grade, parcel.attributes),
-        massKg: toNumber(parcel.massKg),
-        netTzs: toNumber(sale?.netTzs),
-        grossUsd: toNumber(sale?.grossPriceUsd),
-        fxRate: toNumber(sale?.fxAtSaleTzsPerUsd),
-        paymentStatus: sale?.paymentStatus ?? null,
-        buyerId: sale?.buyerId ?? null,
-        siteId: parcel.siteId,
-        createdAt: parcel.createdAt
+        id: unit.id,
+        stage: stageFromUnitStatus(unit.status, lease !== null),
+        unitLabel: pickUnitLabel(unit.grade, unit.attributes),
+        areaSqm: toNumber(unit.areaSqm),
+        netTzs: toNumber(lease?.netTzs),
+        grossUsd: toNumber(lease?.grossPriceUsd),
+        fxRate: toNumber(lease?.fxAtSaleTzsPerUsd),
+        paymentStatus: lease?.paymentStatus ?? null,
+        tenantId: lease?.tenantId ?? null,
+        propertyId: unit.propertyId,
+        createdAt: unit.createdAt
       }
     })
   }, [parcelsQuery.data, salesQuery.data])
 
-  const referencePricePerKgUsd = useMemo<number>(() => {
-    const rows = joinedRows.filter((r) => r.grossUsd > 0 && r.massKg > 0)
+  const referenceRentPerSqmUsd = useMemo<number>(() => {
+    const rows = joinedRows.filter((r) => r.grossUsd > 0 && r.areaSqm > 0)
     if (rows.length === 0) return 0
-    const total = rows.reduce((sum, r) => sum + r.grossUsd / r.massKg, 0)
+    const total = rows.reduce((sum, r) => sum + r.grossUsd / r.areaSqm, 0)
     return total / rows.length
   }, [joinedRows])
 
@@ -241,7 +241,7 @@ function SalesPipeline(): JSX.Element {
       <Section title={`${COPY.totalsPrefix}${totals.count}${COPY.totalsParcels} · TZS ${Math.round(totals.netTzs).toLocaleString('en-US')}`}>
         {visible.map((row) => {
           const isOpen = selectedId === row.id
-          const marketUsd = referencePricePerKgUsd > 0 ? Math.round(referencePricePerKgUsd * row.massKg) : 0
+          const marketUsd = referenceRentPerSqmUsd > 0 ? Math.round(referenceRentPerSqmUsd * row.areaSqm) : 0
           const variancePct =
             marketUsd === 0 || row.grossUsd === 0
               ? null
@@ -255,13 +255,13 @@ function SalesPipeline(): JSX.Element {
               style={[styles.row, isOpen && styles.rowOpen]}
             >
               <Text style={styles.rowPrimary}>
-                {row.id.slice(0, 8)} - {row.massKg} kg {row.mineralLabel}
+                {row.id.slice(0, 8)} - {row.areaSqm} m² {row.unitLabel}
               </Text>
               <Text style={styles.rowSecondary}>
                 {STAGE_LABEL[row.stage]}
                 {row.paymentStatus ? ` - ${PAYMENT_LABEL[row.paymentStatus]}` : ''}
                 {' - '}
-                {row.buyerId ?? COPY.noBuyer}
+                {row.tenantId ?? COPY.noBuyer}
               </Text>
               {row.netTzs > 0 ? (
                 <Text style={styles.rowMoney}>

@@ -16,8 +16,8 @@ export interface HeroDemoPreviewProps {
 }
 
 const KPIS = [
-  { label: 'Oz Au', value: '184' },
-  { label: 'TZS hedged', value: '4.2B' },
+  { label: 'Units', value: '184' },
+  { label: 'TZS collected', value: '4.2B' },
   { label: 'Days to renew', value: '47' },
 ] as const;
 
@@ -43,7 +43,7 @@ export function HeroDemoPreview({ className = '' }: HeroDemoPreviewProps) {
       {...motionProps}
       className={`relative w-[240px] h-[180px] overflow-hidden rounded-xl border border-border bg-surface px-4 py-3 shadow-md ${className}`}
       role="img"
-      aria-label="Mock KPI tile — gold ounces, TZS hedged, days to licence renewal"
+      aria-label="Mock KPI tile — units under management, TZS collected, days to lease renewal"
     >
       <div className="flex items-center justify-between">
         <span className="font-mono text-meta uppercase tracking-widest text-foreground/60">

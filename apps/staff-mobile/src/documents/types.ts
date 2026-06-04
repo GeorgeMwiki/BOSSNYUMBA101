@@ -1,6 +1,7 @@
 /**
- * Wire-level types shared between the documents UI and the
- * `/api/v1/mining/document-intelligence` endpoint family.
+ * Wire-level types shared between the documents UI and the document
+ * Q&A + upload endpoint family (doc-chat.router.ts at /api/v1/doc-chat
+ * and documents.hono.ts at /api/v1/documents).
  *
  * Keep this file free of React / RN imports so it can be exercised by
  * the node-only vitest harness without a JSDOM stub.
@@ -54,6 +55,8 @@ export interface AskResponse {
   readonly answer: string | null
 }
 
+// Response for the per-document summary call (see api.ts summariseDocument;
+// the dedicated summary endpoint is flagged as not-yet-implemented).
 export interface SummaryResponse {
   readonly documentId: string
   readonly kind: DocumentKind

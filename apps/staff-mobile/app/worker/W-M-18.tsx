@@ -15,7 +15,7 @@ import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
 const SCREEN_ID = 'W-M-18'
-const MISSING_LIST_ENDPOINT = 'GET /api/v1/mining/documents'
+const MISSING_LIST_ENDPOINT = 'GET /api/v1/documents'
 
 const COPY = {
   loading: 'Inasaini... · Signing...',

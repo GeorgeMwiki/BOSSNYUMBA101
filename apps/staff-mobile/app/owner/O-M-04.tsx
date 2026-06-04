@@ -15,17 +15,17 @@ const SCREEN_ID = 'O-M-04'
 const COPY = Object.freeze({
   loading: 'Inapakia ramani ya portfolio…',
   errorInline: 'Ombi la portfolio limeshindwa kuthibitishwa.',
-  emptyHint: 'Hakuna leseni au tovuti zilizosajiliwa kwenye akaunti yako.',
+  emptyHint: 'Hakuna mali au mikataba iliyosajiliwa kwenye akaunti yako.',
   sectionMap: 'Ramani ya portifolio',
   sectionMapHint: 'Polygons + rangi za hali · bonyeza kuchagua',
   sectionFilter: 'Chuja kwa hali',
-  sectionList: 'Migodi',
+  sectionList: 'Mali',
   unknown: 'Haijulikani'
 })
 
-type FeatureLayer = 'site' | 'licence'
-type FilterKey = 'all' | 'active' | 'working' | 'pending' | 'expired'
-type MineStatus = Exclude<FilterKey, 'all'>
+type FeatureLayer = 'property' | 'lease'
+type FilterKey = 'all' | 'active' | 'occupied' | 'pending' | 'expired'
+type PropertyStatus = Exclude<FilterKey, 'all'>
 
 interface PortfolioFeature {
   readonly type: 'Feature'
@@ -37,8 +37,8 @@ interface PortfolioMapResponse {
   readonly type: 'FeatureCollection'
   readonly features: ReadonlyArray<PortfolioFeature>
   readonly layers: {
-    readonly sites: number
-    readonly licences: number
+    readonly properties: number
+    readonly leases: number
     readonly settlements: number
     readonly protectedAreas: number
   }
@@ -50,20 +50,20 @@ interface ApiEnvelope<T> {
   readonly error?: { code?: string; message?: string }
 }
 
-interface NormalizedMine {
+interface NormalizedProperty {
   readonly id: string
   readonly label: string
   readonly region: string
-  readonly mineral: string
+  readonly unitLabel: string
   readonly layer: FeatureLayer
-  readonly status: MineStatus
+  readonly status: PropertyStatus
   readonly rawStatus: string
 }
 
 const FILTERS: ReadonlyArray<{ key: FilterKey; label: string }> = [
   { key: 'all', label: 'Zote' },
   { key: 'active', label: 'Hai' },
-  { key: 'working', label: 'Kazi' },
+  { key: 'occupied', label: 'Imepangishwa' },
   { key: 'pending', label: 'Subiri' },
   { key: 'expired', label: 'Imekwisha' }
 ]
@@ -80,7 +80,7 @@ export default function Screen(): JSX.Element {
 
 function PortfolioMapView(): JSX.Element {
   const query = useQuery<PortfolioMapResponse, Error>({
-    queryKey: ['mining', 'portfolio-map'],
+    queryKey: ['owner', 'portfolio-map'],
     queryFn: async ({ signal }) => {
       const envelope = await miningApi.get<ApiEnvelope<PortfolioMapResponse>>(
         '/portfolio-map',
@@ -93,7 +93,7 @@ function PortfolioMapView(): JSX.Element {
     }
   })
 
-  const mines = useMemo<ReadonlyArray<NormalizedMine>>(() => {
+  const properties = useMemo<ReadonlyArray<NormalizedProperty>>(() => {
     if (!query.data) return []
     return query.data.features.map((feature, index) => normalize(feature, index))
   }, [query.data])
@@ -101,23 +101,26 @@ function PortfolioMapView(): JSX.Element {
   const [filter, setFilter] = useState<FilterKey>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const visible = useMemo<ReadonlyArray<NormalizedMine>>(
-    () => (filter === 'all' ? mines : mines.filter((m) => m.status === filter)),
-    [filter, mines]
+  const visible = useMemo<ReadonlyArray<NormalizedProperty>>(
+    () =>
+      filter === 'all'
+        ? properties
+        : properties.filter((m) => m.status === filter),
+    [filter, properties]
   )
 
-  const totals = useMemo<Record<MineStatus, number>>(() => {
-    const counts: Record<MineStatus, number> = {
+  const totals = useMemo<Record<PropertyStatus, number>>(() => {
+    const counts: Record<PropertyStatus, number> = {
       active: 0,
-      working: 0,
+      occupied: 0,
       pending: 0,
       expired: 0
     }
-    mines.forEach((m) => {
+    properties.forEach((m) => {
       counts[m.status] += 1
     })
     return counts
-  }, [mines])
+  }, [properties])
 
   if (query.isPending) {
     return (
@@ -140,7 +143,7 @@ function PortfolioMapView(): JSX.Element {
     )
   }
 
-  if (mines.length === 0) {
+  if (properties.length === 0) {
     return (
       <View>
         <PreviewBanner kind="no-data" />
@@ -154,27 +157,27 @@ function PortfolioMapView(): JSX.Element {
       <Section title={COPY.sectionMap} hint={COPY.sectionMapHint}>
         <View style={styles.mapBox}>
           <View style={styles.mapGrid}>
-            {mines.map((mine) => (
+            {properties.map((prop) => (
               <Pressable
-                key={mine.id}
+                key={prop.id}
                 accessibilityRole="button"
-                accessibilityLabel={`${mine.label} ${mine.region}`}
-                onPress={() => setSelectedId(mine.id)}
+                accessibilityLabel={`${prop.label} ${prop.region}`}
+                onPress={() => setSelectedId(prop.id)}
                 style={({ pressed }) => [
                   styles.polygon,
-                  { backgroundColor: statusColor(mine.status) },
+                  { backgroundColor: statusColor(prop.status) },
                   pressed && styles.polygonPressed,
-                  selectedId === mine.id && styles.polygonSelected
+                  selectedId === prop.id && styles.polygonSelected
                 ]}
               >
-                <Text style={styles.polygonLabel}>{mine.label}</Text>
-                <Text style={styles.polygonRegion}>{mine.region}</Text>
+                <Text style={styles.polygonLabel}>{prop.label}</Text>
+                <Text style={styles.polygonRegion}>{prop.region}</Text>
               </Pressable>
             ))}
           </View>
           <View style={styles.legend}>
             <LegendDot status="active" label={`Hai (${totals.active})`} />
-            <LegendDot status="working" label={`Kazi (${totals.working})`} />
+            <LegendDot status="occupied" label={`Imepangishwa (${totals.occupied})`} />
             <LegendDot status="pending" label={`Subiri (${totals.pending})`} />
             <LegendDot status="expired" label={`Kwisha (${totals.expired})`} />
           </View>
@@ -202,25 +205,25 @@ function PortfolioMapView(): JSX.Element {
         </View>
       </Section>
       <Section title={`${COPY.sectionList} (${visible.length})`}>
-        {visible.map((mine) => (
+        {visible.map((prop) => (
           <Pressable
-            key={mine.id}
+            key={prop.id}
             accessibilityRole="button"
-            accessibilityLabel={mine.label}
-            onPress={() => setSelectedId(mine.id)}
+            accessibilityLabel={prop.label}
+            onPress={() => setSelectedId(prop.id)}
             style={({ pressed }) => [
               styles.row,
-              selectedId === mine.id && styles.rowSelected,
+              selectedId === prop.id && styles.rowSelected,
               pressed && styles.rowPressed
             ]}
           >
-            <View style={[styles.statusDot, { backgroundColor: statusColor(mine.status) }]} />
+            <View style={[styles.statusDot, { backgroundColor: statusColor(prop.status) }]} />
             <View style={styles.rowBody}>
               <Text style={styles.rowTitle}>
-                {mine.label} · {statusLabel(mine.status)}
+                {prop.label} · {statusLabel(prop.status)}
               </Text>
               <Text style={styles.rowMeta}>
-                {mine.region} · {mine.mineral} · {mine.layer === 'site' ? 'tovuti' : 'leseni'}
+                {prop.region} · {prop.unitLabel} · {prop.layer === 'property' ? 'mali' : 'mkataba'}
               </Text>
             </View>
           </Pressable>
@@ -234,7 +237,7 @@ function LegendDot({
   status,
   label
 }: {
-  status: MineStatus
+  status: PropertyStatus
   label: string
 }): JSX.Element {
   return (
@@ -245,45 +248,45 @@ function LegendDot({
   )
 }
 
-function statusColor(status: MineStatus): string {
+function statusColor(status: PropertyStatus): string {
   if (status === 'active') return colors.success
-  if (status === 'working') return colors.gold
+  if (status === 'occupied') return colors.gold
   if (status === 'pending') return colors.warn
   return colors.danger
 }
 
-function statusLabel(status: MineStatus): string {
+function statusLabel(status: PropertyStatus): string {
   if (status === 'active') return 'hai'
-  if (status === 'working') return 'kazi'
+  if (status === 'occupied') return 'imepangishwa'
   if (status === 'pending') return 'subiri'
   return 'imekwisha'
 }
 
-function normalize(feature: PortfolioFeature, index: number): NormalizedMine {
+function normalize(feature: PortfolioFeature, index: number): NormalizedProperty {
   const props = feature.properties ?? {}
-  const layer: FeatureLayer = props['layer'] === 'licence' ? 'licence' : 'site'
+  const layer: FeatureLayer = props['layer'] === 'lease' ? 'lease' : 'property'
   const rawIdValue = props['id']
   const rawId = typeof rawIdValue === 'string' ? rawIdValue : null
   const id = rawId ?? `feature-${index}`
   const numberValue = props['number']
   const nameValue = props['name']
   const label =
-    layer === 'licence' && typeof numberValue === 'string'
+    layer === 'lease' && typeof numberValue === 'string'
       ? numberValue
       : typeof nameValue === 'string' && nameValue.length > 0
         ? nameValue
         : id.slice(0, 8)
   const region = pickRegion(feature)
-  const mineralValue = props['mineral']
-  const mineral = typeof mineralValue === 'string' && mineralValue.length > 0
-    ? mineralValue
+  const unitValue = props['unit'] ?? props['unitLabel']
+  const unitLabel = typeof unitValue === 'string' && unitValue.length > 0
+    ? unitValue
     : COPY.unknown
   const rawStatus = pickStatus(props)
   return {
     id,
     label,
     region,
-    mineral,
+    unitLabel,
     layer,
     status: mapStatus(rawStatus, props),
     rawStatus: rawStatus ?? ''
@@ -308,7 +311,7 @@ function pickRegion(feature: PortfolioFeature): string {
 function mapStatus(
   raw: string | null,
   props: Readonly<Record<string, unknown>>
-): MineStatus {
+): PropertyStatus {
   if (!raw) return 'pending'
   const normalized = raw.toLowerCase()
   if (normalized === 'expired' || normalized === 'cancelled' || normalized === 'revoked') {
@@ -317,10 +320,10 @@ function mapStatus(
   if (normalized === 'pending' || normalized === 'pending_review' || normalized === 'submitted') {
     return 'pending'
   }
-  if (normalized === 'production' || normalized === 'producing' || normalized === 'working') {
-    return 'working'
+  if (normalized === 'occupied' || normalized === 'let' || normalized === 'tenanted') {
+    return 'occupied'
   }
-  if (normalized === 'active' || normalized === 'approved' || normalized === 'valid') {
+  if (normalized === 'active' || normalized === 'approved' || normalized === 'valid' || normalized === 'vacant') {
     return 'active'
   }
   const expiry = props['expiryDate']

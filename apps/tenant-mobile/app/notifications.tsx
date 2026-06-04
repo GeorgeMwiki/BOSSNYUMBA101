@@ -1,9 +1,9 @@
 /**
- * Buyer-mobile — L7 notifications inbox.
+ * Tenant-mobile — L7 notifications inbox.
  *
- * Lists `buyer_notifications` rows for the authenticated buyer. Tap on
+ * Lists notification rows for the authenticated renter/applicant. Tap on
  * a row marks it read and (where applicable) deep-links to the source
- * RFB. Pull-to-refresh re-fetches the first page.
+ * application request. Pull-to-refresh re-fetches the first page.
  *
  * Bilingual sw/en throughout.
  */
@@ -27,9 +27,9 @@ import { EmptyState } from '@/components/EmptyState'
 import { useTranslation } from '@/hooks/useTranslation'
 import { tokens } from '@/ui-litfin'
 import {
-  listBuyerNotifications,
-  markBuyerNotificationRead,
-  type BuyerNotificationRow,
+  listTenantNotifications,
+  markTenantNotificationRead,
+  type TenantNotificationRow,
 } from '@/api/notifications'
 import { queryKeys } from '@/api/queryKeys'
 import {
@@ -46,22 +46,22 @@ export default function NotificationsScreen(): JSX.Element {
   const isSw = lang === 'sw'
 
   const query = useQuery({
-    queryKey: queryKeys.buyerNotifications(false),
-    queryFn: () => listBuyerNotifications({ limit: 50 }),
+    queryKey: queryKeys.tenantNotifications(false),
+    queryFn: () => listTenantNotifications({ limit: 50 }),
     staleTime: 15_000,
   })
 
   const markRead = useMutation({
-    mutationFn: (id: string) => markBuyerNotificationRead(id),
+    mutationFn: (id: string) => markTenantNotificationRead(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: ['buyer-notifications'],
+        queryKey: ['tenant-notifications'],
       })
     },
   })
 
   const onTap = useCallback(
-    (row: BuyerNotificationRow) => {
+    (row: TenantNotificationRow) => {
       if (!row.read_at) {
         markRead.mutate(row.id)
       }
@@ -82,8 +82,8 @@ export default function NotificationsScreen(): JSX.Element {
           title={isSw ? 'Arifa' : 'Notifications'}
           subtitle={
             isSw
-              ? 'Mabadiliko ya hivi karibuni katika manunuzi yako'
-              : 'Recent activity on your purchases'
+              ? 'Mabadiliko ya hivi karibuni katika maombi yako'
+              : 'Recent activity on your applications'
           }
         />
         {inbox.items.length > 0 ? (
@@ -116,8 +116,8 @@ export default function NotificationsScreen(): JSX.Element {
             <EmptyState
               message={
                 isSw
-                  ? 'Hakuna arifa. Tutakujulisha hapa muuzaji akimaliza RFB yako.'
-                  : "No notifications. We'll alert you here when a seller fulfils your RFB."
+                  ? 'Hakuna arifa. Tutakujulisha hapa mwendeshaji akijibu ombi lako.'
+                  : "No notifications. We'll alert you here when an operator responds to your request."
               }
             />
           )
@@ -135,7 +135,7 @@ export default function NotificationsScreen(): JSX.Element {
 }
 
 interface NotificationCardProps {
-  readonly row: BuyerNotificationRow
+  readonly row: TenantNotificationRow
   readonly isSw: boolean
   readonly onPress: () => void
 }
@@ -177,9 +177,9 @@ interface LiveEventsRibbonProps {
 function describeKind(kind: string, isSw: boolean): string {
   switch (kind) {
     case 'rfb.dispatched':
-      return isSw ? 'RFB imepelekwa' : 'RFB dispatched'
+      return isSw ? 'Ombi limepelekwa' : 'Request dispatched'
     case 'bid.placed':
-      return isSw ? 'Zabuni imewekwa' : 'Bid placed'
+      return isSw ? 'Maombi yamewekwa' : 'Application placed'
     case 'settlement.initiated':
       return isSw ? 'Malipo yameanza' : 'Settlement initiated'
     case 'chat.handoff':

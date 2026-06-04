@@ -126,23 +126,23 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
       hint: { en: 'Log a safety event', sw: 'Andika tukio la usalama' },
       personaSlugs: [...SUPERVISOR, ...PIT, ...SAFETY],
     },
-    // Geologist
+    // Surveyor / inspector
     {
       id: 'sample',
-      label: { en: 'Submit sample', sw: 'Wasilisha sampuli' },
-      hint: { en: 'Drill core or grab', sw: 'Sampuli ya kuchimba' },
+      label: { en: 'Submit condition report', sw: 'Wasilisha ripoti ya hali' },
+      hint: { en: 'Unit condition record', sw: 'Rekodi ya hali ya kitengo' },
       personaSlugs: GEO,
     },
     {
       id: 'drill-log',
-      label: { en: 'Drill log', sw: 'Logi ya kuchimba' },
-      hint: { en: 'Today depth + grade', sw: 'Kina na ubora wa leo' },
+      label: { en: 'Site log', sw: 'Logi ya tovuti' },
+      hint: { en: "Today's site notes", sw: 'Maelezo ya tovuti ya leo' },
       personaSlugs: GEO,
     },
     {
       id: 'assay',
-      label: { en: 'Assay results', sw: 'Matokeo ya uchunguzi' },
-      hint: { en: 'Latest lab reports', sw: 'Ripoti za karakana' },
+      label: { en: 'Survey results', sw: 'Matokeo ya tathmini' },
+      hint: { en: 'Latest survey reports', sw: 'Ripoti za hivi karibuni' },
       personaSlugs: GEO,
     },
     // Treasury
@@ -160,8 +160,8 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
     },
     {
       id: 'royalty',
-      label: { en: 'Royalty status', sw: 'Hali ya kodi ya mrahaba' },
-      hint: { en: 'Government dues', sw: 'Madeni ya serikali' },
+      label: { en: 'Rent status', sw: 'Hali ya kodi' },
+      hint: { en: 'Rent collection dues', sw: 'Madeni ya kodi' },
       personaSlugs: TREASURY,
     },
     // Safety officer
@@ -207,38 +207,38 @@ export const BUYER_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
   Object.freeze([
     {
       id: 'search',
-      label: { en: 'Search parcels', sw: 'Tafuta mizigo' },
-      hint: { en: 'By mineral + price', sw: 'Kwa madini na bei' },
+      label: { en: 'Search listings', sw: 'Tafuta matangazo' },
+      hint: { en: 'By category + price', sw: 'Kwa aina na bei' },
       personaSlugs: BUYER,
     },
     {
       id: 'listing',
       label: { en: 'Listing detail', sw: 'Maelezo ya orodha' },
-      hint: { en: 'Open a parcel', sw: 'Fungua mzigo' },
+      hint: { en: 'Open a listing', sw: 'Fungua tangazo' },
       personaSlugs: BUYER,
     },
     {
       id: 'place-bid',
-      label: { en: 'Place a bid', sw: 'Weka zabuni' },
-      hint: { en: 'Submit a price', sw: 'Wasilisha bei' },
+      label: { en: 'Submit application', sw: 'Wasilisha ombi' },
+      hint: { en: 'Offer a rent', sw: 'Pendekeza kodi' },
       personaSlugs: BUYER,
     },
     {
       id: 'my-bids',
-      label: { en: 'My bids', sw: 'Zabuni zangu' },
+      label: { en: 'My applications', sw: 'Maombi yangu' },
       hint: { en: 'Active + history', sw: 'Hai na historia' },
       personaSlugs: BUYER,
     },
     {
       id: 'market-intel',
       label: { en: 'Market intel', sw: 'Habari za soko' },
-      hint: { en: 'LBMA + trend', sw: 'Bei na mwelekeo' },
+      hint: { en: 'Rent index + trend', sw: 'Kiwango cha kodi na mwelekeo' },
       personaSlugs: BUYER,
     },
     {
       id: 'chain-of-custody',
-      label: { en: 'Chain of custody', sw: 'Mlolongo wa umiliki' },
-      hint: { en: 'Parcel timeline', sw: 'Historia ya mzigo' },
+      label: { en: 'Listing history', sw: 'Historia ya tangazo' },
+      hint: { en: 'Listing timeline', sw: 'Historia ya tangazo' },
       personaSlugs: BUYER,
     },
     {

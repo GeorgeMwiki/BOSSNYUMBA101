@@ -1,11 +1,14 @@
 /**
- * R11 — buyer creates a Request for Bids.
+ * R11 — applicant creates a Request for Applications.
  *
  * Form-driven screen mounted at /rfb/create. POSTs to
  * /api/v1/marketplace/rfb. Bilingual sw/en throughout via the
  * shared useTranslation hook.
  *
- * Form fields (mirrors the gateway zod schema):
+ * Form fields (mirror the gateway zod schema; NOTE (flagged): the
+ * `mineralKind` / `tonnageMin` field names + `RFB_MINERAL_KINDS` come
+ * from the not-yet-renamed gateway RFB schema and are kept as wire
+ * fields):
  *   - mineralKind (picker)
  *   - tonnageMin (number)
  *   - unitPriceTzs (number)
@@ -14,7 +17,7 @@
  *   - notes (optional)
  *
  * Submit is debounced via useDebouncedSubmit so double-taps cannot
- * post two RFBs.
+ * post two requests.
  */
 import { useState } from 'react'
 import { useRouter } from 'expo-router'

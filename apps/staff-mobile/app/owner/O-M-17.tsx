@@ -15,50 +15,50 @@ import { fontSize, radius, spacing } from '../../src/theme/spacing'
 const SCREEN_ID = 'O-M-17'
 
 const COPY = Object.freeze({
-  loading: 'Inapakia bei za soko…',
-  spotTitle: 'Bei ya soko ya kuuza',
-  spotLabel: 'USD kwa kilo (wastani wa siku 90)',
+  loading: 'Inapakia kodi za soko…',
+  spotTitle: 'Kodi ya soko ya kupangisha',
+  spotLabel: 'USD kwa m² (wastani wa siku 90)',
   spotCaption: 'Tofauti na wastani wa wiki: ',
-  historyTitle: 'Mwendo wa mauzo',
-  fxTitle: 'FX iliyorekodiwa kwenye mauzo',
-  decisionTitle: 'Uamuzi — uza au hifadhi',
-  recHigh: 'Bei iko juu — pendekezo: UZA leo',
-  recLow: 'Bei chini ya wastani — pendekezo: HIFADHI',
-  recMid: 'Bei iko karibu na wastani — angalia tena baada ya saa 6',
-  pickSell: 'Uza',
-  pickHold: 'Hifadhi',
-  decisionSell: 'Chaguo: UZA mara mzigo unaopatikana sasa',
-  decisionHold: 'Chaguo: HIFADHI hadi bei ipande zaidi',
+  historyTitle: 'Mwendo wa kodi',
+  fxTitle: 'FX iliyorekodiwa kwenye mikataba',
+  decisionTitle: 'Uamuzi — pangisha au shikilia',
+  recHigh: 'Kodi iko juu — pendekezo: PANGISHA leo',
+  recLow: 'Kodi chini ya wastani — pendekezo: SHIKILIA',
+  recMid: 'Kodi iko karibu na wastani — angalia tena baada ya saa 6',
+  pickSell: 'Pangisha',
+  pickHold: 'Shikilia',
+  decisionSell: 'Chaguo: PANGISHA kitengo kinachopatikana sasa',
+  decisionHold: 'Chaguo: SHIKILIA hadi kodi ipande zaidi',
   juuLabel: 'Juu ya wastani',
   chiniLabel: 'Chini ya wastani'
 })
 
-interface SaleRow {
+interface LeaseRow {
   readonly id: string
-  readonly parcelId: string
+  readonly unitId: string
   readonly grossPriceUsd: string | null
   readonly fxAtSaleTzsPerUsd: string | null
   readonly ts: string
 }
 
-interface ParcelRow {
+interface UnitRow {
   readonly id: string
-  readonly massKg: string | null
+  readonly areaSqm: string | null
 }
 
-interface SalesResponse {
+interface LeasesResponse {
   readonly success: true
-  readonly data: ReadonlyArray<SaleRow>
+  readonly data: ReadonlyArray<LeaseRow>
 }
 
-interface ParcelsResponse {
+interface UnitsResponse {
   readonly success: true
-  readonly data: ReadonlyArray<ParcelRow>
+  readonly data: ReadonlyArray<UnitRow>
 }
 
 interface PriceObs {
   readonly date: string
-  readonly pricePerKgUsd: number
+  readonly rentPerSqmUsd: number
   readonly aboveAvg: boolean
 }
 
@@ -70,8 +70,8 @@ interface FxObs {
 
 type Decision = 'sell' | 'hold'
 
-const SALES_KEY = ['mining', 'sales', 'all'] as const
-const PARCELS_KEY = ['mining', 'ore-parcels', 'all'] as const
+const SALES_KEY = ['owner', 'leases', 'all'] as const
+const PARCELS_KEY = ['owner', 'units', 'all'] as const
 const HOLD_THRESHOLD_PCT = -0.5
 
 function toNumber(value: string | null): number {
@@ -90,77 +90,77 @@ export default function Screen(): JSX.Element {
   return (
     <RoleGuard screenId={SCREEN_ID}>
       <ScreenShell screenId={SCREEN_ID}>
-        <FxGoldWindow />
+        <FxRentWindow />
       </ScreenShell>
     </RoleGuard>
   )
 }
 
-function FxGoldWindow(): JSX.Element {
+function FxRentWindow(): JSX.Element {
   const [decision, setDecision] = useState<Decision>('sell')
 
-  const salesQuery = useQuery<ReadonlyArray<SaleRow>, ApiError>({
+  const salesQuery = useQuery<ReadonlyArray<LeaseRow>, ApiError>({
     queryKey: SALES_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<SalesResponse>('/sales', { signal })
+      const response = await miningApi.get<LeasesResponse>('/leases', { signal })
       return response.data
     }
   })
 
-  const parcelsQuery = useQuery<ReadonlyArray<ParcelRow>, ApiError>({
+  const parcelsQuery = useQuery<ReadonlyArray<UnitRow>, ApiError>({
     queryKey: PARCELS_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<ParcelsResponse>('/ore-parcels', { signal })
+      const response = await miningApi.get<UnitsResponse>('/units', { signal })
       return response.data
     }
   })
 
-  const massByParcel = useMemo<ReadonlyMap<string, number>>(() => {
+  const areaByUnit = useMemo<ReadonlyMap<string, number>>(() => {
     const map = new Map<string, number>()
-    for (const parcel of parcelsQuery.data ?? []) {
-      map.set(parcel.id, toNumber(parcel.massKg))
+    for (const unit of parcelsQuery.data ?? []) {
+      map.set(unit.id, toNumber(unit.areaSqm))
     }
     return map
   }, [parcelsQuery.data])
 
   const priceHistory = useMemo<ReadonlyArray<PriceObs>>(() => {
-    const sales = salesQuery.data ?? []
-    const rows: Array<{ date: string; pricePerKgUsd: number; ts: number }> = []
-    for (const sale of sales) {
-      const usd = toNumber(sale.grossPriceUsd)
-      const mass = massByParcel.get(sale.parcelId) ?? 0
-      if (usd <= 0 || mass <= 0) continue
+    const leases = salesQuery.data ?? []
+    const rows: Array<{ date: string; rentPerSqmUsd: number; ts: number }> = []
+    for (const lease of leases) {
+      const usd = toNumber(lease.grossPriceUsd)
+      const area = areaByUnit.get(lease.unitId) ?? 0
+      if (usd <= 0 || area <= 0) continue
       rows.push({
-        date: dayLabel(sale.ts),
-        pricePerKgUsd: usd / mass,
-        ts: new Date(sale.ts).getTime()
+        date: dayLabel(lease.ts),
+        rentPerSqmUsd: usd / area,
+        ts: new Date(lease.ts).getTime()
       })
     }
     rows.sort((a, b) => a.ts - b.ts)
     if (rows.length === 0) return []
-    const avg = rows.reduce((s, r) => s + r.pricePerKgUsd, 0) / rows.length
+    const avg = rows.reduce((s, r) => s + r.rentPerSqmUsd, 0) / rows.length
     return rows.map((r) => ({
       date: r.date,
-      pricePerKgUsd: Number(r.pricePerKgUsd.toFixed(2)),
-      aboveAvg: r.pricePerKgUsd >= avg
+      rentPerSqmUsd: Number(r.rentPerSqmUsd.toFixed(2)),
+      aboveAvg: r.rentPerSqmUsd >= avg
     }))
-  }, [salesQuery.data, massByParcel])
+  }, [salesQuery.data, areaByUnit])
 
-  const avgPricePerKgUsd = useMemo<number>(() => {
+  const avgRentPerSqmUsd = useMemo<number>(() => {
     if (priceHistory.length === 0) return 0
-    const total = priceHistory.reduce((s, r) => s + r.pricePerKgUsd, 0)
+    const total = priceHistory.reduce((s, r) => s + r.rentPerSqmUsd, 0)
     return total / priceHistory.length
   }, [priceHistory])
 
-  const latestPricePerKgUsd = useMemo<number>(() => {
+  const latestRentPerSqmUsd = useMemo<number>(() => {
     if (priceHistory.length === 0) return 0
-    return priceHistory[priceHistory.length - 1]!.pricePerKgUsd
+    return priceHistory[priceHistory.length - 1]!.rentPerSqmUsd
   }, [priceHistory])
 
   const deltaPct = useMemo<number>(() => {
-    if (avgPricePerKgUsd === 0 || latestPricePerKgUsd === 0) return 0
-    return Number((((latestPricePerKgUsd - avgPricePerKgUsd) / avgPricePerKgUsd) * 100).toFixed(2))
-  }, [avgPricePerKgUsd, latestPricePerKgUsd])
+    if (avgRentPerSqmUsd === 0 || latestRentPerSqmUsd === 0) return 0
+    return Number((((latestRentPerSqmUsd - avgRentPerSqmUsd) / avgRentPerSqmUsd) * 100).toFixed(2))
+  }, [avgRentPerSqmUsd, latestRentPerSqmUsd])
 
   const recommendation = useMemo<string>(() => {
     if (deltaPct >= 1) return COPY.recHigh
@@ -169,14 +169,14 @@ function FxGoldWindow(): JSX.Element {
   }, [deltaPct])
 
   const fxObservations = useMemo<ReadonlyArray<FxObs>>(() => {
-    const sales = salesQuery.data ?? []
+    const leases = salesQuery.data ?? []
     const seen: Array<FxObs> = []
-    for (const sale of sales) {
-      const rate = toNumber(sale.fxAtSaleTzsPerUsd)
+    for (const lease of leases) {
+      const rate = toNumber(lease.fxAtSaleTzsPerUsd)
       if (rate <= 0) continue
       seen.push({
-        id: sale.id,
-        date: dayLabel(sale.ts),
+        id: lease.id,
+        date: dayLabel(lease.ts),
         rate: Number(rate.toFixed(2))
       })
     }
@@ -205,7 +205,7 @@ function FxGoldWindow(): JSX.Element {
     <View>
       <Section title={COPY.spotTitle}>
         <BigNumber
-          value={`USD ${latestPricePerKgUsd.toFixed(2)}`}
+          value={`USD ${latestRentPerSqmUsd.toFixed(2)}`}
           label={COPY.spotLabel}
           caption={`${COPY.spotCaption}${deltaPct >= 0 ? '+' : ''}${deltaPct}%`}
         />
@@ -213,8 +213,8 @@ function FxGoldWindow(): JSX.Element {
       <Section title={COPY.historyTitle}>
         <PlaceholderList
           items={priceHistory.map((h) => ({
-            id: `${h.date}-${h.pricePerKgUsd}`,
-            primary: `${h.date} · USD ${h.pricePerKgUsd.toFixed(2)} / kg`,
+            id: `${h.date}-${h.rentPerSqmUsd}`,
+            primary: `${h.date} · USD ${h.rentPerSqmUsd.toFixed(2)} / m²`,
             secondary: h.aboveAvg ? COPY.juuLabel : COPY.chiniLabel
           }))}
         />
@@ -235,7 +235,7 @@ function FxGoldWindow(): JSX.Element {
         <View style={styles.actionRow}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Chagua kuuza"
+            accessibilityLabel="Chagua kupangisha"
             onPress={() => setDecision('sell')}
             style={[styles.action, decision === 'sell' && styles.sell]}
           >

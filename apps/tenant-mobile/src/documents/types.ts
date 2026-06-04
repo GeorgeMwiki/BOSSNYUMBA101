@@ -1,12 +1,12 @@
 /**
  * Wire-level types shared between the tenant-mobile documents UI and the
- * `/api/v1/mining/document-intelligence` endpoint family.
+ * document Q&A endpoint family (`/api/v1/documents` + `/api/v1/doc-chat`).
  *
- * Mirrors `apps/workforce-mobile/src/documents/types.ts` so the two
- * mobile surfaces remain wire-compatible. Kept duplicated rather than
- * shared via a workspace package because the apps have independent
- * vitest configs and mobile-side bundling needs to keep package
- * boundaries tight per the modular-monolith hard rule.
+ * Mirrors the staff-mobile documents types so the two mobile surfaces
+ * remain wire-compatible. Kept duplicated rather than shared via a
+ * workspace package because the apps have independent vitest configs and
+ * mobile-side bundling needs to keep package boundaries tight per the
+ * modular-monolith hard rule.
  */
 
 export type DocumentKind = 'contract' | 'rfp' | 'letter' | 'report' | 'other'

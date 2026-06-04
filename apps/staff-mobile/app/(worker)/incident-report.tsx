@@ -2,7 +2,7 @@
  * Worker safety-incident report — chain L-C (issue #193).
  *
  * One-button SOS for low/medium reports + a "tap if critical" CTA that
- * escalates severity. Backend: POST /api/v1/mining/incidents — the
+ * escalates severity. Backend: POST /api/v1/cases — the
  * severity-escalator service decides the manager/owner/admin fan-out.
  */
 
@@ -35,7 +35,7 @@ function ReportView({ lang }: { lang: 'sw' | 'en' }): JSX.Element {
 
   const onPress = (severity: Severity): void => {
     setSubmitted(severity)
-    // POST /api/v1/mining/incidents wires in next iteration.
+    // POST /api/v1/cases wires in next iteration.
   }
 
   if (submitted) {

@@ -3,10 +3,10 @@
  *
  * Mobile equivalent of apps/owner-web/src/lib/context-breadcrumbs.ts.
  * Same wire payload + same serializer so the brain side reads one
- * shape regardless of the originating client. Buyer mobile narrows
+ * shape regardless of the originating client. Tenant mobile narrows
  * via crumbs like:
  *
- *   Search "cobalt" → Listing "Mwadui 50t" → Counterparty "BossNyumba Op"
+ *   Search "2-bed" → Listing "Mwanza Apartments" → Counterparty "BossNyumba Op"
  */
 
 export interface ContextCrumb {

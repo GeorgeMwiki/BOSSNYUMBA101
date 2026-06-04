@@ -5,13 +5,13 @@ import type { AiTone } from './state'
 
 /**
  * Intelligence layer for the onboarding wizard. Today these are deterministic
- * keyword classifiers tuned for the Tanzanian ASM vocabulary; tomorrow each
- * function is a stable interface that `@bossnyumba/brain-llm-router` can swap
- * with an LLM-backed implementation without changing call sites. The wizard
- * is the pluggable boundary — keep the input/output shapes stable.
+ * keyword classifiers tuned for Tanzanian property-trade vocabulary; tomorrow
+ * each function is a stable interface that `@bossnyumba/brain-llm-router` can
+ * swap with an LLM-backed implementation without changing call sites. The
+ * wizard is the pluggable boundary — keep the input/output shapes stable.
  *
  * Evidence-required AI: every classification returns the matched keywords so
- * the `@bossnyumba/cognitive-composition` auditor can verify the decision later.
+ * the audit layer can verify the decision later.
  */
 
 export interface RoleClassification {
@@ -32,9 +32,14 @@ interface BilingualRoleLexicon {
 }
 
 /**
- * Swahili lexicon — sourced from real-world ASM vocabulary (mwenye = owner,
- * meneja/msimamizi = manager, mfanyakazi/mchimba = field worker). Weights
- * favour role-defining titles over generic verbs.
+ * Swahili lexicon — sourced from real-world Tanzanian workforce vocabulary
+ * (mwenye = owner, meneja/msimamizi = manager, mfanyakazi = field worker).
+ * Weights favour role-defining titles over generic verbs.
+ *
+ * NOTE: a few legacy tokens below (and the cert triggers further down) are
+ * still trade-generic mining terms pinned by the onboarding intelligence
+ * test fixture; a coordinated re-tokenisation to pure property-trade words
+ * is flagged for follow-up.
  */
 const SW_LEXICON: BilingualRoleLexicon = {
   owner: [
@@ -203,7 +208,7 @@ function clamp01(value: number): number {
 /**
  * Suggest certifications for a free-text role hint. Returns a stable,
  * deduplicated readonly tuple drawn from the canonical `CERTIFICATIONS`
- * list. The mining-shift-planner package consumes the same enum for OSHA-TZ
+ * list. The shift-planner contract consumes the same enum for safety
  * constraint evaluation, so anything captured here becomes a real constraint
  * on the worker's shift plan downstream.
  */

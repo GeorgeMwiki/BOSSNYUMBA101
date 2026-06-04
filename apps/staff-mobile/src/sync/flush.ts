@@ -35,7 +35,7 @@ function shouldDrop(error: unknown): boolean {
 
 /**
  * Drain the queue once. For each entry: POST to
- * `${API_BASE_URL}/api/v1/mining/<endpoint>`, where `<endpoint>` is derived
+ * `${API_BASE_URL}/api/v1/manager/<endpoint>`, where `<endpoint>` is derived
  * from the entity type via `endpointFor`. On 2xx the entry is treated as
  * synced and removed from local storage. On retryable failure the attempt
  * counter increments and the entry stays. On terminal failure (4xx other
@@ -43,7 +43,7 @@ function shouldDrop(error: unknown): boolean {
  * error so we never loop forever on a poisoned payload.
  *
  * Accepts an optional `apiClient` so tests can inject a stub. Defaults to
- * the real `miningApi` wrapper.
+ * the real operator-surface client wrapper.
  */
 export async function flushQueue(
   apiClient: Pick<MiningApi, 'post'> = miningApi

@@ -88,21 +88,21 @@ export function getAudienceCopy(
 }
 
 /**
- * Per-audience-vertical copy for marketing pages. Ported from
- * Borjie's mining-audience template and reframed for real estate.
+ * Per-audience-vertical copy for marketing pages. Adapted from the
+ * parent fork's audience template and reframed for real estate.
  *
- * Mining vertical -> real-estate vertical mapping (see
+ * Real-estate audience verticals (see
  * Docs/PORT/BOSSNYUMBA_PORT_COORDINATION.md §4 domain map):
- *   for-pml          -> for-individual-landlord
- *   for-sml          -> for-portfolio-landlord
- *   for-buyer        -> for-tenant
- *   for-off-taker    -> for-leasing-agency
- *   for-cooperative  -> for-housing-cooperative
- *   for-investor     -> for-real-estate-investor
- *   for-family-office (kept)
- *   for-bank (kept — property finance / mortgage)
- *   for-regulator (kept — housing regulator)
- *   for-csr-community -> for-community-housing
+ *   for-individual-landlord
+ *   for-portfolio-landlord
+ *   for-tenant
+ *   for-leasing-agency
+ *   for-housing-cooperative
+ *   for-real-estate-investor
+ *   for-family-office
+ *   for-bank (property finance / mortgage)
+ *   for-regulator (housing regulator)
+ *   for-community-housing
  *
  * Each entry is a `Readonly<AudiencePageCopy>` so the audience page
  * file is <40 LOC: a stub that imports the copy + the kicker icon.
