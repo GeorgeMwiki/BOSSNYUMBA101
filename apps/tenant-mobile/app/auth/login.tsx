@@ -10,7 +10,7 @@ import { useToast } from '@/components/Toast'
 import { useTranslation } from '@/hooks/useTranslation'
 import { sendBuyerOtp, verifyBuyerOtp } from '@/auth/session'
 import { phoneSchema, otpSchema, type PhoneInput, type OtpInput } from '@/schemas/auth'
-import { greet, tokens } from '@/ui-litfin'
+import { greet, tokens } from '@/ui'
 
 type Stage = 'phone' | 'otp'
 

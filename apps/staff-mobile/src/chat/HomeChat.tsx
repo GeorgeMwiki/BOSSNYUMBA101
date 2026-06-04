@@ -43,7 +43,7 @@ import { ApiError } from '../api/errors'
 import { resolveWorkforcePersona, workforcePersonaSpec } from '../roles/persona'
 import { colors } from '../theme/colors'
 import { fontSize, radius, spacing } from '../theme/spacing'
-import { greet } from '../ui-litfin'
+import { greet } from '../ui'
 // Wave WORKFORCE-FIXED-TABS — workers cannot mutate tabs locally. When
 // the brain detects a tab/access-change intent we open the request
 // sheet instead of opening a brain stream. The sheet posts to

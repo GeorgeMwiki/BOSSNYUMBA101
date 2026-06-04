@@ -14,7 +14,7 @@ import { getMessages, type Locale } from '@/lib/i18n';
 import { TiltCard } from '@/components/animations/TiltCard';
 
 /**
- * BentoGrid — asymmetric feature grid mirroring the LitFin bento
+ * BentoGrid — asymmetric feature grid mirroring the upstream marketing fork bento
  * pattern. Five tiles:
  *
  *   1 audit chain        — col-span-2 row-span-2 hero tile

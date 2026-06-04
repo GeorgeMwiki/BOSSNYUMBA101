@@ -19,7 +19,7 @@ export interface LazyVisibleProps {
   /**
    * R34 — optional fallback rendered in place of the plain placeholder
    * spacer while the section is gated. Pass `<SectionSkeleton />` to
-   * mimic the LitFin shimmer pattern.
+   * mimic the upstream marketing fork shimmer pattern.
    */
   readonly fallback?: ReactNode;
 }

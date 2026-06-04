@@ -1,6 +1,6 @@
 /**
- * Desktop Review — multi-panel admin surface (Wave-12 port of LitFin's
- * desktop-review page, translated to estate-ops).
+ * Desktop Review — multi-panel admin surface (Wave-12 port of the upstream
+ * fork's desktop-review page, translated to estate-ops).
  *
  * Four panels, each with quick-action buttons (approve / delegate /
  * escalate / ask Mr. Mwikila). Clicking a quick-action opens manager-chat

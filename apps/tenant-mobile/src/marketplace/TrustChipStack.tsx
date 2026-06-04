@@ -13,7 +13,7 @@
 
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import type { Listing } from '@/types/listing'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import { deriveTrustChips, type TrustChip } from './trustChips'
 
 export type { TrustChip, TrustChipKind } from './trustChips'

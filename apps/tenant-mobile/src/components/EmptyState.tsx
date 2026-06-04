@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 
 export interface EmptyStateProps {
   readonly message: string

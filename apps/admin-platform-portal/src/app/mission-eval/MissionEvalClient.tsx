@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Mission-eval interactive client — Wave-K parity-litfin.
+ * Mission-eval interactive client — Wave-K parity.
  *
  * Calls:
  *   GET  /api/v1/parity/capability/dashboard         — rollup tile

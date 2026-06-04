@@ -45,7 +45,7 @@ import { useTranslation } from '@/hooks/useTranslation'
 import { ApiError } from '@/api/errors'
 import { colors } from '@/theme/colors'
 import { radius, spacing, typography } from '@/theme/spacing'
-import { greet as timeAwareGreeting } from '@/ui-litfin'
+import { greet as timeAwareGreeting } from '@/ui'
 import {
   BUYER_SLASH_COMMANDS,
   slashCommandsForPersona

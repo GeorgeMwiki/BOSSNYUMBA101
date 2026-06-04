@@ -7,7 +7,7 @@ const config: Config = {
     './src/**/*.{ts,tsx}',
     '../../packages/design-system/src/**/*.{ts,tsx}',
     // chat-ui ships as compiled JS in dist/. Tailwind must scan it so
-    // the LitFinWidget FAB classes (fixed bottom-6 right-6 z-50, h-14,
+    // the chat widget FAB classes (fixed bottom-6 right-6 z-50, h-14,
     // w-14, bg-gradient-to-br, etc.) survive into the generated CSS.
     // Without this, the floating chat bubble renders as a static-flow
     // 0-px <button> at the bottom of the page (the user's "missing

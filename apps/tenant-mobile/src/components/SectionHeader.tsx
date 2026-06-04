@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 
 export interface SectionHeaderProps {
   readonly title: string
@@ -7,8 +7,8 @@ export interface SectionHeaderProps {
 }
 
 /**
- * LitFin section header — cream display title + muted subtitle.
- * Matches the LitFin web borrower dashboard subsection rhythm.
+ * BossNyumba section header — cream display title + muted subtitle.
+ * Matches the BossNyumba web borrower dashboard subsection rhythm.
  */
 export function SectionHeader({ title, subtitle }: SectionHeaderProps) {
   return (

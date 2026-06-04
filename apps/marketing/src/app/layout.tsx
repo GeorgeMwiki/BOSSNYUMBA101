@@ -1,10 +1,10 @@
-// LitFin-rebase: marketing layout now mirrors LitFin's RSC + 5 client
+// marketing-rebase: marketing layout now mirrors the upstream fork's RSC + 5 client
 // islands shell. The layout itself stays out of the client bundle —
 // MainNav, MarketingFooter, ScrollProgressBar, MarketingWidgetSlot,
 // CookieConsent each hydrate independently as client islands.
 //
 // Source pattern this mirrors:
-//   LITFIN_PATH/src/app/(marketing)/layout.tsx
+//   UPSTREAM_PATH/src/app/(marketing)/layout.tsx
 
 import type { Metadata, Viewport } from 'next';
 import { Inter, Syne } from 'next/font/google';
@@ -20,7 +20,7 @@ import { MarketingWidgetSlot } from '@/components/marketing/MarketingWidgetSlot'
 import { ErrorBoundary } from '@bossnyumba/design-system';
 
 /**
- * Typography stack — LitFin parity:
+ * Typography stack — the upstream marketing fork parity:
  *   - Display: Syne (geometric sans, distinctive weight curve)
  *   - Sans:    Inter (variable, optical-size aware)
  * Shipped from `next/font/google` with subset-latin only so the initial
@@ -109,14 +109,14 @@ export const viewport: Viewport = {
 };
 
 /**
- * Marketing Layout (RSC) — LitFin pattern.
+ * Marketing Layout (RSC) — the upstream marketing fork pattern.
  *
  * No OnboardingProvider here, onboarding walkthrough popups are portal-
  * only (owner, tenant, agency, admin). The Mr. Mwikila widget still
  * renders for interactive chat context on marketing pages, behind a
  * client island that lazy-loads the widget bundle.
  *
- * Structure mirrors LITFIN_PATH/src/app/(marketing)/layout.tsx:
+ * Structure mirrors UPSTREAM_PATH/src/app/(marketing)/layout.tsx:
  *   PortalErrorBoundary
  *     > BossNyumbaAIProvider (lives inside MarketingWidgetSlot)
  *       > ScrollProgressBar (client island)

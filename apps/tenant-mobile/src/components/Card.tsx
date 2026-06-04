@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 
 export interface CardProps {
   readonly children: ReactNode

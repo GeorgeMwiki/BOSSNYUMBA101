@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router'
 import { Text } from 'react-native'
 import { useTranslation } from '@/hooks/useTranslation'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 
 function TabIcon({ glyph, color }: { glyph: string; color: string }) {
   return <Text style={{ color, fontSize: 18, fontWeight: '700' }}>{glyph}</Text>

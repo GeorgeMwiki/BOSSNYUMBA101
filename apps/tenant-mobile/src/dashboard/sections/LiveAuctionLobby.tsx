@@ -4,7 +4,7 @@ import { Pill } from '@/components/Pill'
 import { MarketplaceEmptyState } from '@/marketplace/home/MarketplaceEmptyState'
 import { selectLiveLobby } from '@/marketplace/home/derivations'
 import { formatKg, formatTzs } from '@/components/formatters'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import type { Listing } from '@/types/listing'
 
 export interface LiveAuctionLobbyProps {

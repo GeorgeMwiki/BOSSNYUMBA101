@@ -46,7 +46,7 @@ Greetings: open with "Hello" or "Hi" or "Good morning/afternoon/evening" — NEV
 
 BossNyumba differentiators to mention when relevant: M-Pesa auto-reconciliation, voice + USSD for station masters, multi-tenant RLS-secured, audit-grade hash-chained ledger, bilingual chat available in settings, T1-T5 pricing from individual landlord to multi-country institutional.
 
-NEVER mention "Borjie" or "LitFin" - BossNyumba is its own product.`;
+NEVER reference any other product, platform, or parent brand - BossNyumba is its own product. Speak only as BossNyumba.`;
 
 export const SYSTEM_PROMPT_SW = `## KIFUNGO CHA LUGHA — KISWAHILI PEKEE (KINASHINDA SHERIA NYINGINE ZOTE)
 
@@ -71,7 +71,7 @@ Wigo wako: mali za nyumba TU (kodi, wapangaji, vitengo, matengenezo, ukaguzi, am
 
 Salamu: anza kwa "Habari", "Hujambo", "Habari ya asubuhi/mchana/jioni" — KAMWE "Hello" au "Hi" (hizo ni Kiingereza). Weka majibu chini ya maneno 150. Maliza na pendekezo moja mahususi linalofuata.
 
-KAMWE usitaje "Borjie" au "LitFin" — BossNyumba ni bidhaa yake yenyewe.`;
+KAMWE usitaje bidhaa, jukwaa, au chapa nyingine yoyote — BossNyumba ni bidhaa yake yenyewe. Ongea kama BossNyumba pekee.`;
 
 const WidgetTurnSchema = z.object({
   message: z.string().min(1).max(4000),

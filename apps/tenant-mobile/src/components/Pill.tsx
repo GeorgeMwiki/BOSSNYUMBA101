@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 
 export type PillTone = 'neutral' | 'success' | 'warning' | 'danger' | 'gold'
 
@@ -9,8 +9,8 @@ export interface PillProps {
 }
 
 /**
- * Status pill — LitFin badge family. 14% tone tint on a soft hairline
- * border, full-saturation text. Same recipe as the LitFin web badges
+ * Status pill — BossNyumba badge family. 14% tone tint on a soft hairline
+ * border, full-saturation text. Same recipe as the BossNyumba web badges
  * on the borrower dashboard.
  */
 const toneStyles: Record<PillTone, { bg: string; fg: string; border: string }> = {

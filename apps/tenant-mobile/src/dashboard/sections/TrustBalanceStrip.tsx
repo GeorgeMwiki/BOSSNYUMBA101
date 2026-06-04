@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { Card } from '@/components/Card'
 import { Pill, type PillTone } from '@/components/Pill'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import type { BuyerUser } from '@/types/auth'
 
 export interface TrustBalanceStripProps {

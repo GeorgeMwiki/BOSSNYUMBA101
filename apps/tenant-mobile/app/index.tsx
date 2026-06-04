@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Redirect } from 'expo-router'
 import { isAuthenticated } from '@/auth/session'
-import { LitFinSplash } from '@/ui-litfin'
+import { BnSplash } from '@/ui'
 
 /**
  * Splash gate for the tenant app — branded hold while the session
@@ -14,7 +14,7 @@ export default function Index() {
     return () => clearTimeout(t)
   }, [])
   if (!ready) {
-    return <LitFinSplash wordmark="BOSSNYUMBA" tagline="Soko la Nyumba. Property marketplace." showSpinner />
+    return <BnSplash wordmark="BOSSNYUMBA" tagline="Soko la Nyumba. Property marketplace." showSpinner />
   }
   if (!isAuthenticated()) {
     return <Redirect href="/auth/login" />

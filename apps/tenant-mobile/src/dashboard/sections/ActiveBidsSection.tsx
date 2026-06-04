@@ -5,7 +5,7 @@ import { ProvenancePill } from '@/components/ProvenancePill'
 import { MarketplaceEmptyState } from '@/marketplace/home/MarketplaceEmptyState'
 import { selectActiveBids } from '@/marketplace/home/derivations'
 import { formatTzs } from '@/components/formatters'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import type { Bid, BidStatus } from '@/types/listing'
 
 export interface ActiveBidsSectionProps {

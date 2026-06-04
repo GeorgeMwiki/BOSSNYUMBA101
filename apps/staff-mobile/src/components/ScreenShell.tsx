@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack } from 'expo-router'
 import { useI18n } from '../i18n/useI18n'
 import { OfflineBanner } from './OfflineBanner'
-import { tokens } from '../ui-litfin'
+import { tokens } from '../ui'
 import type { ReactNode } from 'react'
 
 export interface ScreenShellProps {
@@ -15,11 +15,11 @@ export interface ScreenShellProps {
 
 /**
  * Standard chrome for every catalogue screen: SafeArea + offline banner +
- * LitFin-styled header with screen id eyebrow + display title + intent.
+ * BossNyumba-styled header with screen id eyebrow + display title + intent.
  * Pure presentational — holds no role logic. Role gating happens in
  * `app/(tabs)/_layout.tsx` and the per-route guards.
  *
- * Palette: LitFin navy-slate ground with cream type + gold eyebrow, so
+ * Palette: BossNyumba navy-slate ground with cream type + gold eyebrow, so
  * the foundation matches the marketing site and owner-web shell.
  */
 export function ScreenShell({ screenId, children, contentStyle, scroll = true }: ScreenShellProps): JSX.Element {

@@ -1,7 +1,7 @@
 /**
  * LegalShell , shared shell for every `/legal/*` page.
  *
- * Per `Docs/DESIGN/LITFIN_MARKETING_SECONDARY_SPEC.md` section 7. The
+ * Per `Docs/DESIGN/MARKETING_SECONDARY_SPEC.md` section 7. The
  * shell renders the page hero (kicker, title, last-updated mono small)
  * plus a `max-w-prose` two-column body on lg+: left rail with an
  * anchored section nav, right column with prose body.
@@ -10,7 +10,7 @@
  * resolve. Per-page content passes in via `sections`.
  */
 
-// LitFin-rebase: the layout now owns MainNav + MarketingFooter. This
+// marketing-rebase: the layout now owns MainNav + MarketingFooter. This
 // shell no longer renders them — it only renders the legal content
 // section so anchors and dual-locale aside stay intact.
 import type { ReactElement, ReactNode } from 'react';

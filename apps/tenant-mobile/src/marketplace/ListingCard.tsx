@@ -5,7 +5,7 @@ import { formatKg, formatTzs } from '@/components/formatters'
 import { mockDistanceKm, formatKm } from './distance'
 import { unitTypeGlyph } from './options'
 import { TrustChipStack } from './TrustChipStack'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import type { Listing } from '@/types/listing'
 
 export interface ListingCardProps {

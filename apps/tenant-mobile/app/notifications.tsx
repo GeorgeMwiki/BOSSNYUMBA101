@@ -25,7 +25,7 @@ import { SectionHeader } from '@/components/SectionHeader'
 import { Card } from '@/components/Card'
 import { EmptyState } from '@/components/EmptyState'
 import { useTranslation } from '@/hooks/useTranslation'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import {
   listTenantNotifications,
   markTenantNotificationRead,

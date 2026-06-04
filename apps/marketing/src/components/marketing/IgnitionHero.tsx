@@ -23,7 +23,7 @@ import { getMessages, type Locale } from '@/lib/i18n';
 
 /**
  * IGNITION HERO — Live Fabric marketing pattern. Carbon copy of
- * LITFIN_PATH/src/components/marketing/IgnitionHero.tsx adapted to
+ * UPSTREAM_PATH/src/components/marketing/IgnitionHero.tsx adapted to
  * BossNyumba's real-estate domain. Mr. Mwikila is the AI Estate-
  * Management Partner; the choreographed reply mirrors a Dar es
  * Salaam landlord conversation, not credit/lending.

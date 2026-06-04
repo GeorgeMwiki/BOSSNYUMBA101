@@ -11,7 +11,7 @@
 import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 
-const LitFinAIProvider = dynamic(
+const BnAIProvider = dynamic(
   () =>
     import('@bossnyumba/chat-ui').then((m) => ({
       default: m.LitFinAIProvider,
@@ -19,7 +19,7 @@ const LitFinAIProvider = dynamic(
   { ssr: false },
 );
 
-const LitFinWidget = dynamic(
+const BnWidget = dynamic(
   () =>
     import('@bossnyumba/chat-ui').then((m) => ({ default: m.LitFinWidget })),
   { ssr: false },
@@ -44,15 +44,15 @@ export function BossNyumbaWidgetMount(
   _props: BossNyumbaWidgetMountProps = {},
 ): JSX.Element {
   return (
-    <LitFinAIProvider
+    <BnAIProvider
       portalId="public"
       endpoint="/api/chat"
       initialRoute="/"
       disclaimerEn={BOSSNYUMBA_DISCLAIMER_EN}
       disclaimerSw={BOSSNYUMBA_DISCLAIMER_SW}
     >
-      <LitFinWidget />
-    </LitFinAIProvider>
+      <BnWidget />
+    </BnAIProvider>
   );
 }
 

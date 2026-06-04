@@ -7,7 +7,7 @@ import { useSession } from '@/auth/session'
 import { fetchListings, fetchBids } from '@/api/marketplace'
 import { queryKeys } from '@/api/queryKeys'
 import { MarketplaceEmptyState } from '@/marketplace/home/MarketplaceEmptyState'
-import { LitFinPageHero, LitFinButton, greet, tokens } from '@/ui-litfin'
+import { BnPageHero, BnButton, greet, tokens } from '@/ui'
 import { TrustBalanceStrip } from './sections/TrustBalanceStrip'
 import { LiveAuctionLobby } from './sections/LiveAuctionLobby'
 import { RecommendedParcels } from './sections/RecommendedParcels'
@@ -43,7 +43,7 @@ export function BuyerDashboard() {
   if (!user.id) {
     return (
       <Screen>
-        <LitFinPageHero
+        <BnPageHero
           eyebrow={t('app.name')}
           title={greet(lang)}
           subtitle={t('dashboard.subtitle')}
@@ -70,20 +70,20 @@ export function BuyerDashboard() {
     : 'Property marketplace — available units, your applications, and rent trends.'
 
   const renderHero = (): JSX.Element => (
-    <LitFinPageHero
+    <BnPageHero
       eyebrow={heroEyebrow}
       title={greet(lang, firstName)}
       subtitle={heroSubtitle}
       actions={
         <>
-          <LitFinButton
+          <BnButton
             label={lang === 'sw' ? 'Tafuta bidhaa' : 'Browse listings'}
             onPress={() => router.push('/marketplace')}
             variant="primary"
             size="md"
             trailingIcon=">"
           />
-          <LitFinButton
+          <BnButton
             label={lang === 'sw' ? 'Uliza BossNyumba' : 'Ask BossNyumba'}
             onPress={() => router.push('/chat')}
             variant="secondary"

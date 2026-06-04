@@ -5,7 +5,7 @@ import {
   summariseBuyerPerformance
 } from '@/marketplace/home/performance'
 import { formatTzs } from '@/components/formatters'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import type { Bid } from '@/types/listing'
 
 export interface BuyerPerformanceSectionProps {

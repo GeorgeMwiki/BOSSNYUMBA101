@@ -20,7 +20,7 @@
  */
 
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import { formatWalletAmount, type WalletCurrency } from './walletFormat'
 
 export interface WalletSnapshot {

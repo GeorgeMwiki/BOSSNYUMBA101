@@ -22,7 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTranslation } from '@/hooks/useTranslation'
 import { Card } from '@/components/Card'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import { apiFetch } from '@/api/client'
 
 interface SignDeliveryResponse {

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 /**
- * TrustBadgeStrip , LitFin-parity row of compliance / capability
+ * TrustBadgeStrip , marketing-parity row of compliance / capability
  * pills. Single line on desktop, wraps to several on mobile.
  *
  * Icon names accepted are a curated property-management-relevant subset

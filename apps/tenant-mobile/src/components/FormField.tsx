@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 
 export interface FormFieldProps extends Omit<TextInputProps, 'style'> {
   readonly label: string
@@ -9,7 +9,7 @@ export interface FormFieldProps extends Omit<TextInputProps, 'style'> {
 }
 
 /**
- * LitFin form field — eyebrow label + dark-glass input pill on navy
+ * BossNyumba form field — eyebrow label + dark-glass input pill on navy
  * with cream text. Error state goes warm-red border + 1-line caption.
  */
 export function FormField({ label, error, trailing, ...inputProps }: FormFieldProps) {

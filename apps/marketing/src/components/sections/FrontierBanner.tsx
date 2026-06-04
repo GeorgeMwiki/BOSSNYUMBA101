@@ -5,7 +5,7 @@ import { getMessages, type Locale } from '@/lib/i18n';
 
 /**
  * FrontierBanner — small kicker section between hero/capabilities and
- * the rest of the marketing surface. Mirrors LitFin's "frontier banner"
+ * the rest of the marketing surface. Mirrors the upstream fork's "frontier banner"
  * editorial moment: a single tagline + gold accent + one-line subhead.
  *
  * Framer-motion fade-in on the centred text block; collapses to instant

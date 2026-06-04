@@ -4,7 +4,7 @@ import { getMessages, type Locale } from '@/lib/i18n';
 
 /**
  * FinalCta — the full-bleed closing band that sits between the
- * testimonial wall and the footer. Mirrors LitFin's "ready when you
+ * testimonial wall and the footer. Mirrors the upstream fork's "ready when you
  * are" closing pattern: kicker, declarative two-line headline, calm
  * sub-paragraph, dual CTA (primary + secondary), and microcopy below
  * the button that defuses the "is this going to cost me?" question.

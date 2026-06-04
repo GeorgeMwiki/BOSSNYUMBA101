@@ -3,7 +3,7 @@ import { Card } from '@/components/Card'
 import { MarketplaceEmptyState } from '@/marketplace/home/MarketplaceEmptyState'
 import { selectRecommended } from '@/marketplace/home/derivations'
 import { formatKg, formatTzs } from '@/components/formatters'
-import { tokens } from '@/ui-litfin'
+import { tokens } from '@/ui'
 import type { Listing } from '@/types/listing'
 
 export interface RecommendedParcelsProps {

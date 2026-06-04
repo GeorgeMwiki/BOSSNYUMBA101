@@ -2,7 +2,7 @@
  * use-blackboard-store — immutable state for the BossNyumba blackboard.
  *
  * Pure useReducer + module-level pub/sub so the store survives unmounts
- * across the chat ↔ board boundary (parity with LitFin's
+ * across the chat ↔ board boundary (parity with the upstream fork's
  * `smartboardReducer`, but local rather than provider-based).
  *
  * Every action returns a NEW state object; no field is ever mutated.
