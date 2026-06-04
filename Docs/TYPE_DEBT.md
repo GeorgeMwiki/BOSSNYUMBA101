@@ -3,14 +3,25 @@
 Tracks every active `@ts-nocheck` pragma in the BOSSNYUMBA monorepo, grouped by
 root cause and the upstream fix needed to retire it.
 
-**Current count**: 91 files (down from 92 at start of Wave-14 hardening).
-**Target**: ≤ 30 after upstream upgrades unblock.
+**Current count (api-gateway)**: 55 files — down from 142 after the 2026-06
+remove-and-measure pass (87 stale pragmas retired; see note below).
+**Target**: 0 — the residual 55 are upstream-blocked (Hono #3891 fix ships in
+unreleased Hono 4.13).
 
-The upgrade path (Hono 4.6 → 4.12, drizzle 0.36 → 0.37) was evaluated during
-Wave-14 but **not applied** — both upgrades introduce > 1 hour of drift in a
-parallel-agent delivery window. They are scheduled for a dedicated Wave-15
-type-debt sprint where the build can be taken offline while errors are
-resolved surface-by-surface.
+### 2026-06 remove-and-measure retirement (142 → 55)
+
+Many pragmas predated the Hono 4.6 → 4.12 bump (already applied; installed
+4.12.18) and the gateway type-error cleanup, so they were masking nothing. A
+remove-and-measure pass — strip every `@ts-nocheck`, run `tsc`, restore the
+pragma ONLY on files that genuinely still fail — retired **87** of 142 with the
+gateway staying at **0** type errors and zero new casts/suppressions. The
+remaining 55 are the genuine residuals below.
+
+> NOTE: drizzle-orm is now on **0.45.2** (well past the 0.36/0.37 referenced in
+> Cluster 2), so the drizzle-cluster pragmas in `packages/database` /
+> `services/domain-services` are candidates for the same remove-and-measure
+> treatment in a follow-up. Hono #3891 remains unreleased (latest 4.12.23), so
+> Cluster 1's residual cannot retire until Hono 4.13 ships.
 
 ---
 
