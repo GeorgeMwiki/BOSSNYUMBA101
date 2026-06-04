@@ -4181,6 +4181,9 @@ importers:
       '@bossnyumba/persona-runtime':
         specifier: workspace:*
         version: link:../../packages/persona-runtime
+      '@bossnyumba/portal-genui':
+        specifier: workspace:*
+        version: link:../../packages/portal-genui
       '@bossnyumba/privacy-router':
         specifier: workspace:*
         version: link:../../packages/privacy-router

@@ -10,7 +10,7 @@
  *      ahead of the router's auth middleware.
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
 
 process.env.JWT_SECRET =
@@ -58,7 +58,7 @@ function bearer(opts: {
 }
 
 describe('portal-genui router — JWT env', () => {
-  beforeAll(() => {
+  it('uses a JWT secret of at least 32 chars for token signing', () => {
     expect(process.env.JWT_SECRET?.length ?? 0).toBeGreaterThanOrEqual(32);
   });
 });
