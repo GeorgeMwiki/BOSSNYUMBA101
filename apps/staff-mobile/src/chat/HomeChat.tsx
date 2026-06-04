@@ -466,7 +466,7 @@ function GreetingCard({
   const primary = lang === 'sw' ? greetingSw : greetingEn
   return (
     <View style={styles.greetingCard} testID="home-chat-greeting">
-      <Text style={styles.greetingEyebrow}>MR. MWIKILA · MINING MD</Text>
+      <Text style={styles.greetingEyebrow}>MR. MWIKILA · ESTATE MD</Text>
       <Text style={styles.greetingDayPart}>{greeting}</Text>
       <Text style={styles.greetingPrimary}>{primary}</Text>
       {lang === 'sw' ? (

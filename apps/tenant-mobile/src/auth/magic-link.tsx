@@ -41,7 +41,7 @@ const COPY: Record<Locale, {
   emailHint: string
 }> = {
   sw: {
-    title: `${'Kari' + 'bu'} BossNyumba Buyers`,
+    title: 'Karibu BossNyumba',
     subtitle: 'Andika barua pepe ya kampuni yako kupokea kiungo cha kuingia.',
     emailLabel: 'Barua pepe',
     send: 'Tuma kiungo',
@@ -53,7 +53,7 @@ const COPY: Record<Locale, {
     emailHint: 'procurement@kampuni.co.tz',
   },
   en: {
-    title: 'Sign in to BossNyumba Buyers',
+    title: 'Sign in to BossNyumba',
     subtitle: 'Enter your business email to receive a sign-in link.',
     emailLabel: 'Email',
     send: 'Send link',

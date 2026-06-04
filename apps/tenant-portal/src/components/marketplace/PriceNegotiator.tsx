@@ -11,7 +11,7 @@ import type { MarketplaceListingDetail } from '@/lib/marketplace/types';
  *
  * The "AI draft" is a deterministic seed string today (we don't call
  * the brain yet) — once the chat surface owned by P7 stabilises a
- * named interface (`/v1/ask?persona=marketplace_buyer`), this
+ * named interface (`/v1/ask?persona=marketplace_tenant`), this
  * component will swap the seed for that call.
  */
 export function PriceNegotiator({

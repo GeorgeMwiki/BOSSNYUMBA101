@@ -484,16 +484,16 @@ const ENTRIES: ReadonlyArray<CapabilityEntry> = [
       sw: 'Onyo la kuisha kwa vyeti vya wafanyakazi',
     },
     public_description: {
-      en: 'Blast safety, equipment equipment, first-aid — Mr. Mwikila tracks every cert and warns 60 / 30 / 7 days before lapse so you stay compliant.',
-      sw: 'Usalama wa moto, vifaa, msaada wa kwanza — Mwikila hufuatilia kila cheti na huonya siku 60 / 30 / 7 kabla ya kuisha ili ubaki na utii.',
+      en: 'Electrical safety, equipment operation, first-aid — Mr. Mwikila tracks every cert and warns 60 / 30 / 7 days before lapse so you stay compliant.',
+      sw: 'Usalama wa umeme, uendeshaji wa vifaa, msaada wa kwanza — Mwikila hufuatilia kila cheti na huonya siku 60 / 30 / 7 kabla ya kuisha ili ubaki na utii.',
     },
     example_question: {
       en: 'Are any worker certifications expiring?',
       sw: 'Kuna vyeti vya wafanyakazi vinavyoisha?',
     },
     example_response_pattern: {
-      en: 'Three this month. Juma\'s safety cert expires May 18, two equipment operator leases expire May 24. I have the refresh courses scheduled — want me to confirm the bookings?',
-      sw: 'Vitatu mwezi huu. Cheti cha usalama cha Juma kinaisha Mei 18, vyeti viwili vya vifaa vinaisha Mei 24. Nimepanga kozi za upyaji — unataka nithibitishe?',
+      en: 'Three this month. Juma\'s safety cert expires May 18, two equipment-operator certificates expire May 24. I have the refresh courses scheduled — want me to confirm the bookings?',
+      sw: 'Vitatu mwezi huu. Cheti cha usalama cha Juma kinaisha Mei 18, vyeti viwili vya waendeshaji wa vifaa vinaisha Mei 24. Nimepanga kozi za upyaji — unataka nithibitishe?',
     },
     related: ['mwikila.track.workers', 'mwikila.hr.onboard'],
     visibility: 'PUBLIC',

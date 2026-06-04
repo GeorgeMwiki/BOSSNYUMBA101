@@ -46,19 +46,19 @@ function FuelLogForm(): JSX.Element {
   const [submitting, setSubmitting] = useState<boolean>(false)
 
   const assetOptions = [
-    { value: 'excavator-1', label: t.fuelLog.asset1 },
-    { value: 'excavator-2', label: t.fuelLog.asset2 },
-    { value: 'loader-1', label: t.fuelLog.asset3 },
-    { value: 'truck-1', label: t.fuelLog.asset4 },
-    { value: 'truck-2', label: t.fuelLog.asset5 },
-    { value: 'generator-1', label: t.fuelLog.asset6 }
+    { value: 'lift-1', label: t.fuelLog.asset1 },
+    { value: 'lift-2', label: t.fuelLog.asset2 },
+    { value: 'generator-1', label: t.fuelLog.asset3 },
+    { value: 'pump-1', label: t.fuelLog.asset4 },
+    { value: 'vacuum-1', label: t.fuelLog.asset5 },
+    { value: 'truck-1', label: t.fuelLog.asset6 }
   ]
 
   const form = useForm<FuelLogForm>({
     resolver: zodResolver(fuelLogFormSchema),
     mode: 'onChange',
     defaultValues: {
-      assetId: 'excavator-1',
+      assetId: 'lift-1',
       litres: ''
     }
   })

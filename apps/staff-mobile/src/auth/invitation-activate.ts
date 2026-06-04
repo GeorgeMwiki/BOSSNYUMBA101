@@ -15,12 +15,8 @@
  * and trivially testable.
  */
 
-import { API_BASE_URL, MINING_PREFIX as _MINING_PREFIX } from '../api/config'
+import { API_BASE_URL } from '../api/config'
 import { request } from '../api/client'
-
-// `void _MINING_PREFIX` keeps the import warning-free even though we
-// route through the dedicated `/api/v1/workforce/invites` prefix below.
-void _MINING_PREFIX
 
 const ACTIVATION_PATH = '/api/v1/workforce/invites/activate'
 

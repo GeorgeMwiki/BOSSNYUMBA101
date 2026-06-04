@@ -3,7 +3,7 @@
  * stack. Lives separately from `TrustChipStack.tsx` so it can be unit-
  * tested in a JS environment without pulling React Native imports.
  *
- * See `Docs/RESEARCH/buyer-marketplace-sota.md` §7.
+ * See `Docs/RESEARCH/tenant-marketplace-sota.md` §7.
  */
 
 import type { Listing } from '@/types/listing'
@@ -39,7 +39,7 @@ export interface DeriveTrustChipsArgs {
   readonly now?: Date
 }
 
-const ASSAY_FRESHNESS_DAYS = 30
+const INSPECTION_FRESHNESS_DAYS = 30
 
 /**
  * Returns the chip list given the fixture. Order is stable:
@@ -71,7 +71,7 @@ export function deriveTrustChips(args: DeriveTrustChipsArgs): ReadonlyArray<Trus
     const ageDays = Math.floor(
       (nowDate.getTime() - listed.getTime()) / (1000 * 60 * 60 * 24)
     )
-    const isFresh = Number.isFinite(ageDays) && ageDays <= ASSAY_FRESHNESS_DAYS
+    const isFresh = Number.isFinite(ageDays) && ageDays <= INSPECTION_FRESHNESS_DAYS
     chips.push({
       kind: 'inspection-verified',
       label: translate(

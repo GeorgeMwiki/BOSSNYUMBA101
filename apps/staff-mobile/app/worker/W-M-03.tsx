@@ -6,7 +6,7 @@ import { Section } from '../../src/components/Section'
 import { FingerprintPlaceholder } from '../../src/components/FingerprintPlaceholder'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { useOnlineStatus } from '../../src/offline/useOnlineStatus'
 import { useAuth } from '../../src/auth/useAuth'
@@ -61,7 +61,7 @@ function BriefingView(): JSX.Element {
 
   const mutation = useMutation<AttendanceRow, ApiError, CheckInRequest>({
     mutationFn: async (input) =>
-      miningApi.post<{ success: true; data: AttendanceRow }>('/attendance/check-in', input).then((r) => r.data),
+      managerApi.post<{ success: true; data: AttendanceRow }>('/attendance/check-in', input).then((r) => r.data),
     onSuccess: () => {
       setSignedFlag('ok')
     },

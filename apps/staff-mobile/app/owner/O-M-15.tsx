@@ -6,7 +6,7 @@ import { Section } from '../../src/components/Section'
 import { BigNumber } from '../../src/components/StubBlocks'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -91,7 +91,7 @@ function SafetyAndEhs(): JSX.Element {
   const query = useQuery<ReadonlyArray<IncidentRow>, ApiError>({
     queryKey: QUERY_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<IncidentsResponse>('/cases', {
+      const response = await managerApi.get<IncidentsResponse>('/cases', {
         signal,
         query: { status: 'open' }
       })

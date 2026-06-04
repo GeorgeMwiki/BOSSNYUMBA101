@@ -1,4 +1,4 @@
-import { miningApi, type MiningApi } from '../api/client'
+import { managerApi, type ManagerApi } from '../api/client'
 import { ApiError } from '../api/errors'
 import { endpointFor } from './endpoints'
 import {
@@ -46,7 +46,7 @@ function shouldDrop(error: unknown): boolean {
  * the real operator-surface client wrapper.
  */
 export async function flushQueue(
-  apiClient: Pick<MiningApi, 'post'> = miningApi
+  apiClient: Pick<ManagerApi, 'post'> = managerApi
 ): Promise<FlushResult> {
   const queued = await listQueued()
   let succeeded = 0

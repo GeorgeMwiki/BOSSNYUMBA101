@@ -10,9 +10,8 @@ import { pickStrings } from '../../src/i18n'
  * Adaptive property step. Owner → title-deed reference. Manager/Employee →
  * property site code of the building they work at.
  *
- * NOTE: the underlying draft fields `pmlNumber` / `siteCode` are defined in
- * the shared onboarding state (`src/onboarding/state.ts`); a coordinated
- * rename of `pmlNumber` → `titleDeedRef` is flagged for follow-up.
+ * The underlying draft fields `titleDeedRef` / `siteCode` are defined in
+ * the shared onboarding state (`src/onboarding/state.ts`).
  */
 export default function SiteStep(): JSX.Element {
   const { current, update, markStepComplete } = useOnboardingDraft()
@@ -23,7 +22,7 @@ export default function SiteStep(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
 
   function next(): void {
-    const value = isOwner ? current.pmlNumber : current.siteCode
+    const value = isOwner ? current.titleDeedRef : current.siteCode
     if (value.trim().length < 3) {
       setError(t.common.required)
       return
@@ -46,10 +45,10 @@ export default function SiteStep(): JSX.Element {
       {isOwner ? (
         <Field
           label={copy.pmlLabel}
-          value={current.pmlNumber}
+          value={current.titleDeedRef}
           onChangeText={(value) => {
             setError(null)
-            update({ pmlNumber: value.toUpperCase() })
+            update({ titleDeedRef: value.toUpperCase() })
           }}
           placeholder={copy.pmlPlaceholder}
           autoCapitalize="characters"

@@ -3,11 +3,11 @@ import { Field } from './Field'
 import { Dropdown } from './Dropdown'
 import { Button } from './Button'
 import { Section } from '../components/Section'
-import type { DrillHoleForm, DrillKind } from './schemas/drillHole'
+import type { InspectionForm, InspectionKind } from './schemas/inspection'
 
-export interface DrillHoleFieldsProps {
-  control: Control<DrillHoleForm>
-  setValue: UseFormSetValue<DrillHoleForm>
+export interface InspectionFieldsProps {
+  control: Control<InspectionForm>
+  setValue: UseFormSetValue<InspectionForm>
   t: {
     common: { required: string }
     drillHole: {
@@ -25,12 +25,12 @@ export interface DrillHoleFieldsProps {
   }
 }
 
-export function DrillHoleFields({ control, setValue, t }: DrillHoleFieldsProps): JSX.Element {
+export function InspectionFields({ control, setValue, t }: InspectionFieldsProps): JSX.Element {
   return (
     <Section title={t.drillHole.section}>
       <Controller
         control={control}
-        name="holeId"
+        name="inspectionId"
         render={({ field, fieldState }) => (
           <Field
             label={t.drillHole.holeId}
@@ -45,14 +45,14 @@ export function DrillHoleFields({ control, setValue, t }: DrillHoleFieldsProps):
         control={control}
         name="kind"
         render={({ field }) => (
-          <Dropdown<DrillKind>
+          <Dropdown<InspectionKind>
             label={t.drillHole.kind}
             value={field.value}
             onChange={field.onChange}
             options={[
-              { value: 'diamond', label: t.drillHole.kindDiamond },
-              { value: 'rc', label: t.drillHole.kindRc },
-              { value: 'auger', label: t.drillHole.kindAuger }
+              { value: 'move_in', label: t.drillHole.kindDiamond },
+              { value: 'move_out', label: t.drillHole.kindRc },
+              { value: 'routine', label: t.drillHole.kindAuger }
             ]}
           />
         )}
@@ -72,7 +72,7 @@ export function DrillHoleFields({ control, setValue, t }: DrillHoleFieldsProps):
       />
       <Controller
         control={control}
-        name="sampleTag"
+        name="assetTag"
         render={({ field }) => (
           <Field
             label={t.drillHole.sampleTagLabel}
@@ -88,11 +88,11 @@ export function DrillHoleFields({ control, setValue, t }: DrillHoleFieldsProps):
         variant="ghost"
         onPress={() => {
           // See gh-issue #14: requires EAS dev build — wire to
-          // expo-barcode-scanner when the sample-tag scanner module
+          // expo-barcode-scanner when the asset-tag scanner module
           // ships. For now we simulate a scan by generating a tag
           // prefix so QA can exercise the flow.
-          const simulated = `SMP-${Date.now().toString().slice(-6)}`
-          setValue('sampleTag', simulated, { shouldValidate: true })
+          const simulated = `AST-${Date.now().toString().slice(-6)}`
+          setValue('assetTag', simulated, { shouldValidate: true })
         }}
       />
     </Section>

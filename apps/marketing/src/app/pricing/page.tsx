@@ -47,7 +47,7 @@ export async function generateMetadata(): Promise<Metadata> {
  *   5. FAQ accordion (8 questions, per-locale dictionary)
  *   6. Closing CTA (Sign Up / Book a demo)
  *
- * Hard rule: no "trial" language anywhere (Borjie discipline).
+ * Hard rule: no "trial" language anywhere (product discipline).
  */
 function tierShipsFeature(tierId: TierId, feature: (typeof COMPARISON)[number]): boolean {
   return feature.tiers.includes(tierId);

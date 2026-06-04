@@ -1,6 +1,5 @@
 /**
- * M-1 client — batched cockpit-event latency reporter (ported from
- * Borjie RT-3).
+ * M-1 client — batched cockpit-event latency reporter.
  *
  * Pluggable into any SSE / WebSocket hook that receives server-stamped
  * events. Every event received by the client gets timed against its

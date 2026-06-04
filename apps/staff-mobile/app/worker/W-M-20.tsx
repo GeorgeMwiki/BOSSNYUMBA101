@@ -5,7 +5,7 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { useOnlineStatus } from '../../src/offline/useOnlineStatus'
 import { useAuth } from '../../src/auth/useAuth'
@@ -75,7 +75,7 @@ function DriverLetterView(): JSX.Element {
   const mutation = useMutation<DocumentRow, ApiError, LetterDraft>({
     mutationFn: async (input) => {
       const filename = `delivery-note-${input.truckReg.trim() || Date.now()}.pdf`
-      const resp = await miningApi.post<UploadResponse>('/documents', {
+      const resp = await managerApi.post<UploadResponse>('/documents', {
         fileName: filename,
         fileSize: 0,
         mimeType: 'application/pdf',

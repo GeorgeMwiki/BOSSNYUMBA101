@@ -5,7 +5,7 @@
  * module fans the envelope out to the right renderer. Keeps the
  * Blackboard.tsx orchestrator free of element-specific imports.
  *
- * Ported from Borjie. BossNyumba does not import any mining domain.
+ * Domain-neutral renderer — no real-estate-specific imports.
  */
 
 import type { ReactElement } from 'react';

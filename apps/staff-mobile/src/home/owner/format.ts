@@ -27,14 +27,14 @@ export function formatCurrency(amount: number, currencyCode: string = 'TZS'): st
   return `${sign}${abs.toFixed(0)} ${currencyCode}`
 }
 
-export function formatTonnes(tonnes: number): string {
-  if (!Number.isFinite(tonnes)) {
-    return '— t'
+export function formatUnits(units: number): string {
+  if (!Number.isFinite(units)) {
+    return '—'
   }
-  if (tonnes >= 1_000) {
-    return `${(tonnes / 1_000).toFixed(1)}kt`
+  if (units >= 1_000) {
+    return `${(units / 1_000).toFixed(1)}k`
   }
-  return `${tonnes.toFixed(0)} t`
+  return `${units.toFixed(0)}`
 }
 
 export function formatDelta(pct: number): string {
@@ -60,7 +60,7 @@ export function formatRecomputeMinutes(generatedAtIso: string, now: number = Dat
 /**
  * Pure: classify a delta-pct against target into a pillar status. Symmetric
  * around zero so the same threshold reads "warn" whether we're +5 or -5%.
- * For mining-specific risk asymmetry (safety incidents) callers pre-classify.
+ * For domain-specific risk asymmetry (safety incidents) callers pre-classify.
  */
 export function classifyDelta(deltaPct: number): PillarStatus {
   if (!Number.isFinite(deltaPct)) {

@@ -14,9 +14,7 @@
  * Reads /api/v1/mwikila/delegations and writes via
  * PATCH /api/v1/mwikila/delegations/:category.
  *
- * Ported from Borjie apps/owner-web/src/app/(routes)/mwikila/
- * delegation/delegation-matrix.tsx — adapted for Vite + real-estate
- * categories (mig 0290 CHECK).
+ * Built for Vite + real-estate delegation categories (mig 0290 CHECK).
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';

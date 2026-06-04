@@ -5,7 +5,7 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -16,14 +16,14 @@ const COPY = Object.freeze({
   loading: 'Inapakia upangishaji…',
   filterTitle: 'Chuja kwa hatua',
   totalsPrefix: 'Jumla · ',
-  totalsParcels: ' vitengo',
+  totalsUnits: ' vitengo',
   marketPriceLabel: 'Kodi ya soko ya wastani: ',
   variancePrefix: 'Tofauti dhidi ya soko: ',
-  noBuyer: 'Bila mpangaji',
+  noTenant: 'Bila mpangaji',
   stageAll: 'Zote',
-  stageSampling: 'Imetangazwa',
+  stageAdvertised: 'Imetangazwa',
   stageOffer: 'Ombi limepokelewa',
-  stageShipped: 'Imeingiwa',
+  stageMovingIn: 'Anaingia',
   statusPending: 'Inasubiri malipo',
   statusPartial: 'Sehemu',
   statusPaid: 'Imelipwa',
@@ -66,7 +66,7 @@ interface LeasesResponse {
   readonly data: ReadonlyArray<LeaseRow>
 }
 
-type StageFilter = 'all' | 'sampling' | 'offer' | 'shipped' | 'sold'
+type StageFilter = 'all' | 'advertised' | 'offer' | 'movingIn' | 'leased'
 
 interface JoinedRow {
   readonly id: string
@@ -82,14 +82,14 @@ interface JoinedRow {
   readonly createdAt: string
 }
 
-const STAGE_ORDER: ReadonlyArray<StageFilter> = ['all', 'sampling', 'offer', 'shipped', 'sold']
+const STAGE_ORDER: ReadonlyArray<StageFilter> = ['all', 'advertised', 'offer', 'movingIn', 'leased']
 
 const STAGE_LABEL: Readonly<Record<StageFilter, string>> = {
   all: COPY.stageAll,
-  sampling: COPY.stageSampling,
+  advertised: COPY.stageAdvertised,
   offer: COPY.stageOffer,
-  shipped: COPY.stageShipped,
-  sold: COPY.statusPaid
+  movingIn: COPY.stageMovingIn,
+  leased: COPY.statusPaid
 }
 
 const PAYMENT_LABEL: Readonly<Record<PaymentStatus, string>> = {
@@ -99,8 +99,8 @@ const PAYMENT_LABEL: Readonly<Record<PaymentStatus, string>> = {
   cancelled: COPY.statusCancelled
 }
 
-const PARCELS_KEY = ['owner', 'units'] as const
-const SALES_KEY = ['owner', 'leases'] as const
+const UNITS_KEY = ['owner', 'units'] as const
+const LEASES_KEY = ['owner', 'leases'] as const
 
 function toNumber(value: string | null | undefined): number {
   if (value == null) return 0
@@ -108,48 +108,51 @@ function toNumber(value: string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-function pickUnitLabel(grade: Record<string, unknown>, attributes: Record<string, unknown>): string {
+function pickUnitLabel(
+  primaryAttrs: Record<string, unknown>,
+  attributes: Record<string, unknown>
+): string {
   const unitFromAttrs = typeof attributes.unit === 'string' ? attributes.unit : null
   if (unitFromAttrs) return unitFromAttrs
-  const keys = Object.keys(grade)
+  const keys = Object.keys(primaryAttrs)
   if (keys.length === 0) return '-'
   const firstKey = keys[0]!
   return firstKey
 }
 
 function stageFromUnitStatus(status: UnitStatus, hasLease: boolean): StageFilter {
-  if (status === 'vacant') return hasLease ? 'offer' : 'sampling'
-  if (status === 'reserved' || status === 'moving_in') return 'shipped'
-  if (status === 'occupied') return 'sold'
-  return 'sampling'
+  if (status === 'vacant') return hasLease ? 'offer' : 'advertised'
+  if (status === 'reserved' || status === 'moving_in') return 'movingIn'
+  if (status === 'occupied') return 'leased'
+  return 'advertised'
 }
 
 export default function Screen(): JSX.Element {
   return (
     <RoleGuard screenId={SCREEN_ID}>
       <ScreenShell screenId={SCREEN_ID}>
-        <SalesPipeline />
+        <LeasingPipeline />
       </ScreenShell>
     </RoleGuard>
   )
 }
 
-function SalesPipeline(): JSX.Element {
+function LeasingPipeline(): JSX.Element {
   const [filter, setFilter] = useState<StageFilter>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const parcelsQuery = useQuery<ReadonlyArray<UnitRow>, ApiError>({
-    queryKey: PARCELS_KEY,
+  const unitsQuery = useQuery<ReadonlyArray<UnitRow>, ApiError>({
+    queryKey: UNITS_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<UnitsResponse>('/units', { signal })
+      const response = await managerApi.get<UnitsResponse>('/units', { signal })
       return response.data
     }
   })
 
-  const salesQuery = useQuery<ReadonlyArray<LeaseRow>, ApiError>({
-    queryKey: SALES_KEY,
+  const leasesQuery = useQuery<ReadonlyArray<LeaseRow>, ApiError>({
+    queryKey: LEASES_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<LeasesResponse>('/leases', { signal })
+      const response = await managerApi.get<LeasesResponse>('/leases', { signal })
       return response.data
     }
   })
@@ -159,12 +162,12 @@ function SalesPipeline(): JSX.Element {
   }, [])
 
   const joinedRows = useMemo<ReadonlyArray<JoinedRow>>(() => {
-    if (!parcelsQuery.data || !salesQuery.data) return []
+    if (!unitsQuery.data || !leasesQuery.data) return []
     const leasesByUnit = new Map<string, LeaseRow>()
-    for (const lease of salesQuery.data) {
+    for (const lease of leasesQuery.data) {
       leasesByUnit.set(lease.unitId, lease)
     }
-    return parcelsQuery.data.map((unit) => {
+    return unitsQuery.data.map((unit) => {
       const lease = leasesByUnit.get(unit.id) ?? null
       return {
         id: unit.id,
@@ -180,7 +183,7 @@ function SalesPipeline(): JSX.Element {
         createdAt: unit.createdAt
       }
     })
-  }, [parcelsQuery.data, salesQuery.data])
+  }, [unitsQuery.data, leasesQuery.data])
 
   const referenceRentPerSqmUsd = useMemo<number>(() => {
     const rows = joinedRows.filter((r) => r.grossUsd > 0 && r.areaSqm > 0)
@@ -201,7 +204,7 @@ function SalesPipeline(): JSX.Element {
     )
   }, [visible])
 
-  if (parcelsQuery.isLoading || salesQuery.isLoading) {
+  if (unitsQuery.isLoading || leasesQuery.isLoading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.goldDark} />
@@ -210,8 +213,8 @@ function SalesPipeline(): JSX.Element {
     )
   }
 
-  if (parcelsQuery.isError || salesQuery.isError) {
-    const err = parcelsQuery.error ?? salesQuery.error
+  if (unitsQuery.isError || leasesQuery.isError) {
+    const err = unitsQuery.error ?? leasesQuery.error
     return <PreviewBanner kind={isOfflineError(err) ? 'offline' : 'env-missing'} />
   }
 
@@ -238,7 +241,7 @@ function SalesPipeline(): JSX.Element {
           ))}
         </View>
       </Section>
-      <Section title={`${COPY.totalsPrefix}${totals.count}${COPY.totalsParcels} · TZS ${Math.round(totals.netTzs).toLocaleString('en-US')}`}>
+      <Section title={`${COPY.totalsPrefix}${totals.count}${COPY.totalsUnits} · TZS ${Math.round(totals.netTzs).toLocaleString('en-US')}`}>
         {visible.map((row) => {
           const isOpen = selectedId === row.id
           const marketUsd = referenceRentPerSqmUsd > 0 ? Math.round(referenceRentPerSqmUsd * row.areaSqm) : 0
@@ -261,7 +264,7 @@ function SalesPipeline(): JSX.Element {
                 {STAGE_LABEL[row.stage]}
                 {row.paymentStatus ? ` - ${PAYMENT_LABEL[row.paymentStatus]}` : ''}
                 {' - '}
-                {row.tenantId ?? COPY.noBuyer}
+                {row.tenantId ?? COPY.noTenant}
               </Text>
               {row.netTzs > 0 ? (
                 <Text style={styles.rowMoney}>

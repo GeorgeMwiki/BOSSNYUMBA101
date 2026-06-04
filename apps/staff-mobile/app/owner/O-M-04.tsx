@@ -5,7 +5,7 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError, isNetworkError } from '../../src/api/errors'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -82,7 +82,7 @@ function PortfolioMapView(): JSX.Element {
   const query = useQuery<PortfolioMapResponse, Error>({
     queryKey: ['owner', 'portfolio-map'],
     queryFn: async ({ signal }) => {
-      const envelope = await miningApi.get<ApiEnvelope<PortfolioMapResponse>>(
+      const envelope = await managerApi.get<ApiEnvelope<PortfolioMapResponse>>(
         '/portfolio-map',
         { signal }
       )

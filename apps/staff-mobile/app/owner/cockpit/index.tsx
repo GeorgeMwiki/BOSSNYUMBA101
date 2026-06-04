@@ -7,7 +7,7 @@
  * endpoint via `useCockpitHub`.
  *
  * Tap targets follow Material 3's 48dp minimum so the surface is usable
- * with gloves on (artisanal-mine ergonomic constraint).
+ * with gloves on (outdoor field-staff ergonomic constraint).
  */
 
 import { useCallback, useState } from 'react'

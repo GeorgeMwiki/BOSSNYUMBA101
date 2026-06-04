@@ -25,8 +25,8 @@ export interface HomeChatOpener {
 }
 
 const OWNER_OPENER: HomeChatOpener = Object.freeze({
-  greetingSw: 'Karibu, Bwana Mkubwa. Niambie kuhusu mgodi wako leo.',
-  greetingEn: 'Welcome, Owner. Tell me about your mine today.',
+  greetingSw: 'Karibu, Bwana Mkubwa. Niambie kuhusu mali zako leo.',
+  greetingEn: 'Welcome, Owner. Tell me about your properties today.',
   suggestions: Object.freeze([
     Object.freeze({ id: 'owner-brief', sw: 'Onyesha muhtasari', en: 'Show daily brief' }),
     Object.freeze({ id: 'owner-cash', sw: 'Hela na muda', en: 'Cash and runway' }),

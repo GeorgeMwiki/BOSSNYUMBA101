@@ -31,15 +31,7 @@ export const MARKETPLACE_PREFIX = '/api/v1/marketplace'
 /**
  * Operator/manager surface root. The estate-manager workforce router is
  * mounted at `/api/v1/manager` (estateManagerAppRouter). Used for the
- * non-marketplace operator calls.
+ * non-marketplace operator calls, including the renter-identity/profile
+ * + KYC endpoints in `src/api/buyers.ts`.
  */
 export const MANAGER_PREFIX = '/api/v1/manager'
-
-/**
- * @deprecated Compatibility alias retained ONLY so the not-yet-migrated
- * `src/api/buyers.ts` (renter-identity/profile calls, a non-owned file
- * in this pass) keeps compiling. Resolves to the manager surface root.
- * Migrate `buyers.ts` to the real tenant-identity endpoints, then delete
- * this alias. Tracked in flagged for coordinated follow-up.
- */
-export const MINING_PREFIX = MANAGER_PREFIX

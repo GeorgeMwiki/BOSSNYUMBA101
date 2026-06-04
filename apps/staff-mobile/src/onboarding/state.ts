@@ -70,7 +70,7 @@ export const onboardingDraftSchema = z.object({
   roleConfidence: z.number().min(0).max(1).default(0),
   personaSlug: z.string().default(''),
   siteCode: z.string().default(''),
-  pmlNumber: z.string().default(''),
+  titleDeedRef: z.string().default(''),
   certifications: z.array(z.enum(CERTIFICATIONS)).default([]),
   biometricEnrolled: z.boolean().default(false),
   pinFallback: z.string().default(''),

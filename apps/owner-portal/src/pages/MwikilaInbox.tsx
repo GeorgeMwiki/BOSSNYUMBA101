@@ -12,9 +12,7 @@
  * Reads /api/v1/mwikila/actions/inbox + writes via
  * POST /api/v1/mwikila/actions/:id/{approve,deny,reverse}.
  *
- * Ported from Borjie apps/owner-web/src/app/(routes)/mwikila/inbox/
- * mwikila-inbox-panel.tsx — adapted to Vite + the owner-portal's
- * lib/api wrapper.
+ * Built for Vite + the owner-portal's lib/api wrapper.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';

@@ -1,5 +1,5 @@
 import { apiFetch } from './client'
-import { MINING_PREFIX } from './config'
+import { MANAGER_PREFIX } from './config'
 import type { BuyerUser } from '@/types/auth'
 import type { KycRecord, KycSubmission } from '@/types/kyc'
 
@@ -8,7 +8,7 @@ interface KycResponse {
 }
 
 export async function submitKyc(submission: KycSubmission): Promise<KycRecord> {
-  const response = await apiFetch<KycResponse>(`${MINING_PREFIX}/buyers/kyc`, {
+  const response = await apiFetch<KycResponse>(`${MANAGER_PREFIX}/buyers/kyc`, {
     method: 'POST',
     body: submission
   })
@@ -17,7 +17,7 @@ export async function submitKyc(submission: KycSubmission): Promise<KycRecord> {
 
 export async function fetchKycStatus(id: string): Promise<KycRecord> {
   const response = await apiFetch<KycResponse>(
-    `${MINING_PREFIX}/buyers/kyc/${encodeURIComponent(id)}/status`
+    `${MANAGER_PREFIX}/buyers/kyc/${encodeURIComponent(id)}/status`
   )
   return response.data
 }
@@ -29,7 +29,7 @@ export interface ProfileUpdate {
 }
 
 export async function updateProfile(input: ProfileUpdate): Promise<BuyerUser> {
-  const response = await apiFetch<{ readonly data: BuyerUser }>(`${MINING_PREFIX}/buyers/profile`, {
+  const response = await apiFetch<{ readonly data: BuyerUser }>(`${MANAGER_PREFIX}/buyers/profile`, {
     method: 'POST',
     body: input
   })
@@ -45,7 +45,7 @@ export interface NotificationPrefs {
 
 export async function updateNotificationPrefs(prefs: NotificationPrefs): Promise<NotificationPrefs> {
   const response = await apiFetch<{ readonly data: NotificationPrefs }>(
-    `${MINING_PREFIX}/buyers/profile/notifications`,
+    `${MANAGER_PREFIX}/buyers/profile/notifications`,
     {
       method: 'POST',
       body: prefs

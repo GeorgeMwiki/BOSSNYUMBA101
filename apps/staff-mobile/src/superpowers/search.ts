@@ -1,7 +1,7 @@
 /**
  * Superpower 7 — search FAB (staff persona).
  */
-import { miningApi } from '../api/client'
+import { managerApi } from '../api/client'
 import type { NavigateTarget } from './navigate'
 
 export interface SearchResult extends NavigateTarget {
@@ -27,7 +27,7 @@ export async function runUniversalSearch(query: string): Promise<ReadonlyArray<S
   const q = query.trim()
   if (q.length === 0) return []
   try {
-    const res = await miningApi.get<SearchApiResponse>('/superpowers/search', {
+    const res = await managerApi.get<SearchApiResponse>('/superpowers/search', {
       query: { q, persona: 'staff', limit: 20 }
     })
     if (res?.success && res.data?.results) {

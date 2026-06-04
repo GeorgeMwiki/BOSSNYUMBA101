@@ -1,50 +1,50 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { colors } from '../../theme/colors'
 import { fontSize, radius, spacing } from '../../theme/spacing'
-import { classifyDelta, formatDelta, formatTonnes } from './format'
-import type { ProductionPillar } from './types'
+import { classifyDelta, formatDelta, formatUnits } from './format'
+import type { OccupancyPillar } from './types'
 
-export interface ProductionVsTargetProps {
-  readonly production: ProductionPillar
+export interface OccupancyVsTargetProps {
+  readonly occupancy: OccupancyPillar
   readonly lang: 'sw' | 'en'
 }
 
 /**
- * Slot 4 — Production pillar. Per-site list with delta vs target. Spec
+ * Slot 4 — Occupancy pillar. Per-property list with delta vs target. Spec
  * §C drill-down ladder caps at 3 levels: this is Level-2 inline (summary
- * → segment list). Site rows are tappable in a later wave; here they
+ * → segment list). Property rows are tappable in a later wave; here they
  * remain accessible read-only summaries with explicit status text.
  */
-export function ProductionVsTarget({ production, lang }: ProductionVsTargetProps): JSX.Element {
-  const sites = production.perSite
+export function OccupancyVsTarget({ occupancy, lang }: OccupancyVsTargetProps): JSX.Element {
+  const properties = occupancy.perProperty
   return (
-    <View testID="owner-home-production" style={styles.wrap}>
+    <View testID="owner-home-occupancy" style={styles.wrap}>
       <Text style={styles.header}>
-        {lang === 'sw' ? 'Uzalishaji kwa mgodi' : 'Production by site'}
+        {lang === 'sw' ? 'Ukaaji kwa mali' : 'Occupancy by property'}
       </Text>
-      {sites.length === 0 ? (
+      {properties.length === 0 ? (
         <Text style={styles.empty}>
-          {lang === 'sw' ? 'Hakuna shifti zilizoripotiwa.' : 'No shifts reported yet.'}
+          {lang === 'sw' ? 'Hakuna ripoti bado.' : 'No reports yet.'}
         </Text>
       ) : (
-        sites.map((site) => {
-          const delta = site.target > 0 ? ((site.tonnes - site.target) / site.target) * 100 : 0
+        properties.map((property) => {
+          const delta = property.target > 0 ? ((property.occupied - property.target) / property.target) * 100 : 0
           const status = classifyDelta(delta)
           return (
             <View
-              key={site.siteId}
+              key={property.propertyId}
               accessibilityRole="summary"
-              accessibilityLabel={`${site.siteName} · ${formatTonnes(site.tonnes)} · ${formatDelta(delta)}`}
+              accessibilityLabel={`${property.propertyName} · ${formatUnits(property.occupied)} · ${formatDelta(delta)}`}
               style={styles.row}
             >
               <View style={styles.rowMain}>
-                <Text style={styles.siteName}>{site.siteName}</Text>
-                <Text style={styles.tonnes}>{formatTonnes(site.tonnes)}</Text>
+                <Text style={styles.propertyName}>{property.propertyName}</Text>
+                <Text style={styles.occupied}>{formatUnits(property.occupied)}</Text>
               </View>
               <View style={styles.rowMeta}>
                 <Text style={[styles.delta, deltaTone(status)]}>{formatDelta(delta)}</Text>
                 <Text style={styles.target}>
-                  {lang === 'sw' ? 'Lengo' : 'Target'}: {formatTonnes(site.target)}
+                  {lang === 'sw' ? 'Lengo' : 'Target'}: {formatUnits(property.target)}
                 </Text>
               </View>
             </View>
@@ -95,12 +95,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center'
   },
-  siteName: {
+  propertyName: {
     color: colors.text,
     fontSize: fontSize.lead,
     fontWeight: '700'
   },
-  tonnes: {
+  occupied: {
     color: colors.gold,
     fontSize: fontSize.h3,
     fontWeight: '800'

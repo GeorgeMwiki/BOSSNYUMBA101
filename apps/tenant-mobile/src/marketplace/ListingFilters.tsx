@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { StyleSheet, Text, TextInput, View } from 'react-native'
 import { ChipGroup } from '@/components/ChipGroup'
-import { buildMineralOptions, buildRegionOptions, sortOptions } from './options'
+import { buildUnitTypeOptions, buildRegionOptions, sortOptions } from './options'
 import { colors } from '@/theme/colors'
 import { radius, spacing, typography } from '@/theme/spacing'
 import type { ListingFilters, SortKey } from '@/api/marketplace'
@@ -18,7 +18,7 @@ export interface ListingFiltersBarProps {
 }
 
 export function ListingFiltersBar({ filters, onChange, translate }: ListingFiltersBarProps) {
-  const mineralOptions = useMemo(() => buildMineralOptions(translate), [translate])
+  const unitTypeOptions = useMemo(() => buildUnitTypeOptions(translate), [translate])
   const regionOptions = useMemo(() => buildRegionOptions(), [])
   const sortChips = useMemo(
     () => sortOptions.map((opt) => ({ value: opt.value, label: translate(opt.key) })),
@@ -29,7 +29,7 @@ export function ListingFiltersBar({ filters, onChange, translate }: ListingFilte
     <View style={styles.wrap}>
       <Text style={styles.label}>{translate('marketplace.mineral_filter')}</Text>
       <ChipGroup<Mineral>
-        options={mineralOptions}
+        options={unitTypeOptions}
         value={filters.mineral ?? null}
         onChange={(next) => onChange({ ...filters, mineral: next ?? undefined })}
       />

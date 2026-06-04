@@ -16,9 +16,9 @@
 import type { LanguageCode } from '@/types/auth'
 import { translate } from '@/i18n'
 
-export type BuyerAccountKind = 'individual' | 'business'
+export type ApplicantAccountKind = 'individual' | 'business'
 
-export type BuyerKycAtomKey =
+export type ApplicantKycAtomKey =
   | 'identity'
   | 'address'
   | 'bank_account'
@@ -28,85 +28,85 @@ export type BuyerKycAtomKey =
   | 'beneficial_owners'
   | 'aml_screening'
 
-export interface BuyerKycAtomSpec {
-  readonly key: BuyerKycAtomKey
-  /** Whether marketplace bidding is gated by this atom's completion. */
+export interface ApplicantKycAtomSpec {
+  readonly key: ApplicantKycAtomKey
+  /** Whether marketplace applications are gated by this atom's completion. */
   readonly blocking: boolean
-  /** i18n key for the screen title (e.g. `buyer_signup.kyc.identity.title`). */
+  /** i18n key for the screen title (e.g. `applicant_signup.kyc.identity.title`). */
   readonly titleKey: string
   /** i18n key for the screen description / instructions. */
   readonly descriptionKey: string
 }
 
-const SHARED_INDIVIDUAL: ReadonlyArray<BuyerKycAtomSpec> = [
+const SHARED_INDIVIDUAL: ReadonlyArray<ApplicantKycAtomSpec> = [
   {
     key: 'identity',
     blocking: true,
-    titleKey: 'buyer_signup.kyc.identity.title',
-    descriptionKey: 'buyer_signup.kyc.identity.description'
+    titleKey: 'applicant_signup.kyc.identity.title',
+    descriptionKey: 'applicant_signup.kyc.identity.description'
   },
   {
     key: 'address',
     blocking: true,
-    titleKey: 'buyer_signup.kyc.address.title',
-    descriptionKey: 'buyer_signup.kyc.address.description'
+    titleKey: 'applicant_signup.kyc.address.title',
+    descriptionKey: 'applicant_signup.kyc.address.description'
   },
   {
     key: 'bank_account',
     blocking: false,
-    titleKey: 'buyer_signup.kyc.bank_account.title',
-    descriptionKey: 'buyer_signup.kyc.bank_account.description'
+    titleKey: 'applicant_signup.kyc.bank_account.title',
+    descriptionKey: 'applicant_signup.kyc.bank_account.description'
   },
   {
     key: 'source_of_funds',
     blocking: true,
-    titleKey: 'buyer_signup.kyc.source_of_funds.title',
-    descriptionKey: 'buyer_signup.kyc.source_of_funds.description'
+    titleKey: 'applicant_signup.kyc.source_of_funds.title',
+    descriptionKey: 'applicant_signup.kyc.source_of_funds.description'
   }
 ]
 
-const SHARED_BUSINESS: ReadonlyArray<BuyerKycAtomSpec> = [
+const SHARED_BUSINESS: ReadonlyArray<ApplicantKycAtomSpec> = [
   {
     key: 'identity',
     blocking: true,
-    titleKey: 'buyer_signup.kyc.identity.title',
-    descriptionKey: 'buyer_signup.kyc.identity.description'
+    titleKey: 'applicant_signup.kyc.identity.title',
+    descriptionKey: 'applicant_signup.kyc.identity.description'
   },
   {
     key: 'address',
     blocking: true,
-    titleKey: 'buyer_signup.kyc.address.title',
-    descriptionKey: 'buyer_signup.kyc.address.description'
+    titleKey: 'applicant_signup.kyc.address.title',
+    descriptionKey: 'applicant_signup.kyc.address.description'
   },
   {
     key: 'company_docs',
     blocking: true,
-    titleKey: 'buyer_signup.kyc.company_docs.title',
-    descriptionKey: 'buyer_signup.kyc.company_docs.description'
+    titleKey: 'applicant_signup.kyc.company_docs.title',
+    descriptionKey: 'applicant_signup.kyc.company_docs.description'
   },
   {
     key: 'tax_compliance',
     blocking: true,
-    titleKey: 'buyer_signup.kyc.tax_compliance.title',
-    descriptionKey: 'buyer_signup.kyc.tax_compliance.description'
+    titleKey: 'applicant_signup.kyc.tax_compliance.title',
+    descriptionKey: 'applicant_signup.kyc.tax_compliance.description'
   },
   {
     key: 'bank_account',
     blocking: false,
-    titleKey: 'buyer_signup.kyc.bank_account.title',
-    descriptionKey: 'buyer_signup.kyc.bank_account.description'
+    titleKey: 'applicant_signup.kyc.bank_account.title',
+    descriptionKey: 'applicant_signup.kyc.bank_account.description'
   },
   {
     key: 'beneficial_owners',
     blocking: true,
-    titleKey: 'buyer_signup.kyc.beneficial_owners.title',
-    descriptionKey: 'buyer_signup.kyc.beneficial_owners.description'
+    titleKey: 'applicant_signup.kyc.beneficial_owners.title',
+    descriptionKey: 'applicant_signup.kyc.beneficial_owners.description'
   },
   {
     key: 'aml_screening',
     blocking: true,
-    titleKey: 'buyer_signup.kyc.aml_screening.title',
-    descriptionKey: 'buyer_signup.kyc.aml_screening.description'
+    titleKey: 'applicant_signup.kyc.aml_screening.title',
+    descriptionKey: 'applicant_signup.kyc.aml_screening.description'
   }
 ]
 
@@ -116,27 +116,29 @@ const SHARED_BUSINESS: ReadonlyArray<BuyerKycAtomSpec> = [
  * Returned array is immutable (frozen) — callers compose new arrays
  * rather than mutating the catalogue.
  */
-export function atomsFor(kind: BuyerAccountKind): ReadonlyArray<BuyerKycAtomSpec> {
+export function atomsFor(
+  kind: ApplicantAccountKind
+): ReadonlyArray<ApplicantKycAtomSpec> {
   return kind === 'individual' ? SHARED_INDIVIDUAL : SHARED_BUSINESS
 }
 
 export function findAtom(
-  kind: BuyerAccountKind,
-  key: BuyerKycAtomKey
-): BuyerKycAtomSpec | undefined {
+  kind: ApplicantAccountKind,
+  key: ApplicantKycAtomKey
+): ApplicantKycAtomSpec | undefined {
   return atomsFor(kind).find((a) => a.key === key)
 }
 
 export function renderAtomTitle(
   lang: LanguageCode,
-  atom: BuyerKycAtomSpec
+  atom: ApplicantKycAtomSpec
 ): string {
   return translate(lang, atom.titleKey)
 }
 
 export function renderAtomDescription(
   lang: LanguageCode,
-  atom: BuyerKycAtomSpec
+  atom: ApplicantKycAtomSpec
 ): string {
   return translate(lang, atom.descriptionKey)
 }

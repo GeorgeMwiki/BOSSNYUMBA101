@@ -6,7 +6,7 @@ import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { Button } from '../../src/forms/Button'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { useOnlineStatus } from '../../src/offline/useOnlineStatus'
 import { useAuth } from '../../src/auth/useAuth'
@@ -63,13 +63,13 @@ function UnitCounter(): JSX.Element {
 
   const history = useQuery<ListResponse, ApiError>({
     queryKey,
-    queryFn: () => miningApi.get<ListResponse>('/unit-checks', { query: { limit: HISTORY_LIMIT } }),
+    queryFn: () => managerApi.get<ListResponse>('/unit-checks', { query: { limit: HISTORY_LIMIT } }),
     enabled: Boolean(user)
   })
 
   const mutation = useMutation<UnitCheck, ApiError, CreateUnitCheckInput>({
     mutationFn: async (input) => {
-      const resp = await miningApi.post<{ success: true; data: UnitCheck }>('/unit-checks', input)
+      const resp = await managerApi.post<{ success: true; data: UnitCheck }>('/unit-checks', input)
       return resp.data
     },
     onSuccess: () => {

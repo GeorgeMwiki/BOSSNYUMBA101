@@ -6,7 +6,7 @@ import {
   type UseQueryResult
 } from '@tanstack/react-query'
 import { z } from 'zod'
-import { miningApi, ownerApi } from '../api/client'
+import { managerApi, ownerApi } from '../api/client'
 import { ApiError } from '../api/errors'
 import type {
   Lease,
@@ -171,7 +171,7 @@ export function useRenewLease(): UseMutationResult<
   const queryClient = useQueryClient()
   return useMutation<LeaseRenewalResponse, Error, string>({
     mutationFn: async (leaseId: string) => {
-      const response = await miningApi.post<unknown>(
+      const response = await managerApi.post<unknown>(
         `/leases/${encodeURIComponent(leaseId)}/renew`,
         {}
       )

@@ -7,7 +7,7 @@ import { BigNumber } from '../../src/components/StubBlocks'
 import { PlaceholderList } from '../../src/components/PlaceholderList'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -102,7 +102,7 @@ function FxRentWindow(): JSX.Element {
   const salesQuery = useQuery<ReadonlyArray<LeaseRow>, ApiError>({
     queryKey: SALES_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<LeasesResponse>('/leases', { signal })
+      const response = await managerApi.get<LeasesResponse>('/leases', { signal })
       return response.data
     }
   })
@@ -110,7 +110,7 @@ function FxRentWindow(): JSX.Element {
   const parcelsQuery = useQuery<ReadonlyArray<UnitRow>, ApiError>({
     queryKey: PARCELS_KEY,
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<UnitsResponse>('/units', { signal })
+      const response = await managerApi.get<UnitsResponse>('/units', { signal })
       return response.data
     }
   })

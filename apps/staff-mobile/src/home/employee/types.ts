@@ -1,6 +1,6 @@
 /**
  * Employee-home data contract — what each of the 8 sections expects from the
- * api-gateway mining surface. Mirrors the wire spec in
+ * api-gateway estate-manager surface. Mirrors the wire spec in
  * `Docs/research/worker-guidance-sota.md` §9 and the R2 SOTA worker rules.
  *
  * All shapes are `readonly` per CLAUDE.md immutability rule — consume via

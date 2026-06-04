@@ -5,7 +5,7 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError, isNetworkError } from '../../src/api/errors'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -17,17 +17,17 @@ const COPY = Object.freeze({
   errorInline: 'Imeshindwa kupakua muhtasari wa siku.',
   emptyHint: 'Hakuna shifti za siku ya leo bado.',
   sectionSummary: 'Muhtasari wa siku',
-  sectionSummaryHint: 'Vipande vya KPI kutoka kwa daily-brief + production',
-  sectionSites: 'Migodi · bonyeza moja kuona zaidi',
-  sectionFocus: 'Kina cha mgodi',
-  sectionFocusHint: 'Mizigo, mafuta na shifti za siku 30',
+  sectionSummaryHint: 'Vipande vya KPI kutoka kwa daily-brief + ukaaji',
+  sectionSites: 'Majengo · bonyeza moja kuona zaidi',
+  sectionFocus: 'Kina cha jengo',
+  sectionFocusHint: 'Kodi, gharama na shifti za siku 30',
   sectionBlockers: 'Vizuizi vya leo',
   kpiAttendance: 'Shifti za leo',
   kpiAttendanceUnit: 'mlolongo',
-  kpiTonnage: 'Mizigo (30d)',
-  kpiTonnageUnitPrefix: 'tani',
-  kpiFuel: 'Mafuta (30d)',
-  kpiFuelUnit: 'L',
+  kpiRent: 'Kodi (30d)',
+  kpiRentUnitPrefix: 'jumla',
+  kpiCost: 'Gharama (30d)',
+  kpiCostUnit: 'jumla',
   kpiBlockers: 'Vizuizi vya wazi',
   kpiBlockersUnit: 'incidents + grievances',
   blockerIncidentsLabel: 'Incidents zilizo wazi',
@@ -43,16 +43,16 @@ interface DailyBrief {
   readonly criticalIncidents: number
 }
 
-interface ProductionRow {
+interface PropertyRow {
   readonly siteId: string
-  readonly tonnes: number
-  readonly fuel: number
+  readonly rent: number
+  readonly cost: number
   readonly shifts: number
 }
 
-interface ProductionData {
+interface OccupancyData {
   readonly window: '30d'
-  readonly perSite: ReadonlyArray<ProductionRow>
+  readonly perSite: ReadonlyArray<PropertyRow>
 }
 
 interface ApiEnvelope<T> {
@@ -72,12 +72,12 @@ export default function Screen(): JSX.Element {
 }
 
 function DailyReportView(): JSX.Element {
-  const [briefQuery, productionQuery] = useQueries({
+  const [briefQuery, occupancyQuery] = useQueries({
     queries: [
       {
-        queryKey: ['mining', 'cockpit', 'daily-brief'],
+        queryKey: ['estate', 'cockpit', 'daily-brief'],
         queryFn: async (ctx: { signal?: AbortSignal }) => {
-          const envelope = await miningApi.get<ApiEnvelope<DailyBrief>>(
+          const envelope = await managerApi.get<ApiEnvelope<DailyBrief>>(
             '/cockpit/daily-brief',
             ctx.signal ? { signal: ctx.signal } : {}
           )
@@ -88,10 +88,10 @@ function DailyReportView(): JSX.Element {
         }
       },
       {
-        queryKey: ['mining', 'cockpit', 'production-vs-target'],
+        queryKey: ['estate', 'cockpit', 'occupancy-vs-target'],
         queryFn: async (ctx: { signal?: AbortSignal }) => {
-          const envelope = await miningApi.get<ApiEnvelope<ProductionData>>(
-            '/cockpit/production-vs-target',
+          const envelope = await managerApi.get<ApiEnvelope<OccupancyData>>(
+            '/cockpit/occupancy-vs-target',
             ctx.signal ? { signal: ctx.signal } : {}
           )
           if (!envelope.success || !envelope.data) {
@@ -103,27 +103,27 @@ function DailyReportView(): JSX.Element {
     ]
   })
 
-  const [focusSiteId, setFocusSiteId] = useState<string>('')
+  const [focusPropertyId, setFocusPropertyId] = useState<string>('')
 
-  const sites = useMemo<ReadonlyArray<ProductionRow>>(
-    () => productionQuery.data?.perSite ?? [],
-    [productionQuery.data]
+  const properties = useMemo<ReadonlyArray<PropertyRow>>(
+    () => occupancyQuery.data?.perSite ?? [],
+    [occupancyQuery.data]
   )
 
   const totals = useMemo(() => {
-    const tonnes = sites.reduce((sum, row) => sum + Number(row.tonnes || 0), 0)
-    const fuel = sites.reduce((sum, row) => sum + Number(row.fuel || 0), 0)
-    return { tonnes, fuel }
-  }, [sites])
+    const rent = properties.reduce((sum, row) => sum + Number(row.rent || 0), 0)
+    const cost = properties.reduce((sum, row) => sum + Number(row.cost || 0), 0)
+    return { rent, cost }
+  }, [properties])
 
-  const focusedSite = useMemo<ProductionRow | undefined>(() => {
-    if (sites.length === 0) return undefined
-    return sites.find((s) => s.siteId === focusSiteId) ?? sites[0]
-  }, [focusSiteId, sites])
+  const focusedProperty = useMemo<PropertyRow | undefined>(() => {
+    if (properties.length === 0) return undefined
+    return properties.find((p) => p.siteId === focusPropertyId) ?? properties[0]
+  }, [focusPropertyId, properties])
 
-  const isPending = briefQuery.isPending || productionQuery.isPending
-  const isError = briefQuery.isError || productionQuery.isError
-  const composedError = briefQuery.error ?? productionQuery.error
+  const isPending = briefQuery.isPending || occupancyQuery.isPending
+  const isError = briefQuery.isError || occupancyQuery.isError
+  const composedError = briefQuery.error ?? occupancyQuery.error
 
   if (isPending) {
     return (
@@ -147,7 +147,7 @@ function DailyReportView(): JSX.Element {
   }
 
   const brief = briefQuery.data
-  if (!brief || (sites.length === 0 && brief.shiftsToday === 0)) {
+  if (!brief || (properties.length === 0 && brief.shiftsToday === 0)) {
     return (
       <View>
         <PreviewBanner kind="no-data" />
@@ -168,14 +168,14 @@ function DailyReportView(): JSX.Element {
             unit={COPY.kpiAttendanceUnit}
           />
           <KpiTile
-            label={COPY.kpiTonnage}
-            value={formatNumber(totals.tonnes)}
-            unit={`${COPY.kpiTonnageUnitPrefix} ${formatNumber(totals.tonnes)}`}
+            label={COPY.kpiRent}
+            value={formatNumber(totals.rent)}
+            unit={`${COPY.kpiRentUnitPrefix} ${formatNumber(totals.rent)}`}
           />
           <KpiTile
-            label={COPY.kpiFuel}
-            value={formatNumber(totals.fuel)}
-            unit={COPY.kpiFuelUnit}
+            label={COPY.kpiCost}
+            value={formatNumber(totals.cost)}
+            unit={COPY.kpiCostUnit}
           />
           <KpiTile
             label={COPY.kpiBlockers}
@@ -185,42 +185,42 @@ function DailyReportView(): JSX.Element {
           />
         </View>
       </Section>
-      {sites.length > 0 ? (
+      {properties.length > 0 ? (
         <Section title={COPY.sectionSites}>
-          {sites.map((site) => (
+          {properties.map((property) => (
             <Pressable
-              key={site.siteId}
+              key={property.siteId}
               accessibilityRole="button"
-              accessibilityLabel={`Mgodi ${site.siteId}`}
-              onPress={() => setFocusSiteId(site.siteId)}
+              accessibilityLabel={`Jengo ${property.siteId}`}
+              onPress={() => setFocusPropertyId(property.siteId)}
               style={({ pressed }) => [
                 styles.siteRow,
-                (focusedSite?.siteId ?? '') === site.siteId && styles.siteRowActive,
+                (focusedProperty?.siteId ?? '') === property.siteId && styles.siteRowActive,
                 pressed && styles.siteRowPressed
               ]}
             >
-              <Text style={styles.siteName}>{site.siteId}</Text>
+              <Text style={styles.siteName}>{property.siteId}</Text>
               <View style={styles.siteMeta}>
-                <Text style={styles.siteMetaItem}>Shifti {site.shifts}</Text>
-                <Text style={styles.siteMetaItem}>Tani {formatNumber(site.tonnes)}</Text>
-                <Text style={styles.siteMetaItem}>Fuel {formatNumber(site.fuel)} L</Text>
+                <Text style={styles.siteMetaItem}>Shifti {property.shifts}</Text>
+                <Text style={styles.siteMetaItem}>Kodi {formatNumber(property.rent)}</Text>
+                <Text style={styles.siteMetaItem}>Gharama {formatNumber(property.cost)}</Text>
               </View>
             </Pressable>
           ))}
         </Section>
       ) : null}
-      {focusedSite ? (
+      {focusedProperty ? (
         <Section title={COPY.sectionFocus} hint={COPY.sectionFocusHint}>
           <View style={styles.focus}>
-            <FocusStat label="Shifti" value={String(focusedSite.shifts)} suffix="siku 30" />
+            <FocusStat label="Shifti" value={String(focusedProperty.shifts)} suffix="siku 30" />
             <FocusStat
-              label="Mizigo"
-              value={formatNumber(focusedSite.tonnes)}
-              suffix={`tani ${formatNumber(focusedSite.tonnes)}`}
+              label="Kodi"
+              value={formatNumber(focusedProperty.rent)}
+              suffix={`jumla ${formatNumber(focusedProperty.rent)}`}
             />
             <FocusStat
-              label="Mafuta"
-              value={`${formatNumber(focusedSite.fuel)} L`}
+              label="Gharama"
+              value={formatNumber(focusedProperty.cost)}
               suffix="jumla siku 30"
             />
           </View>

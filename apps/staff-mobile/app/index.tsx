@@ -15,7 +15,7 @@ export default function IndexRoute(): JSX.Element {
   const { user, ready } = useAuth()
   const tagline =
     (Constants.expoConfig?.extra?.['splashTagline'] as string | undefined) ??
-    'Ofisi ya Mgodi. Estate intelligence.'
+    'Estate intelligence, in your pocket.'
   if (!ready) {
     return <LitFinSplash wordmark="BOSSNYUMBA" tagline={tagline} showSpinner />
   }

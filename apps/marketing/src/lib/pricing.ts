@@ -1,6 +1,6 @@
 /**
- * BossNyumba pricing ladder — five tiers ported from Borjie's mining
- * ladder and reframed for real-estate.
+ * BossNyumba pricing ladder — five real-estate tiers from individual
+ * landlord up to multi-country institutional group.
  *
  * Tier identity:
  *   - `id` is a stable lowercase Swahili token used by analytics, URL
@@ -21,7 +21,7 @@
  * render uses formatCurrency(amount, currencyCode)." We expose the
  * raw monthly amount in TZS so the page can defer to the formatter.
  *
- * NO "trial" language per Borjie discipline. CTAs are "Sign Up" /
+ * NO "trial" language per product discipline. CTAs are "Sign Up" /
  * "Log In" only.
  */
 

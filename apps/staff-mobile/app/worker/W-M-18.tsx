@@ -6,7 +6,7 @@ import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { FingerprintPlaceholder } from '../../src/components/FingerprintPlaceholder'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { useOnlineStatus } from '../../src/offline/useOnlineStatus'
 import { useAuth } from '../../src/auth/useAuth'
@@ -63,7 +63,7 @@ function DocumentSigning(): JSX.Element {
 
   const mutation = useMutation<DocumentRow, ApiError, SignPayload>({
     mutationFn: async (input) => {
-      const resp = await miningApi.post<SignResponse>(`/documents/${input.documentId}/sign`, {
+      const resp = await managerApi.post<SignResponse>(`/documents/${input.documentId}/sign`, {
         fingerprintEventId: input.fingerprintEventId,
         signerRole: user?.role ?? null,
         note: `Signed via ${SCREEN_ID}`

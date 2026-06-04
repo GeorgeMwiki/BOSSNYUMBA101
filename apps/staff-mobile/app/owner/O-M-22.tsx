@@ -17,8 +17,8 @@ export default function Screen(): JSX.Element {
           <PlaceholderList
             items={[
               { id: 's1', primary: '1. Jina la kampuni' },
-              { id: 's2', primary: '2. Leseni za PML' },
-              { id: 's3', primary: '3. Migodi na timu' }
+              { id: 's2', primary: '2. Hati za umiliki' },
+              { id: 's3', primary: '3. Majengo na timu' }
             ]}
           />
         </Section>

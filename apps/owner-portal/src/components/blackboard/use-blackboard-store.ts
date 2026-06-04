@@ -9,8 +9,8 @@
  * `appendElement` dedupes by element id (re-emits update in place) so
  * the brain can safely re-emit an element across reconnects.
  *
- * Ported from Borjie (`apps/owner-web/src/components/blackboard/`) and
- * domain-stripped — BossNyumba is real-estate-only, no mining vocab.
+ * Domain-neutral: BossNyumba is real-estate-only and this store works
+ * for any board element the brain emits.
  */
 
 import { useEffect, useState } from 'react';

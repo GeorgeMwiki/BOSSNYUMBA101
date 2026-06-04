@@ -1,5 +1,5 @@
 /**
- * SOTA security headers (carbon-copy port from Borjie 2026-05-29).
+ * SOTA security headers for the BossNyumba marketing surface.
  *
  * Marketing carries the unauthenticated public-chat surface — same
  * recipe as the portal apps so a single review covers all surfaces.

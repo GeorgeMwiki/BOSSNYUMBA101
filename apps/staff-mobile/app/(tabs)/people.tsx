@@ -6,7 +6,7 @@ import { useI18n } from '../../src/i18n/useI18n'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
-const PEOPLE_LINKS: ReadonlyArray<string> = ['O-M-12', 'O-M-13', 'O-M-15', 'O-M-16', 'O-M-23', 'O-M-24']
+const PEOPLE_LINKS: ReadonlyArray<string> = ['O-M-12', 'O-M-13', 'O-M-15', 'O-M-23', 'O-M-24']
 
 export default function PeopleTab(): JSX.Element {
   const { screen } = useI18n()

@@ -1,6 +1,6 @@
 /**
  * React-Query hooks that fetch the 6 employee-home surfaces from the
- * api-gateway mining surface. Each hook is independent: a single section
+ * api-gateway estate-manager surface. Each hook is independent: a single section
  * may surface env-missing without blocking the others (worker-guidance §9
  * behavioural rule — no fetch blocks render).
  *
@@ -10,7 +10,7 @@
  */
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
-import { miningApi } from '../../api/client'
+import { managerApi } from '../../api/client'
 import type {
   AttendanceShift,
   CoachSuggestion,
@@ -28,7 +28,7 @@ export function useTodayShift(userId: string | null): UseQueryResult<AttendanceS
     enabled: Boolean(userId),
     staleTime: STALE_60S,
     queryFn: async () =>
-      miningApi.get<AttendanceShift>('/attendance/mine')
+      managerApi.get<AttendanceShift>('/attendance/mine')
   })
 }
 
@@ -39,7 +39,7 @@ export function useTodayTasks(userId: string | null): UseQueryResult<ReadonlyArr
     staleTime: STALE_60S,
     queryFn: async () => {
       const userQueryId = userId ?? ''
-      const data = await miningApi.get<{ readonly tasks: ReadonlyArray<WorkerTask> }>(
+      const data = await managerApi.get<{ readonly tasks: ReadonlyArray<WorkerTask> }>(
         '/tasks',
         { query: { assignedTo: userQueryId } }
       )
@@ -53,7 +53,7 @@ export function useToolboxTalk(): UseQueryResult<ToolboxTalk | null> {
     queryKey: ['employee-home', 'toolbox-talks', 'today'],
     staleTime: STALE_60S,
     queryFn: async () => {
-      const data = await miningApi.get<{ readonly talk: ToolboxTalk | null }>(
+      const data = await managerApi.get<{ readonly talk: ToolboxTalk | null }>(
         '/toolbox-talks',
         { query: { date: 'today' } }
       )
@@ -70,7 +70,7 @@ export function usePerformanceSnapshot(
     enabled: Boolean(userId),
     staleTime: STALE_60S,
     queryFn: async () =>
-      miningApi.get<PerformanceSnapshotData>('/attendance/me/performance', {
+      managerApi.get<PerformanceSnapshotData>('/attendance/me/performance', {
         query: { range: '7d' }
       })
   })
@@ -81,7 +81,7 @@ export function useActiveAlerts(): UseQueryResult<ReadonlyArray<IncidentAlert>> 
     queryKey: ['employee-home', 'incidents-mine'],
     staleTime: STALE_60S,
     queryFn: async () => {
-      const data = await miningApi.get<{ readonly incidents: ReadonlyArray<IncidentAlert> }>(
+      const data = await managerApi.get<{ readonly incidents: ReadonlyArray<IncidentAlert> }>(
         '/incidents',
         { query: { assignedToMe: 'true' } }
       )
@@ -96,7 +96,7 @@ export function useNextStepCoach(userId: string | null): UseQueryResult<CoachSug
     enabled: Boolean(userId),
     staleTime: STALE_60S,
     queryFn: async () => {
-      const data = await miningApi.get<{ readonly suggestion: CoachSuggestion | null }>(
+      const data = await managerApi.get<{ readonly suggestion: CoachSuggestion | null }>(
         '/copilots/worker-coach',
         { query: { userId: userId ?? '' } }
       )

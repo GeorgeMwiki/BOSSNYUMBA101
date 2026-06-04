@@ -12,7 +12,7 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { useI18n } from '../../src/i18n/useI18n'
-import { groupByBucket, useLeases, useRenewLease } from '../../src/owner/useLicences'
+import { groupByBucket, useLeases, useRenewLease } from '../../src/owner/useLeases'
 import type { Lease, LeaseBucket } from '../../src/owner/types'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -161,7 +161,7 @@ interface LeaseCalendarStrings {
   renewAction: string
   renewActionEn: string
   daysLeft: string
-  mineralLabel: string
+  propertyLabel: string
   renewPending: string
   renewFailed: string
 }
@@ -228,8 +228,8 @@ function LeaseRow({
           <Text style={styles.cardTitle}>{lease.leaseRef}</Text>
           <Text style={styles.cardSite}>{lease.propertyName}</Text>
           {lease.unitLabel ? (
-            <Text style={styles.cardMineral}>
-              {strings.mineralLabel}: {lease.unitLabel}
+            <Text style={styles.cardUnit}>
+              {strings.propertyLabel}: {lease.unitLabel}
             </Text>
           ) : null}
         </View>
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.body,
     marginTop: spacing.xs
   },
-  cardMineral: {
+  cardUnit: {
     color: colors.earth700,
     fontSize: fontSize.caption,
     marginTop: spacing.xs,

@@ -13,7 +13,7 @@
 export type ToolName =
   | 'cockpit.daily-brief'
   | 'cockpit.decisions'
-  | 'cockpit.production'
+  | 'cockpit.occupancy'
   | 'attendance.crew'
   | 'incidents.exceptions'
   | 'tasks.today'
@@ -25,7 +25,7 @@ export const TOOL_CARD_ROUTING: Readonly<
 > = Object.freeze({
   'cockpit.daily-brief': { sw: 'Muhtasari wa leo', en: 'Daily brief' },
   'cockpit.decisions': { sw: 'Maamuzi yanayosubiri', en: 'Pending decisions' },
-  'cockpit.production': { sw: 'Uzalishaji', en: 'Production' },
+  'cockpit.occupancy': { sw: 'Ukaaji', en: 'Occupancy' },
   'attendance.crew': { sw: 'Hali ya timu', en: 'Crew status' },
   'incidents.exceptions': { sw: 'Vikwazo vya sasa', en: 'Live exceptions' },
   'tasks.today': { sw: 'Kazi za leo', en: "Today's tasks" },

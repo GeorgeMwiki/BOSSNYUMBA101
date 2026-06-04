@@ -185,7 +185,7 @@ async function postRegistration(
     expoPushToken
   }
   // The token endpoint lives at the api-gateway root (/api/v1/me/device-tokens),
-  // not under the mining or owner prefix, so we hit it with the raw
+  // not under the manager or owner prefix, so we hit it with the raw
   // request helper rather than any of the prefixed clients.
   await request(`${API_BASE_URL}/api/v1/me/device-tokens`, {
     method: 'POST',

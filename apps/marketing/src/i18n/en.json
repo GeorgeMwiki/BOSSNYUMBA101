@@ -4,7 +4,7 @@
   },
   "nav": {
     "owners": "Owners",
-    "buyers": "Buyers",
+    "tenants": "Tenants",
     "investors": "Investors",
     "product": "Product",
     "pricing": "Pricing",
@@ -21,21 +21,21 @@
     "requestPilot": "Get started",
     "categories": {
       "operators": "Property operators",
-      "buyers": "Tenants and prospects",
+      "tenants": "Tenants and prospects",
       "ecosystem": "Housing cooperatives and ecosystem",
       "capital": "Capital and oversight"
     },
     "items": {
-      "pml": "Individual landlords",
-      "pmlDesc": "Individual landlords managing 1-10 doors.",
+      "individualLandlord": "Individual landlords",
+      "individualLandlordDesc": "Individual landlords managing 1-10 doors.",
       "ml": "Portfolio landlords",
       "mlDesc": "Mid-portfolio managers across apartments and townhouses.",
       "sml": "Institutional landlords",
       "smlDesc": "Institutional housing operators, large-format portfolios.",
       "cooperatives": "Housing cooperatives",
       "cooperativesDesc": "Housing cooperatives, federated tenant associations.",
-      "buyers": "Tenants and prospects",
-      "buyersDesc": "Verified tenants, vetted corporate tenants.",
+      "tenants": "Tenants and prospects",
+      "tenantsDesc": "Verified tenants, vetted corporate tenants.",
       "maintenance contractors": "Maintenance partners",
       "maintenance contractorsDesc": "Licensed maintenance contractors and inspectors.",
       "investors": "Investors and lenders",
@@ -50,7 +50,7 @@
       "title": "Real estate owners",
       "blurb": "Run your portfolio. Daily brief, lease calendar, maintenance log."
     },
-    "buyers": {
+    "tenants": {
       "title": "Tenants",
       "blurb": "Source verified Tanzanian properties end-to-end."
     },
@@ -370,7 +370,7 @@
         "minLevel": 2
       },
       {
-        "id": "pml",
+        "id": "renewal",
         "label": "File landlord renewal to Lands Registry",
         "minLevel": 99
       },
@@ -1233,7 +1233,7 @@
     "ctaPilot": "Get started",
     "ctaPricing": "See pricing"
   },
-  "buyersPage": {
+  "tenantsPage": {
     "kicker": "For tenants and corporate occupiers",
     "heading": "Source verified Tanzanian properties. End-to-end.",
     "sub": "KYB-verified landlords, chain-of-custody inspections, biometric tenancy contracts. Lease with confidence.",
@@ -1250,11 +1250,11 @@
       "Arusha (mixed-use)",
       "Dodoma (government-adjacent)"
     ],
-    "navLabel": "Buyers",
+    "navLabel": "Tenants",
     "marketplaceFeeKicker": "Marketplace fee",
     "marketplaceFeeBody": "No subscription. Free to browse and bid. Fee paid only on settled deals.",
     "valueProps": {
-      "kicker": "01 · Why buyers trust BossNyumba",
+      "kicker": "01 · Why tenants trust BossNyumba",
       "heading": "Four pillars of verified supply.",
       "sub": "Every unit on BossNyumba has a verifiable path from inspection to handover.",
       "shortCards": [
@@ -1282,9 +1282,9 @@
         },
         "kyb": {
           "title": "KYB'd sellers",
-          "blurb": "BossNyumba audits every seller before listing. BRELA, TRA, and Regulator cross-checks. No anonymous traders."
+          "blurb": "BossNyumba audits every seller before listing. BRELA, TRA, and Regulator cross-checks. No anonymous operators."
         },
-        "assays": {
+        "inspections": {
           "title": "Inspection certificates",
           "blurb": "Vetted property surveyors in Dar es Salaam and Mwanza. Building inspection for apartments, ARV-grade for townhouses, condition reports for offices and retail."
         },
@@ -1299,23 +1299,23 @@
       "heading": "Tenants already on the platform.",
       "sub": "Mock pilot relationships shown — real deals are still on-boarding. Replaced with audited case studies once live.",
       "cards": {
-        "gold": {
+        "apartmentPortfolio": {
           "tag": "Apartment portfolio",
-          "buyer": "Pamoja REIT",
+          "tenant": "Pamoja REIT",
           "location": "Dar es Salaam",
           "blurb": "Sources 40-60 units per quarter of Class-A apartments from Mikocheni and Masaki landlord clusters. BossNyumba chain-of-custody lets the REIT skip its own field due diligence."
         },
-        "tanzanite": {
+        "townhouseComplex": {
           "tag": "Townhouse complex",
-          "buyer": "Heritage TZ Holdings",
+          "tenant": "Heritage TZ Holdings",
           "location": "Arusha",
           "blurb": "Bids on Mwanza Block-D townhouses every Tuesday. BossNyumba's condition report plus biometric tenancy gets the lot signed inside 48 hours."
         },
-        "coltan": {
+        "mixedUseBlock": {
           "tag": "Mixed-use block",
-          "buyer": "East-African Property Fund",
+          "tenant": "East-African Property Fund",
           "location": "Dar es Salaam",
-          "blurb": "Class-A apartment stock from Mwanza independent landlords. Audit chain provides the OECD due-diligence trail downstream EU buyers require."
+          "blurb": "Class-A apartment stock from Mwanza independent landlords. Audit chain provides the OECD due-diligence trail downstream EU investors require."
         }
       }
     },
@@ -1334,11 +1334,11 @@
     },
     "downloadCta": {
       "heading": "Sign up to bid.",
-      "sub": "The buyer mobile app is in private testing with sixteen Tanzanian and East African buyers. Join the waitlist for the September 2026 public release.",
-      "primary": "Join buyer waitlist",
+      "sub": "The tenant mobile app is in private testing with sixteen Tanzanian and East African tenants. Join the waitlist for the September 2026 public release.",
+      "primary": "Join tenant waitlist",
       "secondary": "Talk to sourcing team"
     },
-    "ctaAlreadyBuyer": "Already a buyer? Sign in"
+    "ctaAlreadyTenant": "Already a tenant? Sign in"
   },
   "tenantSignupPage": {
     "metaTitle": "Sign up as a tenant — BossNyumba",
@@ -1354,7 +1354,7 @@
     "kindStep": {
       "heading": "How would you like to sign up?",
       "subHeading": "Unataka kujisajili kama nani?",
-      "individualTitle": "I'm an individual buyer",
+      "individualTitle": "I'm an individual tenant",
       "individualTitleEn": "Mimi ni mtu binafsi",
       "individualSubtitle": "Personal-capacity tenant.",
       "individualBullets": [
@@ -1497,11 +1497,11 @@
     "disclaimer": "We email you a receipt. BRELA and TRA verification happens after sign up; you can drive the cockpit while it runs."
   },
   "tenantSignInPage": {
-    "metaTitle": "Sign in as a buyer — BossNyumba",
-    "metaDescription": "Sign in to your BossNyumba buyer account.",
-    "kicker": "Sign in as a buyer",
+    "metaTitle": "Sign in as a tenant — BossNyumba",
+    "metaDescription": "Sign in to your BossNyumba tenant account.",
+    "kicker": "Sign in as a tenant",
     "heading": "Welcome back.",
-    "sub": "Sign in to your buyer account to keep sourcing verified properties.",
+    "sub": "Sign in to your tenant account to keep sourcing verified properties.",
     "fields": {
       "email": "Email",
       "emailEn": "Barua pepe",
@@ -1517,7 +1517,7 @@
       "passwordRequired": "Password is required",
       "signInFailed": "Sign-in failed. Check your credentials."
     },
-    "fromSignup": "Your account has been created. Sign in to start buying.",
+    "fromSignup": "Your account has been created. Sign in to start leasing.",
     "noAccountYet": "No account yet?",
     "signUpLink": "Sign up"
   },
@@ -1730,7 +1730,7 @@
     "retry": "Retry"
   },
   "audiencePages": {
-    "pml": {
+    "individualLandlord": {
       "metaTitle": "BossNyumba for Individual landlords — single-landlord real-estate OS",
       "metaDescription": "BossNyumba for individual landlords. Daily brief, lease calendar, maintenance log, M-Pesa payouts. Built for Tanzanian single landlords. 90-day free pilot.",
       "heroKicker": "For Individual landlords",
@@ -2284,7 +2284,7 @@
         },
         {
           "title": "No evidence chain.",
-          "desc": "Production numbers come without provenance, you cannot tell a real receipt from a typed-in cell."
+          "desc": "Occupancy and rent figures come without provenance, you cannot tell a real receipt from a typed-in cell."
         },
         {
           "title": "Manual covenant tracking.",
@@ -2318,7 +2318,7 @@
       "ctaSub": "Brief our team. We connect a sandbox property, scope the covenant set, and show you the daily telemetry on safe data.",
       "ctaPrimary": "Brief our team"
     },
-    "buyer": {
+    "tenant": {
       "metaTitle": "For tenants, BossNyumba",
       "metaDescription": "BossNyumba for tenants: KYB-verified Tanzanian supply, traceable listings, escrow-ready settlement, biometric proof-of-handover.",
       "heroKicker": "For tenants",
@@ -2708,104 +2708,6 @@
       ],
       "ctaHeading": "Real estate oversight at the speed of the sector.",
       "ctaSub": "Brief our team. We map the data feed your regulator needs, configure read-scoped access, and show you the live posture on safe demo data.",
-      "ctaPrimary": "Brief our team"
-    },
-    "csrCommunity": {
-      "metaTitle": "For CSR and community partners, BossNyumba",
-      "metaDescription": "BossNyumba for CSR and community partners: transparent community-investment disbursement, grievance handling, and shared-value reporting.",
-      "heroKicker": "For CSR and community partners",
-      "heroHeadline": "Community investment with",
-      "heroHeadlineAccent": "real evidence",
-      "heroSub": "BossNyumba tracks every shilling of community-investment commitment, every grievance, and every shared-value programme, bilingual, signed, audit-grade.",
-      "heroPrimaryCta": "Brief our team",
-      "heroSecondaryCta": "See it move",
-      "trustline": [
-        "Grievance handling on chain",
-        "Shared-value reporting",
-        "Bilingual sw / en"
-      ],
-      "statsHeading": "Three reasons CSR moves onto BossNyumba.",
-      "statsSub": "Concrete levers, what evidence-grade community-investment tracking unlocks for the licence holder and the host community alike.",
-      "stats": [
-        {
-          "value": "100%",
-          "label": "Disbursement traceability",
-          "sub": "Every commitment in the CSR plan ties to a transaction on the ledger, signed by the community recipient."
-        },
-        {
-          "value": "Same-day",
-          "label": "Grievance handling",
-          "sub": "Community grievances are logged in Swahili, routed to the Sovereign Agent, resolved on chain."
-        },
-        {
-          "value": "Live",
-          "label": "Shared-value report",
-          "sub": "The host community sees the running CSR position on their own dashboard, in their language."
-        }
-      ],
-      "stepsKicker": "How it works",
-      "stepsHeading": "Three moves from CSR plan to shared evidence.",
-      "steps": [
-        {
-          "n": "01",
-          "title": "CSR plan goes on chain.",
-          "body": "Every commitment in the licence holder's Community Development Agreement is loaded into BossNyumba with sign-off from the regulator."
-        },
-        {
-          "n": "02",
-          "title": "Disbursements run through the operating system.",
-          "body": "Funds release on biometric receipt, schools, clinics, water-point operators sign for what they receive."
-        },
-        {
-          "n": "03",
-          "title": "Shared dashboard.",
-          "body": "The community sees its CSR position. The licence holder sees its compliance. The regulator sees the audit-hash chain."
-        }
-      ],
-      "problemKicker": "Why CSR moves on chain",
-      "problemHeading": "What paper CSR plans",
-      "problemHeadingAccent": "fail to deliver",
-      "problemSub": "Community development agreements are real obligations, but the way they're tracked today loses both communities and licence holders the trust they need.",
-      "problemTitle": "What goes wrong today",
-      "problems": [
-        {
-          "title": "Disbursement opacity.",
-          "desc": "Community commitments are tracked in spreadsheets, when funds release, no community member sees a signed receipt."
-        },
-        {
-          "title": "Grievance vacuum.",
-          "desc": "Complaints reach the property by phone or rumour; they never get logged in a way that can be audited."
-        },
-        {
-          "title": "Plan drift.",
-          "desc": "The CSR plan signed at licensing day looks nothing like the actual disbursements five years later."
-        },
-        {
-          "title": "Language barrier.",
-          "desc": "Most community-facing material is English-only, even when the host community is Swahili-primary."
-        }
-      ],
-      "solutionTitle": "How BossNyumba changes the math",
-      "solutions": [
-        {
-          "title": "Plan on chain, disbursement on rails.",
-          "desc": "Every commitment loaded with regulator sign-off; every disbursement signed biometrically by the recipient."
-        },
-        {
-          "title": "Grievance handling open.",
-          "desc": "Complaints are logged in Swahili through the public chat widget and the Sovereign Agent."
-        },
-        {
-          "title": "Shared dashboard.",
-          "desc": "The community, the holder and the regulator see the same numbers in their language."
-        },
-        {
-          "title": "Audit-hash on every line.",
-          "desc": "Every CSR transaction carries provenance, nothing can be edited retroactively."
-        }
-      ],
-      "ctaHeading": "Community investment that earns trust.",
-      "ctaSub": "Brief our team. We map your CDA, configure the disbursement rails, and show you the dashboard running on safe demo data.",
       "ctaPrimary": "Brief our team"
     }
   },

@@ -5,7 +5,7 @@ import { formatCurrency, formatNumber } from '@/lib/format';
 import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 
 /**
- * Pricing — five-tier ladder ported from Borjie's mining ladder.
+ * Pricing — five-tier real-estate ladder, individual landlord to group.
  *
  * Locale-aware:
  *   - Each tier surfaces via `tierLabel(tier, locale)` so the English
@@ -16,7 +16,7 @@ import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
  * Design rules:
  *   - TZS-primary per CLAUDE.md money rule (formatCurrency used for
  *     every render, never hard-coded "TZS" prefix).
- *   - No "trial" CTA copy per Borjie discipline. Only "Sign Up",
+ *   - No "trial" CTA copy per product discipline. Only "Sign Up",
  *     "Book a demo", "Talk to sales".
  *   - The "Professional" tier (id `mfanyabiashara`) is highlighted as
  *     the most-chosen plan for property managers.

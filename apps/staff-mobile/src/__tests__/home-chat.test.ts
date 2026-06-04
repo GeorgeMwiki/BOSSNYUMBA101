@@ -68,7 +68,7 @@ import { canSee } from '../roles/access'
 const ALL_TOOLS: ReadonlyArray<ToolName> = [
   'cockpit.daily-brief',
   'cockpit.decisions',
-  'cockpit.production',
+  'cockpit.occupancy',
   'attendance.crew',
   'incidents.exceptions',
   'tasks.today',
@@ -103,7 +103,7 @@ describe('HomeChat — tool-call routing table', () => {
 describe('HomeChat — persona-aware greeting + suggestions', () => {
   it('returns a Swahili-first greeting for each role', () => {
     expect(openerFor('owner').greetingSw).toBe(
-      'Karibu, Bwana Mkubwa. Niambie kuhusu mgodi wako leo.'
+      'Karibu, Bwana Mkubwa. Niambie kuhusu mali zako leo.'
     )
     expect(openerFor('manager').greetingSw).toBe(
       'Karibu, Meneja. Tukasaidia timu yako leo.'
@@ -165,7 +165,7 @@ describe('HomeChat — BrainTurnResponse schema (zod)', () => {
   it('accepts the minimum payload the brain ever emits (threadId + responseText)', () => {
     const minimum = BrainTurnResponseSchema.safeParse({
       threadId: 'thread-1',
-      responseText: 'Habari, mgodi unaendelea vizuri.'
+      responseText: 'Habari, mali yako inaendelea vizuri.'
     })
     expect(minimum.success).toBe(true)
     if (minimum.success) {
@@ -209,7 +209,7 @@ describe('HomeChat — BrainTurnResponse schema (zod)', () => {
     const bad = BrainTurnResponseSchema.safeParse({
       threadId: 'thread-2',
       responseText: 'x',
-      toolCalls: [{ tool: 'cockpit.production' }]
+      toolCalls: [{ tool: 'cockpit.occupancy' }]
     })
     expect(bad.success).toBe(false)
   })

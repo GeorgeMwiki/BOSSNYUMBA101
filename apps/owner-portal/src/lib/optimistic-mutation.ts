@@ -1,8 +1,7 @@
 /**
  * RT-2 — Optimistic mutation helper for owner-portal (TanStack Query v5).
  *
- * Real-estate retailoring of the Borjie helper. Implements the
- * canonical 3-step optimistic update pattern:
+ * Implements the canonical 3-step optimistic update pattern:
  *
  *   1. onMutate: cancel in-flight queries → snapshot previous cache
  *      → apply optimistic update.

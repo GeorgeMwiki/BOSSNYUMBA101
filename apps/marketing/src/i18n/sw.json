@@ -4,7 +4,7 @@
   },
   "nav": {
     "owners": "Wamiliki",
-    "buyers": "Wanunuzi",
+    "tenants": "Wapangaji",
     "investors": "Wawekezaji",
     "product": "Bidhaa",
     "pricing": "Bei",
@@ -21,21 +21,21 @@
     "requestPilot": "Anza sasa",
     "categories": {
       "operators": "Waendeshaji wa mali",
-      "buyers": "Wapangaji na watarajiwa",
+      "tenants": "Wapangaji na watarajiwa",
       "ecosystem": "Vyama na mfumo",
       "capital": "Mtaji na usimamizi"
     },
     "items": {
-      "pml": "Wamiliki wa Individual Landlord",
-      "pmlDesc": "Wamiliki wa mali wadogo wanaosimamia milango 1-10.",
+      "individualLandlord": "Wamiliki wa Individual Landlord",
+      "individualLandlordDesc": "Wamiliki wa mali wadogo wanaosimamia milango 1-10.",
       "ml": "Wamiliki wa Portfolio Landlord",
       "mlDesc": "Waendeshaji wa kati wa Portfolio Landlord wa ghorofa na nyumba.",
       "sml": "Wamiliki wa Institutional",
       "smlDesc": "Waendeshaji wa makazi wa kitaasisi, uendeshaji wa mali kubwa.",
       "cooperatives": "Vyama vya wamiliki wa mali",
       "cooperativesDesc": "Vikundi vya Co-op na vya wamiliki wa nyumba moja.",
-      "buyers": "Wapangaji na watarajiwa",
-      "buyersDesc": "Wapangaji waliothibitishwa, wapangaji wa kampuni waliokaguliwa.",
+      "tenants": "Wapangaji na watarajiwa",
+      "tenantsDesc": "Wapangaji waliothibitishwa, wapangaji wa kampuni waliokaguliwa.",
       "maintenance contractors": "Mafundi wa matengenezo",
       "maintenance contractorsDesc": "Mafundi walio na leseni na wakaguzi wa nyumba.",
       "investors": "Wawekezaji na wakopeshaji",
@@ -50,7 +50,7 @@
       "title": "Wamiliki wa mali",
       "blurb": "Endesha mali yako. Briefing ya kila siku, kalenda ya kodi, daftari la matengenezo."
     },
-    "buyers": {
+    "tenants": {
       "title": "Wapangaji",
       "blurb": "Pata mali ya Tanzania yaliyothibitishwa mwanzo hadi mwisho."
     },
@@ -370,7 +370,7 @@
         "minLevel": 2
       },
       {
-        "id": "pml",
+        "id": "renewal",
         "label": "Wasilisha Individual Landlord renewal NHC",
         "minLevel": 99
       },
@@ -1233,7 +1233,7 @@
     "ctaPilot": "Anza sasa",
     "ctaPricing": "Ona bei"
   },
-  "buyersPage": {
+  "tenantsPage": {
     "kicker": "Kwa wapangaji na wapangaji wa kampuni",
     "heading": "Pata mali ya Tanzania yaliyothibitishwa. Mwanzo hadi mwisho.",
     "sub": "Wamiliki wa KYC, ukaguzi wa mnyororo wa ushahidi, saini za alama ya kidole. Panga kwa uhakika.",
@@ -1284,7 +1284,7 @@
           "title": "Wamiliki wa KYB",
           "blurb": "BossNyumba inakagua kila mmiliki kabla ya kuorodhesha. BRELA, TRA, na Regulator cross-checks. Hakuna mawakala wasiojulikana."
         },
-        "assays": {
+        "inspections": {
           "title": "Vyeti vya ukaguzi",
           "blurb": "Wakaguzi wa kiwango cha juu Dar es Salaam na Mwanza. Ukaguzi wa jengo kwa ghorofa, daraja la ARV kwa nyumba, ripoti za hali kwa ofisi na maduka."
         },
@@ -1299,21 +1299,21 @@
       "heading": "Wapangaji tayari kwenye platform.",
       "sub": "Mahusiano ya pilot yameonyeshwa — biashara halisi bado zinaingia. Itabadilishwa na case studies zilizothibitishwa baadaye.",
       "cards": {
-        "gold": {
+        "apartmentPortfolio": {
           "tag": "Portfolio ya ghorofa",
-          "buyer": "Pamoja REIT",
+          "tenant": "Pamoja REIT",
           "location": "Dar es Salaam",
           "blurb": "Inapata units 40-60 kwa robo za ghorofa za Daraja-A kutoka clusters za wamiliki wa Mikocheni na Masaki. Mnyororo wa BossNyumba unairuhusu REIT kuruka due diligence yake ya field."
         },
-        "tanzanite": {
+        "townhouseComplex": {
           "tag": "Mji wa nyumba",
-          "buyer": "Heritage TZ Holdings",
+          "tenant": "Heritage TZ Holdings",
           "location": "Arusha",
           "blurb": "Inashiriki kwenye bidding ya nyumba za Mwanza Block-D kila Jumanne. Ripoti ya hali ya BossNyumba pamoja na biometric tenancy huleta lot ndani ya saa 48."
         },
-        "coltan": {
+        "mixedUseBlock": {
           "tag": "Block ya matumizi mchanganyiko",
-          "buyer": "East-African Property Fund",
+          "tenant": "East-African Property Fund",
           "location": "Dar es Salaam",
           "blurb": "Hisa za ghorofa za Daraja-A kutoka kwa wamiliki binafsi wa Mwanza. Audit chain inatoa njia ya OECD due diligence ambayo wapangaji wa EU wanahitaji."
         }
@@ -1334,17 +1334,17 @@
     },
     "downloadCta": {
       "heading": "Jisajili kushiriki.",
-      "sub": "Buyer mobile app iko katika upimaji wa kibinafsi pamoja na wanunuzi kumi na sita wa Tanzania na Afrika Mashariki. Jiunge na waitlist kwa toleo la umma la Septemba 2026.",
-      "primary": "Jiunge na buyer waitlist",
+      "sub": "tenant mobile app iko katika upimaji wa kibinafsi pamoja na wapangaji kumi na sita wa Tanzania na Afrika Mashariki. Jiunge na waitlist kwa toleo la umma la Septemba 2026.",
+      "primary": "Jiunge na tenant waitlist",
       "secondary": "Ongea na timu ya sourcing"
     },
-    "ctaAlreadyBuyer": "Una akaunti tayari? Ingia"
+    "ctaAlreadyTenant": "Una akaunti tayari? Ingia"
   },
   "tenantSignupPage": {
-    "metaTitle": "Jisajili kama mnunuzi — BossNyumba",
-    "metaDescription": "Jisajili kama mnunuzi wa mali kwenye BossNyumba. KYC, mnyororo wa ushahidi, na sahihi za alama ya kidole.",
-    "kicker": "Jisajili kama mnunuzi",
-    "heading": "Anza kununua mali iliyothibitishwa.",
+    "metaTitle": "Jisajili kama mpangaji — BossNyumba",
+    "metaDescription": "Jisajili kama mpangaji kwenye BossNyumba. KYC, mnyororo wa ushahidi, na sahihi za alama ya kidole.",
+    "kicker": "Jisajili kama mpangaji",
+    "heading": "Anza kupanga mali iliyothibitishwa.",
     "sub": "Chagua aina ya akaunti yako. Akaunti binafsi kwa wapangaji wa kawaida. Akaunti ya biashara kwa makampuni, mawakala, brokers, na investors.",
     "steps": {
       "kind": "1. Aina",
@@ -1355,8 +1355,8 @@
       "heading": "Unataka kujisajili kama nani?",
       "subHeading": "How would you like to sign up?",
       "individualTitle": "Mimi ni mtu binafsi",
-      "individualTitleEn": "I'm an individual buyer",
-      "individualSubtitle": "Mnunuzi wa kawaida wa mali.",
+      "individualTitleEn": "I'm an individual tenant",
+      "individualSubtitle": "Mpangaji wa kawaida.",
       "individualBullets": [
         "Jina kamili na simu",
         "Barua pepe",
@@ -1497,11 +1497,11 @@
     "disclaimer": "Tutakupelekea risiti kwa barua pepe. Uthibitisho wa BRELA na TRA unafanyika baada ya usajili; unaweza kutumia cockpit wakati unaendelea."
   },
   "tenantSignInPage": {
-    "metaTitle": "Ingia kama mnunuzi — BossNyumba",
-    "metaDescription": "Ingia kwenye akaunti yako ya mnunuzi wa mali ya BossNyumba.",
-    "kicker": "Ingia kama mnunuzi",
+    "metaTitle": "Ingia kama mpangaji — BossNyumba",
+    "metaDescription": "Ingia kwenye akaunti yako ya mpangaji wa BossNyumba.",
+    "kicker": "Ingia kama mpangaji",
     "heading": "Karibu tena.",
-    "sub": "Ingia kwenye akaunti yako ya mnunuzi ili kuendelea kununua mali iliyothibitishwa.",
+    "sub": "Ingia kwenye akaunti yako ya mpangaji ili kuendelea kutafuta mali iliyothibitishwa.",
     "fields": {
       "email": "Barua pepe",
       "emailEn": "Email",
@@ -1517,7 +1517,7 @@
       "passwordRequired": "Nenosiri linahitajika",
       "signInFailed": "Imeshindwa kuingia. Hakiki taarifa zako."
     },
-    "fromSignup": "Akaunti yako imeundwa. Ingia ili kuanza kununua.",
+    "fromSignup": "Akaunti yako imeundwa. Ingia ili kuanza kupanga.",
     "noAccountYet": "Huna akaunti?",
     "signUpLink": "Jisajili"
   },
@@ -1730,7 +1730,7 @@
     "retry": "Jaribu tena"
   },
   "audiencePages": {
-    "pml": {
+    "individualLandlord": {
       "metaTitle": "BossNyumba kwa wenye Individual Landlord, mfumo wa uendeshaji wa mali ndogo",
       "metaDescription": "BossNyumba kwa wamiliki wa mali binafsi. Muhtasari wa kila siku, kalenda ya kodi, daftari la matengenezo, malipo kupitia M-Pesa. Imejengwa kwa wamiliki wa nyumba moja Tanzania. Majaribio ya bure ya siku 90.",
       "heroKicker": "Kwa wenye Individual Landlord",
@@ -2318,10 +2318,10 @@
       "ctaSub": "Eleza timu yetu. Tunaunganisha mali wa sandbox, tunafafanua seti ya masharti, na tunakuonyesha ushuhuda wa kila siku kwenye data salama.",
       "ctaPrimary": "Eleza timu yetu"
     },
-    "buyer": {
-      "metaTitle": "Kwa wanunuzi wa mali - BossNyumba",
-      "metaDescription": "BossNyumba kwa wanunuzi wa mali: usambazaji wa Tanzania uliothibitishwa kwa KYB, units vinavyofuatiliwa, malipo ya escrow, ushahidi wa biometric wa utoaji.",
-      "heroKicker": "Kwa wanunuzi wa mali",
+    "tenant": {
+      "metaTitle": "Kwa wapangaji - BossNyumba",
+      "metaDescription": "BossNyumba kwa wapangaji: usambazaji wa Tanzania uliothibitishwa kwa KYB, units vinavyofuatiliwa, malipo ya escrow, ushahidi wa biometric wa utoaji.",
+      "heroKicker": "Kwa wapangaji",
       "heroHeadline": "Mali ya Tanzania pamoja na",
       "heroHeadlineAccent": "ushahidi",
       "heroSub": "Soko la BossNyumba linaorodhesha units vilivyothibitishwa kwa KYB pamoja na mfululizo kamili wa uhifadhi, ushahidi wa biometric wa utoaji, na malipo ya escrow tayari.",
@@ -2332,7 +2332,7 @@
         "Malipo ya escrow tayari",
         "Ushahidi wa biometric wa utoaji"
       ],
-      "statsHeading": "Sababu tatu wanunuzi wanapitia BossNyumba.",
+      "statsHeading": "Sababu tatu wapangaji wanapitia BossNyumba.",
       "statsSub": "Nambari halisi - vitu unavyoweza kuthibitisha kabla ya kuahidi dola moja.",
       "stats": [
         {
@@ -2348,7 +2348,7 @@
         {
           "value": "Escrow",
           "label": "Malipo baada ya kukubaliwa tu",
-          "sub": "Fedha hutolewa kwa kukiri kwa mnunuzi, sio kwa ankara ya msafirishaji."
+          "sub": "Fedha hutolewa kwa kukiri kwa mpangaji, sio kwa ankara ya msafirishaji."
         }
       ],
       "stepsKicker": "Jinsi inavyofanya kazi",
@@ -2370,8 +2370,8 @@
           "body": "Ushahidi wa biometric wa utoaji unatoa fedha. Migongano inapitia kwa Wakala wa Enzi."
         }
       ],
-      "problemKicker": "Kwa nini wanunuzi wanahama",
-      "problemHeading": "Kile kununua kupitia wapatanishi",
+      "problemKicker": "Kwa nini wapangaji wanahama",
+      "problemHeading": "Kile kupanga kupitia wapatanishi",
       "problemHeadingAccent": "kinagharimu kweli",
       "problemSub": "Usambazaji wa mali wa Tanzania ni halisi - lakini njia kutoka kwa mmiliki wa leseni hadi mchukuaji imejaa wapatanishi wa kufichwa.",
       "problemTitle": "Kile kinachoharibika leo",
@@ -2405,7 +2405,7 @@
         },
         {
           "title": "Escrow yenye kutolewa kwa biometric.",
-          "desc": "Fedha hutolewa kwa kukubaliwa kwa mnunuzi; migongano inapelekwa kupitia Wakala wa Enzi."
+          "desc": "Fedha hutolewa kwa kukubaliwa kwa mpangaji; migongano inapelekwa kupitia Wakala wa Enzi."
         },
         {
           "title": "Nukuu ya sarafu nyingi.",
@@ -2413,8 +2413,8 @@
         }
       ],
       "ctaHeading": "Pata mali kwa ushahidi.",
-      "ctaSub": "Sajili wasifu wako wa mnunuzi. Vinjari soko kwenye data salama ya demo. Tunakueleza njia ya uthibitisho.",
-      "ctaPrimary": "Sajili kama mnunuzi"
+      "ctaSub": "Sajili wasifu wako wa mpangaji. Vinjari soko kwenye data salama ya demo. Tunakueleza njia ya uthibitisho.",
+      "ctaPrimary": "Sajili kama mpangaji"
     },
     "offTaker": {
       "metaTitle": "Kwa wapangaji wa kampuni na mawakala wa uhamishaji - BossNyumba",
@@ -2708,104 +2708,6 @@
       ],
       "ctaHeading": "Usimamizi wa mali kwa kasi ya sekta.",
       "ctaSub": "Eleza timu yetu. Tunaonyesha mtiririko wa data unaouhitaji mdhibiti wako, tunaweka ufikiaji uliopangiwa kusoma, na tunakuonyesha hali ya moja kwa moja kwenye data salama ya demo.",
-      "ctaPrimary": "Eleza timu yetu"
-    },
-    "csrCommunity": {
-      "metaTitle": "Kwa washirika wa CSR na jamii - BossNyumba",
-      "metaDescription": "BossNyumba kwa washirika wa CSR na jamii: utoaji wazi wa uwekezaji wa jamii, ushughulikiaji wa malalamiko, na ripoti za thamani zilizoshirikiwa.",
-      "heroKicker": "Kwa washirika wa CSR na jamii",
-      "heroHeadline": "Uwekezaji wa jamii pamoja na",
-      "heroHeadlineAccent": "ushahidi halisi",
-      "heroSub": "BossNyumba inafuatilia kila shilingi ya ahadi ya uwekezaji wa jamii, kila malalamiko, na kila programu ya thamani iliyoshirikiwa - lugha mbili, iliyosainiwa, kiwango cha ukaguzi.",
-      "heroPrimaryCta": "Eleza timu yetu",
-      "heroSecondaryCta": "Iangalie ikifanya kazi",
-      "trustline": [
-        "Ushughulikiaji wa malalamiko kwenye mlolongo",
-        "Ripoti ya thamani iliyoshirikiwa",
-        "Lugha mbili sw / en"
-      ],
-      "statsHeading": "Sababu tatu CSR inahamia BossNyumba.",
-      "statsSub": "Vipengele halisi - kile ufuatiliaji wa kiwango cha ushahidi wa uwekezaji wa jamii unafungua kwa mmiliki wa leseni na jamii ya mwenyeji.",
-      "stats": [
-        {
-          "value": "100%",
-          "label": "Ufuatiliaji wa utoaji",
-          "sub": "Kila ahadi katika mpango wa CSR inaungana na muamala kwenye daftari, uliosainiwa na mpokeaji wa jamii."
-        },
-        {
-          "value": "Siku-moja",
-          "label": "Ushughulikiaji wa malalamiko",
-          "sub": "Malalamiko ya jamii yameingizwa kwa Kiswahili, yamepelekwa kwa Wakala wa Enzi, yametatuliwa kwenye mlolongo."
-        },
-        {
-          "value": "Hai",
-          "label": "Ripoti ya thamani iliyoshirikiwa",
-          "sub": "Jamii ya mwenyeji inaona nafasi inayoendelea ya CSR kwenye dashibodi yake mwenyewe, kwa lugha yake."
-        }
-      ],
-      "stepsKicker": "Jinsi inavyofanya kazi",
-      "stepsHeading": "Hatua tatu kutoka mpango wa CSR hadi ushahidi ulioshirikiwa.",
-      "steps": [
-        {
-          "n": "01",
-          "title": "Mpango wa CSR uko kwenye mlolongo.",
-          "body": "Kila ahadi katika Mkataba wa Maendeleo ya Jamii wa mmiliki wa leseni inawekwa kwenye BossNyumba pamoja na idhini kutoka kwa mdhibiti."
-        },
-        {
-          "n": "02",
-          "title": "Utoaji unafanyika kupitia mfumo wa uendeshaji.",
-          "body": "Fedha hutolewa kwa risiti ya biometric - shule, kliniki, waendeshaji wa pointi ya maji wanasaini kwa wanachopokea."
-        },
-        {
-          "n": "03",
-          "title": "Dashibodi iliyoshirikiwa.",
-          "body": "Jamii inaona nafasi yake ya CSR. Mmiliki wa leseni anaona uzingatiaji wake. Mdhibiti anaona mfululizo wa hash ya ukaguzi."
-        }
-      ],
-      "problemKicker": "Kwa nini CSR inahamia kwenye mlolongo",
-      "problemHeading": "Kile mipango ya CSR ya karatasi",
-      "problemHeadingAccent": "inashindwa kutoa",
-      "problemSub": "Mikataba ya maendeleo ya jamii ni majukumu halisi - lakini jinsi inavyofuatiliwa leo inawapotezea jamii na wamiliki wa leseni imani wanayohitaji.",
-      "problemTitle": "Kile kinachoharibika leo",
-      "problems": [
-        {
-          "title": "Ufichwaji wa utoaji.",
-          "desc": "Ahadi za jamii zinafuatiliwa kwenye lahajedwali - fedha zinapotolewa, hakuna mwanachama wa jamii anaye ona risiti iliyosainiwa."
-        },
-        {
-          "title": "Utupu wa malalamiko.",
-          "desc": "Malalamiko yanafikia mali kwa simu au uvumi; kamwe hayaingizwi kwa njia inayoweza kukaguliwa."
-        },
-        {
-          "title": "Mabadiliko ya mpango.",
-          "desc": "Mpango wa CSR uliosainiwa siku ya leseni unaonekana tofauti kabisa na utoaji halisi miaka mitano baadaye."
-        },
-        {
-          "title": "Kizuizi cha lugha.",
-          "desc": "Vifaa vingi vya jamii ni vya Kiingereza tu, hata wakati jamii ya mwenyeji ni ya Kiswahili msingi."
-        }
-      ],
-      "solutionTitle": "Jinsi BossNyumba inavyobadilisha hesabu",
-      "solutions": [
-        {
-          "title": "Mpango kwenye mlolongo, utoaji kwenye reli.",
-          "desc": "Kila ahadi imewekwa pamoja na idhini ya mdhibiti; kila utoaji umesainiwa kibaometriki na mpokeaji."
-        },
-        {
-          "title": "Ushughulikiaji wa malalamiko wazi.",
-          "desc": "Malalamiko yameingizwa kwa Kiswahili kupitia widget ya hadhara na Wakala wa Enzi."
-        },
-        {
-          "title": "Dashibodi iliyoshirikiwa.",
-          "desc": "Jamii, mmiliki na mdhibiti wanaona nambari zile zile kwa lugha yao."
-        },
-        {
-          "title": "Hash ya ukaguzi kwa kila mstari.",
-          "desc": "Kila muamala wa CSR unabeba chanzo - hakuna kitu kinachoweza kuhaririwa nyuma."
-        }
-      ],
-      "ctaHeading": "Uwekezaji wa jamii unaopata imani.",
-      "ctaSub": "Eleza timu yetu. Tunaonyesha CDA yako, tunaweka reli za utoaji, na tunakuonyesha dashibodi ikifanya kazi kwenye data salama ya demo.",
       "ctaPrimary": "Eleza timu yetu"
     }
   },

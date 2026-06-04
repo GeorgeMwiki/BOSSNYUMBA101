@@ -25,16 +25,16 @@ export interface DecisionItem {
   readonly secondaryActionUrl?: string
 }
 
-export interface ProductionPillar {
-  readonly currentTonnes: number
-  readonly targetTonnes: number
+export interface OccupancyPillar {
+  readonly currentUnits: number
+  readonly targetUnits: number
   readonly deltaPct: number
   readonly status: PillarStatus
   readonly sparkline7d: ReadonlyArray<number>
-  readonly perSite: ReadonlyArray<{
-    readonly siteId: string
-    readonly siteName: string
-    readonly tonnes: number
+  readonly perProperty: ReadonlyArray<{
+    readonly propertyId: string
+    readonly propertyName: string
+    readonly occupied: number
     readonly target: number
   }>
 }
@@ -64,7 +64,7 @@ export interface OwnerBrief {
   readonly enText: string
   readonly evidenceIds: ReadonlyArray<string>
   readonly needsReview: ReadonlyArray<DecisionItem>
-  readonly production: ProductionPillar
+  readonly occupancy: OccupancyPillar
   readonly cash: CashPillar
   readonly safety: SafetyPillar
 }

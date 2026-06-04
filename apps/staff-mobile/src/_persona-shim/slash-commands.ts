@@ -159,7 +159,7 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
       personaSlugs: TREASURY,
     },
     {
-      id: 'royalty',
+      id: 'rent-status',
       label: { en: 'Rent status', sw: 'Hali ya kodi' },
       hint: { en: 'Rent collection dues', sw: 'Madeni ya kodi' },
       personaSlugs: TREASURY,

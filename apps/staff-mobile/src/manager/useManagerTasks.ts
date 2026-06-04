@@ -26,7 +26,7 @@ import {
   type UseQueryResult,
   type UseMutationResult,
 } from '@tanstack/react-query'
-import { miningApi } from '../api/client'
+import { managerApi } from '../api/client'
 
 export interface MaintenanceTaskRow {
   readonly id: string
@@ -115,7 +115,7 @@ export function useManagerOpenTasks(
         status: 'open',
       }
       if (propertyId) query.propertyId = propertyId
-      const res = await miningApi.get<ListTasksResponse>('/work-orders', {
+      const res = await managerApi.get<ListTasksResponse>('/work-orders', {
         signal,
         query,
       })
@@ -166,7 +166,7 @@ export function useAssignTaskToWorker(): UseMutationResult<
       if (input.shiftId) body.shiftId = input.shiftId
       if (input.noteSw) body.noteSw = input.noteSw
       if (input.noteEn) body.noteEn = input.noteEn
-      const res = await miningApi.post<AssignResponse>(
+      const res = await managerApi.post<AssignResponse>(
         `/work-orders/${encodeURIComponent(input.taskId)}/assign-worker`,
         body
       )

@@ -10,7 +10,7 @@ import {
 } from 'react-native'
 import { colors } from '../theme/colors'
 import { fontSize, radius, spacing } from '../theme/spacing'
-import { miningApi } from '../api/client'
+import { managerApi } from '../api/client'
 import { useI18n } from '../i18n/useI18n'
 
 /**
@@ -24,7 +24,7 @@ import { useI18n } from '../i18n/useI18n'
  *   - Tap → modal with 1–5 star rating + text area + "Niarifu BossNyumba"
  *     send button.
  *   - Submit POSTs to `/api/v1/pilot/feedback` via the canonical
- *     `miningApi` client (Supabase JWT attached automatically).
+ *     `managerApi` client (Supabase JWT attached automatically).
  *   - Optimistic UI: the modal closes the moment Send is pressed; if the
  *     POST fails the user sees a non-blocking error line.
  *
@@ -72,7 +72,7 @@ function pick(label: { sw: string; en: string }, lang: 'sw' | 'en'): string {
 }
 
 async function defaultSubmit(input: FeedbackSubmission): Promise<void> {
-  await miningApi.post<{ success: boolean }>(
+  await managerApi.post<{ success: boolean }>(
     '/pilot/feedback',
     {
       rating: input.rating,

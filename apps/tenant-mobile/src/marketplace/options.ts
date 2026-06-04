@@ -2,11 +2,12 @@ import type { Mineral } from '@/types/listing'
 import type { SortKey } from '@/api/marketplace'
 import type { ChipOption } from '@/components/ChipGroup'
 
-// NOTE (flagged): `mineralOptionsKeys` + `mineralGlyph` + the
-// `minerals.${value}` i18n keys are keyed on the shared wire `Mineral`
-// type; they keep legacy names pending the coordinated type + i18n
-// rename to PropertyType. The region list below is now property-domain.
-export const mineralOptionsKeys: readonly Mineral[] = [
+// NOTE (flagged): the `minerals.${value}` i18n key and the `Mineral`
+// enum literals below are keyed on the shared wire type; they keep
+// their legacy names pending the coordinated type + i18n rename to
+// PropertyType. The exported helper/glyph identifiers and the region
+// list are property-domain.
+export const unitTypeOptionKeys: readonly Mineral[] = [
   'gold_concentrate',
   'tanzanite_rough',
   'coltan',
@@ -26,8 +27,8 @@ export const regionOptionsKeys: readonly string[] = [
   'Zanzibar'
 ] as const
 
-export function buildMineralOptions(translate: (key: string) => string): readonly ChipOption<Mineral>[] {
-  return mineralOptionsKeys.map((value) => ({ value, label: translate(`minerals.${value}`) }))
+export function buildUnitTypeOptions(translate: (key: string) => string): readonly ChipOption<Mineral>[] {
+  return unitTypeOptionKeys.map((value) => ({ value, label: translate(`minerals.${value}`) }))
 }
 
 export function buildRegionOptions(): readonly ChipOption<string>[] {
@@ -41,13 +42,18 @@ export const sortOptions: readonly { readonly value: SortKey; readonly key: stri
   { value: 'grade', key: 'marketplace.sort_grade' }
 ] as const
 
-export const mineralGlyph: Readonly<Record<Mineral, string>> = {
-  gold_concentrate: 'Au',
-  tanzanite_rough: 'Tz',
-  coltan: 'Ta',
-  copper_concentrate: 'Cu',
-  gemstone_mixed: 'Gm',
-  gold_dore: 'Au',
-  tin_cassiterite: 'Sn',
-  silver_concentrate: 'Ag'
+// Short unit-type glyphs shown on the listing card avatar. Keyed on the
+// wire enum literal (flagged above), each value mirrors the property
+// label rendered from the `minerals.*` i18n namespace
+// (Apartment / Bungalow / Townhouse / Studio / Mixed-use / Penthouse /
+// Duplex / Villa).
+export const unitTypeGlyph: Readonly<Record<Mineral, string>> = {
+  gold_concentrate: 'Apt',
+  tanzanite_rough: 'Bng',
+  coltan: 'Twn',
+  copper_concentrate: 'Std',
+  gemstone_mixed: 'Mix',
+  gold_dore: 'Pnt',
+  tin_cassiterite: 'Dpx',
+  silver_concentrate: 'Vil'
 }

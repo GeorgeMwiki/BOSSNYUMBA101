@@ -1,5 +1,5 @@
 /**
- * Workforce-mobile wire client for the document Q&A + upload surface.
+ * Staff-mobile wire client for the document Q&A + upload surface.
  *
  * The Q&A / summarise flow maps to doc-chat.router.ts (mounted
  * /api/v1/doc-chat): POST /sessions, POST /sessions/:id/ask,
@@ -15,7 +15,7 @@
  * base for these calls is flagged for coordinated follow-up.
  */
 
-import { miningApi } from '../api/client'
+import { managerApi } from '../api/client'
 import type {
   AskResponse,
   DocumentSession,
@@ -42,7 +42,7 @@ export async function registerUpload(input: UploadInput): Promise<UploadResult> 
   // documents.hono.ts POST / registers the pre-uploaded blob. (It expects
   // `name`/`url`; the fileName/mimeType/fileSize shape below is preserved
   // and the field-name delta is flagged for the backend contract.)
-  const response = await miningApi.post<Envelope<UploadResult>>(
+  const response = await managerApi.post<Envelope<UploadResult>>(
     '/documents',
     input,
   )
@@ -53,7 +53,7 @@ export async function registerUpload(input: UploadInput): Promise<UploadResult> 
 }
 
 export async function listDocuments(limit = 50): Promise<ReadonlyArray<UploadedDocument>> {
-  const response = await miningApi.get<Envelope<{ documents: ReadonlyArray<UploadedDocument> }>>(
+  const response = await managerApi.get<Envelope<{ documents: ReadonlyArray<UploadedDocument> }>>(
     `/documents?limit=${encodeURIComponent(String(limit))}`,
   )
   if (!response.success || !response.data) {
@@ -71,7 +71,7 @@ export interface CreateSessionInput {
 export async function createSession(
   input: CreateSessionInput,
 ): Promise<{ readonly sessionId: string; readonly session: DocumentSession }> {
-  const response = await miningApi.post<
+  const response = await managerApi.post<
     Envelope<{ sessionId: string; session: DocumentSession }>
   >('/doc-chat/sessions', input)
   if (!response.success || !response.data) {
@@ -87,7 +87,7 @@ export interface AskInput {
 }
 
 export async function askSession(input: AskInput): Promise<AskResponse> {
-  const response = await miningApi.post<Envelope<AskResponse>>(
+  const response = await managerApi.post<Envelope<AskResponse>>(
     `/doc-chat/sessions/${encodeURIComponent(input.sessionId)}/ask`,
     // English default per CLAUDE.md (flipped 2026-05).
     { question: input.question, language: input.language ?? 'en' },
@@ -108,7 +108,7 @@ export async function summariseDocument(input: SummaryInput): Promise<SummaryRes
   // implemented on doc-chat; this path is preserved pending a backend
   // contract. The session ask flow (createSession + askSession) is the
   // available summarise path today.
-  const response = await miningApi.post<Envelope<SummaryResponse>>(
+  const response = await managerApi.post<Envelope<SummaryResponse>>(
     `/doc-chat/documents/${encodeURIComponent(input.documentId)}/summary`,
     // English default per CLAUDE.md (flipped 2026-05).
     { language: input.language ?? 'en' },

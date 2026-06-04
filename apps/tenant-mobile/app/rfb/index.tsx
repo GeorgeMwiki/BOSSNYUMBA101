@@ -90,7 +90,7 @@ export default function RfbIndex() {
         <Card key={rfb.id}>
           <View style={styles.row}>
             <Text style={styles.title}>
-              {rfb.mineral_kind} · {rfb.tonnage_min} t
+              {rfb.mineral_kind} · {rfb.tonnage_min} m²
             </Text>
             <Pill
               label={t(`rfb.status_${rfb.status}`)}

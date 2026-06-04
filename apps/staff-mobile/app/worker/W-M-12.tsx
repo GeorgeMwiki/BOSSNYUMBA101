@@ -5,7 +5,7 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { useOnlineStatus } from '../../src/offline/useOnlineStatus'
 import { useAuth } from '../../src/auth/useAuth'
@@ -83,7 +83,7 @@ function HoursLog(): JSX.Element {
 
   const checkInMutation = useMutation<AttendanceRow, ApiError, CheckInPayload>({
     mutationFn: async (input) => {
-      const resp = await miningApi.post<AttendanceResponse>('/attendance/check-in', input)
+      const resp = await managerApi.post<AttendanceResponse>('/attendance/check-in', input)
       return resp.data
     },
     onSuccess: (row) => {
@@ -117,7 +117,7 @@ function HoursLog(): JSX.Element {
 
   const checkOutMutation = useMutation<AttendanceRow, ApiError, CheckOutPayload>({
     mutationFn: async (input) => {
-      const resp = await miningApi.post<AttendanceResponse>('/attendance/check-out', input)
+      const resp = await managerApi.post<AttendanceResponse>('/attendance/check-out', input)
       return resp.data
     },
     onSuccess: (row) => {

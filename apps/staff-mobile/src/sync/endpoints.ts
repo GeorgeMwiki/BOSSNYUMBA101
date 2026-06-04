@@ -5,9 +5,6 @@ import type { EntityType } from './queue'
  * `<entityType>s` plural rule. Kept tiny on purpose — anything not listed
  * here flows through `endpointFor` and gets the default pluralisation.
  *
- * `weighbridge_capture` lands on `/deliveries` because the api-gateway
- * treats delivery captures as delivery submissions on the operator surface.
- *
  * NOTE: the `EntityType` union (and some of these legacy segment names) are
  * defined in `./queue` and shared across non-owned call sites; a coordinated
  * rename of the residual entity keys is flagged for follow-up.
@@ -16,8 +13,7 @@ const ENDPOINT_OVERRIDES: Readonly<Partial<Record<EntityType, string>>> = {
   shift_report: 'shift-reports',
   drill_hole: 'inspections',
   fuel_log: 'materials-logs',
-  attendance: 'attendance',
-  weighbridge_capture: 'deliveries'
+  attendance: 'attendance'
 }
 
 /**
@@ -48,17 +44,14 @@ export const ENTITY_ENDPOINTS: Readonly<Record<EntityType, string>> = {
   incident: endpointFor('incident'),
   attendance: 'attendance',
   fingerprint_sign: endpointFor('fingerprint_sign'),
-  sample: 'condition-reports',
   fuel_log: 'materials-logs',
   machine_hour: endpointFor('machine_hour'),
   photo_upload: endpointFor('photo_upload'),
   inventory_move: endpointFor('inventory_move'),
-  sic_ping: endpointFor('sic_ping'),
   voice_query: endpointFor('voice_query'),
   driver_letter_ack: endpointFor('driver_letter_ack'),
-  toolbox_ack: endpointFor('toolbox_ack'),
+  task_ack: endpointFor('task_ack'),
   ppe_receipt: endpointFor('ppe_receipt'),
   excavator_count: endpointFor('excavator_count'),
-  drill_hole: 'inspections',
-  weighbridge_capture: 'deliveries'
+  drill_hole: 'inspections'
 }

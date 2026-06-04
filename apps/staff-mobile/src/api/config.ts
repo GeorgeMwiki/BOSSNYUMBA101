@@ -38,12 +38,8 @@ export const CHAT_PREFIX = '/api/v1/ai/chat'
  * BossNyumba manager router (api.route('/manager', estateManagerAppRouter)).
  * All new wiring (sync queue flushes, screen fetches) goes through this
  * prefix; the legacy field/owner prefixes above are kept for migration.
- *
- * NOTE: the export name is retained for source compatibility with
- * `src/api/client.ts` (and a handful of other call sites) that import it;
- * a coordinated rename to OPERATOR_PREFIX is flagged for follow-up.
  */
-export const MINING_PREFIX = '/api/v1/manager'
+export const MANAGER_PREFIX = '/api/v1/manager'
 
 export interface ApiPaths {
   readonly field: string
@@ -56,5 +52,5 @@ export const apiPaths: ApiPaths = {
   field: `${API_BASE_URL}${FIELD_PREFIX}`,
   owner: `${API_BASE_URL}${OWNER_PREFIX}`,
   chat: `${API_BASE_URL}${CHAT_PREFIX}`,
-  operator: `${API_BASE_URL}${MINING_PREFIX}`
+  operator: `${API_BASE_URL}${MANAGER_PREFIX}`
 }

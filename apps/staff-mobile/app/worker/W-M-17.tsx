@@ -22,7 +22,7 @@ export default function Screen(): JSX.Element {
           <PlaceholderList
             items={[
               { id: 'gps', primary: 'GPS', secondary: '-3.4287, 32.9183' },
-              { id: 'tag', primary: 'Tag', secondary: 'Pit 2 / wall east' }
+              { id: 'tag', primary: 'Tag', secondary: 'Block A / east wing' }
             ]}
           />
         </Section>

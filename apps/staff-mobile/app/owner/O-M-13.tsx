@@ -5,7 +5,7 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -19,7 +19,7 @@ const COPY = Object.freeze({
   list: 'Orodha ya mali',
   all: 'Zote',
   kindLabel: 'Aina',
-  siteLabel: 'Mgodi',
+  siteLabel: 'Mali',
   idLabel: 'Kitambulisho',
   overdue: (days: number): string => `Huduma imechelewa siku ${days}`,
   now: 'Huduma sasa',
@@ -28,7 +28,7 @@ const COPY = Object.freeze({
   noDate: 'Huduma haijapangwa'
 })
 
-type AssetKind = 'excavator' | 'truck' | 'drill' | 'generator' | 'pump' | 'crusher' | 'compressor' | 'vehicle' | 'tool' | 'ppe' | 'other'
+type AssetKind = 'hvac' | 'appliance' | 'elevator' | 'generator' | 'pump' | 'plumbing' | 'electrical' | 'vehicle' | 'tool' | 'ppe' | 'other'
 
 interface MaintenanceEventRow {
   readonly id: string
@@ -62,21 +62,21 @@ interface DerivedAsset {
 
 const FILTERS: ReadonlyArray<AssetKind | 'all'> = [
   'all',
-  'excavator',
-  'truck',
-  'drill',
+  'hvac',
+  'elevator',
   'generator',
-  'pump'
+  'pump',
+  'electrical'
 ]
 
 const KIND_LABEL: Readonly<Record<string, string>> = Object.freeze({
-  excavator: 'Excavator',
-  truck: 'Truck',
-  drill: 'Drill',
+  hvac: 'HVAC',
+  appliance: 'Kifaa',
+  elevator: 'Lifti',
   generator: 'Jenereta',
   pump: 'Pampu',
-  crusher: 'Crusher',
-  compressor: 'Compressor',
+  plumbing: 'Mabomba',
+  electrical: 'Umeme',
   vehicle: 'Gari',
   tool: 'Zana',
   ppe: 'PPE',
@@ -158,9 +158,9 @@ function deriveAssets(events: ReadonlyArray<MaintenanceEventRow>, filter: AssetK
 
 function useMaintenanceEvents(): UseQueryResult<ReadonlyArray<MaintenanceEventRow>, Error> {
   return useQuery<ReadonlyArray<MaintenanceEventRow>, Error>({
-    queryKey: ['mining', 'maintenance', 'events'],
+    queryKey: ['estate', 'maintenance', 'events'],
     queryFn: async ({ signal }) => {
-      const response = await miningApi.get<MaintenanceListResponse>('/maintenance', {
+      const response = await managerApi.get<MaintenanceListResponse>('/maintenance', {
         signal,
         query: { limit: 500 }
       })

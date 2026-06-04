@@ -43,24 +43,26 @@ function median(values: readonly number[]): number | null {
   return isOdd ? right : (left + right) / 2
 }
 
-function buyerResponseLatencies(bid: Bid): readonly number[] {
+function tenantResponseLatencies(bid: Bid): readonly number[] {
   // Median time from a landlord's last message to the tenant's next reply.
   // Bound at the application level so a single hot thread can't dominate.
+  // NOTE: `message.from === 'seller'` is the shared wire literal (landlord
+  // side of the thread) and stays pending the coordinated type rename.
   const out: number[] = []
-  let lastSellerAt: number | null = null
+  let lastLandlordAt: number | null = null
   for (const message of bid.thread) {
     const ts = Date.parse(message.sentAt)
     if (Number.isNaN(ts)) {
       continue
     }
     if (message.from === 'seller') {
-      lastSellerAt = ts
-    } else if (lastSellerAt !== null) {
-      const delta = ts - lastSellerAt
+      lastLandlordAt = ts
+    } else if (lastLandlordAt !== null) {
+      const delta = ts - lastLandlordAt
       if (delta >= 0) {
         out.push(delta)
       }
-      lastSellerAt = null
+      lastLandlordAt = null
     }
   }
   return out
@@ -75,7 +77,7 @@ export function summariseBuyerPerformance(
   const bidsPlaced = recent.length
   const bidsAccepted = accepted.length
   const winRatePct = bidsPlaced === 0 ? 0 : Math.round((bidsAccepted / bidsPlaced) * 100)
-  const latencies = recent.flatMap(buyerResponseLatencies)
+  const latencies = recent.flatMap(tenantResponseLatencies)
   const medianResponseMs = median(latencies)
   const dealVolumeTzs = accepted.reduce(
     (sum, bid) => sum + bid.offerTzsPerKg * bid.quantityKg,

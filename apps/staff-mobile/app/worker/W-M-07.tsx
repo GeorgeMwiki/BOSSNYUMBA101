@@ -9,19 +9,19 @@ import { Button } from '../../src/forms/Button'
 import { LayerList, EMPTY_DRAFT, type DraftLayer } from '../../src/forms/LayerList'
 import { GpsCard } from '../../src/forms/GpsCard'
 import { ConfirmationCard } from '../../src/forms/ConfirmationCard'
-import { DrillHoleFields } from '../../src/forms/drillHoleFields'
+import { InspectionFields } from '../../src/forms/inspectionFields'
 import { useI18n } from '../../src/i18n/useI18n'
 import { useLocation } from '../../src/location/useLocation'
 import { nearestFence } from '../../src/location/fence'
 import { useOnlineStatus } from '../../src/offline/useOnlineStatus'
 import { enqueueWrite } from '../../src/sync/queue'
 import {
-  drillHoleFormSchema,
-  generateHoleId,
-  type DrillHoleForm,
-  type DrillHolePayload,
-  type DrillLayer
-} from '../../src/forms/schemas/drillHole'
+  inspectionFormSchema,
+  generateInspectionId,
+  type InspectionForm,
+  type InspectionPayload,
+  type InspectionItem
+} from '../../src/forms/schemas/inspection'
 import { spacing } from '../../src/theme/spacing'
 
 const SCREEN_ID = 'W-M-07'
@@ -38,17 +38,17 @@ export default function Screen(): JSX.Element {
   return (
     <RoleGuard screenId={SCREEN_ID}>
       <ScreenShell screenId={SCREEN_ID}>
-        <DrillHoleFormView />
+        <InspectionFormView />
       </ScreenShell>
     </RoleGuard>
   )
 }
 
-function DrillHoleFormView(): JSX.Element {
+function InspectionFormView(): JSX.Element {
   const { t } = useI18n()
   const { online } = useOnlineStatus()
   const location = useLocation({ auto: true })
-  const [layers, setLayers] = useState<ReadonlyArray<DrillLayer>>([])
+  const [items, setItems] = useState<ReadonlyArray<InspectionItem>>([])
   const [draft, setDraft] = useState<DraftLayer>(EMPTY_DRAFT)
   const [submitted, setSubmitted] = useState<SubmittedRef | null>(null)
   const [submitting, setSubmitting] = useState<boolean>(false)
@@ -58,16 +58,16 @@ function DrillHoleFormView(): JSX.Element {
     [location.state.coords]
   )
 
-  const defaultHoleId = useMemo(() => generateHoleId(), [])
+  const defaultInspectionId = useMemo(() => generateInspectionId(), [])
 
-  const form = useForm<DrillHoleForm>({
-    resolver: zodResolver(drillHoleFormSchema),
+  const form = useForm<InspectionForm>({
+    resolver: zodResolver(inspectionFormSchema),
     mode: 'onChange',
     defaultValues: {
-      holeId: defaultHoleId,
-      kind: 'diamond',
+      inspectionId: defaultInspectionId,
+      kind: 'move_in',
       depth: '',
-      sampleTag: ''
+      assetTag: ''
     }
   })
 
@@ -82,29 +82,29 @@ function DrillHoleFormView(): JSX.Element {
     ) {
       return
     }
-    const next: DrillLayer = {
+    const next: InspectionItem = {
       id: newLayerId(),
       type: draft.type.trim(),
       fromMeters,
       toMeters
     }
-    setLayers((current) => [...current, next])
+    setItems((current) => [...current, next])
     setDraft(EMPTY_DRAFT)
   }, [draft])
 
   const removeLayer = useCallback((id: string): void => {
-    setLayers((current) => current.filter((layer) => layer.id !== id))
+    setItems((current) => current.filter((item) => item.id !== id))
   }, [])
 
   const onSubmit = form.handleSubmit(async (values) => {
     setSubmitting(true)
     try {
-      const payload: DrillHolePayload = {
-        holeId: values.holeId,
+      const payload: InspectionPayload = {
+        inspectionId: values.inspectionId,
         kind: values.kind,
         depthMeters: Number(values.depth),
-        sampleTag: values.sampleTag ?? '',
-        layers,
+        assetTag: values.assetTag ?? '',
+        items,
         gps: location.state.coords
           ? {
               latitude: location.state.coords.latitude,
@@ -126,15 +126,15 @@ function DrillHoleFormView(): JSX.Element {
       const entry = await enqueueWrite('drill_hole', payload)
       setSubmitted({ queueId: entry.id })
     } catch (error) {
-      console.error('Drill hole submit failed:', error)
+      console.error('Inspection submit failed:', error)
     } finally {
       setSubmitting(false)
     }
   })
 
   const resetForm = useCallback((): void => {
-    form.reset({ holeId: generateHoleId(), kind: 'diamond', depth: '', sampleTag: '' })
-    setLayers([])
+    form.reset({ inspectionId: generateInspectionId(), kind: 'move_in', depth: '', assetTag: '' })
+    setItems([])
     setDraft(EMPTY_DRAFT)
     setSubmitted(null)
   }, [form])
@@ -177,10 +177,10 @@ function DrillHoleFormView(): JSX.Element {
           onPress={() => void location.capture()}
         />
       </Section>
-      <DrillHoleFields control={form.control} setValue={form.setValue} t={t} />
+      <InspectionFields control={form.control} setValue={form.setValue} t={t} />
       <Section title={t.drillHole.layers} hint={t.drillHole.layersHint}>
         <LayerList
-          layers={layers}
+          layers={items}
           draft={draft}
           onChangeDraft={setDraft}
           onAdd={addLayer}

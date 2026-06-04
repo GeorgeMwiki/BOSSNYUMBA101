@@ -262,7 +262,7 @@ function DocumentChatView(): JSX.Element {
                 setValidationError(null)
               }
             }}
-            placeholder="Mfano: Lini PML 67890 itapata jibu?"
+            placeholder="Mfano: Lini mkataba wa kodi LSE-67890 utaisha?"
             placeholderTextColor={colors.textMuted}
             style={styles.input}
             multiline

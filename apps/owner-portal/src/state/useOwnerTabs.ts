@@ -1,9 +1,8 @@
 /**
  * useOwnerTabsStore — owner-portal dynamic tab strip state.
  *
- * Ported from Borjie's apps/owner-web/src/lib/owner-tabs-store.ts and
- * adapted to BossNyumba's real-estate tab kinds (rent / leases /
- * tenants / maintenance / compliance / finance / …).
+ * Holds BossNyumba's real-estate tab kinds (rent / leases / tenants /
+ * maintenance / compliance / finance / …).
  *
  * The owner cockpit is built around a tab strip the owner can spawn /
  * pin / close / reorder. The brain spawns tabs by emitting `<tab_spawn>`
@@ -331,9 +330,9 @@ export interface UseOwnerTabsApi {
   rename(tabId: string, title: string): void;
 }
 
-// Debounce window for server-side PUT sync. Mirrors Borjie's
-// owner-tabs-store debounce so chains of rapid mutations (e.g. focus
-// then close then open) coalesce to one network round-trip.
+// Debounce window for server-side PUT sync so chains of rapid
+// mutations (e.g. focus then close then open) coalesce to one
+// network round-trip.
 const SYNC_DEBOUNCE_MS = 800;
 
 interface ServerHydrateResponse {

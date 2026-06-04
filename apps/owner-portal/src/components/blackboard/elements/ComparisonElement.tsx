@@ -3,8 +3,6 @@
  *
  * Used by Mr. Mwikila for "renew lease vs let expire" beats, "renovate
  * vs sell as-is", "in-house manager vs outsourced agent" comparisons.
- *
- * Ported from Borjie.
  */
 
 import type { ReactElement } from 'react';

@@ -10,7 +10,6 @@ const DECISION_LINKS: ReadonlyArray<string> = [
   'O-M-03',
   'O-M-11',
   'O-M-15',
-  'O-M-16',
   'O-M-25'
 ]
 

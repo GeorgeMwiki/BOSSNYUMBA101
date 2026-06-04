@@ -3,7 +3,7 @@ import { Card } from '@/components/Card'
 import { Pill } from '@/components/Pill'
 import { formatKg, formatTzs } from '@/components/formatters'
 import { mockDistanceKm, formatKm } from './distance'
-import { mineralGlyph } from './options'
+import { unitTypeGlyph } from './options'
 import { TrustChipStack } from './TrustChipStack'
 import { tokens } from '@/ui-litfin'
 import type { Listing } from '@/types/listing'
@@ -19,7 +19,7 @@ export function ListingCard({ listing, onPress, translate }: ListingCardProps) {
     <Card onPress={onPress}>
       <View style={styles.headerRow}>
         <View style={styles.glyphWrap}>
-          <Text style={styles.glyph}>{mineralGlyph[listing.mineral]}</Text>
+          <Text style={styles.glyph}>{unitTypeGlyph[listing.mineral]}</Text>
         </View>
         <View style={styles.headerBody}>
           <Text style={styles.title} numberOfLines={2}>

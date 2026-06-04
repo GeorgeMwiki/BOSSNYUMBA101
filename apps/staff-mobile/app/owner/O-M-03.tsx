@@ -6,7 +6,7 @@ import { Section } from '../../src/components/Section'
 import { FingerprintPlaceholder } from '../../src/components/FingerprintPlaceholder'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -70,7 +70,7 @@ function PendingDecisions(): JSX.Element {
     queryFn: async ({ signal }) => {
       // The cockpit decision queue maps to mwikila-inbox.hono.ts
       // (GET / lists pending Mr. Mwikila decisions).
-      const response = await miningApi.get<DecisionsResponse>('/mwikila-inbox', {
+      const response = await managerApi.get<DecisionsResponse>('/mwikila-inbox', {
         signal
       })
       return response.data
@@ -88,7 +88,7 @@ function PendingDecisions(): JSX.Element {
       // POST /:id/deny. Map the local 'approved'/'rejected' outcome to the
       // router verb. (Cross-router base + verb alignment flagged.)
       const verb = outcome === 'approved' ? 'approve' : 'deny'
-      const result = await miningApi.post<{ success: true; data: DecisionRow }>(
+      const result = await managerApi.post<{ success: true; data: DecisionRow }>(
         `/mwikila-inbox/${encodeURIComponent(id)}/${verb}`,
         {}
       )

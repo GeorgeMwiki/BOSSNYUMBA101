@@ -13,7 +13,7 @@ vi.mock('expo-linking', () => ({
 }))
 
 vi.mock('../../api/client', () => ({
-  miningApi: {
+  managerApi: {
     get: vi.fn(async () => ({ success: false })),
     post: vi.fn(async () => ({ success: false }))
   }

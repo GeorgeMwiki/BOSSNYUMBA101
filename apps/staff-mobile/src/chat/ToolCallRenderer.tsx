@@ -8,9 +8,9 @@
  * Why the wrappers? The home cards in src/home/{owner,manager,employee}
  * fall into two patterns:
  *   - Self-fetching cards (CrewRoster, ExceptionStack, SitePulse) take
- *     a siteId and call mining-API queries internally. We pass null so
- *     the api-gateway picks the actor's bound site.
- *   - Data-prop cards (AiDailyBrief, AlertQueue, ProductionVsTarget,
+ *     a propertyId and call manager-API queries internally. We pass null so
+ *     the api-gateway picks the actor's bound property.
+ *   - Data-prop cards (AiDailyBrief, AlertQueue, OccupancyVsTarget,
  *     TodayTasks, ShiftStatusHero, PerformanceSnapshot) require their
  *     payload from a parent. We wrap each with the canonical query hook
  *     so the chat surface remains layout-only.
@@ -26,7 +26,7 @@ import { colors } from '../theme/colors'
 import { fontSize, radius, spacing } from '../theme/spacing'
 import { AiDailyBrief } from '../home/owner/AiDailyBrief'
 import { AlertQueue } from '../home/owner/AlertQueue'
-import { ProductionVsTarget } from '../home/owner/ProductionVsTarget'
+import { OccupancyVsTarget } from '../home/owner/OccupancyVsTarget'
 import { useOwnerBrief } from '../home/owner/useOwnerBrief'
 import { CrewRoster } from '../home/manager/CrewRoster'
 import { ExceptionStack } from '../home/manager/ExceptionStack'
@@ -75,8 +75,8 @@ function renderKnown(tool: ToolName): JSX.Element {
       return <OwnerBriefCard slot="brief" />
     case 'cockpit.decisions':
       return <OwnerBriefCard slot="decisions" />
-    case 'cockpit.production':
-      return <OwnerBriefCard slot="production" />
+    case 'cockpit.occupancy':
+      return <OwnerBriefCard slot="occupancy" />
     case 'attendance.crew':
       return <CrewRoster siteId={null} />
     case 'incidents.exceptions':
@@ -97,7 +97,7 @@ function renderKnown(tool: ToolName): JSX.Element {
 // ─────────────────────────────────────────────────────────────────────
 
 interface OwnerSlotProps {
-  readonly slot: 'brief' | 'decisions' | 'production'
+  readonly slot: 'brief' | 'decisions' | 'occupancy'
 }
 
 function OwnerBriefCard({ slot }: OwnerSlotProps): JSX.Element {
@@ -115,7 +115,7 @@ function OwnerBriefCard({ slot }: OwnerSlotProps): JSX.Element {
   if (slot === 'decisions') {
     return <AlertQueue items={query.data.needsReview} lang={lang} />
   }
-  return <ProductionVsTarget production={query.data.production} lang={lang} />
+  return <OccupancyVsTarget occupancy={query.data.occupancy} lang={lang} />
 }
 
 // ─────────────────────────────────────────────────────────────────────

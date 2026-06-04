@@ -108,12 +108,12 @@ export default function MarketplaceDetail() {
             />
           </View>
           <Text style={styles.meta}>
-            PML {listing.seller.pmlNumber} · {listing.seller.rating.toFixed(1)} / 5
+            Licence {listing.seller.pmlNumber} · {listing.seller.rating.toFixed(1)} / 5
           </Text>
         </Card>
 
         <Card>
-          <Text style={styles.cardTitle}>Assay</Text>
+          <Text style={styles.cardTitle}>{t('marketplace.view_assay')}</Text>
           {listing.assayResults.map((result) => (
             <KeyValueRow
               key={result.element}
@@ -122,7 +122,7 @@ export default function MarketplaceDetail() {
             />
           ))}
           <View style={{ marginTop: spacing.md }}>
-            <PdfViewer url={listing.assayPdfUrl} title="Assay PDF" />
+            <PdfViewer url={listing.assayPdfUrl} title={t('marketplace.view_assay')} />
           </View>
         </Card>
 

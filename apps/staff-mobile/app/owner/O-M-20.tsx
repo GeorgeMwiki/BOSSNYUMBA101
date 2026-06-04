@@ -6,7 +6,7 @@ import { Section } from '../../src/components/Section'
 import { PlaceholderList } from '../../src/components/PlaceholderList'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
-import { miningApi } from '../../src/api/client'
+import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -113,7 +113,7 @@ function MarketplaceView(): JSX.Element {
       if (filterDef?.queryValue) {
         queryParams.category = filterDef.queryValue
       }
-      const response = await miningApi.get<ListingsResponse>('/marketplace/listings', {
+      const response = await managerApi.get<ListingsResponse>('/marketplace/listings', {
         signal,
         query: queryParams
       })

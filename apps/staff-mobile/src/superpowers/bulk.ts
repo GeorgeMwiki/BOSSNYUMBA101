@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { bulkActionBus } from './bus'
-import { miningApi } from '../api/client'
+import { managerApi } from '../api/client'
 import { enqueueUndoToast } from './undo'
 
 export type StaffBulkAction = 'bulk_close' | 'bulk_dispatch'
@@ -65,7 +65,7 @@ export async function runStaffBulkAction(
   }
   let undoJournalIds: ReadonlyArray<string> = []
   try {
-    const res = await miningApi.post<BulkApiResponse>('/superpowers/bulk-action', {
+    const res = await managerApi.post<BulkApiResponse>('/superpowers/bulk-action', {
       entityType,
       ids,
       action,
