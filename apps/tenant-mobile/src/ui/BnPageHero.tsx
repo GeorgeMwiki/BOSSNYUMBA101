@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     ...tokens.type.eyebrow,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     marginBottom: tokens.space.sm
   },
   title: {

@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
   wrap: { marginBottom: tokens.space.md },
   label: {
     ...tokens.type.eyebrow,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     marginBottom: tokens.space.xs
   },
   row: {

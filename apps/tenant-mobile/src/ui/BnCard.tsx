@@ -63,7 +63,7 @@ export function BnCard({
 const toneStyles: Record<BnCardTone, { bg: string; border: string }> = {
   raised: { bg: tokens.color.bgRaised, border: tokens.color.border },
   deep: { bg: tokens.color.bgBase, border: tokens.color.border },
-  gold: { bg: tokens.color.bgRaised, border: tokens.color.borderGold },
+  gold: { bg: tokens.color.bgRaised, border: tokens.color.borderAccent },
   success: { bg: tokens.color.bgRaised, border: 'rgba(46, 189, 133, 0.32)' },
   danger: { bg: tokens.color.bgRaised, border: 'rgba(225, 75, 75, 0.32)' }
 }
@@ -71,7 +71,7 @@ const toneStyles: Record<BnCardTone, { bg: string; border: string }> = {
 const toneAccent: Record<BnCardTone, string | null> = {
   raised: null,
   deep: null,
-  gold: tokens.color.gold,
+  gold: tokens.color.accent,
   success: tokens.color.success,
   danger: tokens.color.danger
 }

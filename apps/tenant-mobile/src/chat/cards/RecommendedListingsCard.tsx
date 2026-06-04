@@ -5,7 +5,7 @@ import { ListingCard } from '@/marketplace/ListingCard'
 import { selectRecommended } from '@/marketplace/home/derivations'
 import { colors } from '@/theme/colors'
 import { spacing, typography } from '@/theme/spacing'
-import type { Listing, Mineral } from '@/types/listing'
+import type { Listing, PropertyType } from '@/types/listing'
 import { MarketplaceListingsResultSchema, type MarketplaceListing } from '../toolPayloads'
 
 export interface RecommendedListingsCardProps {
@@ -50,25 +50,25 @@ export function RecommendedListingsCard({ payload, translate }: RecommendedListi
 function toListing(raw: MarketplaceListing): Listing {
   return {
     id: raw.id,
-    mineral: raw.mineral as Mineral,
+    propertyType: raw.propertyType as PropertyType,
     title: raw.title,
     grade: raw.grade,
-    quantityKg: raw.quantityKg,
-    originSite: raw.originSite,
+    floorAreaSqm: raw.floorAreaSqm,
+    propertyAddress: raw.propertyAddress,
     originRegion: raw.originRegion,
-    seller: {
-      id: raw.seller.id,
-      name: raw.seller.name,
-      pmlNumber: raw.seller.pmlNumber,
-      rating: raw.seller.rating,
-      verified: raw.seller.verified
+    landlord: {
+      id: raw.landlord.id,
+      name: raw.landlord.name,
+      licenceNumber: raw.landlord.licenceNumber,
+      rating: raw.landlord.rating,
+      verified: raw.landlord.verified
     },
-    priceTzsPerKg: raw.priceTzsPerKg,
+    rentPerMonthTzs: raw.rentPerMonthTzs,
     priceHintTzs: raw.priceHintTzs,
     photos: raw.photos,
-    assayPdfUrl: raw.assayPdfUrl,
-    assayResults: [],
-    chainOfCustody: raw.chainOfCustody,
+    inspectionReportUrl: raw.inspectionReportUrl,
+    inspectionResults: [],
+    ownershipHistory: raw.ownershipHistory,
     listedAt: raw.listedAt,
     status: raw.status
   }

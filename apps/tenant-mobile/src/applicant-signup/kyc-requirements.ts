@@ -18,7 +18,7 @@ import { translate } from '@/i18n'
 
 export type ApplicantAccountKind = 'individual' | 'business'
 
-export type ApplicantKycAtomKey =
+export type VerificationStepKey =
   | 'identity'
   | 'address'
   | 'bank_account'
@@ -28,8 +28,8 @@ export type ApplicantKycAtomKey =
   | 'beneficial_owners'
   | 'aml_screening'
 
-export interface ApplicantKycAtomSpec {
-  readonly key: ApplicantKycAtomKey
+export interface VerificationStepSpec {
+  readonly key: VerificationStepKey
   /** Whether marketplace applications are gated by this atom's completion. */
   readonly blocking: boolean
   /** i18n key for the screen title (e.g. `applicant_signup.kyc.identity.title`). */
@@ -38,7 +38,7 @@ export interface ApplicantKycAtomSpec {
   readonly descriptionKey: string
 }
 
-const SHARED_INDIVIDUAL: ReadonlyArray<ApplicantKycAtomSpec> = [
+const SHARED_INDIVIDUAL: ReadonlyArray<VerificationStepSpec> = [
   {
     key: 'identity',
     blocking: true,
@@ -65,7 +65,7 @@ const SHARED_INDIVIDUAL: ReadonlyArray<ApplicantKycAtomSpec> = [
   }
 ]
 
-const SHARED_BUSINESS: ReadonlyArray<ApplicantKycAtomSpec> = [
+const SHARED_BUSINESS: ReadonlyArray<VerificationStepSpec> = [
   {
     key: 'identity',
     blocking: true,
@@ -118,27 +118,27 @@ const SHARED_BUSINESS: ReadonlyArray<ApplicantKycAtomSpec> = [
  */
 export function atomsFor(
   kind: ApplicantAccountKind
-): ReadonlyArray<ApplicantKycAtomSpec> {
+): ReadonlyArray<VerificationStepSpec> {
   return kind === 'individual' ? SHARED_INDIVIDUAL : SHARED_BUSINESS
 }
 
 export function findAtom(
   kind: ApplicantAccountKind,
-  key: ApplicantKycAtomKey
-): ApplicantKycAtomSpec | undefined {
+  key: VerificationStepKey
+): VerificationStepSpec | undefined {
   return atomsFor(kind).find((a) => a.key === key)
 }
 
 export function renderAtomTitle(
   lang: LanguageCode,
-  atom: ApplicantKycAtomSpec
+  atom: VerificationStepSpec
 ): string {
   return translate(lang, atom.titleKey)
 }
 
 export function renderAtomDescription(
   lang: LanguageCode,
-  atom: ApplicantKycAtomSpec
+  atom: VerificationStepSpec
 ): string {
   return translate(lang, atom.descriptionKey)
 }

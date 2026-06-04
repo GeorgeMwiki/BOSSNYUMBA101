@@ -3,7 +3,7 @@ import { Card } from '@/components/Card'
 import { Pill } from '@/components/Pill'
 import { MarketplaceEmptyState } from '@/marketplace/home/MarketplaceEmptyState'
 import { selectLiveLobby } from '@/marketplace/home/derivations'
-import { formatKg, formatTzs } from '@/components/formatters'
+import { formatSqm, formatTzs } from '@/components/formatters'
 import { tokens } from '@/ui'
 import type { Listing } from '@/types/listing'
 
@@ -32,7 +32,7 @@ export function LiveAuctionLobby({ listings, translate, onPressListing }: LiveAu
                   {listing.title}
                 </Text>
                 <Text style={styles.rowMeta} numberOfLines={1}>
-                  {listing.originRegion} · {formatKg(listing.quantityKg)}
+                  {listing.originRegion} · {formatSqm(listing.floorAreaSqm)}
                 </Text>
               </View>
               <Text style={styles.rowPrice} onPress={() => onPressListing(listing.id)}>
@@ -69,5 +69,5 @@ const styles = StyleSheet.create({
   main: { flex: 1, paddingRight: tokens.space.md },
   rowTitle: { ...tokens.type.bodyStrong, color: tokens.color.textPrimary },
   rowMeta: { ...tokens.type.bodySm, color: tokens.color.textMuted, marginTop: 2 },
-  rowPrice: { ...tokens.type.bodyStrong, color: tokens.color.gold }
+  rowPrice: { ...tokens.type.bodyStrong, color: tokens.color.accent }
 })

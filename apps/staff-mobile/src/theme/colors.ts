@@ -1,7 +1,7 @@
 /**
  * BossNyumba staff-mobile palette — aligned with the parent fork (2026-05).
  *
- * Same direction as buyer-mobile + marketing + owner-web:
+ * Same direction as tenant-mobile + marketing + owner-web:
  * "Midnight Slate Ledger with Warm-Gold Signal." Navy-slate dark
  * background (#0B0F19), warm gold (#FFC857) as the only signal,
  * cream off-white type, emerald success, warm-red danger.

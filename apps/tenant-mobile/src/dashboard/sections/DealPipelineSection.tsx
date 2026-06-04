@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.color.border,
     alignItems: 'center'
   },
-  statValue: { ...tokens.type.h2, color: tokens.color.gold },
+  statValue: { ...tokens.type.h2, color: tokens.color.accent },
   statLabel: {
     fontSize: 10,
     fontWeight: '700',

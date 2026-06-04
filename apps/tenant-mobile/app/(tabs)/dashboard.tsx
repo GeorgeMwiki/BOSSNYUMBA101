@@ -1,5 +1,5 @@
-import { BuyerDashboard } from '@/dashboard/BuyerDashboard'
+import { TenantDashboard } from '@/dashboard/TenantDashboard'
 
 export default function DashboardTab() {
-  return <BuyerDashboard />
+  return <TenantDashboard />
 }

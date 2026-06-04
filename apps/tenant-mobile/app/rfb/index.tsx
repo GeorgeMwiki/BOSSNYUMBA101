@@ -4,11 +4,6 @@
  * Mounted at /rfb. Shows status + pending response count for each
  * request the applicant has posted, most-recent first. Top CTA opens
  * the create screen.
- *
- * NOTE (flagged): the `rfb.*` route segment, the `rfb.mineral_kind` /
- * `rfb.tonnage_min` wire fields, and the `rfb.*` i18n keys carry legacy
- * naming and are kept pending a coordinated rename of the gateway RFB
- * surface to request_for_applications.
  */
 import { useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
@@ -90,7 +85,7 @@ export default function RfbIndex() {
         <Card key={rfb.id}>
           <View style={styles.row}>
             <Text style={styles.title}>
-              {rfb.mineral_kind} · {rfb.tonnage_min} m²
+              {rfb.unit_type} · {rfb.floor_area_min} m²
             </Text>
             <Pill
               label={t(`rfb.status_${rfb.status}`)}

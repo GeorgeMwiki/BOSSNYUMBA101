@@ -18,7 +18,7 @@ Snapshot of where the app actually is, not where we'd like it to be. Updated as 
 | Tab navigation (home, field, decisions, docs, ask, cash, people, properties) | yes |
 | `useI18n` defaults to English (`buildStubUser` returns `preferredLang: 'en'`) | yes |
 | Empty-state placeholders (`PlaceholderList`, `StubBlocks`) on every data screen | yes |
-| Ask Mwikila round button at `src/components/AskBorjie.tsx` (UI-only, no LLM yet) | yes |
+| Ask Mwikila round button at `src/components/AskMwikila.tsx` (UI-only, no LLM yet) | yes |
 | `api/client.ts` request wrapper sends `Authorization: Bearer ${token}` when a token is present | yes |
 | `streamChat` posts to `/api/v1/ai/chat` (fixed in this audit pass) | yes |
 | Offline sync queue scaffolding (`src/sync`) compiles, drains queue on reconnect | yes |
@@ -45,7 +45,7 @@ These call native modules that are absent from Expo Go's pre-built client. The c
 | EAS project | **not provisioned** | `app.json` has `extra.eas.projectId = "REPLACE_WITH_EAS_PROJECT_ID"` and `updates.url` with the same placeholder. Run `eas init` and replace. |
 | App icons / splash | **placeholder** | `assets/*.png` are 1024x1024 placeholders, all identical. Replace before submission. |
 | Apple/Google service account secrets | **not provisioned** | `eas.json` references `./secrets/google-play-service-account.json`, `BOSSNYUMBA_STAFF_APPLE_APP_ID`, `BOSSNYUMBA_APPLE_TEAM_ID`. |
-| AskMwikila streaming end-to-end demo | **partial** | Streaming client exists (`src/chat/streamChat.ts`), but the `AskBorjie` button component itself is a UI stub - not wired to `useChat`. (The component is named `AskBorjie` in `src/components/`; a rename to `AskMwikila` is flagged for follow-up since that file is outside this de-mine scope.) |
+| AskMwikila streaming end-to-end demo | **partial** | Streaming client exists (`src/chat/streamChat.ts`), but the `AskMwikila` button component itself is a UI stub - not wired to `useChat`. |
 | Property fence list (`MOCK_SITES` in `src/location/fence.ts`) | **hardcoded** | Two literal fences. Replace with `/api/v1/properties` fetch. |
 
 ## Fixes applied in this pass
@@ -91,6 +91,6 @@ eas submit --profile production --platform android
 - Replace 4 placeholder PNGs in `assets/`.
 - Replace `REPLACE_WITH_EAS_PROJECT_ID` in `app.json`.
 - Wire Supabase Auth (`@supabase/supabase-js` + `expo-secure-store`) into `src/auth/AuthProvider.tsx`; remove the role-picker fallback.
-- Wire `AskBorjie.tsx` to `useChat()` for real LLM round-trip (and rename it to `AskMwikila`).
-- Replace `MOCK_SITES` with `miningApi.get('/properties')`.
+- Wire `AskMwikila.tsx` to `useChat()` for real LLM round-trip.
+- Replace `MOCK_SITES` with a `/api/v1/properties` fetch.
 - Replace placeholder Apple/Google submission credentials.

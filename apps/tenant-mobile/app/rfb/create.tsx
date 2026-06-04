@@ -5,12 +5,9 @@
  * /api/v1/marketplace/rfb. Bilingual sw/en throughout via the
  * shared useTranslation hook.
  *
- * Form fields (mirror the gateway zod schema; NOTE (flagged): the
- * `mineralKind` / `tonnageMin` field names + `RFB_MINERAL_KINDS` come
- * from the not-yet-renamed gateway RFB schema and are kept as wire
- * fields):
- *   - mineralKind (picker)
- *   - tonnageMin (number)
+ * Form fields (mirror the gateway zod schema):
+ *   - unitType (picker)
+ *   - floorAreaMinSqm (number)
  *   - unitPriceTzs (number)
  *   - deliveryBy (YYYY-MM-DD)
  *   - radiusKm (slider — 50-1000)
@@ -32,7 +29,7 @@ import { useToast } from '@/components/Toast'
 import { useTranslation } from '@/hooks/useTranslation'
 import { useDebouncedSubmit } from '@/hooks/useDebouncedSubmit'
 
-import { createRfb, RFB_MINERAL_KINDS, type RfbMineralKind } from '@/api/rfb'
+import { createRfb, RFB_UNIT_TYPES, type RfbUnitType } from '@/api/rfb'
 import { queryKeys } from '@/api/queryKeys'
 
 import { colors } from '@/theme/colors'
@@ -41,8 +38,8 @@ import { radius, spacing, typography } from '@/theme/spacing'
 const DEFAULT_RADIUS_KM = 200
 
 interface FormState {
-  mineralKind: RfbMineralKind
-  tonnageMin: string
+  unitType: RfbUnitType
+  floorAreaMinSqm: string
   unitPriceTzs: string
   deliveryBy: string
   radiusKm: string
@@ -50,8 +47,8 @@ interface FormState {
 }
 
 const INITIAL_STATE: FormState = {
-  mineralKind: 'gold',
-  tonnageMin: '',
+  unitType: 'studio',
+  floorAreaMinSqm: '',
   unitPriceTzs: '',
   deliveryBy: '',
   radiusKm: String(DEFAULT_RADIUS_KM),
@@ -86,9 +83,9 @@ export default function RfbCreate() {
 
   const submit = useDebouncedSubmit(() => {
     setError(null)
-    const tonnage = parsePositiveNumber(form.tonnageMin)
-    if (tonnage == null) {
-      setError(t('rfb.tonnage_required_invalid'))
+    const floorArea = parsePositiveNumber(form.floorAreaMinSqm)
+    if (floorArea == null) {
+      setError(t('rfb.floor_area_required_invalid'))
       return
     }
     const unitPrice = parsePositiveNumber(form.unitPriceTzs)
@@ -109,8 +106,8 @@ export default function RfbCreate() {
     const radiusKm = parsePositiveNumber(form.radiusKm) ?? DEFAULT_RADIUS_KM
     const notes = form.notes.trim()
     mutation.mutate({
-      mineralKind: form.mineralKind,
-      tonnageMin: tonnage,
+      unitType: form.unitType,
+      floorAreaMinSqm: floorArea,
       unitPriceTzs: unitPrice,
       deliveryBy: form.deliveryBy,
       radiusKm: Math.min(5000, Math.round(radiusKm)),
@@ -122,18 +119,18 @@ export default function RfbCreate() {
     <Screen>
       <SectionHeader title={t('rfb.create_title')} subtitle={t('rfb.subtitle')} />
       <Card>
-        <Text style={styles.label}>{t('rfb.mineral_label')}</Text>
+        <Text style={styles.label}>{t('rfb.unit_type_label')}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chipRow}
         >
-          {RFB_MINERAL_KINDS.map((k) => {
-            const active = form.mineralKind === k
+          {RFB_UNIT_TYPES.map((k) => {
+            const active = form.unitType === k
             return (
               <View
                 key={k}
-                onTouchEnd={() => setForm((prev) => ({ ...prev, mineralKind: k }))}
+                onTouchEnd={() => setForm((prev) => ({ ...prev, unitType: k }))}
                 style={[styles.chip, active && styles.chipActive]}
               >
                 <Text style={[styles.chipText, active && styles.chipTextActive]}>{k}</Text>
@@ -142,15 +139,15 @@ export default function RfbCreate() {
           })}
         </ScrollView>
 
-        <Text style={styles.label}>{t('rfb.tonnage_min_label')}</Text>
+        <Text style={styles.label}>{t('rfb.floor_area_min_label')}</Text>
         <TextInput
           style={styles.input}
-          value={form.tonnageMin}
-          onChangeText={(v) => setForm((prev) => ({ ...prev, tonnageMin: v }))}
+          value={form.floorAreaMinSqm}
+          onChangeText={(v) => setForm((prev) => ({ ...prev, floorAreaMinSqm: v }))}
           keyboardType="numeric"
           placeholder="0"
           placeholderTextColor={colors.ink + '60'}
-          testID="rfb-tonnage-min-input"
+          testID="rfb-floor-area-min-input"
         />
 
         <Text style={styles.label}>{t('rfb.unit_price_label')}</Text>

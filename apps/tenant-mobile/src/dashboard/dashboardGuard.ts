@@ -1,4 +1,4 @@
-import type { BuyerUser } from '@/types/auth'
+import type { TenantUser } from '@/types/auth'
 
 /**
  * Pure routing guard for the Dashibodi tab. The tenant-mobile session model
@@ -15,7 +15,7 @@ export type DashboardGuardOutcome =
   | { readonly kind: 'redirect'; readonly to: string }
 
 export interface DashboardGuardInput {
-  readonly user: BuyerUser
+  readonly user: TenantUser
   readonly expectedTenantId: string | null
   readonly currentTenantId: string | null
 }

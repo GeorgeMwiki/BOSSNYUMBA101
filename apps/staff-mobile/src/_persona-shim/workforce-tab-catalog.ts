@@ -1,25 +1,19 @@
 /**
  * Workforce Tab Catalog — Wave WORKFORCE-FIXED-TABS.
  *
- * Single source of truth for the FIXED tab set on workforce-mobile and
- * buyer-mobile. The workforce-mobile tab bar is server-driven: at
- * runtime the app fetches `/api/v1/workforce/tab-config` and renders
- * the returned subset of these ids in returned order. There is NO
- * dynamic spawning on the workforce surface — that is owner-cockpit
- * only.
+ * Single source of truth for the FIXED tab set on staff-mobile and
+ * tenant-mobile. The staff-mobile tab bar is server-driven: at runtime
+ * the app fetches `/api/v1/workforce/tab-config` and renders the
+ * returned subset of these ids in returned order. There is NO dynamic
+ * spawning on the workforce surface — that is owner-cockpit only.
  *
  * Roles:
- *   owner | manager | supervisor | pit_operator | geologist | treasury |
- *   safety_officer | compliance_clerk
- *
- * NOTE: `pit_operator` and `geologist` are legacy role ids still shared with
- * several non-owned call sites (persona map, tab-config hook, chat); a
- * coordinated rename to property-trade roles (e.g. field_operator / surveyor)
- * is flagged for follow-up. User-facing tab labels are already property copy.
+ *   owner | manager | supervisor | field_technician | inspector |
+ *   treasury | safety_officer | compliance_clerk
  *
  * The 'chat' tab uses the special role marker '*' (every role). It is
  * a HARD CONSTRAINT that the owner can never disable it — Mr. Mwikila
- * (the MD persona on workforce-mobile) must always be reachable.
+ * (the MD persona on staff-mobile) must always be reachable.
  *
  * Labels are bilingual sw/en per the BossNyumba hard rule.
  */
@@ -28,8 +22,8 @@ export type WorkforceRoleId =
   | 'owner'
   | 'manager'
   | 'supervisor'
-  | 'pit_operator'
-  | 'geologist'
+  | 'field_technician'
+  | 'inspector'
   | 'treasury'
   | 'safety_officer'
   | 'compliance_clerk';
@@ -38,8 +32,8 @@ export const WORKFORCE_ROLE_IDS: ReadonlyArray<WorkforceRoleId> = [
   'owner',
   'manager',
   'supervisor',
-  'pit_operator',
-  'geologist',
+  'field_technician',
+  'inspector',
   'treasury',
   'safety_officer',
   'compliance_clerk',
@@ -55,12 +49,12 @@ export interface WorkforceTabSpec {
 export const WORKFORCE_TAB_CATALOG: ReadonlyArray<WorkforceTabSpec> = [
   {
     id: 'shift',
-    roles: ['supervisor', 'pit_operator'],
+    roles: ['supervisor', 'field_technician'],
     label: { en: 'Shift', sw: 'Zamu' },
   },
   {
     id: 'tasks',
-    roles: ['supervisor', 'pit_operator', 'geologist'],
+    roles: ['supervisor', 'field_technician', 'inspector'],
     label: { en: 'Tasks', sw: 'Kazi' },
   },
   {
@@ -80,13 +74,13 @@ export const WORKFORCE_TAB_CATALOG: ReadonlyArray<WorkforceTabSpec> = [
   },
   {
     id: 'drill-log',
-    roles: ['geologist'],
-    label: { en: 'Site log', sw: 'Logi ya tovuti' },
+    roles: ['inspector'],
+    label: { en: 'Condition log', sw: 'Logi ya hali' },
   },
   {
-    id: 'assay',
-    roles: ['geologist'],
-    label: { en: 'Survey', sw: 'Tathmini' },
+    id: 'inspection',
+    roles: ['inspector'],
+    label: { en: 'Inspection', sw: 'Ukaguzi' },
   },
   {
     id: 'treasury',
@@ -105,7 +99,7 @@ export const WORKFORCE_TAB_CATALOG: ReadonlyArray<WorkforceTabSpec> = [
   },
   {
     id: 'reports',
-    roles: ['supervisor', 'manager', 'geologist'],
+    roles: ['supervisor', 'manager', 'inspector'],
     label: { en: 'Reports', sw: 'Ripoti' },
   },
   {

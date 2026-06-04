@@ -74,8 +74,8 @@ const variantStyles: Record<
   BnButtonVariant,
   { bg: string; border: string; fg: string }
 > = {
-  primary: { bg: tokens.color.gold, border: tokens.color.goldDeep, fg: tokens.color.userBubbleText },
-  secondary: { bg: tokens.color.bgRaised, border: tokens.color.borderGold, fg: tokens.color.gold },
+  primary: { bg: tokens.color.accent, border: tokens.color.accentDeep, fg: tokens.color.userBubbleText },
+  secondary: { bg: tokens.color.bgRaised, border: tokens.color.borderAccent, fg: tokens.color.accent },
   ghost: { bg: 'transparent', border: tokens.color.border, fg: tokens.color.textPrimary },
   danger: { bg: tokens.color.danger, border: tokens.color.danger, fg: tokens.color.textPrimary }
 }

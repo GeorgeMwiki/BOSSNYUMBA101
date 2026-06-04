@@ -35,7 +35,7 @@ export default function RootLayout() {
               }}
             >
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="auth/login" options={{ title: 'BossNyumba Buyers' }} />
+              <Stack.Screen name="auth/login" options={{ title: 'BossNyumba Tenants' }} />
               <Stack.Screen name="marketplace/[id]" options={{ title: 'Parcel' }} />
               <Stack.Screen name="bids/[id]" options={{ title: 'Bid' }} />
               <Stack.Screen name="documents/[id]" options={{ title: 'Contract' }} />

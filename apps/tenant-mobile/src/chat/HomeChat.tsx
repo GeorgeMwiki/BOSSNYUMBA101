@@ -47,7 +47,7 @@ import { colors } from '@/theme/colors'
 import { radius, spacing, typography } from '@/theme/spacing'
 import { greet as timeAwareGreeting } from '@/ui'
 import {
-  BUYER_SLASH_COMMANDS,
+  TENANT_SLASH_COMMANDS,
   slashCommandsForPersona
 } from '@/_persona-shim'
 import { streamBrainTurn, type BrainStreamEvent } from './brainTurn'
@@ -57,8 +57,8 @@ import { SendButton } from './SendButton'
 import { ThreeDotPulse } from './ThreeDotPulse'
 import { ToolCallRenderer } from './ToolCallRenderer'
 import {
-  buyerGreeting,
-  buyerSuggestions,
+  tenantGreeting,
+  tenantSuggestions,
   composerPlaceholder
 } from './greeting'
 import {
@@ -92,13 +92,11 @@ const ENTRY_DURATION_MS = R7_TIMINGS['BUBBLE_ENTRY_DURATION_MS'] ?? 200
 
 // Marketplace Director — every renter turn forces this persona. The
 // brain dispatches the marketplace tools under the persona's
-// `toolCatalogIds`.
-// NOTE (flagged): this persona slug is a wire value sent to the brain
-// and is not present in the canonical persona-runtime seeds (which use
-// T5_customer_concierge for the renter-facing concierge). It still
-// carries the legacy "buyer" token; renaming it requires a coordinated
-// backend persona-seed change, so it is left as-is for now.
-const BUYER_PERSONA_SLUG = 'T1_buyer_marketplace_director'
+// `toolCatalogIds`. The canonical persona-runtime seeds use
+// T5_customer_concierge for the concierge; this slug drives the local
+// slash-command gating and the on-screen greeting, with a fallback to
+// TENANT_SLASH_COMMANDS when the gated filter is empty.
+const TENANT_PERSONA_SLUG = 'T1_tenant_marketplace_director'
 
 export function HomeChat() {
   const user = useSession()
@@ -114,19 +112,19 @@ export function HomeChat() {
   const [showSlow, setShowSlow] = useState(false)
   const [atEntities, setAtEntities] = useState<ReadonlyArray<EntityItem>>([])
 
-  const suggestions = useMemo(() => buyerSuggestions(lang), [lang])
-  // Reuse BUYER_SLASH_COMMANDS as a fallback in case the persona-
+  const suggestions = useMemo(() => tenantSuggestions(lang), [lang])
+  // Reuse TENANT_SLASH_COMMANDS as a fallback in case the persona-
   // gated filter returns empty; this keeps the menu populated for the
-  // common case where the buyer is unauthenticated against the new
+  // common case where the tenant is unauthenticated against the new
   // persona seeds during local dev.
   const slashCatalog = useMemo<ReadonlyArray<SlashCommandItem>>(
     () => {
-      const gated = slashCommandsForPersona(BUYER_PERSONA_SLUG, 'buyer')
-      return gated.length > 0 ? gated : BUYER_SLASH_COMMANDS
+      const gated = slashCommandsForPersona(TENANT_PERSONA_SLUG, 'tenant')
+      return gated.length > 0 ? gated : TENANT_SLASH_COMMANDS
     },
     []
   )
-  const greeting = useMemo(() => buyerGreeting(lang), [lang])
+  const greeting = useMemo(() => tenantGreeting(lang), [lang])
   const placeholder = useMemo(() => composerPlaceholder(lang), [lang])
 
   const lastToolName = useMemo<string | null>(() => {
@@ -218,7 +216,7 @@ export function HomeChat() {
       setDraft('')
       setCaret(0)
       safeScrollToEnd()
-      void runStream(fresh, threadId, BUYER_PERSONA_SLUG, handleEvent)
+      void runStream(fresh, threadId, TENANT_PERSONA_SLUG, handleEvent)
         .then((settled) => {
           setLive(null)
           setHistory((prev) => [...prev, settled])
@@ -274,7 +272,7 @@ export function HomeChat() {
     () =>
       trigger.kind === 'slash'
         ? filterSlashCommands(slashCatalog, trigger.query, {
-            personaSlug: BUYER_PERSONA_SLUG,
+            personaSlug: TENANT_PERSONA_SLUG,
             locale: lang
           })
         : [],
@@ -395,7 +393,7 @@ export function HomeChat() {
         ) : null}
 
         {smartReplies.length > 0 && live === null ? (
-          <View style={styles.smartReplyRow} testID="buyer-chat-smart-replies">
+          <View style={styles.smartReplyRow} testID="tenant-chat-smart-replies">
             {smartReplies.map((chip) => (
               <Pressable
                 key={chip.id}
@@ -404,7 +402,7 @@ export function HomeChat() {
                   styles.smartReplyChip,
                   pressed && styles.chipPressed
                 ]}
-                testID={`buyer-chat-smart-reply-${chip.id}`}
+                testID={`tenant-chat-smart-reply-${chip.id}`}
               >
                 <Text style={styles.smartReplyLabel}>{chip.label}</Text>
               </Pressable>
@@ -424,7 +422,7 @@ export function HomeChat() {
             style={styles.input}
             multiline
             blurOnSubmit
-            testID="buyer-chat-input"
+            testID="tenant-chat-input"
           />
           <SendButton
             label={t('chat.send')}
@@ -560,7 +558,7 @@ interface CitationChipsProps {
 
 function CitationChips({ citations }: CitationChipsProps) {
   return (
-    <View style={styles.citationRow} testID="buyer-chat-citations">
+    <View style={styles.citationRow} testID="tenant-chat-citations">
       {citations.map((citation, index) => (
         <View key={citation.id} style={styles.citationPill}>
           <Text style={styles.citationText}>[{index + 1}] {citation.label}</Text>
@@ -614,12 +612,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: colors.forestSoft,
     borderTopWidth: 2,
-    borderTopColor: colors.gold,
+    borderTopColor: colors.accent,
     borderWidth: 1,
     borderColor: 'rgba(255, 200, 87, 0.22)'
   },
   greetingEyebrow: {
-    color: colors.gold,
+    color: colors.accent,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.4,
@@ -669,7 +667,7 @@ const styles = StyleSheet.create({
   },
   smartReplyLabel: {
     ...typography.caption,
-    color: colors.gold,
+    color: colors.accent,
     fontWeight: '700'
   },
   turnBlock: {
@@ -685,8 +683,8 @@ const styles = StyleSheet.create({
   },
   bubbleUser: {
     alignSelf: 'flex-end',
-    backgroundColor: colors.gold,
-    borderColor: colors.goldSoft,
+    backgroundColor: colors.accent,
+    borderColor: colors.accentSoft,
     borderBottomRightRadius: 6
   },
   bubbleUserText: { ...typography.body, color: colors.ink, fontWeight: '600' },
@@ -695,7 +693,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.forestSoft,
     borderColor: 'rgba(255, 200, 87, 0.22)',
     borderTopWidth: 2,
-    borderTopColor: colors.gold,
+    borderTopColor: colors.accent,
     borderBottomLeftRadius: 6
   },
   bubbleBrainFlexible: {
@@ -725,7 +723,7 @@ const styles = StyleSheet.create({
   },
   citationText: {
     ...typography.caption,
-    color: colors.gold,
+    color: colors.accent,
     fontWeight: '700'
   },
   composer: {

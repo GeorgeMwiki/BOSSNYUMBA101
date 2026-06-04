@@ -37,7 +37,7 @@ const CATALOG_TO_SCREEN: Readonly<Record<string, string>> = {
   dispatch: 'sites',
   incidents: 'decisions',
   'drill-log': 'sites',
-  assay: 'docs',
+  inspection: 'docs',
   treasury: 'cash',
   compliance: 'docs',
   chat: 'home',

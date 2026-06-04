@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { colors } from '../theme/colors'
-import { buyerPersonaSpec } from '../auth/persona'
+import { tenantPersonaSpec } from '../auth/persona'
 
 describe('tenant-mobile theme tokens', () => {
-  it('exposes the mining marketplace palette', () => {
+  it('exposes the rental marketplace palette', () => {
     expect(colors.forest).toMatch(/^#[0-9A-Fa-f]{6}$/)
-    expect(colors.gold).toMatch(/^#[0-9A-Fa-f]{6}$/)
-    expect(colors.copper).toMatch(/^#[0-9A-Fa-f]{6}$/)
+    expect(colors.accent).toMatch(/^#[0-9A-Fa-f]{6}$/)
+    expect(colors.accentDeep).toMatch(/^#[0-9A-Fa-f]{6}$/)
   })
 
   it('exposes semantic state tokens with paired soft backgrounds', () => {
@@ -21,7 +21,7 @@ describe('tenant-mobile theme tokens', () => {
 
 describe('tenant-mobile persona wiring', () => {
   it('resolves T5 customer concierge spec from @bossnyumba/persona-runtime', () => {
-    const spec = buyerPersonaSpec()
+    const spec = tenantPersonaSpec()
     expect(spec.slug).toBe('T5_customer_concierge')
     expect(spec.powerTier).toBe(5)
   })

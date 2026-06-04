@@ -54,7 +54,7 @@ const toneStyles: Record<BnToastTone, { bg: string; border: string; fg: string; 
     bg: 'rgba(255, 200, 87, 0.16)',
     border: 'rgba(255, 200, 87, 0.40)',
     fg: tokens.color.textPrimary,
-    dot: tokens.color.gold
+    dot: tokens.color.accent
   },
   critical: {
     bg: 'rgba(225, 75, 75, 0.16)',

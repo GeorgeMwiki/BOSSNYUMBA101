@@ -21,7 +21,7 @@ export function BnAvatar({ name, size = 40, ringed = true }: BnAvatarProps): JSX
     borderWidth: ringed ? 2 : 0
   }
   return (
-    <View style={[styles.wrap, dims, { borderColor: tokens.color.gold }]}>
+    <View style={[styles.wrap, dims, { borderColor: tokens.color.accent }]}>
       <Text style={[styles.text, { fontSize: Math.round(size * 0.4) }]}>{initials}</Text>
     </View>
   )
@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   text: {
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     fontWeight: '700',
     letterSpacing: 0.5
   }

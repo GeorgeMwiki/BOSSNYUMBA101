@@ -32,12 +32,12 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     backgroundColor: tokens.color.bgBase,
     borderWidth: 1,
-    borderColor: tokens.color.borderGold,
+    borderColor: tokens.color.borderAccent,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: tokens.space.md
   },
-  glyph: { fontSize: 24, color: tokens.color.gold, fontWeight: '800' },
+  glyph: { fontSize: 24, color: tokens.color.accent, fontWeight: '800' },
   text: {
     ...tokens.type.body,
     color: tokens.color.textSecondary,

@@ -41,9 +41,9 @@ export function BnBadge({
 
 const toneStyles: Record<BnBadgeTone, { bg: string; border: string; fg: string }> = {
   neutral: { bg: 'rgba(255, 255, 255, 0.06)', border: tokens.color.border, fg: tokens.color.textSecondary },
-  gold: { bg: 'rgba(255, 200, 87, 0.14)', border: tokens.color.borderGold, fg: tokens.color.gold },
+  gold: { bg: 'rgba(255, 200, 87, 0.14)', border: tokens.color.borderAccent, fg: tokens.color.accent },
   success: { bg: 'rgba(46, 189, 133, 0.16)', border: 'rgba(46, 189, 133, 0.32)', fg: tokens.color.success },
-  warn: { bg: 'rgba(255, 200, 87, 0.14)', border: tokens.color.borderGold, fg: tokens.color.warn },
+  warn: { bg: 'rgba(255, 200, 87, 0.14)', border: tokens.color.borderAccent, fg: tokens.color.warn },
   danger: { bg: 'rgba(225, 75, 75, 0.14)', border: 'rgba(225, 75, 75, 0.36)', fg: tokens.color.danger },
   info: { bg: 'rgba(255, 255, 255, 0.08)', border: tokens.color.borderStrong, fg: tokens.color.textPrimary }
 }

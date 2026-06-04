@@ -44,11 +44,11 @@
     "quantity": "Eneo (m²)",
     "origin": "Mtaa",
     "price_hint": "Kodi iliyoorodheshwa",
-    "per_kg": "kwa mwezi",
+    "per_month": "kwa mwezi",
     "place_bid": "Tuma ombi",
-    "view_assay": "Tazama ripoti ya ukaguzi",
+    "view_inspection": "Tazama ripoti ya ukaguzi",
     "seller_rating": "Ukadiriaji wa mmiliki",
-    "chain_of_custody": "Historia ya umiliki",
+    "ownership_trail": "Historia ya umiliki",
     "empty": "Hakuna matangazo yanayopatikana sasa",
     "loading": "Inapakia matangazo",
     "load_failed": "Imeshindwa kupakia matangazo",
@@ -58,20 +58,20 @@
     "sort_price_asc": "Bei chini",
     "sort_price_desc": "Bei juu",
     "sort_grade": "Vyumba",
-    "mineral_filter": "Aina ya nyumba",
+    "property_type_filter": "Aina ya nyumba",
     "region_filter": "Mtaa",
     "grade_filter": "Vyumba",
     "min_grade": "Vyumba vya chini",
     "max_grade": "Vyumba vya juu",
-    "all_minerals": "Aina zote",
+    "all_property_types": "Aina zote",
     "all_regions": "Mitaa yote",
     "trust": {
       "gov_licensed": "Hati imethibitishwa",
-      "lab_assayed": "Ukaguzi umepita",
-      "lab_assayed_stale": "Ukaguzi wa zamani",
+      "inspection_passed": "Ukaguzi umepita",
+      "inspection_stale": "Ukaguzi wa zamani",
       "bossnyumba_vetted": "Imethibitishwa na BossNyumba",
-      "chain_of_custody": "Mlolongo wa umiliki",
-      "seller_history": "Historia ya mmiliki"
+      "ownership_trail": "Mlolongo wa umiliki",
+      "landlord_history": "Historia ya mmiliki"
     }
   },
   "wallet": {
@@ -81,15 +81,15 @@
     "loading": "Inapakia salio…",
     "toggle_secondary": "Badilisha sarafu"
   },
-  "minerals": {
-    "gold_concentrate": "Nyumba ya gorofa",
-    "tanzanite_rough": "Banda",
-    "coltan": "Townhouse",
-    "copper_concentrate": "Studio",
-    "gemstone_mixed": "Matumizi mchanganyiko",
-    "gold_dore": "Penthouse",
-    "tin_cassiterite": "Duplex",
-    "silver_concentrate": "Villa"
+  "unitTypes": {
+    "studio": "Studio",
+    "one_bedroom": "Chumba kimoja",
+    "two_bedroom": "Vyumba viwili",
+    "three_bedroom": "Vyumba vitatu",
+    "four_bedroom_plus": "Vyumba vinne+",
+    "commercial": "Biashara",
+    "industrial": "Viwanda",
+    "mixed_use": "Matumizi mchanganyiko"
   },
   "bids": {
     "title": "Maombi yangu",
@@ -235,7 +235,7 @@
     "confirm": "Thibitisha",
     "retry": "Jaribu tena",
     "tzs": "TZS",
-    "kg": "mwezi",
+    "per_month": "mwezi",
     "yes": "Ndiyo",
     "no": "Hapana"
   },
@@ -244,10 +244,10 @@
     "subtitle": "Waambie wamiliki unachotaka; matangazo yanayolingana yatakujia.",
     "create_cta": "Tuma ombi jipya",
     "create_title": "Tuma ombi jipya",
-    "mineral_label": "Aina ya nyumba",
+    "unit_type_label": "Aina ya nyumba",
     "grade_label": "Idadi ya vyumba ya chini kabisa (hiari)",
-    "tonnage_min_label": "Eneo (m²) linalohitajika",
-    "tonnage_max_label": "Eneo (m²) la juu (hiari)",
+    "floor_area_min_label": "Eneo (m²) linalohitajika",
+    "floor_area_max_label": "Eneo (m²) la juu (hiari)",
     "unit_price_label": "Kodi ya juu kwa mwezi (TZS)",
     "delivery_by_label": "Tarehe ya kuingia",
     "delivery_by_placeholder": "MWAKA-MWEZI-SIKU",
@@ -268,8 +268,44 @@
     "cancel_cta": "Ghairi ombi",
     "cancel_success": "Ombi limeghairiwa.",
     "cancel_failed": "Imeshindikana kughairi ombi.",
-    "tonnage_required_invalid": "Eneo linalohitajika lazima liwe zaidi ya 0.",
+    "floor_area_required_invalid": "Eneo linalohitajika lazima liwe zaidi ya 0.",
     "unit_price_invalid": "Kodi ya juu lazima iwe zaidi ya 0.",
     "delivery_in_past": "Tarehe ya kuingia lazima iwe ya baadaye."
+  },
+  "applicant_signup": {
+    "kyc": {
+      "identity": {
+        "title": "Utambulisho",
+        "description": "Weka NIDA au pasipoti yako ili mwenye nyumba athibitishe anayepanga."
+      },
+      "address": {
+        "title": "Anwani ya sasa",
+        "description": "Thibitisha unakoishi sasa na jinsi tunavyoweza kukufikia."
+      },
+      "bank_account": {
+        "title": "Benki au pesa za simu",
+        "description": "Ongeza akaunti ya malipo kwa amana na marejesho. Unaweza kuruka kwa sasa."
+      },
+      "source_of_funds": {
+        "title": "Chanzo cha mapato",
+        "description": "Tuambie unalipiaje kodi — mshahara, biashara, au msaada."
+      },
+      "company_docs": {
+        "title": "Hati za biashara",
+        "description": "Pakia cheti cha usajili na uthibitisho wa anwani ya kampuni."
+      },
+      "tax_compliance": {
+        "title": "Utii wa kodi",
+        "description": "Toa namba ya TIN na hati ya sasa ya utii wa kodi ya biashara."
+      },
+      "beneficial_owners": {
+        "title": "Wamiliki wenye manufaa",
+        "description": "Orodhesha watu wanaomiliki au kudhibiti biashara kimsingi."
+      },
+      "aml_screening": {
+        "title": "Uchunguzi wa AML",
+        "description": "Ridhia ukaguzi wa vikwazo na kuzuia utakatishaji fedha kabla ya kusaini mkataba."
+      }
+    }
   }
 }

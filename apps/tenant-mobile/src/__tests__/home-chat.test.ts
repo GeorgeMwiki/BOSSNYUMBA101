@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BrainTurnRequestSchema,
   BrainTurnResponseSchema,
-  isBuyerToolName,
+  isTenantToolName,
   type ChatTurn
 } from '../chat/types'
 import {
@@ -14,8 +14,8 @@ import {
   extractPayload
 } from '../chat/toolPayloads'
 import {
-  buyerGreeting,
-  buyerSuggestions,
+  tenantGreeting,
+  tenantSuggestions,
   composerPlaceholder,
   errorLabel,
   loadingLabel
@@ -59,14 +59,14 @@ describe('chat/types — request/response schemas', () => {
 
 describe('chat/types — renter tool registry', () => {
   it('classifies known tool names', () => {
-    expect(isBuyerToolName('marketplace.recommended')).toBe(true)
-    expect(isBuyerToolName('kyc.status')).toBe(true)
-    expect(isBuyerToolName('bids.recommend')).toBe(true)
+    expect(isTenantToolName('marketplace.recommended')).toBe(true)
+    expect(isTenantToolName('kyc.status')).toBe(true)
+    expect(isTenantToolName('bids.recommend')).toBe(true)
   })
 
   it('rejects unknown tool names so the renderer falls back to JSON', () => {
-    expect(isBuyerToolName('marketplace.unknown')).toBe(false)
-    expect(isBuyerToolName('')).toBe(false)
+    expect(isTenantToolName('marketplace.unknown')).toBe(false)
+    expect(isTenantToolName('')).toBe(false)
   })
 })
 
@@ -75,16 +75,13 @@ describe('chat/toolPayloads — schema gate', () => {
     const result = MarketplaceListingsResultSchema.safeParse({
       listings: [
         {
-          // `mineral` + `gradeNumeric` field names mirror the wire schema
-          // (flagged for a coordinated rename); the display values below
-          // are property-domain.
           id: 'L1',
-          mineral: 'gold_concentrate',
+          propertyType: 'two_bedroom',
           title: 'Mwanza 2-bed apartment',
           grade: 'A',
-          quantityKg: 60,
+          floorAreaSqm: 60,
           originRegion: 'Mwanza',
-          seller: { id: 'S1', name: 'Lakeview Estates' },
+          landlord: { id: 'S1', name: 'Lakeview Estates' },
           priceHintTzs: 240_000_000,
           listedAt: '2026-05-20T10:00:00Z',
           status: 'open'
@@ -101,9 +98,9 @@ describe('chat/toolPayloads — schema gate', () => {
           id: 'B1',
           listingId: 'L1',
           listingTitle: 'Mwanza 2-bed apartment',
-          mineral: 'gold_concentrate',
-          offerTzsPerKg: 2_000_000,
-          quantityKg: 60,
+          propertyType: 'two_bedroom',
+          offerRentPerMonthTzs: 2_000_000,
+          floorAreaSqm: 60,
           status: 'pending',
           placedAt: '2026-05-25T11:00:00Z'
         }
@@ -121,8 +118,8 @@ describe('chat/toolPayloads — schema gate', () => {
       BidRecommendationResultSchema.safeParse({
         listingId: 'L1',
         listingTitle: 'Mwanza 2-bed apartment',
-        recommendedTzsPerKg: 1_900_000,
-        quantityKg: 60
+        recommendedRentPerMonthTzs: 1_900_000,
+        floorAreaSqm: 60
       }).success
     ).toBe(true)
   })
@@ -139,14 +136,14 @@ describe('chat/greeting — bilingual persona surface', () => {
     // Marketplace Director persona — Swahili default, English on request.
     // Match stable persona-role substrings (not the legacy "Karibu, Mnunuzi"
     // copy that pre-dated the Mr. Mwikila persona).
-    expect(buyerGreeting('sw')).toMatch(/Mkurugenzi wako wa Soko la BossNyumba/)
-    expect(buyerGreeting('en')).toMatch(/BossNyumba Marketplace Director/)
+    expect(tenantGreeting('sw')).toMatch(/Mkurugenzi wako wa Soko la BossNyumba/)
+    expect(tenantGreeting('en')).toMatch(/BossNyumba Marketplace Director/)
   })
 
   it('exposes three renter-intent suggestion chips per language', () => {
-    expect(buyerSuggestions('sw').length).toBe(3)
-    expect(buyerSuggestions('en').length).toBe(3)
-    expect(buyerSuggestions('sw')[0]?.prompt).toBe('Nyumba zinazopatikana sasa')
+    expect(tenantSuggestions('sw').length).toBe(3)
+    expect(tenantSuggestions('en').length).toBe(3)
+    expect(tenantSuggestions('sw')[0]?.prompt).toBe('Nyumba zinazopatikana sasa')
   })
 
   it('exposes Swahili loading + error + placeholder copy', () => {

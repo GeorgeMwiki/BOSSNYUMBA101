@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { useTranslation } from '@/hooks/useTranslation'
 import { fetchBids } from '@/api/marketplace'
 import { queryKeys } from '@/api/queryKeys'
-import { formatKg, formatTzs } from '@/components/formatters'
+import { formatSqm, formatTzs } from '@/components/formatters'
 import { colors } from '@/theme/colors'
 import { spacing, typography } from '@/theme/spacing'
 import type { BidStatus } from '@/types/listing'
@@ -60,12 +60,12 @@ export default function BidsIndex() {
             <View>
               <Text style={styles.statLabel}>{t('bids.your_offer')}</Text>
               <Text style={styles.statValue}>
-                {formatTzs(bid.offerTzsPerKg)} / {t('common.kg')}
+                {formatTzs(bid.offerRentPerMonthTzs)} / {t('common.per_month')}
               </Text>
             </View>
             <View>
               <Text style={styles.statLabel}>{t('marketplace.quantity')}</Text>
-              <Text style={styles.statValue}>{formatKg(bid.quantityKg)}</Text>
+              <Text style={styles.statValue}>{formatSqm(bid.floorAreaSqm)}</Text>
             </View>
           </View>
         </Card>

@@ -35,11 +35,6 @@ interface BilingualRoleLexicon {
  * Swahili lexicon — sourced from real-world Tanzanian workforce vocabulary
  * (mwenye = owner, meneja/msimamizi = manager, mfanyakazi = field worker).
  * Weights favour role-defining titles over generic verbs.
- *
- * NOTE: a few legacy tokens below (and the cert triggers further down) are
- * still trade-generic mining terms pinned by the onboarding intelligence
- * test fixture; a coordinated re-tokenisation to pure property-trade words
- * is flagged for follow-up.
  */
 const SW_LEXICON: BilingualRoleLexicon = {
   owner: [
@@ -49,7 +44,7 @@ const SW_LEXICON: BilingualRoleLexicon = {
     { token: 'tajiri', weight: 2 },
     { token: 'mwekezaji', weight: 2 },
     { token: 'mkurugenzi', weight: 2 },
-    { token: 'pml', weight: 2 },
+    { token: 'hati', weight: 2 },
     { token: 'leseni', weight: 1 }
   ],
   manager: [
@@ -64,13 +59,13 @@ const SW_LEXICON: BilingualRoleLexicon = {
   ],
   employee: [
     { token: 'mfanyakazi', weight: 3 },
-    { token: 'mchimba', weight: 3 },
-    { token: 'mchimbaji', weight: 3 },
+    { token: 'fundi', weight: 3 },
+    { token: 'mhudumu', weight: 3 },
     { token: 'shifti', weight: 2 },
-    { token: 'chimba', weight: 2 },
+    { token: 'mlinzi', weight: 2 },
     { token: 'opareta', weight: 2 },
     { token: 'dereva', weight: 2 },
-    { token: 'mfua', weight: 2 },
+    { token: 'msafishaji', weight: 2 },
     { token: 'mtumishi', weight: 1 }
   ]
 }
@@ -101,13 +96,13 @@ const EN_LEXICON: BilingualRoleLexicon = {
   ],
   employee: [
     { token: 'worker', weight: 3 },
-    { token: 'miner', weight: 3 },
+    { token: 'technician', weight: 3 },
     { token: 'operator', weight: 3 },
     { token: 'driver', weight: 2 },
     { token: 'labourer', weight: 2 },
     { token: 'laborer', weight: 2 },
     { token: 'crew', weight: 2 },
-    { token: 'digger', weight: 2 },
+    { token: 'caretaker', weight: 2 },
     { token: 'hand', weight: 1 }
   ]
 }

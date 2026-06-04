@@ -9,7 +9,7 @@ import { Timeline } from '@/components/Timeline'
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { useTranslation } from '@/hooks/useTranslation'
 import { useSession } from '@/auth/session'
-import { fetchKycStatus } from '@/api/buyers'
+import { fetchKycStatus } from '@/api/applicants'
 import { queryKeys } from '@/api/queryKeys'
 import type { KycStage } from '@/types/kyc'
 import { colors } from '@/theme/colors'
@@ -62,7 +62,7 @@ export default function KycVerify() {
           accessibilityLabel={t('kyc.verify_loading')}
           style={styles.center}
         >
-          <ActivityIndicator color={colors.copper} />
+          <ActivityIndicator color={colors.accentDeep} />
           <Text style={styles.statusText}>{t('kyc.verify_loading')}</Text>
         </View>
       </Screen>

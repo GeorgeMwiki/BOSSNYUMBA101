@@ -38,11 +38,11 @@ const SUGGESTIONS_EN: readonly ChatSuggestion[] = [
   { id: 'pending-applications', prompt: 'My pending applications', label: 'My pending applications' }
 ]
 
-export function buyerGreeting(lang: LanguageCode): string {
+export function tenantGreeting(lang: LanguageCode): string {
   return GREETINGS[lang] ?? GREETINGS.sw
 }
 
-export function buyerSuggestions(lang: LanguageCode): readonly ChatSuggestion[] {
+export function tenantSuggestions(lang: LanguageCode): readonly ChatSuggestion[] {
   return lang === 'en' ? SUGGESTIONS_EN : SUGGESTIONS_SW
 }
 

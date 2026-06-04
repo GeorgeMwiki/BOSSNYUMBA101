@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.color.bgRaised,
     borderRadius: tokens.radius.md,
     borderWidth: 1,
-    borderColor: tokens.color.borderGold,
+    borderColor: tokens.color.borderAccent,
     gap: tokens.space.md
   },
   primaryCol: {
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   },
   primary: {
     ...tokens.type.h2,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     marginTop: 2
   },
   secondaryAmount: {

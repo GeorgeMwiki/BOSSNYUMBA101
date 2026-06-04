@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     color: tokens.color.textPrimary
   },
   req: {
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     fontWeight: '700'
   },
   hint: {

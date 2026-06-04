@@ -22,7 +22,7 @@ export function BnEmptyState({
   cta,
   tone = 'neutral'
 }: BnEmptyStateProps): JSX.Element {
-  const accent = tone === 'danger' ? tokens.color.danger : tone === 'warn' ? tokens.color.warn : tokens.color.gold
+  const accent = tone === 'danger' ? tokens.color.danger : tone === 'warn' ? tokens.color.warn : tokens.color.accent
   return (
     <View style={styles.wrap}>
       <View style={[styles.glyphPlate, { borderColor: accent }]}>

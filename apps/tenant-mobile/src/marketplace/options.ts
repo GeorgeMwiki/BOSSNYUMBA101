@@ -1,21 +1,19 @@
-import type { Mineral } from '@/types/listing'
+import type { PropertyType } from '@/types/listing'
 import type { SortKey } from '@/api/marketplace'
 import type { ChipOption } from '@/components/ChipGroup'
 
-// NOTE (flagged): the `minerals.${value}` i18n key and the `Mineral`
-// enum literals below are keyed on the shared wire type; they keep
-// their legacy names pending the coordinated type + i18n rename to
-// PropertyType. The exported helper/glyph identifiers and the region
-// list are property-domain.
-export const unitTypeOptionKeys: readonly Mineral[] = [
-  'gold_concentrate',
-  'tanzanite_rough',
-  'coltan',
-  'copper_concentrate',
-  'gemstone_mixed',
-  'gold_dore',
-  'tin_cassiterite',
-  'silver_concentrate'
+// Unit-type filter options, keyed on the `PropertyType` domain enum. Labels
+// resolve from the `unitTypes.*` i18n namespace. The region list is the
+// property-domain neighbourhood set.
+export const unitTypeOptionKeys: readonly PropertyType[] = [
+  'studio',
+  'one_bedroom',
+  'two_bedroom',
+  'three_bedroom',
+  'four_bedroom_plus',
+  'commercial',
+  'industrial',
+  'mixed_use'
 ] as const
 
 export const regionOptionsKeys: readonly string[] = [
@@ -27,8 +25,8 @@ export const regionOptionsKeys: readonly string[] = [
   'Zanzibar'
 ] as const
 
-export function buildUnitTypeOptions(translate: (key: string) => string): readonly ChipOption<Mineral>[] {
-  return unitTypeOptionKeys.map((value) => ({ value, label: translate(`minerals.${value}`) }))
+export function buildUnitTypeOptions(translate: (key: string) => string): readonly ChipOption<PropertyType>[] {
+  return unitTypeOptionKeys.map((value) => ({ value, label: translate(`unitTypes.${value}`) }))
 }
 
 export function buildRegionOptions(): readonly ChipOption<string>[] {
@@ -43,17 +41,15 @@ export const sortOptions: readonly { readonly value: SortKey; readonly key: stri
 ] as const
 
 // Short unit-type glyphs shown on the listing card avatar. Keyed on the
-// wire enum literal (flagged above), each value mirrors the property
-// label rendered from the `minerals.*` i18n namespace
-// (Apartment / Bungalow / Townhouse / Studio / Mixed-use / Penthouse /
-// Duplex / Villa).
-export const unitTypeGlyph: Readonly<Record<Mineral, string>> = {
-  gold_concentrate: 'Apt',
-  tanzanite_rough: 'Bng',
-  coltan: 'Twn',
-  copper_concentrate: 'Std',
-  gemstone_mixed: 'Mix',
-  gold_dore: 'Pnt',
-  tin_cassiterite: 'Dpx',
-  silver_concentrate: 'Vil'
+// `PropertyType` enum literal; each value mirrors the property label
+// rendered from the `unitTypes.*` i18n namespace.
+export const unitTypeGlyph: Readonly<Record<PropertyType, string>> = {
+  studio: 'Std',
+  one_bedroom: '1Bd',
+  two_bedroom: '2Bd',
+  three_bedroom: '3Bd',
+  four_bedroom_plus: '4Bd',
+  commercial: 'Com',
+  industrial: 'Ind',
+  mixed_use: 'Mix'
 }

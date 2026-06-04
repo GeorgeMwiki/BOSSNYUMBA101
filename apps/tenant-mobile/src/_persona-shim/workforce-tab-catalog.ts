@@ -78,7 +78,7 @@ export const WORKFORCE_TAB_CATALOG: ReadonlyArray<WorkforceTabSpec> = [
     label: { en: 'Condition log', sw: 'Logi ya hali' },
   },
   {
-    id: 'assay',
+    id: 'inspection',
     roles: ['inspector'],
     label: { en: 'Inspection', sw: 'Ukaguzi' },
   },

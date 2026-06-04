@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     ...tokens.type.eyebrow,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     marginBottom: tokens.space.xs
   },
   title: {
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     color: tokens.color.textPrimary
   },
   close: {
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     fontSize: 24,
     fontWeight: '700',
     paddingHorizontal: tokens.space.sm,

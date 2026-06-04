@@ -43,7 +43,7 @@ export function ActiveBidsSection({ bids, translate, onPressBid, onOpenChatSessi
                 </View>
                 <Text style={styles.rowMeta} numberOfLines={1}>
                   {translate('bids.your_offer')}:{' '}
-                  {formatTzs(bid.offerTzsPerKg * bid.quantityKg)}
+                  {formatTzs(bid.offerRentPerMonthTzs)}
                 </Text>
               </View>
               <View style={styles.actions}>
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.2,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     textTransform: 'uppercase'
   }
 })

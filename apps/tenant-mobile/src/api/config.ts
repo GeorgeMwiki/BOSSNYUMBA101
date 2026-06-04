@@ -32,6 +32,6 @@ export const MARKETPLACE_PREFIX = '/api/v1/marketplace'
  * Operator/manager surface root. The estate-manager workforce router is
  * mounted at `/api/v1/manager` (estateManagerAppRouter). Used for the
  * non-marketplace operator calls, including the renter-identity/profile
- * + KYC endpoints in `src/api/buyers.ts`.
+ * + KYC endpoints in `src/api/applicants.ts`.
  */
 export const MANAGER_PREFIX = '/api/v1/manager'

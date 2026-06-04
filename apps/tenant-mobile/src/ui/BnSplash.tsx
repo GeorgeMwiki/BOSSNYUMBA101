@@ -36,7 +36,7 @@ export function BnSplash({
         </Text>
         {tagline ? <Text style={styles.tagline}>{tagline}</Text> : null}
       </Animated.View>
-      {showSpinner ? <ActivityIndicator color={tokens.color.gold} style={styles.spinner} /> : null}
+      {showSpinner ? <ActivityIndicator color={tokens.color.accent} style={styles.spinner} /> : null}
     </View>
   )
 }
@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space.xl
   },
   wordmark: {
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     fontSize: 36,
     fontWeight: '800',
     letterSpacing: 6,

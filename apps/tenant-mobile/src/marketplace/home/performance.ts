@@ -5,12 +5,9 @@ import type { Bid } from '@/types/listing'
 // time-to-counter when the tenant is responding to a counter offer), and
 // deal volume (sum of accepted-application notional). No dedicated
 // endpoint exists yet — when one lands, this module remains the single
-// read-side aggregator. NOTE (flagged): the exported
-// BuyerPerformanceSummary / summariseBuyerPerformance symbols are
-// consumed by a non-owned dashboard section and keep their names pending
-// a coordinated rename.
+// read-side aggregator.
 
-export interface BuyerPerformanceSummary {
+export interface TenantPerformanceSummary {
   readonly bidsPlaced: number
   readonly bidsAccepted: number
   readonly winRatePct: number
@@ -46,8 +43,6 @@ function median(values: readonly number[]): number | null {
 function tenantResponseLatencies(bid: Bid): readonly number[] {
   // Median time from a landlord's last message to the tenant's next reply.
   // Bound at the application level so a single hot thread can't dominate.
-  // NOTE: `message.from === 'seller'` is the shared wire literal (landlord
-  // side of the thread) and stays pending the coordinated type rename.
   const out: number[] = []
   let lastLandlordAt: number | null = null
   for (const message of bid.thread) {
@@ -55,7 +50,7 @@ function tenantResponseLatencies(bid: Bid): readonly number[] {
     if (Number.isNaN(ts)) {
       continue
     }
-    if (message.from === 'seller') {
+    if (message.from === 'landlord') {
       lastLandlordAt = ts
     } else if (lastLandlordAt !== null) {
       const delta = ts - lastLandlordAt
@@ -68,10 +63,10 @@ function tenantResponseLatencies(bid: Bid): readonly number[] {
   return out
 }
 
-export function summariseBuyerPerformance(
+export function summariseTenantPerformance(
   bids: readonly Bid[],
   now: number = Date.now()
-): BuyerPerformanceSummary {
+): TenantPerformanceSummary {
   const recent = bids.filter((bid) => isWithinWindow(bid.placedAt, now, NINETY_DAYS_MS))
   const accepted = recent.filter((bid) => bid.status === 'accepted')
   const bidsPlaced = recent.length
@@ -80,7 +75,7 @@ export function summariseBuyerPerformance(
   const latencies = recent.flatMap(tenantResponseLatencies)
   const medianResponseMs = median(latencies)
   const dealVolumeTzs = accepted.reduce(
-    (sum, bid) => sum + bid.offerTzsPerKg * bid.quantityKg,
+    (sum, bid) => sum + bid.offerRentPerMonthTzs,
     0
   )
   return {

@@ -7,10 +7,6 @@
  * M-Pesa B2C payout). Result is shown in a success banner with the
  * gross/deduction/fee/net breakdown.
  *
- * NOTE (flagged): the settlement-response wire field `royaltyTzs` mirrors
- * the gateway payload and is kept; its on-screen label is reframed to the
- * property deduction below.
- *
  * Bilingual sw/en throughout.
  */
 
@@ -31,7 +27,7 @@ interface SignDeliveryResponse {
     readonly settlementId: string
     readonly status: string
     readonly grossTzs: number
-    readonly royaltyTzs: number
+    readonly deductionTzs: number
     readonly feeTzs: number
     readonly netTzs: number
     readonly ledgerTxnId: string | null
@@ -172,7 +168,7 @@ export default function SignDeliveryScreen(): JSX.Element {
             <View style={styles.row}>
               <Text style={styles.label}>{isSw ? 'Makato' : 'Deduction'}</Text>
               <Text style={styles.value}>
-                {formatTzs(mutation.data.royaltyTzs, isSw)}
+                {formatTzs(mutation.data.deductionTzs, isSw)}
               </Text>
             </View>
             <View style={styles.row}>
@@ -262,7 +258,7 @@ const styles = StyleSheet.create({
   header: { marginBottom: tokens.space.md },
   eyebrow: {
     ...tokens.type.bodySm,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -301,7 +297,7 @@ const styles = StyleSheet.create({
   value: { ...tokens.type.body, color: tokens.color.textPrimary },
   valueEmphasis: {
     ...tokens.type.bodyStrong,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
   },
   valueMono: {
     ...tokens.type.bodySm,
@@ -316,7 +312,7 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     ...tokens.type.bodyStrong,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     marginBottom: tokens.space.sm,
   },
   errorTitle: {
@@ -326,7 +322,7 @@ const styles = StyleSheet.create({
   },
   errorBody: { ...tokens.type.body, color: tokens.color.danger },
   cta: {
-    backgroundColor: tokens.color.gold,
+    backgroundColor: tokens.color.accent,
     borderRadius: tokens.radius.xl,
     padding: tokens.space.lg,
     alignItems: 'center',

@@ -14,8 +14,8 @@ const toneStyles = {
   },
   warning: {
     bg: 'rgba(255, 200, 87, 0.14)',
-    fg: tokens.color.gold,
-    border: tokens.color.borderGold
+    fg: tokens.color.accent,
+    border: tokens.color.borderAccent
   },
   error: {
     bg: 'rgba(225, 75, 75, 0.14)',

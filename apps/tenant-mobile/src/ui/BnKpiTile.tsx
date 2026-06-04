@@ -65,7 +65,7 @@ function toneAccent(tone: BnKpiTone): string {
   if (tone === 'warn') return tokens.color.warn
   if (tone === 'danger') return tokens.color.danger
   if (tone === 'neutral') return tokens.color.borderStrong
-  return tokens.color.gold
+  return tokens.color.accent
 }
 
 const styles = StyleSheet.create({

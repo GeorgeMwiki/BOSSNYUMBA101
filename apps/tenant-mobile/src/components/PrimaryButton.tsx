@@ -56,9 +56,9 @@ export function PrimaryButton({
 }
 
 const palettes = {
-  primary: { bg: tokens.color.gold, border: tokens.color.goldDeep, fg: tokens.color.userBubbleText },
-  gold: { bg: tokens.color.gold, border: tokens.color.goldDeep, fg: tokens.color.userBubbleText },
-  ghost: { bg: 'transparent', border: tokens.color.borderGold, fg: tokens.color.gold }
+  primary: { bg: tokens.color.accent, border: tokens.color.accentDeep, fg: tokens.color.userBubbleText },
+  gold: { bg: tokens.color.accent, border: tokens.color.accentDeep, fg: tokens.color.userBubbleText },
+  ghost: { bg: 'transparent', border: tokens.color.borderAccent, fg: tokens.color.accent }
 } as const
 
 const styles = StyleSheet.create({

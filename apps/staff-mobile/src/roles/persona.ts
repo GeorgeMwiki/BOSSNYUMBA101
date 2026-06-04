@@ -21,7 +21,7 @@ const ROLE_TO_PERSONA_SLUG: Record<WorkforceRole, string> = {
 }
 
 /**
- * Eight-role mining mapping — used by HomeChat when the workforce
+ * Eight-role workforce mapping — used by HomeChat when the workforce
  * tab-config returns one of the 8 fine-grained roles. Mr. Mwikila is
  * the persona face across all of them; the slug captures the role
  * context so the brain routes tools + tone.
@@ -30,8 +30,8 @@ const WORKFORCE_ROLE_ID_TO_PERSONA_SLUG: Record<WorkforceRoleId, string> = {
   owner: 'T1_owner_strategist',
   manager: 'T1_manager_dispatch',
   supervisor: 'T1_supervisor_shift',
-  pit_operator: 'T1_pit_operator',
-  geologist: 'T1_geologist',
+  field_technician: 'T1_field_technician',
+  inspector: 'T1_inspector',
   treasury: 'T1_treasury_clerk',
   safety_officer: 'T1_safety_officer',
   compliance_clerk: 'T1_compliance_clerk'
@@ -62,7 +62,7 @@ export function roleIdToPersona(roleId: WorkforceRoleId | undefined): string {
  * Best-effort widening from the legacy 3-value Role plus the 8-value
  * tab-config role. When the tab-config has hydrated, prefer its role;
  * otherwise widen the legacy role via a safe default (manager → manager,
- * owner → owner, employee → pit_operator).
+ * owner → owner, employee → field_technician).
  */
 export function resolveWorkforcePersona(args: {
   readonly tabConfigRole: WorkforceRoleId | undefined

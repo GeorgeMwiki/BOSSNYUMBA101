@@ -62,7 +62,7 @@ export function ThreeDotPulse({ active = true }: ThreeDotPulseProps) {
   const dots = useMemo(() => [dot0, dot1, dot2], [dot0, dot1, dot2])
 
   return (
-    <View testID="buyer-chat-three-dot-pulse" style={styles.wrap}>
+    <View testID="tenant-chat-three-dot-pulse" style={styles.wrap}>
       {dots.map((value, index) => (
         <Animated.View
           key={index}
@@ -88,6 +88,6 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: colors.gold
+    backgroundColor: colors.accent
   }
 })

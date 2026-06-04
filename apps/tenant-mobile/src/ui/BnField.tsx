@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radius.md
   },
   inputWrapFocused: {
-    borderColor: tokens.color.gold,
+    borderColor: tokens.color.accent,
     ...tokens.shadow.glow
   },
   inputWrapError: {

@@ -61,7 +61,7 @@ export function BnErrorState({
 }
 
 const toneAccent: Record<NonNullable<BnErrorStateProps['tone']>, string> = {
-  warning: tokens.color.gold,
+  warning: tokens.color.accent,
   critical: tokens.color.danger,
   info: tokens.color.textSecondary
 }
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   primary: {
-    backgroundColor: tokens.color.gold,
+    backgroundColor: tokens.color.accent,
     borderRadius: tokens.radius.pill,
     paddingHorizontal: tokens.space.xl,
     paddingVertical: tokens.space.md + 2,
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   secondary: {
     borderWidth: 1,
-    borderColor: tokens.color.borderGold,
+    borderColor: tokens.color.borderAccent,
     borderRadius: tokens.radius.pill,
     paddingHorizontal: tokens.space.xl,
     paddingVertical: tokens.space.md + 2,
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   },
   secondaryLabel: {
     ...tokens.type.bodyStrong,
-    color: tokens.color.gold
+    color: tokens.color.accent
   },
   pressed: {
     opacity: 0.86,

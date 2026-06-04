@@ -2,21 +2,21 @@ import { StyleSheet, Text, View } from 'react-native'
 import { Card } from '@/components/Card'
 import { Pill, type PillTone } from '@/components/Pill'
 import { tokens } from '@/ui'
-import type { BuyerUser } from '@/types/auth'
+import type { TenantUser } from '@/types/auth'
 
 export interface TrustBalanceStripProps {
-  readonly user: BuyerUser
+  readonly user: TenantUser
   readonly translate: (key: string) => string
 }
 
-const TONE_BY_KYC: Readonly<Record<BuyerUser['kycStatus'], PillTone>> = {
+const TONE_BY_KYC: Readonly<Record<TenantUser['kycStatus'], PillTone>> = {
   pending: 'neutral',
   submitted: 'warning',
   approved: 'success',
   rejected: 'danger'
 }
 
-const LABEL_BY_KYC: Readonly<Record<BuyerUser['kycStatus'], string>> = {
+const LABEL_BY_KYC: Readonly<Record<TenantUser['kycStatus'], string>> = {
   pending: 'kyc.status_pending',
   submitted: 'kyc.status_pending',
   approved: 'kyc.status_approved',

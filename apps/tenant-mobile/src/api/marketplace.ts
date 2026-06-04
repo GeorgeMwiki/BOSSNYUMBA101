@@ -1,6 +1,6 @@
 import { apiFetch } from './client'
 import { MARKETPLACE_PREFIX } from './config'
-import type { Bid, BidMessage, Listing, Mineral } from '@/types/listing'
+import type { Bid, BidMessage, Listing, PropertyType } from '@/types/listing'
 
 /**
  * Bidding/application surface. The property domain models a renter's
@@ -15,7 +15,7 @@ const TENDERS_PREFIX = '/api/v1/tenders'
 export type SortKey = 'newest' | 'price_asc' | 'price_desc' | 'grade'
 
 export interface ListingFilters {
-  readonly mineral?: Mineral
+  readonly propertyType?: PropertyType
   readonly region?: string
   readonly minGradeNumeric?: number
   readonly maxGradeNumeric?: number
@@ -34,7 +34,7 @@ interface ListingResponse {
 export async function fetchListings(filters: ListingFilters = {}): Promise<readonly Listing[]> {
   const response = await apiFetch<ListingsResponse>(`${MARKETPLACE_PREFIX}/listings`, {
     query: {
-      mineral: filters.mineral,
+      propertyType: filters.propertyType,
       region: filters.region,
       minGrade: filters.minGradeNumeric,
       maxGrade: filters.maxGradeNumeric,
@@ -56,8 +56,8 @@ export type PaymentTerms = 'instant' | '30d' | '60d'
 
 export interface PlaceBidInput {
   readonly listingId: string
-  readonly offerTzsPerKg: number
-  readonly quantityKg: number
+  readonly offerRentPerMonthTzs: number
+  readonly floorAreaSqm: number
   readonly paymentTerms: PaymentTerms
   readonly notes?: string
   readonly termsAccepted: boolean
@@ -71,8 +71,9 @@ interface BidResponse {
  * Payload shape the api-gateway expects when posting a bid/application.
  * Mirrors the bid schema on the tenders router
  * (services/api-gateway/src/routes/tenders.router.ts, POST `/:id/bids`).
- * The applicant enters a per-unit price; we surface a total `bidPriceTzs`
- * so the gateway has a single canonical number to validate and persist.
+ * The applicant enters a monthly rent offer; we surface a total
+ * `bidPriceTzs` so the gateway has a single canonical number to validate
+ * and persist.
  */
 interface GatewayBidPayload {
   readonly listingId: string
@@ -84,7 +85,7 @@ interface GatewayBidPayload {
 function toGatewayBidPayload(input: PlaceBidInput): GatewayBidPayload {
   return {
     listingId: input.listingId,
-    bidPriceTzs: input.offerTzsPerKg * input.quantityKg,
+    bidPriceTzs: input.offerRentPerMonthTzs,
     paymentTerms: input.paymentTerms,
     notes: input.notes && input.notes.length > 0 ? input.notes : undefined
   }

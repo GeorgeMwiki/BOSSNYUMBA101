@@ -12,7 +12,7 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: tokens.color.gold,
+        tabBarActiveTintColor: tokens.color.accent,
         tabBarInactiveTintColor: tokens.color.textMuted,
         tabBarStyle: {
           backgroundColor: tokens.color.bgRaised,
@@ -22,7 +22,7 @@ export default function TabsLayout() {
         tabBarLabelStyle: { fontWeight: '600', fontSize: 11, letterSpacing: 0.3 },
         headerStyle: { backgroundColor: tokens.color.bgSurface },
         headerTitleStyle: { color: tokens.color.textPrimary, fontWeight: '700' },
-        headerTintColor: tokens.color.gold
+        headerTintColor: tokens.color.accent
       }}
     >
       <Tabs.Screen

@@ -70,7 +70,7 @@ function widenRoleToWorkforceRoleId(role: Role | undefined): WorkforceRoleId {
       return 'manager'
     case 'employee':
     default:
-      return 'pit_operator'
+      return 'field_technician'
   }
 }
 

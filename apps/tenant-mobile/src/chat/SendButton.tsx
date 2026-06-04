@@ -85,7 +85,7 @@ export function SendButton({
           pressed ? styles.pressed : null,
           !enabled ? styles.disabled : null
         ]}
-        testID="buyer-chat-send"
+        testID="tenant-chat-send"
       >
         <View style={styles.inner}>
           <Text style={styles.label}>{label}</Text>
@@ -97,7 +97,7 @@ export function SendButton({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: colors.gold,
+    backgroundColor: colors.accent,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     minWidth: 44,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.goldSoft
+    borderColor: colors.accentSoft
   },
   pressed: {
     opacity: 0.88

@@ -6,15 +6,15 @@ import { useI18n } from '../i18n/useI18n'
 
 type ButtonState = 'idle' | 'listening' | 'reply'
 
-export interface AskBossNyumbaProps {
+export interface AskMwikilaProps {
   label?: string
 }
 
 /**
  * Fat round voice button. Tap once -> "Listening…" placeholder, tap again ->
- * a stubbed BossNyumba reply. Real STT/TTS hooks land in the voice phase.
+ * a stubbed Mr. Mwikila reply. Real STT/TTS hooks land in the voice phase.
  */
-export function AskBossNyumba({ label }: AskBossNyumbaProps): JSX.Element {
+export function AskMwikila({ label }: AskMwikilaProps): JSX.Element {
   const { t } = useI18n()
   const [state, setState] = useState<ButtonState>('idle')
 

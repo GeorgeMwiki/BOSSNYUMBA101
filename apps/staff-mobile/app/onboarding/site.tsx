@@ -44,13 +44,13 @@ export default function SiteStep(): JSX.Element {
     >
       {isOwner ? (
         <Field
-          label={copy.pmlLabel}
+          label={copy.deedLabel}
           value={current.titleDeedRef}
           onChangeText={(value) => {
             setError(null)
             update({ titleDeedRef: value.toUpperCase() })
           }}
-          placeholder={copy.pmlPlaceholder}
+          placeholder={copy.deedPlaceholder}
           autoCapitalize="characters"
           error={error}
         />

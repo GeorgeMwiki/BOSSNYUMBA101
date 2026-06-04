@@ -77,7 +77,7 @@ const roleStyles: Record<
   },
   user: {
     bg: tokens.color.userBubbleBg,
-    border: tokens.color.goldDeep,
+    border: tokens.color.accentDeep,
     fg: tokens.color.userBubbleText
   },
   system: {
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   },
   persona: {
     ...tokens.type.eyebrow,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
     marginBottom: tokens.space.xs
   },
   text: {

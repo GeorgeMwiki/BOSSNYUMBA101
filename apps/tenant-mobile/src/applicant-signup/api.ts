@@ -14,14 +14,14 @@
  */
 
 import { apiFetch } from '@/api/client'
-import type { ApplicantKycAtomKey, ApplicantAccountKind } from './kyc-atoms'
+import type { VerificationStepKey, ApplicantAccountKind } from './kyc-requirements'
 
 export interface ApplicantSignupResponse {
   readonly applicantOrgId: string
   readonly tenantId: string
   readonly userId: string
   readonly kind: ApplicantAccountKind
-  readonly kycAtoms: ReadonlyArray<ApplicantKycAtomKey>
+  readonly kycAtoms: ReadonlyArray<VerificationStepKey>
   readonly otpRequired: boolean
   readonly signupStatus: 'pending_otp_verification'
 }
@@ -36,7 +36,7 @@ export async function submitApplicantSignup(
 }
 
 export interface UploadAtomInput {
-  readonly atomType: ApplicantKycAtomKey
+  readonly atomType: VerificationStepKey
   readonly payload: Record<string, unknown>
 }
 
@@ -44,7 +44,7 @@ export interface UploadAtomResponse {
   readonly success: true
   readonly data: {
     readonly id: string
-    readonly atomType: ApplicantKycAtomKey
+    readonly atomType: VerificationStepKey
     readonly status: string
   }
 }

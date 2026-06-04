@@ -15,31 +15,27 @@ function t(key: string): string {
   return key
 }
 
-// NOTE (flagged): keeps the wire field names from the shared `Listing`
-// type (`mineral`, `pmlNumber`, `originSite`, `assayPdfUrl`,
-// `assayResults`, `chainOfCustody`); only display values are
-// property-domain. The type rename is a coordinated follow-up.
 const baseListing: Listing = {
   id: 'lst-1',
-  mineral: 'gold_concentrate',
+  propertyType: 'two_bedroom',
   title: 'Mwanza 2-bed apartment',
   grade: 'A',
-  quantityKg: 5,
-  originSite: 'Mwanza-North',
+  floorAreaSqm: 5,
+  propertyAddress: 'Mwanza-North',
   originRegion: 'Mwanza',
-  seller: {
+  landlord: {
     id: 's-1',
     name: 'Lakeview Estates',
-    pmlNumber: 'LIC-2026-0042',
+    licenceNumber: 'LIC-2026-0042',
     rating: 4.7,
     verified: true
   },
-  priceTzsPerKg: 320_000_000,
+  rentPerMonthTzs: 320_000_000,
   priceHintTzs: 1_600_000_000,
   photos: [],
-  assayPdfUrl: 'https://example.com/assay.pdf',
-  assayResults: [],
-  chainOfCustody: ['cryptoseal:abc123', 'cryptoseal:def456'],
+  inspectionReportUrl: 'https://example.com/inspection.pdf',
+  inspectionResults: [],
+  ownershipHistory: ['cryptoseal:abc123', 'cryptoseal:def456'],
   listedAt: new Date().toISOString(),
   status: 'open'
 }
@@ -76,29 +72,29 @@ describe('deriveTrustChips — tenant-marketplace SOTA §7', () => {
     const chips = deriveTrustChips({ listing: stale, translate: t, now: NOW })
     const lab = chips.find((c) => c.kind === 'inspection-verified')
     expect(lab?.tone).toBe('attention')
-    expect(lab?.label).toContain('marketplace.trust.lab_assayed_stale')
+    expect(lab?.label).toContain('marketplace.trust.inspection_stale')
   })
 
-  it('drops bossnyumba-vetted when seller.verified is false', () => {
-    const unverified = { ...baseListing, seller: { ...baseListing.seller, verified: false } }
+  it('drops bossnyumba-vetted when landlord.verified is false', () => {
+    const unverified = { ...baseListing, landlord: { ...baseListing.landlord, verified: false } }
     const chips = deriveTrustChips({ listing: unverified, translate: t, now: NOW })
     expect(chips.find((c) => c.kind === 'bossnyumba-vetted')).toBeUndefined()
   })
 
-  it('drops landlord-verified when pmlNumber is empty', () => {
-    const noLicense = { ...baseListing, seller: { ...baseListing.seller, pmlNumber: '' } }
+  it('drops landlord-verified when licenceNumber is empty', () => {
+    const noLicense = { ...baseListing, landlord: { ...baseListing.landlord, licenceNumber: '' } }
     const chips = deriveTrustChips({ listing: noLicense, translate: t, now: NOW })
     expect(chips.find((c) => c.kind === 'landlord-verified')).toBeUndefined()
   })
 
-  it('drops ownership-verified chip when chainOfCustody is empty', () => {
-    const noChain = { ...baseListing, chainOfCustody: [] }
+  it('drops ownership-verified chip when ownershipHistory is empty', () => {
+    const noChain = { ...baseListing, ownershipHistory: [] }
     const chips = deriveTrustChips({ listing: noChain, translate: t, now: NOW })
     expect(chips.find((c) => c.kind === 'ownership-verified')).toBeUndefined()
   })
 
   it('landlord-history chip is attention when rating < 4.0', () => {
-    const low = { ...baseListing, seller: { ...baseListing.seller, rating: 3.2 } }
+    const low = { ...baseListing, landlord: { ...baseListing.landlord, rating: 3.2 } }
     const chips = deriveTrustChips({ listing: low, translate: t, now: NOW })
     const history = chips.find((c) => c.kind === 'landlord-history')
     expect(history?.tone).toBe('attention')
@@ -106,7 +102,7 @@ describe('deriveTrustChips — tenant-marketplace SOTA §7', () => {
   })
 
   it('landlord-history chip is verified when rating >= 4.0', () => {
-    const high = { ...baseListing, seller: { ...baseListing.seller, rating: 4.5 } }
+    const high = { ...baseListing, landlord: { ...baseListing.landlord, rating: 4.5 } }
     const chips = deriveTrustChips({ listing: high, translate: t, now: NOW })
     const history = chips.find((c) => c.kind === 'landlord-history')
     expect(history?.tone).toBe('verified')
@@ -116,7 +112,7 @@ describe('deriveTrustChips — tenant-marketplace SOTA §7', () => {
     const chips = deriveTrustChips({ listing: baseListing, translate: t, now: NOW })
     expect(chips.find((c) => c.kind === 'landlord-verified')?.evidenceHandle).toBe('LIC-2026-0042')
     expect(chips.find((c) => c.kind === 'inspection-verified')?.evidenceHandle).toBe(
-      'https://example.com/assay.pdf'
+      'https://example.com/inspection.pdf'
     )
     expect(chips.find((c) => c.kind === 'ownership-verified')?.evidenceHandle).toBe(
       'cryptoseal:abc123'
@@ -126,9 +122,9 @@ describe('deriveTrustChips — tenant-marketplace SOTA §7', () => {
   it('returns empty array when no signals are present (no misleading "no trust" chips)', () => {
     const bare: Listing = {
       ...baseListing,
-      seller: { ...baseListing.seller, pmlNumber: '', verified: false, rating: 0 },
-      assayPdfUrl: '',
-      chainOfCustody: []
+      landlord: { ...baseListing.landlord, licenceNumber: '', verified: false, rating: 0 },
+      inspectionReportUrl: '',
+      ownershipHistory: []
     }
     const chips = deriveTrustChips({ listing: bare, translate: t, now: NOW })
     expect(chips).toEqual([])

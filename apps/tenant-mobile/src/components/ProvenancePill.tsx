@@ -33,7 +33,7 @@ export function ProvenancePill({ provenance, onPress }: ProvenancePillProps) {
   if (provenance.via === 'legacy' || provenance.via === 'unknown') return null
 
   const tone =
-    provenance.via === 'chat' ? tokens.color.gold : tokens.color.textMuted
+    provenance.via === 'chat' ? tokens.color.accent : tokens.color.textMuted
   const label = LABEL[provenance.via]
   const tappable = provenance.via === 'chat' && !!provenance.sessionId && !!onPress
 

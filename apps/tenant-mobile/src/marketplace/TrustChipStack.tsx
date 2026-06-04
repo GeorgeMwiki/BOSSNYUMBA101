@@ -50,7 +50,7 @@ export function TrustChipStack({ listing, translate, onChipPress }: TrustChipSta
 function toneStyle(tone: TrustChip['tone']) {
   switch (tone) {
     case 'verified':
-      return { borderColor: tokens.color.borderGold, backgroundColor: 'rgba(255,200,87,0.08)' }
+      return { borderColor: tokens.color.borderAccent, backgroundColor: 'rgba(255,200,87,0.08)' }
     case 'attention':
       return { borderColor: 'rgba(255,184,0,0.42)', backgroundColor: 'rgba(255,184,0,0.06)' }
     case 'neutral':
@@ -61,7 +61,7 @@ function toneStyle(tone: TrustChip['tone']) {
 function toneTextStyle(tone: TrustChip['tone']) {
   switch (tone) {
     case 'verified':
-      return { color: tokens.color.gold }
+      return { color: tokens.color.accent }
     case 'attention':
       return { color: tokens.color.warn }
     case 'neutral':

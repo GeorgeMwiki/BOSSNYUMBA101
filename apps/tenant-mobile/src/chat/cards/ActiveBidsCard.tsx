@@ -6,7 +6,7 @@ import { selectActiveBids } from '@/marketplace/home/derivations'
 import { formatTzs } from '@/components/formatters'
 import { colors } from '@/theme/colors'
 import { spacing, typography, radius } from '@/theme/spacing'
-import type { Bid, Mineral } from '@/types/listing'
+import type { Bid, PropertyType } from '@/types/listing'
 import { BidsResultSchema, type BidSnapshot } from '../toolPayloads'
 
 export interface ActiveBidsCardProps {
@@ -50,7 +50,7 @@ export function ActiveBidsCard({ payload, translate }: ActiveBidsCardProps) {
                 {bid.listingTitle}
               </Text>
               <Text style={styles.rowMeta}>
-                {translate('bids.your_offer')}: {formatTzs(bid.offerTzsPerKg * bid.quantityKg)}
+                {translate('bids.your_offer')}: {formatTzs(bid.offerRentPerMonthTzs)}
               </Text>
             </View>
             <View style={styles.actions}>
@@ -71,9 +71,9 @@ function toBid(raw: BidSnapshot): Bid {
     id: raw.id,
     listingId: raw.listingId,
     listingTitle: raw.listingTitle,
-    mineral: raw.mineral as Mineral,
-    offerTzsPerKg: raw.offerTzsPerKg,
-    quantityKg: raw.quantityKg,
+    propertyType: raw.propertyType as PropertyType,
+    offerRentPerMonthTzs: raw.offerRentPerMonthTzs,
+    floorAreaSqm: raw.floorAreaSqm,
     status: raw.status,
     placedAt: raw.placedAt,
     thread: raw.thread

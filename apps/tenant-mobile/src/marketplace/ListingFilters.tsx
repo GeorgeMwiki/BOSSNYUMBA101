@@ -5,11 +5,7 @@ import { buildUnitTypeOptions, buildRegionOptions, sortOptions } from './options
 import { colors } from '@/theme/colors'
 import { radius, spacing, typography } from '@/theme/spacing'
 import type { ListingFilters, SortKey } from '@/api/marketplace'
-// NOTE (flagged): `Mineral` + `filters.mineral` come from the shared
-// wire `Listing` type, and `marketplace.mineral_filter` is a non-owned
-// i18n key; both keep legacy names pending the coordinated type +
-// i18n rename to PropertyType / property_type_filter.
-import type { Mineral } from '@/types/listing'
+import type { PropertyType } from '@/types/listing'
 
 export interface ListingFiltersBarProps {
   readonly filters: ListingFilters
@@ -27,11 +23,11 @@ export function ListingFiltersBar({ filters, onChange, translate }: ListingFilte
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{translate('marketplace.mineral_filter')}</Text>
-      <ChipGroup<Mineral>
+      <Text style={styles.label}>{translate('marketplace.property_type_filter')}</Text>
+      <ChipGroup<PropertyType>
         options={unitTypeOptions}
-        value={filters.mineral ?? null}
-        onChange={(next) => onChange({ ...filters, mineral: next ?? undefined })}
+        value={filters.propertyType ?? null}
+        onChange={(next) => onChange({ ...filters, propertyType: next ?? undefined })}
       />
 
       <Text style={styles.label}>{translate('marketplace.region_filter')}</Text>

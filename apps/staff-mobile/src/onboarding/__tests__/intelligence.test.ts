@@ -7,8 +7,8 @@ import {
 } from '../intelligence'
 
 describe('classifyRole — Swahili happy paths', () => {
-  it('detects an owner from "mwenye mgodi"', () => {
-    const result = classifyRole('Mimi ni mwenye mgodi wa dhahabu', 'sw')
+  it('detects an owner from "mwenye nyumba"', () => {
+    const result = classifyRole('Mimi ni mwenye nyumba za kupanga', 'sw')
     expect(result.role).toBe('owner')
     expect(result.confidence).toBeGreaterThan(0)
     expect(result.matchedKeywords).toContain('mwenye')
@@ -35,13 +35,13 @@ describe('classifyRole — Swahili happy paths', () => {
 
 describe('classifyRole — English happy paths', () => {
   it('detects an owner from "I am the owner"', () => {
-    const result = classifyRole('I am the owner of the mine', 'en')
+    const result = classifyRole('I am the owner of the property', 'en')
     expect(result.role).toBe('owner')
     expect(result.matchedKeywords).toContain('owner')
   })
 
   it('detects a manager from "shift supervisor"', () => {
-    const result = classifyRole('I am the shift supervisor at the pit', 'en')
+    const result = classifyRole('I am the shift supervisor on site', 'en')
     expect(result.role).toBe('manager')
     expect(result.matchedKeywords).toContain('supervisor')
   })
@@ -94,7 +94,7 @@ describe('classifyRole — edge cases and ambiguity', () => {
 
 describe('recommendCertifications', () => {
   it('recommends excavator + first-aid for excavator operators (en)', () => {
-    const recs = recommendCertifications('I run the excavator at the pit', 'en')
+    const recs = recommendCertifications('I run the excavator on site', 'en')
     expect(recs).toContain('excavator-license')
     expect(recs).toContain('first-aid')
   })

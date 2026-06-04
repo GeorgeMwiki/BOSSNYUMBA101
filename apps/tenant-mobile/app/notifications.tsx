@@ -98,7 +98,7 @@ export default function NotificationsScreen(): JSX.Element {
           <RefreshControl
             refreshing={query.isFetching}
             onRefresh={() => void query.refetch()}
-            tintColor={tokens.color.gold}
+            tintColor={tokens.color.accent}
           />
         }
         ListEmptyComponent={
@@ -244,11 +244,11 @@ const styles = StyleSheet.create({
   },
   ribbonTitle: {
     ...tokens.type.bodyStrong,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
   },
   ribbonLink: {
     ...tokens.type.bodySm,
-    color: tokens.color.gold,
+    color: tokens.color.accent,
   },
   ribbonRow: {
     flexDirection: 'row',
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: tokens.color.gold,
+    backgroundColor: tokens.color.accent,
   },
   cardTitle: {
     ...tokens.type.bodyStrong,
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardTitleUnread: {
-    color: tokens.color.gold,
+    color: tokens.color.accent,
   },
   cardBody: {
     ...tokens.type.body,

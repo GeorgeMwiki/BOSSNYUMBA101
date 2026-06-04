@@ -7,7 +7,7 @@ import { BidRecommendationCard } from './cards/BidRecommendationCard'
 import { DealPipelineCard } from './cards/DealPipelineCard'
 import { UnknownToolCard } from './cards/UnknownToolCard'
 import { extractPayload } from './toolPayloads'
-import { isBuyerToolName, type ToolCall } from './types'
+import { isTenantToolName, type ToolCall } from './types'
 
 export interface ToolCallRendererProps {
   readonly toolCalls: readonly ToolCall[]
@@ -15,7 +15,7 @@ export interface ToolCallRendererProps {
 }
 
 // Single dispatch surface — each tool name maps to one card. New tools are
-// added by extending `BUYER_TOOL_NAMES` and adding a `case` here.
+// added by extending `TENANT_TOOL_NAMES` and adding a `case` here.
 
 export function ToolCallRenderer({ toolCalls, translate }: ToolCallRendererProps) {
   if (toolCalls.length === 0) {
@@ -26,7 +26,7 @@ export function ToolCallRenderer({ toolCalls, translate }: ToolCallRendererProps
       {toolCalls.map((toolCall, index) => {
         const key = `${toolCall.name}-${index}`
         const payload = extractPayload(toolCall)
-        if (!isBuyerToolName(toolCall.name)) {
+        if (!isTenantToolName(toolCall.name)) {
           return <UnknownToolCard key={key} toolName={toolCall.name} payload={payload} />
         }
         switch (toolCall.name) {

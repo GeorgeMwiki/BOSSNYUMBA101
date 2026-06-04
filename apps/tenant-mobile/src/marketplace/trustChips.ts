@@ -45,28 +45,22 @@ const INSPECTION_FRESHNESS_DAYS = 30
  * Returns the chip list given the fixture. Order is stable:
  * landlord-verified → inspection-verified → BossNyumba-vetted →
  * ownership-verified → landlord-history.
- *
- * NOTE (flagged): the `translate('marketplace.trust.*')` i18n keys and
- * the `listing.seller.pmlNumber` / `assayPdfUrl` / `chainOfCustody` wire
- * fields still carry legacy names; they live in non-owned i18n JSON and
- * the shared `Listing` type, so they are kept pending a coordinated
- * rename.
  */
 export function deriveTrustChips(args: DeriveTrustChipsArgs): ReadonlyArray<TrustChip> {
   const { listing, translate, now } = args
   const chips: TrustChip[] = []
   const nowDate = now ?? new Date()
 
-  if (listing.seller.pmlNumber.length > 0) {
+  if (listing.landlord.licenceNumber.length > 0) {
     chips.push({
       kind: 'landlord-verified',
       label: translate('marketplace.trust.gov_licensed'),
       tone: 'verified',
-      evidenceHandle: listing.seller.pmlNumber
+      evidenceHandle: listing.landlord.licenceNumber
     })
   }
 
-  if (listing.assayPdfUrl.length > 0) {
+  if (listing.inspectionReportUrl.length > 0) {
     const listed = new Date(listing.listedAt)
     const ageDays = Math.floor(
       (nowDate.getTime() - listed.getTime()) / (1000 * 60 * 60 * 24)
@@ -75,14 +69,14 @@ export function deriveTrustChips(args: DeriveTrustChipsArgs): ReadonlyArray<Trus
     chips.push({
       kind: 'inspection-verified',
       label: translate(
-        isFresh ? 'marketplace.trust.lab_assayed' : 'marketplace.trust.lab_assayed_stale'
+        isFresh ? 'marketplace.trust.inspection_passed' : 'marketplace.trust.inspection_stale'
       ),
       tone: isFresh ? 'verified' : 'attention',
-      evidenceHandle: listing.assayPdfUrl
+      evidenceHandle: listing.inspectionReportUrl
     })
   }
 
-  if (listing.seller.verified) {
+  if (listing.landlord.verified) {
     chips.push({
       kind: 'bossnyumba-vetted',
       label: translate('marketplace.trust.bossnyumba_vetted'),
@@ -90,19 +84,19 @@ export function deriveTrustChips(args: DeriveTrustChipsArgs): ReadonlyArray<Trus
     })
   }
 
-  if (listing.chainOfCustody.length > 0) {
+  if (listing.ownershipHistory.length > 0) {
     chips.push({
       kind: 'ownership-verified',
-      label: translate('marketplace.trust.chain_of_custody'),
+      label: translate('marketplace.trust.ownership_trail'),
       tone: 'verified',
-      evidenceHandle: listing.chainOfCustody[0]
+      evidenceHandle: listing.ownershipHistory[0]
     })
   }
 
-  const rating = Number.isFinite(listing.seller.rating) ? listing.seller.rating : 0
+  const rating = Number.isFinite(listing.landlord.rating) ? listing.landlord.rating : 0
   if (rating > 0) {
     const tone: TrustChip['tone'] = rating >= 4.0 ? 'verified' : 'attention'
-    const label = translate('marketplace.trust.seller_history') + ` · ${rating.toFixed(1)}★`
+    const label = translate('marketplace.trust.landlord_history') + ` · ${rating.toFixed(1)}★`
     chips.push({ kind: 'landlord-history', label, tone })
   }
 

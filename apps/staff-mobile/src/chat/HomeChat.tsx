@@ -114,7 +114,7 @@ export function HomeChat(): JSX.Element {
   const [tabSheetReasonSeed, setTabSheetReasonSeed] = useState<string>('')
   const workforceRoleId: WorkforceRoleId =
     (tabConfig.config?.role as WorkforceRoleId | undefined) ??
-    (role === 'owner' ? 'owner' : role === 'manager' ? 'manager' : 'pit_operator')
+    (role === 'owner' ? 'owner' : role === 'manager' ? 'manager' : 'field_technician')
 
   // Persona resolution: prefer the fine-grained tab-config role (8
   // workforce roles). Falls back through the safe supervisor persona

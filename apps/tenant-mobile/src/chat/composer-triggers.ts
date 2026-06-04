@@ -1,7 +1,7 @@
 /**
  * composer-triggers — RN-native port of @bossnyumba/chat-ui/composer
  * trigger-parser. Pure functions only — no React, no DOM. Used by the
- * buyer HomeChat composer to render the slash + at menus inline above
+ * tenant HomeChat composer to render the slash + at menus inline above
  * the input. The shared chat-ui package is web-only because its menu
  * components use <div> + CSS; the parser logic itself is platform-
  * neutral so we mirror it here to keep the mobile bundle React-Native-

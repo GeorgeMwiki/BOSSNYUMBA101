@@ -23,7 +23,7 @@ export function Screen({ children, scroll = true, padded = true, refreshing, onR
       <RefreshControl
         refreshing={Boolean(refreshing)}
         onRefresh={onRefresh}
-        tintColor={tokens.color.gold}
+        tintColor={tokens.color.accent}
       />
     ) : undefined
   return (

@@ -1,6 +1,6 @@
 import { apiFetch } from './client'
 import { setAuthToken } from '@/auth/token'
-import type { BuyerUser } from '@/types/auth'
+import type { TenantUser } from '@/types/auth'
 
 export interface RequestOtpInput {
   readonly phone: string
@@ -27,7 +27,7 @@ export interface VerifyOtpInput {
 
 export interface VerifyOtpResult {
   readonly token: string
-  readonly user: BuyerUser
+  readonly user: TenantUser
 }
 
 export async function verifyOtp(input: VerifyOtpInput): Promise<VerifyOtpResult> {

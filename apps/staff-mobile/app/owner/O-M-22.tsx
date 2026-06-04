@@ -1,6 +1,6 @@
 import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
-import { AskBossNyumba } from '../../src/components/AskBossNyumba'
+import { AskMwikila } from '../../src/components/AskMwikila'
 import { PlaceholderList } from '../../src/components/PlaceholderList'
 import { RoleGuard } from '../../src/components/RoleGuard'
 
@@ -11,7 +11,7 @@ export default function Screen(): JSX.Element {
     <RoleGuard screenId={SCREEN_ID}>
       <ScreenShell screenId={SCREEN_ID}>
         <Section title="Mahojiano ya BossNyumba">
-          <AskBossNyumba label="Anza mahojiano" />
+          <AskMwikila label="Anza mahojiano" />
         </Section>
         <Section title="Hatua">
           <PlaceholderList

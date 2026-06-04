@@ -55,8 +55,8 @@ export function selectRecommended(
 ): readonly Listing[] {
   const open = listings.filter((listing) => listing.status === 'open')
   const sorted = [...open].sort((a, b) => {
-    if (b.seller.rating !== a.seller.rating) {
-      return b.seller.rating - a.seller.rating
+    if (b.landlord.rating !== a.landlord.rating) {
+      return b.landlord.rating - a.landlord.rating
     }
     return a.priceHintTzs - b.priceHintTzs
   })

@@ -30,7 +30,7 @@ import {
 } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-import type { ApplicantAccountKind, ApplicantKycAtomKey } from './kyc-atoms'
+import type { ApplicantAccountKind, VerificationStepKey } from './kyc-requirements'
 
 // ─── Wire types ──────────────────────────────────────────────────────
 
@@ -84,7 +84,7 @@ export interface ApplicantSignupState {
   readonly userId: string | null
   readonly otpVerified: boolean
   /** Atom keys the user has completed. */
-  readonly kycAtomsCompleted: ReadonlyArray<ApplicantKycAtomKey>
+  readonly kycAtomsCompleted: ReadonlyArray<VerificationStepKey>
 }
 
 export const STORAGE_KEY = 'bossnyumba.applicant_signup.v1'
@@ -135,7 +135,7 @@ export interface ApplicantSignupContextValue {
     readonly userId: string
   }) => void
   readonly markOtpVerified: () => void
-  readonly markAtomCompleted: (atom: ApplicantKycAtomKey) => void
+  readonly markAtomCompleted: (atom: VerificationStepKey) => void
   readonly reset: () => Promise<void>
 }
 
@@ -261,7 +261,7 @@ export function ApplicantSignupProvider({
     setState((prev) => ({ ...prev, otpVerified: true }))
   }, [])
 
-  const markAtomCompleted = useCallback((atom: ApplicantKycAtomKey) => {
+  const markAtomCompleted = useCallback((atom: VerificationStepKey) => {
     setState((prev) => {
       if (prev.kycAtomsCompleted.includes(atom)) {
         return prev

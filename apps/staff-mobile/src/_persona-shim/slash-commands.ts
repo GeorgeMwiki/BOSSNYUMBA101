@@ -30,13 +30,13 @@ const MANAGER: ReadonlyArray<string> = [
   'T3_module_manager',
 ];
 const SUPERVISOR: ReadonlyArray<string> = ['T1_supervisor_shift'];
-const PIT: ReadonlyArray<string> = ['T1_pit_operator', 'T4_field_employee'];
-const GEO: ReadonlyArray<string> = ['T1_geologist'];
+const FIELD: ReadonlyArray<string> = ['T1_field_technician', 'T4_field_employee'];
+const INSPECTOR: ReadonlyArray<string> = ['T1_inspector'];
 const TREASURY: ReadonlyArray<string> = ['T1_treasury_clerk'];
 const SAFETY: ReadonlyArray<string> = ['T1_safety_officer'];
 const COMPLIANCE: ReadonlyArray<string> = ['T1_compliance_clerk'];
-const BUYER: ReadonlyArray<string> = [
-  'T1_buyer_marketplace_director',
+const TENANT: ReadonlyArray<string> = [
+  'T1_tenant_marketplace_director',
   'T5_customer_concierge',
 ];
 
@@ -74,7 +74,7 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
     {
       id: 'dispatch',
       label: { en: 'Dispatch board', sw: 'Bodi ya utumaji' },
-      hint: { en: 'Equipment routing', sw: 'Utumaji wa vifaa' },
+      hint: { en: 'Work-order routing', sw: 'Utumaji wa kazi' },
       personaSlugs: MANAGER,
     },
     {
@@ -94,56 +94,56 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
       id: 'shift',
       label: { en: 'My shift today', sw: 'Zamu yangu leo' },
       hint: { en: 'Roster + tasks', sw: 'Zamu na kazi' },
-      personaSlugs: [...SUPERVISOR, ...PIT],
+      personaSlugs: [...SUPERVISOR, ...FIELD],
     },
     {
       id: 'clock-in',
       label: { en: 'Clock in', sw: 'Ingia kazini' },
       hint: { en: 'Start your shift', sw: 'Anza zamu' },
-      personaSlugs: [...SUPERVISOR, ...PIT],
+      personaSlugs: [...SUPERVISOR, ...FIELD],
     },
     {
       id: 'clock-out',
       label: { en: 'Clock out', sw: 'Toka kazini' },
       hint: { en: 'End your shift', sw: 'Maliza zamu' },
-      personaSlugs: [...SUPERVISOR, ...PIT],
+      personaSlugs: [...SUPERVISOR, ...FIELD],
     },
     {
       id: 'tasks',
       label: { en: 'My tasks', sw: 'Kazi zangu' },
       hint: { en: 'Open work items', sw: 'Kazi zilizoanzishwa' },
-      personaSlugs: [...SUPERVISOR, ...PIT, ...GEO],
+      personaSlugs: [...SUPERVISOR, ...FIELD, ...INSPECTOR],
     },
     {
       id: 'toolbox',
-      label: { en: 'Toolbox talk', sw: 'Mazungumzo ya usalama' },
+      label: { en: 'Safety check-in', sw: 'Ukaguzi wa usalama' },
       hint: { en: 'Acknowledge today', sw: 'Thibitisha leo' },
-      personaSlugs: [...SUPERVISOR, ...PIT, ...SAFETY],
+      personaSlugs: [...SUPERVISOR, ...FIELD, ...SAFETY],
     },
     {
       id: 'incident-report',
       label: { en: 'Report incident', sw: 'Ripoti ajali' },
       hint: { en: 'Log a safety event', sw: 'Andika tukio la usalama' },
-      personaSlugs: [...SUPERVISOR, ...PIT, ...SAFETY],
+      personaSlugs: [...SUPERVISOR, ...FIELD, ...SAFETY],
     },
-    // Surveyor / inspector
+    // Inspector
     {
       id: 'sample',
-      label: { en: 'Submit condition report', sw: 'Wasilisha ripoti ya hali' },
-      hint: { en: 'Unit condition record', sw: 'Rekodi ya hali ya kitengo' },
-      personaSlugs: GEO,
+      label: { en: 'Submit inspection', sw: 'Wasilisha ukaguzi' },
+      hint: { en: 'Unit condition note', sw: 'Hali ya nyumba' },
+      personaSlugs: INSPECTOR,
     },
     {
       id: 'drill-log',
-      label: { en: 'Site log', sw: 'Logi ya tovuti' },
-      hint: { en: "Today's site notes", sw: 'Maelezo ya tovuti ya leo' },
-      personaSlugs: GEO,
+      label: { en: 'Condition log', sw: 'Logi ya hali' },
+      hint: { en: 'Today findings + grade', sw: 'Matokeo na daraja la leo' },
+      personaSlugs: INSPECTOR,
     },
     {
-      id: 'assay',
-      label: { en: 'Survey results', sw: 'Matokeo ya tathmini' },
-      hint: { en: 'Latest survey reports', sw: 'Ripoti za hivi karibuni' },
-      personaSlugs: GEO,
+      id: 'inspection-results',
+      label: { en: 'Inspection results', sw: 'Matokeo ya ukaguzi' },
+      hint: { en: 'Latest reports', sw: 'Ripoti za hivi karibuni' },
+      personaSlugs: INSPECTOR,
     },
     // Treasury
     {
@@ -159,9 +159,9 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
       personaSlugs: TREASURY,
     },
     {
-      id: 'rent-status',
+      id: 'rent',
       label: { en: 'Rent status', sw: 'Hali ya kodi' },
-      hint: { en: 'Rent collection dues', sw: 'Madeni ya kodi' },
+      hint: { en: 'Collections + arrears', sw: 'Makusanyo na malimbikizo' },
       personaSlugs: TREASURY,
     },
     // Safety officer
@@ -180,7 +180,7 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
     // Compliance clerk
     {
       id: 'licences',
-      label: { en: 'Licences', sw: 'Leseni' },
+      label: { en: 'Leases', sw: 'Mikataba ya pango' },
       hint: { en: 'Expiry + status', sw: 'Kuisha muda na hali' },
       personaSlugs: COMPLIANCE,
     },
@@ -199,59 +199,61 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
   ]);
 
 /**
- * Buyer slash-command catalog. Used by the buyer-mobile chat composer.
- * Personas: T1_buyer_marketplace_director (face) + T5_customer_concierge
- * (legacy fallback).
+ * Renter slash-command catalog. Used by the tenant-mobile chat composer.
+ * Personas: T1_tenant_marketplace_director (face) + T5_customer_concierge
+ * (legacy fallback). The command ids are resolved by the brain to tool
+ * ids; they map onto property-domain concepts (units, listings,
+ * applications, listing history).
  */
-export const BUYER_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
+export const TENANT_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
   Object.freeze([
     {
       id: 'search',
-      label: { en: 'Search listings', sw: 'Tafuta matangazo' },
-      hint: { en: 'By category + price', sw: 'Kwa aina na bei' },
-      personaSlugs: BUYER,
+      label: { en: 'Search units', sw: 'Tafuta nyumba' },
+      hint: { en: 'By type + rent', sw: 'Kwa aina na kodi' },
+      personaSlugs: TENANT,
     },
     {
       id: 'listing',
       label: { en: 'Listing detail', sw: 'Maelezo ya orodha' },
-      hint: { en: 'Open a listing', sw: 'Fungua tangazo' },
-      personaSlugs: BUYER,
+      hint: { en: 'Open a unit', sw: 'Fungua nyumba' },
+      personaSlugs: TENANT,
     },
     {
       id: 'place-bid',
-      label: { en: 'Submit application', sw: 'Wasilisha ombi' },
-      hint: { en: 'Offer a rent', sw: 'Pendekeza kodi' },
-      personaSlugs: BUYER,
+      label: { en: 'Apply', sw: 'Wasilisha maombi' },
+      hint: { en: 'Submit an application', sw: 'Tuma maombi' },
+      personaSlugs: TENANT,
     },
     {
       id: 'my-bids',
       label: { en: 'My applications', sw: 'Maombi yangu' },
       hint: { en: 'Active + history', sw: 'Hai na historia' },
-      personaSlugs: BUYER,
+      personaSlugs: TENANT,
     },
     {
       id: 'market-intel',
       label: { en: 'Market intel', sw: 'Habari za soko' },
-      hint: { en: 'Rent index + trend', sw: 'Kiwango cha kodi na mwelekeo' },
-      personaSlugs: BUYER,
+      hint: { en: 'Rent + trend', sw: 'Kodi na mwelekeo' },
+      personaSlugs: TENANT,
     },
     {
-      id: 'chain-of-custody',
-      label: { en: 'Listing history', sw: 'Historia ya tangazo' },
-      hint: { en: 'Listing timeline', sw: 'Historia ya tangazo' },
-      personaSlugs: BUYER,
+      id: 'listing-history',
+      label: { en: 'Listing history', sw: 'Historia ya orodha' },
+      hint: { en: 'Unit timeline', sw: 'Historia ya nyumba' },
+      personaSlugs: TENANT,
     },
     {
       id: 'kyc',
       label: { en: 'KYC status', sw: 'Hali ya KYC' },
       hint: { en: 'Verification stage', sw: 'Hatua ya uthibitisho' },
-      personaSlugs: BUYER,
+      personaSlugs: TENANT,
     },
     {
       id: 'accept-offer',
       label: { en: 'Accept offer', sw: 'Kubali ofa' },
       hint: { en: 'Take a counter', sw: 'Pokea ofa ya kupinga' },
-      personaSlugs: BUYER,
+      personaSlugs: TENANT,
     },
   ]);
 
@@ -261,9 +263,9 @@ export const BUYER_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
  */
 export function slashCommandsForPersona(
   personaSlug: string,
-  app: 'workforce' | 'buyer',
+  app: 'workforce' | 'tenant',
 ): ReadonlyArray<MobileSlashCommand> {
   const catalog =
-    app === 'workforce' ? WORKFORCE_SLASH_COMMANDS : BUYER_SLASH_COMMANDS;
+    app === 'workforce' ? WORKFORCE_SLASH_COMMANDS : TENANT_SLASH_COMMANDS;
   return catalog.filter((cmd) => cmd.personaSlugs.includes(personaSlug));
 }

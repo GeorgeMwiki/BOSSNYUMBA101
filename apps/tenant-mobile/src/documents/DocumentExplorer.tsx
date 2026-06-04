@@ -156,7 +156,7 @@ export function DocumentExplorer({ document, initialPrompt }: DocumentExplorerPr
         />
         <View style={styles.sendButton}>
           {busy ? (
-            <ActivityIndicator color={colors.gold} />
+            <ActivityIndicator color={colors.accent} />
           ) : (
             <Text
               accessibilityRole="button"
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sendLabel: {
-    color: colors.gold,
+    color: colors.accent,
     ...typography.bodyStrong,
   },
 })

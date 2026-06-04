@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 999,
-    backgroundColor: colors.gold,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: colors.forestDeep,
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: colors.gold,
+    backgroundColor: colors.accent,
     minHeight: 32
   },
   undoButtonText: {
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: colors.gold,
+    backgroundColor: colors.accent,
     minHeight: 32
   },
   bulkChipActionText: {

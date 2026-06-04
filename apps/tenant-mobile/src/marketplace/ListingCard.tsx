@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { Card } from '@/components/Card'
 import { Pill } from '@/components/Pill'
-import { formatKg, formatTzs } from '@/components/formatters'
+import { formatSqm, formatTzs } from '@/components/formatters'
 import { mockDistanceKm, formatKm } from './distance'
 import { unitTypeGlyph } from './options'
 import { TrustChipStack } from './TrustChipStack'
@@ -19,14 +19,14 @@ export function ListingCard({ listing, onPress, translate }: ListingCardProps) {
     <Card onPress={onPress}>
       <View style={styles.headerRow}>
         <View style={styles.glyphWrap}>
-          <Text style={styles.glyph}>{unitTypeGlyph[listing.mineral]}</Text>
+          <Text style={styles.glyph}>{unitTypeGlyph[listing.propertyType]}</Text>
         </View>
         <View style={styles.headerBody}>
           <Text style={styles.title} numberOfLines={2}>
             {listing.title}
           </Text>
           <Text style={styles.meta}>
-            {listing.originRegion} · {listing.seller.name}
+            {listing.originRegion} · {listing.landlord.name}
           </Text>
         </View>
         {listing.status === 'reserved' ? (
@@ -38,7 +38,7 @@ export function ListingCard({ listing, onPress, translate }: ListingCardProps) {
 
       <View style={styles.statRow}>
         <Stat label={translate('marketplace.grade')} value={listing.grade} />
-        <Stat label={translate('marketplace.quantity')} value={formatKg(listing.quantityKg)} />
+        <Stat label={translate('marketplace.quantity')} value={formatSqm(listing.floorAreaSqm)} />
         <Stat label={translate('marketplace.distance')} value={formatKm(mockDistanceKm(listing.originRegion))} />
       </View>
 
@@ -69,11 +69,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: 'rgba(255, 200, 87, 0.14)',
     borderWidth: 1,
-    borderColor: tokens.color.borderGold,
+    borderColor: tokens.color.borderAccent,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  glyph: { fontSize: 18, fontWeight: '700', color: tokens.color.gold },
+  glyph: { fontSize: 18, fontWeight: '700', color: tokens.color.accent },
   headerBody: { flex: 1 },
   title: { ...tokens.type.h3, color: tokens.color.textPrimary },
   meta: { ...tokens.type.bodySm, color: tokens.color.textMuted, marginTop: 2 },
@@ -97,5 +97,5 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   priceLabel: { ...tokens.type.bodySm, color: tokens.color.textMuted },
-  priceValue: { ...tokens.type.bodyStrong, color: tokens.color.gold }
+  priceValue: { ...tokens.type.bodyStrong, color: tokens.color.accent }
 })

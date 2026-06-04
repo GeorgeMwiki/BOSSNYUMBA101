@@ -5,10 +5,10 @@
  * an L7 fulfilment notification (application fulfilled, settlement paid,
  * response received) the operator-side handlers enqueued.
  *
- * NOTE (flagged): the wire field names below (buyer_tenant_id,
- * buyer_user_id, seller_tenant_id, rfb_id) mirror the server JSON and so
- * are kept as-is; renaming them to applicant_/operator_/application_id
- * requires a coordinated backend payload change.
+ * The row shape mirrors the gateway JSON: the applicant side (the renting
+ * tenant) is `applicant_tenant_id` / `applicant_user_id`, the listing side
+ * (the landlord) is `landlord_tenant_id`, and `rfb_id` is the originating
+ * request-for-application.
  */
 
 import { apiFetch } from './client'
@@ -22,9 +22,9 @@ export type TenantNotificationKind =
 
 export interface TenantNotificationRow {
   readonly id: string
-  readonly buyer_tenant_id: string
-  readonly buyer_user_id: string
-  readonly seller_tenant_id: string
+  readonly applicant_tenant_id: string
+  readonly applicant_user_id: string
+  readonly landlord_tenant_id: string
   readonly rfb_id: string
   readonly response_id: string | null
   readonly task_id: string | null

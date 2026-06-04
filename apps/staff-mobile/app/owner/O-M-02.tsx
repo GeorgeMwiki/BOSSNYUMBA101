@@ -5,7 +5,7 @@ import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { Field } from '../../src/forms/Field'
 import { Button } from '../../src/forms/Button'
-import { AskBossNyumba } from '../../src/components/AskBossNyumba'
+import { AskMwikila } from '../../src/components/AskMwikila'
 import { MessageBubble } from '../../src/chat/MessageBubble'
 import { useChat } from '../../src/chat/useChat'
 import { useI18n } from '../../src/i18n/useI18n'
@@ -41,7 +41,7 @@ function ChatView(): JSX.Element {
         {chat.state.messages.length === 0 ? (
           <Section title={t.askBossNyumba.placeholder}>
             <Text style={styles.empty}>{t.askBossNyumba.emptyChat}</Text>
-            <AskBossNyumba label={t.askBossNyumba.voiceButton} />
+            <AskMwikila label={t.askBossNyumba.voiceButton} />
           </Section>
         ) : (
           <View style={styles.thread}>

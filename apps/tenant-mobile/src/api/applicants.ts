@@ -1,6 +1,12 @@
+/**
+ * Tenant-mobile API — applicant identity surface (KYC + profile +
+ * notification preferences). Backed by the estate-manager operator router
+ * mounted at `MANAGER_PREFIX` (`/api/v1/manager`).
+ */
+
 import { apiFetch } from './client'
 import { MANAGER_PREFIX } from './config'
-import type { BuyerUser } from '@/types/auth'
+import type { TenantUser } from '@/types/auth'
 import type { KycRecord, KycSubmission } from '@/types/kyc'
 
 interface KycResponse {
@@ -8,7 +14,7 @@ interface KycResponse {
 }
 
 export async function submitKyc(submission: KycSubmission): Promise<KycRecord> {
-  const response = await apiFetch<KycResponse>(`${MANAGER_PREFIX}/buyers/kyc`, {
+  const response = await apiFetch<KycResponse>(`${MANAGER_PREFIX}/applicants/kyc`, {
     method: 'POST',
     body: submission
   })
@@ -17,7 +23,7 @@ export async function submitKyc(submission: KycSubmission): Promise<KycRecord> {
 
 export async function fetchKycStatus(id: string): Promise<KycRecord> {
   const response = await apiFetch<KycResponse>(
-    `${MANAGER_PREFIX}/buyers/kyc/${encodeURIComponent(id)}/status`
+    `${MANAGER_PREFIX}/applicants/kyc/${encodeURIComponent(id)}/status`
   )
   return response.data
 }
@@ -28,8 +34,8 @@ export interface ProfileUpdate {
   readonly phone?: string
 }
 
-export async function updateProfile(input: ProfileUpdate): Promise<BuyerUser> {
-  const response = await apiFetch<{ readonly data: BuyerUser }>(`${MANAGER_PREFIX}/buyers/profile`, {
+export async function updateProfile(input: ProfileUpdate): Promise<TenantUser> {
+  const response = await apiFetch<{ readonly data: TenantUser }>(`${MANAGER_PREFIX}/applicants/profile`, {
     method: 'POST',
     body: input
   })
@@ -45,7 +51,7 @@ export interface NotificationPrefs {
 
 export async function updateNotificationPrefs(prefs: NotificationPrefs): Promise<NotificationPrefs> {
   const response = await apiFetch<{ readonly data: NotificationPrefs }>(
-    `${MANAGER_PREFIX}/buyers/profile/notifications`,
+    `${MANAGER_PREFIX}/applicants/profile/notifications`,
     {
       method: 'POST',
       body: prefs

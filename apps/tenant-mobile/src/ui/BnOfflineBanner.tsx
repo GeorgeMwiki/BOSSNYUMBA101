@@ -47,14 +47,14 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: tokens.color.gold
+    backgroundColor: tokens.color.accent
   },
   copy: {
     flex: 1
   },
   label: {
     ...tokens.type.bodySmStrong,
-    color: tokens.color.gold
+    color: tokens.color.accent
   },
   sub: {
     ...tokens.type.micro,

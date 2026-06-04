@@ -3,7 +3,7 @@
  * the parent fork's Tailwind tokens for direct use in StyleSheet.
  *
  * Single-sources from the tenant palette so colour truth stays in
- * `src/theme/colors.ts`. Adds the gold-on-navy gradients, type ramp,
+ * `src/theme/colors.ts`. Adds the accent-on-navy gradients, type ramp,
  * radii, and shadow recipes adapted for React Native's flat StyleSheet
  * model.
  */
@@ -22,10 +22,10 @@ export const tokens = {
     textMuted: colors.inkMuted,
     textInverse: colors.ink,
 
-    gold: colors.gold,
-    goldDeep: colors.goldSoft,
-    goldSoft: colors.copper,
-    goldRing: 'rgba(255, 200, 87, 0.32)',
+    accent: colors.accent,
+    accentDeep: colors.accentSoft,
+    accentSoft: colors.accentDeep,
+    accentRing: 'rgba(255, 200, 87, 0.32)',
 
     success: colors.success,
     warn: colors.warning,
@@ -33,15 +33,15 @@ export const tokens = {
 
     border: 'rgba(255, 255, 255, 0.08)',
     borderStrong: 'rgba(255, 255, 255, 0.16)',
-    borderGold: 'rgba(255, 200, 87, 0.40)',
+    borderAccent: 'rgba(255, 200, 87, 0.40)',
 
     glassRaised: 'rgba(11, 15, 25, 0.66)',
     glassDeep: 'rgba(7, 10, 18, 0.85)',
 
     aiBubbleBg: colors.forestSoft,
     aiBubbleBorder: 'rgba(255, 200, 87, 0.22)',
-    aiBubbleTopAccent: colors.gold,
-    userBubbleBg: colors.gold,
+    aiBubbleTopAccent: colors.accent,
+    userBubbleBg: colors.accent,
     userBubbleText: colors.ink
   },
 

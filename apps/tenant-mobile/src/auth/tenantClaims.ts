@@ -9,7 +9,7 @@
  * routing, never for authorisation.
  */
 
-export interface BuyerTokenClaims {
+export interface TenantTokenClaims {
   readonly userId: string
   readonly tenantId: string | null
   readonly phone: string | null
@@ -37,7 +37,7 @@ function base64UrlDecode(input: string): string {
   throw new Error('No base64 decoder available in this runtime')
 }
 
-export function parseSupabaseTokenForBuyer(accessToken: string): BuyerTokenClaims | null {
+export function parseSupabaseTokenForTenant(accessToken: string): TenantTokenClaims | null {
   if (!accessToken || typeof accessToken !== 'string') return null
   const segments = accessToken.split('.')
   if (segments.length !== 3) return null

@@ -35,8 +35,8 @@ const INSPECTOR: ReadonlyArray<string> = ['T1_inspector'];
 const TREASURY: ReadonlyArray<string> = ['T1_treasury_clerk'];
 const SAFETY: ReadonlyArray<string> = ['T1_safety_officer'];
 const COMPLIANCE: ReadonlyArray<string> = ['T1_compliance_clerk'];
-const BUYER: ReadonlyArray<string> = [
-  'T1_buyer_marketplace_director',
+const TENANT: ReadonlyArray<string> = [
+  'T1_tenant_marketplace_director',
   'T5_customer_concierge',
 ];
 
@@ -140,7 +140,7 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
       personaSlugs: INSPECTOR,
     },
     {
-      id: 'assay',
+      id: 'inspection-results',
       label: { en: 'Inspection results', sw: 'Matokeo ya ukaguzi' },
       hint: { en: 'Latest reports', sw: 'Ripoti za hivi karibuni' },
       personaSlugs: INSPECTOR,
@@ -159,7 +159,7 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
       personaSlugs: TREASURY,
     },
     {
-      id: 'royalty',
+      id: 'rent',
       label: { en: 'Rent status', sw: 'Hali ya kodi' },
       hint: { en: 'Collections + arrears', sw: 'Makusanyo na malimbikizo' },
       personaSlugs: TREASURY,
@@ -200,61 +200,60 @@ export const WORKFORCE_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
 
 /**
  * Renter slash-command catalog. Used by the tenant-mobile chat composer.
- * Personas: T1_buyer_marketplace_director (face) + T5_customer_concierge
- * (legacy fallback). NOTE (flagged): the `chain-of-custody` command id
- * is resolved by the brain to a tool id, so the id string is kept while
- * the label is reframed to a property concept; renaming the id needs a
- * coordinated tool-catalog change.
+ * Personas: T1_tenant_marketplace_director (face) + T5_customer_concierge
+ * (legacy fallback). The command ids are resolved by the brain to tool
+ * ids; they map onto property-domain concepts (units, listings,
+ * applications, listing history).
  */
-export const BUYER_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
+export const TENANT_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
   Object.freeze([
     {
       id: 'search',
       label: { en: 'Search units', sw: 'Tafuta nyumba' },
       hint: { en: 'By type + rent', sw: 'Kwa aina na kodi' },
-      personaSlugs: BUYER,
+      personaSlugs: TENANT,
     },
     {
       id: 'listing',
       label: { en: 'Listing detail', sw: 'Maelezo ya orodha' },
       hint: { en: 'Open a unit', sw: 'Fungua nyumba' },
-      personaSlugs: BUYER,
+      personaSlugs: TENANT,
     },
     {
       id: 'place-bid',
       label: { en: 'Apply', sw: 'Wasilisha maombi' },
       hint: { en: 'Submit an application', sw: 'Tuma maombi' },
-      personaSlugs: BUYER,
+      personaSlugs: TENANT,
     },
     {
       id: 'my-bids',
       label: { en: 'My applications', sw: 'Maombi yangu' },
       hint: { en: 'Active + history', sw: 'Hai na historia' },
-      personaSlugs: BUYER,
+      personaSlugs: TENANT,
     },
     {
       id: 'market-intel',
       label: { en: 'Market intel', sw: 'Habari za soko' },
       hint: { en: 'Rent + trend', sw: 'Kodi na mwelekeo' },
-      personaSlugs: BUYER,
+      personaSlugs: TENANT,
     },
     {
-      id: 'chain-of-custody',
+      id: 'listing-history',
       label: { en: 'Listing history', sw: 'Historia ya orodha' },
       hint: { en: 'Unit timeline', sw: 'Historia ya nyumba' },
-      personaSlugs: BUYER,
+      personaSlugs: TENANT,
     },
     {
       id: 'kyc',
       label: { en: 'KYC status', sw: 'Hali ya KYC' },
       hint: { en: 'Verification stage', sw: 'Hatua ya uthibitisho' },
-      personaSlugs: BUYER,
+      personaSlugs: TENANT,
     },
     {
       id: 'accept-offer',
       label: { en: 'Accept offer', sw: 'Kubali ofa' },
       hint: { en: 'Take a counter', sw: 'Pokea ofa ya kupinga' },
-      personaSlugs: BUYER,
+      personaSlugs: TENANT,
     },
   ]);
 
@@ -264,9 +263,9 @@ export const BUYER_SLASH_COMMANDS: ReadonlyArray<MobileSlashCommand> =
  */
 export function slashCommandsForPersona(
   personaSlug: string,
-  app: 'workforce' | 'buyer',
+  app: 'workforce' | 'tenant',
 ): ReadonlyArray<MobileSlashCommand> {
   const catalog =
-    app === 'workforce' ? WORKFORCE_SLASH_COMMANDS : BUYER_SLASH_COMMANDS;
+    app === 'workforce' ? WORKFORCE_SLASH_COMMANDS : TENANT_SLASH_COMMANDS;
   return catalog.filter((cmd) => cmd.personaSlugs.includes(personaSlug));
 }

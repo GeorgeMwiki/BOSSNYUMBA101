@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   optionActive: {
-    backgroundColor: colors.gold,
+    backgroundColor: colors.accent,
   },
   optionText: {
     color: colors.cream,

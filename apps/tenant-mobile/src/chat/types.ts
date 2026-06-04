@@ -56,13 +56,10 @@ export interface ChatTurn {
 // entry here and a new branch in `ToolCallRenderer`. Unknown names fall
 // through to the generic JSON code-block view.
 //
-// NOTE (flagged): the BUYER_TOOL_NAMES / BuyerToolName / isBuyerToolName
-// symbols keep the legacy "buyer" token — they are consumed by the
-// non-owned ToolCallRenderer, so the rename is a coordinated follow-up.
 // The tool-name string VALUES below are the canonical brain wire names
 // and stay as-is.
 
-export const BUYER_TOOL_NAMES = [
+export const TENANT_TOOL_NAMES = [
   'marketplace.recommended',
   'marketplace.lobby',
   'bids.active',
@@ -71,8 +68,8 @@ export const BUYER_TOOL_NAMES = [
   'deals.pipeline'
 ] as const
 
-export type BuyerToolName = (typeof BUYER_TOOL_NAMES)[number]
+export type TenantToolName = (typeof TENANT_TOOL_NAMES)[number]
 
-export function isBuyerToolName(value: string): value is BuyerToolName {
-  return (BUYER_TOOL_NAMES as readonly string[]).includes(value)
+export function isTenantToolName(value: string): value is TenantToolName {
+  return (TENANT_TOOL_NAMES as readonly string[]).includes(value)
 }

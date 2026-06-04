@@ -3,10 +3,10 @@ import { StyleSheet, Text, View } from 'react-native'
 import { Card } from '@/components/Card'
 import { Pill } from '@/components/Pill'
 import { selectLiveLobby } from '@/marketplace/home/derivations'
-import { formatKg, formatTzs } from '@/components/formatters'
+import { formatSqm, formatTzs } from '@/components/formatters'
 import { colors } from '@/theme/colors'
 import { spacing, typography, radius } from '@/theme/spacing'
-import type { Listing, Mineral } from '@/types/listing'
+import type { Listing, PropertyType } from '@/types/listing'
 import { MarketplaceListingsResultSchema, type MarketplaceListing } from '../toolPayloads'
 
 export interface LiveLobbyCardProps {
@@ -43,7 +43,7 @@ export function LiveLobbyCard({ payload, translate }: LiveLobbyCardProps) {
                 {listing.title}
               </Text>
               <Text style={styles.rowMeta}>
-                {listing.originRegion} · {formatKg(listing.quantityKg)}
+                {listing.originRegion} · {formatSqm(listing.floorAreaSqm)}
               </Text>
             </View>
             <Text style={styles.rowPrice} onPress={() => router.push(`/marketplace/${listing.id}`)}>
@@ -59,25 +59,25 @@ export function LiveLobbyCard({ payload, translate }: LiveLobbyCardProps) {
 function toListing(raw: MarketplaceListing): Listing {
   return {
     id: raw.id,
-    mineral: raw.mineral as Mineral,
+    propertyType: raw.propertyType as PropertyType,
     title: raw.title,
     grade: raw.grade,
-    quantityKg: raw.quantityKg,
-    originSite: raw.originSite,
+    floorAreaSqm: raw.floorAreaSqm,
+    propertyAddress: raw.propertyAddress,
     originRegion: raw.originRegion,
-    seller: {
-      id: raw.seller.id,
-      name: raw.seller.name,
-      pmlNumber: raw.seller.pmlNumber,
-      rating: raw.seller.rating,
-      verified: raw.seller.verified
+    landlord: {
+      id: raw.landlord.id,
+      name: raw.landlord.name,
+      licenceNumber: raw.landlord.licenceNumber,
+      rating: raw.landlord.rating,
+      verified: raw.landlord.verified
     },
-    priceTzsPerKg: raw.priceTzsPerKg,
+    rentPerMonthTzs: raw.rentPerMonthTzs,
     priceHintTzs: raw.priceHintTzs,
     photos: raw.photos,
-    assayPdfUrl: raw.assayPdfUrl,
-    assayResults: [],
-    chainOfCustody: raw.chainOfCustody,
+    inspectionReportUrl: raw.inspectionReportUrl,
+    inspectionResults: [],
+    ownershipHistory: raw.ownershipHistory,
     listedAt: raw.listedAt,
     status: raw.status
   }

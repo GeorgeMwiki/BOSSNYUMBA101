@@ -9,7 +9,7 @@ import { spacing, typography } from '@/theme/spacing'
 
 /**
  * /documents-intel/[id] — full-screen DocumentExplorer for a single
- * uploaded document on the buyer surface.
+ * uploaded document on the tenant surface.
  */
 export default function DocumentIntelDetail() {
   const params = useLocalSearchParams<{ id: string }>()

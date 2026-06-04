@@ -10,7 +10,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
-import { AskBossNyumba } from '../../src/components/AskBossNyumba'
+import { AskMwikila } from '../../src/components/AskMwikila'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { PreviewBanner } from '../../src/components/PreviewBanner'
 import { request } from '../../src/api/client'
@@ -250,7 +250,7 @@ function DocumentChatView(): JSX.Element {
   return (
     <View>
       <Section title={COPY.sectionAsk} hint={COPY.sectionAskHint}>
-        <AskBossNyumba label="Uliza Hati" />
+        <AskMwikila label="Uliza Hati" />
       </Section>
       <Section title={COPY.sectionCompose}>
         <View style={styles.composer}>

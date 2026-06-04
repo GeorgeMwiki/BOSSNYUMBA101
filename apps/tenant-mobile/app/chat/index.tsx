@@ -117,7 +117,7 @@ export default function ChatIndex() {
                 key={msg.id}
                 from={msg.from}
                 body={msg.body}
-                authorLabel={msg.from === 'buyer' ? t('profile.title') : 'Landlord'}
+                authorLabel={msg.from === 'tenant' ? t('profile.title') : 'Landlord'}
               />
             ))
           )}

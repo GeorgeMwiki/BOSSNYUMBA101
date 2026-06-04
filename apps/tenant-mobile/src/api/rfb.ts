@@ -11,12 +11,6 @@
  * Tenant scoping is handled by the gateway via the JWT auth header;
  * no tenantId is sent client-side. The applicant's user id is also
  * resolved server-side from the token.
- *
- * NOTE (flagged): the `mineralKind` / `tonnageMin` request fields, the
- * `mineral_kind` / `tonnage_min` response fields, and the
- * `RFB_MINERAL_KINDS` enum below are the not-yet-renamed gateway wire
- * contract; the property rename (propertyType / unit count / lease terms)
- * must land alongside the backend RFB route.
  */
 
 import { apiFetch } from './client'
@@ -26,10 +20,10 @@ const RFB_PREFIX = '/api/v1/marketplace/rfb'
 export type RfbStatus = 'open' | 'filled' | 'expired' | 'cancelled'
 
 export interface RfbCreateInput {
-  readonly mineralKind: string
+  readonly unitType: string
   readonly gradeMin?: string
-  readonly tonnageMin: number
-  readonly tonnageMax?: number
+  readonly floorAreaMinSqm: number
+  readonly floorAreaMaxSqm?: number
   readonly unitPriceTzs: number
   /** YYYY-MM-DD */
   readonly deliveryBy: string
@@ -41,10 +35,10 @@ export interface RfbCreateInput {
 
 export interface RfbSummary {
   readonly id: string
-  readonly mineral_kind: string
+  readonly unit_type: string
   readonly grade_min: string | null
-  readonly tonnage_min: string
-  readonly tonnage_max: string | null
+  readonly floor_area_min: string
+  readonly floor_area_max: string | null
   readonly unit_price_tzs: string
   readonly delivery_by: string
   readonly status: RfbStatus
@@ -89,22 +83,22 @@ export async function cancelRfb(rfbId: string): Promise<CancelResponse['data']> 
   return res.data
 }
 
-/** Mineral kinds the gateway accepts. Matches the zod enum on the route. */
-export const RFB_MINERAL_KINDS = [
-  'gold',
-  'tanzanite',
-  'diamond',
-  'copper',
-  'cobalt',
-  'nickel',
-  'iron',
-  'coal',
-  'silver',
-  'rare_earth',
-  'limestone',
-  'gypsum',
-  'salt',
-  'gemstone_other'
+/** Unit types the gateway accepts. Matches the zod enum on the route. */
+export const RFB_UNIT_TYPES = [
+  'studio',
+  'one_bedroom',
+  'two_bedroom',
+  'three_bedroom',
+  'four_bedroom_plus',
+  'five_bedroom_plus',
+  'commercial',
+  'industrial',
+  'mixed_use',
+  'retail',
+  'office',
+  'warehouse',
+  'land',
+  'other'
 ] as const
 
-export type RfbMineralKind = (typeof RFB_MINERAL_KINDS)[number]
+export type RfbUnitType = (typeof RFB_UNIT_TYPES)[number]

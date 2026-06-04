@@ -2,19 +2,19 @@ import { StyleSheet, Text, View } from 'react-native'
 import { Card } from '@/components/Card'
 import {
   formatResponseLatency,
-  summariseBuyerPerformance
+  summariseTenantPerformance
 } from '@/marketplace/home/performance'
 import { formatTzs } from '@/components/formatters'
 import { tokens } from '@/ui'
 import type { Bid } from '@/types/listing'
 
-export interface BuyerPerformanceSectionProps {
+export interface TenantPerformanceSectionProps {
   readonly bids: readonly Bid[]
   readonly translate: (key: string) => string
 }
 
-export function BuyerPerformanceSection({ bids, translate }: BuyerPerformanceSectionProps) {
-  const summary = summariseBuyerPerformance(bids)
+export function TenantPerformanceSection({ bids, translate }: TenantPerformanceSectionProps) {
+  const summary = summariseTenantPerformance(bids)
   return (
     <Card>
       <Text style={styles.title}>{translate('dashboard.performance')}</Text>
@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.color.border,
     alignItems: 'center'
   },
-  statValue: { ...tokens.type.bodyStrong, color: tokens.color.gold },
+  statValue: { ...tokens.type.bodyStrong, color: tokens.color.accent },
   statLabel: {
     fontSize: 10,
     fontWeight: '700',

@@ -13,7 +13,7 @@ import { LiveAuctionLobby } from './sections/LiveAuctionLobby'
 import { RecommendedParcels } from './sections/RecommendedParcels'
 import { ActiveBidsSection } from './sections/ActiveBidsSection'
 import { DealPipelineSection } from './sections/DealPipelineSection'
-import { BuyerPerformanceSection } from './sections/BuyerPerformanceSection'
+import { TenantPerformanceSection } from './sections/TenantPerformanceSection'
 
 /**
  * Dashibodi — the tenant's at-a-glance dashboard. Six sections compose from
@@ -21,11 +21,10 @@ import { BuyerPerformanceSection } from './sections/BuyerPerformanceSection'
  * already hydrate, so navigation between tabs is free of redundant network
  * calls. Pure derivations live under `@/marketplace/home/*` so this screen
  * stays presentational and the dashboard / chat / future cards share one
- * truth. NOTE (flagged): the exported `BuyerDashboard` component name keeps
- * its identifier pending a coordinated route + symbol rename.
+ * truth.
  */
 
-export function BuyerDashboard() {
+export function TenantDashboard() {
   const router = useRouter()
   const { t, lang } = useTranslation()
   const user = useSession()
@@ -100,7 +99,7 @@ export function BuyerDashboard() {
       <Screen>
         {renderHero()}
         <View style={styles.loader}>
-          <ActivityIndicator color={tokens.color.gold} />
+          <ActivityIndicator color={tokens.color.accent} />
         </View>
       </Screen>
     )
@@ -155,7 +154,7 @@ export function BuyerDashboard() {
       </View>
 
       <View style={styles.gap}>
-        <BuyerPerformanceSection bids={bids} translate={t} />
+        <TenantPerformanceSection bids={bids} translate={t} />
       </View>
     </Screen>
   )

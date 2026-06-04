@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     minHeight: 36
   },
   segActive: {
-    backgroundColor: tokens.color.gold
+    backgroundColor: tokens.color.accent
   },
   segPressed: {
     opacity: 0.85
