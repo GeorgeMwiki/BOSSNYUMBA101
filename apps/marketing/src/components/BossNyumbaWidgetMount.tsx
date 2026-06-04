@@ -1,50 +1,58 @@
 'use client';
 /**
- * BossNyumbaWidgetMount — marketing-site (anonymous / public) mount of the
- * unified Mr. Mwikila floating chat widget.
+ * BossNyumbaWidgetMount — marketing-site (anonymous) wrapper around the
+ * @bossnyumba/chat-ui floating widget.
  *
- * Wires the CANONICAL `BossnyumbaAIProvider` + `FloatingChatWidget` pair —
- * the same one every product portal uses (customer/owner/estate-manager
- * MwikilaWidgetMount). The marketing app had been left on the pre-debrand
- * `LitFinAIProvider` + `LitFinWidget` pair; `FloatingChatWidget` reads the
- * `BossnyumbaAIContext` (via `useOptionalBossnyumbaAI`) and returns `null`
- * when that context is absent — so under the old wiring the floating bubble
- * never rendered. This restores it.
- *
- * Talks to `/api/chat` (the Next route handler that adapts the widget shape
- * to the BN api-gateway's public chat endpoint). Lazy-loaded `ssr: false`
- * so the widget bundle never enters the SSR module graph.
+ * Renders the floating "Mr. Mwikila — BossNyumba's AI Real-Estate
+ * Director" bubble across every marketing page. Uses the `public`
+ * portal — talks to /api/chat (a Next route handler that adapts the
+ * widget shape to the BN api-gateway's /api/v1/public/chat endpoint).
  */
+import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
-import { BossnyumbaAIProvider, FloatingChatWidget } from '@bossnyumba/chat-ui';
 
-// Provider AND widget come from the SAME static import so they share one
-// `@bossnyumba/chat-ui` module instance — and therefore one `BossnyumbaAIContext`
-// object. The marketing app builds with webpack (the product portals use
-// turbopack via `--turbo`); under webpack a `dynamic(() => import('@bossnyumba/
-// chat-ui'))` for the widget loaded a SECOND copy of the module, so the widget's
-// `useOptionalBossnyumbaAI()` read a different context than the provider supplied
-// → `ctx` was null → `FloatingChatWidget` returned null → no bubble. This whole
-// mount is already a client-only island, and `FloatingChatWidget` is SSR-safe
-// (window access is effect-guarded), so a static import is correct here.
+const BnAIProvider = dynamic(
+  () =>
+    import('@bossnyumba/chat-ui').then((m) => ({
+      default: m.LitFinAIProvider,
+    })),
+  { ssr: false },
+);
+
+const BnWidget = dynamic(
+  () =>
+    import('@bossnyumba/chat-ui').then((m) => ({ default: m.LitFinWidget })),
+  { ssr: false },
+);
 
 interface BossNyumbaWidgetMountProps {
   readonly locale?: 'en' | 'sw';
 }
 
-export function BossNyumbaWidgetMount({
-  locale = 'en',
-}: BossNyumbaWidgetMountProps = {}): JSX.Element {
+/**
+ * BossNyumba real-estate compliance copy. Landlords own properties — the
+ * parent fork's variant said "owner" of a different asset class. We pin
+ * "landlord" here so an unrelated edit (or a sibling chat-ui session)
+ * cannot revert it.
+ */
+const BOSSNYUMBA_DISCLAIMER_EN =
+  'AI-generated. Not legal advice. Decisions are made by the landlord.';
+const BOSSNYUMBA_DISCLAIMER_SW =
+  'AI-iliyotengenezwa . Si ushauri wa kisheria . Maamuzi yanafanywa na mwenye nyumba';
+
+export function BossNyumbaWidgetMount(
+  _props: BossNyumbaWidgetMountProps = {},
+): JSX.Element {
   return (
-    <BossnyumbaAIProvider
-      portal="public"
-      defaultPersona="public-chat"
-      defaultLanguage={locale}
+    <BnAIProvider
+      portalId="public"
       endpoint="/api/chat"
-      featureEnabled
+      initialRoute="/"
+      disclaimerEn={BOSSNYUMBA_DISCLAIMER_EN}
+      disclaimerSw={BOSSNYUMBA_DISCLAIMER_SW}
     >
-      <FloatingChatWidget />
-    </BossnyumbaAIProvider>
+      <BnWidget />
+    </BnAIProvider>
   );
 }
 
