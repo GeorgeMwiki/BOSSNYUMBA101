@@ -10,17 +10,15 @@
  * hydrates as an idle-priority client island.
  */
 
-import dynamic from 'next/dynamic';
 import type { Locale } from '@/lib/i18n';
+import { BossNyumbaWidgetMount } from '@/components/BossNyumbaWidgetMount';
 
-const BossNyumbaWidgetMount = dynamic(
-  () =>
-    import('@/components/BossNyumbaWidgetMount').then((m) => ({
-      default: m.BossNyumbaWidgetMount,
-    })),
-  // Layout is RSC; this dynamic is intentionally `ssr: false`-equivalent
-  // by virtue of BossNyumbaWidgetMount itself loading the widget client-only.
-);
+// Direct (static) import — matches the working product portals' single-
+// boundary pattern. BossNyumbaWidgetMount is a `'use client'` component that
+// already defers the heavy widget via `dynamic(FloatingChatWidget, { ssr:false })`.
+// The previous double-nested dynamic (this slot dynamically importing the mount,
+// which then dynamically imported the widget) left the inner ssr:false chunk
+// un-requested, so the floating bubble never loaded.
 
 interface MarketingWidgetSlotProps {
   readonly locale?: Locale;
