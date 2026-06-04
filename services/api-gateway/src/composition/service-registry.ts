@@ -197,6 +197,7 @@ import {
   buildMultiLLMRouterFromEnv,
   withBudgetGuard,
   createAnthropicClient,
+  createNegotiatorCounterGenerator,
   ModelTier,
   type MultiLLMRouter,
   type BudgetGuardedAnthropicClient,
@@ -1597,12 +1598,30 @@ function buildServicesInner(
   const negotiationRepo = new PostgresNegotiationRepository(db);
   const turnRepo = new PostgresNegotiationTurnRepository(db);
 
-  // Negotiation service (shared by marketplace enquiry + tenders/bids)
+  // Negotiation service (shared by marketplace enquiry + tenders/bids).
+  // KI-008 — inject the REAL Anthropic-backed counter generator when a key is
+  // present; otherwise NegotiationService falls back to its deterministic
+  // midpoint stub. The generator is ADVISORY: the service re-checks every
+  // offer it returns against policy (hard floor / discount cap / approval gate)
+  // AFTER this returns, so a prompt-injected below-floor counter is still
+  // rejected + escalated. Never remove that post-LLM re-check.
+  const negotiationCounterGenerator = process.env.ANTHROPIC_API_KEY
+    ? createNegotiatorCounterGenerator({
+        client: createAnthropicClient({
+          apiKey: process.env.ANTHROPIC_API_KEY as string,
+          defaultModel: ModelTier.SONNET,
+        }),
+      })
+    : undefined;
+
   const negotiationService = new NegotiationService({
     policyRepo,
     negotiationRepo,
     turnRepo,
     eventBus,
+    ...(negotiationCounterGenerator
+      ? { aiCounterGenerator: negotiationCounterGenerator }
+      : {}),
   });
 
   // Pre-insert unit-existence check for listing publish. Without this, a

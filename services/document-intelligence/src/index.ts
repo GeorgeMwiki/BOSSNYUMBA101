@@ -111,6 +111,66 @@ export {
 } from './utils/name-matcher.js';
 
 // ============================================================================
+// Document Chat (KI-009) — chat-over-documents + real LLM adapter
+// ============================================================================
+// `selectDocChatLlm` is the composition seam: it returns the real
+// `AnthropicDocChatLlm` when an SDK client is supplied (ANTHROPIC_API_KEY
+// present at the root) and the deterministic `StubAnthropicDocChatLlm`
+// otherwise — so key-less dev/CI keeps working. Every surviving citation must
+// map to a chunk actually retrieved this turn; hallucinated refs are dropped.
+export {
+  DocumentChatService,
+  StubAnthropicDocChatLlm,
+  DocChatError,
+  type DocChatScope,
+  type DocChatCitation,
+  type DocChatMessageRecord,
+  type DocChatSessionRecord,
+  type RetrievedChunk,
+  type IDocChatRepository,
+  type IDocChatRetrieverPort,
+  type IDocChatLlmPort,
+  type DocChatServiceOptions,
+} from './services/document-chat.service.js';
+export {
+  AnthropicDocChatLlm,
+  selectDocChatLlm,
+  parseCitationTags,
+  stripCitationTags,
+  mapRefsToCitations,
+  DOC_CHAT_MODELS,
+  type DocChatModelId,
+  type AnthropicDocChatLlmConfig,
+  type SelectDocChatLlmOptions,
+  type DocChatLlmSdkLike,
+  type DocChatLlmMessageRequest,
+  type DocChatLlmMessageResponse,
+  type DocChatLlmLogger,
+  type ParsedCitationRef,
+} from './services/anthropic-doc-chat-llm.js';
+
+// ============================================================================
+// OCR Provider Availability (KI-014) — Textract/Vision resolution
+// ============================================================================
+// Env-snapshot-based credential + SDK-install detection so the OCR service can
+// resolve a real provider when configured and fall back to the deterministic
+// mock otherwise. Reads NO `process.env` itself — callers pass an env snapshot.
+export {
+  resolveAvailableOcrConfig,
+  resolveAwsRegion,
+  detectTextractCredentials,
+  detectVisionCredentials,
+  isSdkInstalled,
+  TEXTRACT_SDK_MODULE,
+  VISION_SDK_MODULE,
+  type ModuleImporter,
+  type AvailabilityEnv,
+  type ResolveOcrOptions,
+  type ProviderAvailability,
+  type ResolvedOcrSelection,
+} from './providers/provider-availability.js';
+
+// ============================================================================
 // Version
 // ============================================================================
 export const VERSION = '1.0.0';

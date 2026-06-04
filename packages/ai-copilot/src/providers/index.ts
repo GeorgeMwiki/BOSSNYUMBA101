@@ -67,3 +67,14 @@ export {
   type SynthesisError,
   type ProposerOutcome,
 } from './multi-llm-synthesizer.js';
+
+// KI-008 — real Anthropic-backed price-negotiation counter generator. Injected
+// at the composition root into the domain `NegotiationService.aiCounterGenerator`
+// slot, key-gated on ANTHROPIC_API_KEY. The generator is ADVISORY only: the
+// service re-checks every returned offer against policy (hard floor / discount
+// cap / approval gate) AFTER it returns, so a prompt-injected below-floor
+// counter is still rejected + escalated. Never remove that post-LLM re-check.
+export {
+  createNegotiatorCounterGenerator,
+  type NegotiatorGeneratorConfig,
+} from '../personas/negotiator.js';
