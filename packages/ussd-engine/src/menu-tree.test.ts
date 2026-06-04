@@ -10,8 +10,8 @@ import {
   buildErrorScreen,
   truncateToUssd,
   tierSatisfies,
-} from './menu-tree';
-import { USSD_MAX_CHARS } from './types';
+} from './menu-tree.js';
+import { USSD_MAX_CHARS } from './types.js';
 
 describe('truncateToUssd', () => {
   it('passes short text through unchanged', () => {

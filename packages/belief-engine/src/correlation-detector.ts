@@ -29,8 +29,8 @@ import {
   type BeliefStorePort,
   type OutcomeFetcher,
   type OutcomeRow,
-} from './ports';
-import type { Belief, BeliefDomain, CorrelationFinding } from './types';
+} from './ports.js';
+import type { Belief, BeliefDomain, CorrelationFinding } from './types.js';
 
 export const DEFAULT_MIN_SAMPLE = 30;
 export const R_THRESHOLD = 0.4;

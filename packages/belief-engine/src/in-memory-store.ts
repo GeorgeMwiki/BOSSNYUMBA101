@@ -10,14 +10,14 @@
  * @module @bossnyumba/belief-engine/in-memory-store
  */
 
-import type { BeliefStorePort } from './ports';
+import type { BeliefStorePort } from './ports.js';
 import type {
   Belief,
   BeliefDomain,
   BeliefScope,
   RevisionRecord,
   ReviewQueueItem,
-} from './types';
+} from './types.js';
 
 function scopeKey(
   subject: string,

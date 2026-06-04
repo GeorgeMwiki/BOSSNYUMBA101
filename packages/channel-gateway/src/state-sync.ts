@@ -23,8 +23,8 @@ import {
   type ConversationState,
   type ConversationTurn,
   type HandoffResult,
-} from './types';
-import { systemClock, type Clock, type ConversationStore } from './ports';
+} from './types.js';
+import { systemClock, type Clock, type ConversationStore } from './ports.js';
 
 export interface StateSyncDeps {
   readonly store: ConversationStore;

@@ -26,8 +26,8 @@
  * @module @bossnyumba/channel-gateway/africas-talking-ivr
  */
 
-import { meterReadingUnitsSchema } from './types';
-import type { SafeFetchPort } from './ports';
+import { meterReadingUnitsSchema } from './types.js';
+import type { SafeFetchPort } from './ports.js';
 
 // ----------------------------------------------------------------------------
 // STT port (minimal contract the IVR needs)

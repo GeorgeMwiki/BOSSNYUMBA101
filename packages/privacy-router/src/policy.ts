@@ -14,7 +14,7 @@
 
 import { load as yamlLoad } from 'js-yaml';
 import { z } from 'zod';
-import type { DataClassification, TaskCategory } from './types';
+import type { DataClassification, TaskCategory } from './types.js';
 
 const classificationSchema = z.enum([
   'PUBLIC',

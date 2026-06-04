@@ -12,7 +12,7 @@ import {
   type PrivacyClock,
   type PrivacyRouterDeps,
   type StripResult,
-} from './index';
+} from './index.js';
 
 const FIXED = new Date('2026-06-04T12:00:00.000Z');
 const fixedClock: PrivacyClock = { now: () => FIXED };

@@ -21,7 +21,7 @@
  */
 
 // Domain types + boundary schemas
-export * from './types';
+export * from './types.js';
 
 // Injected ports (store, web-search, outcome fetcher, audit sink, clock).
 // `safeFetch` stays internal — it is intentionally NOT re-exported here.
@@ -35,16 +35,16 @@ export {
   type OutcomeRow,
   type OutcomeFetcher,
   type BeliefAuditSink,
-} from './ports';
+} from './ports.js';
 
 // Belief store (pure helpers)
-export { makeSubjectKey, computeConfidence, clamp01 } from './belief-store';
+export { makeSubjectKey, computeConfidence, clamp01 } from './belief-store.js';
 
 // In-memory reference adapter (tests + local dev)
 export {
   createInMemoryBeliefStore,
   type InMemoryBeliefStore,
-} from './in-memory-store';
+} from './in-memory-store.js';
 
 // Convince-loop + guarded revise entry
 export {
@@ -55,17 +55,17 @@ export {
   QUARANTINE_REVISE_FLOOR,
   type ConvinceArgs,
   type ConvinceDeps,
-} from './convince-loop';
-export { reviseBelief, type ReviseBeliefDeps } from './revise-belief';
+} from './convince-loop.js';
+export { reviseBelief, type ReviseBeliefDeps } from './revise-belief.js';
 
 // Value comparison + evidence weighting (pure)
-export { valuesOverlap, SCALAR_TOLERANCE_PCT } from './value-overlap';
+export { valuesOverlap, SCALAR_TOLERANCE_PCT } from './value-overlap.js';
 export {
   newSideEvidenceWeight,
   priorSideEvidenceWeight,
   ageInDays,
   PORTAL_AUTHORITY,
-} from './evidence-weight';
+} from './evidence-weight.js';
 
 // DPO preference-learner (pure)
 export {
@@ -78,8 +78,8 @@ export {
   DEFAULT_TRAIN_CONFIG,
   type PreferenceHeadState,
   type TrainConfig,
-} from './preference-learner';
-export type { PreferencePair, TenantScope } from './learning-types';
+} from './preference-learner.js';
+export type { PreferencePair, TenantScope } from './learning-types.js';
 
 // LinUCB contextual bandit (pure)
 export {
@@ -90,7 +90,7 @@ export {
   type ArmState,
   type FeatureVector,
   type LinUcbConfig,
-} from './bandit';
+} from './bandit.js';
 
 // Mem0 ADD/UPDATE/DELETE/NOOP semantics (pure)
 export {
@@ -100,7 +100,7 @@ export {
   type Mem0Candidate,
   type Mem0ExistingFact,
   type DecideMem0Options,
-} from './mem0-semantics';
+} from './mem0-semantics.js';
 
 // Nightly Pearson belief×outcome correlation pass
 export {
@@ -112,7 +112,7 @@ export {
   type FindCorrelationsArgs,
   type FindCorrelationsDeps,
   type PearsonResult,
-} from './correlation-detector';
+} from './correlation-detector.js';
 
 // Composition root (default-OFF feature flag)
 export {
@@ -122,4 +122,4 @@ export {
   type BeliefEngineDeps,
   type BeliefEngineResult,
   type WireBeliefEngineDeps,
-} from './wire';
+} from './wire.js';

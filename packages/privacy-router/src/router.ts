@@ -17,7 +17,7 @@
  * `./in-memory-store`.
  */
 
-import { DEFAULT_PRIVACY_POLICY, type PrivacyPolicy } from './policy';
+import { DEFAULT_PRIVACY_POLICY, type PrivacyPolicy } from './policy.js';
 import {
   systemClock,
   type AuditEntryStore,
@@ -26,8 +26,8 @@ import {
   type PiiStripperPort,
   type PrivacyAuditSink,
   type PrivacyClock,
-} from './ports';
-import { createInMemoryAuditStore } from './in-memory-store';
+} from './ports.js';
+import { createInMemoryAuditStore } from './in-memory-store.js';
 import {
   CLASSIFICATION_ORDER,
   type ApprovedCloudProvider,
@@ -35,7 +35,7 @@ import {
   type PrivacyAuditEntry,
   type PrivacyRoutingRequest,
   type PrivacyRoutingResult,
-} from './types';
+} from './types.js';
 
 /** Dependencies the router is constructed with. */
 export interface PrivacyRouterDeps {

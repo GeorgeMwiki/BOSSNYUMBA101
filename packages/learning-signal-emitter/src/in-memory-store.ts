@@ -16,8 +16,8 @@
  * @module @bossnyumba/learning-signal-emitter/in-memory-store
  */
 
-import type { SignalStore } from './ports';
-import type { LearningSignal, SignalRoute } from './types';
+import type { SignalStore } from './ports.js';
+import type { LearningSignal, SignalRoute } from './types.js';
 
 export interface InMemoryStoreHandle extends SignalStore {
   /** Test/inspection helper: snapshot of the appended route ledger. */

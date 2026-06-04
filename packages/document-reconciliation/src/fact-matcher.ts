@@ -31,7 +31,7 @@ import {
   type Blocker,
   type SoftFlag,
   type FactField,
-} from './types';
+} from './types.js';
 
 // ----------------------------------------------------------------------------
 // Levenshtein distance (O(m*n) time, O(min) space)

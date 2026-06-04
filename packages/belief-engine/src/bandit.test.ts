@@ -11,7 +11,7 @@ import {
   ucbScore,
   updateArmState,
   selectArmByUcb,
-} from './bandit';
+} from './bandit.js';
 
 describe('LinUCB bandit', () => {
   it('initialises A = I, b = 0', () => {

@@ -8,8 +8,8 @@
  * floor.
  */
 
-import { clamp01 } from './belief-store';
-import type { Belief, ChatPortal, WebSearchResult } from './types';
+import { clamp01 } from './belief-store.js';
+import type { Belief, ChatPortal, WebSearchResult } from './types.js';
 
 export const PORTAL_AUTHORITY: Record<ChatPortal, number> = {
   owner: 0.9,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildFactBag, buildFactBags } from './fact-bag-builder';
+import { buildFactBag, buildFactBags } from './fact-bag-builder.js';
 import {
   calibrate,
   applyPlatt,
@@ -8,8 +8,8 @@ import {
   expectedCalibrationError,
   DEFAULT_CALIBRATION_TABLE,
   DEFAULT_PLATT,
-} from './calibration';
-import { voteOnFields } from './self-consistency';
+} from './calibration.js';
+import { voteOnFields } from './self-consistency.js';
 
 describe('buildFactBag', () => {
   it('projects identity fields and strips non-digits from ids', () => {

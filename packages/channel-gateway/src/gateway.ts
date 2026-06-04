@@ -21,15 +21,15 @@ import type {
   CanonicalizeResult,
   ChannelEvent,
   ChannelKind,
-} from './types';
-import { canonicalizeByChannel } from './canonicalizers';
+} from './types.js';
+import { canonicalizeByChannel } from './canonicalizers.js';
 import {
   systemClock,
   type ChannelAuditSink,
   type Clock,
   type SignatureVerifier,
   type TierResolver,
-} from './ports';
+} from './ports.js';
 
 export interface ChannelGatewayDeps {
   readonly signature: SignatureVerifier;

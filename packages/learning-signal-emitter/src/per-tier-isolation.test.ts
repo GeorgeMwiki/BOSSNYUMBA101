@@ -5,8 +5,8 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { enforceIsolation, isolationAllowed } from './per-tier-isolation';
-import type { LearningSignal, TenantScope } from './types';
+import { enforceIsolation, isolationAllowed } from './per-tier-isolation.js';
+import type { LearningSignal, TenantScope } from './types.js';
 
 function signal(
   scope: TenantScope,

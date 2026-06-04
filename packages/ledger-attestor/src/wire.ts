@@ -12,11 +12,11 @@
  * @module @bossnyumba/ledger-attestor/wire
  */
 
-import { runAttestation, type AttestorDeps } from './attestor';
+import { runAttestation, type AttestorDeps } from './attestor.js';
 import {
   attestationRequestSchema,
   type AttestationRunResult,
-} from './types';
+} from './types.js';
 
 /**
  * Feature-flag NAME only. The package never reads it — the caller

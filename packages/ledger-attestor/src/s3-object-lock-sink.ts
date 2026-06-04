@@ -22,8 +22,8 @@
  * @module @bossnyumba/ledger-attestor/s3-object-lock-sink
  */
 
-import { systemClock, type Clock, type ExternalSinkPort } from './ports';
-import type { ExternalSinkReceipt, SignedCheckpoint } from './types';
+import { systemClock, type Clock, type ExternalSinkPort } from './ports.js';
+import type { ExternalSinkReceipt, SignedCheckpoint } from './types.js';
 
 /** What the sink hands the injected backend to write. */
 export interface ObjectPutRequest {

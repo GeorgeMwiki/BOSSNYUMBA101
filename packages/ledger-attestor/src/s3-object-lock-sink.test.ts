@@ -6,9 +6,9 @@ import {
   createObjectLockSink,
   type ObjectPutPort,
   type ObjectPutRequest,
-} from './s3-object-lock-sink';
-import type { Clock } from './ports';
-import type { SignedCheckpoint } from './types';
+} from './s3-object-lock-sink.js';
+import type { Clock } from './ports.js';
+import type { SignedCheckpoint } from './types.js';
 
 function fakePut(): { port: ObjectPutPort; calls: ObjectPutRequest[] } {
   const calls: ObjectPutRequest[] = [];

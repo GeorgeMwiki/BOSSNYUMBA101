@@ -22,7 +22,7 @@ import type {
   RewardComponents,
   RewardWeights,
   ScoredAction,
-} from './types';
+} from './types.js';
 
 export const DEFAULT_WEIGHTS: RewardWeights = Object.freeze({
   sla: 0.3,

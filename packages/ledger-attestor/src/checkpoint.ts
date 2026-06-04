@@ -11,7 +11,7 @@
  */
 
 import { canonicalJson } from '@bossnyumba/audit-hash-chain';
-import type { CheckpointPayload } from './types';
+import type { CheckpointPayload } from './types.js';
 
 /**
  * Produce the canonical signable string for a checkpoint payload. This

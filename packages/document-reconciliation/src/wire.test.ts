@@ -3,10 +3,10 @@ import {
   wireDocumentReconciliation,
   DOCUMENT_RECONCILIATION_FLAG,
   type WireDocumentReconciliationDeps,
-} from './wire';
-import { createInMemoryReconciliationStore } from './in-memory-store';
-import type { ReconciliationAuditSink, ReconciliationDataPort } from './ports';
-import type { ExtractionForReconciliation } from './fact-bag-builder';
+} from './wire.js';
+import { createInMemoryReconciliationStore } from './in-memory-store.js';
+import type { ReconciliationAuditSink, ReconciliationDataPort } from './ports.js';
+import type { ExtractionForReconciliation } from './fact-bag-builder.js';
 
 // ----------------------------------------------------------------------------
 // fixtures

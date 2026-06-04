@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PRIVACY_POLICY, parsePrivacyPolicyYaml } from './index';
+import { DEFAULT_PRIVACY_POLICY, parsePrivacyPolicyYaml } from './index.js';
 
 const VALID_YAML = `
 version: "2.0.0"

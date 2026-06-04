@@ -3,12 +3,12 @@ import {
   wirePrivacyRouter,
   PRIVACY_ROUTER_FLAG,
   type WirePrivacyRouterDeps,
-} from './wire';
+} from './wire.js';
 import type {
   LocalEndpointHealthPort,
   PiiStripperPort,
   PrivacyClock,
-} from './index';
+} from './index.js';
 
 const FIXED = new Date('2026-06-04T12:00:00.000Z');
 const fixedClock: PrivacyClock = { now: () => FIXED };

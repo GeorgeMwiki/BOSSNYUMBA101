@@ -22,16 +22,16 @@ import type {
   ErasureRequest,
   PdpaResult,
   SubjectAccessRequest,
-} from './types';
+} from './types.js';
 import type {
   PdpaDataPort,
   SubjectArtefact,
   SubjectArtefactResolver,
-} from './ports';
+} from './ports.js';
 
 // Re-export the artefact types from the ports module so the PDPA surface can
 // be imported as a single unit.
-export type { SubjectArtefact, SubjectArtefactKind } from './ports';
+export type { SubjectArtefact, SubjectArtefactKind } from './ports.js';
 
 /**
  * Private fetch wrapper. Returns the resolved artefacts on success and

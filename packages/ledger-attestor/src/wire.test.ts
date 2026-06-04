@@ -7,11 +7,11 @@ import {
   wireLedgerAttestor,
   LEDGER_ATTESTOR_FLAG,
   type WireLedgerAttestorDeps,
-} from './wire';
-import { createEd25519Signer } from './ed25519-signer';
-import { createInMemorySink } from './in-memory-store';
-import type { ChainSourcePort } from './ports';
-import type { ChainSegment } from './types';
+} from './wire.js';
+import { createEd25519Signer } from './ed25519-signer.js';
+import { createInMemorySink } from './in-memory-store.js';
+import type { ChainSourcePort } from './ports.js';
+import type { ChainSegment } from './types.js';
 
 function sourceOf(segments: ReadonlyArray<ChainSegment>): ChainSourcePort {
   return { listSegments: async () => segments };

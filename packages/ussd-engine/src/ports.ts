@@ -18,7 +18,7 @@ import type {
   UssdRentData,
   UssdMaintenanceData,
   UssdMarketplaceLine,
-} from './types';
+} from './types.js';
 
 /**
  * Persistence port for USSD sessions. The host backs this with the

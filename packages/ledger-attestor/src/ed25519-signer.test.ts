@@ -2,7 +2,7 @@
  * Ed25519 signer round-trip + tamper rejection.
  */
 import { describe, it, expect } from 'vitest';
-import { createEd25519Signer, verifyEd25519 } from './ed25519-signer';
+import { createEd25519Signer, verifyEd25519 } from './ed25519-signer.js';
 
 describe('createEd25519Signer', () => {
   it('signs a message that verifies with the matching public key', async () => {

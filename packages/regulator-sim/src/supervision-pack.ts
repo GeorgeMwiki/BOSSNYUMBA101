@@ -23,7 +23,7 @@ import type {
   SupervisionDocument,
   SupervisionPackInput,
   SupervisionPackResult,
-} from './types';
+} from './types.js';
 
 // Non-crypto checksum: stable + zero-dep, used only for repeatable artefact
 // IDs and tests. A production submission anchors the pack to the hash-chain

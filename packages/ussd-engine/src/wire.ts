@@ -15,8 +15,8 @@
  * @module @bossnyumba/ussd-engine/wire
  */
 
-import { ussdRequestSchema, type UssdRequest, type UssdResponse } from './types';
-import { handleUssdRequest, type UssdEngineDeps } from './session-machine';
+import { ussdRequestSchema, type UssdRequest, type UssdResponse } from './types.js';
+import { handleUssdRequest, type UssdEngineDeps } from './session-machine.js';
 
 /** The canonical feature-flag name. READ BY THE CALLER, never by this package. */
 export const USSD_ENGINE_FLAG = 'BOSSNYUMBA_FEATURE_USSD_ENGINE' as const;

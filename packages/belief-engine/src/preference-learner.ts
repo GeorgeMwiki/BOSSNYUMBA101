@@ -16,7 +16,7 @@
  * persistence (preference_pairs / preference_head_weights).
  */
 
-import type { PreferencePair } from './learning-types';
+import type { PreferencePair } from './learning-types.js';
 
 export interface PreferenceHeadState {
   /** Logistic weights, one per feature dim. */

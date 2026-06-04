@@ -16,7 +16,7 @@ import type {
   MarginalDecisionRecord,
   ReviewerAssignment,
   ReviewerVerdict,
-} from './types';
+} from './types.js';
 
 export interface ReviewerTask {
   readonly reviewerId: string;

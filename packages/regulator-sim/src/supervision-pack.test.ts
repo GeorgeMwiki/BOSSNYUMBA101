@@ -8,7 +8,7 @@ import {
   SUPERVISION_PACK_REQUIRED_SECTIONS,
   buildSupervisionPack,
   type SupervisionPackInput,
-} from './index';
+} from './index.js';
 
 const input: SupervisionPackInput = {
   periodFromIso: '2026-04-01',

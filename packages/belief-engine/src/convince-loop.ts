@@ -21,15 +21,15 @@
  * Quarantined claims raise the revise floor from 0.25 to 0.4.
  */
 
-import { computeConfidence, clamp01 } from './belief-store';
+import { computeConfidence, clamp01 } from './belief-store.js';
 import {
   ageInDays,
   newSideEvidenceWeight,
   PORTAL_AUTHORITY,
   priorSideEvidenceWeight,
-} from './evidence-weight';
-import { NO_WEB_SEARCH, type BeliefStorePort, type WebSearchPort } from './ports';
-import { valuesOverlap } from './value-overlap';
+} from './evidence-weight.js';
+import { NO_WEB_SEARCH, type BeliefStorePort, type WebSearchPort } from './ports.js';
+import { valuesOverlap } from './value-overlap.js';
 import type {
   Belief,
   BeliefSource,
@@ -37,7 +37,7 @@ import type {
   ConvinceResult,
   ExtractedClaim,
   WebSearchResult,
-} from './types';
+} from './types.js';
 
 /** Revise gate — replace the belief value only above this delta. */
 export const REVISE_DELTA_THRESHOLD = 0.25;

@@ -9,7 +9,7 @@ import {
   decideMem0Op,
   describeMem0Decision,
   type Mem0ExistingFact,
-} from './mem0-semantics';
+} from './mem0-semantics.js';
 
 const existing: Mem0ExistingFact[] = [
   {

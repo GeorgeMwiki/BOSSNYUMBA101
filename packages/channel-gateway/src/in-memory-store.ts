@@ -8,8 +8,8 @@
  * @module @bossnyumba/channel-gateway/in-memory-store
  */
 
-import type { ConversationState } from './types';
-import type { ConversationStore } from './ports';
+import type { ConversationState } from './types.js';
+import type { ConversationStore } from './ports.js';
 
 export function createInMemoryConversationStore(): ConversationStore {
   const states = new Map<string, ConversationState>();

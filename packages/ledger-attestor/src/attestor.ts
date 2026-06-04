@@ -23,8 +23,8 @@
  * @module @bossnyumba/ledger-attestor/attestor
  */
 
-import { serializeCheckpoint } from './checkpoint';
-import { computeMerkleRoot } from './merkle';
+import { serializeCheckpoint } from './checkpoint.js';
+import { computeMerkleRoot } from './merkle.js';
 import {
   emitAudit,
   noopLogger,
@@ -37,7 +37,7 @@ import {
   type Clock,
   type ExternalSinkPort,
   type SignerPort,
-} from './ports';
+} from './ports.js';
 import type {
   AttestationRunResult,
   ChainAttestationOutcome,
@@ -45,7 +45,7 @@ import type {
   CheckpointPayload,
   ExternalSinkReceipt,
   SignedCheckpoint,
-} from './types';
+} from './types.js';
 
 export interface AttestorDeps {
   readonly source: ChainSourcePort;

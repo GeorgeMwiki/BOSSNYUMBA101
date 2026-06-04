@@ -20,10 +20,10 @@ import {
   buildSignal,
   buildSignalHash,
   routePlan,
-} from './signal-emitter';
-import type { SignalSinks } from './ports';
-import { createInMemorySignalStore } from './in-memory-store';
-import type { ActionEvent, OutcomeEvent } from './types';
+} from './signal-emitter.js';
+import type { SignalSinks } from './ports.js';
+import { createInMemorySignalStore } from './in-memory-store.js';
+import type { ActionEvent, OutcomeEvent } from './types.js';
 
 function action(overrides: Partial<ActionEvent> = {}): ActionEvent {
   return {

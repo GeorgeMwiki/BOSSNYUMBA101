@@ -14,7 +14,7 @@ import {
   type ConfusionMatrix,
   type DecisionAuthor,
   type ReviewerVerdict,
-} from './types';
+} from './types.js';
 
 export interface ScoreInput {
   readonly dataset: BlindReviewDataset;

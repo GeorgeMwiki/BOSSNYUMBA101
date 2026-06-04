@@ -15,12 +15,12 @@ import {
   scoreVerdicts,
   type AccuracyScore,
   type ScoreInput,
-} from './accuracy-scorer';
+} from './accuracy-scorer.js';
 import type {
   BlindReviewDataset,
   BlindReviewReport,
   ReviewerVerdict,
-} from './types';
+} from './types.js';
 
 export interface GenerateReportInput extends ScoreInput {
   readonly title?: string;

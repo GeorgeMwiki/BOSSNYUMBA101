@@ -5,7 +5,7 @@
  * pass (overlap) and the heavy contradiction pass (no overlap).
  */
 
-import type { BeliefValue } from './types';
+import type { BeliefValue } from './types.js';
 
 /** ±10% counts as scalar agreement. */
 export const SCALAR_TOLERANCE_PCT = 0.1;

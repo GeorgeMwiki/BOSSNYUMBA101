@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { createChannelGateway, type ChannelGatewayDeps } from './gateway';
-import type { SignatureVerifier, TierResolver, Clock } from './ports';
-import type { ActorTier } from './types';
+import { createChannelGateway, type ChannelGatewayDeps } from './gateway.js';
+import type { SignatureVerifier, TierResolver, Clock } from './ports.js';
+import type { ActorTier } from './types.js';
 
 const passVerifier: SignatureVerifier = { verify: () => true };
 const failVerifier: SignatureVerifier = { verify: () => false };

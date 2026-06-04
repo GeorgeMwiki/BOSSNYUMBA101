@@ -20,15 +20,15 @@
  * @module @bossnyumba/blind-review/pipeline
  */
 
-import { anonymiseRecord } from './anonymise';
-import { deterministicShuffle } from './shuffle';
+import { anonymiseRecord } from './anonymise.js';
+import { deterministicShuffle } from './shuffle.js';
 import {
   DEFAULT_SEED,
   type BlindReviewDataset,
   type MarginalDecisionRecord,
   type ReviewerAssignment,
-} from './types';
-import type { DecisionFetcher } from './ports';
+} from './types.js';
+import type { DecisionFetcher } from './ports.js';
 
 /**
  * Wrap one read-only fetcher call so its three outcomes stay type-distinct:

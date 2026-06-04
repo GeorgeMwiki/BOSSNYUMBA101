@@ -3,9 +3,9 @@ import {
   wireBlindReview,
   BLIND_REVIEW_FLAG,
   type WireBlindReviewDeps,
-} from './wire';
-import { createInMemoryBlindReviewStore } from './in-memory-store';
-import { createSyntheticFetcher } from './synthetic-fetcher';
+} from './wire.js';
+import { createInMemoryBlindReviewStore } from './in-memory-store.js';
+import { createSyntheticFetcher } from './synthetic-fetcher.js';
 
 const FIXED_MS = Date.parse('2026-06-03T12:00:00.000Z');
 

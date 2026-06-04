@@ -15,8 +15,8 @@ import {
   type BlindReviewRun,
   type BlindReviewRunStatus,
   type BlindReviewStore,
-} from './ports';
-import type { BlindReviewReport } from './types';
+} from './ports.js';
+import type { BlindReviewReport } from './types.js';
 
 export interface InMemoryStoreOptions {
   readonly clock?: BlindReviewClock;

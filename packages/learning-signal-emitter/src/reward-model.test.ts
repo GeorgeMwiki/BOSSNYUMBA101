@@ -5,8 +5,8 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { scoreAction, rewardOf, DEFAULT_WEIGHTS } from './reward-model';
-import type { ActionEvent, OutcomeEvent } from './types';
+import { scoreAction, rewardOf, DEFAULT_WEIGHTS } from './reward-model.js';
+import type { ActionEvent, OutcomeEvent } from './types.js';
 
 function action(): ActionEvent {
   return {

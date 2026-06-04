@@ -13,8 +13,8 @@ import {
   type UssdLanguage,
   type UssdSession,
   type UssdSessionState,
-} from './types';
-import { systemClock, type UssdClock, type UssdSessionStore } from './ports';
+} from './types.js';
+import { systemClock, type UssdClock, type UssdSessionStore } from './ports.js';
 
 export interface InMemoryStoreOptions {
   readonly clock?: UssdClock;

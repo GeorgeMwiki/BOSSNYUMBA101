@@ -17,14 +17,14 @@
  * @module @bossnyumba/belief-engine/wire
  */
 
-import { reviseBelief, type ReviseBeliefDeps } from './revise-belief';
-import { emitAudit, systemClock, type Clock } from './ports';
-import type { BeliefStorePort, WebSearchPort, BeliefAuditSink } from './ports';
+import { reviseBelief, type ReviseBeliefDeps } from './revise-belief.js';
+import { emitAudit, systemClock, type Clock } from './ports.js';
+import type { BeliefStorePort, WebSearchPort, BeliefAuditSink } from './ports.js';
 import {
   extractedClaimSchema,
   type ConvinceResult,
   type ExtractedClaim,
-} from './types';
+} from './types.js';
 
 /** The canonical feature-flag name. READ BY THE CALLER, never by this package. */
 export const BELIEF_ENGINE_FLAG = 'BOSSNYUMBA_FEATURE_BELIEF_ENGINE' as const;

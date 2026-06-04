@@ -16,7 +16,7 @@ import type {
   BlindReviewReport,
   DecisionAuthor,
   MarginalDecisionRecord,
-} from './types';
+} from './types.js';
 
 /**
  * Persistence port for blind-review runs. The host backs this with a

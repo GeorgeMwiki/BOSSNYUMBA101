@@ -24,8 +24,8 @@ import {
   verify as cryptoVerify,
   type KeyObject,
 } from 'node:crypto';
-import type { Signature } from './types';
-import type { SignerPort } from './ports';
+import type { Signature } from './types.js';
+import type { SignerPort } from './ports.js';
 
 const ALGORITHM = 'ed25519';
 

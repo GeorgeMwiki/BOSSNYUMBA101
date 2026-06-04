@@ -13,7 +13,7 @@ import {
   type DecisionRecord,
   type RegulatorAuditSink,
   type WireRegulatorSimDeps,
-} from './index';
+} from './index.js';
 
 function goodRecord(): DecisionRecord {
   return {

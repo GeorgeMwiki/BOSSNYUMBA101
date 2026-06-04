@@ -14,8 +14,8 @@ import {
   type ReconciliationClock,
   type ReconciliationStore,
   type StoredReconciliation,
-} from './ports';
-import type { ReconciliationReport } from './types';
+} from './ports.js';
+import type { ReconciliationReport } from './types.js';
 
 export interface InMemoryStoreOptions {
   readonly clock?: ReconciliationClock;

@@ -16,10 +16,10 @@ import {
   convinceLoop,
   REVISE_DELTA_THRESHOLD,
   SPLIT_DELTA_THRESHOLD,
-} from './convince-loop';
-import { createInMemoryBeliefStore } from './in-memory-store';
-import type { WebSearchPort } from './ports';
-import type { Belief, ExtractedClaim, WebSearchResult } from './types';
+} from './convince-loop.js';
+import { createInMemoryBeliefStore } from './in-memory-store.js';
+import type { WebSearchPort } from './ports.js';
+import type { Belief, ExtractedClaim, WebSearchResult } from './types.js';
 
 const FIXED_NOW = Date.parse('2026-06-03T00:00:00.000Z');
 

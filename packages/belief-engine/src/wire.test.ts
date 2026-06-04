@@ -12,10 +12,10 @@ import {
   wireBeliefEngine,
   BELIEF_ENGINE_FLAG,
   type WireBeliefEngineDeps,
-} from './wire';
-import { createInMemoryBeliefStore } from './in-memory-store';
-import type { BeliefAuditSink } from './ports';
-import type { ExtractedClaim } from './types';
+} from './wire.js';
+import { createInMemoryBeliefStore } from './in-memory-store.js';
+import type { BeliefAuditSink } from './ports.js';
+import type { ExtractedClaim } from './types.js';
 
 const FIXED = new Date('2026-06-03T00:00:00.000Z');
 

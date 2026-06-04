@@ -41,7 +41,7 @@ export {
   subjectAccessRequestSchema,
   erasureRequestSchema,
   supervisionPackInputSchema,
-} from './types';
+} from './types.js';
 
 export {
   type SubjectArtefact,
@@ -53,27 +53,27 @@ export {
   type RegulatorAuditSink,
   type RegulatorClock,
   systemClock,
-} from './ports';
+} from './ports.js';
 
-export { replayAudit, summarizeAudit } from './audit-replay';
+export { replayAudit, summarizeAudit } from './audit-replay.js';
 
 export {
   buildSupervisionPack,
   SUPERVISION_PACK_REQUIRED_SECTIONS,
-} from './supervision-pack';
+} from './supervision-pack.js';
 
 export {
   fulfilSubjectAccess,
   fulfilErasure,
   pdpaEndToEnd,
-} from './pdpa-readiness';
+} from './pdpa-readiness.js';
 
 export {
   createInMemoryPdpaSurface,
   createInMemoryAuditStore,
   type InMemoryPdpaSurface,
   type InMemoryAuditStoreOptions,
-} from './in-memory-store';
+} from './in-memory-store.js';
 
 export {
   wireRegulatorSim,
@@ -82,4 +82,4 @@ export {
   type RegulatorSimDeps,
   type RegulatorSimOutcome,
   type WireRegulatorSimDeps,
-} from './wire';
+} from './wire.js';

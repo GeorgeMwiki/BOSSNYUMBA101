@@ -14,7 +14,7 @@
  * @module @bossnyumba/document-reconciliation/fact-bag-builder
  */
 
-import type { FactBag, FactField, PropertyDocType, NormalizedName } from './types';
+import type { FactBag, FactField, PropertyDocType, NormalizedName } from './types.js';
 
 /**
  * Minimal extracted field, matching the `@bossnyumba/document-analysis`

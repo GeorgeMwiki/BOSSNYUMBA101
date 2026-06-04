@@ -20,16 +20,16 @@ export {
   type LedgerAttestor,
   type LedgerAttestorInput,
   type WireLedgerAttestorDeps,
-} from './wire';
+} from './wire.js';
 
 // Orchestrator
-export { runAttestation, type AttestorDeps } from './attestor';
+export { runAttestation, type AttestorDeps } from './attestor.js';
 
 // Merkle
-export { computeMerkleRoot, hashLeaf, EMPTY_MERKLE_ROOT } from './merkle';
+export { computeMerkleRoot, hashLeaf, EMPTY_MERKLE_ROOT } from './merkle.js';
 
 // Checkpoint serialisation
-export { serializeCheckpoint } from './checkpoint';
+export { serializeCheckpoint } from './checkpoint.js';
 
 // Default signer (reference adapter)
 export {
@@ -37,7 +37,7 @@ export {
   verifyEd25519,
   type Ed25519SignerConfig,
   type Ed25519SignerHandle,
-} from './ed25519-signer';
+} from './ed25519-signer.js';
 
 // In-memory reference adapters (tests/dev)
 export {
@@ -45,7 +45,7 @@ export {
   createInMemoryCheckpointStore,
   type InMemorySink,
   type InMemorySinkOptions,
-} from './in-memory-store';
+} from './in-memory-store.js';
 
 // Object-lock / transparency-log sink
 export {
@@ -54,7 +54,7 @@ export {
   type ObjectPutRequest,
   type ObjectPutResult,
   type ObjectLockSinkConfig,
-} from './s3-object-lock-sink';
+} from './s3-object-lock-sink.js';
 
 // Ports + seam helpers
 export {
@@ -67,7 +67,7 @@ export {
   type CheckpointStorePort,
   type AuditSinkPort,
   type AttestorLogger,
-} from './ports';
+} from './ports.js';
 
 // Domain types + boundary schemas
 export {
@@ -82,4 +82,4 @@ export {
   type ExternalSinkReceipt,
   type Signature,
   type SignedCheckpoint,
-} from './types';
+} from './types.js';

@@ -20,7 +20,7 @@
  * @module @bossnyumba/learning-signal-emitter/ports
  */
 
-import type { LearningSignal, SignalRoute } from './types';
+import type { LearningSignal, SignalRoute } from './types.js';
 
 /**
  * Append-only persistence port for emitted signals. The host backs this with

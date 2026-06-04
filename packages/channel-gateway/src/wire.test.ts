@@ -3,8 +3,8 @@ import {
   wireChannelGateway,
   CHANNEL_GATEWAY_FLAG,
   type WireChannelGatewayDeps,
-} from './wire';
-import type { SignatureVerifier, TierResolver, Clock } from './ports';
+} from './wire.js';
+import type { SignatureVerifier, TierResolver, Clock } from './ports.js';
 
 const passVerifier: SignatureVerifier = { verify: () => true };
 

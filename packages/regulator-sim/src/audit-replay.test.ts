@@ -10,7 +10,7 @@ import {
   summarizeAudit,
   type AuditReplayInput,
   type DecisionRecord,
-} from './index';
+} from './index.js';
 
 const NOW = '2026-06-03T12:00:00.000Z';
 

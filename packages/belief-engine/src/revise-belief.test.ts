@@ -6,9 +6,9 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { reviseBelief } from './revise-belief';
-import { createInMemoryBeliefStore } from './in-memory-store';
-import type { ExtractedClaim } from './types';
+import { reviseBelief } from './revise-belief.js';
+import { createInMemoryBeliefStore } from './in-memory-store.js';
+import type { ExtractedClaim } from './types.js';
 
 const FIXED_NOW = Date.parse('2026-06-03T00:00:00.000Z');
 

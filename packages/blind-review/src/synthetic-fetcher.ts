@@ -13,13 +13,13 @@
  * @module @bossnyumba/blind-review/synthetic-fetcher
  */
 
-import { mulberry32 } from './shuffle';
+import { mulberry32 } from './shuffle.js';
 import {
   DEFAULT_SEED,
   type LeaseDecisionOutcome,
   type MarginalDecisionRecord,
-} from './types';
-import type { DecisionFetcher } from './ports';
+} from './types.js';
+import type { DecisionFetcher } from './ports.js';
 
 export interface SyntheticFetcherOptions {
   readonly seed?: number;

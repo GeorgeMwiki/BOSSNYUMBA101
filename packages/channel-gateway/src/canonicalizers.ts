@@ -20,7 +20,7 @@ import type {
   ChannelAttachment,
   ChannelKind,
   RawSender,
-} from './types';
+} from './types.js';
 
 /** Intermediate shape produced by a canonicalizer, pre-resolution. */
 export interface CanonicalDraft {

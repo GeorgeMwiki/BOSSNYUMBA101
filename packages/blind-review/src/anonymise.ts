@@ -9,7 +9,7 @@
  * @module @bossnyumba/blind-review/anonymise
  */
 
-import type { MarginalDecisionRecord } from './types';
+import type { MarginalDecisionRecord } from './types.js';
 
 // Tanzania NIDA national-ID number (launch jurisdiction's real ID format).
 const NIDA_REGEX = /\b\d{8}-\d{5}-\d{5}-\d{2}\b/g;

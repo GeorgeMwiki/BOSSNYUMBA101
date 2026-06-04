@@ -28,7 +28,7 @@ import {
   type UssdMaintenanceData,
   type UssdMarketplaceLine,
   type UssdTier,
-} from './types';
+} from './types.js';
 
 // ----------------------------------------------------------------------------
 // Bilingual label table

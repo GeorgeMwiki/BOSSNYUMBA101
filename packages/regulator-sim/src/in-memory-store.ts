@@ -14,7 +14,7 @@
  * @module @bossnyumba/regulator-sim/in-memory-store
  */
 
-import type { AuditReplayResult } from './types';
+import type { AuditReplayResult } from './types.js';
 import {
   systemClock,
   type AuditRunRecord,
@@ -23,7 +23,7 @@ import {
   type RegulatorClock,
   type SubjectArtefact,
   type SubjectArtefactResolver,
-} from './ports';
+} from './ports.js';
 
 /**
  * A unified in-memory PDPA surface. Implements the read side

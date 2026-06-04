@@ -16,7 +16,7 @@
  * even attempt a cross-tier write in the first place.
  */
 
-import type { LearningSignal, TenantScope } from './types';
+import type { LearningSignal, TenantScope } from './types.js';
 
 /** Minimum cohort size before a signal may aggregate to platform scope. */
 export const DEFAULT_K_ANONYMITY = 25;

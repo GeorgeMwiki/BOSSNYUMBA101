@@ -19,12 +19,12 @@
 import {
   createPrivacyRouter,
   type PrivacyRouterDeps,
-} from './router';
+} from './router.js';
 import {
   privacyRoutingRequestSchema,
   type PrivacyRoutingRequest,
   type PrivacyRoutingResult,
-} from './types';
+} from './types.js';
 
 /** The canonical feature-flag name. READ BY THE CALLER, never by this package. */
 export const PRIVACY_ROUTER_FLAG = 'BOSSNYUMBA_FEATURE_PRIVACY_ROUTER' as const;

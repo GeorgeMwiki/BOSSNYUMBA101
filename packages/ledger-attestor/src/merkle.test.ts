@@ -2,7 +2,7 @@
  * Merkle tree regression — determinism, tamper-sensitivity, order.
  */
 import { describe, it, expect } from 'vitest';
-import { computeMerkleRoot, hashLeaf, EMPTY_MERKLE_ROOT } from './merkle';
+import { computeMerkleRoot, hashLeaf, EMPTY_MERKLE_ROOT } from './merkle.js';
 
 describe('computeMerkleRoot', () => {
   it('returns the empty sentinel for no leaves', () => {

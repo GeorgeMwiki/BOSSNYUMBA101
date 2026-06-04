@@ -15,7 +15,7 @@ import type {
   ChannelKind,
   ConversationState,
   RawSender,
-} from './types';
+} from './types.js';
 
 // ----------------------------------------------------------------------------
 // Signature verification

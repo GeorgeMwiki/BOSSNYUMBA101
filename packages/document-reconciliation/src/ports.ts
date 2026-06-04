@@ -14,11 +14,11 @@
  * @module @bossnyumba/document-reconciliation/ports
  */
 
-import type { ExtractionForReconciliation } from './fact-bag-builder';
-import type { FingerprintStore, IssuerFingerprint, FingerprintMatchInput } from './issuer-fingerprint';
-import type { ReconciliationReport } from './types';
+import type { ExtractionForReconciliation } from './fact-bag-builder.js';
+import type { FingerprintStore, IssuerFingerprint, FingerprintMatchInput } from './issuer-fingerprint.js';
+import type { ReconciliationReport } from './types.js';
 
-export type { FingerprintStore } from './issuer-fingerprint';
+export type { FingerprintStore } from './issuer-fingerprint.js';
 
 /**
  * Persistence port for completed reconciliation reports. The host backs this

@@ -13,8 +13,8 @@
  * @module @bossnyumba/privacy-router/in-memory-store
  */
 
-import type { AuditEntryStore } from './ports';
-import type { PrivacyAuditEntry } from './types';
+import type { AuditEntryStore } from './ports.js';
+import type { PrivacyAuditEntry } from './types.js';
 
 export interface InMemoryAuditStoreOptions {
   /** Ring-buffer capacity. Default 1000. */

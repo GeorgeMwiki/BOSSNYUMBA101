@@ -14,8 +14,8 @@
  * @module @bossnyumba/ussd-engine
  */
 
-export * from './types';
-export * from './ports';
+export * from './types.js';
+export * from './ports.js';
 
 export {
   buildMenuTree,
@@ -36,22 +36,22 @@ export {
   truncateToUssd,
   tierSatisfies,
   type UssdErrorCode,
-} from './menu-tree';
+} from './menu-tree.js';
 
 export {
   handleUssdRequest,
   extractLatestInput,
   type UssdEngineDeps,
-} from './session-machine';
+} from './session-machine.js';
 
 export {
   createInMemorySessionStore,
   type InMemoryStoreOptions,
-} from './in-memory-store';
+} from './in-memory-store.js';
 
 export {
   wireUssdEngine,
   USSD_ENGINE_FLAG,
   type UssdEngine,
   type WireUssdEngineDeps,
-} from './wire';
+} from './wire.js';

@@ -14,14 +14,14 @@
  * belief sink for the signal-emitter.
  */
 
-import { computeConfidence } from './belief-store';
-import { convinceLoop, type ConvinceDeps } from './convince-loop';
+import { computeConfidence } from './belief-store.js';
+import { convinceLoop, type ConvinceDeps } from './convince-loop.js';
 import type {
   Belief,
   BeliefSource,
   ConvinceResult,
   ExtractedClaim,
-} from './types';
+} from './types.js';
 
 export interface ReviseBeliefDeps extends ConvinceDeps {
   /** Mints belief ids when creating a brand-new belief. */

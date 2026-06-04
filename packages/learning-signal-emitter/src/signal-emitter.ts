@@ -23,13 +23,13 @@
 
 import { createHash } from 'node:crypto';
 
-import { scoreAction, DEFAULT_WEIGHTS } from './reward-model';
-import { enforceIsolation } from './per-tier-isolation';
+import { scoreAction, DEFAULT_WEIGHTS } from './reward-model.js';
+import { enforceIsolation } from './per-tier-isolation.js';
 import type {
   SignalAuditSink,
   SignalSinks,
   SignalStore,
-} from './ports';
+} from './ports.js';
 import type {
   ActionEvent,
   EmissionResult,
@@ -38,7 +38,7 @@ import type {
   RewardWeights,
   SignalRoute,
   TenantScope,
-} from './types';
+} from './types.js';
 
 const EMITTER_ID = 'bossnyumba-signal-emitter:v1';
 
@@ -56,7 +56,7 @@ const NEGATIVE_REWARD_CEILING = 0.3;
 
 // `SignalSinks` is part of the public fan-out surface — re-export it from the
 // emitter module so callers can import sinks + emit from one place.
-export type { SignalSinks } from './ports';
+export type { SignalSinks } from './ports.js';
 
 export interface EmitInput {
   readonly action: ActionEvent;

@@ -21,12 +21,12 @@ import {
   runBlindReviewRequestSchema,
   type BlindReviewReport,
   type RunBlindReviewRequest,
-} from './types';
+} from './types.js';
 import {
   runBlindReview,
   type BlindReviewEngineDeps,
   type BlindReviewRunOptions,
-} from './engine';
+} from './engine.js';
 
 /** The canonical feature-flag name. READ BY THE CALLER, never by this package. */
 export const BLIND_REVIEW_FLAG = 'BOSSNYUMBA_FEATURE_BLIND_REVIEW' as const;

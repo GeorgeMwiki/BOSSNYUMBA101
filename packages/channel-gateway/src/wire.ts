@@ -19,12 +19,12 @@
 import {
   canonicalizeInputSchema,
   type CanonicalizeResult,
-} from './types';
+} from './types.js';
 import {
   createChannelGateway,
   type CanonicalizeInput,
   type ChannelGatewayDeps,
-} from './gateway';
+} from './gateway.js';
 
 /** The canonical feature-flag name. READ BY THE CALLER, never by this package. */
 export const CHANNEL_GATEWAY_FLAG =

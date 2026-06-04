@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { wireUssdEngine, USSD_ENGINE_FLAG, type WireUssdEngineDeps } from './wire';
-import { createInMemorySessionStore } from './in-memory-store';
-import type { UssdDataPort, UssdIdentityResolver } from './ports';
+import { wireUssdEngine, USSD_ENGINE_FLAG, type WireUssdEngineDeps } from './wire.js';
+import { createInMemorySessionStore } from './in-memory-store.js';
+import type { UssdDataPort, UssdIdentityResolver } from './ports.js';
 
 function makeData(): UssdDataPort {
   return {

@@ -10,10 +10,10 @@ import {
   pearson,
   findCorrelations,
   DEFAULT_MIN_SAMPLE,
-} from './correlation-detector';
-import { createInMemoryBeliefStore } from './in-memory-store';
-import type { OutcomeRow } from './ports';
-import type { Belief } from './types';
+} from './correlation-detector.js';
+import { createInMemoryBeliefStore } from './in-memory-store.js';
+import type { OutcomeRow } from './ports.js';
+import type { Belief } from './types.js';
 
 describe('pearson', () => {
   it('returns r=1 for a perfectly correlated series', () => {

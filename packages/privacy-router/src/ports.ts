@@ -33,7 +33,7 @@ import type {
   DataClassification,
   PrivacyAuditEntry,
   StripResult,
-} from './types';
+} from './types.js';
 
 /**
  * Injected PII-stripping port. The composition root wires the real

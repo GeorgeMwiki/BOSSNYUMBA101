@@ -12,15 +12,15 @@
  *   - dry-run computes a root but does not sign/publish
  */
 import { describe, it, expect } from 'vitest';
-import { runAttestation, type AttestorDeps } from './attestor';
-import { serializeCheckpoint } from './checkpoint';
-import { createEd25519Signer, verifyEd25519 } from './ed25519-signer';
+import { runAttestation, type AttestorDeps } from './attestor.js';
+import { serializeCheckpoint } from './checkpoint.js';
+import { createEd25519Signer, verifyEd25519 } from './ed25519-signer.js';
 import {
   createInMemorySink,
   createInMemoryCheckpointStore,
-} from './in-memory-store';
-import type { Clock, ChainSourcePort } from './ports';
-import type { ChainSegment } from './types';
+} from './in-memory-store.js';
+import type { Clock, ChainSourcePort } from './ports.js';
+import type { ChainSegment } from './types.js';
 
 function sourceOf(segments: ReadonlyArray<ChainSegment>): ChainSourcePort {
   return { listSegments: async () => segments };

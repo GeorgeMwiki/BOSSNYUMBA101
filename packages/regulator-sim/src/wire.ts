@@ -21,14 +21,14 @@ import {
   auditReplayInputSchema,
   type AuditReplayInput,
   type AuditReplayResult,
-} from './types';
-import { replayAudit } from './audit-replay';
+} from './types.js';
+import { replayAudit } from './audit-replay.js';
 import {
   systemClock,
   type RegulatorAuditSink,
   type RegulatorAuditStore,
   type RegulatorClock,
-} from './ports';
+} from './ports.js';
 
 /** The canonical feature-flag name. READ BY THE CALLER, never by this package. */
 export const REGULATOR_SIM_FLAG = 'BOSSNYUMBA_FEATURE_REGULATOR_SIM' as const;

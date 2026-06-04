@@ -14,11 +14,11 @@
 import type {
   CheckpointStorePort,
   ExternalSinkPort,
-} from './ports';
+} from './ports.js';
 import type {
   ExternalSinkReceipt,
   SignedCheckpoint,
-} from './types';
+} from './types.js';
 
 export interface InMemorySink extends ExternalSinkPort {
   /** Every checkpoint published, in order (test assertions). */

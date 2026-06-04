@@ -16,10 +16,10 @@ import {
   wireLearningSignalEmitter,
   LEARNING_SIGNAL_EMITTER_FLAG,
   type WireLearningSignalEmitterDeps,
-} from './wire';
-import { createInMemorySignalStore } from './in-memory-store';
-import type { SignalSinks } from './ports';
-import type { ActionEvent, OutcomeEvent } from './types';
+} from './wire.js';
+import { createInMemorySignalStore } from './in-memory-store.js';
+import type { SignalSinks } from './ports.js';
+import type { ActionEvent, OutcomeEvent } from './types.js';
 
 function action(overrides: Partial<ActionEvent> = {}): ActionEvent {
   return {

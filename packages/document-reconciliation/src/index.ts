@@ -15,7 +15,7 @@
  * @module @bossnyumba/document-reconciliation
  */
 
-export * from './types';
+export * from './types.js';
 
 export {
   levenshtein,
@@ -28,14 +28,14 @@ export {
   matchAmounts,
   matchBankAccounts,
   reconcileDocBatch,
-} from './fact-matcher';
+} from './fact-matcher.js';
 
 export {
   buildFactBag,
   buildFactBags,
   type ExtractedField,
   type ExtractionForReconciliation,
-} from './fact-bag-builder';
+} from './fact-bag-builder.js';
 
 export {
   sigmoid,
@@ -48,14 +48,14 @@ export {
   type PlattParams,
   type CalibrationTable,
   type CalibrationSample,
-} from './calibration';
+} from './calibration.js';
 
 export {
   voteOnFields,
   type ExtractedFieldLike,
   type FieldVote,
   type VoteResult,
-} from './self-consistency';
+} from './self-consistency.js';
 
 export {
   createInMemoryFingerprintStore,
@@ -67,7 +67,7 @@ export {
   type IssuerFingerprint,
   type FingerprintMatchInput,
   type FingerprintStore,
-} from './issuer-fingerprint';
+} from './issuer-fingerprint.js';
 
 export {
   extractMpesaSms,
@@ -75,20 +75,20 @@ export {
   type MpesaSmsRecord,
   type MpesaSmsBatchResult,
   type MpesaSmsLlmFallback,
-} from './extractors/mpesa-sms';
+} from './extractors/mpesa-sms.js';
 
 export {
   extractEml,
   type EmlAttachment,
   type EmlExtractionResult,
-} from './extractors/eml';
+} from './extractors/eml.js';
 
 export {
   extractMsg,
   MsgUnsupportedError,
   type MsgExtractionResult,
   type MsgReaderPort,
-} from './extractors/msg';
+} from './extractors/msg.js';
 
 export {
   crossVerifyQr,
@@ -96,7 +96,7 @@ export {
   type QrDecodeInput,
   type QrDecoderPort,
   type QrCrossVerifyResult,
-} from './extractors/qr';
+} from './extractors/qr.js';
 
 export {
   systemClock,
@@ -108,12 +108,12 @@ export {
   type ReconciliationDataPort,
   type ReconciliationAuditSink,
   type ReconciliationClock,
-} from './ports';
+} from './ports.js';
 
 export {
   createInMemoryReconciliationStore,
   type InMemoryStoreOptions,
-} from './in-memory-store';
+} from './in-memory-store.js';
 
 export {
   wireDocumentReconciliation,
@@ -121,4 +121,4 @@ export {
   type DocumentReconciliation,
   type DocumentReconciliationDeps,
   type WireDocumentReconciliationDeps,
-} from './wire';
+} from './wire.js';

@@ -21,10 +21,10 @@
  */
 
 // Types + boundary schemas
-export * from './types';
+export * from './types.js';
 
 // Injected ports (seams) + default clock
-export * from './ports';
+export * from './ports.js';
 
 // Reward model (pure)
 export {
@@ -32,7 +32,7 @@ export {
   rewardOf,
   DEFAULT_WEIGHTS,
   type ScoreActionInput,
-} from './reward-model';
+} from './reward-model.js';
 
 // Per-tier isolation gate (pure)
 export {
@@ -41,7 +41,7 @@ export {
   DEFAULT_K_ANONYMITY,
   type IsolationCheckInput,
   type IsolationResult,
-} from './per-tier-isolation';
+} from './per-tier-isolation.js';
 
 // Signal emitter + fan-out
 export {
@@ -50,13 +50,13 @@ export {
   buildSignalHash,
   routePlan,
   type EmitInput,
-} from './signal-emitter';
+} from './signal-emitter.js';
 
 // In-memory reference store (tests + dev)
 export {
   createInMemorySignalStore,
   type InMemoryStoreHandle,
-} from './in-memory-store';
+} from './in-memory-store.js';
 
 // Composition root (default-OFF feature flag)
 export {
@@ -66,4 +66,4 @@ export {
   type LearningSignalEmitterDeps,
   type WireLearningSignalEmitterDeps,
   type EmitFacadeInput,
-} from './wire';
+} from './wire.js';

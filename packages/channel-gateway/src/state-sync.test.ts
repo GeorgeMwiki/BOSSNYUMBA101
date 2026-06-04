@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { createStateSync } from './state-sync';
-import { createInMemoryConversationStore } from './in-memory-store';
-import type { Clock } from './ports';
-import type { ChannelEvent, ChannelKind } from './types';
+import { createStateSync } from './state-sync.js';
+import { createInMemoryConversationStore } from './in-memory-store.js';
+import type { Clock } from './ports.js';
+import type { ChannelEvent, ChannelKind } from './types.js';
 
 function clockFrom(iso = '2026-06-03T10:00:00.000Z'): {
   clock: Clock;

@@ -3,14 +3,14 @@ import {
   handleUssdRequest,
   extractLatestInput,
   type UssdEngineDeps,
-} from './session-machine';
-import { createInMemorySessionStore } from './in-memory-store';
+} from './session-machine.js';
+import { createInMemorySessionStore } from './in-memory-store.js';
 import type {
   UssdDataPort,
   UssdIdentityResolver,
   UssdClock,
-} from './ports';
-import type { UssdRequest, UssdTier } from './types';
+} from './ports.js';
+import type { UssdRequest, UssdTier } from './types.js';
 
 // ----------------------------------------------------------------------------
 // Test doubles

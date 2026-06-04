@@ -28,7 +28,7 @@ import {
   type UssdResponse,
   type UssdSession,
   type UssdSessionState,
-} from './types';
+} from './types.js';
 import {
   buildMainMenu,
   buildLeaseScreen,
@@ -44,7 +44,7 @@ import {
   buildLanguageMenu,
   buildLanguageSetScreen,
   buildErrorScreen,
-} from './menu-tree';
+} from './menu-tree.js';
 import {
   systemClock,
   type UssdAuditSink,
@@ -52,7 +52,7 @@ import {
   type UssdDataPort,
   type UssdIdentityResolver,
   type UssdSessionStore,
-} from './ports';
+} from './ports.js';
 
 // ----------------------------------------------------------------------------
 // Engine dependencies

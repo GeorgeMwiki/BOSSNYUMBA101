@@ -9,7 +9,7 @@
  * brain_beliefs / belief_revisions / belief_review_queue tables.
  */
 
-import type { BeliefSource } from './types';
+import type { BeliefSource } from './types.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Subject-key canonicalisation

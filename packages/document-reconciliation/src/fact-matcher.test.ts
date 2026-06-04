@@ -9,8 +9,8 @@ import {
   matchAmounts,
   matchBankAccounts,
   reconcileDocBatch,
-} from './fact-matcher';
-import type { FactBag, PropertyDocType } from './types';
+} from './fact-matcher.js';
+import type { FactBag, PropertyDocType } from './types.js';
 
 describe('levenshtein', () => {
   it('is 0 for equal strings and counts edits', () => {

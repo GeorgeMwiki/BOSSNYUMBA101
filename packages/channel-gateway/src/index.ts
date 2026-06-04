@@ -15,15 +15,15 @@
  * @module @bossnyumba/channel-gateway
  */
 
-export * from './types';
-export * from './ports';
+export * from './types.js';
+export * from './ports.js';
 
 export {
   createChannelGateway,
   type ChannelGateway,
   type ChannelGatewayDeps,
   type CanonicalizeInput,
-} from './gateway';
+} from './gateway.js';
 
 export {
   canonicalizeByChannel,
@@ -35,15 +35,15 @@ export {
   canonicalizeWeb,
   normalizePhone,
   type CanonicalDraft,
-} from './canonicalizers';
+} from './canonicalizers.js';
 
 export {
   createStateSync,
   type StateSync,
   type StateSyncDeps,
-} from './state-sync';
+} from './state-sync.js';
 
-export { createInMemoryConversationStore } from './in-memory-store';
+export { createInMemoryConversationStore } from './in-memory-store.js';
 
 export {
   stepIvr,
@@ -55,11 +55,11 @@ export {
   type IvrSttPort,
   type TranscribeRecordingDeps,
   type TranscribeRecordingResult,
-} from './africas-talking-ivr';
+} from './africas-talking-ivr.js';
 
 export {
   wireChannelGateway,
   CHANNEL_GATEWAY_FLAG,
   type ChannelGatewayFacade,
   type WireChannelGatewayDeps,
-} from './wire';
+} from './wire.js';

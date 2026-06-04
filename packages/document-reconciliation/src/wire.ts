@@ -18,16 +18,16 @@
  * @module @bossnyumba/document-reconciliation/wire
  */
 
-import { buildFactBags, type ExtractedField, type ExtractionForReconciliation } from './fact-bag-builder';
-import { reconcileDocBatch } from './fact-matcher';
-import { safeFetch } from './ports';
+import { buildFactBags, type ExtractedField, type ExtractionForReconciliation } from './fact-bag-builder.js';
+import { reconcileDocBatch } from './fact-matcher.js';
+import { safeFetch } from './ports.js';
 import type {
   ReconciliationAuditSink,
   ReconciliationClock,
   ReconciliationDataPort,
   ReconciliationStore,
-} from './ports';
-import { reconciliationRequestSchema, type ParsedExtraction, type ReconciliationReport } from './types';
+} from './ports.js';
+import { reconciliationRequestSchema, type ParsedExtraction, type ReconciliationReport } from './types.js';
 
 /** The canonical feature-flag name. READ BY THE CALLER, never by this package. */
 export const DOCUMENT_RECONCILIATION_FLAG =

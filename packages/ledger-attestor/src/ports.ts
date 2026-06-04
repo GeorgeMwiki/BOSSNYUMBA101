@@ -23,7 +23,7 @@ import type {
   ExternalSinkReceipt,
   Signature,
   SignedCheckpoint,
-} from './types';
+} from './types.js';
 
 // ---------------------------------------------------------------------------
 // Clock

@@ -13,8 +13,8 @@ import {
   dpoLoss,
   rankByPreferenceHead,
   inferModalDimension,
-} from './preference-learner';
-import type { PreferencePair } from './learning-types';
+} from './preference-learner.js';
+import type { PreferencePair } from './learning-types.js';
 
 function pair(
   winner: number[],

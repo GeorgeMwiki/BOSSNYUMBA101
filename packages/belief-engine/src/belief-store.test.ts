@@ -4,9 +4,9 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { makeSubjectKey, computeConfidence, clamp01 } from './belief-store';
-import { createInMemoryBeliefStore } from './in-memory-store';
-import type { Belief, BeliefSource } from './types';
+import { makeSubjectKey, computeConfidence, clamp01 } from './belief-store.js';
+import { createInMemoryBeliefStore } from './in-memory-store.js';
+import type { Belief, BeliefSource } from './types.js';
 
 describe('makeSubjectKey', () => {
   it('canonicalises parts into a lowercase-dashed key', () => {

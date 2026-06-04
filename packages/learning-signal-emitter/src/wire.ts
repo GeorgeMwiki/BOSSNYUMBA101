@@ -17,8 +17,8 @@
  * @module @bossnyumba/learning-signal-emitter/wire
  */
 
-import { emitSignal, type SignalSinks } from './signal-emitter';
-import type { Clock, SignalAuditSink, SignalStore } from './ports';
+import { emitSignal, type SignalSinks } from './signal-emitter.js';
+import type { Clock, SignalAuditSink, SignalStore } from './ports.js';
 import {
   emitRequestSchema,
   type ActionEvent,
@@ -27,7 +27,7 @@ import {
   type OutcomeEvent,
   type RewardWeights,
   type SignalRoute,
-} from './types';
+} from './types.js';
 
 /** The canonical feature-flag name. READ BY THE CALLER, never by this package. */
 export const LEARNING_SIGNAL_EMITTER_FLAG =

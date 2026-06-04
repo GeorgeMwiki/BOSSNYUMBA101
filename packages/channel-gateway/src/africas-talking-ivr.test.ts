@@ -4,8 +4,8 @@ import {
   transcribeRecording,
   type IvrSttPort,
   type TranscribeRecordingDeps,
-} from './africas-talking-ivr';
-import type { SafeFetchPort } from './ports';
+} from './africas-talking-ivr.js';
+import type { SafeFetchPort } from './ports.js';
 
 describe('IVR state machine', () => {
   it('root greets and asks for a language', () => {

@@ -11,25 +11,25 @@
  * @module @bossnyumba/blind-review/engine
  */
 
-import { assignReviewers, buildBlindReviewDataset } from './pipeline';
+import { assignReviewers, buildBlindReviewDataset } from './pipeline.js';
 import {
   buildReviewerTask,
   createSyntheticReviewer,
   type SyntheticReviewerHeuristic,
-} from './reviewer-panel';
-import { generateReport } from './report-generator';
-import { systemClock } from './ports';
+} from './reviewer-panel.js';
+import { generateReport } from './report-generator.js';
+import { systemClock } from './ports.js';
 import type {
   BlindReviewAuditSink,
   BlindReviewClock,
   BlindReviewStore,
   DecisionFetcher,
-} from './ports';
+} from './ports.js';
 import type {
   BlindReviewDataset,
   BlindReviewReport,
   ReviewerVerdict,
-} from './types';
+} from './types.js';
 
 /** Dependencies the engine binds once at wiring time. */
 export interface BlindReviewEngineDeps {

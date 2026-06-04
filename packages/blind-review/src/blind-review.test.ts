@@ -21,7 +21,7 @@ import {
   type BlindReviewDataset,
   type MarginalDecisionRecord,
   type ReviewerVerdict,
-} from './index';
+} from './index.js';
 
 const FIXED_MS = Date.parse('2026-06-03T12:00:00.000Z');
 

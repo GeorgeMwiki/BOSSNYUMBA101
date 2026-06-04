@@ -18,30 +18,30 @@
  * @module @bossnyumba/blind-review
  */
 
-export * from './types';
-export * from './ports';
+export * from './types.js';
+export * from './ports.js';
 
-export { anonymiseRationale, anonymiseRecord } from './anonymise';
-export { mulberry32, deterministicShuffle } from './shuffle';
+export { anonymiseRationale, anonymiseRecord } from './anonymise.js';
+export { mulberry32, deterministicShuffle } from './shuffle.js';
 
 export {
   buildBlindReviewDataset,
   assignReviewers,
   type BuildDatasetInput,
   type AssignReviewersInput,
-} from './pipeline';
+} from './pipeline.js';
 
 export {
   createSyntheticFetcher,
   type SyntheticFetcherOptions,
-} from './synthetic-fetcher';
+} from './synthetic-fetcher.js';
 
 export {
   buildReviewerTask,
   createSyntheticReviewer,
   type ReviewerTask,
   type SyntheticReviewerHeuristic,
-} from './reviewer-panel';
+} from './reviewer-panel.js';
 
 export {
   scoreVerdicts,
@@ -49,27 +49,27 @@ export {
   authorOf,
   type AccuracyScore,
   type ScoreInput,
-} from './accuracy-scorer';
+} from './accuracy-scorer.js';
 
 export {
   generateReport,
   type GenerateReportInput,
-} from './report-generator';
+} from './report-generator.js';
 
 export {
   runBlindReview,
   type BlindReviewEngineDeps,
   type BlindReviewRunOptions,
-} from './engine';
+} from './engine.js';
 
 export {
   createInMemoryBlindReviewStore,
   type InMemoryStoreOptions,
-} from './in-memory-store';
+} from './in-memory-store.js';
 
 export {
   wireBlindReview,
   BLIND_REVIEW_FLAG,
   type BlindReview,
   type WireBlindReviewDeps,
-} from './wire';
+} from './wire.js';

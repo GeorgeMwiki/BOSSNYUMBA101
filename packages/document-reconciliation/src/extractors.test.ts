@@ -6,11 +6,11 @@ import {
   computePerceptualHash,
   matchFingerprint,
   registerFingerprint,
-} from './issuer-fingerprint';
-import { extractMpesaSms, parseOneMessage } from './extractors/mpesa-sms';
-import { extractEml } from './extractors/eml';
-import { extractMsg, MsgUnsupportedError, type MsgReaderPort } from './extractors/msg';
-import { crossVerifyQr, decodeAndCrossVerify, type QrDecoderPort } from './extractors/qr';
+} from './issuer-fingerprint.js';
+import { extractMpesaSms, parseOneMessage } from './extractors/mpesa-sms.js';
+import { extractEml } from './extractors/eml.js';
+import { extractMsg, MsgUnsupportedError, type MsgReaderPort } from './extractors/msg.js';
+import { crossVerifyQr, decodeAndCrossVerify, type QrDecoderPort } from './extractors/qr.js';
 
 // ----------------------------------------------------------------------------
 // Issuer fingerprint

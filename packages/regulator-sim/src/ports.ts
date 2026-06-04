@@ -28,7 +28,7 @@ import type {
   AuditReplayResult,
   PdpaResult,
   SubjectAccessRequest,
-} from './types';
+} from './types.js';
 
 /** A subject's data artefact, as surfaced for a PDPA drill. */
 export type SubjectArtefactKind =

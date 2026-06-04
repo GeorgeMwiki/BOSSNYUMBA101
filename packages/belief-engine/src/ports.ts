@@ -29,7 +29,7 @@ import type {
   RevisionRecord,
   ReviewQueueItem,
   WebSearchResult,
-} from './types';
+} from './types.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Clock

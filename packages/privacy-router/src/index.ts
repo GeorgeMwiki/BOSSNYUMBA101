@@ -37,7 +37,7 @@ export {
   type PrivacyRoutingRequest,
   type PrivacyRoutingResult,
   type PrivacyAuditEntry,
-} from './types';
+} from './types.js';
 
 export {
   systemClock,
@@ -47,30 +47,30 @@ export {
   type AuditEntryStore,
   type PrivacyAuditSink,
   type PrivacyClock,
-} from './ports';
+} from './ports.js';
 
 export {
   DEFAULT_PRIVACY_POLICY,
   privacyPolicySchema,
   parsePrivacyPolicyYaml,
   type PrivacyPolicy,
-} from './policy';
+} from './policy.js';
 
 export {
   createPrivacyRouter,
   type PrivacyRouter,
   type PrivacyRouterDeps,
   type PrivacyAuditStats,
-} from './router';
+} from './router.js';
 
 export {
   createInMemoryAuditStore,
   type InMemoryAuditStoreOptions,
-} from './in-memory-store';
+} from './in-memory-store.js';
 
 export {
   wirePrivacyRouter,
   PRIVACY_ROUTER_FLAG,
   type PrivacyRouterFacade,
   type WirePrivacyRouterDeps,
-} from './wire';
+} from './wire.js';
