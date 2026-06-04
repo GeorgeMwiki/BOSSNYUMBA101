@@ -6,8 +6,21 @@
  * the exact same values as the runtime UI.
  */
 
+// Canonical brand system — the doorway-B glyph + wordmark lockups.
+export { BossNyumbaLogo, default as BossNyumbaLogoDefault } from './BossNyumbaLogo';
+export type {
+  BossNyumbaLogoProps,
+  BossNyumbaLogoVariant,
+  BossNyumbaLogoTone,
+} from './BossNyumbaLogo';
+export { BossNyumbaMark } from './BossNyumbaMark';
+export type { BossNyumbaMarkProps } from './BossNyumbaMark';
+export { resolveTone } from './tone';
+
+// Backward-compatible adapters (kept for existing `Logomark`/`Wordmark`
+// consumers; both now render the doorway-B glyph under the hood).
 export { Logomark } from './logos/Logomark';
-export type { LogomarkProps } from './logos/Logomark';
+export type { LogomarkProps, LogomarkVariant } from './logos/Logomark';
 export {
   Wordmark,
   WordmarkStacked,
