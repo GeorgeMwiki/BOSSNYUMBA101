@@ -36,6 +36,50 @@ function resolveMigrationPath(name: string): string {
   return abs;
 }
 
+/** Per-migration client-side deadline (ms) — far above any legitimate apply. */
+const PER_MIGRATION_DEADLINE_MS = 300_000;
+
+/**
+ * Statements Postgres forbids inside an explicit transaction block. A migration
+ * containing one is applied WITHOUT `sql.begin()` (relying on its own
+ * auto-commit), trading atomicity for legality — these ops are inherently
+ * non-transactional. Four shipped migrations use `CREATE INDEX CONCURRENTLY`
+ * and one uses `REINDEX`/`VACUUM`, so this branch is load-bearing on a fresh DB.
+ */
+const NON_TRANSACTIONAL = /(?:CREATE|DROP)\s+INDEX\s+CONCURRENTLY|\bREINDEX\b|\bVACUUM\b/i;
+
+/** True when `body` contains an op that cannot run inside a transaction. */
+export function requiresOutOfTransaction(body: string): boolean {
+  return NON_TRANSACTIONAL.test(body);
+}
+
+/**
+ * Strip a leading `BEGIN;` and trailing `COMMIT;`/`END;` from a migration body,
+ * tolerating leading comments/whitespace. Returns the body unchanged if no
+ * wrapping transaction is found. postgres-js's `sql.unsafe()` rejects explicit
+ * transaction control, yet 59 shipped migrations carry their own
+ * `BEGIN; … COMMIT;` for psql/Supabase-editor compatibility; we strip it and
+ * re-establish atomicity via `sql.begin()` at the call site. Exported for tests.
+ */
+export function stripWrappingTransaction(content: string): string {
+  // Migration files are bounded — reject pathologically large inputs early so
+  // the alternation-heavy leading-noise regex cannot be exploited (10 MB ceiling).
+  if (content.length > 10_000_000) {
+    throw new Error('Migration file exceeds 10 MB safety limit');
+  }
+  const leadingNoise = `(?:/\\*[\\s\\S]*?\\*/|--[^\\n]*\\n|\\s)*`;
+  const beginRe = new RegExp(
+    `^(${leadingNoise})(?:BEGIN(?:\\s+WORK)?|START\\s+TRANSACTION)\\s*;\\s*`,
+    'i',
+  );
+  const commitRe =
+    /\s*(?:COMMIT(?:\s+WORK)?|END)\s*;?\s*(?:--[^\n]*\n?|\/\*[\s\S]*?\*\/|\s)*$/i;
+  if (!beginRe.test(content) || !commitRe.test(content)) {
+    return content;
+  }
+  return content.replace(beginRe, '$1').replace(commitRe, '');
+}
+
 export interface RunMigrationsOptions {
   databaseUrl?: string;
   logger?: Pick<Console, 'warn' | 'error'>;
@@ -59,12 +103,77 @@ function resolveDatabaseUrl(opts?: RunMigrationsOptions): string {
   return url;
 }
 
+type Sql = ReturnType<typeof postgres>;
+
+/**
+ * Apply one (already transaction-stripped) migration body and record it in the
+ * ledger, bounded by a client-side deadline so a driver-level wedge converts
+ * into a loud, attributable error instead of hanging boot forever. A
+ * CONCURRENTLY/VACUUM/REINDEX body runs outside a transaction (Postgres
+ * requires it); everything else is wrapped in `sql.begin()` so the DDL apply
+ * and the ledger insert commit atomically.
+ */
+async function applyOneMigration(
+  sql: Sql,
+  name: string,
+  body: string,
+): Promise<void> {
+  const apply = requiresOutOfTransaction(body)
+    ? (async () => {
+        await sql.unsafe(body);
+        await sql`
+          INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
+          VALUES (${name}, (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT)
+        `;
+      })()
+    : sql.begin(async (tx) => {
+        await tx.unsafe(body);
+        await tx`
+          INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
+          VALUES (${name}, (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT)
+        `;
+      });
+  let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    deadlineTimer = setTimeout(
+      () =>
+        reject(
+          new Error(
+            `Migration ${name} did not settle within ${PER_MIGRATION_DEADLINE_MS}ms ` +
+              '— aborting (apply via psql if the driver wedged).',
+          ),
+        ),
+      PER_MIGRATION_DEADLINE_MS,
+    );
+  });
+  try {
+    await Promise.race([apply, deadline]);
+  } finally {
+    if (deadlineTimer) clearTimeout(deadlineTimer);
+  }
+}
+
 export async function runMigrations(
   opts?: RunMigrationsOptions,
 ): Promise<RunMigrationsResult> {
   const databaseUrl = resolveDatabaseUrl(opts);
   const logger = opts?.logger ?? console;
-  const sql = postgres(databaseUrl);
+  // Bound every migration so a pathological statement or a driver-level wedge
+  // can never hang the runner indefinitely (a stalled from-scratch apply would
+  // otherwise block container boot forever with no diagnostic). The ceilings sit
+  // far above any legitimate fresh-DB migration, so they never false-trip — they
+  // only convert an unbounded hang into a loud, attributable error. `max: 1`
+  // keeps the sequential apply on one connection so these session GUCs bind to
+  // the connection doing the work; `prepare: false` avoids the prepared-statement
+  // cache wedging a long-lived connection after many one-shot DDL statements.
+  const sql = postgres(databaseUrl, {
+    max: 1,
+    prepare: false,
+    connection: {
+      statement_timeout: 600_000, // 10 min per-statement ceiling
+      idle_in_transaction_session_timeout: 300_000, // 5 min idle-in-txn ceiling
+    },
+  });
 
   let applied = 0;
   let skipped = 0;
@@ -99,11 +208,11 @@ export async function runMigrations(
       const safePath = resolveMigrationPath(file);
       // eslint-disable-next-line security/detect-non-literal-fs-filename -- path validated by resolveMigrationPath()
       const content = await readFile(safePath, 'utf-8');
-      await sql.unsafe(content);
-      await sql`
-        INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
-        VALUES (${name}, (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT)
-      `;
+      // Strip any self-wrapping BEGIN/COMMIT (postgres-js rejects explicit
+      // transaction control); applyOneMigration re-wraps in sql.begin() for
+      // atomicity, or runs out-of-transaction for CONCURRENTLY/VACUUM/REINDEX.
+      const body = stripWrappingTransaction(content);
+      await applyOneMigration(sql, name, body);
       logger.warn('Applied ' + file);
       applied += 1;
     }
@@ -114,7 +223,8 @@ export async function runMigrations(
     logger.error('Migration failed:', err);
     throw err;
   } finally {
-    await sql.end();
+    // Bound teardown too: a wedged connection must not block process exit.
+    await sql.end({ timeout: 5 });
   }
 }
 
