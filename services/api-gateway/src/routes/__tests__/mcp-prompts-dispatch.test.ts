@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
 
-import mcpRouter from '../mcp.router';
+import mcpRouter from '../mcp.hono';
 import type {
   BossnyumbaMcpServer,
   McpAuthContext,

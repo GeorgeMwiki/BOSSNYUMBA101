@@ -63,7 +63,7 @@ import { notificationsRouter } from './routes/notifications';
 import { reportsHonoRouter } from './routes/reports.hono';
 import { dashboardRouter } from './routes/dashboard.hono';
 import { onboardingRouter } from './routes/onboarding';
-import { onboardingFlowRouter } from './routes/onboarding.router';
+import { onboardingFlowRouter } from './routes/onboarding.hono';
 import { feedbackRouter } from './routes/feedback';
 import { complaintsRouter } from './routes/complaints';
 import { inspectionsRouter } from './routes/inspections';
@@ -80,58 +80,58 @@ import { brainRouter } from './routes/brain.hono';
 import { maintenanceRouter } from './routes/maintenance.hono';
 import { hrRouter } from './routes/hr.hono';
 // Wave 1-2 routers (new domain features)
-import applicationsRouter from './routes/applications.router';
-import arrearsRouter from './routes/arrears.router';
-import complianceRouter from './routes/compliance.router';
-import compliancePluginsRouter from './routes/compliance-plugins.router';
-import docChatRouter from './routes/doc-chat.router';
-import documentRenderRouter from './routes/document-render.router';
-import financialProfileRouter from './routes/financial-profile.router';
-import gamificationRouter from './routes/gamification.router';
-import gepgRouter from './routes/gepg.router';
-import interactiveReportsRouter from './routes/interactive-reports.router';
-import lettersRouter from './routes/letters.router';
-import { marketplaceRouter } from './routes/marketplace.router';
+import applicationsRouter from './routes/applications.hono';
+import arrearsRouter from './routes/arrears.hono';
+import complianceRouter from './routes/compliance.hono';
+import compliancePluginsRouter from './routes/compliance-plugins.hono';
+import docChatRouter from './routes/doc-chat.hono';
+import documentRenderRouter from './routes/document-render.hono';
+import financialProfileRouter from './routes/financial-profile.hono';
+import gamificationRouter from './routes/gamification.hono';
+import gepgRouter from './routes/gepg.hono';
+import interactiveReportsRouter from './routes/interactive-reports.hono';
+import lettersRouter from './routes/letters.hono';
+import { marketplaceRouter } from './routes/marketplace.hono';
 // Universal tenant marketplace — Section 4 of the questionnaire
 // (cross-org browsing surface). Distinct from the legacy org-side
 // `marketplaceRouter` above which manages listing publishing for
 // portfolio owners.
 import { universalMarketplaceRouter } from './routes/marketplace/index.js';
-import { createMigrationRouter } from './routes/migration.router';
-import { negotiationsRouter } from './routes/negotiations.router';
-import { createNotificationPreferencesRouter } from './routes/notification-preferences.router';
-import { createNotificationWebhookRouter } from './routes/notification-webhooks.router';
-import occupancyTimelineRouter from './routes/occupancy-timeline.router';
-import renewalsRouter from './routes/renewals.router';
-import riskReportsRouter from './routes/risk-reports.router';
-import scansRouter from './routes/scans.router';
-import stationMasterCoverageRouter from './routes/station-master-coverage.router';
-import { tendersRouter } from './routes/tenders.router';
-import { waitlistRouter } from './routes/waitlist.router';
+import { createMigrationRouter } from './routes/migration.hono';
+import { negotiationsRouter } from './routes/negotiations.hono';
+import { createNotificationPreferencesRouter } from './routes/notification-preferences.hono';
+import { createNotificationWebhookRouter } from './routes/notification-webhooks.hono';
+import occupancyTimelineRouter from './routes/occupancy-timeline.hono';
+import renewalsRouter from './routes/renewals.hono';
+import riskReportsRouter from './routes/risk-reports.hono';
+import scansRouter from './routes/scans.hono';
+import stationMasterCoverageRouter from './routes/station-master-coverage.hono';
+import { tendersRouter } from './routes/tenders.hono';
+import { waitlistRouter } from './routes/waitlist.hono';
 // Veteran-expert advisor packages — pure-function strategic
 // recommenders exposed as HTTP entry points. Each router takes the
 // advisor's typed input JSON, calls the pure composer, returns the
 // structured recommendation envelope. Tenant-scoped + audit-logged.
-import acquisitionAdvisorRouter from './routes/acquisition-advisor.router';
-import expansionAdvisorRouter from './routes/expansion-advisor.router';
-import lifecycleAdvisorRouter from './routes/lifecycle-advisor.router';
-import sustainabilityAdvisorRouter from './routes/sustainability-advisor.router';
-import greenAngleAdvisorRouter from './routes/green-angle-advisor.router';
-import estateDepartmentAdvisorRouter from './routes/estate-department-advisor.router';
-import estateAutoManagementRouter from './routes/estate-auto-management.router';
-import geoPlatformRouter from './routes/geo-platform.router';
+import acquisitionAdvisorRouter from './routes/acquisition-advisor.hono';
+import expansionAdvisorRouter from './routes/expansion-advisor.hono';
+import lifecycleAdvisorRouter from './routes/lifecycle-advisor.hono';
+import sustainabilityAdvisorRouter from './routes/sustainability-advisor.hono';
+import greenAngleAdvisorRouter from './routes/green-angle-advisor.hono';
+import estateDepartmentAdvisorRouter from './routes/estate-department-advisor.hono';
+import estateAutoManagementRouter from './routes/estate-auto-management.hono';
+import geoPlatformRouter from './routes/geo-platform.hono';
 // Wave 8 gap-closure routers
-import warehouseRouter from './routes/warehouse.router';
-import maintenanceTaxonomyRouter from './routes/maintenance-taxonomy.router';
-import iotRouter from './routes/iot.router';
-import lpmsRouter from './routes/lpms.router';
+import warehouseRouter from './routes/warehouse.hono';
+import maintenanceTaxonomyRouter from './routes/maintenance-taxonomy.hono';
+import iotRouter from './routes/iot.hono';
+import lpmsRouter from './routes/lpms.hono';
 // Wave 9 enterprise polish routers
-import featureFlagsRouter from './routes/feature-flags.router';
-import gdprRouter from './routes/gdpr.router';
-import { createDsarRouter } from './routes/dsar.router';
-import aiCostsRouter from './routes/ai-costs.router';
+import featureFlagsRouter from './routes/feature-flags.hono';
+import gdprRouter from './routes/gdpr.hono';
+import { createDsarRouter } from './routes/dsar.hono';
+import aiCostsRouter from './routes/ai-costs.hono';
 // Wave 12 — metrics / observability snapshot
-import { metricsRouter } from './routes/metrics.router';
+import { metricsRouter } from './routes/metrics.hono';
 import { createMetricsMiddleware } from './observability/metrics-middleware';
 // M-1 (2026-05-29) realtime latency telemetry (ported from Borjie RT-3).
 //   POST /api/v1/metrics/realtime-latency — SSE clients post measurements.
@@ -178,12 +178,12 @@ import { createWellKnownBossNyumbaRouter } from './routes/well-known-bossnyumba.
 import { oauthDeviceRouter } from './routes/oauth-device.hono';
 // Central Command Phase A C4 — Sensorium / Brain Skin event ingestion.
 // Receives batched 14-event sensory payloads from the client-side bus.
-import sensoriumRouter from './routes/sensorium.router';
+import sensoriumRouter from './routes/sensorium.hono';
 // Central Command Phase A C6 — Cross-portal SSE fan-out subscriber.
 // Every authenticated user opens this to receive announcements /
 // notifications / state-mutations / wake-trigger events from the
 // brain. Tenant-scoped via JWT (NEVER via query/body).
-import crossPortalSubscribeRouter from './routes/cross-portal-subscribe.router';
+import crossPortalSubscribeRouter from './routes/cross-portal-subscribe.hono';
 // Roadmap R6 — cockpit SSE pulse stream. Fans `publishCockpitEvent`
 // bus emissions out to the owner / manager / staff cockpits.
 import cockpitStreamRouter from './routes/cockpit-stream.hono';
@@ -199,25 +199,25 @@ import leaseHistoryRouter from './routes/lease-history.hono';
 // L8 settlement listing — backs `owner.rent_payout.list_mine`.
 import ownerRentPayoutsRouter from './routes/owner-rent-payouts.hono';
 // Central Command Phase B B6 — Liveblocks 3.0 rooms auth (token mint).
-import liveblocksAuthRouter from './routes/liveblocks-auth.router';
+import liveblocksAuthRouter from './routes/liveblocks-auth.hono';
 // Central Command Phase B B3 — Inngest durable-execution webhook. Receives
 // HMAC-signed Inngest function callbacks for the agency-run dispatcher.
 // 503 when `services.inngestRuntime` is unbound (Inngest dep not installed
 // or signing key absent).
-import inngestWebhookRouter from './routes/inngest-webhook.router';
+import inngestWebhookRouter from './routes/inngest-webhook.hono';
 // Central Command Phase B B5 — session-replay cold store. Append-only
 // chunk ingest from rrweb + admin-gated viewer endpoints. PII masked
 // at the client BEFORE upload; gzipped payloads.
-import sessionReplayRouter from './routes/session-replay.router';
+import sessionReplayRouter from './routes/session-replay.hono';
 // Wave 12 — MCP server + agent platform
-import mcpRouter, { agentCardRouter } from './routes/mcp.router';
+import mcpRouter, { agentCardRouter } from './routes/mcp.hono';
 // Wave 11 — public marketing (Mr. Mwikila), workflows
-import publicMarketingRouter from './routes/public-marketing.router';
+import publicMarketingRouter from './routes/public-marketing.hono';
 import { translateRouter } from './routes/translate.hono';
-import publicSandboxRouter from './routes/public-sandbox.router';
-import publicLeadsRouter from './routes/public-leads.router';
+import publicSandboxRouter from './routes/public-sandbox.hono';
+import publicLeadsRouter from './routes/public-leads.hono';
 // Wave 12 — streaming AI chat (SSE) for all 4 chat surfaces
-import aiChatRouter from './routes/ai-chat.router';
+import aiChatRouter from './routes/ai-chat.hono';
 // Universal role-aware advisor — `POST /api/v1/ask`, GET starting-points,
 // POST feedback. Owned by this work-stream; routes under
 // `services/api-gateway/src/routes/advisor/` belong to P2 and are NOT
@@ -233,41 +233,41 @@ import { stageRouter } from './routes/stage/index.js';
 // `ai-reviewer` + `assignment-registry` ScopeGuard). See wiring-gap
 // audit chain 8.
 import workflowRouter from './routes/workflow/index.js';
-import agentCertificationsRouter from './routes/agent-certifications.router';
-import classroomRouter from './routes/classroom.router';
-import trainingRouter from './routes/training.router';
-import voiceRouter from './routes/voice.router';
+import agentCertificationsRouter from './routes/agent-certifications.hono';
+import classroomRouter from './routes/classroom.hono';
+import trainingRouter from './routes/training.hono';
+import voiceRouter from './routes/voice.hono';
 // Wave 13 — Autonomous Department Mode routers
-import exceptionsRouter from './routes/exceptions.router';
-import autonomousActionsAuditRouter from './routes/autonomous-actions-audit.router';
-import autonomyRouter from './routes/autonomy.router';
+import exceptionsRouter from './routes/exceptions.hono';
+import autonomousActionsAuditRouter from './routes/autonomous-actions-audit.hono';
+import autonomyRouter from './routes/autonomy.hono';
 // Wave 28 Phase A Agent PhA2 — monthly-close orchestrator.
-import monthlyCloseRouter from './routes/monthly-close.router';
+import monthlyCloseRouter from './routes/monthly-close.hono';
 // Organizational Awareness — "talk to your organization" endpoints
-import orgAwarenessRouter from './routes/org-awareness.router';
+import orgAwarenessRouter from './routes/org-awareness.hono';
 // Tenant Credit Rating — FICO-scale credit + portable certificate
-import creditRatingRouter from './routes/credit-rating.router';
+import creditRatingRouter from './routes/credit-rating.hono';
 // Property Grading — Mr. Mwikila's A–F report card system (migration 0088)
-import propertyGradingRouter from './routes/property-grading.router';
+import propertyGradingRouter from './routes/property-grading.hono';
 // Wave-K parity-litfin — LITFIN mission-eval dashboard parity surface.
-import parityCapabilityDashboardRouter from './routes/parity-capability-dashboard.router';
+import parityCapabilityDashboardRouter from './routes/parity-capability-dashboard.hono';
 // AI-Native suite — Agent PhG: 8 capabilities that leverage LLMs at scale.
-import aiNativeRouter from './routes/ai-native.router';
+import aiNativeRouter from './routes/ai-native.hono';
 // Wave 26 — Agent Z2: expose four repos that had tests but no HTTP surface.
-import subleaseRouter from './routes/sublease.router';
-import damageDeductionsRouter from './routes/damage-deductions.router';
-import conditionalSurveysRouter from './routes/conditional-surveys.router';
-import farRouter from './routes/far.router';
+import subleaseRouter from './routes/sublease.hono';
+import damageDeductionsRouter from './routes/damage-deductions.hono';
+import conditionalSurveysRouter from './routes/conditional-surveys.hono';
+import farRouter from './routes/far.hono';
 // Wave 26 Z3 — Move-out checklist + Approval workflow (migration 0097)
-import moveOutRouter from './routes/move-out.router';
-import approvalsRouter from './routes/approvals.router';
+import moveOutRouter from './routes/move-out.hono';
+import approvalsRouter from './routes/approvals.hono';
 // Wave 27 PhA1 — Vacancy-to-Lease orchestrator (migration 0098)
-import vacancyPipelineRouter from './routes/vacancy-pipeline.router';
-import adminJarvisRouter from './routes/admin-jarvis.router';
+import vacancyPipelineRouter from './routes/vacancy-pipeline.hono';
+import adminJarvisRouter from './routes/admin-jarvis.hono';
 // Central-Command AG-UI wire — POST /admin/jarvis/stream returns SSE-framed
 // AG-UI Protocol events. Replaces the 503 stub at
 // `apps/admin-platform-portal/.../intelligence/thread/[id]/message/route.ts`.
-import adminJarvisStreamRouter from './routes/admin-jarvis-stream.router';
+import adminJarvisStreamRouter from './routes/admin-jarvis-stream.hono';
 import {
   tenantJarvisRouter,
   ownerJarvisRouter,
@@ -275,53 +275,53 @@ import {
   platformHqJarvisRouter,
 } from './routes/jarvis-router-factory';
 // Platform overview KPI aggregator — HQ-tier counts for /platform/overview.
-import platformOverviewRouter from './routes/platform-overview.router';
+import platformOverviewRouter from './routes/platform-overview.hono';
 // Phase B Wave 30 — Task-Agents registry + executor (narrow-scope agents)
-import taskAgentsRouter from './routes/task-agents.router';
+import taskAgentsRouter from './routes/task-agents.hono';
 // Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity overrides)
-import tenantBrandingRouter from './routes/tenant-branding.router';
+import tenantBrandingRouter from './routes/tenant-branding.hono';
 // Wave 27 Agent C — Audit Trail v2 (cryptographically-verifiable append-only log)
-import auditTrailRouter from './routes/audit-trail.router';
+import auditTrailRouter from './routes/audit-trail.hono';
 // Wave-K Tier-3 — Sovereign action-ledger admin surface (tail + verify).
 // Wraps @bossnyumba/database's sovereign-action-ledger service; SUPER_ADMIN+ADMIN only.
-import sovereignLedgerRouter from './routes/sovereign-ledger.router';
+import sovereignLedgerRouter from './routes/sovereign-ledger.hono';
 // Wave 27 Agent F — Risk-recompute dispatcher manual-trigger surface.
-import { createRiskRecomputeRouter } from './routes/risk-recompute.router';
+import { createRiskRecomputeRouter } from './routes/risk-recompute.hono';
 // Wave 28 — Head briefing cohesive morning screen (JSON / markdown / voice).
-import headBriefingRouter from './routes/head-briefing.router';
+import headBriefingRouter from './routes/head-briefing.hono';
 // Wave 28 — Junior-AI factory (team-lead self-service provisioning).
-import juniorAIRouter from './routes/junior-ai.router';
+import juniorAIRouter from './routes/junior-ai.hono';
 // Canonical Property Graph (CPG) — tenant-scoped Neo4j query + relationship explorer.
-import graphRouter from './routes/graph.router';
+import graphRouter from './routes/graph.hono';
 // Wave 29 — Forecasting (TGN + conformal) surface. Returns 503
 // FORECAST_SERVICE_UNAVAILABLE when the TGN inference + repo env
 // vars are unset (no mock forecasts, ever).
-import forecastRouter from './routes/forecast.router';
+import forecastRouter from './routes/forecast.hono';
 // Central Intelligence — streaming first-person agent (SSE). Returns
 // 503 INTELLIGENCE_SERVICE_UNAVAILABLE when CI_LLM_URL / adapter is
 // not wired (no mock agents, ever).
-import intelligenceRouter from './routes/intelligence.router';
+import intelligenceRouter from './routes/intelligence.hono';
 // Frontend gap-fix BFF routers — owner-portal hits these top-level paths
 // for the analytics + portfolio dashboards. Until dedicated aggregator
 // services are wired, both routers return "honest empty" shapes so the
 // owner-portal renders an empty state instead of stalling on a never-
 // resolving fetch. Follow-ups tracked in Docs/TODO_BACKLOG.md.
-import analyticsRouter from './routes/analytics.router';
+import analyticsRouter from './routes/analytics.hono';
 // Per-detail-page analytics aggregates (occupancy, revenue, expenses)
 // for the owner-portal. Real Drizzle grouped aggregates over the last
 // 12 months. Replaces the previous fixture fallbacks on the analytics
 // pages.
-import analyticsDetailRouter from './routes/analytics-detail.router';
-import portfolioRouter from './routes/portfolio.router';
+import analyticsDetailRouter from './routes/analytics-detail.hono';
+import portfolioRouter from './routes/portfolio.hono';
 // Real Holt-Winters monthly revenue/expenses/NOI forecast (replaces
 // the previous honest-empty `/budgets/forecasts` placeholder in
 // `bff/owner-portal.ts`).
-import budgetForecastRouter from './routes/budget-forecast.router';
+import budgetForecastRouter from './routes/budget-forecast.hono';
 // Estate-manager-app dependency — list/create unit subdivision children,
 // and list FAR / asset-component breakdown for a unit. Mounted under
 // /api/v1/units/:id/{subdivision,components}.
-import unitSubdivisionRouter from './routes/unit-subdivision.router';
-import unitComponentsRouter from './routes/unit-components.router';
+import unitSubdivisionRouter from './routes/unit-subdivision.hono';
+import unitComponentsRouter from './routes/unit-components.hono';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { createRateLimitMiddleware } from './middleware/rate-limit-redis.middleware';
 import { getSharedPerTenantRateBudget } from './middleware/per-tenant-rate-budget';
@@ -370,11 +370,11 @@ import { adminPortalRouter } from './routes/bff/admin-portal';
 // answers a precise endpoint declared by a placeholder page in
 // commit 0ee27a0 with `200 OK + X-Backend-Status: degraded` so the FE
 // stops 404'ing while the backing services are still in design.
-import { analyticsExportsRouter } from './routes/owner/analytics-exports.router';
-import { analyticsGrowthRouter } from './routes/owner/analytics-growth.router';
-import { analyticsUsageRouter } from './routes/owner/analytics-usage.router';
-import { billingRouter } from './routes/owner/billing.router';
-import { ownerMessagingRouter } from './routes/owner/owner-messaging.router';
+import { analyticsExportsRouter } from './routes/owner/analytics-exports.hono';
+import { analyticsGrowthRouter } from './routes/owner/analytics-growth.hono';
+import { analyticsUsageRouter } from './routes/owner/analytics-usage.hono';
+import { billingRouter } from './routes/owner/billing.hono';
+import { ownerMessagingRouter } from './routes/owner/owner-messaging.hono';
 import { ownerPinnedItemsRouter } from './routes/owner/pinned-items.hono';
 import { savedSearchesRouter } from './routes/owner/saved-searches.hono';
 import {
@@ -408,8 +408,8 @@ import { ownerSuperpowersPrefillRouter } from './routes/owner/superpowers/prefil
 // reset, etc.) — HIGH-risk verbs require a second admin approval.
 // Mounted at /api/v1/admin/superpowers.
 import { adminSuperpowersRouter } from './routes/admin/superpowers.hono';
-import { supportRouter } from './routes/owner/support.router';
-import { adminUsersRouter } from './routes/owner/admin-users.router';
+import { supportRouter } from './routes/owner/support.hono';
+import { adminUsersRouter } from './routes/owner/admin-users.hono';
 import { buildServices, type ServiceRegistry } from './composition/service-registry';
 import { getDb } from './composition/db-client';
 import { createServiceContextMiddleware } from './composition/service-context.middleware';
@@ -453,7 +453,7 @@ import {
 import { installJarvisCaptureHook } from './routes/jarvis-router-factory';
 import { buildQueryOrganizationTool } from '@bossnyumba/ai-copilot';
 import { createAmbientBrainMiddleware } from './middleware/ambient-brain.middleware';
-import { createWebhookDlqRouter } from './routes/webhook-dlq.router';
+import { createWebhookDlqRouter } from './routes/webhook-dlq.hono';
 // Wave launch-green C10 — HTTP corpus upload endpoint (5-stage brain
 // ingestion pipeline). PUBLIC under /api/v1/corpus/upload, auth +
 // databaseMiddleware enforced at the router level.

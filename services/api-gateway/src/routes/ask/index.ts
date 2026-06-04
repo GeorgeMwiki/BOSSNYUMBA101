@@ -9,4 +9,4 @@
  *   POST /api/v1/ask/feedback
  */
 
-export { default as askRouter } from './ask.router.js';
+export { default as askRouter } from './ask.hono.js';

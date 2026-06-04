@@ -38,11 +38,11 @@ process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 import { generateToken } from '../../middleware/auth';
 import { UserRole } from '../../types/user-role';
 
-import docChatRouter from '../doc-chat.router';
-import documentRenderRouter from '../document-render.router';
-import scansRouter from '../scans.router';
-import complianceRouter from '../compliance.router';
-import interactiveReportsRouter from '../interactive-reports.router';
+import docChatRouter from '../doc-chat.hono';
+import documentRenderRouter from '../document-render.hono';
+import scansRouter from '../scans.hono';
+import complianceRouter from '../compliance.hono';
+import interactiveReportsRouter from '../interactive-reports.hono';
 
 import {
   docChatSessions,

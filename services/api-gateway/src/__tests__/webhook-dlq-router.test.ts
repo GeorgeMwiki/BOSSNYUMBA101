@@ -13,7 +13,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
-import { createWebhookDlqRouter } from '../routes/webhook-dlq.router';
+import { createWebhookDlqRouter } from '../routes/webhook-dlq.hono';
 import { generateToken } from '../middleware/auth';
 import { UserRole } from '../types/user-role';
 import type {

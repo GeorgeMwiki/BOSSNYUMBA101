@@ -15,7 +15,7 @@ import {
   tenantContextMiddleware,
   tenantCache,
 } from '../middleware/tenant-context.middleware';
-import { compliancePluginsRouter } from '../routes/compliance-plugins.router';
+import { compliancePluginsRouter } from '../routes/compliance-plugins.hono';
 import {
   __resetDefaultFallbackWarning,
   availableCountries,

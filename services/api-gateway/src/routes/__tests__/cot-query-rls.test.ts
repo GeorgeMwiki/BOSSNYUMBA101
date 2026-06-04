@@ -29,7 +29,7 @@ import {
   createCotQueryRouter,
   type CotQuerySource,
   type CotRow,
-} from '../cot-query.router';
+} from '../cot-query.hono';
 import { generateToken } from '../../middleware/auth';
 import { UserRole } from '../../types/user-role';
 

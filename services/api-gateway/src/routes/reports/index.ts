@@ -10,11 +10,11 @@
  *   POST /api/v1/strategic-reports/:jobId/regenerate
  */
 
-export { default as strategicReportsRouter } from './reports.router.js';
+export { default as strategicReportsRouter } from './reports.hono.js';
 export {
   setEngineForTests,
   getEngine,
   _resetEngineForTests,
 } from './engine-wiring.js';
 export { _resetReportsRateLimitForTests } from './reports-rate-limit.js';
-export { _resetJobIndexForTests } from './reports.router.js';
+export { _resetJobIndexForTests } from './reports.hono.js';

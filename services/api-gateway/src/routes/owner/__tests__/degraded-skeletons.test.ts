@@ -35,13 +35,13 @@ process.env.USE_MOCK_DATA = process.env.USE_MOCK_DATA ?? 'true';
 
 import { generateToken } from '../../../middleware/auth';
 import { UserRole } from '../../../types/user-role';
-import { analyticsExportsRouter } from '../analytics-exports.router';
-import { analyticsGrowthRouter } from '../analytics-growth.router';
-import { analyticsUsageRouter } from '../analytics-usage.router';
-import { billingRouter } from '../billing.router';
-import { ownerMessagingRouter } from '../owner-messaging.router';
-import { supportRouter } from '../support.router';
-import { adminUsersRouter } from '../admin-users.router';
+import { analyticsExportsRouter } from '../analytics-exports.hono';
+import { analyticsGrowthRouter } from '../analytics-growth.hono';
+import { analyticsUsageRouter } from '../analytics-usage.hono';
+import { billingRouter } from '../billing.hono';
+import { ownerMessagingRouter } from '../owner-messaging.hono';
+import { supportRouter } from '../support.hono';
+import { adminUsersRouter } from '../admin-users.hono';
 
 const TEST_TENANT = 'tenant-skeleton-1';
 const OTHER_TENANT = 'tenant-skeleton-2';
