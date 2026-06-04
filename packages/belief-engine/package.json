@@ -1,0 +1,22 @@
+{
+  "name": "@bossnyumba/belief-engine",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Epistemic belief store + convince-loop for the property operating system. Holds the brain's beliefs about tenant reliability, unit demand, and arrears risk, and revises a belief ONLY when corroborating evidence clears a 0.25 confidence-delta gate (0.05-0.25 queues for human review; below 0.05 is a no-op). Ships a DPO preference-learner, a LinUCB contextual bandit, Mem0 ADD/UPDATE/DELETE/NOOP fact semantics, and a nightly Pearson belief-vs-outcome correlation pass. Pure functions behind injected ports (belief store, web-search, outcome fetcher, audit sink, clock) — no direct DB/SDK/env. Default-OFF feature flag with a single wireBeliefEngine() composition export.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

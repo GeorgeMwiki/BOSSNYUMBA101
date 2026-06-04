@@ -1,0 +1,22 @@
+{
+  "name": "@bossnyumba/document-reconciliation",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Cross-document fact reconciliation for real-estate paperwork. A tenant or owner submits several documents for one matter (national ID, TIN certificate, lease agreement, rent receipts, bank + M-PESA statements, condition surveys); the brain projects each to a normalized fact bag, then runs pairwise matchers (Levenshtein names, E164 phones, Jaccard addresses, ISO dates, amounts, bank accounts) to surface mismatches before a decision. STRICT mismatches block; SOFT mismatches flag for human review. Adds per-field Platt confidence calibration, a self-consistency vote over extraction shots, per-issuer layout fingerprints, and EML/MSG/M-PESA-SMS/QR extractors. Extends @bossnyumba/document-analysis by consuming its extractor output shape. Pure functions + injected ports — no DB/SDK/env. Default-OFF feature flag with a single wireDocumentReconciliation() composition export.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

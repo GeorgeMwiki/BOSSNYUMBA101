@@ -1,0 +1,22 @@
+{
+  "name": "@bossnyumba/blind-review",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Blind-review indistinguishability panel for marginal real-estate decisions (lease / rent / deposit). Anonymize -> shuffle -> N-reviewer Turing-style panel where senior property managers blind-classify each anonymised rationale as AI-authored (Mr. Mwikila) or human-authored, with an accuracy <= 0.55 indistinguishability bar. Pure functions + injected ports (decision store, ground-truth resolver, decision fetcher, audit sink, clock) — no direct DB/SDK/env. Default-OFF feature flag with a single wireBlindReview() composition export. Deterministic seeds for replayable CI runs.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

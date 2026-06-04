@@ -1,0 +1,22 @@
+{
+  "name": "@bossnyumba/channel-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Unified inbound channel gateway. Canonicalizes WhatsApp, SMS, USSD, voice (IVR), email, and in-app web into ONE readonly ChannelEvent so the brain layer sees a single normalized surface. Verifies provider webhook signatures fail-closed through an injected signature port, resolves a channel-native sender to a tenant + actor + power-tier (owner/manager/agent/tenant), and keeps one conversation coherent as a person hops channels (start on WhatsApp, finish on the web) via an injected conversation store. Bundled Africa's-Talking IVR -> STT adapter for feature-phone tenants. Pure functions + injected ports (signature verifier, tier resolver, conversation store, SSRF-safe fetch, audit sink, clock) — no direct DB/SDK/env/network. Default-OFF feature flag with a single wireChannelGateway() composition export. Ported and fully re-skinned to the BossNyumba real-estate domain.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

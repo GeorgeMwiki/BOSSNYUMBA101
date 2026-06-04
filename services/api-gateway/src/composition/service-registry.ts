@@ -453,6 +453,14 @@ import {
   createLitfinDomainBundle,
   type LitfinDomainBundle,
 } from './litfin-domain-wiring.js';
+// LITFIN-port wave wiring (FRONT-B — 9 newly-ported leaf packages).
+// Each member is null behind its own DEFAULT-OFF feature flag; the
+// decorator attaches the `litfinPort` namespace to the registry without
+// touching any existing slot. See litfin-port-wiring.ts for the flags.
+import {
+  registerLitfinPortBundle,
+  type LitfinPortBundle,
+} from './litfin-port-wiring.js';
 // LITFIN-port wave wiring (Batch 3 — 5 platform bundles).
 // Bundles security-hardening + document-ai + progressive-intelligence +
 // document-quality-guarantor + audio-capture. Each ships a pre-wired
@@ -920,6 +928,19 @@ export interface ServiceRegistry {
    */
   readonly agentStack: AgentStackBundle;
 
+  /**
+   * FRONT-B — 9 newly-ported leaf packages, each exposed behind its own
+   * DEFAULT-OFF feature flag (`BOSSNYUMBA_FEATURE_*`). Every member is
+   * `null` unless its flag is `on`; consumers MUST treat a `null` slot as
+   * "feature disabled" and keep their existing behaviour. Attached
+   * additively by `registerLitfinPortBundle` — see litfin-port-wiring.ts.
+   *
+   * Members: ussdEngine, beliefEngine, learningSignalEmitter,
+   * ledgerAttestor, channelGateway, documentReconciliation, privacyRouter,
+   * regulatorSim, blindReview.
+   */
+  readonly litfinPort: LitfinPortBundle;
+
   /** Wave 29 — Forecasting (TGN + conformal prediction intervals).
    *  Every member is `null` until BOTH `TGN_INFERENCE_URL` and
    *  `FORECASTING_REPO_URL` are set. When null, the forecast router
@@ -1291,7 +1312,9 @@ function buildGraphQueryService(): GraphQueryService | null {
   }
 }
 
-function degradedRegistry(eventBus: EventBus): ServiceRegistry {
+function degradedRegistry(
+  eventBus: EventBus,
+): Omit<ServiceRegistry, 'litfinPort'> {
   // Single bus instance reused for the bus slot and the C2 fan-out /
   // dispatcher adapters so all three converge on the same in-memory
   // (or Redis, when REDIS_URL is set) backend. Constructed once at
@@ -1537,18 +1560,27 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
 
 export function buildServices(input: BuildServicesInput): ServiceRegistry {
   const registry = buildServicesInner(input);
-  if (!registry.isLive) return registry;
-  // MCP server is built after the registry because its handlers close
-  // over the populated services. Patch the `mcp` slot — the rest of the
-  // object remains effectively immutable from callers' perspective.
-  (registry as { mcp: BossnyumbaMcpServer | null }).mcp = buildMcpServer(
-    registry,
-    registry.agentCertification,
-  );
-  return registry;
+  if (registry.isLive) {
+    // MCP server is built after the registry because its handlers close
+    // over the populated services. Patch the `mcp` slot — the rest of the
+    // object remains effectively immutable from callers' perspective.
+    // `litfinPort` is attached below by the decorator; the MCP server only
+    // reads pre-existing slots, so the pre-decoration registry is a safe
+    // `ServiceRegistry` here (structurally complete bar that one namespace).
+    (registry as { mcp: BossnyumbaMcpServer | null }).mcp = buildMcpServer(
+      registry as unknown as ServiceRegistry,
+      registry.agentCertification,
+    );
+  }
+  // FRONT-B — additively attach the 9 newly-ported packages behind their
+  // DEFAULT-OFF flags. Immutable: returns a new frozen registry; no
+  // existing slot is touched. Single exit covers both degraded + live.
+  return registerLitfinPortBundle(registry);
 }
 
-function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
+function buildServicesInner(
+  input: BuildServicesInput,
+): Omit<ServiceRegistry, 'litfinPort'> {
   const eventBus: EventBus = input.eventBus ?? new InMemoryEventBus();
 
   if (!input.db) return degradedRegistry(eventBus);

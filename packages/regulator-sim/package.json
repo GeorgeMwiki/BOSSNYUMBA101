@@ -1,0 +1,22 @@
+{
+  "name": "@bossnyumba/regulator-sim",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Regulator-readiness simulation for the BossNyumba real-estate operating system. Audit-replay over a date range asserting decision invariants (chain-of-thought present, bilingual en/sw reason notes, model-card freshness, four-eye distinct approvers, fairness deltas) across lease / rent / payout decisions, plus Tanzania PDPA subject-access and erasure drills (legal-hold aware) and a deterministic property-regulator supervision document pack. Pure domain logic behind injected ports — no DB / SDK / network / env access.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}
