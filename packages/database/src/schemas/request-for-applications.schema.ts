@@ -56,7 +56,7 @@ export const requestForApplications = pgTable(
   'request_for_applications',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    tenantId: uuid('tenant_id').notNull(),
+    tenantId: text('tenant_id').notNull(),
     landlordId: text('landlord_id').notNull(),
     propertyType: text('property_type').$type<RfaPropertyType>().notNull(),
     bedroomsMin: integer('bedrooms_min'),
@@ -95,7 +95,7 @@ export const requestForApplicationResponses = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     rfaId: uuid('rfa_id').notNull(),
-    tenantId: uuid('tenant_id').notNull(),
+    tenantId: text('tenant_id').notNull(),
     applicantId: text('applicant_id').notNull(),
     offeredRent: numeric('offered_rent', { precision: 15, scale: 2 }).notNull(),
     currencyCode: text('currency_code').notNull().default('TZS'),
