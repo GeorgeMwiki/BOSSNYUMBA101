@@ -187,6 +187,17 @@ import { COOPERATIVE_TOOLS } from './cooperative-tools.js';
 // fabricates a hidden side effect). Ported from LitFin's set-chat-mode
 // action tool and mirrored from the Borjie sibling.
 import { SET_CHAT_MODE_TOOLS } from './set-chat-mode-tools.js';
+// Gap-4 (a) — geo / geofencing brain tools. Five LOW-stakes read-only
+// tools (`property.geo.unit.nearby` / `title.contains` / `hazard.proximity`
+// / `compliance.zone_of` / `route.optimize`) ported from Borjie's geo-
+// tools.ts and retargeted mining → real estate (site/pit/region →
+// property/unit/block; licence polygon → parcel/title boundary; PCCB/NEMC/
+// EITI zone → planning/zoning authority area). HONEST-DEGRADED: BN does not
+// yet expose the per-property map loopback routes, so every tool returns a
+// typed `available:false` shape (never fabricates a parcel / hazard /
+// zone). A single `MAP_ROUTES_WIRED` flag in geo-tools.ts activates the
+// real loopback once the routes land.
+import { GEO_TOOLS } from './geo-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -239,6 +250,7 @@ export function buildPersonaToolHandlers(
       ADMIN_INVIOLABLE_TOOLS,
       COOPERATIVE_TOOLS,
       SET_CHAT_MODE_TOOLS,
+      GEO_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -292,6 +304,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       ADMIN_INVIOLABLE_TOOLS,
       COOPERATIVE_TOOLS,
       SET_CHAT_MODE_TOOLS,
+      GEO_TOOLS,
     ],
     undefined,
   );
@@ -447,3 +460,12 @@ export {
   SET_CHAT_MODE_TOOLS,
   setChatModeTool,
 } from './set-chat-mode-tools.js';
+// Gap-4 (a) — geo / geofencing re-exports for tests + audit walker.
+export {
+  GEO_TOOLS,
+  geoPropertyNearbyTool,
+  geoTitleContainsTool,
+  geoHazardProximityTool,
+  geoComplianceZoneTool,
+  geoRouteOptimizeTool,
+} from './geo-tools.js';
