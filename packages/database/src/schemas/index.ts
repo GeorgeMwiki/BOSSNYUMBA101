@@ -645,3 +645,16 @@ export * from './org-team-management.schema.js';
 //   plan.dispatch_subagents / plan.aggregate_results / sandbox.write /
 //   sandbox.commit / sandbox.reject / sandbox.list.
 export * from './md-agentic.schema.js';
+
+// ─── Wave TRAINING-SCENARIOS — scenario-simulation + mastery-checkpoint
+//     surfaces (migration 0308, ported from LitFin's officer-portal training
+//     workspace and learning-portal checkpoint, retargeted lending → real
+//     estate) ─────────────────────────────────────────────────────────────
+//   - scenarios          : one row per generated scenario template (built
+//       deterministically from the concept catalog — never fabricated).
+//   - scenario_sessions  : one row per learner run (append-only transcript).
+//   - learning_progress  : per (tenant, user, concept) mastery snapshot fed
+//       by checkpoint results; a 0.7 pass gates the next phase.
+//   Routes: /api/v1/scenarios/*. Surfaces: /coworker/training/scenarios +
+//   /coworker/training/checkpoint.
+export * from './training-scenarios.schema.js';
