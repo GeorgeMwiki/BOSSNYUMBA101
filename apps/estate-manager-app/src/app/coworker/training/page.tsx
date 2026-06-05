@@ -6,7 +6,10 @@
  * Mount point: /coworker/training
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { ROUTES } from '@/lib/routes';
 import {
   AdaptiveRenderer,
   Blackboard,
@@ -231,7 +234,24 @@ export default function CoworkerTrainingPage() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 16, padding: 16 }}>
       <div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{t('title')}</h1>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            marginBottom: 12,
+          }}
+        >
+          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t('title')}</h1>
+          <Link
+            href={ROUTES.coworker.createCourse}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-sky-500 px-3 py-2 text-sm font-medium text-white hover:bg-sky-600"
+          >
+            <Sparkles className="h-4 w-4" />
+            {t('createCourseCta')}
+          </Link>
+        </div>
         {modeState.mode === 'classroom' ? (
           <ClassroomChatAdapter data={classroom} mode={modeState.mode} language="en">
             {chat}

@@ -39,6 +39,15 @@ export const ROUTES = {
     availability: '/calendar/availability',
   },
 
+  coworker: {
+    root: '/coworker',
+    training: '/coworker/training',
+    // Wave COURSE-GEN — AI course-generation flow (migration 0309).
+    createCourse: '/coworker/training/create-course',
+    course: (id: string): string =>
+      `/coworker/training/course/${encodeURIComponent(id)}`,
+  },
+
   customers: {
     root: '/customers',
     new: '/customers/new',
