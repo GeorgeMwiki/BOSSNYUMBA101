@@ -29,6 +29,18 @@ import {
   DemoEstate,
 } from '@bossnyumba/marketing-brain';
 import type { StreamTurnEvent } from '@bossnyumba/ai-copilot';
+import pino from 'pino';
+import {
+  AnthropicAdapter,
+  OpenAIAdapter,
+} from '@bossnyumba/brain-llm-router/universal-client';
+import type {
+  BrainLLMClient,
+  BrainLLMMessage,
+  BrainLLMResponse,
+} from '@bossnyumba/brain-llm-router';
+
+const logger = pino({ name: 'public-marketing' });
 
 // Singleton ephemeral store — scoped to the process. In production each
 // gateway instance keeps its own; a shared Redis cache is a follow-up.
@@ -74,6 +86,115 @@ const PricingSchema = z.object({
   country: z.enum(['KE', 'TZ', 'UG', 'other']).optional(),
 });
 
+// ─── Real LLM provider ladder (mirrors the Borjie public-chat pattern) ──
+// Anthropic primary → OpenAI fallback. Non-streaming invoke, then the
+// reply is chunked into StreamTurnEvent deltas by `marketingChatStream`
+// (the same SSE shape the chat-ui hook already consumes). If NO provider
+// is configured or all fail, the route returns 503 — and the marketing
+// Next route's `tryGateway` treats a non-200 as "fall back to the direct
+// Anthropic path", so the visitor never sees a canned stub.
+
+interface MarketingProviders {
+  readonly anthropic: AnthropicAdapter | null;
+  readonly openai: OpenAIAdapter | null;
+}
+
+function marketingProviders(): MarketingProviders {
+  const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
+  const openaiKey = process.env.OPENAI_API_KEY?.trim();
+  return {
+    anthropic: anthropicKey ? new AnthropicAdapter({ apiKey: anthropicKey }) : null,
+    openai: openaiKey ? new OpenAIAdapter({ apiKey: openaiKey }) : null,
+  };
+}
+
+function extractReplyText(resp: BrainLLMResponse): string {
+  return resp.content
+    .filter((b): b is { readonly type: 'text'; readonly text: string } => b.type === 'text')
+    .map((b) => b.text)
+    .join('')
+    .trim();
+}
+
+/** Map the public transcript + current message to BrainLLM messages. */
+function buildMarketingMessages(
+  message: string,
+  transcript?: ReadonlyArray<{ readonly role?: 'visitor' | 'assistant'; readonly content?: string }>,
+): BrainLLMMessage[] {
+  const history: BrainLLMMessage[] = (transcript ?? [])
+    .filter(
+      (t): t is { role: 'visitor' | 'assistant'; content: string } =>
+        (t.role === 'visitor' || t.role === 'assistant') && typeof t.content === 'string',
+    )
+    .map((t) => ({
+      role: t.role === 'visitor' ? ('user' as const) : ('assistant' as const),
+      content: [{ type: 'text' as const, text: t.content }],
+    }));
+  return [
+    ...history,
+    { role: 'user' as const, content: [{ type: 'text' as const, text: message }] },
+  ];
+}
+
+/**
+ * Run the marketing turn through the real LLM ladder. Throws on
+ * no-provider / all-failed so the caller can 503 (→ Next route falls
+ * back to direct Anthropic). Never returns canned text.
+ */
+async function runMarketingLLM(
+  systemPrompt: string,
+  messages: readonly BrainLLMMessage[],
+): Promise<string> {
+  const { anthropic, openai } = marketingProviders();
+  const ladder: ReadonlyArray<{ readonly model: string; readonly client: BrainLLMClient; readonly name: string }> = [
+    ...(anthropic
+      ? [{
+          model: process.env.BOSSNYUMBA_CHAT_ANTHROPIC_MODEL?.trim() || 'claude-sonnet-4-5-20250929',
+          client: anthropic,
+          name: 'anthropic',
+        }]
+      : []),
+    ...(openai
+      ? [{
+          model: process.env.BOSSNYUMBA_CHAT_OPENAI_MODEL?.trim() || 'gpt-4o-2024-11-20',
+          client: openai,
+          name: 'openai',
+        }]
+      : []),
+  ];
+
+  if (ladder.length === 0) throw new Error('no_provider_configured');
+
+  let lastError: unknown = null;
+  for (const entry of ladder) {
+    const t0 = Date.now();
+    try {
+      const resp = await entry.client.invoke({
+        model: entry.model,
+        messages,
+        system: systemPrompt,
+        maxTokens: 600,
+        temperature: 0.9,
+      });
+      const text = extractReplyText(resp);
+      if (text) return text;
+      lastError = new Error('empty_response');
+    } catch (err) {
+      lastError = err;
+      logger.warn(
+        {
+          provider: entry.name,
+          model: entry.model,
+          err: (err instanceof Error ? err.message : String(err)).slice(0, 600),
+          latencyMs: Date.now() - t0,
+        },
+        'public-marketing: provider attempt failed',
+      );
+    }
+  }
+  throw lastError ?? new Error('all_providers_failed');
+}
+
 const app = new Hono();
 
 app.post('/chat', zValidator('json', ChatTurnSchema), async (c) => {
@@ -92,20 +213,38 @@ app.post('/chat', zValidator('json', ChatTurnSchema), async (c) => {
     visitorRole: lead.role,
   });
 
-  const stubReply = buildStubReply(lead.role, body.message);
+  // Real LLM turn. On no-provider / all-failed we 503 — the marketing
+  // Next route's tryGateway treats a non-200 as "fall back to the direct
+  // Anthropic path", so the visitor never sees canned text.
+  const messages = buildMarketingMessages(body.message, body.transcript);
+  let reply: string;
+  try {
+    reply = await runMarketingLLM(systemPrompt, messages);
+  } catch (err) {
+    logger.warn(
+      { err: err instanceof Error ? err.message : String(err) },
+      'public-marketing: LLM unavailable',
+    );
+    return c.json(
+      {
+        success: false,
+        error: { code: 'AI_UNAVAILABLE', message: 'Marketing chat is temporarily unavailable.' },
+      },
+      503,
+    );
+  }
 
-  // Content negotiation — if the client asks for text/event-stream we
-  // re-frame the stub reply as an SSE stream so the landing page's
-  // `useChatStream` hook can render it with the same typing-indicator +
-  // AdaptiveRenderer pipeline as the authenticated chat surfaces.
-  // JSON clients (curl, API consumers, legacy pages) get the old shape.
+  // Content negotiation — text/event-stream gets the real reply chunked
+  // into StreamTurnEvent deltas (same SSE shape as the authenticated
+  // surfaces); JSON clients get the plain reply. The system prompt is
+  // NEVER returned in the response body (IP protection).
   const accept = c.req.header('accept') ?? '';
   if (accept.includes('text/event-stream')) {
     return streamSSE(c, async (stream) => {
       const abort = new AbortController();
       stream.onAbort(() => abort.abort());
 
-      for await (const evt of marketingChatStream(stubReply, {
+      for await (const evt of marketingChatStream(reply, {
         sessionId: body.sessionId,
         personaId: 'public-guide',
         suggestedRoute: lead.route,
@@ -121,8 +260,7 @@ app.post('/chat', zValidator('json', ChatTurnSchema), async (c) => {
     data: {
       sessionId: body.sessionId,
       lead,
-      systemPrompt,
-      reply: stubReply,
+      reply,
       suggestedRoute: lead.route,
     },
   });
@@ -225,22 +363,5 @@ app.post('/waitlist', zValidator('json', WaitlistSchema), async (c) => {
     );
   }
 });
-
-function buildStubReply(
-  role: ReturnType<typeof qualifyLead>['role'],
-  message: string
-): string {
-  const trimmed = message.slice(0, 200);
-  if (role === 'unknown') {
-    return `Before I dive in: are you an owner, a tenant, a property manager, or a station master? That'll let me point you at the right capability. You said: "${trimmed}".`;
-  }
-  const greetings: Record<string, string> = {
-    owner: `Got it — an owner. Most owners start with rent reminders on autopilot. How many units are you running today?`,
-    tenant: `Got it — a tenant. BOSSNYUMBA gives you one place for rent receipts, maintenance requests, and notices. What is your biggest pain right now?`,
-    manager: `Got it — a property manager. Owner reports are the #1 time sink; let me show you how BOSSNYUMBA drafts them for you.`,
-    station_master: `Got it — a station master. You can log incidents by voice in Swahili. Want a 60-second walkthrough?`,
-  };
-  return greetings[role] ?? `Let me help.`;
-}
 
 export default app;
