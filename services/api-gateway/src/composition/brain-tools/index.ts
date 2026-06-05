@@ -175,6 +175,18 @@ import { ADMIN_INVIOLABLE_TOOLS } from './admin-inviolable-tools.js';
 // estate; the member_share read hits the real members endpoint (Borjie's
 // was a TODO returning []).
 import { COOPERATIVE_TOOLS } from './cooperative-tools.js';
+// Gap-12 (BN half) — set-chat-mode active brain tool. One LOW-stakes
+// read-only tool (`mwikila.training.set_chat_mode`) that lets the brain
+// SIGNAL the pedagogical chat surface (packages/chat-ui/src/chat-modes/)
+// to transition between conversation / teaching / quiz / discussion /
+// review / classroom WITHOUT page navigation — giving the previously
+// passive QuizLockdownOverlay (+ siblings) a deterministic trigger.
+// T1 owner + T2 admin + T3 module-manager personas (the training
+// drivers). No money path, no DB write, no audit chain; honest-degrade
+// (echoes the requested mode + bilingual EN+SW directive, never
+// fabricates a hidden side effect). Ported from LitFin's set-chat-mode
+// action tool and mirrored from the Borjie sibling.
+import { SET_CHAT_MODE_TOOLS } from './set-chat-mode-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -226,6 +238,7 @@ export function buildPersonaToolHandlers(
       UNDO_CHAIN_TOOLS,
       ADMIN_INVIOLABLE_TOOLS,
       COOPERATIVE_TOOLS,
+      SET_CHAT_MODE_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -278,6 +291,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       UNDO_CHAIN_TOOLS,
       ADMIN_INVIOLABLE_TOOLS,
       COOPERATIVE_TOOLS,
+      SET_CHAT_MODE_TOOLS,
     ],
     undefined,
   );
@@ -428,3 +442,8 @@ export {
   cooperativeMemberShareTool,
   cooperativeSettlementPeriodListTool,
 } from './cooperative-tools.js';
+// Gap-12 (BN half) — set-chat-mode re-exports for tests + audit walker.
+export {
+  SET_CHAT_MODE_TOOLS,
+  setChatModeTool,
+} from './set-chat-mode-tools.js';
