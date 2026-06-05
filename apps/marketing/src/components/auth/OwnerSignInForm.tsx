@@ -4,8 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { z } from 'zod';
 
-import { apiBaseUrl } from '@/lib/api';
-import { getCsrfHeaders } from '@/lib/csrf';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { requirePublicBaseUrl } from '@/lib/env-guard';
 import { getMessages, type Locale } from '@/lib/i18n';
 
@@ -25,17 +24,17 @@ type Phase =
 /**
  * Owner sign-in form for the public marketing surface.
  *
- * Posts `{ email, password }` to `/api/v1/auth/sign-in` with
- * `credentials: 'include'` so the encrypted `bossnyumba-session` HttpOnly
- * cookie lands in the marketing-origin jar. On success the visitor is
- * hard-redirected to `NEXT_PUBLIC_OWNER_WEB_ORIGIN/dashboard` because
- * the owner cockpit lives on a different origin in dev (`:3010`) and
- * the Next.js router only handles same-origin transitions.
+ * Authenticates via `supabase.auth.signInWithPassword`, mirroring the
+ * sibling `TenantSignInForm`. Supabase writes its own `sb-*` SSR cookies
+ * into the marketing-origin jar; the gateway and the owner cockpit both
+ * verify those same Supabase JWTs, so no bespoke session endpoint is
+ * needed. On success the visitor is hard-redirected to
+ * `NEXT_PUBLIC_OWNER_WEB_ORIGIN/dashboard` because the owner cockpit
+ * lives on a different origin in dev (`:3010`) and the Next.js router
+ * only handles same-origin transitions.
  *
  * Field-scoped errors render inline (no toast) so the failure point is
- * visually anchored next to the input that produced it. The structured
- * gateway response (`error.code` + optional `error.field`) drives the
- * mapping.
+ * visually anchored next to the input that produced it.
  */
 export function OwnerSignInForm({ locale }: OwnerSignInFormProps) {
   const t = getMessages(locale).ownerSignInPage;
@@ -76,34 +75,28 @@ export function OwnerSignInForm({ locale }: OwnerSignInFormProps) {
     }
     setPhase({ kind: 'submitting' });
     try {
-      const res = await fetch(`${apiBaseUrl()}/api/v1/auth/sign-in`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
-        credentials: 'include',
-        body: JSON.stringify(parsed.data),
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: parsed.data.email,
+        password: parsed.data.password,
       });
-      const json = (await res.json().catch(() => null)) as
-        | { success: true }
-        | { success: false; error: { code: string; message: string; field?: string } }
-        | null;
-      if (res.ok && json?.success) {
+      if (!error) {
         // Cross-origin redirect — the cockpit on a different origin
         // owns its own Next router; assigning location is the only
-        // correct exit.
+        // correct exit. (Prod shares a TLS apex so the Supabase sb-*
+        // cookies carry; in local dev sign in at the cockpit's own
+        // /sign-in if the cross-origin jar does not share.)
         window.location.assign(targetUrl());
         return;
       }
-      const failure = json && !json.success ? json : null;
-      const code = failure?.error?.code ?? 'UNKNOWN';
-      const msg = failure?.error?.message ?? t.errors.signInFailed;
-      const fieldHint = failure?.error?.field;
-      const field =
-        code === 'INVALID_CREDENTIALS'
-          ? 'password'
-          : fieldHint === 'email' || fieldHint === 'password'
-            ? (fieldHint as 'email' | 'password')
-            : 'form';
-      setPhase({ kind: 'error', field, message: msg });
+      const field = /credential|password|invalid login/i.test(error.message)
+        ? 'password'
+        : 'form';
+      setPhase({
+        kind: 'error',
+        field,
+        message: error.message ?? t.errors.signInFailed,
+      });
     } catch (err) {
       setPhase({
         kind: 'error',
