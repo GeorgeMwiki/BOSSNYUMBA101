@@ -276,6 +276,12 @@ brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource:
     return c.json({ error: 'userText_required' }, 400);
   }
 
+  // Active owner/admin language for this turn. English default per CLAUDE.md;
+  // the SW toggle is absolute. Drives the estate-mode overlay's single-language
+  // envelope on the estate-manager persona inside the orchestrator. Any value
+  // other than the SW toggle falls back to 'en'.
+  const userLanguage: 'en' | 'sw' = body.language === 'sw' ? 'sw' : 'en';
+
   let ctx;
   try {
     ctx = await authenticate(c);
@@ -326,6 +332,7 @@ brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource:
         viewer: ctx.viewer,
         initialUserText: body.userText,
         forcePersonaId: body.forcePersonaId,
+        userLanguage,
       });
       if (!result.success) {
         return c.json({ error: result.error.message }, 500);
@@ -364,6 +371,7 @@ brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource:
       viewer: ctx.viewer,
       userText: body.userText,
       forcePersonaId: body.forcePersonaId,
+      userLanguage,
     });
     if (!result.success) {
       return c.json({ error: result.error.message }, 500);

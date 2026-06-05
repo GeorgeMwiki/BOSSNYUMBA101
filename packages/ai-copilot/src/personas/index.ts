@@ -67,6 +67,13 @@ export {
   DEFAULT_ESTATE_MODE,
 } from './estate-manager-mode-switched.js';
 
+// Estate-mode overlay adapter: folds the selected estate mode onto the
+// ORCHESTRATOR persona so the primary /api/v1/brain/turn route is mode-aware.
+export {
+  applyEstateModeOverlay,
+  isEstateModePersona,
+} from './estate-mode-overlay.js';
+
 // ----- compose-anything meta-tool (Gap 7): universal-creation dispatcher --
 export {
   composeAnythingV1Tool,
