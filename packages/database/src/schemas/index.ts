@@ -610,3 +610,16 @@ export * from './admin-superpower-pending-approvals.schema.js';
 //   Routes: /api/v1/cooperatives/settlement-periods. Chat tools:
 //   cooperative.draft_settlement / member_share / settlement_period_list.
 export * from './cooperative.schema.js';
+
+// ─── Wave COURSE-GEN — AI-generated courses (migration 0309, ported from
+//     LitFin's borrower learning-generator + retargeted to estate
+//     management) ─────────────────────────────────────────────────────────
+//   - courses           : one row per generated course; validated curriculum
+//       snapshot in ai_generated_curriculum jsonb; generated_via records the
+//       honest-degrade provenance ('llm' | 'deterministic').
+//   - course_lessons    : normalised per-lesson rows for per-lesson progress.
+//   - course_documents  : learner-attached grounding documents.
+//   All tenant-scoped + created_by_user_id owner scope (no IDOR across
+//   coworkers). Routes: /api/v1/courses. FE:
+//   apps/estate-manager-app coworker/training/create-course.
+export * from './courses.schema.js';

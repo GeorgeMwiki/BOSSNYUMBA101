@@ -201,6 +201,14 @@
       "dataLoss": true,
       "envs": ["dev", "staging"],
       "notes": "Pending approvals are short-lived (24h TTL); cancellation forces operators to re-propose. Production rollback must be coordinated with the platform-admin council."
+    },
+    {
+      "up": "0309_courses.sql",
+      "down": "down/0309_down_courses.sql",
+      "reverses": "CREATE TABLE courses + course_lessons + course_documents + tenant/owner/status indexes + RLS policies courses_tenant_isolation / course_lessons_tenant_isolation / course_documents_tenant_isolation",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Generated courses are rebuildable from the same domain + scenario inputs, but learner quiz progress (course_lessons quiz_score/status/completed_at) is lost. Production rollback must be coordinated by #ops."
     }
   ]
 }
