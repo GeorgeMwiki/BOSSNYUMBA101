@@ -164,6 +164,17 @@ import { UNDO_CHAIN_TOOLS } from './undo-chain-tools.js';
 // exposes those via the kernel HQ tools / admin-superpowers queue, not a
 // matching REST surface — never fabricated). Ported from Borjie.
 import { ADMIN_INVIOLABLE_TOOLS } from './admin-inviolable-tools.js';
+// Wave COOPERATIVE-SETTLEMENT — housing-cooperative period settlement
+// brain tools (`cooperative.draft_settlement` WRITE +
+// `cooperative.member_share` / `cooperative.settlement_period_list`
+// READ). T1 owner persona; loopback through
+// /api/v1/cooperatives/settlement-periods (migration 0304). draft is
+// MEDIUM-stakes WRITE; calculate/approve/distribute stay on the explicit
+// route since distribute crosses the four-eye gate and posts through
+// LedgerService.post(). Ported from Borjie + retargeted mining → real
+// estate; the member_share read hits the real members endpoint (Borjie's
+// was a TODO returning []).
+import { COOPERATIVE_TOOLS } from './cooperative-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -214,6 +225,7 @@ export function buildPersonaToolHandlers(
       MD_INTELLIGENCE_TOOLS,
       UNDO_CHAIN_TOOLS,
       ADMIN_INVIOLABLE_TOOLS,
+      COOPERATIVE_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -265,6 +277,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       MD_INTELLIGENCE_TOOLS,
       UNDO_CHAIN_TOOLS,
       ADMIN_INVIOLABLE_TOOLS,
+      COOPERATIVE_TOOLS,
     ],
     undefined,
   );
@@ -408,3 +421,10 @@ export {
   adminAuditExportTool,
   adminTenantSuspendTool,
 } from './admin-inviolable-tools.js';
+// Wave COOPERATIVE-SETTLEMENT — re-exports for tests + audit walker.
+export {
+  COOPERATIVE_TOOLS,
+  cooperativeDraftSettlementTool,
+  cooperativeMemberShareTool,
+  cooperativeSettlementPeriodListTool,
+} from './cooperative-tools.js';
