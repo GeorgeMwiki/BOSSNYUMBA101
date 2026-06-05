@@ -76,6 +76,16 @@ import { RENT_PAYOUT_TOOLS } from './rent-payout-tools.js';
 // disclosure + signed condition reports). Real-estate retailoring of
 // Borjie's owner-tools.ts + owner-estate-tools.ts + companion catalogs.
 import { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
+// Family-office / holdings tools (mandate-explicit per CLAUDE.md:
+// "family office, succession, the full asset register, subsidiaries,
+// holdings"). 5 LOW-stakes read-only OWNER (T1) tools
+// (estate.net_worth_summary / lookup_entity / intercompany_flow_query /
+// succession_review_needed / asset_register_browse). Ported from
+// Borjie and retargeted mining holdco/SPV → property holdco/SPV/REIT.
+// Honest-degraded: defers to /api/v1/estate/* which is not yet wired in
+// BN, so handlers return empty "not yet wired" shapes (never fabricated)
+// until those routes land.
+import { OWNER_ESTATE_TOOLS } from './owner-estate-tools.js';
 // PT-B — Manager persona tools (25 tools covering assign / dispatch /
 // contractor engagement / move-in/out / security-deposit assessment /
 // daily report / handoff notes). Real-estate retailoring of Borjie's
@@ -171,6 +181,7 @@ export function buildPersonaToolHandlers(
       LEASE_HISTORY_TOOLS,
       RENT_PAYOUT_TOOLS,
       OWNER_PROPERTY_TOOLS,
+      OWNER_ESTATE_TOOLS,
       MANAGER_TOOLS,
       STAFF_TOOLS,
       TENANT_TOOLS,
@@ -219,6 +230,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       LEASE_HISTORY_TOOLS,
       RENT_PAYOUT_TOOLS,
       OWNER_PROPERTY_TOOLS,
+      OWNER_ESTATE_TOOLS,
       MANAGER_TOOLS,
       STAFF_TOOLS,
       TENANT_TOOLS,
@@ -313,6 +325,14 @@ export {
   ownerRentPayoutListMineTool,
 } from './rent-payout-tools.js';
 export { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
+export {
+  OWNER_ESTATE_TOOLS,
+  estateNetWorthSummaryTool,
+  estateLookupEntityTool,
+  estateIntercompanyFlowTool,
+  estateSuccessionReviewTool,
+  estateAssetRegisterBrowseTool,
+} from './owner-estate-tools.js';
 export { MANAGER_TOOLS } from './manager-tools.js';
 export { STAFF_TOOLS } from './staff-tools.js';
 export { TENANT_TOOLS } from './tenant-tools.js';
