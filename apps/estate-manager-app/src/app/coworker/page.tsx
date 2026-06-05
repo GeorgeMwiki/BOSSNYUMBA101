@@ -14,6 +14,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import {
   Users,
   Send,
@@ -21,10 +22,12 @@ import {
   EyeOff,
   Eye,
   AlertTriangle,
+  GraduationCap,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@bossnyumba/design-system';
+import { ROUTES } from '@/lib/routes';
 import { useBrainChat, type BrainMessage } from '@/lib/brain-client';
 
 type Scope = 'private' | 'team' | 'management' | 'public';
@@ -58,6 +61,15 @@ export default function CoworkerPage() {
         title={t('title')}
         subtitle={t('subtitle')}
         showBack
+        action={
+          <Link
+            href={ROUTES.coworker.training}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+          >
+            <GraduationCap className="h-4 w-4" aria-hidden="true" />
+            {t('trainingLink')}
+          </Link>
+        }
       />
 
       <div className="px-4 pt-2">

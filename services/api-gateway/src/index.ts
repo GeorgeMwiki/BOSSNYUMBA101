@@ -274,6 +274,9 @@ import orgAdminRouter from './routes/org-admin.hono';
 // surface (migration 0306). Backs the `plan.*` / `sandbox.*` brain tools
 // (md-agentic-tools.ts).
 import mdAgenticRouter from './routes/md-agentic.hono';
+// Wave TRAINING-SCENARIOS — scenario-simulation + mastery-checkpoint surface
+// (migration 0308). Backs /coworker/training/{scenarios,checkpoint}.
+import scenariosRouter from './routes/scenarios.hono';
 import conditionalSurveysRouter from './routes/conditional-surveys.hono';
 import farRouter from './routes/far.hono';
 // Wave 26 Z3 — Move-out checklist + Approval workflow (migration 0097)
@@ -1302,6 +1305,9 @@ api.route('/stage', stageRouter);
 api.route('/workflow', workflowRouter);
 api.route('/agent-certifications', agentCertificationsRouter);
 api.route('/training', trainingRouter);
+// Wave TRAINING-SCENARIOS — /api/v1/scenarios/{generate,sessions/*,checkpoint/*}
+// (migration 0308). Scenario simulation + mastery checkpoint w/ BKT gating.
+api.route('/scenarios', scenariosRouter);
 api.route('/voice', voiceRouter);
 // Wave 13 — Autonomous Department Mode
 api.route('/exceptions', exceptionsRouter);
@@ -1587,6 +1593,7 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/damage-deductions', app: damageDeductionsRouter, defaultTag: 'damage-deductions' },
     { prefix: '/org-admin', app: orgAdminRouter, defaultTag: 'org-admin' },
     { prefix: '/md-agentic', app: mdAgenticRouter, defaultTag: 'md-agentic' },
+    { prefix: '/scenarios', app: scenariosRouter, defaultTag: 'scenarios' },
     { prefix: '/conditional-surveys', app: conditionalSurveysRouter, defaultTag: 'conditional-surveys' },
     { prefix: '/far', app: farRouter, defaultTag: 'far' },
     { prefix: '/analytics', app: analyticsRouter, defaultTag: 'analytics' },
