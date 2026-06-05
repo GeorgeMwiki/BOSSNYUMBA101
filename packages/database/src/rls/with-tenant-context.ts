@@ -47,8 +47,12 @@ export async function withTenantContext<T>(
   const isService = opts?.serviceRole ?? false;
 
   // drizzle-orm/postgres-js transactions hand back a `tx` object that
-  // is compatible enough with the outer `db` for repository code —
-  // the cast preserves the existing type surface for callers.
+  // is compatible enough with the outer `db` for repository code, but
+  // recent drizzle releases added a `$client` property to
+  // `PostgresJsDatabase` that `PgTransaction` does not carry, so the two
+  // no longer structurally overlap. Repository code never touches the
+  // `$client` escape hatch, so the cast through `unknown` is safe and
+  // preserves the existing type surface for callers.
   return await db.transaction(async (tx) => {
     // Bind the per-tx tenant id. The `true` third arg of `set_config`
     // scopes it to the transaction.
@@ -63,7 +67,7 @@ export async function withTenantContext<T>(
     await tx.execute(
       sql`SELECT set_config('app.is_service_role', ${isService ? 'true' : 'false'}, true)`,
     );
-    return await fn(tx as DatabaseClient);
+    return await fn(tx as unknown as DatabaseClient);
   });
 }
 
