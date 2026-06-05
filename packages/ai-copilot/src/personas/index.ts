@@ -33,6 +33,7 @@ export {
   resolvePersonaById,
   getRegisteredPersonas,
   getAllPrimaryPersonae,
+  assertStatelessInDev,
 } from './persona-router.js';
 
 // Primary persona factories (individually addressable for tests/DI).

@@ -160,7 +160,6 @@ import SkillsPage from './app/skills/page';
 // admin in the 4-portal model — these surfaces now live here.
 import { AuditLogPage } from './pages/AuditLogPage';
 import { BillingPage } from './pages/BillingPage';
-import ClassroomPage from './pages/Classroom';
 import ComplianceSettings from './pages/ComplianceSettings';
 import { ConfigurationPage } from './pages/ConfigurationPage';
 import DelegationMatrix from './pages/DelegationMatrix';
@@ -325,7 +324,6 @@ function App() {
                     {/* Routes migrated from apps/admin-portal/. */}
                     <Route path="/audit-log" element={<AuditLogPage />} />
                     <Route path="/billing" element={<BillingPage />} />
-                    <Route path="/classroom" element={<ClassroomPage />} />
                     <Route path="/compliance/settings" element={<ComplianceSettings />} />
                     <Route path="/compliance/data-requests" element={<ComplianceDataRequestsPage />} />
                     <Route path="/compliance/documents" element={<ComplianceDocumentsPage />} />

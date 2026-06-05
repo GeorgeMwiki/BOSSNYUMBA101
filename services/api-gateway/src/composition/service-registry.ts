@@ -218,10 +218,10 @@ import {
 } from '@bossnyumba/ai-copilot/voice';
 import type { BossnyumbaMcpServer } from '@bossnyumba/mcp-server';
 import { buildMcpServer } from './mcp-wiring.js';
-import {
-  createClassroomService,
-  type ClassroomService,
-} from './classroom-wiring.js';
+// Classroom SESSION/BKT feature removed. The KEPT Adaptive Training feature
+// still seeds its MasteryPort from the immutable `bkt_mastery` table via this
+// small read-only accessor (replaces the deleted classroom-wiring).
+import { createBktMasteryReader } from './bkt-mastery-reader.js';
 import {
   createMonthlyCloseWiring,
   type MonthlyCloseWiring,
@@ -388,6 +388,11 @@ import {
   type ConversationAuditReader,
   type ConversationAuditRecorder,
 } from '@bossnyumba/central-intelligence';
+// Central Intelligence agent wiring — fills the `agent` slot the
+// `/intelligence` route consumes with a REAL tool-using agent loop backed
+// by the per-tenant budget-guarded Anthropic client. Previously hard-null
+// ("adapter not shipped in-tree"), which made every Ask turn 503.
+import { wireCentralIntelligenceAgent } from './central-intelligence-agent-wiring.js';
 // PO-port wave-5 wiring #1 — six-layer cognitive memory (episodic, narrative,
 // procedural, reflective, topic-files, cohort cache). Lives ALONGSIDE the
 // existing single-layer `ConversationMemory` (which the streaming kernel
@@ -667,7 +672,6 @@ export interface ServiceRegistry {
   /** Wave 12 — AI copilot subsystems wired into the composition root. */
   readonly mcp: BossnyumbaMcpServer | null;
   readonly agentCertification: AgentCertificationService | null;
-  readonly classroom: ClassroomService | null;
   readonly training: TrainingAdminEndpoints | null;
   readonly voice: VoiceRouter | null;
 
@@ -1380,7 +1384,6 @@ function degradedRegistry(
     },
     mcp: null,
     agentCertification: null,
-    classroom: null,
     training: null,
     voice: null,
     orgAwareness: buildOrgAwareness(eventBus),
@@ -1873,19 +1876,23 @@ function buildServicesInner(
     issuerId: 'bossnyumba-gateway',
   });
 
-  // Wave 12 — Classroom (BKT-backed with Postgres persistence).
-  const classroom = createClassroomService(db);
+  // BKT mastery reader — read-only accessor for the immutable `bkt_mastery`
+  // table. The classroom SESSION feature that wrote those rows was removed;
+  // the Adaptive Training feature below still reads them to seed its
+  // MasteryPort (rows are now seeded by other surfaces, e.g. chat teaching
+  // mode). Empty snapshot in degraded mode (no DB) → training cold-starts.
+  const bktMasteryReader = createBktMasteryReader(db);
 
-  // Adaptive Training — sits on top of classroom BKT and uses the in-memory
-  // repo for pilot (the Postgres adapter lives in the training module and
-  // can be dropped in once the training tables are migrated live).
+  // Adaptive Training — sits on top of BKT mastery snapshots and uses the
+  // in-memory repo for pilot (the Postgres adapter lives in the training
+  // module and can be dropped in once the training tables are migrated live).
   const trainingRepo = createInMemoryTrainingRepository();
   const trainingGenerator = createTrainingGenerator({});
   const trainingMastery: MasteryPort = {
     async getMastery(tenantId: string, userId: string) {
-      const rows = (await classroom.getMastery(tenantId, userId)) ?? [];
+      const rows = await bktMasteryReader.getMastery(tenantId, userId);
       const map: Record<string, number> = {};
-      for (const r of rows as ReadonlyArray<{ conceptId: string; pKnow: number }>) {
+      for (const r of rows) {
         map[r.conceptId] = r.pKnow;
       }
       return map;
@@ -2101,7 +2108,6 @@ function buildServicesInner(
     // as input. We place a `null` here and patch it post-return.
     mcp: null,
     agentCertification,
-    classroom,
     training,
     voice,
     orgAwareness: buildOrgAwareness(eventBus),
@@ -2197,18 +2203,20 @@ function buildServicesInner(
         (buildBudgetGuardedAnthropicClient as AgentStackBudgetGuardedAnthropicFactory | null),
       logger: { warn: (meta, msg) => console.warn('agent-stack:', msg ?? '', meta) },
     }),
-    // Central Intelligence — the concrete LLM adapter lives in a
-    // separate service. `agent` is only populated when `CI_LLM_URL`
-    // env var is set AND the adapter is wired (follow-up PR); until
-    // then the router returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE.
-    // Memory uses the in-memory default so in-session threads work.
+    // Central Intelligence — `agent` is the in-tree streaming agent loop
+    // backed by the per-tenant budget-guarded Anthropic client (wired via
+    // `wireCentralIntelligenceAgent` below). It is populated whenever an
+    // Anthropic key is configured; otherwise the slot is `null` and the
+    // router returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE — the same
+    // posture the brain routes use. Memory uses the in-memory default so
+    // in-session threads work.
     // Follow-up wave-30 (Docs/TODO_BACKLOG.md): pgvector-backed ConversationMemory for prod.
     centralIntelligence: (() => {
       const memory = createInMemoryConversationMemory();
       const { sink, reader } = createInMemoryAuditSinkAndReader();
       const auditRecorder = createConversationAuditRecorder({
         sink,
-        modelVersion: 'live-pending-llm',
+        modelVersion: 'central-intelligence-agent-loop',
       });
       // ProdFix-1 wires 4 + 5 — HQ tool registry composition.
       // Constructs the NIDA + e-Ardhi connectors (when env-configured)
@@ -2271,21 +2279,22 @@ function buildServicesInner(
           tenantId: '_platform',
         },
       });
-      const llmUrl = process.env.CI_LLM_URL?.trim();
-      if (!llmUrl) {
-        return {
-          agent: null,
-          memory,
-          auditReader: reader,
-          auditRecorder,
-          brainKernel,
-        };
-      }
-      // Adapter not shipped in-tree — the gateway consumes it over
-      // HTTP from a dedicated service. Slot stays null until the
-      // adapter lands; router keeps returning 503 cleanly.
+      // Fill the agent slot with a REAL in-tree agent loop
+      // (`createCentralIntelligenceAgent`) backed by the per-tenant
+      // budget-guarded Anthropic client. Wired whenever an Anthropic
+      // key is configured; falls back to `null` (→ 503) otherwise, the
+      // same posture as the brain routes. This replaces the dead
+      // `CI_LLM_URL` HTTP-adapter landmine that kept every Ask turn
+      // 503ing even with the LLM configured. The agent reuses the
+      // in-session `memory` + the hash-chained `auditRecorder` above
+      // and bills per-scope tenant through the same `CostLedger` guard.
+      const agent = wireCentralIntelligenceAgent({
+        buildClient: buildBudgetGuardedAnthropicClient,
+        memory,
+        audit: auditRecorder,
+      });
       return {
-        agent: null,
+        agent,
         memory,
         auditReader: reader,
         auditRecorder,
