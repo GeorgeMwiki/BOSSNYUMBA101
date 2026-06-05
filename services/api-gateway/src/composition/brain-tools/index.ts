@@ -211,6 +211,19 @@ import { GEO_TOOLS } from './geo-tools.js';
 // taxonomy still return built-in default EN/SW labels). A single
 // `SCOPE_ROUTES_WIRED` flag in scope-tools.ts activates the real loopback.
 import { SCOPE_TOOLS } from './scope-tools.js';
+// Gap-4 (c) — property insurance brain tools. Four tools
+// (`property.insurance.get_quotes` + `bind_policy` WRITE MEDIUM-stakes;
+// `policy_status` + `renewals_due` READ LOW) ported from Borjie's
+// insurance-tools.ts and retargeted mining → real estate (coverage types
+// workforce/plant/environmental/... -> buildings/contents/
+// public_liability/loss_of_rent/landlord_liability/tenant_default). T1
+// owner persona. Money fields carry an explicit `currency` (Borjie's *Tzs
+// names dropped — currency-neutral). WRITE tools wrap provenance via
+// withChatProvenance. HONEST-DEGRADED: BN does not yet expose
+// /property/insurance/* routes, so each tool returns a typed
+// `available:false` shape (never fabricates a quote / policy); a single
+// `INSURANCE_ROUTES_WIRED` flag activates the real loopback + provenance.
+import { INSURANCE_TOOLS } from './insurance-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -265,6 +278,7 @@ export function buildPersonaToolHandlers(
       SET_CHAT_MODE_TOOLS,
       GEO_TOOLS,
       SCOPE_TOOLS,
+      INSURANCE_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -320,6 +334,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       SET_CHAT_MODE_TOOLS,
       GEO_TOOLS,
       SCOPE_TOOLS,
+      INSURANCE_TOOLS,
     ],
     undefined,
   );
@@ -493,3 +508,11 @@ export {
   scopeCrossDomainMatrixTool,
   scopeTaxonomyDisplayTool,
 } from './scope-tools.js';
+// Gap-4 (c) — property insurance re-exports for tests + audit walker.
+export {
+  INSURANCE_TOOLS,
+  insuranceGetQuotesTool,
+  insuranceBindPolicyTool,
+  insurancePolicyStatusTool,
+  insuranceRenewalsDueTool,
+} from './insurance-tools.js';
