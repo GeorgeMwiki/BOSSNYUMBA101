@@ -144,6 +144,26 @@ import { ADMIN_SUPERPOWERS_TOOLS } from './admin-superpowers-tools.js';
 // and retargeted mining → real estate (arrears ↔ rent ↔ leasing ↔
 // maintenance ↔ compliance ↔ treasury ↔ occupancy ↔ …).
 import { MD_INTELLIGENCE_TOOLS } from './md-intelligence-tools.js';
+// Wave MULTI-UNDO — chain-undo brain tools (`undo.last_n` reverses the
+// last N reversible writes LIFO; `undo.by_id` reverses a specific
+// journal row). Lift of the single-step `bossnyumba.ui.undo_last_action`
+// superpower. Loopback through the existing /api/v1/owner/undo-journal
+// routes (undo-last + undo-by-id already shipped). Owner (T1) + admin
+// (T2) personas; MEDIUM-stakes WRITE. Ported from Borjie's
+// undo-chain-tools.ts (domain-neutral — only example copy retargeted).
+import { UNDO_CHAIN_TOOLS } from './undo-chain-tools.js';
+// Wave SOVEREIGN-ADMIN — 8 HIGH-risk inviolable-rule chat tools
+// (admin.killswitch.open/close, admin.four_eye.initiate/approve,
+// admin.policy.edit_rule, admin.feature_flag.set, admin.audit.export,
+// admin.tenant.suspend). T2 admin persona ONLY; every tool carries
+// requiresPolicyRuleLiteral=true per CLAUDE.md hard rule. four_eye.approve
+// loopback-dispatches to /admin/superpowers/approve/:journalId and
+// audit.export probes /admin/audit/log; feature_flag.set + tenant.suspend
+// emit chips carrying BN's canonical PUT/DELETE paths; killswitch.open/
+// close, four_eye.initiate, policy.edit_rule are honest-degraded (BN
+// exposes those via the kernel HQ tools / admin-superpowers queue, not a
+// matching REST surface — never fabricated). Ported from Borjie.
+import { ADMIN_INVIOLABLE_TOOLS } from './admin-inviolable-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -192,6 +212,8 @@ export function buildPersonaToolHandlers(
       OWNER_TABS_TOOLS,
       ADMIN_SUPERPOWERS_TOOLS,
       MD_INTELLIGENCE_TOOLS,
+      UNDO_CHAIN_TOOLS,
+      ADMIN_INVIOLABLE_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -241,6 +263,8 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       OWNER_TABS_TOOLS,
       ADMIN_SUPERPOWERS_TOOLS,
       MD_INTELLIGENCE_TOOLS,
+      UNDO_CHAIN_TOOLS,
+      ADMIN_INVIOLABLE_TOOLS,
     ],
     undefined,
   );
@@ -366,3 +390,21 @@ export {
   mdCompareBaselinesTool,
   mdEmitInsightsTool,
 } from './md-intelligence-tools.js';
+// Wave MULTI-UNDO — re-exports for tests + audit walker.
+export {
+  UNDO_CHAIN_TOOLS,
+  undoLastNTool,
+  undoByIdTool,
+} from './undo-chain-tools.js';
+// Wave SOVEREIGN-ADMIN — re-exports for tests + audit walker.
+export {
+  ADMIN_INVIOLABLE_TOOLS,
+  adminKillSwitchOpenTool,
+  adminKillSwitchCloseTool,
+  adminFourEyeInitiateTool,
+  adminFourEyeApproveTool,
+  adminPolicyEditRuleTool,
+  adminFeatureFlagSetTool,
+  adminAuditExportTool,
+  adminTenantSuspendTool,
+} from './admin-inviolable-tools.js';
