@@ -172,6 +172,30 @@ describe('brain-tools — boot integrity', () => {
     expect(ids.has('bossnyumba.admin.superpowers.list_pending')).toBe(true);
   });
 
+  // ─── Wave MULTI-UNDO — chain-undo brain tools ────────────────────
+  it('registers the two chain-undo brain tools', () => {
+    const ids = new Set(listPersonaToolDescriptors().map((d) => d.id));
+    expect(ids.has('undo.last_n')).toBe(true);
+    expect(ids.has('undo.by_id')).toBe(true);
+  });
+
+  it('chain-undo tools are MEDIUM-stakes WRITE, owner+admin only', () => {
+    const wanted = new Set(['undo.last_n', 'undo.by_id']);
+    const descriptors = listPersonaToolDescriptors().filter((d) =>
+      wanted.has(d.id),
+    );
+    expect(descriptors.length).toBe(2);
+    for (const d of descriptors) {
+      expect([...d.personaSlugs].sort()).toEqual([
+        'T1_owner_strategist',
+        'T2_admin_strategist',
+      ]);
+      expect(d.stakes).toBe('MEDIUM');
+      expect(d.isWrite).toBe(true);
+      expect(d.requiresPolicyRuleLiteral).toBe(false);
+    }
+  });
+
   it('admin superpowers tools are admin-persona-only and require policy literal', () => {
     const wanted = new Set([
       'bossnyumba.admin.superpowers.bulk_action',
