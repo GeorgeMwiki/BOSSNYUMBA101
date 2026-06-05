@@ -201,6 +201,14 @@
       "dataLoss": true,
       "envs": ["dev", "staging"],
       "notes": "Pending approvals are short-lived (24h TTL); cancellation forces operators to re-propose. Production rollback must be coordinated with the platform-admin council."
+    },
+    {
+      "up": "0307_owner_style_profiles.sql",
+      "down": "down/0307_down_owner_style_profiles.sql",
+      "reverses": "CREATE TABLE owner_style_profiles + tenant-uq + dimension/score CHECKs + tenant_updated index + RLS policy owner_style_profiles_tenant_isolation",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Per-owner learned communication style; rebuildable from subsequent chat turns (the feedback loop re-converges from a neutral default). Dropping it costs the owner their personalised voice until it re-learns."
     }
   ]
 }

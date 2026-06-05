@@ -610,3 +610,17 @@ export * from './admin-superpower-pending-approvals.schema.js';
 //   Routes: /api/v1/cooperatives/settlement-periods. Chat tools:
 //   cooperative.draft_settlement / member_share / settlement_period_list.
 export * from './cooperative.schema.js';
+
+// ─── Wave OWNER-STYLE — per-owner learned communication style (migration
+//     0307, gap-8, ported from LitFin owner-style) ──────────────────────────
+//   - owner_style_profiles : one row per tenant. Mr. Mwikila learns HOW each
+//     owner wants to be spoken to (verbosity / detail / language EN-SW /
+//     formality / posture) via a Bayesian feedback loop (decay 0.98 +
+//     reaction-boost). Headline category + confidence per dimension live in
+//     typed columns; the full Dirichlet posterior lives in profile_json.
+//     The orchestrator refines post-turn and folds the learned style hint
+//     into the next turn's system prompt. Satisfied by
+//     createPgOwnerStyleProfileStore (OwnerStyleProfileStore port in
+//     @bossnyumba/ai-copilot). Currency-neutral; the absolute EN/SW toggle
+//     still wins at render time.
+export * from './owner-style.schema.js';
