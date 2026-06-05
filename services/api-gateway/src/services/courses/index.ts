@@ -73,11 +73,11 @@ export class CourseService {
     }
     this.repo = deps.repo;
     this.logger = deps.logger;
-    const generatorDeps: ConstructorParameters<typeof CourseGenerator>[0] = {
-      llm: deps.llm ?? null,
-    };
-    if (deps.logger) generatorDeps.logger = deps.logger;
-    this.generator = new CourseGenerator(generatorDeps);
+    this.generator = new CourseGenerator(
+      deps.logger
+        ? { llm: deps.llm ?? null, logger: deps.logger }
+        : { llm: deps.llm ?? null },
+    );
     this.schedule =
       deps.schedule ??
       ((fn: () => void) => {
