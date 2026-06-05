@@ -108,8 +108,17 @@ function registry() {
 async function authenticate(c) {
   const token = extractBearer(c.req.header('authorization'));
   if (!token) throw new SupabaseAuthError('missing_authorization_header', 401);
+  // Modern Supabase projects sign user access tokens with ES256 via the
+  // JWKS endpoint; the legacy HS256 secret is no longer issued. Prefer the
+  // JWKS path (the verifier makes `jwksUrl` win when both are present) and
+  // keep the HS256 secret as a self-hosted/legacy fallback. This mirrors
+  // the JWKS handling already in `middleware/auth.middleware.ts` so the
+  // brain chat routes accept the same login token as the rest of the API.
+  const e = env();
+  const supabaseUrl = e.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, '');
   const principal = await verifySupabaseJwt(token, {
-    jwtSecret: env().SUPABASE_JWT_SECRET,
+    jwksUrl: `${supabaseUrl}/auth/v1/.well-known/jwks.json`,
+    jwtSecret: e.SUPABASE_JWT_SECRET,
     defaultEnvironment: 'production',
   });
   return { principal, ...principalToBrainContexts(principal) };
