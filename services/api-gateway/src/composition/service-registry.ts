@@ -388,6 +388,11 @@ import {
   type ConversationAuditReader,
   type ConversationAuditRecorder,
 } from '@bossnyumba/central-intelligence';
+// Central Intelligence agent wiring — fills the `agent` slot the
+// `/intelligence` route consumes with a REAL tool-using agent loop backed
+// by the per-tenant budget-guarded Anthropic client. Previously hard-null
+// ("adapter not shipped in-tree"), which made every Ask turn 503.
+import { wireCentralIntelligenceAgent } from './central-intelligence-agent-wiring.js';
 // PO-port wave-5 wiring #1 — six-layer cognitive memory (episodic, narrative,
 // procedural, reflective, topic-files, cohort cache). Lives ALONGSIDE the
 // existing single-layer `ConversationMemory` (which the streaming kernel
@@ -2197,18 +2202,20 @@ function buildServicesInner(
         (buildBudgetGuardedAnthropicClient as AgentStackBudgetGuardedAnthropicFactory | null),
       logger: { warn: (meta, msg) => console.warn('agent-stack:', msg ?? '', meta) },
     }),
-    // Central Intelligence — the concrete LLM adapter lives in a
-    // separate service. `agent` is only populated when `CI_LLM_URL`
-    // env var is set AND the adapter is wired (follow-up PR); until
-    // then the router returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE.
-    // Memory uses the in-memory default so in-session threads work.
+    // Central Intelligence — `agent` is the in-tree streaming agent loop
+    // backed by the per-tenant budget-guarded Anthropic client (wired via
+    // `wireCentralIntelligenceAgent` below). It is populated whenever an
+    // Anthropic key is configured; otherwise the slot is `null` and the
+    // router returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE — the same
+    // posture the brain routes use. Memory uses the in-memory default so
+    // in-session threads work.
     // Follow-up wave-30 (Docs/TODO_BACKLOG.md): pgvector-backed ConversationMemory for prod.
     centralIntelligence: (() => {
       const memory = createInMemoryConversationMemory();
       const { sink, reader } = createInMemoryAuditSinkAndReader();
       const auditRecorder = createConversationAuditRecorder({
         sink,
-        modelVersion: 'live-pending-llm',
+        modelVersion: 'central-intelligence-agent-loop',
       });
       // ProdFix-1 wires 4 + 5 — HQ tool registry composition.
       // Constructs the NIDA + e-Ardhi connectors (when env-configured)
@@ -2271,21 +2278,22 @@ function buildServicesInner(
           tenantId: '_platform',
         },
       });
-      const llmUrl = process.env.CI_LLM_URL?.trim();
-      if (!llmUrl) {
-        return {
-          agent: null,
-          memory,
-          auditReader: reader,
-          auditRecorder,
-          brainKernel,
-        };
-      }
-      // Adapter not shipped in-tree — the gateway consumes it over
-      // HTTP from a dedicated service. Slot stays null until the
-      // adapter lands; router keeps returning 503 cleanly.
+      // Fill the agent slot with a REAL in-tree agent loop
+      // (`createCentralIntelligenceAgent`) backed by the per-tenant
+      // budget-guarded Anthropic client. Wired whenever an Anthropic
+      // key is configured; falls back to `null` (→ 503) otherwise, the
+      // same posture as the brain routes. This replaces the dead
+      // `CI_LLM_URL` HTTP-adapter landmine that kept every Ask turn
+      // 503ing even with the LLM configured. The agent reuses the
+      // in-session `memory` + the hash-chained `auditRecorder` above
+      // and bills per-scope tenant through the same `CostLedger` guard.
+      const agent = wireCentralIntelligenceAgent({
+        buildClient: buildBudgetGuardedAnthropicClient,
+        memory,
+        audit: auditRecorder,
+      });
       return {
-        agent: null,
+        agent,
         memory,
         auditReader: reader,
         auditRecorder,
