@@ -30,6 +30,9 @@
       ],
       "@bossnyumba/api-client/training-types": [
         "../../packages/api-client/src/services/training-scenarios.ts"
+      ],
+      "@bossnyumba/api-client/courses-types": [
+        "../../packages/api-client/src/services/courses.ts"
       ]
     },
     "allowJs": true,

@@ -44,6 +44,10 @@ export const ROUTES = {
     training: '/coworker/training',
     trainingScenarios: '/coworker/training/scenarios',
     trainingCheckpoint: '/coworker/training/checkpoint',
+    // Wave COURSE-GEN — AI course-generation flow (migration 0309).
+    createCourse: '/coworker/training/create-course',
+    course: (id: string): string =>
+      `/coworker/training/course/${encodeURIComponent(id)}`,
   },
 
   customers: {

@@ -247,6 +247,8 @@ import { stageRouter } from './routes/stage/index.js';
 import workflowRouter from './routes/workflow/index.js';
 import agentCertificationsRouter from './routes/agent-certifications.hono';
 import trainingRouter from './routes/training.hono';
+// Wave COURSE-GEN — AI course-generation (migration 0309). /api/v1/courses.
+import coursesRouter from './routes/courses.hono';
 import voiceRouter from './routes/voice.hono';
 // Wave 13 — Autonomous Department Mode routers
 import exceptionsRouter from './routes/exceptions.hono';
@@ -1077,6 +1079,11 @@ api.route('/cases', casesRouter);
 // Wave COOPERATIVE-SETTLEMENT — housing-cooperative period settlement
 // (migration 0304). /api/v1/cooperatives/settlement-periods.
 api.route('/cooperatives', cooperativesRouter);
+// Wave COURSE-GEN — AI course-generation for the coworker create-course flow
+// (migration 0309). Mounted additively; tenant + owner scoped, tier + rate
+// gated; honest-degrades to the deterministic concept-catalog sequencer when no
+// LLM is wired.
+api.route('/courses', coursesRouter);
 api.route('/brain', brainRouter);
 // Brain cluster sub-routes (Gap 6 + Gap 7) — mounted ADDITIVELY on /brain.
 // Each router defines distinct sub-paths (compose/suggest, teach, dispatch)
