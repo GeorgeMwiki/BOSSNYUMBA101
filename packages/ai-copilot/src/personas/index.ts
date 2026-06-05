@@ -34,6 +34,8 @@ export {
   getRegisteredPersonas,
   getAllPrimaryPersonae,
   assertStatelessInDev,
+  resolveEstateManagerWithMode,
+  resolveEstateManagerForMode,
 } from './persona-router.js';
 
 // Primary persona factories (individually addressable for tests/DI).
@@ -43,6 +45,39 @@ export { createTenantAssistant } from './tenant-assistant.js';
 export { createOwnerAdvisor } from './owner-advisor.js';
 export { createBossnyumbaStudio } from './bossnyumba-studio.js';
 export { createPublicGuide } from './public-guide.js';
+
+// ----- Mode-switched Master Brain (Gap 5): estate-manager modes -----
+export {
+  ESTATE_MANAGER_MODES,
+  getEstateManagerMode,
+  BUILD_MODE,
+  OPERATIONS_MODE,
+  FINANCE_MODE,
+  GROWTH_MODE,
+  COMPLIANCE_MODE,
+  type EstateManagerMode,
+  type EstateManagerModeId,
+  type EstateManagerLanguage,
+} from './estate-manager-modes.js';
+export {
+  selectEstateMode,
+  buildEstateManagerModePersona,
+  resolveEstateManagerPersonaForText,
+  getAllEstateManagerModePersonae,
+  DEFAULT_ESTATE_MODE,
+} from './estate-manager-mode-switched.js';
+
+// ----- compose-anything meta-tool (Gap 7): universal-creation dispatcher --
+export {
+  composeAnythingV1Tool,
+  COMPOSE_ANYTHING_V1_TOOL_ID,
+  type AuthorityTier,
+  type ComposeAnythingCapability,
+  type ComposeAnythingInput,
+  type ComposeAnythingOutput,
+  type ComposeAnythingToolDescriptor,
+  type DataJoinRef,
+} from './tools/compose-anything.js';
 
 // ----- New sub-persona differential layer API -----
 export type {

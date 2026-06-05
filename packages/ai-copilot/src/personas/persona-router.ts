@@ -18,6 +18,11 @@ import { createTenantAssistant } from './tenant-assistant.js';
 import { createOwnerAdvisor } from './owner-advisor.js';
 import { createBossnyumbaStudio } from './bossnyumba-studio.js';
 import { createPublicGuide } from './public-guide.js';
+import {
+  buildEstateManagerModePersona,
+  selectEstateMode,
+} from './estate-manager-mode-switched.js';
+import type { EstateManagerModeId } from './estate-manager-modes.js';
 
 // ============================================================================
 // Persona Factory Table
@@ -152,4 +157,45 @@ export function getRegisteredPersonas(): ReadonlyArray<BossnyumbaPersonaId> {
  */
 export function getAllPrimaryPersonae(): ReadonlyArray<BossnyumbaPersona> {
   return getRegisteredPersonas().map((id) => resolvePersonaById(id));
+}
+
+// ============================================================================
+// Mode-switched Master Brain (Gap 5)
+// ============================================================================
+//
+// The admin-portal master persona (`manager-chat`, "Mr. Mwikila") is FLAT —
+// one identity, one tool-belt. The estate-manager mode layer (Build /
+// Operations / Finance / Growth / Compliance) gives that master brain the
+// same mode-switched shape Borjie's mining-CEO persona has: one Mr. Mwikila
+// inhabiting ONE mode per turn, each with its own mandate + specialised
+// prompt + narrow tool allow-list. The composed persona keeps `id:
+// 'manager-chat'` so the orchestrator + stateless guard accept it unchanged.
+//
+// This is the resolution seam the brain route calls to pick a mode from the
+// owner's message and build the mode-shaped Mr. Mwikila for the turn. The
+// persona modules stay pure value; the routing lives here, exactly where
+// `manager-chat` is otherwise resolved.
+
+/**
+ * Resolve the master estate-manager persona for a free-text owner/admin
+ * message, selecting the estate mode deterministically. The persona is NOT
+ * cached because its prompt + tools vary by mode; building it is a pure,
+ * cheap concatenation over the (cached) base manager-chat identity.
+ */
+export function resolveEstateManagerWithMode(text: string): {
+  readonly mode: EstateManagerModeId;
+  readonly persona: BossnyumbaPersona;
+} {
+  const mode = selectEstateMode(text);
+  return { mode, persona: buildEstateManagerModePersona(mode) };
+}
+
+/**
+ * Resolve the master estate-manager persona for an explicit mode id (e.g. a
+ * UI mode selector). Throws on an unknown mode id so a typo surfaces loudly.
+ */
+export function resolveEstateManagerForMode(
+  mode: EstateManagerModeId,
+): BossnyumbaPersona {
+  return buildEstateManagerModePersona(mode);
 }
