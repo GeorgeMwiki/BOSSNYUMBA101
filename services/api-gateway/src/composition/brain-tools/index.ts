@@ -224,6 +224,20 @@ import { SCOPE_TOOLS } from './scope-tools.js';
 // `available:false` shape (never fabricates a quote / policy); a single
 // `INSURANCE_ROUTES_WIRED` flag activates the real loopback + provenance.
 import { INSURANCE_TOOLS } from './insurance-tools.js';
+// Gap-4 (d) — property development pro-forma brain tools. Five tools
+// (`development.plan.generate` + `modify_section` + `set_assumption` WRITE
+// MEDIUM-stakes; `manage_sections` + `validate` READ LOW) ported from
+// LitFin's business-plan-tools.ts and retargeted lending -> real estate
+// (borrower business plan -> property DEVELOPMENT pro-forma; sections
+// management-organisation -> staffing-plan, market-analysis ->
+// tenant-demand, products-services -> unit-mix, use-of-loan -> use-of-
+// funds; assumptions retargeted to unit_count / rent_per_unit_monthly /
+// construction_cost_per_unit / exit_cap_rate / ...). T1 owner + T2 admin.
+// Currency-neutral (plan currencyCode; monetary assumptions in JSONB).
+// Loopback through /api/v1/development-plans/* (migration 0310, route
+// shipped in this commit). Honest-degrades to typed available:false when
+// no loopback client is bound (never fabricates a plan / section / score).
+import { DEVELOPMENT_PLAN_TOOLS } from './development-plan-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -279,6 +293,7 @@ export function buildPersonaToolHandlers(
       GEO_TOOLS,
       SCOPE_TOOLS,
       INSURANCE_TOOLS,
+      DEVELOPMENT_PLAN_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -335,6 +350,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       GEO_TOOLS,
       SCOPE_TOOLS,
       INSURANCE_TOOLS,
+      DEVELOPMENT_PLAN_TOOLS,
     ],
     undefined,
   );
@@ -516,3 +532,12 @@ export {
   insurancePolicyStatusTool,
   insuranceRenewalsDueTool,
 } from './insurance-tools.js';
+// Gap-4 (d) — development pro-forma re-exports for tests + audit walker.
+export {
+  DEVELOPMENT_PLAN_TOOLS,
+  developmentPlanGenerateTool,
+  developmentPlanModifySectionTool,
+  developmentPlanManageSectionsTool,
+  developmentPlanSetAssumptionTool,
+  developmentPlanValidateTool,
+} from './development-plan-tools.js';

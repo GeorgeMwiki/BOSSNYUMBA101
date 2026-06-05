@@ -610,3 +610,15 @@ export * from './admin-superpower-pending-approvals.schema.js';
 //   Routes: /api/v1/cooperatives/settlement-periods. Chat tools:
 //   cooperative.draft_settlement / member_share / settlement_period_list.
 export * from './cooperative.schema.js';
+
+// ─── Gap-4 (d) — DEVELOPMENT PRO-FORMA PLANS (migration 0310, BN's real-
+//     estate retarget of LitFin's loan business-plan generator) ──────────
+//   - development_plans          : one row per pro-forma (owner / developer
+//       draft). Holds the financial-assumption set as JSONB + currency_code.
+//   - development_plan_sections  : one row per section (staffing-plan /
+//       tenant-demand / unit-mix / use-of-funds / location-market / ...),
+//       EN + SW body side-by-side (locale toggle is absolute).
+//   Routes: /api/v1/development-plans. Chat tools:
+//   development.plan.generate / modify_section / manage_sections /
+//   set_assumption / validate.
+export * from './development-plans.schema.js';

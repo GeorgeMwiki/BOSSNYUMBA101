@@ -77,6 +77,9 @@ import { schedulingRouter } from './routes/scheduling';
 import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
 import { cooperativesRouter } from './routes/cooperatives';
+// Gap-4 (d) — property development pro-forma plans (migration 0310). Backs
+// the `development.plan.*` brain tools (development-plan-tools.ts).
+import developmentPlansRouter from './routes/development-plans.hono';
 import { brainRouter } from './routes/brain.hono';
 import { maintenanceRouter } from './routes/maintenance.hono';
 import { hrRouter } from './routes/hr.hono';
@@ -1056,6 +1059,9 @@ api.route('/cases', casesRouter);
 // Wave COOPERATIVE-SETTLEMENT — housing-cooperative period settlement
 // (migration 0304). /api/v1/cooperatives/settlement-periods.
 api.route('/cooperatives', cooperativesRouter);
+// Gap-4 (d) — property development pro-forma (migration 0310).
+// /api/v1/development-plans/{plans,plans/:id/sections,plans/:id/assumptions}.
+api.route('/development-plans', developmentPlansRouter);
 api.route('/brain', brainRouter);
 api.route('/maintenance', maintenanceRouter);
 api.route('/hr', hrRouter);
@@ -1514,6 +1520,7 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/messaging', app: messagingRouter, defaultTag: 'messaging' },
     { prefix: '/cases', app: casesRouter, defaultTag: 'cases' },
     { prefix: '/cooperatives', app: cooperativesRouter, defaultTag: 'cooperatives' },
+    { prefix: '/development-plans', app: developmentPlansRouter, defaultTag: 'development-plans' },
     { prefix: '/brain', app: brainRouter, defaultTag: 'brain' },
     { prefix: '/md', app: mdRouter, defaultTag: 'md-intelligence' },
     { prefix: '/maintenance', app: maintenanceRouter, defaultTag: 'maintenance' },
