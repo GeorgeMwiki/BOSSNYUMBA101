@@ -198,6 +198,19 @@ import { SET_CHAT_MODE_TOOLS } from './set-chat-mode-tools.js';
 // zone). A single `MAP_ROUTES_WIRED` flag in geo-tools.ts activates the
 // real loopback once the routes land.
 import { GEO_TOOLS } from './geo-tools.js';
+// Gap-4 (b) — scope roll-up brain tools. Five LOW-stakes read-only tools
+// (`property.scope.resolve_label` / `roll_up_across_scopes` /
+// `compare_across_scopes` / `cross_domain_scope_matrix` /
+// `taxonomy_display_for`) ported from Borjie's scope-tools.ts and
+// retargeted mining → real estate (pit/site/region scope kinds ->
+// building/unit/block/portfolio; production roll-ups -> occupancy /
+// maintenance-cost / rent-collected by metricId). T1 owner + T2 admin.
+// Money roll-ups carry a `currency` field (never a hard-coded code).
+// HONEST-DEGRADED: BN does not yet expose /property/scope/* routes, so
+// each tool returns a typed `available:false` shape (resolve_label +
+// taxonomy still return built-in default EN/SW labels). A single
+// `SCOPE_ROUTES_WIRED` flag in scope-tools.ts activates the real loopback.
+import { SCOPE_TOOLS } from './scope-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -251,6 +264,7 @@ export function buildPersonaToolHandlers(
       COOPERATIVE_TOOLS,
       SET_CHAT_MODE_TOOLS,
       GEO_TOOLS,
+      SCOPE_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -305,6 +319,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       COOPERATIVE_TOOLS,
       SET_CHAT_MODE_TOOLS,
       GEO_TOOLS,
+      SCOPE_TOOLS,
     ],
     undefined,
   );
@@ -469,3 +484,12 @@ export {
   geoComplianceZoneTool,
   geoRouteOptimizeTool,
 } from './geo-tools.js';
+// Gap-4 (b) — scope roll-up re-exports for tests + audit walker.
+export {
+  SCOPE_TOOLS,
+  scopeResolveLabelTool,
+  scopeRollUpTool,
+  scopeCompareTool,
+  scopeCrossDomainMatrixTool,
+  scopeTaxonomyDisplayTool,
+} from './scope-tools.js';
