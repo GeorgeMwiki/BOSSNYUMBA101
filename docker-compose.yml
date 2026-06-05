@@ -18,6 +18,13 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Supabase-compatible roles (anon/authenticated/service_role/
+      # authenticator) on first volume init. Mirrors docker-compose.prod.yml
+      # and docker-compose.production.yml so the 457 RLS-policy migrations
+      # (GRANT ... TO authenticated/service_role/anon) apply on a fresh DB.
+      # Init scripts run ONLY on an empty data volume — recreate with
+      # `docker compose down -v` if the volume predates this mount.
+      - ./scripts/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bossnyumba -d bossnyumba"]
       interval: 5s
