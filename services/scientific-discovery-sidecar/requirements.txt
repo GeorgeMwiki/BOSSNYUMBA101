@@ -35,7 +35,7 @@ statsmodels==0.14.4
 networkx==3.4.2
 
 # --- I/O ------------------------------------------------------------------
-pyarrow==18.1.0  # parquet support
+pyarrow==23.0.1  # parquet support
 
 # --- observability --------------------------------------------------------
 # Prometheus middleware: registers /metrics on the same FastAPI app so the

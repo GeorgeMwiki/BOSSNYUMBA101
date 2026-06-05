@@ -28,7 +28,7 @@ dependencies = [
     "scikit-learn==1.6.0",
     "statsmodels==0.14.4",
     "networkx==3.4.2",
-    "pyarrow==18.1.0",
+    "pyarrow==23.0.1",
     # Prometheus middleware — exposes /metrics on the same port as the app
     # (k8s manifest at infra/k8s/scientific-discovery-sidecar/base/servicemonitor.yaml
     # scrapes /metrics on port 8000).
