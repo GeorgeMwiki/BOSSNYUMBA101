@@ -125,6 +125,15 @@ import { OWNER_TABS_TOOLS } from './owner-tabs-tools.js';
 // requiresPolicyRuleLiteral=true per CLAUDE.md hard rule. Loopback
 // through /api/v1/admin/superpowers/*.
 import { ADMIN_SUPERPOWERS_TOOLS } from './admin-superpowers-tools.js';
+// Wave MD-INTELLIGENCE — the "AI Managing Director" cross-domain
+// analytics pack. Four LOW-stakes read-only tools (md.correlation_for_
+// question / md.trace_causes / md.compare_baselines / md.emit_insights)
+// over the pure-functional real-estate signal graph in
+// services/api-gateway/src/services/md-intelligence/. Owner persona
+// (T1) only; loopback-dispatched to /api/v1/md/*. Ported from Borjie
+// and retargeted mining → real estate (arrears ↔ rent ↔ leasing ↔
+// maintenance ↔ compliance ↔ treasury ↔ occupancy ↔ …).
+import { MD_INTELLIGENCE_TOOLS } from './md-intelligence-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -171,6 +180,7 @@ export function buildPersonaToolHandlers(
       CHAT_KING_TOOLS,
       OWNER_TABS_TOOLS,
       ADMIN_SUPERPOWERS_TOOLS,
+      MD_INTELLIGENCE_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -218,6 +228,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       CHAT_KING_TOOLS,
       OWNER_TABS_TOOLS,
       ADMIN_SUPERPOWERS_TOOLS,
+      MD_INTELLIGENCE_TOOLS,
     ],
     undefined,
   );
@@ -327,3 +338,11 @@ export {
   ownerNegotiationRejectTool,
   ownerConditionalSurveyApprovePlanTool,
 } from './chat-king-tools.js';
+// Wave MD-INTELLIGENCE — re-exports for tests + audit walker.
+export {
+  MD_INTELLIGENCE_TOOLS,
+  mdCorrelationForQuestionTool,
+  mdTraceCausesTool,
+  mdCompareBaselinesTool,
+  mdEmitInsightsTool,
+} from './md-intelligence-tools.js';

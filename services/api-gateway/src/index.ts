@@ -301,6 +301,12 @@ import forecastRouter from './routes/forecast.hono';
 // 503 INTELLIGENCE_SERVICE_UNAVAILABLE when CI_LLM_URL / adapter is
 // not wired (no mock agents, ever).
 import intelligenceRouter from './routes/intelligence.hono';
+// Wave MD-INTELLIGENCE — the "AI Managing Director" cross-domain
+// analytics HTTP surface. POST /md/{correlations,causation/trace,
+// baselines/compare,insights/emit} over the pure-functional real-estate
+// signal graph. Backs the four md.* owner brain tools. Ported from
+// Borjie and retargeted mining → real estate.
+import mdRouter from './routes/md/index.hono';
 // Frontend gap-fix BFF routers — owner-portal hits these top-level paths
 // for the analytics + portfolio dashboards. Until dedicated aggregator
 // services are wired, both routers return "honest empty" shapes so the
@@ -1350,6 +1356,13 @@ api.route('/forecast', forecastRouter);
 // body. Returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE when the LLM
 // adapter is not wired (no mock agents).
 api.route('/intelligence', intelligenceRouter);
+// Wave MD-INTELLIGENCE — "AI Managing Director" cross-domain analytics.
+// POST /md/correlations, /md/causation/trace, /md/baselines/compare,
+// /md/insights/emit. Auth-gated (tenant scope from JWT). Reads from the
+// frozen real-estate signal graph; correlate/trace surface real edges,
+// compare/emit return honest-gap shapes until the baseline + resolver
+// data sources are wired (no fabricated data, ever).
+api.route('/md', mdRouter);
 // Wave 27 Agent F — Risk-recompute manual trigger. Accessors close over
 // the heartbeat supervisor (constructed earlier) so the router returns
 // 503 cleanly when the dispatcher is not wired.
@@ -1499,6 +1512,7 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/messaging', app: messagingRouter, defaultTag: 'messaging' },
     { prefix: '/cases', app: casesRouter, defaultTag: 'cases' },
     { prefix: '/brain', app: brainRouter, defaultTag: 'brain' },
+    { prefix: '/md', app: mdRouter, defaultTag: 'md-intelligence' },
     { prefix: '/maintenance', app: maintenanceRouter, defaultTag: 'maintenance' },
     { prefix: '/hr', app: hrRouter, defaultTag: 'hr' },
     { prefix: '/customer', app: customerAppRouter, defaultTag: 'bff-customer' },
