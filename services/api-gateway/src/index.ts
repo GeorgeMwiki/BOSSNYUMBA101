@@ -78,6 +78,17 @@ import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
 import { cooperativesRouter } from './routes/cooperatives';
 import { brainRouter } from './routes/brain.hono';
+// Brain cluster (Gap 6 + Gap 7) — additive sub-routes under /api/v1/brain.
+//   /brain/compose/suggest  smart-compose ghost-text (curated lookup).
+//   /brain/teach            estate teaching chat (SSE lesson ladder).
+//   /brain/dispatch         VP department-head dispatch → sub-MD pipelines.
+// brain-voice is a WebSocket bridge (not a Hono router); it is attached to the
+// HTTP server after app.listen via attachBrainVoiceWebSocket (honest-degrade
+// NO-OP until a ws-backed factory is wired).
+import { brainComposeRouter } from './routes/brain-compose.hono';
+import { brainTeachRouter } from './routes/brain-teach.hono';
+import { brainDispatchRouter } from './routes/brain-dispatch.hono';
+import { attachBrainVoiceWebSocket } from './routes/brain-voice.hono';
 import { maintenanceRouter } from './routes/maintenance.hono';
 import { hrRouter } from './routes/hr.hono';
 // Wave 1-2 routers (new domain features)
@@ -1057,6 +1068,13 @@ api.route('/cases', casesRouter);
 // (migration 0304). /api/v1/cooperatives/settlement-periods.
 api.route('/cooperatives', cooperativesRouter);
 api.route('/brain', brainRouter);
+// Brain cluster sub-routes (Gap 6 + Gap 7) — mounted ADDITIVELY on /brain.
+// Each router defines distinct sub-paths (compose/suggest, teach, dispatch)
+// so they compose cleanly alongside the base brainRouter without overriding
+// it. brain-voice is a WebSocket bridge attached after app.listen, not here.
+api.route('/brain', brainComposeRouter);
+api.route('/brain', brainTeachRouter);
+api.route('/brain', brainDispatchRouter);
 api.route('/maintenance', maintenanceRouter);
 api.route('/hr', hrRouter);
 api.route('/customer', customerAppRouter);
@@ -1998,6 +2016,14 @@ if (require.main === module) {
   server = app.listen(port, () => {
     logger.info({ port }, 'API Gateway started');
   });
+
+  // Gap 7 — attach the brain-voice realtime WebSocket bridge to the live HTTP
+  // server. Honest-degrade: BossNyumba's gateway has no `ws` dependency yet, so
+  // no `webSocketServerFactory` is passed and this NO-OPs with a typed warning
+  // (the /api/v1/brain/voice/stream endpoint stays INACTIVE — "voice
+  // unavailable" — until a ws-backed factory is wired). It never throws, so
+  // gateway boot is unchanged.
+  attachBrainVoiceWebSocket({ server });
 
   // Wave 12 — start heartbeat + background scheduler after the server
   // is listening. Both are gated by DATABASE_URL internally; degraded
