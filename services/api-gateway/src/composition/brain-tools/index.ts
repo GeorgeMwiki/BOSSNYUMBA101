@@ -152,6 +152,18 @@ import { MD_INTELLIGENCE_TOOLS } from './md-intelligence-tools.js';
 // (T2) personas; MEDIUM-stakes WRITE. Ported from Borjie's
 // undo-chain-tools.ts (domain-neutral — only example copy retargeted).
 import { UNDO_CHAIN_TOOLS } from './undo-chain-tools.js';
+// Wave SOVEREIGN-ADMIN — 8 HIGH-risk inviolable-rule chat tools
+// (admin.killswitch.open/close, admin.four_eye.initiate/approve,
+// admin.policy.edit_rule, admin.feature_flag.set, admin.audit.export,
+// admin.tenant.suspend). T2 admin persona ONLY; every tool carries
+// requiresPolicyRuleLiteral=true per CLAUDE.md hard rule. four_eye.approve
+// loopback-dispatches to /admin/superpowers/approve/:journalId and
+// audit.export probes /admin/audit/log; feature_flag.set + tenant.suspend
+// emit chips carrying BN's canonical PUT/DELETE paths; killswitch.open/
+// close, four_eye.initiate, policy.edit_rule are honest-degraded (BN
+// exposes those via the kernel HQ tools / admin-superpowers queue, not a
+// matching REST surface — never fabricated). Ported from Borjie.
+import { ADMIN_INVIOLABLE_TOOLS } from './admin-inviolable-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -201,6 +213,7 @@ export function buildPersonaToolHandlers(
       ADMIN_SUPERPOWERS_TOOLS,
       MD_INTELLIGENCE_TOOLS,
       UNDO_CHAIN_TOOLS,
+      ADMIN_INVIOLABLE_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -251,6 +264,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       ADMIN_SUPERPOWERS_TOOLS,
       MD_INTELLIGENCE_TOOLS,
       UNDO_CHAIN_TOOLS,
+      ADMIN_INVIOLABLE_TOOLS,
     ],
     undefined,
   );
@@ -382,3 +396,15 @@ export {
   undoLastNTool,
   undoByIdTool,
 } from './undo-chain-tools.js';
+// Wave SOVEREIGN-ADMIN — re-exports for tests + audit walker.
+export {
+  ADMIN_INVIOLABLE_TOOLS,
+  adminKillSwitchOpenTool,
+  adminKillSwitchCloseTool,
+  adminFourEyeInitiateTool,
+  adminFourEyeApproveTool,
+  adminPolicyEditRuleTool,
+  adminFeatureFlagSetTool,
+  adminAuditExportTool,
+  adminTenantSuspendTool,
+} from './admin-inviolable-tools.js';

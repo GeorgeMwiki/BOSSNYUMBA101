@@ -221,4 +221,43 @@ describe('brain-tools — boot integrity', () => {
     const readIds = descriptors.filter((d) => !d.isWrite).map((d) => d.id);
     expect(readIds).toEqual(['bossnyumba.admin.superpowers.list_pending']);
   });
+
+  // ─── Wave SOVEREIGN-ADMIN — inviolable-rule brain tools ──────────
+  it('registers the eight admin inviolable-rule brain tools', () => {
+    const ids = new Set(listPersonaToolDescriptors().map((d) => d.id));
+    expect(ids.has('admin.killswitch.open')).toBe(true);
+    expect(ids.has('admin.killswitch.close')).toBe(true);
+    expect(ids.has('admin.four_eye.initiate')).toBe(true);
+    expect(ids.has('admin.four_eye.approve')).toBe(true);
+    expect(ids.has('admin.policy.edit_rule')).toBe(true);
+    expect(ids.has('admin.feature_flag.set')).toBe(true);
+    expect(ids.has('admin.audit.export')).toBe(true);
+    expect(ids.has('admin.tenant.suspend')).toBe(true);
+  });
+
+  it('admin inviolable tools are admin-only, HIGH-stakes WRITE, policy-literal', () => {
+    const wanted = new Set([
+      'admin.killswitch.open',
+      'admin.killswitch.close',
+      'admin.four_eye.initiate',
+      'admin.four_eye.approve',
+      'admin.policy.edit_rule',
+      'admin.feature_flag.set',
+      'admin.audit.export',
+      'admin.tenant.suspend',
+    ]);
+    const descriptors = listPersonaToolDescriptors().filter((d) =>
+      wanted.has(d.id),
+    );
+    expect(descriptors.length).toBe(8);
+    for (const d of descriptors) {
+      // NEVER callable from owner / manager / field / tenant personas.
+      expect([...d.personaSlugs]).toEqual(['T2_admin_strategist']);
+      // HIGH-risk policy prefix per CLAUDE.md hard rule — must NOT be
+      // generalised by the reason-resolver.
+      expect(d.requiresPolicyRuleLiteral).toBe(true);
+      expect(d.stakes).toBe('HIGH');
+      expect(d.isWrite).toBe(true);
+    }
+  });
 });
