@@ -70,3 +70,8 @@ export * from './services/messaging';
 export * from './services/scheduling';
 export * from './services/sla';
 export * from './services/head-briefing';
+// Wave COURSE-GEN — AI course-generation (migration 0309). Value export of
+// `coursesService`; FE type-only imports should use the
+// `@bossnyumba/api-client/courses-types` tsconfig path alias to dodge the
+// NodeNext barrel type-vs-namespace defect.
+export * from './services/courses';

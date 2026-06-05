@@ -27,6 +27,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@bossnyumba/api-client/courses-types": [
+        "../../packages/api-client/src/services/courses.ts"
       ]
     },
     "allowJs": true,
