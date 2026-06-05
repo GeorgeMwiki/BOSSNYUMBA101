@@ -14,7 +14,7 @@
  * (no catalog concept resolved) shows an empty state.
  */
 
-import { useMemo } from 'react';
+import { Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'next-intl';
@@ -24,7 +24,22 @@ import { Alert, AlertDescription, Button, Skeleton } from '@bossnyumba/design-sy
 import { PageHeader } from '@/components/layout/PageHeader';
 import { MasteryCheckpoint, TrainingNav, toTrainingLanguage } from '@/features/training';
 
+function MasteryCheckpointFallback() {
+  const t = useTranslations('training');
+  return (
+    <PageHeader title={t('checkpointPageTitle')} subtitle={t('checkpointPageSubtitle')} showBack />
+  );
+}
+
 export default function MasteryCheckpointPage() {
+  return (
+    <Suspense fallback={<MasteryCheckpointFallback />}>
+      <MasteryCheckpointPageInner />
+    </Suspense>
+  );
+}
+
+function MasteryCheckpointPageInner() {
   const t = useTranslations('training');
   const router = useRouter();
   const locale = useLocale();

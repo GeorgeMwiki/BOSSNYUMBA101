@@ -19,7 +19,7 @@
  * response yields an empty / unavailable state — never fabricated content.
  */
 
-import { useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import type { ScenarioView, ScenarioRoleMode } from '@bossnyumba/api-client';
@@ -42,7 +42,20 @@ function parseRoleMode(raw: string | null): ScenarioRoleMode | null {
     : null;
 }
 
+function ScenarioSimulationFallback() {
+  const t = useTranslations('training');
+  return <PageHeader title={t('scenariosTitle')} subtitle={t('scenariosSubtitle')} showBack />;
+}
+
 export default function ScenarioSimulationPage() {
+  return (
+    <Suspense fallback={<ScenarioSimulationFallback />}>
+      <ScenarioSimulationPageInner />
+    </Suspense>
+  );
+}
+
+function ScenarioSimulationPageInner() {
   const t = useTranslations('training');
   const locale = useLocale();
   const language = toTrainingLanguage(locale);
