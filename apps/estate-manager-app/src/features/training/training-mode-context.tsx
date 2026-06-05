@@ -34,12 +34,12 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
-import {
-  trainingScenariosService,
-  type ScenarioView,
-  type ScenarioRoleMode,
-  type TurnReply,
-} from '@bossnyumba/api-client';
+import { trainingScenariosService } from '@bossnyumba/api-client';
+import type {
+  ScenarioView,
+  ScenarioRoleMode,
+  TurnReply,
+} from '@bossnyumba/api-client/training-types';
 import type { TrainingLanguage } from './training-language';
 
 /** One transcript line in a run. `learner` is the operator; `counterparty` is the grounded reply. */

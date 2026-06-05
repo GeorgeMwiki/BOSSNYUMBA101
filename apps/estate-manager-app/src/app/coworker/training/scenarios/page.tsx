@@ -22,7 +22,7 @@
 import { Suspense, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import type { ScenarioView, ScenarioRoleMode } from '@bossnyumba/api-client';
+import type { ScenarioView, ScenarioRoleMode } from '@bossnyumba/api-client/training-types';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
   ScenarioBrowser,

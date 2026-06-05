@@ -17,11 +17,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Award, ArrowRight, CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
-import {
-  trainingScenariosService,
-  type CheckpointQuestion,
-  type CheckpointSubmitResult,
-} from '@bossnyumba/api-client';
+import { trainingScenariosService } from '@bossnyumba/api-client';
+import type {
+  CheckpointQuestion,
+  CheckpointSubmitResult,
+} from '@bossnyumba/api-client/training-types';
 import { Button, Progress, Alert, AlertDescription } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import type { TrainingLanguage } from './training-language';
@@ -44,6 +44,16 @@ interface AnswerRecord {
   readonly correct: boolean;
 }
 
+/**
+ * Gateway envelope for POST /scenarios/checkpoint/submit. Declared locally so
+ * the mutation result is strongly typed (the api-client barrel re-export does
+ * not surface the service method's return type to the inference site).
+ */
+interface CheckpointSubmitResponse {
+  readonly success: boolean;
+  readonly data: CheckpointSubmitResult;
+}
+
 export function MasteryCheckpoint({
   questions,
   passThreshold = DEFAULT_PASS_THRESHOLD,
@@ -57,7 +67,7 @@ export function MasteryCheckpoint({
   const [answers, setAnswers] = useState<readonly AnswerRecord[]>([]);
 
   const submit = useMutation({
-    mutationFn: (records: readonly AnswerRecord[]) =>
+    mutationFn: (records: readonly AnswerRecord[]): Promise<CheckpointSubmitResponse> =>
       trainingScenariosService.submitCheckpoint({
         conceptIds: [...new Set(records.map((r) => r.conceptId))],
         results: records.map((r) => ({ conceptId: r.conceptId, correct: r.correct })),

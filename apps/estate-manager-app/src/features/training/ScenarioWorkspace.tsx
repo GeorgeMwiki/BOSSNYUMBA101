@@ -26,7 +26,7 @@ import {
   Flag,
   ShieldCheck,
 } from 'lucide-react';
-import type { ScenarioView, ScenarioRoleMode } from '@bossnyumba/api-client';
+import type { ScenarioView, ScenarioRoleMode } from '@bossnyumba/api-client/training-types';
 import { Button, Badge, Progress, Alert, AlertDescription, Spinner } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { useTraining } from './training-mode-context';

@@ -25,11 +25,11 @@ import {
   ServerCrash,
   Sparkles,
 } from 'lucide-react';
-import {
-  trainingScenariosService,
-  type ScenarioView,
-  type ScenarioDifficulty,
-} from '@bossnyumba/api-client';
+import { trainingScenariosService } from '@bossnyumba/api-client';
+import type {
+  ScenarioView,
+  ScenarioDifficulty,
+} from '@bossnyumba/api-client/training-types';
 import {
   Card,
   Badge,
