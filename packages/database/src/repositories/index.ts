@@ -119,3 +119,13 @@ export {
   type DocumentStatus,
   type DocumentType,
 } from './enum-guards.js';
+
+// Owner-style learned communication profile (migration 0307, gap-8).
+// Postgres adapter for the OwnerStyleProfileStore port consumed by the
+// orchestrator in @bossnyumba/ai-copilot. The rich Dirichlet profile
+// round-trips through profile_json; typed columns are a queryable projection.
+export {
+  createPgOwnerStyleProfileStore,
+  type OwnerStyleProfile as PgOwnerStyleProfile,
+  type OwnerStyleProfileStore as PgOwnerStyleProfileStore,
+} from './owner-style.repository.js';

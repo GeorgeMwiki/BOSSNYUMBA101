@@ -163,3 +163,33 @@ export {
   type SocraticQuestionRate,
   type CultureContext,
 } from './sub-personas/teaching-style.js';
+
+// ----- Gap-8: owner-style learning loop (ported from LitFin) -----
+// Mr. Mwikila adapts how it speaks to each owner — verbosity, detail,
+// language (EN/SW), formality, posture — via a Bayesian feedback loop with
+// decay + reaction-boost. The orchestrator refines post-turn and folds the
+// learned style hint into the next turn's system prompt.
+export {
+  createOwnerStyleService,
+  createInMemoryProfileStore,
+  defaultProfileFor,
+  makeDefaultProfile as makeDefaultOwnerStyleProfile,
+  OwnerStyleProfileSchema,
+  ChatTurnObservationSchema,
+  FeedbackSignalSchema,
+  applyFeedback as applyOwnerStyleFeedback,
+  applyFeedbackText as applyOwnerStyleFeedbackText,
+  parseFeedbackText as parseOwnerStyleFeedbackText,
+  buildStyleHint as buildOwnerStyleHint,
+  applyStyleHint as applyOwnerStyleHint,
+  updateProfile as updateOwnerStyleProfile,
+  inferInitialProfile as inferInitialOwnerStyleProfile,
+  type OwnerStyleService,
+  type CreateOwnerStyleServiceOptions,
+  type RefineResult as OwnerStyleRefineResult,
+  type OwnerStyleProfile,
+  type OwnerStyleProfileStore,
+  type ChatTurnObservation as OwnerStyleChatTurnObservation,
+  type FeedbackSignal as OwnerStyleFeedbackSignal,
+  type FeedbackSignalKind as OwnerStyleFeedbackSignalKind,
+} from './owner-style/index.js';
