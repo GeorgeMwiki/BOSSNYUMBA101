@@ -28,6 +28,7 @@ import {
   type DiscussionModeData,
   type ClassroomModeData,
 } from '@bossnyumba/chat-ui';
+import { TrainingNav } from '@/features/training';
 
 interface ChatMessage {
   readonly id: string;
@@ -232,6 +233,9 @@ export default function CoworkerTrainingPage() {
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 16, padding: 16 }}>
       <div>
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{t('title')}</h1>
+        <div style={{ marginBottom: 12 }}>
+          <TrainingNav />
+        </div>
         {modeState.mode === 'classroom' ? (
           <ClassroomChatAdapter data={classroom} mode={modeState.mode} language="en">
             {chat}
