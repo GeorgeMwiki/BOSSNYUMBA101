@@ -77,6 +77,9 @@ import { schedulingRouter } from './routes/scheduling';
 import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
 import { cooperativesRouter } from './routes/cooperatives';
+// Gap-4 (d) — property development pro-forma plans (migration 0310). Backs
+// the `development.plan.*` brain tools (development-plan-tools.ts).
+import developmentPlansRouter from './routes/development-plans.hono';
 import { brainRouter } from './routes/brain.hono';
 // Brain cluster (Gap 6 + Gap 7) — additive sub-routes under /api/v1/brain.
 //   /brain/compose/suggest  smart-compose ghost-text (curated lookup).
@@ -1084,6 +1087,9 @@ api.route('/cooperatives', cooperativesRouter);
 // gated; honest-degrades to the deterministic concept-catalog sequencer when no
 // LLM is wired.
 api.route('/courses', coursesRouter);
+// Gap-4 (d) — property development pro-forma (migration 0310).
+// /api/v1/development-plans/{plans,plans/:id/sections,plans/:id/assumptions}.
+api.route('/development-plans', developmentPlansRouter);
 api.route('/brain', brainRouter);
 // Brain cluster sub-routes (Gap 6 + Gap 7) — mounted ADDITIVELY on /brain.
 // Each router defines distinct sub-paths (compose/suggest, teach, dispatch)
@@ -1559,6 +1565,7 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/messaging', app: messagingRouter, defaultTag: 'messaging' },
     { prefix: '/cases', app: casesRouter, defaultTag: 'cases' },
     { prefix: '/cooperatives', app: cooperativesRouter, defaultTag: 'cooperatives' },
+    { prefix: '/development-plans', app: developmentPlansRouter, defaultTag: 'development-plans' },
     { prefix: '/brain', app: brainRouter, defaultTag: 'brain' },
     { prefix: '/md', app: mdRouter, defaultTag: 'md-intelligence' },
     { prefix: '/maintenance', app: maintenanceRouter, defaultTag: 'maintenance' },

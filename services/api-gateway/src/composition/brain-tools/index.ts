@@ -199,6 +199,69 @@ import { ORG_ADMIN_TOOLS } from './org-admin-tools.js';
 // iter-36 agent-teams / sandbox-writes tools, retargeted lending → real
 // estate (sandbox target allowlist = the gap-2 org/team tables).
 import { MD_AGENTIC_TOOLS } from './md-agentic-tools.js';
+// Gap-12 (BN half) — set-chat-mode active brain tool. One LOW-stakes
+// read-only tool (`mwikila.training.set_chat_mode`) that lets the brain
+// SIGNAL the pedagogical chat surface (packages/chat-ui/src/chat-modes/)
+// to transition between conversation / teaching / quiz / discussion /
+// review / classroom WITHOUT page navigation — giving the previously
+// passive QuizLockdownOverlay (+ siblings) a deterministic trigger.
+// T1 owner + T2 admin + T3 module-manager personas (the training
+// drivers). No money path, no DB write, no audit chain; honest-degrade
+// (echoes the requested mode + bilingual EN+SW directive, never
+// fabricates a hidden side effect). Ported from LitFin's set-chat-mode
+// action tool and mirrored from the Borjie sibling.
+import { SET_CHAT_MODE_TOOLS } from './set-chat-mode-tools.js';
+// Gap-4 (a) — geo / geofencing brain tools. Five LOW-stakes read-only
+// tools (`property.geo.unit.nearby` / `title.contains` / `hazard.proximity`
+// / `compliance.zone_of` / `route.optimize`) ported from Borjie's geo-
+// tools.ts and retargeted mining → real estate (site/pit/region →
+// property/unit/block; licence polygon → parcel/title boundary; PCCB/NEMC/
+// EITI zone → planning/zoning authority area). HONEST-DEGRADED: BN does not
+// yet expose the per-property map loopback routes, so every tool returns a
+// typed `available:false` shape (never fabricates a parcel / hazard /
+// zone). A single `MAP_ROUTES_WIRED` flag in geo-tools.ts activates the
+// real loopback once the routes land.
+import { GEO_TOOLS } from './geo-tools.js';
+// Gap-4 (b) — scope roll-up brain tools. Five LOW-stakes read-only tools
+// (`property.scope.resolve_label` / `roll_up_across_scopes` /
+// `compare_across_scopes` / `cross_domain_scope_matrix` /
+// `taxonomy_display_for`) ported from Borjie's scope-tools.ts and
+// retargeted mining → real estate (pit/site/region scope kinds ->
+// building/unit/block/portfolio; production roll-ups -> occupancy /
+// maintenance-cost / rent-collected by metricId). T1 owner + T2 admin.
+// Money roll-ups carry a `currency` field (never a hard-coded code).
+// HONEST-DEGRADED: BN does not yet expose /property/scope/* routes, so
+// each tool returns a typed `available:false` shape (resolve_label +
+// taxonomy still return built-in default EN/SW labels). A single
+// `SCOPE_ROUTES_WIRED` flag in scope-tools.ts activates the real loopback.
+import { SCOPE_TOOLS } from './scope-tools.js';
+// Gap-4 (c) — property insurance brain tools. Four tools
+// (`property.insurance.get_quotes` + `bind_policy` WRITE MEDIUM-stakes;
+// `policy_status` + `renewals_due` READ LOW) ported from Borjie's
+// insurance-tools.ts and retargeted mining → real estate (coverage types
+// workforce/plant/environmental/... -> buildings/contents/
+// public_liability/loss_of_rent/landlord_liability/tenant_default). T1
+// owner persona. Money fields carry an explicit `currency` (Borjie's *Tzs
+// names dropped — currency-neutral). WRITE tools wrap provenance via
+// withChatProvenance. HONEST-DEGRADED: BN does not yet expose
+// /property/insurance/* routes, so each tool returns a typed
+// `available:false` shape (never fabricates a quote / policy); a single
+// `INSURANCE_ROUTES_WIRED` flag activates the real loopback + provenance.
+import { INSURANCE_TOOLS } from './insurance-tools.js';
+// Gap-4 (d) — property development pro-forma brain tools. Five tools
+// (`development.plan.generate` + `modify_section` + `set_assumption` WRITE
+// MEDIUM-stakes; `manage_sections` + `validate` READ LOW) ported from
+// LitFin's business-plan-tools.ts and retargeted lending -> real estate
+// (borrower business plan -> property DEVELOPMENT pro-forma; sections
+// management-organisation -> staffing-plan, market-analysis ->
+// tenant-demand, products-services -> unit-mix, use-of-loan -> use-of-
+// funds; assumptions retargeted to unit_count / rent_per_unit_monthly /
+// construction_cost_per_unit / exit_cap_rate / ...). T1 owner + T2 admin.
+// Currency-neutral (plan currencyCode; monetary assumptions in JSONB).
+// Loopback through /api/v1/development-plans/* (migration 0310, route
+// shipped in this commit). Honest-degrades to typed available:false when
+// no loopback client is bound (never fabricates a plan / section / score).
+import { DEVELOPMENT_PLAN_TOOLS } from './development-plan-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -252,6 +315,11 @@ export function buildPersonaToolHandlers(
       COOPERATIVE_TOOLS,
       ORG_ADMIN_TOOLS,
       MD_AGENTIC_TOOLS,
+      SET_CHAT_MODE_TOOLS,
+      GEO_TOOLS,
+      SCOPE_TOOLS,
+      INSURANCE_TOOLS,
+      DEVELOPMENT_PLAN_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -306,6 +374,11 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       COOPERATIVE_TOOLS,
       ORG_ADMIN_TOOLS,
       MD_AGENTIC_TOOLS,
+      SET_CHAT_MODE_TOOLS,
+      GEO_TOOLS,
+      SCOPE_TOOLS,
+      INSURANCE_TOOLS,
+      DEVELOPMENT_PLAN_TOOLS,
     ],
     undefined,
   );
@@ -476,3 +549,43 @@ export {
   sandboxCommitTool,
   sandboxRejectTool,
 } from './md-agentic-tools.js';
+// Gap-12 (BN half) — set-chat-mode re-exports for tests + audit walker.
+export {
+  SET_CHAT_MODE_TOOLS,
+  setChatModeTool,
+} from './set-chat-mode-tools.js';
+// Gap-4 (a) — geo / geofencing re-exports for tests + audit walker.
+export {
+  GEO_TOOLS,
+  geoPropertyNearbyTool,
+  geoTitleContainsTool,
+  geoHazardProximityTool,
+  geoComplianceZoneTool,
+  geoRouteOptimizeTool,
+} from './geo-tools.js';
+// Gap-4 (b) — scope roll-up re-exports for tests + audit walker.
+export {
+  SCOPE_TOOLS,
+  scopeResolveLabelTool,
+  scopeRollUpTool,
+  scopeCompareTool,
+  scopeCrossDomainMatrixTool,
+  scopeTaxonomyDisplayTool,
+} from './scope-tools.js';
+// Gap-4 (c) — property insurance re-exports for tests + audit walker.
+export {
+  INSURANCE_TOOLS,
+  insuranceGetQuotesTool,
+  insuranceBindPolicyTool,
+  insurancePolicyStatusTool,
+  insuranceRenewalsDueTool,
+} from './insurance-tools.js';
+// Gap-4 (d) — development pro-forma re-exports for tests + audit walker.
+export {
+  DEVELOPMENT_PLAN_TOOLS,
+  developmentPlanGenerateTool,
+  developmentPlanModifySectionTool,
+  developmentPlanManageSectionsTool,
+  developmentPlanSetAssumptionTool,
+  developmentPlanValidateTool,
+} from './development-plan-tools.js';
