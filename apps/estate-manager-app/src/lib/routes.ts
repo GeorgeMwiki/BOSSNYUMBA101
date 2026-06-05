@@ -39,6 +39,13 @@ export const ROUTES = {
     availability: '/calendar/availability',
   },
 
+  coworker: {
+    root: '/coworker',
+    training: '/coworker/training',
+    trainingScenarios: '/coworker/training/scenarios',
+    trainingCheckpoint: '/coworker/training/checkpoint',
+  },
+
   customers: {
     root: '/customers',
     new: '/customers/new',

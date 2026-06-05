@@ -14,11 +14,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { MessagesSquare, GraduationCap, Award } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { ROUTES } from '@/lib/routes';
 
 const ITEMS = [
-  { href: '/coworker/training', icon: MessagesSquare, key: 'navChat' as const, exact: true },
-  { href: '/coworker/training/scenarios', icon: GraduationCap, key: 'navScenarios' as const },
-  { href: '/coworker/training/checkpoint', icon: Award, key: 'navCheckpoint' as const },
+  { href: ROUTES.coworker.training, icon: MessagesSquare, key: 'navChat' as const, exact: true },
+  { href: ROUTES.coworker.trainingScenarios, icon: GraduationCap, key: 'navScenarios' as const },
+  { href: ROUTES.coworker.trainingCheckpoint, icon: Award, key: 'navCheckpoint' as const },
 ];
 
 export function TrainingNav() {

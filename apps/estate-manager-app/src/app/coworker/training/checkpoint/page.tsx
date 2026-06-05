@@ -22,6 +22,7 @@ import { ServerCrash } from 'lucide-react';
 import { trainingScenariosService } from '@bossnyumba/api-client';
 import { Alert, AlertDescription, Button, Skeleton } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ROUTES } from '@/lib/routes';
 import { MasteryCheckpoint, TrainingNav, toTrainingLanguage } from '@/features/training';
 
 function MasteryCheckpointFallback() {
@@ -58,7 +59,7 @@ function MasteryCheckpointPageInner() {
   const questions = useMemo(() => data?.questions ?? [], [data]);
   const passThreshold = data?.passThreshold ?? 0.7;
 
-  const goToHub = () => router.push('/coworker/training');
+  const goToHub = () => router.push(ROUTES.coworker.training);
 
   return (
     <>
