@@ -528,7 +528,13 @@ export class MdAgenticRepository {
       row.proposed_payload,
     );
     if (!validation.ok) {
-      return { ok: false, code: 'INVALID_INPUT', message: validation.message };
+      // `in` narrows structurally to the error member that carries `message`
+      // (robust regardless of discriminant control-flow narrowing).
+      const message =
+        'message' in validation
+          ? validation.message
+          : 'payload failed sandbox validation.';
+      return { ok: false, code: 'INVALID_INPUT', message };
     }
     const payload = validation.payload;
 
