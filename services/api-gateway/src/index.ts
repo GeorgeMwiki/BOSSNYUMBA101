@@ -259,6 +259,10 @@ import damageDeductionsRouter from './routes/damage-deductions.hono';
 // Wave ORG-ADMIN-TOOLS — org / team-management write surface (migration
 // 0305). Backs the `staff.*` brain tools (org-admin-tools.ts).
 import orgAdminRouter from './routes/org-admin.hono';
+// Wave MD-AGENTIC-TOOLS — agentic plan / subagent + sandbox-preview write
+// surface (migration 0306). Backs the `plan.*` / `sandbox.*` brain tools
+// (md-agentic-tools.ts).
+import mdAgenticRouter from './routes/md-agentic.hono';
 import conditionalSurveysRouter from './routes/conditional-surveys.hono';
 import farRouter from './routes/far.hono';
 // Wave 26 Z3 — Move-out checklist + Approval workflow (migration 0097)
@@ -1305,6 +1309,10 @@ api.route('/damage-deductions', damageDeductionsRouter);
 // Wave ORG-ADMIN-TOOLS — /api/v1/org-admin/{staff,staff/kpis,tasks,
 // escalations,staff/bulk-csv} (migration 0305). Owner/admin only.
 api.route('/org-admin', orgAdminRouter);
+// Wave MD-AGENTIC-TOOLS — /api/v1/md-agentic/{plans,subagents/*,sandbox/*}
+// (migration 0306). Plan-mode + agent-teams + sandbox-preview writes.
+// Owner/admin only.
+api.route('/md-agentic', mdAgenticRouter);
 api.route('/conditional-surveys', conditionalSurveysRouter);
 api.route('/far', farRouter);
 // Wave 26 Z3 — Move-out checklist + Approval workflow.
@@ -1560,6 +1568,7 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/subleases', app: subleaseRouter, defaultTag: 'subleases' },
     { prefix: '/damage-deductions', app: damageDeductionsRouter, defaultTag: 'damage-deductions' },
     { prefix: '/org-admin', app: orgAdminRouter, defaultTag: 'org-admin' },
+    { prefix: '/md-agentic', app: mdAgenticRouter, defaultTag: 'md-agentic' },
     { prefix: '/conditional-surveys', app: conditionalSurveysRouter, defaultTag: 'conditional-surveys' },
     { prefix: '/far', app: farRouter, defaultTag: 'far' },
     { prefix: '/analytics', app: analyticsRouter, defaultTag: 'analytics' },

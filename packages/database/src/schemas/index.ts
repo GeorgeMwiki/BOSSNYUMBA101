@@ -626,3 +626,22 @@ export * from './cooperative.schema.js';
 //   staff.assign_kpi / staff.schedule_task / staff.escalate_to_human /
 //   staff.bulk_ingest_csv.
 export * from './org-team-management.schema.js';
+
+// ─── Wave MD-AGENTIC-TOOLS — agentic plan / subagent + sandbox-preview
+//     write surface (migration 0306, ported from LitFin's iter-32 plan-mode
+//     + iter-36 agent-teams / sandbox-writes and retargeted lending → real
+//     estate) ─────────────────────────────────────────────────────────────
+//   - md_plans            : one row per proposed multi-step plan (proposal
+//       only; execution stays governed step-by-step).
+//   - md_subagent_runs    : one row per dispatched subagent. Honest-degrade:
+//       persisted at status 'pending'; aggregate reads persisted results and
+//       NEVER fabricates output.
+//   - md_sandbox_writes   : one row per STAGED mutation awaiting owner
+//       review. Target allowlist = the gap-2 org/team tables (mig 0305).
+//   - md_sandbox_commits  : append-only audit log of committed sandbox
+//       writes (captures pre-commit snapshot for UPDATE rollback evidence).
+//   - md_sandbox_rejects  : append-only rejection log.
+//   Routes: /api/v1/md-agentic/*. Chat tools: plan.propose /
+//   plan.dispatch_subagents / plan.aggregate_results / sandbox.write /
+//   sandbox.commit / sandbox.reject / sandbox.list.
+export * from './md-agentic.schema.js';

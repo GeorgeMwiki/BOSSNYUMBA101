@@ -186,6 +186,19 @@ import { COOPERATIVE_TOOLS } from './cooperative-tools.js';
 // org_escalations) and retargeted lending → real estate (employee →
 // staff_member).
 import { ORG_ADMIN_TOOLS } from './org-admin-tools.js';
+// Wave MD-AGENTIC-TOOLS — agentic plan / subagent + sandbox-preview write
+// tools (`plan.propose` / `plan.dispatch_subagents` / `plan.aggregate_
+// results` / `sandbox.write` / `sandbox.list` / `sandbox.commit` /
+// `sandbox.reject`). T1 owner + T2 admin personas. propose / dispatch /
+// sandbox.write / sandbox.reject are MEDIUM-stakes WRITEs; sandbox.commit
+// is HIGH (it lands the atomic real-table write); aggregate_results +
+// sandbox.list are LOW read-only. Loopback through /api/v1/md-agentic/*
+// (migration 0306). Honest-degraded when the loopback client is unbound,
+// and subagent aggregation NEVER fabricates results (reports 'unavailable'
+// until an executor is wired). Ported from LitFin's iter-32 plan-mode +
+// iter-36 agent-teams / sandbox-writes tools, retargeted lending → real
+// estate (sandbox target allowlist = the gap-2 org/team tables).
+import { MD_AGENTIC_TOOLS } from './md-agentic-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -238,6 +251,7 @@ export function buildPersonaToolHandlers(
       ADMIN_INVIOLABLE_TOOLS,
       COOPERATIVE_TOOLS,
       ORG_ADMIN_TOOLS,
+      MD_AGENTIC_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -291,6 +305,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       ADMIN_INVIOLABLE_TOOLS,
       COOPERATIVE_TOOLS,
       ORG_ADMIN_TOOLS,
+      MD_AGENTIC_TOOLS,
     ],
     undefined,
   );
@@ -450,3 +465,14 @@ export {
   staffEscalateToHumanTool,
   staffBulkIngestCsvTool,
 } from './org-admin-tools.js';
+// Wave MD-AGENTIC-TOOLS — re-exports for tests + audit walker.
+export {
+  MD_AGENTIC_TOOLS,
+  planProposeTool,
+  planDispatchSubagentsTool,
+  planAggregateResultsTool,
+  sandboxWriteTool,
+  sandboxListTool,
+  sandboxCommitTool,
+  sandboxRejectTool,
+} from './md-agentic-tools.js';
