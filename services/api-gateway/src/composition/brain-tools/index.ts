@@ -175,6 +175,17 @@ import { ADMIN_INVIOLABLE_TOOLS } from './admin-inviolable-tools.js';
 // estate; the member_share read hits the real members endpoint (Borjie's
 // was a TODO returning []).
 import { COOPERATIVE_TOOLS } from './cooperative-tools.js';
+// Wave ORG-ADMIN-TOOLS — org / team-management write tools
+// (`staff.create` / `staff.assign_kpi` / `staff.schedule_task` /
+// `staff.escalate_to_human` / `staff.bulk_ingest_csv`). T1 owner + T2
+// admin personas. create / assign_kpi / schedule_task are MEDIUM-stakes
+// WRITEs; escalate_to_human + bulk_ingest_csv are HIGH-stakes. Loopback
+// through /api/v1/org-admin/* (migration 0305). Honest-degraded when the
+// loopback client is unbound. Ported from LitFin's iter-27..31
+// org-management tools (employees / employee_kpis / org_tasks /
+// org_escalations) and retargeted lending → real estate (employee →
+// staff_member).
+import { ORG_ADMIN_TOOLS } from './org-admin-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -226,6 +237,7 @@ export function buildPersonaToolHandlers(
       UNDO_CHAIN_TOOLS,
       ADMIN_INVIOLABLE_TOOLS,
       COOPERATIVE_TOOLS,
+      ORG_ADMIN_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -278,6 +290,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       UNDO_CHAIN_TOOLS,
       ADMIN_INVIOLABLE_TOOLS,
       COOPERATIVE_TOOLS,
+      ORG_ADMIN_TOOLS,
     ],
     undefined,
   );
@@ -428,3 +441,12 @@ export {
   cooperativeMemberShareTool,
   cooperativeSettlementPeriodListTool,
 } from './cooperative-tools.js';
+// Wave ORG-ADMIN-TOOLS — re-exports for tests + audit walker.
+export {
+  ORG_ADMIN_TOOLS,
+  staffCreateTool,
+  staffAssignKpiTool,
+  staffScheduleTaskTool,
+  staffEscalateToHumanTool,
+  staffBulkIngestCsvTool,
+} from './org-admin-tools.js';

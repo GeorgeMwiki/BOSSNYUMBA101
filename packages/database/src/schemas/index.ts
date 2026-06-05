@@ -610,3 +610,19 @@ export * from './admin-superpower-pending-approvals.schema.js';
 //   Routes: /api/v1/cooperatives/settlement-periods. Chat tools:
 //   cooperative.draft_settlement / member_share / settlement_period_list.
 export * from './cooperative.schema.js';
+
+// ─── Wave ORG-ADMIN-TOOLS — org / team-management write surface
+//     (migration 0305, ported from LitFin's employees / employee_kpis /
+//     org_tasks / org_escalations and retargeted lending → real estate)
+//     ──────────────────────────────────────────────────────────────────
+//   - staff_members     : one row per staff member (caretaker /
+//       leasing_assistant / groundskeeper / accountant). Self-FK manager.
+//   - staff_kpis        : KPI targets assigned to a staff member.
+//   - org_tasks         : tasks scheduled to (optionally) a staff member
+//       (e.g. "move-out inspection scheduling").
+//   - org_escalations   : escalations for a human to act on
+//       (compliance_breach / payment_default / maintenance_incident).
+//   Routes: /api/v1/org-admin/*. Chat tools: staff.create /
+//   staff.assign_kpi / staff.schedule_task / staff.escalate_to_human /
+//   staff.bulk_ingest_csv.
+export * from './org-team-management.schema.js';

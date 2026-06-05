@@ -4,6 +4,41 @@ All notable changes to BossNyumba are documented here. Format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Wave ORG-ADMIN-TOOLS — org / team-management write surface (migration 0305)
+
+Closes the org/team-management chat-reachability gap: Mr. Mwikila can
+now run the on-the-ground team end-to-end from chat. Ported from
+LitFin's iter-27..31 org-management tools and retargeted lending → real
+estate (employee → staff_member; loan-officer KPIs → leasing /
+maintenance KPIs; org escalations → compliance / payment / maintenance
+escalations). Owner + admin personas only (T1 / T2).
+
+- **5 brain tools** (`services/api-gateway/src/composition/brain-tools/
+  org-admin-tools.ts`) — `staff.create`, `staff.assign_kpi`,
+  `staff.schedule_task` (MEDIUM-stakes) plus `staff.escalate_to_human`
+  and `staff.bulk_ingest_csv` (HIGH-stakes). Each WRITE wraps its body
+  with chat-provenance and loopback-dispatches to `/api/v1/org-admin/*`
+  so the same auth + RLS + audit guards apply as a browser request.
+  Honest-degrades to a typed `unavailable` shape when the loopback
+  client is unbound (never fabricates a row). Full EN + SW tool names.
+- **Hono route** (`routes/org-admin.hono.ts`) + **Drizzle repository**
+  (`composition/org-team-repository.ts`) + **CSV parser**
+  (`composition/org-team-csv.ts`) — case-insensitive DUPLICATE
+  detection, manager self-FK validation, NOT_FOUND / AMBIGUOUS staff
+  resolution, related-task FK verification, and per-row bulk outcome
+  collection (inserted / skipped_duplicate / rejected). Owner/admin
+  role-gated; 503 honest-degrade when DATABASE_URL is unset.
+- **Migration 0305** (`0305_org_team_management.sql` + down) — four
+  tables `staff_members`, `staff_kpis`, `org_tasks`, `org_escalations`.
+  Idempotent (IF NOT EXISTS / guarded DO-blocks), FORCE-enabled RLS with
+  a `current_setting('app.current_tenant_id', true)` tenant policy on
+  every table (mirrors mig 0304). Currency-neutral KPI metric units.
+  Drizzle schema TS exported from the package barrel.
+- **Tests** — +32 unit tests across the tools, repository, and CSV
+  parser (descriptor metadata, persona/stakes gating, provenance wrap,
+  duplicate/FK/ambiguity paths, per-row bulk collection, honest-degrade
+  shapes).
+
 ### Wave 28+ wave-4 — Real provider adapters, perf indexes, owner backend, a11y, security follow-up
 
 Wave-4 lifts every stub provider in the wave-3 workers to a real
