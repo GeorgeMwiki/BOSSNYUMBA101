@@ -170,22 +170,67 @@ export function applyFeedback(
   const now = (options.now ?? (() => new Date().toISOString()))();
   const votes = votesForSignal(parsed.data);
 
-  const out: OwnerStyleProfile = { ...prior };
-
-  for (const [k, dimVotes] of Object.entries(votes) as Array<
-    [keyof typeof CATEGORY_VALUES, Record<string, number>]
-  >) {
-    const dim = out[k];
-    const allowedValues = CATEGORY_VALUES[k];
-    const blended = profilerInternal.injectVotes(
-      dim,
-      dimVotes,
-      DECAY,
-      1,
-      allowedValues as ReadonlyArray<typeof dim.value>
-    );
-    (out as Record<string, unknown>)[k] = blended;
-  }
+  // Blend each dimension immutably. A dimension with no vote for this signal is
+  // returned unchanged. Allowed-value arrays are narrowed per dimension so the
+  // blended `value` keeps its precise literal type.
+  const out: OwnerStyleProfile = {
+    ...prior,
+    verbosity: votes.verbosity
+      ? profilerInternal.injectVotes(
+          prior.verbosity,
+          votes.verbosity,
+          DECAY,
+          1,
+          CATEGORY_VALUES.verbosity as ReadonlyArray<
+            OwnerStyleProfile['verbosity']['value']
+          >
+        )
+      : prior.verbosity,
+    detail: votes.detail
+      ? profilerInternal.injectVotes(
+          prior.detail,
+          votes.detail,
+          DECAY,
+          1,
+          CATEGORY_VALUES.detail as ReadonlyArray<
+            OwnerStyleProfile['detail']['value']
+          >
+        )
+      : prior.detail,
+    language: votes.language
+      ? profilerInternal.injectVotes(
+          prior.language,
+          votes.language,
+          DECAY,
+          1,
+          CATEGORY_VALUES.language as ReadonlyArray<
+            OwnerStyleProfile['language']['value']
+          >
+        )
+      : prior.language,
+    formality: votes.formality
+      ? profilerInternal.injectVotes(
+          prior.formality,
+          votes.formality,
+          DECAY,
+          1,
+          CATEGORY_VALUES.formality as ReadonlyArray<
+            OwnerStyleProfile['formality']['value']
+          >
+        )
+      : prior.formality,
+    posture: votes.posture
+      ? profilerInternal.injectVotes(
+          prior.posture,
+          votes.posture,
+          DECAY,
+          1,
+          CATEGORY_VALUES.posture as ReadonlyArray<
+            OwnerStyleProfile['posture']['value']
+          >
+        )
+      : prior.posture,
+  };
 
   const updated: OwnerStyleProfile = {
     ...out,

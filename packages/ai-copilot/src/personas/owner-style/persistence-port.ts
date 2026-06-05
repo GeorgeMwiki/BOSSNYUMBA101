@@ -48,7 +48,9 @@ export function createInMemoryProfileStore(): OwnerStyleProfileStore {
         });
         throw new Error('invalid OwnerStyleProfile');
       }
-      const snapshot: OwnerStyleProfile = { ...parsed.data };
+      // `profile` is the validated, fully-typed snapshot; `parsed` only gates
+      // runtime validity. Snapshot from the typed input to keep all fields.
+      const snapshot: OwnerStyleProfile = { ...profile };
       map.set(profile.tenantId, snapshot);
       return snapshot;
     },

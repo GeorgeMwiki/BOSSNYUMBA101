@@ -69,40 +69,53 @@ export type Posture = z.infer<typeof PostureSchema>;
  */
 const PositiveWeights = z.record(z.string(), z.number().nonnegative());
 
+/**
+ * Headline value + full posterior + confidence for one categorical dimension.
+ * All three fields are REQUIRED. We declare the TS type explicitly (rather than
+ * via `z.infer`) because under this toolchain `z.infer` widens every object key
+ * to optional, which would break consumers that require a complete estimate.
+ * The zod schemas below remain the single source of truth at RUNTIME.
+ */
+export interface StyleDimension<TValue extends string> {
+  readonly value: TValue;
+  readonly weights: Record<string, number>;
+  readonly confidence: number;
+}
+
 export const VerbosityDimensionSchema = z.object({
   value: VerbositySchema,
   weights: PositiveWeights,
   confidence: z.number().min(0).max(1),
 });
-export type VerbosityDimension = z.infer<typeof VerbosityDimensionSchema>;
+export type VerbosityDimension = StyleDimension<Verbosity>;
 
 export const DetailDimensionSchema = z.object({
   value: DetailSchema,
   weights: PositiveWeights,
   confidence: z.number().min(0).max(1),
 });
-export type DetailDimension = z.infer<typeof DetailDimensionSchema>;
+export type DetailDimension = StyleDimension<Detail>;
 
 export const LanguageDimensionSchema = z.object({
   value: LanguagePreferenceSchema,
   weights: PositiveWeights,
   confidence: z.number().min(0).max(1),
 });
-export type LanguageDimension = z.infer<typeof LanguageDimensionSchema>;
+export type LanguageDimension = StyleDimension<LanguagePreference>;
 
 export const FormalityDimensionSchema = z.object({
   value: FormalitySchema,
   weights: PositiveWeights,
   confidence: z.number().min(0).max(1),
 });
-export type FormalityDimension = z.infer<typeof FormalityDimensionSchema>;
+export type FormalityDimension = StyleDimension<Formality>;
 
 export const PostureDimensionSchema = z.object({
   value: PostureSchema,
   weights: PositiveWeights,
   confidence: z.number().min(0).max(1),
 });
-export type PostureDimension = z.infer<typeof PostureDimensionSchema>;
+export type PostureDimension = StyleDimension<Posture>;
 
 // ---------------------------------------------------------------------------
 // The full OwnerStyleProfile
@@ -124,7 +137,29 @@ export const OwnerStyleProfileSchema = z.object({
   /** The feedback signal kind that last moved the profile, if any. */
   updatedBySignal: z.string().nullable(),
 });
-export type OwnerStyleProfile = z.infer<typeof OwnerStyleProfileSchema>;
+
+/**
+ * The full learned profile. Declared explicitly (not `z.infer`) so every field
+ * — including the nested dimension estimates — is REQUIRED for consumers. The
+ * schema above stays authoritative at runtime (`safeParse` in the persistence
+ * port); this type is the compile-time contract.
+ */
+export interface OwnerStyleProfile {
+  readonly tenantId: string;
+  readonly verbosity: VerbosityDimension;
+  readonly detail: DetailDimension;
+  readonly language: LanguageDimension;
+  readonly formality: FormalityDimension;
+  readonly posture: PostureDimension;
+  /** ISO timestamp of the last refine. */
+  readonly lastUpdatedAt: string;
+  /** Total observations folded into this profile. */
+  readonly feedbackCount: number;
+  /** Aggregate confidence across all dimensions [0,1]. */
+  readonly confidence: number;
+  /** The feedback signal kind that last moved the profile, if any. */
+  readonly updatedBySignal: string | null;
+}
 
 // ---------------------------------------------------------------------------
 // Defaults — the uniform prior we start from before any observation
