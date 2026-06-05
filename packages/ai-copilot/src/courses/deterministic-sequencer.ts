@@ -179,11 +179,36 @@ function takeawaysFor(concept: Concept, language: CourseLanguage): string[] {
 }
 
 /**
+ * Place `correct` at slot `shift` within `[correct, ...distractors]`, returning
+ * exactly QUIZ_OPTIONS_PER_QUESTION options and the correct slot index. Avoids
+ * the `slice(-0)` whole-array footgun by rotating with index arithmetic.
+ */
+function placeCorrect(
+  correct: string,
+  distractors: ReadonlyArray<string>,
+  shift: number,
+): { options: string[]; correctOptionIndex: number } {
+  const n = QUIZ_OPTIONS_PER_QUESTION;
+  const slot = ((shift % n) + n) % n;
+  const options: string[] = [];
+  let d = 0;
+  for (let i = 0; i < n; i++) {
+    if (i === slot) {
+      options.push(correct);
+    } else {
+      options.push(distractors[d] ?? `Option ${i + 1}`);
+      d += 1;
+    }
+  }
+  return { options, correctOptionIndex: slot };
+}
+
+/**
  * Build a deterministic 4-option quiz question for a worked example. The stem
  * is the example's inputs; the correct option is the example's answer;
  * distractors are sibling examples' answers from the same category (real
- * content, plausibly wrong here). Index 0 is always correct after
- * construction, then a seeded rotation moves it so answers are not all "A".
+ * content, plausibly wrong here). A seeded rotation spreads the correct slot
+ * across A/B/C/D.
  */
 function quizFromExample(
   example: WorkedExample,
@@ -205,11 +230,11 @@ function quizFromExample(
     );
   }
 
-  const options = [example.answer, ...distractors];
-  // Seeded rotation so the correct index is spread across A/B/C/D.
-  const shift = rotation % QUIZ_OPTIONS_PER_QUESTION;
-  const rotated = [...options.slice(-shift), ...options.slice(0, options.length - shift)];
-  const correctOptionIndex = shift % QUIZ_OPTIONS_PER_QUESTION;
+  const { options, correctOptionIndex } = placeCorrect(
+    example.answer,
+    distractors,
+    rotation,
+  );
 
   const question = useSw
     ? `Kwa hali hii: ${example.inputs} Hatua sahihi ni ipi?`
@@ -220,7 +245,7 @@ function quizFromExample(
 
   return {
     question,
-    options: rotated,
+    options,
     correctOptionIndex,
     explanation,
   };
@@ -246,16 +271,18 @@ function recallQuestion(
         : `This is unrelated to ${concept.titleEn}.`,
     );
   }
-  const options = [correct, ...distractors];
-  const shift = rotation % QUIZ_OPTIONS_PER_QUESTION;
-  const rotated = [...options.slice(-shift), ...options.slice(0, options.length - shift)];
+  const { options, correctOptionIndex } = placeCorrect(
+    correct,
+    distractors,
+    rotation,
+  );
   const title = useSw ? concept.titleSw : concept.titleEn;
   return {
     question: useSw
       ? `Ni kauli ipi inayoeleza vyema ${title}?`
       : `Which statement best describes ${title}?`,
-    options: rotated,
-    correctOptionIndex: shift % QUIZ_OPTIONS_PER_QUESTION,
+    options,
+    correctOptionIndex,
     explanation: useSw
       ? `${title}: ${concept.summarySw}`
       : `${title}: ${concept.summaryEn}`,
