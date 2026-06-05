@@ -76,6 +76,16 @@ import { RENT_PAYOUT_TOOLS } from './rent-payout-tools.js';
 // disclosure + signed condition reports). Real-estate retailoring of
 // Borjie's owner-tools.ts + owner-estate-tools.ts + companion catalogs.
 import { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
+// Family-office / holdings tools (mandate-explicit per CLAUDE.md:
+// "family office, succession, the full asset register, subsidiaries,
+// holdings"). 5 LOW-stakes read-only OWNER (T1) tools
+// (estate.net_worth_summary / lookup_entity / intercompany_flow_query /
+// succession_review_needed / asset_register_browse). Ported from
+// Borjie and retargeted mining holdco/SPV → property holdco/SPV/REIT.
+// Honest-degraded: defers to /api/v1/estate/* which is not yet wired in
+// BN, so handlers return empty "not yet wired" shapes (never fabricated)
+// until those routes land.
+import { OWNER_ESTATE_TOOLS } from './owner-estate-tools.js';
 // PT-B — Manager persona tools (25 tools covering assign / dispatch /
 // contractor engagement / move-in/out / security-deposit assessment /
 // daily report / handoff notes). Real-estate retailoring of Borjie's
@@ -125,6 +135,15 @@ import { OWNER_TABS_TOOLS } from './owner-tabs-tools.js';
 // requiresPolicyRuleLiteral=true per CLAUDE.md hard rule. Loopback
 // through /api/v1/admin/superpowers/*.
 import { ADMIN_SUPERPOWERS_TOOLS } from './admin-superpowers-tools.js';
+// Wave MD-INTELLIGENCE — the "AI Managing Director" cross-domain
+// analytics pack. Four LOW-stakes read-only tools (md.correlation_for_
+// question / md.trace_causes / md.compare_baselines / md.emit_insights)
+// over the pure-functional real-estate signal graph in
+// services/api-gateway/src/services/md-intelligence/. Owner persona
+// (T1) only; loopback-dispatched to /api/v1/md/*. Ported from Borjie
+// and retargeted mining → real estate (arrears ↔ rent ↔ leasing ↔
+// maintenance ↔ compliance ↔ treasury ↔ occupancy ↔ …).
+import { MD_INTELLIGENCE_TOOLS } from './md-intelligence-tools.js';
 
 export type AnyPersonaToolDescriptor = PersonaToolDescriptor<
   z.ZodTypeAny,
@@ -162,6 +181,7 @@ export function buildPersonaToolHandlers(
       LEASE_HISTORY_TOOLS,
       RENT_PAYOUT_TOOLS,
       OWNER_PROPERTY_TOOLS,
+      OWNER_ESTATE_TOOLS,
       MANAGER_TOOLS,
       STAFF_TOOLS,
       TENANT_TOOLS,
@@ -171,6 +191,7 @@ export function buildPersonaToolHandlers(
       CHAT_KING_TOOLS,
       OWNER_TABS_TOOLS,
       ADMIN_SUPERPOWERS_TOOLS,
+      MD_INTELLIGENCE_TOOLS,
     ],
     options?.onDuplicate,
   );
@@ -209,6 +230,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       LEASE_HISTORY_TOOLS,
       RENT_PAYOUT_TOOLS,
       OWNER_PROPERTY_TOOLS,
+      OWNER_ESTATE_TOOLS,
       MANAGER_TOOLS,
       STAFF_TOOLS,
       TENANT_TOOLS,
@@ -218,6 +240,7 @@ export function listPersonaToolDescriptors(): ReadonlyArray<AnyPersonaToolDescri
       CHAT_KING_TOOLS,
       OWNER_TABS_TOOLS,
       ADMIN_SUPERPOWERS_TOOLS,
+      MD_INTELLIGENCE_TOOLS,
     ],
     undefined,
   );
@@ -302,6 +325,14 @@ export {
   ownerRentPayoutListMineTool,
 } from './rent-payout-tools.js';
 export { OWNER_PROPERTY_TOOLS } from './owner-property-tools.js';
+export {
+  OWNER_ESTATE_TOOLS,
+  estateNetWorthSummaryTool,
+  estateLookupEntityTool,
+  estateIntercompanyFlowTool,
+  estateSuccessionReviewTool,
+  estateAssetRegisterBrowseTool,
+} from './owner-estate-tools.js';
 export { MANAGER_TOOLS } from './manager-tools.js';
 export { STAFF_TOOLS } from './staff-tools.js';
 export { TENANT_TOOLS } from './tenant-tools.js';
@@ -327,3 +358,11 @@ export {
   ownerNegotiationRejectTool,
   ownerConditionalSurveyApprovePlanTool,
 } from './chat-king-tools.js';
+// Wave MD-INTELLIGENCE — re-exports for tests + audit walker.
+export {
+  MD_INTELLIGENCE_TOOLS,
+  mdCorrelationForQuestionTool,
+  mdTraceCausesTool,
+  mdCompareBaselinesTool,
+  mdEmitInsightsTool,
+} from './md-intelligence-tools.js';
