@@ -597,3 +597,16 @@ export * from './owner-tabs.schema.js';
 //     directly to undo_journal.
 //     Routes: /api/v1/admin/superpowers/*.
 export * from './admin-superpower-pending-approvals.schema.js';
+
+// ─── Wave COOPERATIVE-SETTLEMENT — housing-cooperative period settlement
+//     (migration 0304, ported from Borjie + retargeted mining → real
+//     estate) ───────────────────────────────────────────────────────────
+//   - cooperative_settlement_periods    : one row per (cooperative,
+//       period). Aggregates service-charge + sinking-fund + rent-share
+//       collected, nets out operating expenses → net_distributable.
+//   - cooperative_member_distributions  : per member-household / owner
+//       share within a period. Money path on distribute goes via
+//       LedgerService.post() — payment_ref carries the post-ledger handle.
+//   Routes: /api/v1/cooperatives/settlement-periods. Chat tools:
+//   cooperative.draft_settlement / member_share / settlement_period_list.
+export * from './cooperative.schema.js';
