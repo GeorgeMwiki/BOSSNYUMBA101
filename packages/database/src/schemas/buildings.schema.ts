@@ -23,7 +23,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { tenants } from './tenant.schema.js';
-import { parcels } from './parcels.schema.js';
+import { muzimaParcels } from './parcels.schema.js';
 
 // ============================================================================
 // buildings
@@ -34,7 +34,7 @@ export const buildings = pgTable(
   {
     id: text('id').primaryKey(),
     tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-    parcelId: text('parcel_id').notNull().references(() => parcels.id, { onDelete: 'cascade' }),
+    parcelId: text('parcel_id').notNull().references(() => muzimaParcels.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
 
     footprint: text('footprint').notNull(),    // GeoJSON
@@ -58,9 +58,9 @@ export const buildings = pgTable(
 );
 
 export const buildingsRelations = relations(buildings, ({ one, many }) => ({
-  parcel: one(parcels, {
+  parcel: one(muzimaParcels, {
     fields: [buildings.parcelId],
-    references: [parcels.id],
+    references: [muzimaParcels.id],
   }),
 }));
 
