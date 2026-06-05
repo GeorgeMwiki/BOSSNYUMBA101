@@ -139,17 +139,15 @@ export function createServiceContextMiddleware(registry: ServiceRegistry) {
       // `services.featureFlags`, `services.gdpr`, `services.aiCostLedger`
       // — the routers read those keys off `c.get('services')` already.
 
-      // Wave 12 — MCP, agent certification, classroom, voice. Routers
-      // read via `c.get('services').<key>` which is the canonical path;
-      // the legacy keys below are kept for symmetry with earlier waves.
+      // Wave 12 — MCP, agent certification, voice. Routers read via
+      // `c.get('services').<key>` which is the canonical path; the legacy
+      // keys below are kept for symmetry with earlier waves. (The classroom
+      // SESSION/BKT feature was removed; the chat teaching mode is unrelated.)
       if (registry.mcp) {
         c.set('mcp', registry.mcp);
       }
       if (registry.agentCertification) {
         c.set('agentCertification', registry.agentCertification);
-      }
-      if (registry.classroom) {
-        c.set('classroom', registry.classroom);
       }
       if (registry.voice) {
         c.set('voice', registry.voice);

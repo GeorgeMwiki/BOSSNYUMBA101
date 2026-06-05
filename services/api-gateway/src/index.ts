@@ -234,7 +234,6 @@ import { stageRouter } from './routes/stage/index.js';
 // audit chain 8.
 import workflowRouter from './routes/workflow/index.js';
 import agentCertificationsRouter from './routes/agent-certifications.hono';
-import classroomRouter from './routes/classroom.hono';
 import trainingRouter from './routes/training.hono';
 import voiceRouter from './routes/voice.hono';
 // Wave 13 — Autonomous Department Mode routers
@@ -1267,7 +1266,6 @@ api.route('/stage', stageRouter);
 // source of truth.
 api.route('/workflow', workflowRouter);
 api.route('/agent-certifications', agentCertificationsRouter);
-api.route('/classroom', classroomRouter);
 api.route('/training', trainingRouter);
 api.route('/voice', voiceRouter);
 // Wave 13 — Autonomous Department Mode

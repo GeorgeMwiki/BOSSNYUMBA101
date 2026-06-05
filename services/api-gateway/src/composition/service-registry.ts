@@ -218,10 +218,10 @@ import {
 } from '@bossnyumba/ai-copilot/voice';
 import type { BossnyumbaMcpServer } from '@bossnyumba/mcp-server';
 import { buildMcpServer } from './mcp-wiring.js';
-import {
-  createClassroomService,
-  type ClassroomService,
-} from './classroom-wiring.js';
+// Classroom SESSION/BKT feature removed. The KEPT Adaptive Training feature
+// still seeds its MasteryPort from the immutable `bkt_mastery` table via this
+// small read-only accessor (replaces the deleted classroom-wiring).
+import { createBktMasteryReader } from './bkt-mastery-reader.js';
 import {
   createMonthlyCloseWiring,
   type MonthlyCloseWiring,
@@ -672,7 +672,6 @@ export interface ServiceRegistry {
   /** Wave 12 — AI copilot subsystems wired into the composition root. */
   readonly mcp: BossnyumbaMcpServer | null;
   readonly agentCertification: AgentCertificationService | null;
-  readonly classroom: ClassroomService | null;
   readonly training: TrainingAdminEndpoints | null;
   readonly voice: VoiceRouter | null;
 
@@ -1385,7 +1384,6 @@ function degradedRegistry(
     },
     mcp: null,
     agentCertification: null,
-    classroom: null,
     training: null,
     voice: null,
     orgAwareness: buildOrgAwareness(eventBus),
@@ -1878,19 +1876,23 @@ function buildServicesInner(
     issuerId: 'bossnyumba-gateway',
   });
 
-  // Wave 12 — Classroom (BKT-backed with Postgres persistence).
-  const classroom = createClassroomService(db);
+  // BKT mastery reader — read-only accessor for the immutable `bkt_mastery`
+  // table. The classroom SESSION feature that wrote those rows was removed;
+  // the Adaptive Training feature below still reads them to seed its
+  // MasteryPort (rows are now seeded by other surfaces, e.g. chat teaching
+  // mode). Empty snapshot in degraded mode (no DB) → training cold-starts.
+  const bktMasteryReader = createBktMasteryReader(db);
 
-  // Adaptive Training — sits on top of classroom BKT and uses the in-memory
-  // repo for pilot (the Postgres adapter lives in the training module and
-  // can be dropped in once the training tables are migrated live).
+  // Adaptive Training — sits on top of BKT mastery snapshots and uses the
+  // in-memory repo for pilot (the Postgres adapter lives in the training
+  // module and can be dropped in once the training tables are migrated live).
   const trainingRepo = createInMemoryTrainingRepository();
   const trainingGenerator = createTrainingGenerator({});
   const trainingMastery: MasteryPort = {
     async getMastery(tenantId: string, userId: string) {
-      const rows = (await classroom.getMastery(tenantId, userId)) ?? [];
+      const rows = await bktMasteryReader.getMastery(tenantId, userId);
       const map: Record<string, number> = {};
-      for (const r of rows as ReadonlyArray<{ conceptId: string; pKnow: number }>) {
+      for (const r of rows) {
         map[r.conceptId] = r.pKnow;
       }
       return map;
@@ -2106,7 +2108,6 @@ function buildServicesInner(
     // as input. We place a `null` here and patch it post-return.
     mcp: null,
     agentCertification,
-    classroom,
     training,
     voice,
     orgAwareness: buildOrgAwareness(eventBus),
