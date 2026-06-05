@@ -76,6 +76,7 @@ import {
 import { schedulingRouter } from './routes/scheduling';
 import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
+import { cooperativesRouter } from './routes/cooperatives';
 import { brainRouter } from './routes/brain.hono';
 import { maintenanceRouter } from './routes/maintenance.hono';
 import { hrRouter } from './routes/hr.hono';
@@ -1052,6 +1053,9 @@ api.route('/briefing-subscriptions', briefingSubscriptionRouter);
 api.route('/scheduling', schedulingRouter);
 api.route('/messaging', messagingRouter);
 api.route('/cases', casesRouter);
+// Wave COOPERATIVE-SETTLEMENT — housing-cooperative period settlement
+// (migration 0304). /api/v1/cooperatives/settlement-periods.
+api.route('/cooperatives', cooperativesRouter);
 api.route('/brain', brainRouter);
 api.route('/maintenance', maintenanceRouter);
 api.route('/hr', hrRouter);
@@ -1509,6 +1513,7 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/scheduling', app: schedulingRouter, defaultTag: 'scheduling' },
     { prefix: '/messaging', app: messagingRouter, defaultTag: 'messaging' },
     { prefix: '/cases', app: casesRouter, defaultTag: 'cases' },
+    { prefix: '/cooperatives', app: cooperativesRouter, defaultTag: 'cooperatives' },
     { prefix: '/brain', app: brainRouter, defaultTag: 'brain' },
     { prefix: '/md', app: mdRouter, defaultTag: 'md-intelligence' },
     { prefix: '/maintenance', app: maintenanceRouter, defaultTag: 'maintenance' },
