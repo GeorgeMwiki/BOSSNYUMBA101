@@ -256,6 +256,9 @@ import aiNativeRouter from './routes/ai-native.hono';
 // Wave 26 — Agent Z2: expose four repos that had tests but no HTTP surface.
 import subleaseRouter from './routes/sublease.hono';
 import damageDeductionsRouter from './routes/damage-deductions.hono';
+// Wave ORG-ADMIN-TOOLS — org / team-management write surface (migration
+// 0305). Backs the `staff.*` brain tools (org-admin-tools.ts).
+import orgAdminRouter from './routes/org-admin.hono';
 import conditionalSurveysRouter from './routes/conditional-surveys.hono';
 import farRouter from './routes/far.hono';
 // Wave 26 Z3 — Move-out checklist + Approval workflow (migration 0097)
@@ -1299,6 +1302,9 @@ api.route('/ai-native', aiNativeRouter);
 // Wave 26 — Agent Z2: four repos Agent T flagged with zero router wiring.
 api.route('/subleases', subleaseRouter);
 api.route('/damage-deductions', damageDeductionsRouter);
+// Wave ORG-ADMIN-TOOLS — /api/v1/org-admin/{staff,staff/kpis,tasks,
+// escalations,staff/bulk-csv} (migration 0305). Owner/admin only.
+api.route('/org-admin', orgAdminRouter);
 api.route('/conditional-surveys', conditionalSurveysRouter);
 api.route('/far', farRouter);
 // Wave 26 Z3 — Move-out checklist + Approval workflow.
@@ -1553,6 +1559,7 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/audit', app: autonomousActionsAuditRouter, defaultTag: 'autonomy' },
     { prefix: '/subleases', app: subleaseRouter, defaultTag: 'subleases' },
     { prefix: '/damage-deductions', app: damageDeductionsRouter, defaultTag: 'damage-deductions' },
+    { prefix: '/org-admin', app: orgAdminRouter, defaultTag: 'org-admin' },
     { prefix: '/conditional-surveys', app: conditionalSurveysRouter, defaultTag: 'conditional-surveys' },
     { prefix: '/far', app: farRouter, defaultTag: 'far' },
     { prefix: '/analytics', app: analyticsRouter, defaultTag: 'analytics' },
