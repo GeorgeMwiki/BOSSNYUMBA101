@@ -34,6 +34,8 @@ import {
   RiskLevel,
 } from '../types/core.types.js';
 import { Persona, PersonaRegistry, bindPersona } from '../personas/persona.js';
+import { applyEstateModeOverlay } from '../personas/estate-mode-overlay.js';
+import type { EstateManagerLanguage } from '../personas/estate-manager-modes.js';
 import {
   ThreadStore,
   ThreadEvent,
@@ -83,6 +85,12 @@ export interface TurnRequest {
   attachments?: UserMessageEvent['attachments'];
   /** Explicit persona override (e.g. employee chatting with Coworker). */
   forcePersonaId?: string;
+  /**
+   * Active owner/admin language for this turn. Drives the estate-mode overlay's
+   * single-language envelope on the estate-manager persona. Defaults to English
+   * (the BossNyumba default) when omitted. Non-estate personas ignore it.
+   */
+  userLanguage?: EstateManagerLanguage;
   /** Viewer for visibility filtering when rendering context. */
   viewer: VisibilityViewer;
   /** Max handoff depth for this turn. Defaults to 3. */
@@ -166,12 +174,16 @@ export class Orchestrator {
       });
     }
 
-    // 1. Resolve the persona that owns this turn
+    // 1. Resolve the persona that owns this turn. The estate-mode overlay is
+    //    applied inside resolvePersona using the latest user message + the
+    //    turn's locale; it is a no-op for every non-estate persona.
     const personaId = req.forcePersonaId ?? thread.primaryPersonaId;
-    const boundPersona = this.resolvePersona(personaId, req.tenant.tenantId, {
-      teamId: thread.teamId,
-      employeeId: thread.employeeId,
-    });
+    const boundPersona = this.resolvePersona(
+      personaId,
+      req.tenant.tenantId,
+      { teamId: thread.teamId, employeeId: thread.employeeId },
+      { userText: req.userText, locale: req.userLanguage ?? 'en' }
+    );
     if (!boundPersona) {
       return aiErr({
         code: 'PERSONA_NOT_FOUND',
@@ -252,6 +264,8 @@ export class Orchestrator {
     teamId?: string;
     employeeId?: string;
     forcePersonaId?: string;
+    /** Active owner/admin language; threaded to the first turn's overlay. */
+    userLanguage?: EstateManagerLanguage;
   }): Promise<AIResult<{ thread: { id: string; primaryPersonaId: string }; turn: TurnResult }, { code: string; message: string; retryable: boolean }>> {
     const intent = input.forcePersonaId
       ? {
@@ -289,13 +303,20 @@ export class Orchestrator {
       text: `intent: ${intent.personaId} (${intent.rationale}, confidence=${intent.confidence.toFixed(2)})`,
     });
 
-    const turn = await this.handleTurn({
+    // Build the first-turn request mutably so the optional `userLanguage` is
+    // only present when supplied (exactOptionalPropertyTypes-safe — no
+    // conditional spread of an optional property).
+    const firstTurn: TurnRequest = {
       threadId: thread.id,
       tenant: input.tenant,
       actor: input.actor,
       userText: input.initialUserText,
       viewer: input.viewer,
-    });
+    };
+    if (input.userLanguage !== undefined) {
+      firstTurn.userLanguage = input.userLanguage;
+    }
+    const turn = await this.handleTurn(firstTurn);
     if (!turn.success) {
       const e = (turn as { success: false; error: { code: string; message: string; retryable: boolean } }).error;
       return aiErr(e);
@@ -311,17 +332,35 @@ export class Orchestrator {
   // Internals
   // -------------------------------------------------------------------------
 
+  /**
+   * Resolve and bind the persona that owns a turn.
+   *
+   * When `overlay` is supplied (the latest user message + active locale), the
+   * resolved template is run through {@link applyEstateModeOverlay} BEFORE
+   * binding. The overlay is a NO-OP for every persona except the estate-manager
+   * / admin persona, so the Coworker path and all flat personas are unchanged;
+   * for the estate-manager it folds the selected estate mode's specialised
+   * prompt + tool allow-list onto the template. Overlaying before `bindPersona`
+   * keeps the tenant/team/employee binding the single source of truth for those
+   * fields while the mode shapes prompt + tools.
+   */
   private resolvePersona(
     personaId: string,
     tenantId: string,
-    bindings: { teamId?: string; employeeId?: string }
+    bindings: { teamId?: string; employeeId?: string },
+    overlay?: { userText: string; locale: EstateManagerLanguage }
   ): Persona | null {
+    const shape = (template: Persona): Persona =>
+      overlay
+        ? applyEstateModeOverlay(template, overlay.userText, overlay.locale)
+        : template;
+
     // Handle Coworker `coworker.<employeeId>` family form.
     let template: Persona | null;
     if (personaId.startsWith('coworker.') && personaId.length > 'coworker.'.length) {
       template = this.cfg.personas.resolveCoworker();
       if (template) {
-        return bindPersona(template, {
+        return bindPersona(shape(template), {
           tenantId,
           teamId: bindings.teamId,
           employeeId: personaId.slice('coworker.'.length),
@@ -331,7 +370,7 @@ export class Orchestrator {
     }
     template = this.cfg.personas.get(personaId);
     if (!template) return null;
-    return bindPersona(template, {
+    return bindPersona(shape(template), {
       tenantId,
       teamId: bindings.teamId,
       employeeId: bindings.employeeId,
@@ -614,7 +653,8 @@ export class Orchestrator {
         const target = this.resolvePersona(
           handoff.targetPersonaId,
           req.tenant.tenantId,
-          { teamId: thread.teamId, employeeId: thread.employeeId }
+          { teamId: thread.teamId, employeeId: thread.employeeId },
+          { userText: req.userText, locale: req.userLanguage ?? 'en' }
         );
         if (target) {
           const packet: HandoffPacket = {
