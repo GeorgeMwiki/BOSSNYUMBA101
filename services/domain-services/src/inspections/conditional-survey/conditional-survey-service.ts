@@ -5,7 +5,10 @@
  *   scheduleSurvey  -> attachFinding(s)  -> compileReport
  *                                       -> approveActionPlan
  *
- * Note: AI narrative compilation is stubbed; see compileReport.
+ * AI narrative compilation (KI-007) is wired through the shared
+ * `resolveSurveyNarrative` port: an injected gateway if supplied, else
+ * the dynamically imported ai-copilot helper, else a deterministic
+ * narrative. See compileReport + ../narrative-port.ts.
  */
 
 import { randomHex } from '../../common/id-generator.js';
@@ -38,6 +41,10 @@ import {
   asConditionalSurveyActionPlanId,
   ConditionalSurveyServiceError,
 } from './types.js';
+import {
+  resolveSurveyNarrative,
+  type SurveyNarrativeGateway,
+} from '../narrative-port.js';
 
 // ============================================================================
 // Helpers
@@ -98,7 +105,8 @@ export interface ApproveActionPlanInput {
 export class ConditionalSurveyService {
   constructor(
     private repo: ConditionalSurveyRepository,
-    private readonly eventBus: EventBus
+    private readonly eventBus: EventBus,
+    private readonly narrativeGateway?: SurveyNarrativeGateway
   ) {}
 
   /** Additive Wave 3 hook — attach the live Postgres repo at runtime. */
@@ -228,10 +236,11 @@ export class ConditionalSurveyService {
   /**
    * Compile the survey's findings into a report + draft action plans.
    *
-   * Follow-up KI-007 (Docs/TODO_BACKLOG.md): wire to AI persona — once the narrative-generation
-   *   agent (packages/ai-copilot/src/personas/inspection-narrator.ts)
-   *   is authored, call the persona here with the finding set to
-   *   produce `narrative`. See Docs/KNOWN_ISSUES.md#ki-007.
+   * KI-007: the `narrative` is produced by `resolveSurveyNarrative` —
+   * an injected gateway, else the dynamically imported ai-copilot
+   * `composeSurveyNarrative` (Anthropic-backed when ANTHROPIC_API_KEY is
+   * set), else a deterministic narrative derived from the findings. An
+   * existing `survey.narrative` is preserved if already present.
    */
   async compileReport(
     surveyId: ConditionalSurveyId,
@@ -311,11 +320,24 @@ export class ConditionalSurveyService {
       lowCount: survey.findings.filter((f) => f.severity === 'low').length,
     };
 
-    // Follow-up KI-007 (Docs/TODO_BACKLOG.md): wire to AI persona for narrative generation.
-    //   See Docs/KNOWN_ISSUES.md#ki-007.
+    // KI-007: real AI narrative when available, deterministic otherwise.
+    // Map each finding to the {component, severity, note} shape the
+    // narrative port (and ai-copilot's composeSurveyNarrative) expects.
     const narrative =
       survey.narrative ??
-      `Conditional survey compiled on ${now}. ${summary.findingCount} findings recorded.`;
+      (
+        await resolveSurveyNarrative(
+          {
+            findings: survey.findings.map((f) => ({
+              component: f.area || f.title,
+              severity: f.severity,
+              note: f.description ?? undefined,
+            })),
+            criticalPresent: summary.criticalCount > 0,
+          },
+          this.narrativeGateway
+        )
+      ).narrative;
 
     const updated: ConditionalSurvey = {
       ...survey,

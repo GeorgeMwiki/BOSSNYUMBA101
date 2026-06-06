@@ -41,6 +41,43 @@ import {
   compareMoveInMoveOutPhotos,
   type PhotoComparisonManifest,
 } from './photo-comparator.js';
+import {
+  resolveSurveyNarrative,
+  type NarrativeFinding,
+  type SurveyNarrativeGateway,
+} from '../narrative-port.js';
+
+// ============================================================================
+// Narrative helpers (KI-007)
+// ============================================================================
+
+/** Map an inspection condition rating to a narrative severity band. */
+function conditionToSeverity(condition: ConditionRating): string {
+  switch (condition) {
+    case 'damaged':
+      return 'critical';
+    case 'poor':
+      return 'major';
+    default:
+      return 'minor';
+  }
+}
+
+/**
+ * Project move-out inspection items into narrative findings, keeping only
+ * the ones that represent actual damage (`poor` / `damaged`). Pure.
+ */
+function moveOutDamageFindings(
+  items: readonly InspectionItem[]
+): ReadonlyArray<NarrativeFinding> {
+  return items
+    .filter((i) => i.condition === 'poor' || i.condition === 'damaged')
+    .map((i) => ({
+      component: `${i.roomName} — ${i.itemName}`,
+      severity: conditionToSeverity(i.condition),
+      note: i.notes ?? undefined,
+    }));
+}
 
 // ============================================================================
 // Error codes (superset of inspection service)
@@ -70,6 +107,12 @@ export interface DamageClaimHandoff {
   readonly moveOutId: InspectionId;
   readonly photoManifest: PhotoComparisonManifest;
   readonly note: string;
+  /**
+   * KI-007: AI-authored (or deterministic) narrative describing the
+   * observed damage, derived from the move-out inspection findings, ready
+   * for the damage-deduction case.
+   */
+  readonly narrative: string;
 }
 
 export interface DamageDeductionCaseSink {
@@ -132,7 +175,8 @@ export class MoveOutChecklistService {
   constructor(
     private readonly repo: InspectionRepository,
     private readonly eventBus: EventBus,
-    private readonly damageSink?: DamageDeductionCaseSink
+    private readonly damageSink?: DamageDeductionCaseSink,
+    private readonly narrativeGateway?: SurveyNarrativeGateway
   ) {}
 
   /** Metadata about move-out inspections, independent of storage. */
@@ -459,19 +503,29 @@ export class MoveOutChecklistService {
       moveOut.report?.items ?? []
     );
 
+    // KI-007: derive a damage narrative from the move-out findings before
+    // hand-off. Only `poor`/`damaged` items count as damage findings.
+    const findings = moveOutDamageFindings(moveOut.report?.items ?? []);
+    const narrativeResult = await resolveSurveyNarrative(
+      {
+        findings,
+        criticalPresent: findings.some((f) => f.severity === 'critical'),
+      },
+      this.narrativeGateway
+    );
+
     const handoff: DamageClaimHandoff = {
       caseRefHint: `damage_${moveOut.id}_${Date.now().toString(36)}`,
       moveInId: moveIn?.id ?? null,
       moveOutId: moveOut.id,
       photoManifest: manifest,
       note: input.note ?? 'Move-out damage claim filed',
+      narrative: narrativeResult.narrative,
     };
 
-    // Stub hand-off: if a sink is wired, forward. Otherwise return the
-    // manifest for the caller to route into the damage-deduction case flow.
-    // Follow-up KI-007 (Docs/TODO_BACKLOG.md): wire to AI persona — generate a narrative description
-    //   of observed damage from the photo manifest before hand-off.
-    //   See Docs/KNOWN_ISSUES.md#ki-007.
+    // If a sink is wired, forward the handoff (now carrying the narrative).
+    // Otherwise return it for the caller to route into the damage-deduction
+    // case flow.
     if (this.damageSink) {
       await this.damageSink.handoff(handoff);
     }

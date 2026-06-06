@@ -16,6 +16,10 @@ import type {
   FarRepository,
   NotifyRecipient,
 } from './types.js';
+import {
+  resolveSurveyNarrative,
+  type SurveyNarrativeGateway,
+} from '../narrative-port.js';
 
 export interface NotificationDispatcher {
   dispatch(input: {
@@ -27,6 +31,19 @@ export interface NotificationDispatcher {
   }): Promise<void>;
 }
 
+/**
+ * Optional sink for per-recipient dispatch failures. The scheduler must
+ * not crash a scan when one transport fails, and services may not use
+ * `console` — callers can wire a Pino-backed reporter here.
+ */
+export interface DispatchErrorReporter {
+  report(input: {
+    assignmentId: string;
+    recipientRole: string;
+    error: unknown;
+  }): void;
+}
+
 export interface FarSchedulerOptions {
   readonly tenantId?: TenantId | null;
   readonly now?: ISOTimestamp;
@@ -35,16 +52,19 @@ export interface FarSchedulerOptions {
 export class FarScheduler {
   constructor(
     private readonly repo: FarRepository,
-    private readonly dispatcher: NotificationDispatcher
+    private readonly dispatcher: NotificationDispatcher,
+    private readonly narrativeGateway?: SurveyNarrativeGateway,
+    private readonly errorReporter?: DispatchErrorReporter
   ) {}
 
   /**
    * Scans due assignments and notifies their recipients.
    * Returns the assignments that triggered notifications.
    *
-   * Follow-up KI-007 (Docs/TODO_BACKLOG.md): wire to AI persona — if a trigger rule requests
-   *   AI-generated prose ("summarise last 3 check events"), call the
-   *   persona here before dispatch. See Docs/KNOWN_ISSUES.md#ki-007.
+   * KI-007: the dispatch subject/body are produced by
+   * `resolveSurveyNarrative` (injected gateway, else dynamically imported
+   * ai-copilot helper, else deterministic prose) rather than a fixed
+   * template. See ../narrative-port.ts.
    */
   async run(
     options?: FarSchedulerOptions
@@ -69,8 +89,7 @@ export class FarScheduler {
     const recipients = assignment.notifyRecipients;
     if (recipients.length === 0) return;
 
-    const subject = `FAR condition check due for component ${assignment.componentId}`;
-    const body = `A condition check for component ${assignment.componentId} is due on ${assignment.nextCheckDueAt ?? 'now'}. Please complete the inspection or reschedule.`;
+    const { subject, body } = await this.composeDispatchCopy(assignment);
 
     for (const recipient of recipients) {
       try {
@@ -88,14 +107,44 @@ export class FarScheduler {
           },
         });
       } catch (error) {
-        // Delivery errors are logged by the dispatcher; continue to the next
-        // recipient rather than failing the whole scan.
-        // eslint-disable-next-line no-console
-        console.error(
-          `FAR notification failed for recipient ${recipient.role} on assignment ${assignment.id}`,
-          error
-        );
+        // Delivery errors must not fail the whole scan — continue to the
+        // next recipient. Report through the optional reporter (services
+        // must not use console).
+        this.errorReporter?.report({
+          assignmentId: assignment.id,
+          recipientRole: recipient.role,
+          error,
+        });
       }
     }
+  }
+
+  /**
+   * Build the notification subject/body. KI-007: a real (or deterministic)
+   * narrative replaces the fixed template. The due component is projected
+   * into a single narrative finding; `headline` becomes the subject and
+   * `narrative` the body, with the due date appended.
+   */
+  private async composeDispatchCopy(
+    assignment: FarAssignment
+  ): Promise<{ subject: string; body: string }> {
+    const dueAt = assignment.nextCheckDueAt ?? 'now';
+    const result = await resolveSurveyNarrative(
+      {
+        findings: [
+          {
+            component: `component ${assignment.componentId}`,
+            severity: 'medium',
+            note: `${assignment.frequency} condition check due on ${dueAt}`,
+          },
+        ],
+        criticalPresent: false,
+      },
+      this.narrativeGateway
+    );
+    return {
+      subject: result.headline,
+      body: `${result.narrative} Please complete the inspection or reschedule (due ${dueAt}).`,
+    };
   }
 }
