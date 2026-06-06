@@ -1,187 +1,56 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-  Button,
-  Badge,
-  Alert,
-  AlertDescription,
-  Skeleton,
+  EmptyState,
 } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { api } from '../../lib/api';
 
-export interface GamificationConfig {
-  readonly enabled: boolean;
-  readonly onTimeRentPoints: number;
-  readonly referralPoints: number;
-  readonly reviewPoints: number;
-}
-
-export interface GamificationStats {
-  readonly activeParticipants: number;
-  readonly totalPointsIssued: number;
-  readonly topTenants: ReadonlyArray<{ readonly tenantId: string; readonly name: string; readonly points: number }>;
-}
-
+/**
+ * GamificationDashboard — owner-facing surface for the rent-gamification
+ * programme.
+ *
+ * HONEST EMPTY STATE (intentional):
+ * ---------------------------------
+ *   This view previously called `GET /owner/gamification/config` and
+ *   `GET /owner/gamification/stats` (and `PATCH /owner/gamification/config`).
+ *   Those endpoints do NOT exist on the gateway. The gamification router
+ *   (services/api-gateway/src/routes/gamification.hono.ts) only serves:
+ *
+ *     GET  /gamification/policies          (tenant policy — different shape)
+ *     PUT  /gamification/policies
+ *     GET  /gamification/customers/:id     (per-customer state)
+ *
+ *   There is no owner-scoped config/stats aggregate, and the policy shape
+ *   (onTimePoints / cashbackBps / tier thresholds) does not match the
+ *   config this dashboard was built for (onTimeRentPoints / referral /
+ *   review). Rather than fabricate participant counts, top-tenant
+ *   leaderboards, or a fake toggle that POSTs to a 404, this component
+ *   renders an explicit "not yet available" state.
+ *
+ *   To make this real, a backend owner-scoped endpoint is needed, e.g.
+ *   `GET /owner/gamification/summary` returning { config, activeParticipants,
+ *   totalPointsIssued, topTenants } aggregated across the owner's property
+ *   scope. Wire this component to it once that lands.
+ */
 export const GamificationDashboard: React.FC = () => {
   const t = useTranslations('gamification');
-  const [config, setConfig] = useState<GamificationConfig | null>(null);
-  const [stats, setStats] = useState<GamificationStats | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [toggling, setToggling] = useState<boolean>(false);
-
-  const load = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [cfg, st] = await Promise.all([
-        api.get<GamificationConfig>('/owner/gamification/config'),
-        api.get<GamificationStats>('/owner/gamification/stats'),
-      ]);
-      if (!signal?.aborted) {
-        if (!cfg.success || !st.success) {
-          setError(cfg.error?.message ?? st.error?.message ?? t('failedToLoad'));
-          setLoading(false);
-          return;
-        }
-        setConfig(cfg.data ?? null);
-        setStats(st.data ?? null);
-        setLoading(false);
-      }
-    } catch (err) {
-      if (!signal?.aborted) {
-        setError(err instanceof Error ? err.message : t('failedToLoad'));
-        setLoading(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const ctrl = new AbortController();
-    void load(ctrl.signal);
-    return () => ctrl.abort();
-  }, [load]);
-
-  const toggle = useCallback(async (): Promise<void> => {
-    if (!config) return;
-    setToggling(true);
-    setError(null);
-    const prev = config;
-    const next: GamificationConfig = { ...config, enabled: !config.enabled }; // immutable
-    setConfig(next); // optimistic
-    try {
-      // The api client exposes patch (not put); the gateway maps either
-      // verb to the same write handler for /owner/gamification/config.
-      const res = await api.patch('/owner/gamification/config', next);
-      if (!res.success) {
-        setConfig(prev);
-        setError(res.error?.message ?? t('failedToUpdate'));
-      }
-    } catch (err) {
-      // Roll back on failure.
-      setConfig(prev);
-      setError(err instanceof Error ? err.message : t('failedToUpdate'));
-    } finally {
-      setToggling(false);
-    }
-  }, [config]);
 
   return (
     <div className="space-y-4 p-6">
       <h1 className="text-2xl font-semibold">{t('title')}</h1>
 
-      {error && (
-        <Alert variant="danger">
-          <AlertDescription>
-            {error}
-            <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              {t('retry')}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>{t('configuration')}</CardTitle>
-            <Button
-              onClick={toggle}
-              variant={config?.enabled ? 'destructive' : 'primary'}
-              loading={toggling}
-              disabled={!config || toggling}
-              aria-label={config?.enabled ? t('disableAria') : t('enableAria')}
-            >
-              {config?.enabled ? t('disable') : t('enable')}
-            </Button>
-          </div>
+          <CardTitle>{t('configuration')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="space-y-2" aria-live="polite">
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-4 w-36" />
-            </div>
-          ) : config ? (
-            <ul className="text-sm space-y-1">
-              <li>{t('onTimeRent', { points: config.onTimeRentPoints })}</li>
-              <li>{t('referral', { points: config.referralPoints })}</li>
-              <li>{t('review', { points: config.reviewPoints })}</li>
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">{t('noConfig')}</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('aggregateStats')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="space-y-3" aria-live="polite">
-              <div className="grid grid-cols-2 gap-4">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-              </div>
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-24 w-full" />
-            </div>
-          ) : stats ? (
-            <>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">{t('activeParticipants')}</p>
-                  <p className="text-2xl font-semibold">{stats.activeParticipants}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{t('totalPointsIssued')}</p>
-                  <p className="text-2xl font-semibold">{stats.totalPointsIssued.toLocaleString()}</p>
-                </div>
-              </div>
-              <h4 className="text-sm font-medium mb-2">{t('topTenants')}</h4>
-              {stats.topTenants.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('noParticipants')}</p>
-              ) : (
-                <ul className="text-sm">
-                  {stats.topTenants.map((tenant) => (
-                    <li key={tenant.tenantId} className="flex justify-between py-1">
-                      <span>{tenant.name}</span>
-                      <Badge>{t('pointsAbbrev', { points: tenant.points })}</Badge>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">{t('noStats')}</p>
-          )}
+          <EmptyState
+            title={t('unavailableTitle')}
+            description={t('unavailableDescription')}
+          />
         </CardContent>
       </Card>
     </div>

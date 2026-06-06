@@ -2491,7 +2491,9 @@
     "topTenants": "Wapangaji bora",
     "noParticipants": "Bado hakuna washiriki.",
     "pointsAbbrev": "pointi {points}",
-    "noStats": "Hakuna takwimu zilizopo."
+    "noStats": "Hakuna takwimu zilizopo.",
+    "unavailableTitle": "Gemu bado haipatikani",
+    "unavailableDescription": "Dashibodi ya gemu ya mmiliki bado haijaunganishwa na seva. Takwimu za washiriki na mipangilio ya programu zitaonekana hapa mara huduma itakapounganishwa."
   },
   "vendorsPage": {
     "title": "Wafanyakazi wa Nje",
@@ -3045,6 +3047,9 @@
     "totalProposed": "Jumla iliyopendekezwa",
     "depositOnHand": "Amana iliyopo",
     "evidence": "Ushahidi",
+    "claimedAmount": "Kiasi kilichodaiwa",
+    "tenantCounter": "Pendekezo pinzani la mpangaji",
+    "settlementAmount": "Kiasi cha makubaliano",
     "approve": "Idhinisha",
     "reject": "Kataa",
     "approveAriaLabel": "Idhinisha punguzo la uharibifu kwa {unit}",

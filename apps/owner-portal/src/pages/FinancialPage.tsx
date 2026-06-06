@@ -42,54 +42,22 @@ import {
   useFinancialStats,
   useOwnerInvoices,
   useOwnerPayments,
+  useOwnerStatements,
+  useOwnerDisbursements,
+  useOwnerTransactions,
   type FinancialInvoice as Invoice,
   type FinancialPayment as Payment,
+  type FinancialIncomeStatement as IncomeStatement,
+  type FinancialDisbursement as Disbursement,
+  type FinancialTransaction as TransactionDetail,
 } from '../lib/hooks';
 import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
 
 // ─── Types ───────────────────────────────────────────────────────
-interface IncomeStatement {
-  propertyId: string;
-  propertyName: string;
-  month: string;
-  rentCollected: number;
-  otherIncome: number;
-  totalIncome: number;
-  operatingExpenses: number;
-  maintenanceCosts: number;
-  managementFees: number;
-  utilities: number;
-  insurance: number;
-  taxes: number;
-  totalExpenses: number;
-  netOperatingIncome: number;
-}
-
-interface Disbursement {
-  id: string;
-  amount: number;
-  date: string;
-  status: string;
-  method: string;
-  reference: string;
-  period: string;
-  property?: { id: string; name: string };
-}
-
-interface TransactionDetail {
-  id: string;
-  type: 'income' | 'expense';
-  amount: number;
-  date: string;
-  description: string;
-  reference: string;
-  category: string;
-  property?: { id: string; name: string };
-  unit?: { id: string; unitNumber: string };
-  customer?: { id: string; name: string };
-  relatedInvoice?: string;
-  paymentMethod?: string;
-}
+// IncomeStatement, Disbursement and TransactionDetail are now imported
+// from ../lib/hooks (aliased above) so the page and its data hooks share
+// one definition. The previous local copies fabricated empty arrays;
+// the hooks bind to the real BFF / reports endpoints instead.
 
 // ─── Main Page ───────────────────────────────────────────────────
 export function FinancialPage() {
@@ -105,21 +73,32 @@ export function FinancialPage() {
   const statsQuery = useFinancialStats();
   const invoicesQuery = useOwnerInvoices();
   const paymentsQuery = useOwnerPayments();
+  const statementsQuery = useOwnerStatements();
+  const disbursementsQuery = useOwnerDisbursements();
+  const transactionsQuery = useOwnerTransactions();
 
   const stats = statsQuery.data ?? null;
   const invoices = invoicesQuery.data ?? [];
   const payments = paymentsQuery.data ?? [];
-  const statements: IncomeStatement[] = [];
-  const disbursements: Disbursement[] = [];
-  const transactions: TransactionDetail[] = [];
+  const statements: IncomeStatement[] = statementsQuery.data ?? [];
+  const disbursements: Disbursement[] = disbursementsQuery.data?.disbursements ?? [];
+  const transactions: TransactionDetail[] = transactionsQuery.data ?? [];
 
+  // Initial spinner only while the core money queries are all loading;
+  // the secondary tabs (statements/disbursements/transactions) load in
+  // the background and render their own empty/skeleton states per-tab.
   const loading =
     statsQuery.isLoading && invoicesQuery.isLoading && paymentsQuery.isLoading;
   const refreshing =
     !loading &&
-    (statsQuery.isFetching || invoicesQuery.isFetching || paymentsQuery.isFetching);
+    (statsQuery.isFetching ||
+      invoicesQuery.isFetching ||
+      paymentsQuery.isFetching ||
+      statementsQuery.isFetching ||
+      disbursementsQuery.isFetching ||
+      transactionsQuery.isFetching);
 
-  // If every one of the three queries failed, surface a single error.
+  // If every one of the core queries failed, surface a single error.
   const allFailed =
     statsQuery.isError && invoicesQuery.isError && paymentsQuery.isError;
   const error = allFailed ? t('dataUnavailable') : null;
@@ -128,6 +107,9 @@ export function FinancialPage() {
     statsQuery.refetch();
     invoicesQuery.refetch();
     paymentsQuery.refetch();
+    statementsQuery.refetch();
+    disbursementsQuery.refetch();
+    transactionsQuery.refetch();
   };
 
   const [exportMenuOpen, setExportMenuOpen] = useState(false);

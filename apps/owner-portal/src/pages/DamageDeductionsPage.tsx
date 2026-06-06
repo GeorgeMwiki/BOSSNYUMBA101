@@ -9,10 +9,15 @@ import { DamageDeductionApproval } from '../features/damage-deductions/DamageDed
  * the top-level `PrivateRoute > Layout` wrapper in `App.tsx`, so this
  * page stays a thin mount.
  *
- * Required gateway routes (already implemented):
- *   GET  /api/v1/owner/damage-deductions?status=pending_owner
- *   POST /api/v1/owner/damage-deductions/:id/approve
- *   POST /api/v1/owner/damage-deductions/:id/reject
+ * Gateway routes consumed (mounted at `/damage-deductions`, NOT under
+ * `/owner` — the previous `/owner/damage-deductions*` paths 404'd):
+ *   GET  /api/v1/damage-deductions/open        — live open claims
+ *   POST /api/v1/damage-deductions/:id/settle  — owner approve (settle at
+ *        claimed/proposed) or reject (settle at 0)
+ *
+ * Note: the damage-deduction service is tenant-scoped (not property-scoped
+ * to the owner) and exposes settlement only — there is no dedicated
+ * approve/reject endpoint, so approval maps onto `settle`.
  */
 export function DamageDeductionsPage() {
   return <DamageDeductionApproval />;

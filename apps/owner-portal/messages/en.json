@@ -2491,7 +2491,9 @@
     "topTenants": "Top tenants",
     "noParticipants": "No participants yet.",
     "pointsAbbrev": "{points} pts",
-    "noStats": "No stats available."
+    "noStats": "No stats available.",
+    "unavailableTitle": "Gamification not available yet",
+    "unavailableDescription": "The owner gamification dashboard is not connected to a backend yet. Participant stats and programme configuration will appear here once the service is wired."
   },
   "vendorsPage": {
     "title": "Vendors",
@@ -3045,6 +3047,9 @@
     "totalProposed": "Total proposed",
     "depositOnHand": "Deposit on hand",
     "evidence": "Evidence",
+    "claimedAmount": "Claimed amount",
+    "tenantCounter": "Tenant counter-proposal",
+    "settlementAmount": "Settlement amount",
     "approve": "Approve",
     "reject": "Reject",
     "approveAriaLabel": "Approve damage deduction for {unit}",

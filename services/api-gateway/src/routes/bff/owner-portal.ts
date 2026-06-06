@@ -6,7 +6,7 @@ import { authMiddleware } from '../../middleware/hono-auth';
 import { databaseMiddleware } from '../../middleware/database';
 import { UserRole } from '../../types/user-role';
 import { mapInvoiceRow, mapPaymentRow, mapVendorRow, mapWorkOrderRow } from '../db-mappers';
-import { conversations, inspections } from '@bossnyumba/database';
+import { conversations, inspections, ownerStatements } from '@bossnyumba/database';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { e400, e403, e404, e503, errorResponse } from '../../utils/error-response';
 import { getOwnerScope as resolveOwnerScope } from '../../lib/owner-scope';
@@ -165,10 +165,66 @@ function buildFinancialStats(invoices, payments, workOrders) {
   };
 }
 
-function buildDisbursementData(scope, payments) {
+/**
+ * Build the `propertyId:period` key used to align a payment-derived
+ * disbursement bucket with its real `owner_statements` row. The period
+ * label uses the same `month-short year-numeric` format on both sides so
+ * the keys collide deterministically.
+ */
+function disbursementKey(propertyId, periodDate) {
+  const period = periodDate.toLocaleDateString('en', { month: 'short', year: 'numeric' });
+  return { period, key: `${propertyId || 'portfolio'}:${period}` };
+}
+
+/**
+ * Index the owner's real monthly statements by `propertyId:period`.
+ *
+ * The monthly-close job (services/payments-ledger) writes one
+ * `owner_statements` row per owner+property+period with the actual
+ * minor-unit ledger figures (gross_rent_collected, management_fee,
+ * maintenance_expenses, …). We key by the statement's `periodStart`
+ * month so the disbursement builder can attach the REAL breakdown to the
+ * matching bucket instead of fabricating a ratio.
+ */
+function indexOwnerStatements(statementRows) {
+  const byKey = new Map();
+  for (const row of statementRows ?? []) {
+    const periodDate = new Date(row.periodStart);
+    const { key } = disbursementKey(row.propertyId, periodDate);
+    // First statement wins per (property, period) — statement_number is
+    // unique per tenant and the monthly-close job emits one per period.
+    if (!byKey.has(key)) {
+      byKey.set(key, row);
+    }
+  }
+  return byKey;
+}
+
+/**
+ * Derive the disbursement breakdown from a real `owner_statements` row.
+ * Every figure is a minor-unit integer read straight off the statement —
+ * no ratios. Returns `null` when no statement exists for the bucket so
+ * the client can render an honest "breakdown unavailable" state rather
+ * than a fabricated split.
+ */
+function breakdownFromStatement(statement) {
+  if (!statement) return null;
+  return {
+    rentCollected: statement.grossRentCollected ?? 0,
+    otherIncome: statement.otherIncome ?? 0,
+    managementFees: statement.managementFee ?? 0,
+    maintenanceCosts: statement.maintenanceExpenses ?? 0,
+    otherDeductions: statement.otherExpenses ?? 0,
+    totalExpenses: statement.totalExpenses ?? 0,
+    netDisbursement: statement.amountDisbursed || statement.amountDue || statement.netIncome || 0,
+  };
+}
+
+function buildDisbursementData(scope, payments, statementRows = []) {
   const propertyMap = new Map(scope.properties.map((property) => [property.id, property]));
   const leaseMap = new Map(scope.leases.map((lease) => [lease.id, lease]));
   const invoiceMap = new Map(scope.invoices.map((invoice) => [invoice.id, invoice]));
+  const statementsByKey = indexOwnerStatements(statementRows);
   const grouped = new Map();
 
   for (const payment of scope.payments) {
@@ -180,8 +236,7 @@ function buildDisbursementData(scope, payments) {
       : undefined;
     const propertyId = lease?.propertyId || scope.properties[0]?.id;
     const month = new Date(payment.completedAt || payment.createdAt);
-    const period = month.toLocaleDateString('en', { month: 'short', year: 'numeric' });
-    const key = `${propertyId || 'portfolio'}:${period}`;
+    const { period, key } = disbursementKey(propertyId, month);
 
     if (!grouped.has(key)) {
       grouped.set(key, {
@@ -199,24 +254,31 @@ function buildDisbursementData(scope, payments) {
     grouped.get(key).amount += payment.amount;
   }
 
-  const disbursements = Array.from(grouped.values())
-    .sort((left, right) => new Date(right.date) - new Date(left.date))
-    .map((disbursement) => ({
-      ...disbursement,
-      breakdown: {
-        rentCollected: disbursement.amount,
-        managementFees: Math.round(disbursement.amount * 0.08),
-        maintenanceCosts: 0,
-        utilities: 0,
-        insurance: 0,
-        repairs: 0,
-        otherDeductions: 0,
-        netDisbursement: Math.round(disbursement.amount * 0.92),
-      },
-    }));
+  const disbursements = Array.from(grouped.entries())
+    .map(([key, disbursement]) => {
+      const statement = statementsByKey.get(key);
+      const breakdown = breakdownFromStatement(statement);
+      // When a real statement exists, the disbursement reference, status
+      // and net amount come from it. Otherwise the bucket keeps the
+      // payment-derived gross `amount` and reports `breakdown: null`.
+      return {
+        ...disbursement,
+        reference: statement?.statementNumber || disbursement.reference,
+        currency: statement?.currency,
+        status: statement?.status === 'sent' || statement?.disbursedAt ? 'COMPLETED' : disbursement.status,
+        date: statement?.disbursedAt
+          ? new Date(statement.disbursedAt).toISOString()
+          : disbursement.date,
+        breakdown,
+      };
+    })
+    .sort((left, right) => new Date(right.date) - new Date(left.date));
 
+  // `totalDisbursed` only sums buckets with a REAL net figure. Buckets
+  // without a statement (breakdown === null) are excluded rather than
+  // counted at a guessed 92%.
   const totalDisbursed = disbursements.reduce(
-    (sum, disbursement) => sum + disbursement.breakdown.netDisbursement,
+    (sum, disbursement) => sum + (disbursement.breakdown?.netDisbursement ?? 0),
     0
   );
   const now = new Date();
@@ -230,10 +292,36 @@ function buildDisbursementData(scope, payments) {
       nextDisbursementDate,
       yearToDate: disbursements
         .filter((disbursement) => new Date(disbursement.date).getFullYear() === now.getFullYear())
-        .reduce((sum, disbursement) => sum + disbursement.breakdown.netDisbursement, 0),
+        .reduce((sum, disbursement) => sum + (disbursement.breakdown?.netDisbursement ?? 0), 0),
       averageMonthly: disbursements.length > 0 ? Math.round(totalDisbursed / disbursements.length) : 0,
     },
   };
+}
+
+/**
+ * Load the owner's real monthly statements scoped to their property set.
+ * Returns `[]` when db is unavailable or the scope is empty so the
+ * disbursement builder degrades to gross-only (breakdown: null) instead
+ * of throwing.
+ */
+async function loadOwnerStatements(db, auth, propertyIds) {
+  if (!db || !propertyIds || propertyIds.length === 0) return [];
+  try {
+    return await db
+      .select()
+      .from(ownerStatements)
+      .where(
+        and(
+          eq(ownerStatements.tenantId, auth.tenantId),
+          inArray(ownerStatements.propertyId, propertyIds),
+        ),
+      )
+      .orderBy(desc(ownerStatements.periodStart))
+      .limit(500);
+  } catch {
+    // Honest degrade: no statements => breakdowns render as unavailable.
+    return [];
+  }
 }
 
 async function listOwnerConversations(c, auth, repos) {
@@ -421,33 +509,70 @@ app.get('/reports/export/financial', async (c) => {
 app.get('/disbursements', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
+  const db = c.get('db');
   const scope = await getOwnerScope(auth, repos);
   const invoices = enrichOwnerInvoices(scope);
   const payments = enrichOwnerPayments(scope, invoices);
-  return c.json({ success: true, data: buildDisbursementData(scope, payments) });
+  const propertyIds = scope.properties.map((property) => property.id);
+  const statementRows = await loadOwnerStatements(db, auth, propertyIds);
+  return c.json({ success: true, data: buildDisbursementData(scope, payments, statementRows) });
 });
 
 app.get('/disbursements/:id/statement', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
+  const db = c.get('db');
   const scope = await getOwnerScope(auth, repos);
   const invoices = enrichOwnerInvoices(scope);
   const payments = enrichOwnerPayments(scope, invoices);
-  const { disbursements } = buildDisbursementData(scope, payments);
+  const propertyIds = scope.properties.map((property) => property.id);
+  const statementRows = await loadOwnerStatements(db, auth, propertyIds);
+  const { disbursements } = buildDisbursementData(scope, payments, statementRows);
   const disbursement = disbursements.find((item) => item.id === c.req.param('id'));
 
   if (!disbursement) {
     return e404(c, 'NOT_FOUND', 'Disbursement not found');
   }
 
-  const statement = [
+  // Currency comes from the matched owner_statements row — the
+  // monthly-close job stamps each statement with the authoritative
+  // ISO-4217 code for that disbursement. We never hard-code a
+  // jurisdiction code; when no statement currency is known we fall back
+  // to a bare numeric render rather than guessing KES/USD.
+  const currency = disbursement.currency || undefined;
+  const money = (amount) =>
+    currency
+      ? new Intl.NumberFormat('en', {
+          style: 'currency',
+          currency,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(amount)
+      : Number(amount).toLocaleString('en');
+
+  const header = [
     `Reference: ${disbursement.reference}`,
     `Period: ${disbursement.period}`,
     `Property: ${disbursement.property?.name || 'Portfolio'}`,
-    `Gross Collected: KES ${disbursement.breakdown.rentCollected.toLocaleString()}`,
-    `Management Fees: KES ${disbursement.breakdown.managementFees.toLocaleString()}`,
-    `Net Disbursement: KES ${disbursement.breakdown.netDisbursement.toLocaleString()}`,
-  ].join('\n');
+  ];
+
+  // Honest rendering: only emit the breakdown lines when a real
+  // owner_statements row backed the disbursement. Otherwise state that
+  // gross is the only figure available — no fabricated split.
+  const body = disbursement.breakdown
+    ? [
+        `Gross Collected: ${money(disbursement.breakdown.rentCollected)}`,
+        `Management Fees: ${money(disbursement.breakdown.managementFees)}`,
+        `Maintenance: ${money(disbursement.breakdown.maintenanceCosts)}`,
+        `Other Deductions: ${money(disbursement.breakdown.otherDeductions)}`,
+        `Net Disbursement: ${money(disbursement.breakdown.netDisbursement)}`,
+      ]
+    : [
+        `Gross Collected: ${money(disbursement.amount)}`,
+        'Itemised breakdown unavailable — no settled owner statement for this period yet.',
+      ];
+
+  const statement = [...header, ...body].join('\n');
 
   return c.json({
     success: true,
@@ -455,6 +580,65 @@ app.get('/disbursements/:id/statement', async (c) => {
       downloadUrl: toDataUrl(statement),
     },
   });
+});
+
+/**
+ * Map a real `owner_statements` row to the per-property income-statement
+ * shape the owner-portal Financial page renders. Every monetary figure
+ * is a minor-unit integer read straight off the statement row — no
+ * ratios, no synthesis.
+ *
+ * `utilities`, `insurance` and `taxes` are NOT dedicated columns in
+ * `owner_statements` (the monthly-close job folds them into
+ * `other_expenses` / `expense_line_items`). We surface them as 0 rather
+ * than back-solving a fabricated split; the operating-expenses figure
+ * carries the real `other_expenses` total so nothing is dropped.
+ */
+function mapOwnerStatementToIncomeStatement(row, propertyMap) {
+  const periodDate = new Date(row.periodStart);
+  return {
+    propertyId: row.propertyId,
+    propertyName: propertyMap.get(row.propertyId)?.name || row.propertyId,
+    month: periodDate.toLocaleDateString('en', { month: 'short', year: 'numeric' }),
+    rentCollected: row.grossRentCollected ?? 0,
+    otherIncome: row.otherIncome ?? 0,
+    totalIncome: row.totalIncome ?? 0,
+    operatingExpenses: row.otherExpenses ?? 0,
+    maintenanceCosts: row.maintenanceExpenses ?? 0,
+    managementFees: row.managementFee ?? 0,
+    utilities: 0,
+    insurance: 0,
+    taxes: 0,
+    totalExpenses: row.totalExpenses ?? 0,
+    netOperatingIncome: row.netIncome ?? 0,
+  };
+}
+
+// ----------------------------------------------------------------------------
+// GET /statements — REAL per-property income statements sourced from the
+// `owner_statements` table (populated by the monthly-close job). Returns
+// honest-empty when no statements exist yet or db is unavailable, rather
+// than fabricating per-property figures.
+// ----------------------------------------------------------------------------
+app.get('/statements', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const db = c.get('db');
+  const scope = await getOwnerScope(auth, repos);
+  const propertyIds = scope.properties.map((property) => property.id);
+  const statementRows = await loadOwnerStatements(db, auth, propertyIds);
+
+  if (statementRows.length === 0) {
+    return c.json({
+      success: true,
+      data: [],
+      meta: { note: 'no owner statements generated yet for the accessible property scope' },
+    });
+  }
+
+  const propertyMap = new Map(scope.properties.map((property) => [property.id, property]));
+  const data = statementRows.map((row) => mapOwnerStatementToIncomeStatement(row, propertyMap));
+  return c.json({ success: true, data });
 });
 
 app.get('/messaging/conversations', async (c) => {

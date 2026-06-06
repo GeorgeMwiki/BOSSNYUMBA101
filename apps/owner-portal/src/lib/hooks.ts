@@ -622,6 +622,154 @@ export function useOwnerPayments() {
   });
 }
 
+/**
+ * Per-property income statement, sourced from the real `owner_statements`
+ * table via the BFF `/owner/statements` endpoint. Monetary fields are
+ * minor-unit integers read straight off the statement row (no ratios).
+ * `utilities` / `insurance` / `taxes` arrive as 0 because the statement
+ * schema folds them into `operatingExpenses` rather than breaking them
+ * out — see the BFF mapper comment.
+ */
+export interface FinancialIncomeStatement {
+  propertyId: string;
+  propertyName: string;
+  month: string;
+  rentCollected: number;
+  otherIncome: number;
+  totalIncome: number;
+  operatingExpenses: number;
+  maintenanceCosts: number;
+  managementFees: number;
+  utilities: number;
+  insurance: number;
+  taxes: number;
+  totalExpenses: number;
+  netOperatingIncome: number;
+}
+
+export function useOwnerStatements() {
+  return useQuery({
+    queryKey: ['owner', 'statements'],
+    queryFn: async () =>
+      unwrap(await api.get<FinancialIncomeStatement[]>('/owner/statements'), 'Income statements'),
+  });
+}
+
+/**
+ * Disbursement breakdown. `breakdown` is `null` when no settled
+ * `owner_statements` row backs the period — the UI must render an honest
+ * "unavailable" state rather than assuming a split.
+ */
+export interface FinancialDisbursementBreakdown {
+  rentCollected: number;
+  otherIncome: number;
+  managementFees: number;
+  maintenanceCosts: number;
+  otherDeductions: number;
+  totalExpenses: number;
+  netDisbursement: number;
+}
+
+export interface FinancialDisbursement {
+  id: string;
+  amount: number;
+  date: string;
+  status: string;
+  method: string;
+  reference: string;
+  period: string;
+  currency?: string;
+  property?: { id: string; name: string };
+  breakdown: FinancialDisbursementBreakdown | null;
+}
+
+export interface FinancialDisbursementStats {
+  totalDisbursed: number;
+  pendingAmount: number;
+  nextDisbursementDate: string;
+  yearToDate: number;
+  averageMonthly: number;
+}
+
+export interface FinancialDisbursementsResponse {
+  disbursements: FinancialDisbursement[];
+  stats: FinancialDisbursementStats;
+}
+
+export function useOwnerDisbursements() {
+  return useQuery({
+    queryKey: ['owner', 'disbursements'],
+    queryFn: async () =>
+      unwrap(
+        await api.get<FinancialDisbursementsResponse>('/owner/disbursements'),
+        'Disbursements'
+      ),
+  });
+}
+
+/**
+ * Transaction-level ledger entry. The owner BFF has no dedicated
+ * transactions table, so these are the real income/expense `entries[]`
+ * the reports service derives from settled payments (income) and work
+ * orders (expense) — see reports.hono.ts#buildStatementReport.
+ */
+export interface FinancialTransaction {
+  id: string;
+  type: 'income' | 'expense';
+  amount: number;
+  date: string;
+  description: string;
+  reference: string;
+  category: string;
+  property?: { id: string; name: string };
+  unit?: { id: string; unitNumber: string };
+  customer?: { id: string; name: string };
+  relatedInvoice?: string;
+  paymentMethod?: string;
+}
+
+interface StatementReportEntry {
+  date: string;
+  type: 'income' | 'expense';
+  description?: string;
+  amount: number;
+}
+
+interface StatementReportResponse {
+  entries?: StatementReportEntry[];
+}
+
+/**
+ * Owner transactions for a reporting period. Maps the reports-service
+ * statement `entries[]` (the only real per-transaction ledger source the
+ * owner BFF exposes) into the table-friendly `FinancialTransaction`
+ * shape. `period` mirrors the reports.hono.ts query contract
+ * (`current_month` | `last_month` | `quarter` | `year`).
+ */
+export function useOwnerTransactions(period: string = 'current_month') {
+  return useQuery({
+    queryKey: ['owner', 'transactions', period],
+    queryFn: async (): Promise<FinancialTransaction[]> => {
+      const report = unwrap(
+        await api.get<StatementReportResponse>(
+          `/reports/statements?period=${encodeURIComponent(period)}`
+        ),
+        'Transactions'
+      );
+      const entries = report.entries ?? [];
+      return entries.map((entry, index) => ({
+        id: `${entry.type}-${entry.date}-${index}`,
+        type: entry.type,
+        amount: entry.amount,
+        date: entry.date,
+        description: entry.description ?? '',
+        reference: entry.description ?? '',
+        category: entry.type === 'income' ? 'Rent' : 'Maintenance',
+      }));
+    },
+  });
+}
+
 // ─── Dashboard ─────────────────────────────────────────────
 
 export interface ArrearsAging {
