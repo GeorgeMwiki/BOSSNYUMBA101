@@ -8,38 +8,16 @@
  * greeting).
  *
  * Performance: `JarvisConsole` pulls in `@bossnyumba/chat-ui` (voice +
- * adaptive renderer + GenUI primitives) which is heavy. We defer the
- * client bundle with `next/dynamic` so the page header + persona shell
- * paint immediately and the chat console hydrates after first paint.
- * `ssr: false` because the console relies on `window` for Web Speech
- * voice I/O and browser-only SSE streaming.
+ * adaptive renderer + GenUI primitives) which is heavy. The client-only
+ * deferral (`next/dynamic` with `ssr: false`) lives in the
+ * `JarvisConsoleLoader` Client Component because this page is a server
+ * component (it awaits `getTranslations` + exports `metadata`), and the
+ * App Router forbids `ssr: false` in server components.
  */
 
 import { getTranslations } from 'next-intl/server';
-import dynamic from 'next/dynamic';
 
-const JarvisConsole = dynamic(
-  () => import('./JarvisConsole.js').then((m) => ({ default: m.JarvisConsole })),
-  {
-    ssr: false,
-    loading: () => <JarvisConsoleSkeleton />,
-  },
-);
-
-function JarvisConsoleSkeleton() {
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      aria-label="Loading Resident Concierge"
-      className="flex h-[60vh] w-full flex-col gap-3 rounded-lg border border-border bg-surface p-6"
-    >
-      <div className="h-6 w-2/3 animate-pulse rounded bg-gray-200" />
-      <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200" />
-      <div className="mt-auto h-12 w-full animate-pulse rounded bg-gray-200" />
-    </div>
-  );
-}
+import { JarvisConsoleLoader } from './JarvisConsoleLoader.js';
 
 export const metadata = {
   title: 'Resident Concierge · BossNyumba Customer App',
@@ -55,7 +33,7 @@ export default async function JarvisPage() {
       </header>
       <main className="flex flex-1 justify-center px-6 py-6">
         <div className="w-full max-w-3xl">
-          <JarvisConsole />
+          <JarvisConsoleLoader />
         </div>
       </main>
     </div>
