@@ -1,7 +1,7 @@
 /**
  * Airtel Money callback handling
  */
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { CallbackError } from '../../common/errors';
 import { logger } from '../../common/logger';
 import type { PaymentStatus } from '../../common/types';
@@ -57,8 +57,17 @@ export function verifyAirtelCallbackSignature(
   signature: string | undefined,
   secret: string
 ): boolean {
-  if (!secret) return true;
-  if (!signature) return false;
+  // Fail CLOSED: a missing secret or signature must REJECT. Previously an
+  // unconfigured secret returned `true`, accepting every (forgeable) callback —
+  // a money-webhook auth bypass.
+  if (!secret || !signature) return false;
   const expected = createHmac('sha256', secret).update(rawBody).digest('hex');
-  return signature === expected || signature === `sha256=${expected}`;
+  // Accept bare hex or the `sha256=` prefixed form; compare in constant time.
+  const provided = signature.startsWith('sha256=')
+    ? signature.slice('sha256='.length)
+    : signature;
+  const a = Buffer.from(provided, 'hex');
+  const b = Buffer.from(expected, 'hex');
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }

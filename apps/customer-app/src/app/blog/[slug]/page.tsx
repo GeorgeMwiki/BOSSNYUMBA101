@@ -30,9 +30,22 @@ async function loadPost(slug: string): Promise<PostData | null> {
   }
 }
 
+/** Escape every HTML metacharacter so authored content can't inject markup. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderMarkdownBasic(md: string): string {
-  // Intentionally lightweight — server components render HTML.
-  return md
+  // SECURITY: `bodyMd` is DB/CMS-authored and rendered via
+  // dangerouslySetInnerHTML (Next's `{}` escaping does NOT apply there). Escape
+  // ALL HTML FIRST, then add only our own fixed tags around the now-inert text —
+  // so a `<script>`/`<img onerror>` in bodyMd can never execute (stored XSS).
+  return escapeHtml(md)
     .replace(/^# (.*)$/gm, '<h1 class="text-3xl font-semibold mt-6">$1</h1>')
     .replace(/^## (.*)$/gm, '<h2 class="text-2xl font-semibold mt-6">$1</h2>')
     .replace(/\n\n/g, '</p><p class="my-3">')
