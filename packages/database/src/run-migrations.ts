@@ -12,6 +12,11 @@ import { join, dirname, resolve, relative } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import postgres from 'postgres';
 import { logger } from './logger.js';
+import {
+  parseExpectedTables,
+  detectDrift,
+  type ExpectedTable,
+} from './migration-drift.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = resolve(join(__dirname, 'migrations'));
@@ -153,6 +158,89 @@ async function applyOneMigration(
   }
 }
 
+/**
+ * Post-apply ledger-drift guard (KI-001 / KI-004).
+ *
+ * Drizzle skips any migration whose hash is already in
+ * `drizzle.__drizzle_migrations`, so if a `CREATE TABLE` was recorded as
+ * applied but never actually executed (prior DB surgery / partial rollback),
+ * the table is silently missing and re-running the migrator does NOT heal it.
+ * After every apply we therefore re-derive the set of tables the migration
+ * tree promises and probe each one with `to_regclass('public.<name>')`. Any
+ * expected-but-absent table is drift.
+ *
+ * Fail-closed: in `NODE_ENV=production` drift THROWS so a boot-time caller
+ * (container entrypoint / api-gateway prestart) halts before serving traffic,
+ * matching the codebase's fail-closed conventions. Outside production it logs
+ * a loud WARN per missing table but does not block local dev. Reads the same
+ * `*.sql` files already on disk; no shell-out, reusing the open connection.
+ */
+async function verifyNoLedgerDrift(
+  sql: Sql,
+  expected: ReadonlyArray<ExpectedTable>,
+  log: Pick<Console, 'warn' | 'error'>,
+  isProduction: boolean,
+): Promise<void> {
+  if (expected.length === 0) return;
+
+  const present: string[] = [];
+  for (const { name } of expected) {
+    // to_regclass returns NULL (not an error) for an absent relation. The
+    // name is passed as a bound text argument — never string-interpolated —
+    // so the probe is injection-safe.
+    const rows = await sql<{ reg: string | null }[]>`
+      select to_regclass(${'public.' + name})::text as reg
+    `;
+    const reg = rows[0]?.reg ?? null;
+    if (reg !== null) {
+      present.push(name);
+    }
+  }
+
+  const drift = detectDrift(expected, present);
+  if (!drift.hasDrift) {
+    log.warn(`[migrations] drift check OK — ${expected.length} expected tables present`);
+    return;
+  }
+
+  const missingList = drift.missing.join(', ');
+  if (isProduction) {
+    // Fail-closed: refuse to continue boot with a schema that is missing
+    // tables drizzle believes are applied.
+    throw new Error(
+      `REFUSING: schema drift detected — ${drift.missing.length} expected ` +
+        `table(s) missing while NODE_ENV=production: ${missingList}. ` +
+        'The migration ledger records these as applied but the relations do ' +
+        'not exist (KI-001 / KI-004). Re-apply the owning .sql files by hand ' +
+        '(they are IF NOT EXISTS-guarded) before serving traffic.',
+    );
+  }
+  log.error(
+    `[migrations] DRIFT — ${drift.missing.length} expected table(s) missing ` +
+      `(non-production, not blocking): ${missingList}`,
+  );
+}
+
+/**
+ * Read and static-parse every migration file into the expected-table set.
+ * Shared by the apply path and the standalone verify-migrations script.
+ */
+async function loadExpectedTables(): Promise<ExpectedTable[]> {
+  const files = await readdir(MIGRATIONS_DIR);
+  const entries = await Promise.all(
+    files
+      .filter((f) => f.endsWith('.sql'))
+      .sort((a, b) => a.localeCompare(b))
+      .map(async (name) => {
+        const safePath = resolveMigrationPath(name);
+        // eslint-disable-next-line security/detect-non-literal-fs-filename -- path validated by resolveMigrationPath()
+        const sql = await readFile(safePath, 'utf-8');
+        return { name, sql };
+      }),
+  );
+  return parseExpectedTables(entries);
+}
+
 export async function runMigrations(
   opts?: RunMigrationsOptions,
 ): Promise<RunMigrationsResult> {
@@ -218,6 +306,25 @@ export async function runMigrations(
     }
 
     logger.warn('All migrations completed');
+
+    // Post-apply ledger-drift guard (KI-001 / KI-004). Fail-closed in
+    // production: if a table drizzle records as applied is actually missing,
+    // throw before the caller proceeds to serve traffic. Best-effort in dev.
+    const isProduction = process.env.NODE_ENV === 'production';
+    try {
+      const expected = await loadExpectedTables();
+      await verifyNoLedgerDrift(sql, expected, logger, isProduction);
+    } catch (driftErr) {
+      // A genuine drift in production is a hard stop — rethrow it. Any other
+      // failure of the *check itself* (e.g. a transient probe error) must not
+      // mask a successful apply outside production, but in production we still
+      // fail closed rather than risk booting on an unverified schema.
+      if (isProduction) {
+        throw driftErr;
+      }
+      logger.error('[migrations] drift check could not complete (non-production, ignoring):', driftErr);
+    }
+
     return { applied, skipped };
   } catch (err) {
     logger.error('Migration failed:', err);
