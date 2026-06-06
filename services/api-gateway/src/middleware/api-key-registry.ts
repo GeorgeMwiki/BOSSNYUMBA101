@@ -114,9 +114,17 @@ export function assertApiKeyConfig(): void {
   if (process.env.NODE_ENV !== 'production') return;
   const hasRegistry = (process.env.API_KEY_REGISTRY ?? '').length > 0;
   const hasLegacy = (process.env.API_KEYS ?? '').length > 0;
-  if (!hasRegistry && !hasLegacy) {
+  // Legacy API_KEYS is FORBIDDEN in production: it matches plaintext (non
+  // timing-safe) and grants blanket SUPER_ADMIN + '*' scopes. Refuse to boot so
+  // the insecure fallback in resolveApiKeyLegacyOrRegistry can never run in prod
+  // — migrate to API_KEY_REGISTRY (per-key tenant/role/scope) and unset API_KEYS.
+  if (hasLegacy) {
     throw new Error(
-      'auth: production requires API_KEY_REGISTRY (preferred) or API_KEYS (legacy deprecated) to be set.'
+      'auth: legacy API_KEYS is forbidden in production (plaintext compare + blanket SUPER_ADMIN). ' +
+        'Migrate to API_KEY_REGISTRY with per-key tenant/role/scope binding, then unset API_KEYS.'
     );
+  }
+  if (!hasRegistry) {
+    throw new Error('auth: production requires API_KEY_REGISTRY to be set.');
   }
 }
