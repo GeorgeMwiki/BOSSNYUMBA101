@@ -1,19 +1,5 @@
-import dynamic from 'next/dynamic';
 import { PortalShell } from '../_lib/PortalShell';
-import { AdvisorLoading } from '../_lib/states';
-
-const EstateAutoAdvisorClient = dynamic(
-  () =>
-    import('./EstateAutoAdvisorClient.js').then((m) => ({
-      default: m.EstateAutoAdvisorClient,
-    })),
-  {
-    ssr: false,
-    loading: () => (
-      <AdvisorLoading label="Loading estate-automation advisor…" />
-    ),
-  },
-);
+import { EstateAutoAdvisorMount } from './EstateAutoAdvisorMount';
 
 export const metadata = {
   title: 'Estate automation — BossNyumba HQ',
@@ -25,7 +11,7 @@ export default function EstateAutoAdvisorPage() {
       title="Estate automation"
       description="Predictive-maintenance dashboard (asset health × probability matrix) + collection cadence + vendor scorecard for the operating estate."
     >
-      <EstateAutoAdvisorClient />
+      <EstateAutoAdvisorMount />
     </PortalShell>
   );
 }

@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 // Warm the /chat route bundle on hover/touch so the deep chat surface
