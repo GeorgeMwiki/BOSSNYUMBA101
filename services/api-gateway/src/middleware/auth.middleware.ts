@@ -276,7 +276,7 @@ function mapSupabaseRoleToUserRole(roles: string[]): UserRole {
  * is client-modifiable in Supabase; only `app_metadata` is server-
  * managed and trustworthy for tenant assignment.
  */
-async function verifyAndProjectSupabaseToken(token: string): Promise<{
+export async function verifyAndProjectSupabaseToken(token: string): Promise<{
   valid: boolean;
   error?: string;
   context?: AuthContext;
