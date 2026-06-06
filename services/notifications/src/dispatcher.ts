@@ -418,8 +418,8 @@ async function handleDeadLetter(
   try {
     await sink.push(record);
   } catch (err) {
-    // DLQ write failure is a hard infra issue — log via console (intentional
-    // fallback-of-last-resort since structured logger isn't injected here).
+    // DLQ write failure is a hard infra issue — surface it via the structured
+    // (PII-scrubbing) logger so it is observable without leaking recipient data.
     logger.error('notifications.dispatcher: DLQ sink failed', { error: err });
   }
 

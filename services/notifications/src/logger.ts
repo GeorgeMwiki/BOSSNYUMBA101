@@ -1,12 +1,24 @@
 /**
  * Structured logger for notifications service.
  *
+ * Pino-backed per CLAUDE.md ("No `console.log` in services — Pino logger
+ * only — it handles redaction.") and the convention in
+ * `services/reports/src/logger.ts` / `services/api-gateway/src/utils/logger.ts`.
+ *
  * PII-safe: every log call is piped through a scrubber that masks phone
  * numbers, email addresses, and obvious credential-looking fields before
- * the payload is serialised. The scrubber is intentionally conservative
+ * the payload reaches Pino. The scrubber is intentionally conservative
  * (it will over-mask rather than under-mask) because WhatsApp/SMS flows
- * handle raw user identifiers at every hop.
+ * handle raw user identifiers at every hop. It is applied on top of Pino's
+ * own `redact` paths because it masks-in-place (keeping shape for
+ * debugging) rather than dropping fields outright.
  */
+
+import { pino } from 'pino';
+
+/** The concrete Pino logger type, derived from the factory return so we
+ * don't depend on the `pino.Logger` namespace export shape under NodeNext. */
+type PinoLogger = ReturnType<typeof pino>;
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -17,14 +29,7 @@ export interface Logger {
   error(message: string, meta?: Record<string, unknown>): void;
 }
 
-const logLevelOrder: LogLevel[] = ['debug', 'info', 'warn', 'error'];
 const minLevel = (process.env['LOG_LEVEL'] as LogLevel) ?? 'info';
-
-function shouldLog(level: LogLevel): boolean {
-  const minIdx = logLevelOrder.indexOf(minLevel);
-  const levelIdx = logLevelOrder.indexOf(level);
-  return levelIdx >= minIdx;
-}
 
 // Keys whose value should always be masked. Lower-cased match.
 const PII_KEYS = new Set([
@@ -107,35 +112,80 @@ export function scrubMeta(
   return out;
 }
 
-function formatMessage(level: string, message: string, meta?: Record<string, unknown>): string {
-  const timestamp = new Date().toISOString();
+function createPinoRoot(): PinoLogger {
+  return pino({
+    level: minLevel,
+    base: { service: 'notifications' },
+    // Defence-in-depth alongside scrubMeta: drop obvious credential paths
+    // outright in case they arrive un-scrubbed (e.g. nested errors).
+    redact: {
+      paths: [
+        'password',
+        'token',
+        'secret',
+        'apiKey',
+        'api_key',
+        'authorization',
+        '*.password',
+        '*.token',
+        '*.secret',
+      ],
+      censor: '[REDACTED]',
+    },
+  });
+}
+
+// Single Pino root for the whole service. Construction is guarded: if Pino
+// fails to initialise for any reason (bad transport, env misconfig), we emit
+// ONE diagnostic and fall back to a silent Pino instance so the service does
+// not crash on import. A bare `pino()` with no options is the safest config
+// and cannot itself throw.
+const pinoRoot: PinoLogger = (() => {
+  try {
+    return createPinoRoot();
+  } catch (err) {
+    // JUSTIFIED FALLBACK (CLAUDE.md exception): the configured Pino logger
+    // failed to construct, so it cannot report its own failure. This is the
+    // ONLY permitted console.* in the service. Once Pino is up, every log
+    // goes through it (and the PII scrubber above).
+    // eslint-disable-next-line no-console
+    console.error('[notifications] Pino logger construction failed; falling back to silent logger', err);
+    return pino({ level: 'silent' });
+  }
+})();
+
+function emit(
+  child: PinoLogger,
+  level: LogLevel,
+  message: string,
+  meta?: Record<string, unknown>
+): void {
   const scrubbed = scrubMeta(meta);
-  const metaStr = scrubbed ? ` ${JSON.stringify(scrubbed)}` : '';
-  return `[${timestamp}] [${level.toUpperCase()}] ${message}${metaStr}`;
+  child[level](scrubbed ?? {}, message);
 }
 
 export function createLogger(name: string): Logger {
-  const prefix = `[${name}]`;
+  // Each named logger is a Pino child so the module name rides along on
+  // every record without re-allocating the root transport.
+  const child = pinoRoot.child({ name });
   return {
     debug(message: string, meta?: Record<string, unknown>) {
-      if (shouldLog('debug')) {
-        console.debug(prefix, formatMessage('debug', message, meta));
-      }
+      emit(child, 'debug', message, meta);
     },
     info(message: string, meta?: Record<string, unknown>) {
-      if (shouldLog('info')) {
-        console.info(prefix, formatMessage('info', message, meta));
-      }
+      emit(child, 'info', message, meta);
     },
     warn(message: string, meta?: Record<string, unknown>) {
-      if (shouldLog('warn')) {
-        console.warn(prefix, formatMessage('warn', message, meta));
-      }
+      emit(child, 'warn', message, meta);
     },
     error(message: string, meta?: Record<string, unknown>) {
-      if (shouldLog('error')) {
-        console.error(prefix, formatMessage('error', message, meta));
-      }
+      emit(child, 'error', message, meta);
     },
   };
 }
+
+/**
+ * Default logger for quick use (e.g. the dispatcher) when a per-module
+ * named child isn't warranted.
+ */
+export const logger: Logger = createLogger('notifications');
