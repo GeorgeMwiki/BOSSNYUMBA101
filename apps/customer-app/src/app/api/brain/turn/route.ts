@@ -31,14 +31,21 @@ function env() {
   return envCache;
 }
 
-let brainCache: ReturnType<typeof createBrain> | null = null;
+// One Brain per tenant. A single shared cache would freeze the
+// thread-store backend to the FIRST caller's tenantId, leaking every
+// subsequent tenant's chat turns into tenant #1's thread space — and
+// because the gateway connects as a BYPASSRLS role there is no RLS
+// backstop. Key the cache by tenantId so each tenant's backend closes
+// over its OWN id (mirrors BrainRegistry in @bossnyumba/ai-copilot).
+const brainCache = new Map<string, ReturnType<typeof createBrain>>();
 function brain(tenantId: string) {
-  if (brainCache) return brainCache;
+  const cached = brainCache.get(tenantId);
+  if (cached) return cached;
   const e = env();
   const db = createDatabaseClient(e.DATABASE_URL);
   const repo = new BrainThreadRepository(db);
   const backend = new PostgresThreadStoreBackend(repo, () => tenantId);
-  brainCache = createBrain({
+  const created = createBrain({
     anthropic: {
       apiKey: e.ANTHROPIC_API_KEY,
       baseUrl: e.ANTHROPIC_BASE_URL,
@@ -46,7 +53,8 @@ function brain(tenantId: string) {
     },
     threadStoreBackend: backend,
   });
-  return brainCache;
+  brainCache.set(tenantId, created);
+  return created;
 }
 
 interface TurnBody {

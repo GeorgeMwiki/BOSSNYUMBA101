@@ -18,6 +18,7 @@ import { useTranslations } from 'next-intl';
 import { Loader2, Shield } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getApiBaseUrl } from '@/lib/api';
+import { getAccessToken } from '@/lib/supabase';
 
 interface HouseRule {
   readonly id: string;
@@ -70,10 +71,8 @@ const FALLBACK_RULES: readonly HouseRule[] = [
   },
 ];
 
-function token(): string {
-  return typeof window !== 'undefined'
-    ? localStorage.getItem('customer_token') ?? ''
-    : '';
+async function token(): Promise<string> {
+  return (await getAccessToken()) ?? '';
 }
 
 export default function HouseRulesPage() {
@@ -87,7 +86,7 @@ export default function HouseRulesPage() {
     setLoading(true);
     setError(null);
     try {
-      const auth = token();
+      const auth = await token();
       const res = await fetch(
         `${getApiBaseUrl()}/properties/current/house-rules`,
         {

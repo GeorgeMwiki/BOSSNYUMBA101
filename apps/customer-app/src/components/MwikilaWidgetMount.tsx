@@ -18,6 +18,7 @@ import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { BossnyumbaAIProvider } from '@bossnyumba/chat-ui';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAccessToken } from '@/lib/supabase';
 
 const FloatingChatWidget = dynamic(
   () => import('@bossnyumba/chat-ui').then((m) => m.FloatingChatWidget),
@@ -40,6 +41,7 @@ export function MwikilaWidgetMount({ children }: MwikilaWidgetMountProps): JSX.E
       defaultPersona="tenant-assistant"
       currentPath={pathname}
       tenantId={tenantId}
+      getAuthToken={getAccessToken}
       featureEnabled={featureEnabled}
     >
       {children}

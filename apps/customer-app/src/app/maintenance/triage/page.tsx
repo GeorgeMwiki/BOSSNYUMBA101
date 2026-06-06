@@ -24,6 +24,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getApiBaseUrl } from '@/lib/api';
+import { getAccessToken } from '@/lib/supabase';
 import { getCsrfHeaders } from '@/lib/csrf';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -303,10 +304,7 @@ export default function MaintenanceTriagePage() {
     setSubmitting(true);
     setError(null);
     try {
-      const token =
-        typeof window !== 'undefined'
-          ? localStorage.getItem('customer_token') ?? ''
-          : '';
+      const token = (await getAccessToken()) ?? '';
       const description = [
         `Initial report: ${initialReport}`,
         '',

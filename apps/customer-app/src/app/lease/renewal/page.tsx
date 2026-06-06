@@ -12,6 +12,7 @@ import { useTranslations } from 'next-intl';
 import { FileSignature, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getApiBaseUrl } from '@/lib/api';
+import { getAccessToken } from '@/lib/supabase';
 import { getCsrfHeaders } from '@/lib/csrf';
 
 interface RenewalOffer {
@@ -34,10 +35,8 @@ interface RenewalOffer {
 // (CRITICAL in `.audit/production-readiness-gaps.md`).
 const apiBase = getApiBaseUrl;
 
-function token(): string {
-  return typeof window !== 'undefined'
-    ? localStorage.getItem('customer_token') ?? ''
-    : '';
+async function token(): Promise<string> {
+  return (await getAccessToken()) ?? '';
 }
 
 export default function LeaseRenewalPage() {
@@ -50,8 +49,9 @@ export default function LeaseRenewalPage() {
 
   const load = useCallback(async () => {
     try {
+      const auth = await token();
       const res = await fetch(`${apiBase()}/renewals/active`, {
-        headers: token() ? { Authorization: `Bearer ${token()}` } : {},
+        headers: auth ? { Authorization: `Bearer ${auth}` } : {},
       });
       const body = (await res.json()) as {
         success?: boolean;
@@ -82,13 +82,14 @@ export default function LeaseRenewalPage() {
         action === 'counter'
           ? { counterMonthlyRent: Number(counterRent) || offer.newMonthlyRent }
           : {};
+      const auth = await token();
       const res = await fetch(
         `${apiBase()}/renewals/${encodeURIComponent(offer.id)}/${action}`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(token() ? { Authorization: `Bearer ${token()}` } : {}),
+            ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
             ...getCsrfHeaders(),
           },
           body: JSON.stringify(payload),

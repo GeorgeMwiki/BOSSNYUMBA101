@@ -71,6 +71,15 @@ const nextConfig = {
       },
     ];
   },
+  // Proxy the gateway API same-origin so the floating Mr. Mwikila widget's SSE
+  // POST to the relative `/api/v1/ai/chat` (and any other relative /api/v1 call)
+  // reaches the api-gateway without CORS. Requires NEXT_PUBLIC_API_URL (the
+  // gateway origin) to be set; otherwise the widget chat cannot reach a backend.
+  async rewrites() {
+    const gateway = (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || '').replace(/\/$/, '');
+    if (!gateway) return [];
+    return [{ source: '/api/v1/:path*', destination: `${gateway}/api/v1/:path*` }];
+  },
 };
 
 module.exports = withNextIntl(nextConfig);

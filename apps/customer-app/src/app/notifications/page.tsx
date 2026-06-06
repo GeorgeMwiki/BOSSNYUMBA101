@@ -14,6 +14,7 @@ import { Bell, Loader2 } from 'lucide-react';
 import { prefetchOnHover } from '@bossnyumba/performance-toolkit/lazy-load';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getApiBaseUrl } from '@/lib/api';
+import { getAccessToken } from '@/lib/supabase';
 
 interface NotificationItem {
   readonly id: string;
@@ -45,10 +46,7 @@ export default function NotificationsPage() {
       setLoading(true);
       setError(null);
       try {
-        const token =
-          typeof window !== 'undefined'
-            ? localStorage.getItem('customer_token') ?? ''
-            : '';
+        const token = (await getAccessToken()) ?? '';
         const res = await fetch(`${apiBase()}/notifications`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });

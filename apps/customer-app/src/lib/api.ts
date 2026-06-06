@@ -10,6 +10,7 @@ import {
   initializeApiClient,
   getApiClient,
 } from '@bossnyumba/api-client';
+import { getAccessToken, getSupabase } from '@/lib/supabase';
 
 /**
  * Resolve the api-gateway base URL. Always returns a `/api/v1`-suffixed
@@ -52,24 +53,38 @@ export function getApiBaseUrl(): string {
 
 function ensureClient() {
   if (!hasApiClient()) {
-    const token =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('customer_token') ?? undefined
-        : undefined;
-
-    initializeApiClient({
+    const client = initializeApiClient({
       baseUrl: getApiBaseUrl(),
-      accessToken: token,
       timeout: 15000,
       retries: 1,
       onAuthError: () => {
+        // The Supabase access token is the single credential. On a 401 the
+        // session is stale/expired — clear it and bounce to login. signOut
+        // is fire-and-forget; the AuthContext's onAuthStateChange resets
+        // React state when it completes.
+        void getSupabase().auth.signOut().catch(() => undefined);
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('customer_token');
-          localStorage.removeItem('customer_user');
           window.location.href = '/auth/login';
         }
       },
     });
+
+    // Resolve the bearer from the live Supabase session on EVERY request,
+    // so the data API, chat, and brain all use one credential and pick up
+    // token refreshes automatically. getAccessToken() refreshes on the fly
+    // via supabase-js and returns null when signed out (no Authorization
+    // header is then sent and the gateway replies 401 → onAuthError).
+    client.addRequestInterceptor(async (config) => {
+      const token = await getAccessToken();
+      if (token) {
+        client.setAccessToken(token);
+      } else {
+        client.clearTokens();
+      }
+      return config;
+    });
+
+    return client;
   }
 
   return getApiClient();
@@ -197,10 +212,9 @@ export const api = {
     },
 
     async uploadDocument(formData: FormData) {
-      const token =
-        typeof window !== 'undefined'
-          ? localStorage.getItem('customer_token')
-          : null;
+      // Multipart upload bypasses the api-client (which JSON-encodes), so we
+      // resolve the Supabase bearer directly here to keep one credential.
+      const token = await getAccessToken();
 
       const response = await fetch(`${getApiBaseUrl()}/onboarding/documents`, {
         method: 'POST',
