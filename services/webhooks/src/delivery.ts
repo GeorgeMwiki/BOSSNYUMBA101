@@ -14,6 +14,7 @@
  */
 
 import CryptoJS from 'crypto-js';
+import { lookup as dnsLookup } from 'node:dns/promises';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -31,6 +32,7 @@ const BLOCKED_HOST_PATTERNS: readonly RegExp[] = [
   /^fe80:/i,              // IPv6 link-local
   /^fc00:/i, /^fd[0-9a-f]{2}:/i, // IPv6 ULA
   /^::$/,                 // IPv6 unspecified
+  /^::ffff:(?:127\.|10\.|192\.168\.|169\.254\.|100\.64\.|0\.|172\.(?:1[6-9]|2\d|3[01])\.)/i, // IPv4-mapped IPv6
   /^localhost$/i,
   /^metadata\.google\.internal$/i,
 ];
@@ -47,7 +49,14 @@ export class SsrfBlockedError extends Error {
  * Pure, side-effect-free — callers use it for both deliver() and the
  * subscribe() admission check.
  */
-export function assertSafeWebhookUrl(rawUrl: string): URL {
+/**
+ * Synchronous structural + literal-host SSRF check. Parses the URL, enforces
+ * http(s), and rejects literal internal hosts/IPs. Used at `subscribe()`
+ * admission for a fast synchronous reject. `deliver()` additionally runs the
+ * DNS-aware check (`assertSafeWebhookUrl`) at request time, which is where
+ * SSRF must ultimately be enforced (DNS can change between subscribe and send).
+ */
+export function assertWebhookUrlShape(rawUrl: string): URL {
   let parsed: URL;
   try {
     parsed = new URL(rawUrl);
@@ -65,9 +74,39 @@ export function assertSafeWebhookUrl(rawUrl: string): URL {
     // Dev/test escape hatch — never set this in production.
     return parsed;
   }
+  // Literal-host check — blocks IP-literals and known-internal names.
   for (const pattern of BLOCKED_HOST_PATTERNS) {
     if (pattern.test(host)) {
       throw new SsrfBlockedError(rawUrl, `host_blocked:${host}`);
+    }
+  }
+  return parsed;
+}
+
+export async function assertSafeWebhookUrl(rawUrl: string): Promise<URL> {
+  const parsed = assertWebhookUrlShape(rawUrl);
+  if (process.env.WEBHOOK_SSRF_ALLOW_PRIVATE === 'true') {
+    return parsed;
+  }
+  const host = parsed.hostname;
+  // DNS-aware check — resolve the hostname and reject if ANY resolved
+  // address is internal. Closes the DNS-rebind bypass where an
+  // attacker-controlled name has an A/AAAA record pointing at 169.254.169.254
+  // (cloud metadata), 127.0.0.1, or an RFC1918 host — the literal check above
+  // can't see those because the hostname itself isn't on the blocklist. On a
+  // resolution error we allow: the fetch will fail naturally and blocking
+  // transient DNS would drop legitimate webhooks.
+  let resolved: ReadonlyArray<{ readonly address: string }>;
+  try {
+    resolved = await dnsLookup(host, { all: true });
+  } catch {
+    return parsed;
+  }
+  for (const { address } of resolved) {
+    for (const pattern of BLOCKED_HOST_PATTERNS) {
+      if (pattern.test(address)) {
+        throw new SsrfBlockedError(rawUrl, `resolved_host_blocked:${host}->${address}`);
+      }
     }
   }
   return parsed;
@@ -135,7 +174,7 @@ export async function deliver(
   // pointing at 169.254.169.254 or 127.0.0.1:6379 must be refused here,
   // not at the socket layer where error shape could leak internal state.
   try {
-    assertSafeWebhookUrl(url);
+    await assertSafeWebhookUrl(url);
   } catch (err) {
     return {
       success: false,
