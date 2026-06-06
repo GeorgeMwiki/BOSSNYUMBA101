@@ -140,6 +140,10 @@ const OptionalSchema = z.object({
   API_URL: z.string().url().optional(),
   NOTIFICATIONS_SERVICE_URL: z.string().url().optional(),
   TENANT_SERVICE_URL: z.string().url().optional(),
+  // Standalone payments-ledger deployable — the gateway's rent-payment path
+  // calls its real STK-initiation + ledger engine over HTTP (forwarding the
+  // caller's Supabase JWT). Optional in dev; required for live money.
+  PAYMENTS_LEDGER_URL: z.string().url().optional(),
 
   // Defaults for tenant bootstrap
   DEFAULT_TENANT_CITY: z.string().optional(),

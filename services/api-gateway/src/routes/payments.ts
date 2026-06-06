@@ -6,6 +6,13 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { mapPaymentRow, majorToMinor, minorToMajor, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
+import {
+  createPaymentsLedgerClient,
+  PaymentsLedgerError,
+  type LedgerPaymentType,
+} from '../services/payments-ledger-client';
+import { ledgerStatusToDb } from '../services/payments-ledger-status';
+import { logger } from '../utils/logger';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
 const MoneySchema = z.object({
@@ -32,6 +39,8 @@ const PaymentProcessSchema = z.object({
     .optional(),
   paymentMethodId: z.string().optional(),
   phoneNumber: z.string().regex(/^[+0-9 \-()]+$/).max(24).optional(),
+  /** Optional account reference shown on the customer's M-Pesa prompt. */
+  accountReference: z.string().max(64).optional(),
 });
 function normalizeChannel(raw: string | undefined): string {
   if (!raw) return 'other';
@@ -42,6 +51,44 @@ function normalizeChannel(raw: string | undefined): string {
 
 function paymentNumber() {
   return `PAY-${Date.now().toString().slice(-6)}`;
+}
+
+// =============================================================================
+// Payments-ledger engine client (real STK + double-entry ledger).
+//
+// payments-ledger is a SEPARATE deployable (docker-compose), so the gateway
+// reaches its real STK-initiation path over HTTP rather than duplicating
+// Daraja logic. PAYMENTS_LEDGER_URL is read once at module load — the same
+// pattern other gateway route modules use for inter-service URLs; the dotenv
+// load itself happens once in index.ts. The caller's Supabase Bearer JWT is
+// forwarded so the engine derives the tenant from the verified claim.
+// =============================================================================
+const paymentsLedgerClient = createPaymentsLedgerClient({
+  baseUrl: process.env.PAYMENTS_LEDGER_URL,
+});
+
+/**
+ * Map a gateway invoice/payment "type" hint to the engine's payment-intent
+ * type enum. We can't always know the exact category from a bare payment
+ * row, so RENT_PAYMENT is the safe default for the tenant Pay-Now flow.
+ */
+function toLedgerPaymentType(raw: string | undefined): LedgerPaymentType {
+  switch ((raw ?? '').toLowerCase()) {
+    case 'deposit':
+      return 'DEPOSIT_PAYMENT';
+    case 'late_fee':
+    case 'latefee':
+      return 'LATE_FEE_PAYMENT';
+    case 'maintenance':
+      return 'MAINTENANCE_PAYMENT';
+    case 'utility':
+    case 'utilities':
+      return 'UTILITY_PAYMENT';
+    case 'rent':
+      return 'RENT_PAYMENT';
+    default:
+      return 'RENT_PAYMENT';
+  }
 }
 
 const app = new Hono();
@@ -281,20 +328,284 @@ app.get('/plans/:id', async (c) => {
   );
 });
 
+// =============================================================================
+// POST /:id/process — initiate a REAL payment against the payments-ledger
+// engine. For M-Pesa this triggers a live STK push (the engine calls Daraja);
+// the engine's PaymentIntent id is linked to this gateway row via
+// `externalReference` so /status and /receipt can poll the engine. Auth/
+// tenant-scoped and idempotent: a row already linked to an engine intent is
+// not re-initiated.
+// =============================================================================
 app.post('/:id/process', zValidator('json', PaymentProcessSchema), withSecurityEvents({ action: 'payment.create', resource: 'payment', severity: 'notice' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
+  const id = c.req.param('id');
   const raw = c.req.valid('json');
   const body = { ...raw, channel: normalizeChannel(String(raw.channel ?? '')) };
-  const row = await repos.payments.update(c.req.param('id'), auth.tenantId, {
-    status: 'processing',
-    paymentMethod: String(body.channel || body.paymentMethodId || 'other').toLowerCase(),
-    payerPhone: body.phoneNumber,
-    provider: String(body.channel || 'manual').toLowerCase(),
-    externalReference: body.paymentMethodId,
-    updatedBy: auth.userId,
-  });
-  return c.json({ success: true, data: mapPaymentRow(row) });
+
+  // Load the tenant-scoped row first — this is the authorization boundary
+  // and the source of the canonical amount/currency (never trust the body
+  // for money).
+  const existing = await repos.payments.findById(id, auth.tenantId);
+  if (!existing) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Payment not found' } }, 404);
+  }
+
+  // Idempotency: if this row was already linked to an engine intent and is
+  // past 'pending', do not re-initiate the STK push — just return current
+  // state. Re-initiation would prompt the customer's phone twice.
+  const alreadyLinked = Boolean(existing.externalReference);
+  const status = String(existing.status ?? 'pending').toLowerCase();
+  if (alreadyLinked && status !== 'pending') {
+    return c.json({ success: true, data: mapPaymentRow(existing) });
+  }
+
+  // M-Pesa STK requires a phone number; for non-mpesa channels we fall back
+  // to the legacy "mark processing" behaviour (manual/bank/cheque are
+  // settled out-of-band and reconciled via webhooks/C2B).
+  const phone = body.phoneNumber ?? body.paymentMethodId;
+  const isMpesa = body.channel === 'mpesa';
+
+  if (!isMpesa || !phone) {
+    const row = await repos.payments.update(id, auth.tenantId, {
+      status: 'processing',
+      paymentMethod: String(body.channel || body.paymentMethodId || 'other').toLowerCase(),
+      payerPhone: body.phoneNumber,
+      provider: String(body.channel || 'manual').toLowerCase(),
+      updatedBy: auth.userId,
+    });
+    return c.json({ success: true, data: mapPaymentRow(row) });
+  }
+
+  if (!paymentsLedgerClient.isConfigured) {
+    // Loud, fail-closed: never fabricate a fake STK acknowledgement on a
+    // live-money path. Surface a 503 the client can show as "try again".
+    logger.error('PAYMENTS_LEDGER_URL not configured — cannot initiate STK push', { paymentId: id });
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'PAYMENTS_ENGINE_UNAVAILABLE',
+          message: 'Payment engine is not configured. Please try again later.',
+        },
+      },
+      503,
+    );
+  }
+
+  const authorization = c.req.header('Authorization');
+  if (!authorization) {
+    return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Missing authorization' } }, 401);
+  }
+
+  try {
+    // Deterministic idempotency key from the gateway row id so a client
+    // retry of /process reuses the same engine intent instead of pushing a
+    // second STK prompt (the engine dedups on (key, tenant)).
+    const intent = await paymentsLedgerClient.createIntent(
+      {
+        customerId: existing.customerId ?? auth.userId,
+        leaseId: existing.leaseId ?? undefined,
+        // No explicit type on the payment row; the tenant Pay-Now flow is
+        // rent by default. toLedgerPaymentType falls back to RENT_PAYMENT.
+        type: toLedgerPaymentType(undefined),
+        amountMinor: majorToMinor(minorToMajor(existing.amount)),
+        currency: String(existing.currency ?? 'KES'),
+        description: existing.description ?? `Payment ${existing.paymentNumber ?? id}`,
+        paymentMethodId: phone,
+        metadata: {
+          accountReference: body.accountReference ?? existing.paymentNumber ?? id,
+          gatewayPaymentId: id,
+        },
+        idempotencyKey: `gw-pay-${id}`,
+      },
+      authorization,
+    );
+
+    // Persist the linkage + provider state. The engine intent id goes into
+    // externalReference (our poll/receipt handle); the engine status is
+    // projected onto the gateway DB enum; the STK instructions + raw status
+    // are kept in providerResponse for observability.
+    const row = await repos.payments.update(id, auth.tenantId, {
+      status: ledgerStatusToDb(intent.status),
+      paymentMethod: 'mpesa',
+      provider: 'mpesa',
+      payerPhone: phone,
+      externalReference: intent.paymentIntentId,
+      providerResponse: {
+        engineIntentId: intent.paymentIntentId,
+        engineStatus: intent.status,
+        instructions: intent.instructions ?? null,
+      },
+      updatedBy: auth.userId,
+    });
+
+    return c.json({
+      success: true,
+      data: {
+        ...mapPaymentRow(row),
+        intentId: intent.paymentIntentId,
+        instructions: intent.instructions,
+      },
+    });
+  } catch (error) {
+    if (error instanceof PaymentsLedgerError) {
+      logger.error('payments-ledger STK initiation failed', {
+        paymentId: id,
+        code: error.code,
+        upstreamStatus: error.status,
+      });
+      // Mark the row failed so the client poll resolves rather than hanging
+      // until timeout. Best-effort — a failed mark must not mask the cause.
+      try {
+        await repos.payments.update(id, auth.tenantId, {
+          status: 'failed',
+          provider: 'mpesa',
+          payerPhone: phone,
+          updatedBy: auth.userId,
+        });
+      } catch (markErr) {
+        logger.error('failed to mark payment failed after STK error', { paymentId: id, err: markErr });
+      }
+      const httpStatus = error.code === 'NOT_CONFIGURED' ? 503 : 502;
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'PAYMENT_INITIATION_FAILED',
+            message: 'Could not initiate the payment. Please try again.',
+          },
+        },
+        httpStatus,
+      );
+    }
+    throw error;
+  }
 }));
+
+// =============================================================================
+// GET /:id/status — poll target for the client's useStkPolling. Reconciles
+// the gateway row against the payments-ledger engine (the source of truth for
+// intent lifecycle) and returns the canonical status string.
+// =============================================================================
+app.get('/:id/status', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const id = c.req.param('id');
+
+  const row = await repos.payments.findById(id, auth.tenantId);
+  if (!row) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Payment not found' } }, 404);
+  }
+
+  const engineIntentId = row.externalReference;
+  const authorization = c.req.header('Authorization');
+
+  // No engine linkage (manual/bank/cheque, or never initiated) — return the
+  // locally persisted status. The client poller treats unknown as "keep
+  // polling" and the hard timeout eventually fires.
+  if (!engineIntentId || !paymentsLedgerClient.isConfigured || !authorization) {
+    const mapped = mapPaymentRow(row);
+    return c.json({ success: true, data: { status: mapped.status }, ...{ status: mapped.status } });
+  }
+
+  try {
+    const intent = await paymentsLedgerClient.getIntent(engineIntentId, authorization);
+    const dbStatus = ledgerStatusToDb(intent.status);
+
+    // Reconcile the gateway row when the engine has advanced past what we
+    // persisted (terminal states + receipt). Idempotent: only write on a
+    // change to avoid churn.
+    if (dbStatus !== String(row.status ?? '').toLowerCase()) {
+      await repos.payments.update(id, auth.tenantId, {
+        status: dbStatus,
+        ...(intent.status === 'SUCCEEDED' ? { completedAt: new Date() } : {}),
+        updatedBy: auth.userId,
+      });
+    }
+
+    // The client reads `status` at the top level (see useStkPolling); also
+    // nest under `data` for the api.ts `response.data` unwrap.
+    const payload = {
+      status: intent.status,
+      receiptNumber: intent.receiptUrl ?? undefined,
+      reason: intent.failureReason ?? undefined,
+    };
+    return c.json({ success: true, data: payload, ...payload });
+  } catch (error) {
+    if (error instanceof PaymentsLedgerError) {
+      logger.warn('payments-ledger status poll failed — returning local status', {
+        paymentId: id,
+        code: error.code,
+        upstreamStatus: error.status,
+      });
+      const mapped = mapPaymentRow(row);
+      return c.json({ success: true, data: { status: mapped.status }, ...{ status: mapped.status } });
+    }
+    throw error;
+  }
+});
+
+// =============================================================================
+// GET /:id/receipt — returns the receipt URL once the engine reports
+// SUCCEEDED. Pulls the authoritative receiptUrl from the payments-ledger
+// intent (it is populated on success).
+// =============================================================================
+app.get('/:id/receipt', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const id = c.req.param('id');
+
+  const row = await repos.payments.findById(id, auth.tenantId);
+  if (!row) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Payment not found' } }, 404);
+  }
+
+  const engineIntentId = row.externalReference;
+  const authorization = c.req.header('Authorization');
+  if (!engineIntentId || !paymentsLedgerClient.isConfigured || !authorization) {
+    return c.json(
+      {
+        success: false,
+        error: { code: 'RECEIPT_UNAVAILABLE', message: 'No receipt is available for this payment yet.' },
+      },
+      404,
+    );
+  }
+
+  try {
+    const intent = await paymentsLedgerClient.getIntent(engineIntentId, authorization);
+    if (intent.status !== 'SUCCEEDED' || !intent.receiptUrl) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'RECEIPT_NOT_READY',
+            message: 'The receipt is not ready yet. Please wait for the payment to complete.',
+          },
+        },
+        409,
+      );
+    }
+    const payload = { url: intent.receiptUrl };
+    return c.json({ success: true, data: payload, ...payload });
+  } catch (error) {
+    if (error instanceof PaymentsLedgerError) {
+      logger.warn('payments-ledger receipt fetch failed', {
+        paymentId: id,
+        code: error.code,
+        upstreamStatus: error.status,
+      });
+      return c.json(
+        {
+          success: false,
+          error: { code: 'RECEIPT_UNAVAILABLE', message: 'Could not retrieve the receipt. Please try again.' },
+        },
+        502,
+      );
+    }
+    throw error;
+  }
+});
 
 export const paymentsApp = app;
