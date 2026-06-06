@@ -36,3 +36,10 @@ export {
 export { listLoops, getLoop, isClosedLoopId } from "./registry";
 
 export { createSupabaseClosedLoopSink } from "./supabase-sink";
+
+export {
+  allowAllTierPolicy,
+  type TierAction,
+  type TierPolicy,
+  type TierPolicyDecision,
+} from "./ports/tier-policy";

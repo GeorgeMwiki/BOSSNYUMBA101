@@ -8,7 +8,7 @@
  * Redis. Either way the API is uniform: caller doesn't know which backend ran.
  */
 
-import { getRedisClient } from "@/lib/redis-client";
+import { getRedisClient } from "./redis-client";
 
 const REFRESH_WINDOW_SECONDS = 60;
 const REFRESH_MAX_PER_WINDOW = 3;

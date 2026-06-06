@@ -17,7 +17,7 @@
  * @module external-dictionary-service
  */
 
-import { TRANSLATION_LIMITS } from '@/config/platform-constants'
+import { TRANSLATION_LIMITS } from './internal/platform-constants'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import type {

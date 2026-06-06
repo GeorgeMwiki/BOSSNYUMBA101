@@ -47,7 +47,7 @@
  * @module core/truth-engine/numeric-claim-anchor
  */
 
-import { createLogger } from "@/lib/logger";
+import { createLogger } from "./logger";
 
 import { searchFreshClaims } from "./claim-store";
 import type { TruthClaimRow } from "./types";

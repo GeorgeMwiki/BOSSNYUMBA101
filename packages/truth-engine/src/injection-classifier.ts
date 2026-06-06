@@ -16,7 +16,7 @@
  */
 
 import { createHash } from "crypto";
-import { brainChat } from "@/core/brain";
+import { brainChat } from "./brain-chat";
 
 interface CacheEntry {
   readonly score: number;

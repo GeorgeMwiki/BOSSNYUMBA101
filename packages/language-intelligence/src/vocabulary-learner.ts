@@ -25,7 +25,7 @@ import {
   extractInlineTranslations,
 } from './translation-memory'
 import type { LearnedVocabulary, SupportedLanguage } from './types'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createServiceClient } from './internal/supabase-client'
 
 // ============================================================================
 // In-Memory Cache (read-through, write-through to Supabase)

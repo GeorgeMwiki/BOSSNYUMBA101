@@ -13,6 +13,8 @@
  * @module decomposition/dataset-loader
  */
 
+import { readFileSync } from "fs";
+import { join } from "path";
 import type { DictionaryNode, PartOfSpeech } from "./types";
 import { getDictionaryGraph, type DictionaryGraph } from "./dictionary-graph";
 
@@ -1001,6 +1003,30 @@ export function addDiscoveredTerm(
   graph.insert(node);
 }
 
+function isRawFinancialEntry(value: unknown): value is RawFinancialEntry {
+  if (typeof value !== "object" || value === null) return false;
+  const entry = value as Record<string, unknown>;
+  return (
+    typeof entry.id === "string" &&
+    typeof entry.en === "string" &&
+    typeof entry.sw === "string"
+  );
+}
+
+/**
+ * Pull the financial-entry array out of the parsed dictionary JSON,
+ * accepting either a `{ terms: [...] }` envelope or a bare array, and
+ * keeping only structurally valid entries.
+ */
+function extractFinancialEntries(parsed: unknown): readonly RawFinancialEntry[] {
+  const candidate =
+    typeof parsed === "object" && parsed !== null && "terms" in parsed
+      ? (parsed as { readonly terms: unknown }).terms
+      : parsed;
+  if (!Array.isArray(candidate)) return [];
+  return candidate.filter(isRawFinancialEntry);
+}
+
 /**
  * Initialize the full dictionary graph with all available data.
  * Call this once at application startup.
@@ -1018,24 +1044,26 @@ export async function initializeDictionaryGraph(): Promise<{
   // 1. Load core vocabulary (always available, no I/O)
   const coreCount = loadCoreVocabulary(graph);
 
-  // 2. Try to load financial dictionary
+  // 2. Try to load the financial dictionary from disk. The file is
+  //    resolved at runtime (same convention as external-dictionary-service
+  //    and pronunciation-guide) so an absent dictionary degrades to
+  //    core-vocabulary-only instead of failing the build.
   let financialCount = 0;
   try {
-    // Dynamic import for the financial dictionary JSON
-    const dictModule =
-      await import("../../../../data/dictionaries/sw-en-financial-dictionary.json");
-    const rawData = dictModule.default?.terms ?? dictModule.default ?? [];
-    if (Array.isArray(rawData)) {
-      financialCount = loadFinancialDictionary(
-        graph,
-        rawData as readonly RawFinancialEntry[],
-      );
+    const filePath = join(
+      process.cwd(),
+      "data",
+      "dictionaries",
+      "sw-en-financial-dictionary.json",
+    );
+    const parsed: unknown = JSON.parse(readFileSync(filePath, "utf-8"));
+    const rawData = extractFinancialEntries(parsed);
+    if (rawData.length > 0) {
+      financialCount = loadFinancialDictionary(graph, rawData);
     }
   } catch {
-    // Financial dictionary not available; continue with core vocab
-    console.warn(
-      "[DictionaryGraph] Financial dictionary not found, using core vocabulary only",
-    );
+    // Financial dictionary not available; continue with core vocabulary.
+    financialCount = 0;
   }
 
   const totalStats = graph.getStats();

@@ -18,7 +18,7 @@ import { join } from "path";
 import { findTranslation, recordTranslation } from "./translation-memory";
 import { detectLanguage } from "./language-detector";
 import type { SupportedLanguage, FinancialDictionaryEntry } from "./types";
-import { assertPdpcPermit } from "@/lib/security/pdpc-permit-check";
+import { assertPdpcPermit } from "./internal/pdpc-permit-check";
 
 // ============================================================================
 // Types
@@ -402,7 +402,7 @@ async function translateWithClaude(
   }
 
   try {
-    const { brainChat } = await import("@/core/brain");
+    const { brainChat } = await import("./internal/brain");
 
     const langNames: Record<SupportedLanguage, string> = {
       en: "English",

@@ -22,6 +22,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@bossnyumba/ai-copilot": "workspace:*",
+    "@bossnyumba/enterprise-hardening": "workspace:*",
+    "@bossnyumba/observability": "workspace:*",
+    "@bossnyumba/supabase-client": "workspace:*",
+    "@supabase/supabase-js": "^2.106.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {

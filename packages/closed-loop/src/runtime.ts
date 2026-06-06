@@ -14,8 +14,10 @@
  *
  * Hard rules:
  *
- * - `assertTierPolicy` runs BEFORE `act()`. If denied, the tick ends
- *   with outcome `sla-breach` (no side effects).
+ * - The injected `tierPolicy` port runs BEFORE `act()`. If denied, the
+ *   tick ends with outcome `sla-breach` (no side effects). The default
+ *   port allows all (the package is parked); a mounting caller wires the
+ *   real `@bossnyumba/central-intelligence` gate via `runTick({ tierPolicy })`.
  * - DecisionTrace is opened around `decide()`. `finalize()` always fires
  *   even when `act()` throws.
  * - The runtime never throws to the caller; it returns the tick row
@@ -28,13 +30,13 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { assertTierPolicy } from "@/core/governance/tier-policy";
-import type { TierAction } from "@/core/governance/tier-policy";
+import { allowAllTierPolicy } from "./ports/tier-policy";
+import type { TierAction, TierPolicy } from "./ports/tier-policy";
 import {
   InMemoryTraceStore,
   startTrace,
   type TraceStore,
-} from "@/core/litfin-ai/decision-trace";
+} from "./ports/decision-trace";
 import type {
   Action,
   Adjustment,
@@ -147,6 +149,14 @@ export interface RunTickArgs {
   readonly correlationId?: string;
   readonly clock?: () => number;
   readonly abortSignal?: AbortSignal;
+  /**
+   * Tier-policy port asserted before `act()`. Defaults to
+   * `allowAllTierPolicy` because the package is parked; mount the real
+   * `@bossnyumba/central-intelligence` gate here before running a loop
+   * that performs side effects. See `ports/tier-policy.ts` for the
+   * wiring recipe.
+   */
+  readonly tierPolicy?: TierPolicy;
 }
 
 /**
@@ -156,6 +166,7 @@ export interface RunTickArgs {
 export async function runTick(args: RunTickArgs): Promise<ClosedLoopTick> {
   const sink = args.sink ?? NULL_SINK;
   const traceStore = args.traceStore ?? new InMemoryTraceStore();
+  const tierPolicy = args.tierPolicy ?? allowAllTierPolicy;
   const clock = args.clock ?? Date.now;
   const correlationId = args.correlationId ?? randomUUID();
   const startedAtMs = clock();
@@ -237,9 +248,9 @@ export async function runTick(args: RunTickArgs): Promise<ClosedLoopTick> {
       traceStore,
     );
 
-    // 3. assertTierPolicy then act
+    // 3. assert tier-policy then act
     if (ctx.abortSignal?.aborted) throw new Error("aborted before act");
-    const policy = assertTierPolicy(
+    const policy = tierPolicy(
       args.scope.tier,
       args.definition.actAction as TierAction,
     );

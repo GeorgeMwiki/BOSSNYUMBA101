@@ -16,7 +16,7 @@
  * deterministic chunk so callers can persist evidence even if budget is hit.
  */
 
-import { brainChat } from "@/core/brain";
+import { brainChat } from "./brain-chat";
 
 const CHUNK_SIZE = 600;
 const CHUNK_STRIDE = 300;

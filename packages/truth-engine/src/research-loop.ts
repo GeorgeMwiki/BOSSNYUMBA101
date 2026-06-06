@@ -30,7 +30,7 @@ import { searchWeb } from "./web-search";
 import { runLLMConsensus } from "./llm-consensus";
 import { synthesizeAcrossSources } from "./cross-source-synthesizer";
 import { resolveSourceAuthority, extractDomain } from "./source-authority";
-import { validateOutboundUrlWithDns } from "@/lib/url-allowlist";
+import { validateOutboundUrlWithDns } from "./url-allowlist";
 
 const FETCH_TIMEOUT_MS = 5_000;
 const PER_PASS_FETCH_CAP = 6;

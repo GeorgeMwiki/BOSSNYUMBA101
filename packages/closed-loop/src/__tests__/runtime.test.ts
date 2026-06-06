@@ -161,7 +161,7 @@ describe("closed-loop runtime", () => {
     expect(["aborted", "internal-error"]).toContain(tick.outcome);
   });
 
-  it("denies act when tier-policy refuses", async () => {
+  it("denies act when the injected tier-policy refuses", async () => {
     const loop = defineClosedLoop({
       definition: {
         ...buildHappyLoop(),
@@ -172,13 +172,40 @@ describe("closed-loop runtime", () => {
       orgId: "org-test",
       tier: "borrower",
     };
+    // Inject a port that refuses the privileged write action. This is the
+    // seam a real deployment uses to delegate to
+    // `@bossnyumba/central-intelligence`'s `assertTierPolicy`; here we
+    // refuse directly so the runtime's denial-handling is what is tested.
     const tick = await runTick({
       definition: loop,
       scope,
       sink: NULL_SINK,
+      tierPolicy: (_tier, action) =>
+        action === "appraisal:write_override"
+          ? { ok: false, reason: "borrower may not override appraisal" }
+          : { ok: true },
     });
     expect(tick.outcome).toBe("sla-breach");
     expect(tick.actions.length).toBe(0);
+  });
+
+  it("defaults to allow-all when no tier-policy is injected", async () => {
+    // The shipped default port accepts every action (the package is
+    // parked). A privileged action therefore reaches `act()` and the
+    // happy loop succeeds.
+    const loop = defineClosedLoop({
+      definition: {
+        ...buildHappyLoop(),
+        actAction: "appraisal:write_override",
+      },
+    });
+    const tick = await runTick({
+      definition: loop,
+      scope: makeScope(),
+      sink: NULL_SINK,
+    });
+    expect(tick.outcome).toBe("success");
+    expect(tick.actions.length).toBe(1);
   });
 
   it("writes tick + state + adjustment rows to the sink", async () => {

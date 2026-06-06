@@ -37,8 +37,9 @@
 // Share the canonical CircuitState union so type vocabulary stays consistent
 // across all three breaker variants. The functional API below maps onto these
 // states via a lowercase alias kept for backward compatibility with the
-// existing evidence-collector call sites.
-export type { CircuitState } from "@/core/risk-mitigation/types";
+// existing evidence-collector call sites. BossNyumba's canonical circuit-state
+// vocabulary lives in @bossnyumba/enterprise-hardening's resilience module.
+export type { CircuitState } from "@bossnyumba/enterprise-hardening";
 
 interface BreakerState {
   status: "closed" | "open" | "half_open";

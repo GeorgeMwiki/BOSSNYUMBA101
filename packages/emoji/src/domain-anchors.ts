@@ -15,7 +15,30 @@
  * business domain.
  */
 
-import type { BusinessDomainId } from "@/core/learning-engine/types/domain-taxonomy";
+/**
+ * The 16 BossNyumba business-learning domains.
+ *
+ * This is a pure string-literal taxonomy with no other home in the
+ * repo — the anchor map below is its canonical source of truth, so it
+ * is declared here and re-exported for callers that key off a domain.
+ */
+export type BusinessDomainId =
+  | "ENTREPRENEURSHIP_STRATEGY"
+  | "FINANCE_ACCOUNTING"
+  | "SALES_REVENUE"
+  | "MARKETING_BRAND"
+  | "OPERATIONS_SUPPLY_CHAIN"
+  | "HUMAN_RESOURCES"
+  | "COMPLIANCE_REGULATORY"
+  | "CUSTOMER_SERVICE"
+  | "LEADERSHIP_MANAGEMENT"
+  | "RISK_MANAGEMENT"
+  | "TECHNOLOGY_DIGITAL"
+  | "CREDIT_LENDING"
+  | "ECONOMICS_MARKETS"
+  | "QUANTITATIVE_ANALYTICS"
+  | "COMMUNICATION_NEGOTIATION"
+  | "PERSONAL_FINANCE";
 
 export interface DomainAnchor {
   readonly char: string;

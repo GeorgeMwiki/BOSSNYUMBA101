@@ -10,7 +10,7 @@
 
 import { createHash } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "./supabase-admin";
 import type {
   CandidateEvidence,
   ClaimCategory,
@@ -283,7 +283,7 @@ export async function searchFreshClaims(args: {
 
   if (error || !data) return [];
 
-  const fresh = data.filter((row) => {
+  const fresh = (data as TruthClaimRow[]).filter((row: TruthClaimRow) => {
     // Verified rows must still be inside their TTL window.
     if (row.status === "verified") {
       return new Date(row.next_refresh_at).getTime() > Date.now();

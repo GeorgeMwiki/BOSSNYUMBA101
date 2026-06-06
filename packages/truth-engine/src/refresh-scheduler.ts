@@ -11,7 +11,7 @@
  * stay under fetch budgets. Per-batch errors are collected, never thrown.
  */
 
-import { createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "./supabase-admin";
 import { collectEvidence } from "./evidence-collector";
 import { persistClaim } from "./claim-store";
 import {

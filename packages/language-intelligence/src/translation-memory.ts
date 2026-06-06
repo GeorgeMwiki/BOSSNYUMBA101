@@ -28,7 +28,7 @@ import type {
   SupportedLanguage,
   FinancialDictionaryEntry,
 } from "./types";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "./internal/supabase-client";
 
 // ============================================================================
 // In-Memory Cache (write-through to Supabase)

@@ -16,7 +16,7 @@
  */
 
 import { z } from "zod";
-import { validateOutboundUrlWithDns } from "@/lib/url-allowlist";
+import { validateOutboundUrlWithDns } from "./url-allowlist";
 
 // ---------------------------------------------------------------------------
 // Types

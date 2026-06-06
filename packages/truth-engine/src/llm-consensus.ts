@@ -1,8 +1,13 @@
 /**
- * LLM Consensus — ask Claude/OpenAI/DeepSeek the same factual question and
- * persist agreement as `llm_consensus` evidence. Wires into the existing
- * 3-provider orchestrator via direct provider calls (no re-routing) so we
- * always get all three voices, not the cheapest one.
+ * LLM Consensus — ask the brain the same factual question across three model
+ * tiers and persist agreement as `llm_consensus` evidence.
+ *
+ * BossNyumba standardizes on Anthropic (Mr. Mwikila brain layer); the sibling
+ * codebase's separate OpenAI / DeepSeek services have no BN equivalent, so the
+ * three "voices" are three distinct Anthropic model tiers (fast / Sonnet /
+ * Opus) routed through the canonical `brainChat` adapter. This keeps the check
+ * a genuine multi-model cross-verification rather than a single-shot answer,
+ * while staying on the platform's standardized provider.
  *
  * Confidence model:
  *   - 3/3 agree on numeric within 5%   -> emit consensus evidence at authority 0.65
@@ -11,20 +16,20 @@
  *
  * Cost guardrails:
  *   - Behind TRUTH_ENGINE_LLM_CONSENSUS=true env flag
- *   - Per-claim cap of 3 calls (one per provider)
- *   - Hard timeout 8s per provider; whichever returns last shapes the verdict
+ *   - Per-claim cap of 3 calls (one per model tier)
+ *   - Hard timeout 8s per call; whichever returns last shapes the verdict
  */
 
-import { brainChat } from "@/core/brain";
-import { getOpenAIService } from "@/core/ai/openai-service";
-import { getDeepSeekService } from "@/core/ai/deepseek-service";
+import { brainChat } from "./brain-chat";
+import { ModelTier } from "@bossnyumba/ai-copilot";
 import type { CandidateEvidence } from "./types";
 
 const CONSENSUS_TOLERANCE = 0.05; // 5% numeric drift allowed
 const PER_PROVIDER_TIMEOUT_MS = 8_000;
 
 interface ProviderAnswer {
-  readonly provider: "claude" | "openai" | "deepseek";
+  // Three Anthropic model tiers act as the three independent "voices".
+  readonly provider: "claude-fast" | "claude-sonnet" | "claude-opus";
   readonly raw: string;
   readonly numeric: number | null;
   readonly unit: string | null;
@@ -63,20 +68,20 @@ export async function runLLMConsensus(
 
   const prompt = buildPrompt(args.subject, args.factKey);
 
-  // All three providers in parallel — total wall-time = max(8s)
-  const [claudeRes, openaiRes, deepseekRes] = await Promise.allSettled([
-    askClaude(prompt),
-    askOpenAI(prompt),
-    askDeepSeek(prompt),
+  // All three model tiers in parallel — total wall-time = max(8s)
+  const [fastRes, sonnetRes, opusRes] = await Promise.allSettled([
+    askTier("claude-fast", process.env.CLAUDE_MODEL_FAST ?? ModelTier.HAIKU, prompt),
+    askTier("claude-sonnet", ModelTier.SONNET, prompt),
+    askTier("claude-opus", ModelTier.OPUS, prompt),
   ]);
 
   const answers: ProviderAnswer[] = [];
-  if (claudeRes.status === "fulfilled" && claudeRes.value)
-    answers.push(claudeRes.value);
-  if (openaiRes.status === "fulfilled" && openaiRes.value)
-    answers.push(openaiRes.value);
-  if (deepseekRes.status === "fulfilled" && deepseekRes.value)
-    answers.push(deepseekRes.value);
+  if (fastRes.status === "fulfilled" && fastRes.value)
+    answers.push(fastRes.value);
+  if (sonnetRes.status === "fulfilled" && sonnetRes.value)
+    answers.push(sonnetRes.value);
+  if (opusRes.status === "fulfilled" && opusRes.value)
+    answers.push(opusRes.value);
 
   const calls = answers.length;
   const costUsd = estimateCost(calls);
@@ -120,58 +125,24 @@ function buildPrompt(subject: string, factKey: string): string {
   return `Question: What is the current value for "${subject}" in Tanzania (fact key: ${factKey})? Answer in one sentence with one number plus unit.`;
 }
 
-async function askClaude(prompt: string): Promise<ProviderAnswer | null> {
+async function askTier(
+  voice: ProviderAnswer["provider"],
+  model: string,
+  prompt: string,
+): Promise<ProviderAnswer | null> {
   try {
     const text = await withTimeout(
       brainChat([{ role: "user", content: prompt }], SYSTEM_PROMPT, {
         taskName: "truth-engine-llm-consensus",
         cacheSystemPrompt: true,
+        model,
         maxTokens: 200,
+        temperature: 0,
       }),
       PER_PROVIDER_TIMEOUT_MS,
     );
     if (!text) return null;
-    return parseAnswer("claude", text);
-  } catch {
-    return null;
-  }
-}
-
-async function askOpenAI(prompt: string): Promise<ProviderAnswer | null> {
-  try {
-    const openai = getOpenAIService();
-    const text = await withTimeout(
-      openai.converse(
-        [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: prompt },
-        ],
-        { temperature: 0.0, maxTokens: 200 },
-      ),
-      PER_PROVIDER_TIMEOUT_MS,
-    );
-    if (!text) return null;
-    return parseAnswer("openai", text);
-  } catch {
-    return null;
-  }
-}
-
-async function askDeepSeek(prompt: string): Promise<ProviderAnswer | null> {
-  try {
-    const ds = getDeepSeekService();
-    const text = await withTimeout(
-      ds.chat(
-        [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: prompt },
-        ],
-        { temperature: 0.0, maxTokens: 200 },
-      ),
-      PER_PROVIDER_TIMEOUT_MS,
-    );
-    if (!text) return null;
-    return parseAnswer("deepseek", text);
+    return parseAnswer(voice, text);
   } catch {
     return null;
   }

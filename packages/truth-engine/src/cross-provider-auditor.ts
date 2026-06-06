@@ -12,7 +12,7 @@
  */
 
 import { createHash } from "crypto";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "./supabase-admin";
 
 export type Provider = "claude" | "openai" | "deepseek";
 

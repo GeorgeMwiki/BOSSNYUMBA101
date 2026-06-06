@@ -2085,10 +2085,16 @@ importers:
 
   packages/dopamine-design:
     dependencies:
+      canvas-confetti:
+        specifier: ^1.9.3
+        version: 1.9.4
       react:
         specifier: ^19.0.0
         version: 19.2.6
     devDependencies:
+      '@types/canvas-confetti':
+        specifier: ^1.9.0
+        version: 1.9.0
       '@types/node':
         specifier: ^25.8.0
         version: 25.8.0
@@ -2686,6 +2692,9 @@ importers:
 
   packages/language-intelligence:
     dependencies:
+      '@bossnyumba/supabase-client':
+        specifier: workspace:*
+        version: link:../supabase-client
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -3869,6 +3878,21 @@ importers:
 
   packages/truth-engine:
     dependencies:
+      '@bossnyumba/ai-copilot':
+        specifier: workspace:*
+        version: link:../ai-copilot
+      '@bossnyumba/enterprise-hardening':
+        specifier: workspace:*
+        version: link:../enterprise-hardening
+      '@bossnyumba/observability':
+        specifier: workspace:*
+        version: link:../observability
+      '@bossnyumba/supabase-client':
+        specifier: workspace:*
+        version: link:../supabase-client
+      '@supabase/supabase-js':
+        specifier: ^2.106.1
+        version: 2.106.2
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -4714,6 +4738,9 @@ importers:
       nodemailer:
         specifier: '>=7.0.11'
         version: 8.0.7
+      pino:
+        specifier: ^10.3.1
+        version: 10.3.1
       twilio:
         specifier: ^6.0.2
         version: 6.0.2
@@ -17366,6 +17393,10 @@ packages:
       '@types/node': 25.8.0
     dev: false
 
+  /@types/canvas-confetti@1.9.0:
+    resolution: {integrity: sha512-aBGj/dULrimR1XDZLtG9JwxX1b4HPRF6CX9Yfwh3NvstZEm1ZL7RBnel4keCPSqs1ANRu1u2Aoz9R+VmtjYuTg==}
+    dev: true
+
   /@types/caseless@0.12.5:
     resolution: {integrity: sha512-hWtVTC2q7hc7xZ/RLbxapMvDMgUnDvKvMOpKal4DrMyfGBUfB1oKaZlIRr6mJL+If3bAP6sV/QneGzF6tJjZDg==}
     requiresBuild: true
@@ -19436,6 +19467,10 @@ packages:
 
   /canonicalize@1.0.8:
     resolution: {integrity: sha512-0CNTVCLZggSh7bc5VkX5WWPWO+cyZbNd07IHIsSXLia/eAq+r836hgk+8BKoEh7949Mda87VUOitx5OddVj64A==}
+    dev: false
+
+  /canvas-confetti@1.9.4:
+    resolution: {integrity: sha512-yxQbJkAVrFXWNbTUjPqjF7G+g6pDotOUHGbkZq2NELZUMDpiJ85rIEazVb8GTaAptNW2miJAXbs1BtioA251Pw==}
     dev: false
 
   /canvas@3.2.3:

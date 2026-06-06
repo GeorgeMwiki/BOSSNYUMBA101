@@ -70,7 +70,7 @@ export function createClaudeTranslator(deps: ClaudeTranslatorDeps): ClaudeTransl
   const enforceContamination = deps.config?.enforceContamination ?? false;
 
   return Object.freeze({
-    async translate(input) {
+    async translate(input: Parameters<ClaudeTranslatorPort['translate']>[0]) {
       const response = await deps.client.messages.create({
         model,
         max_tokens: maxTokens,

@@ -41,7 +41,7 @@ import {
   tagDialects,
   dialectToLangCode,
   type Dialect,
-} from "@/core/litfin-ai/learning/language-acquisition/dialect-tagger";
+} from "./internal/dialect-tagger";
 
 // ────────────────────────────────────────────────────────────────────
 // Types
