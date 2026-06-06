@@ -29,6 +29,14 @@ import { useOptionalOwnerTabs } from './OwnerTabsProvider';
 
 export interface ChatStreamLikeEvent {
   readonly type?: unknown;
+  // A parsed SSE frame is the JSON payload merged with the `type`
+  // discriminator (see chat-ui's parseSseChunk). Beyond `type`, the
+  // remaining fields vary by event — `payload`/`at` for the CT-1 tab
+  // tags, `content` for deltas, `threadId`/`totalTokens` for turn_end,
+  // etc. The bridge only reads `type` and re-serialises the whole
+  // object for handleTabSseFrame, so the extra keys are part of the
+  // contract rather than excess properties.
+  readonly [key: string]: unknown;
 }
 
 export interface UseChatTabBridgeOptions {
