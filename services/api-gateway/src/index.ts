@@ -369,6 +369,19 @@ import type {
 } from './workers/lease-expiry-alert-cron';
 import { createExecutiveBriefCron } from './workers/executive-brief-cron';
 import { registerIdempotencySweeperCron } from './composition/idempotency-sweeper';
+// Multi-replica safety — Postgres advisory-lock single-flight gate for the
+// boot crons. Without it each of the N gateway replicas fires every cron,
+// triple-charging LLM briefs / AI-cost-ledger, double-sending tenant SMS,
+// and duplicating SLA escalations. `wake-loop-cron.ts` already does this;
+// `cluster-lock.ts` extracts the dance for every other cron.
+import {
+  CLUSTER_LOCK_IDS,
+  makeClusterLockGate,
+  type ClusterLockDeps,
+} from './composition/cluster-lock';
+// Notification-dispatch drainer + stale-'sending' reaper. The dispatcher is
+// fully built but was never started, so enqueued notifications never sent.
+import { startNotificationDispatchDrainer } from './composition/notification-dispatch-drainer';
 import { createDecisionRetrospectiveWorker } from './workers/decision-retrospective-worker';
 // Wave CLOSED-LOOP — outcome reconciliation worker. Reads pending
 // brain predictions whose horizon has elapsed, asks the per-entity
@@ -706,6 +719,9 @@ let serviceRegistry: ServiceRegistry;
 // Hoisted so the graceful-shutdown closure (defined before the cron
 // is registered) can reference the stop handle without scope errors.
 let idempotencySweeperStop: (() => void) | undefined;
+// Notification-dispatch drainer + reaper stop handle — set at boot, cleared
+// by graceful shutdown so both interval loops stop before the pool closes.
+let notificationDispatchDrainerStop: (() => void) | undefined;
 try {
   serviceRegistry = buildServices({ db: getDb() });
   if (serviceRegistry.isLive) {
@@ -1719,6 +1735,27 @@ app.use((_req, res) => {
 // dispatcher it owns.
 const backgroundSupervisor = createBackgroundSupervisor(serviceRegistry, logger);
 
+// Multi-replica safety — shared cluster-lock deps for every boot cron.
+// BossNyumba runs N gateway replicas; each boots the same in-process crons.
+// Without a cluster-wide single-flight guard every cron fires N× (triple
+// LLM briefs + AI-cost-ledger, duplicate tenant SMS, duplicate SLA
+// escalations). `makeClusterLockGate` wraps each scheduled tick in a
+// Postgres advisory lock so only the lock-holding replica runs it. Degrades
+// to a no-op skip when there is no DB. Mirrors wake-loop-cron.ts.
+const clusterLockDb =
+  (serviceRegistry.db as unknown as {
+    execute(q: unknown): Promise<unknown>;
+  }) ?? null;
+const clusterLockDeps: ClusterLockDeps = {
+  db: clusterLockDb,
+  logger: {
+    info: (obj, msg) => logger.info(obj, msg),
+    warn: (obj, msg) => logger.warn(obj, msg),
+    error: (obj, msg) => logger.error(obj, msg),
+  },
+  name: 'boot-cron',
+};
+
 // Wave 26 — intelligence-history worker (Z4). Runs `createIntelligenceHistoryWorker`
 // on a daily cadence so `intelligence_history` snapshots are produced out-of-band
 // from the scheduler's tenant loop. The scheduler also registers a
@@ -1730,13 +1767,16 @@ const intelligenceHistorySupervisor = createIntelligenceHistorySupervisor(
     info: (meta, msg) => logger.info(meta, msg),
     warn: (meta, msg) => logger.warn(meta, msg),
   },
+  makeClusterLockGate(CLUSTER_LOCK_IDS.INTELLIGENCE_HISTORY, clusterLockDeps),
 );
 // Wave 26 — Cases SLA worker supervisor. Wraps the per-tenant
 // CaseSLAWorker (domain-services/cases/sla-worker.ts) in a multi-tenant
 // supervisor that ticks active tenants every 5 minutes, auto-escalating
 // overdue cases and emitting CaseSLABreached events once the ceiling is
 // hit. No-op in degraded mode.
-const casesSlaSupervisor = createCaseSLASupervisor(serviceRegistry, logger);
+const casesSlaSupervisor = createCaseSLASupervisor(serviceRegistry, logger, {
+  clusterLock: makeClusterLockGate(CLUSTER_LOCK_IDS.CASES_SLA, clusterLockDeps),
+});
 
 // Wave 15 — TRC pilot. Daily scan of `leases.end_date` against the
 // 60/30/7/1-day warning windows. Dispatches via the existing notifications
@@ -1770,6 +1810,7 @@ const leaseExpiryCron = serviceRegistry.db
       db: serviceRegistry.db as unknown as { execute(q: unknown): Promise<unknown> },
       sender: leaseExpiryNotificationSender,
       logger,
+      clusterLock: makeClusterLockGate(CLUSTER_LOCK_IDS.LEASE_EXPIRY, clusterLockDeps),
     })
   : { start() {}, stop() {}, async tickOnce() { return { scanned: 0, dispatched: 0, skippedAlreadySent: 0, failed: 0, byWindow: {} }; } };
 
@@ -1782,6 +1823,7 @@ const executiveBriefCron = serviceRegistry.db
   ? createExecutiveBriefCron({
       db: serviceRegistry.db as unknown as { execute(q: unknown): Promise<unknown> },
       logger,
+      clusterLock: makeClusterLockGate(CLUSTER_LOCK_IDS.EXECUTIVE_BRIEF, clusterLockDeps),
     })
   : { start() {}, stop() {}, async tickOnce() { return { scanned: 0, generated: 0, degraded: 0, refused: 0, failed: 0 }; } };
 
@@ -1810,6 +1852,10 @@ const decisionRetrospectiveWorker =
         enabled:
           process.env.NODE_ENV !== 'test' &&
           process.env.BOSSNYUMBA_DECISION_RETROSPECTIVE_DISABLED !== 'true',
+        clusterLock: makeClusterLockGate(
+          CLUSTER_LOCK_IDS.DECISION_RETROSPECTIVE,
+          clusterLockDeps,
+        ),
       })
     : {
         start() {},
@@ -1842,6 +1888,10 @@ const outcomeReconciliationWorker = serviceRegistry.db
           process.env.BOSSNYUMBA_OUTCOME_RECONCILIATION_INTERVAL_MS ??
             6 * 60 * 60 * 1000,
         ) || 6 * 60 * 60 * 1000,
+      clusterLock: makeClusterLockGate(
+        CLUSTER_LOCK_IDS.OUTCOME_RECONCILIATION,
+        clusterLockDeps,
+      ),
     })
   : {
       start() {},
@@ -1879,6 +1929,10 @@ const mwikilaAutonomousWorker = createMwikilaAutonomousWiring({
         }
       ).killSwitch?.isOpen?.(),
     ),
+  clusterLock: makeClusterLockGate(
+    CLUSTER_LOCK_IDS.MWIKILA_AUTONOMOUS,
+    clusterLockDeps,
+  ),
 });
 
 // Graceful shutdown — documented and tested step-by-step:
@@ -1993,6 +2047,12 @@ async function gracefulShutdown(signal: string): Promise<void> {
     logger.info('shutdown: idempotency-sweeper cron stopped');
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: idempotency-sweeper cron stop failed');
+  }
+  try {
+    notificationDispatchDrainerStop?.();
+    logger.info('shutdown: notification-dispatch drainer stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: notification-dispatch drainer stop failed');
   }
 
   // Step 4 — close the HTTP server. Wrapped in a promise so we can
@@ -2139,6 +2199,18 @@ if (require.main === module) {
       logger.warn('idempotency-sweeper cron skipped — no db in service registry');
     }
   }
+
+  // Notification-dispatch drainer + stale-'sending' reaper. The dispatcher
+  // (services/notification-dispatch/dispatcher-worker.ts) was fully built
+  // but never started — so every row enqueued into notification_dispatch_log
+  // (lease-expiry alerts, monthly-close statements, …) sat at 'pending'
+  // forever. The drainer drains the backlog on one replica (advisory-lock
+  // gated); the reaper resets rows wedged in 'sending' (crashed mid-send)
+  // back to 'pending'. Internally degrades to a no-op when no DB / in tests.
+  notificationDispatchDrainerStop = startNotificationDispatchDrainer({
+    db: clusterLockDb,
+    logger,
+  });
 
   // Start the outbox drainer + register domain-event subscribers. The
   // outbox publishes events into the in-process bus; the subscribers

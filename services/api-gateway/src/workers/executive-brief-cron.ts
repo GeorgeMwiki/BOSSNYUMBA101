@@ -52,6 +52,15 @@ export interface ExecutiveBriefCronOptions {
   readonly intervalMs?: number;
   readonly enabled?: boolean;
   readonly now?: () => Date;
+  /**
+   * Optional cluster-wide single-flight gate (multi-replica safety). When
+   * provided, the SCHEDULED tick body runs only on the replica that holds
+   * the Postgres advisory lock — preventing 3 replicas from generating +
+   * charging for the same brief 3×. When omitted (tests, single-process),
+   * the tick runs directly. `tickOnce()` always bypasses the gate so ops /
+   * tests can force a run.
+   */
+  readonly clusterLock?: (fn: () => Promise<void>) => Promise<void>;
 }
 
 export interface ExecutiveBriefCronHandle {
@@ -102,6 +111,19 @@ export function createExecutiveBriefCron(
 
   let timer: NodeJS.Timeout | null = null;
   let running = false;
+
+  // Scheduled ticks pass through the cluster-lock gate (when wired) so only
+  // one replica runs the cost-bearing brief generation per cadence.
+  // `tickOnce()` stays ungated for ops/tests.
+  async function scheduledTick(): Promise<void> {
+    if (options.clusterLock) {
+      await options.clusterLock(async () => {
+        await tick();
+      });
+      return;
+    }
+    await tick();
+  }
 
   async function tick(): Promise<TickResult> {
     const result: TickResult = {
@@ -187,10 +209,10 @@ export function createExecutiveBriefCron(
       }
       options.logger.info({ intervalMs }, 'executive-brief-cron started');
       timer = setInterval(() => {
-        void tick();
+        void scheduledTick();
       }, intervalMs);
       if (typeof timer.unref === 'function') timer.unref();
-      void tick();
+      void scheduledTick();
     },
     stop() {
       if (timer) {

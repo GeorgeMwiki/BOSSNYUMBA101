@@ -91,6 +91,15 @@ export interface LeaseExpiryAlertCronOptions {
   readonly channelOrder?: ReadonlyArray<'whatsapp' | 'sms' | 'email' | 'in_app'>;
   /** Used in tests to make tick() deterministic. */
   readonly now?: () => Date;
+  /**
+   * Optional cluster-wide single-flight gate (multi-replica safety). When
+   * provided, the SCHEDULED tick runs only on the replica holding the
+   * Postgres advisory lock — so 3 replicas don't all scan + dispatch the
+   * same expiry alerts on the same day. The per-(lease,window) idempotency
+   * key + `ON CONFLICT DO NOTHING` insert is the second line of defence
+   * (see `insertPendingDispatch`). `tickOnce()` always bypasses the gate.
+   */
+  readonly clusterLock?: (fn: () => Promise<void>) => Promise<void>;
 }
 
 export interface LeaseExpiryAlertCronHandle {
@@ -270,7 +279,30 @@ export async function isAlreadySent(
   return rows.length > 0;
 }
 
-/** Insert a pending dispatch-log row so the channel attempt + dedupe survive process death. */
+/** Result of attempting to claim a (lease, window) dispatch slot. */
+export interface InsertPendingDispatchResult {
+  /**
+   * `true` when THIS call inserted the row (i.e. we won the race and own
+   * the send). `false` when a concurrent replica/tick already inserted the
+   * same `(tenant_id, idempotency_key)` — the `ON CONFLICT DO NOTHING`
+   * suppressed our insert, so we must NOT send (the winner will).
+   */
+  readonly inserted: boolean;
+  /** Row id (only meaningful when `inserted === true`). */
+  readonly id: string;
+}
+
+/**
+ * Atomically claim the dispatch slot for a (lease, window) alert.
+ *
+ * TOCTOU hardening: even with the per-tick cluster lock + the upfront
+ * `isAlreadySent` pre-check, two replicas could race between the SELECT and
+ * the INSERT. We make the INSERT the single source of truth by relying on
+ * the UNIQUE `(tenant_id, idempotency_key)` index: `ON CONFLICT DO NOTHING
+ * RETURNING id` returns a row ONLY when this statement actually inserted.
+ * The caller sends `iff inserted`, so the alert is delivered exactly once
+ * cluster-wide regardless of how many replicas reach this point.
+ */
 export async function insertPendingDispatch(
   db: DbLike,
   args: {
@@ -280,9 +312,9 @@ export async function insertPendingDispatch(
     readonly channel: string;
     readonly recipientAddress: string;
   },
-): Promise<string> {
+): Promise<InsertPendingDispatchResult> {
   const id = `ndl_${randomUUID()}`;
-  await db.execute(sql`
+  const res = await db.execute(sql`
     INSERT INTO notification_dispatch_log (
       id, tenant_id, customer_id, channel, recipient_address,
       template_key, locale, payload, correlation_id, idempotency_key,
@@ -305,8 +337,12 @@ export async function insertPendingDispatch(
       0, 'pending', NOW(), NOW()
     )
     ON CONFLICT (tenant_id, idempotency_key) DO NOTHING
+    RETURNING id
   `);
-  return id;
+  const rows = Array.isArray(res)
+    ? (res as unknown[])
+    : ((res as { rows?: unknown[] }).rows ?? []);
+  return { inserted: rows.length > 0, id };
 }
 
 /** Mark a dispatched row as sent or failed after the provider call. */
@@ -370,6 +406,18 @@ export function createLeaseExpiryAlertCron(
   let timer: NodeJS.Timeout | null = null;
   let running = false;
 
+  // Scheduled ticks pass through the cluster-lock gate (when wired) so only
+  // one replica scans + dispatches per cadence. `tickOnce()` stays ungated.
+  async function scheduledTick(): Promise<void> {
+    if (options.clusterLock) {
+      await options.clusterLock(async () => {
+        await tick();
+      });
+      return;
+    }
+    await tick();
+  }
+
   async function tick(): Promise<TickResult> {
     const result: TickResult = {
       scanned: 0,
@@ -411,13 +459,20 @@ export function createLeaseExpiryAlertCron(
               : channel === 'in_app'
                 ? lease.customerId
                 : (lease.customerPhone ?? '');
-          const dispatchId = await insertPendingDispatch(options.db, {
+          const claim = await insertPendingDispatch(options.db, {
             tenantId: lease.tenantId,
             idempotencyKey,
             lease,
             channel,
             recipientAddress,
           });
+          // TOCTOU defence: if we did NOT win the insert race, another
+          // replica/tick owns this (lease, window) — skip the send so the
+          // alert goes out exactly once cluster-wide.
+          if (!claim.inserted) {
+            (result as { skippedAlreadySent: number }).skippedAlreadySent += 1;
+            continue;
+          }
 
           const outcome = await options.sender.send({
             tenantId: lease.tenantId,
@@ -428,7 +483,7 @@ export function createLeaseExpiryAlertCron(
           });
 
           await updateDispatchOutcome(options.db, {
-            id: dispatchId,
+            id: claim.id,
             delivered: outcome.delivered,
             providerMessageId: outcome.providerMessageId,
             error: outcome.error,
@@ -475,11 +530,11 @@ export function createLeaseExpiryAlertCron(
       }
       options.logger.info({ intervalMs, windowsDays }, 'lease-expiry-cron started');
       timer = setInterval(() => {
-        void tick();
+        void scheduledTick();
       }, intervalMs);
       if (typeof timer.unref === 'function') timer.unref();
       // Kick once immediately so a fresh process starts converged.
-      void tick();
+      void scheduledTick();
     },
     stop() {
       if (timer) {

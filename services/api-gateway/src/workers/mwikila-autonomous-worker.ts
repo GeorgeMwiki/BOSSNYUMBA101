@@ -64,6 +64,14 @@ export interface MwikilaAutonomousWorkerOptions {
   readonly handlers: ReadonlyArray<MwikilaHandler>;
   readonly logger?: Logger;
   readonly intervalMs?: number;
+  /**
+   * Optional cluster-wide single-flight gate (multi-replica safety). When
+   * provided, the SCHEDULED tick runs only on the replica holding the
+   * Postgres advisory lock — so 3 replicas don't all run every handler for
+   * every tenant + write duplicate inbox rows / fire duplicate autonomous
+   * actions. `tickOnce()` always bypasses the gate (ops / tests).
+   */
+  readonly clusterLock?: (fn: () => Promise<void>) => Promise<void>;
 }
 
 export interface MwikilaAutonomousWorker {
@@ -135,6 +143,19 @@ export function createMwikilaAutonomousWorker(
     };
   }
 
+  // Scheduled ticks pass through the cluster-lock gate (when wired) so only
+  // one replica runs the per-tenant handler sweep per cadence.
+  // `tickOnce()` stays ungated.
+  async function scheduledTick(): Promise<void> {
+    if (opts.clusterLock) {
+      await opts.clusterLock(async () => {
+        await tickOnce();
+      });
+      return;
+    }
+    await tickOnce();
+  }
+
   return {
     start() {
       if (timer) return;
@@ -145,7 +166,7 @@ export function createMwikilaAutonomousWorker(
         return;
       }
       timer = setInterval(() => {
-        void tickOnce().catch((err: unknown) => {
+        void scheduledTick().catch((err: unknown) => {
           logger?.error(
             { err: err instanceof Error ? err.message : String(err) },
             'mwikila autonomous worker tick crashed',

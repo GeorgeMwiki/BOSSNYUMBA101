@@ -59,6 +59,12 @@ export interface MwikilaWiringDeps {
   readonly logger: Logger;
   readonly isKillSwitchOpen?: () => Promise<boolean> | boolean;
   readonly intervalMs?: number;
+  /**
+   * Optional cluster-wide single-flight gate (multi-replica safety),
+   * forwarded to the underlying worker so only the advisory-lock-holding
+   * replica runs the per-tenant handler sweep per cadence.
+   */
+  readonly clusterLock?: (fn: () => Promise<void>) => Promise<void>;
 }
 
 const INERT_WORKER: MwikilaAutonomousWorker = Object.freeze({
@@ -205,6 +211,7 @@ export function createMwikilaAutonomousWiring(
     handlers: buildRealHandlers(db, deps.logger),
     logger: deps.logger,
     intervalMs,
+    ...(deps.clusterLock !== undefined && { clusterLock: deps.clusterLock }),
   });
 
   deps.logger.info(

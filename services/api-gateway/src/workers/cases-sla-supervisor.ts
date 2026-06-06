@@ -42,6 +42,14 @@ export interface CaseSLASupervisorHandle {
 export interface CaseSLASupervisorOptions {
   readonly intervalMs?: number;
   readonly enabled?: boolean;
+  /**
+   * Optional cluster-wide single-flight gate (multi-replica safety). When
+   * provided, the SCHEDULED multi-tenant tick runs only on the replica
+   * holding the Postgres advisory lock — preventing 3 replicas from
+   * double-escalating the same overdue cases + emitting duplicate
+   * `CaseSLABreached` events. `tickOnce()` always bypasses the gate.
+   */
+  readonly clusterLock?: (fn: () => Promise<void>) => Promise<void>;
 }
 
 export function createCaseSLASupervisor(
@@ -84,6 +92,18 @@ export function createCaseSLASupervisor(
   const workersByTenant = new Map<string, CaseSLAWorker>();
   let timer: NodeJS.Timeout | null = null;
   let running = false;
+
+  // Scheduled ticks pass through the cluster-lock gate (when wired) so only
+  // one replica auto-escalates per cadence. `tickOnce()` stays ungated.
+  async function scheduledTick(): Promise<void> {
+    if (options.clusterLock) {
+      await options.clusterLock(async () => {
+        await tick();
+      });
+      return;
+    }
+    await tick();
+  }
 
   function getWorker(tenantId: string): CaseSLAWorker {
     const cached = workersByTenant.get(tenantId);
@@ -169,12 +189,12 @@ export function createCaseSLASupervisor(
       }
       logger.info({ intervalMs }, 'cases-sla-supervisor started');
       timer = setInterval(() => {
-        void tick();
+        void scheduledTick();
       }, intervalMs);
       if (typeof timer.unref === 'function') timer.unref();
       // Kick once immediately so overdue cases don't sit idle until the
       // first interval elapses.
-      void tick();
+      void scheduledTick();
     },
     stop() {
       if (timer) {

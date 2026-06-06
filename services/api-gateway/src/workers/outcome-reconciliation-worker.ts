@@ -102,6 +102,14 @@ export interface ReconciliationWorkerOptions {
   readonly intervalMs?: number;
   readonly batchSize?: number;
   readonly now?: () => Date;
+  /**
+   * Optional cluster-wide single-flight gate (multi-replica safety). When
+   * provided, the SCHEDULED tick runs only on the replica holding the
+   * Postgres advisory lock — so 3 replicas don't all reconcile the same
+   * predictions + write duplicate `outcome_reconciliations` rows.
+   * `tickOnce()` always bypasses the gate (ops / tests).
+   */
+  readonly clusterLock?: (fn: () => Promise<void>) => Promise<void>;
 }
 
 export interface ReconciliationWorker {
@@ -369,11 +377,23 @@ export function createReconciliationWorker(
     }
   }
 
+  // Scheduled ticks pass through the cluster-lock gate (when wired) so only
+  // one replica reconciles per cadence. `tickOnce()` stays ungated.
+  async function scheduledTick(): Promise<void> {
+    if (options.clusterLock) {
+      await options.clusterLock(async () => {
+        await tickOnce();
+      });
+      return;
+    }
+    await tickOnce();
+  }
+
   return {
     start() {
       if (timer) return;
       timer = setInterval(() => {
-        void tickOnce().catch((err) => {
+        void scheduledTick().catch((err) => {
           options.logger.error(
             { err: err instanceof Error ? err.message : String(err) },
             'outcome-reconciliation: tick threw',

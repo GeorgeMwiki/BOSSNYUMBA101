@@ -78,6 +78,14 @@ export interface DecisionRetrospectiveWorkerOptions {
   readonly batchSize?: number;
   readonly softGradeWaitDays?: number;
   readonly now?: () => Date;
+  /**
+   * Optional cluster-wide single-flight gate (multi-replica safety). When
+   * provided, the SCHEDULED tick runs only on the replica holding the
+   * Postgres advisory lock — so 3 replicas don't all grade the same
+   * decisions + write duplicate hash-chained `decision_outcomes` rows.
+   * `tickOnce()` always bypasses the gate (ops / tests).
+   */
+  readonly clusterLock?: (fn: () => Promise<void>) => Promise<void>;
 }
 
 export interface DecisionRetrospectiveWorkerHandle {
@@ -333,6 +341,18 @@ export function createDecisionRetrospectiveWorker(
     return { considered, graded, skipped, failed };
   }
 
+  // Scheduled ticks pass through the cluster-lock gate (when wired) so only
+  // one replica grades per cadence. `tickOnce()` stays ungated.
+  async function scheduledTick(): Promise<void> {
+    if (options.clusterLock) {
+      await options.clusterLock(async () => {
+        await tickOnce();
+      });
+      return;
+    }
+    await tickOnce();
+  }
+
   function start(): void {
     if (!enabled || timer !== null) return;
     logger.info(
@@ -340,7 +360,7 @@ export function createDecisionRetrospectiveWorker(
       'decision-retrospective: started',
     );
     timer = setInterval(() => {
-      void tickOnce();
+      void scheduledTick();
     }, intervalMs);
   }
 

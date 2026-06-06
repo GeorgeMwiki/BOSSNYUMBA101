@@ -210,6 +210,14 @@ export function createIntelligenceHistorySupervisor(
     info: (meta: Record<string, unknown>, msg: string) => void;
     warn: (meta: Record<string, unknown>, msg: string) => void;
   },
+  /**
+   * Optional cluster-wide single-flight gate (multi-replica safety). When
+   * provided, the SCHEDULED daily tick runs only on the replica holding the
+   * Postgres advisory lock — so 3 replicas don't all recompute the same
+   * `intelligence_history` snapshots. The worker's upsert is idempotent, so
+   * this is mainly to avoid 3× redundant compute. Omitted in tests.
+   */
+  clusterLock?: (fn: () => Promise<void>) => Promise<void>,
 ): IntelligenceHistorySupervisor {
   if (!db) {
     return { worker: null, start() {}, stop() {} };
@@ -243,13 +251,25 @@ export function createIntelligenceHistorySupervisor(
     }
   }
 
+  // Scheduled ticks pass through the cluster-lock gate (when wired) so only
+  // one replica recomputes per day.
+  async function scheduledTick(): Promise<void> {
+    if (clusterLock) {
+      await clusterLock(async () => {
+        await tick();
+      });
+      return;
+    }
+    await tick();
+  }
+
   return {
     worker,
     start() {
       if (handle) return;
       // First run immediately so operators can see a snapshot the same day.
-      void tick();
-      handle = setInterval(tick, DAY_MS);
+      void scheduledTick();
+      handle = setInterval(() => void scheduledTick(), DAY_MS);
       if (typeof handle.unref === 'function') handle.unref();
       logger.info({ cadenceMs: DAY_MS }, 'intelligence-history-worker started');
     },

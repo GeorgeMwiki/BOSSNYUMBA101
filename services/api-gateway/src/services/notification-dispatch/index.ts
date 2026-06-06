@@ -28,6 +28,7 @@ export {
 
 export {
   createStubEmailProvider,
+  createEmailProviderFromEnv,
   createInMemoryEmailProvider,
   type EmailProvider,
   type EmailProviderInput,
@@ -36,6 +37,7 @@ export {
 
 export {
   createStubSmsProvider,
+  resolveSmsProviderFromEnv,
   createInMemorySmsProvider,
   type SmsProvider,
   type SmsProviderInput,

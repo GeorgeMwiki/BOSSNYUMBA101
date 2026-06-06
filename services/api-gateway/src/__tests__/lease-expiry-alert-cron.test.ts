@@ -208,11 +208,17 @@ describe('createLeaseExpiryAlertCron — tickOnce', () => {
         rows: [leaseRow()],
       },
       {
+        // INSERT ... ON CONFLICT DO NOTHING RETURNING id — a returned row
+        // means THIS tick won the claim and must send.
+        pattern: /INSERT INTO notification_dispatch_log/,
+        rows: [{ id: 'ndl_test_001' }],
+      },
+      {
         // isAlreadySent — returns no rows so we dispatch
         pattern: /FROM notification_dispatch_log/,
         rows: [],
       },
-      // INSERT + UPDATE queries silently return empty rows
+      // UPDATE queries silently return empty rows
     ]);
     const sendCalls: unknown[] = [];
     const sender: NotificationSender = {
@@ -275,6 +281,7 @@ describe('createLeaseExpiryAlertCron — tickOnce', () => {
   it('marks failure when sender returns delivered=false', async () => {
     const { db } = buildFakeDb([
       { pattern: /FROM leases l/, rows: [leaseRow()] },
+      { pattern: /INSERT INTO notification_dispatch_log/, rows: [{ id: 'ndl_fail_001' }] },
       { pattern: /FROM notification_dispatch_log/, rows: [] },
     ]);
     const sender: NotificationSender = {
@@ -294,6 +301,38 @@ describe('createLeaseExpiryAlertCron — tickOnce', () => {
     expect(result.failed).toBe(1);
   });
 
+  it('does NOT send when the INSERT lost the race (ON CONFLICT DO NOTHING → no row)', async () => {
+    // TOCTOU: isAlreadySent pre-check passes (no row yet) but a concurrent
+    // replica inserts first, so our `INSERT ... DO NOTHING RETURNING id`
+    // returns zero rows. We must skip the send.
+    const { db, executedSql } = buildFakeDb([
+      { pattern: /FROM leases l/, rows: [leaseRow()] },
+      // INSERT returns NO row → conflict → another replica owns the send.
+      { pattern: /INSERT INTO notification_dispatch_log/, rows: [] },
+      { pattern: /FROM notification_dispatch_log/, rows: [] },
+    ]);
+    let sendCalled = false;
+    const sender: NotificationSender = {
+      async send() {
+        sendCalled = true;
+        return { delivered: true };
+      },
+    };
+    const cron = createLeaseExpiryAlertCron({
+      db,
+      sender,
+      logger,
+      enabled: true,
+      now: () => now,
+    });
+    const result = await cron.tickOnce();
+    expect(sendCalled).toBe(false);
+    expect(result.dispatched).toBe(0);
+    expect(result.skippedAlreadySent).toBe(1);
+    // No UPDATE should fire — we never attempted a provider send.
+    expect(executedSql.some((s) => /UPDATE notification_dispatch_log/.test(s))).toBe(false);
+  });
+
   it('classifies multiple leases across windows in a single tick', async () => {
     const { db } = buildFakeDb([
       {
@@ -305,6 +344,11 @@ describe('createLeaseExpiryAlertCron — tickOnce', () => {
           leaseRow({ id: 'l_1',  end_date: new Date(now.getTime() +  1 * 24 * 60 * 60 * 1000).toISOString() }),
           leaseRow({ id: 'l_45', end_date: new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000).toISOString() }), // unmatched
         ],
+      },
+      {
+        // Each INSERT wins its claim — return a fresh id so all 4 dispatch.
+        pattern: /INSERT INTO notification_dispatch_log/,
+        rows: [{ id: 'ndl_multi' }],
       },
       { pattern: /FROM notification_dispatch_log/, rows: [] },
     ]);
