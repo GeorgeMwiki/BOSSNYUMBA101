@@ -12,9 +12,32 @@
  */
 
 import { useMemo } from 'react';
-import * as Icons from 'lucide-react';
+import {
+  BookOpen,
+  Building2,
+  Scale,
+  ShieldCheck,
+  TrendingUp,
+  Wallet,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { COURSE_DOMAINS, type CourseDomain } from '@bossnyumba/ai-copilot/courses';
+
+// Explicit named imports only — a namespace `import * as Icons` pulls the
+// entire lucide-react module into this route's graph and defeats the app's
+// modularizeImports / optimizePackageImports tree-shaking. This map covers
+// every `CourseDomain.icon` value shipped in COURSE_DOMAINS; unknown names
+// fall back to BookOpen below.
+const DOMAIN_ICONS: Readonly<Record<string, LucideIcon>> = {
+  Building2,
+  Scale,
+  ShieldCheck,
+  TrendingUp,
+  Wallet,
+  Wrench,
+};
 
 type Language = 'en' | 'sw';
 
@@ -29,11 +52,7 @@ interface DomainPickerProps {
 }
 
 function DomainIcon({ name }: { name: string }): JSX.Element {
-  const Cmp = (Icons as Record<string, unknown>)[name] as
-    | React.ComponentType<{ className?: string }>
-    | undefined;
-  const Fallback = Icons.BookOpen;
-  const Resolved = Cmp ?? Fallback;
+  const Resolved = DOMAIN_ICONS[name] ?? BookOpen;
   return <Resolved className="w-5 h-5 text-sky-600" />;
 }
 

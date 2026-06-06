@@ -1,3 +1,5 @@
+'use client';
+
 import dynamic from 'next/dynamic';
 
 // `WorkOrderTriage` is the 324-line dispatch / triage board — heaviest
