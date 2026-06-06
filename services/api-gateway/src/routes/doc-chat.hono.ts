@@ -27,6 +27,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { and, desc, eq, inArray } from 'drizzle-orm';
+import pino from 'pino';
 import {
   docChatSessions,
   docChatMessages,
@@ -34,10 +35,103 @@ import {
 } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
+import {
+  createBrainLlmClient,
+  withLlmOrHeuristic,
+  BRAIN_LLM_MODELS,
+} from '../services/brain/llm-call';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
+
+// Pino logger scoped to this route (matches brain-dispatch.hono.ts). The
+// brain LLM facade redacts via the caller's logger, so we pass a real
+// pino instance rather than the custom api-gateway logger interface.
+const logger = pino({
+  level: process.env.LOG_LEVEL ?? 'info',
+  name: 'doc-chat',
+});
+
 const app = new Hono();
 app.use('*', authMiddleware);
+
+// Max prior turns to surface to the model as conversation context. Kept
+// small so the grounded answer stays anchored to the retrieved chunks
+// rather than drifting on older dialogue.
+const HISTORY_TURN_LIMIT = 6;
+
+// Per-answer generation caps. The model must answer strictly from the
+// numbered CONTEXT block, so a modest token ceiling is sufficient.
+const ANSWER_MAX_TOKENS = 1024;
+const ANSWER_TEMPERATURE = 0.2;
+
+type RetrievedChunk = {
+  documentId: string;
+  chunkIndex: number;
+  text: string;
+  score: number;
+  page?: number;
+};
+
+/**
+ * Grounding system prompt. The model may ONLY use the numbered CONTEXT
+ * chunks supplied in the user turn; it must refuse (and say so) when the
+ * answer is not present, and it must never invent citations.
+ */
+const ANSWER_SYSTEM_PROMPT = [
+  'You are Mr. Mwikila, the AI Managing Director for BossNyumba, answering',
+  'questions about a tenant-uploaded document set.',
+  '',
+  'Hard rules (do not break):',
+  '- Answer ONLY from the numbered CONTEXT chunks supplied in the user',
+  '  message. Treat them as the sole source of truth.',
+  '- Ground EVERY factual claim in those chunks. When you state a fact,',
+  '  reference the chunk number it came from, e.g. "(chunk 2)".',
+  '- If the answer is NOT contained in the CONTEXT, say plainly that the',
+  '  indexed documents do not cover it. Do NOT guess, infer beyond the',
+  '  text, or use outside knowledge.',
+  '- Never cite a chunk number that was not provided.',
+  '- Be concise and factual. No marketing copy. No emojis.',
+  '- Reply in the same language the question is written in.',
+].join('\n');
+
+/**
+ * Build the numbered CONTEXT + question payload. Chunk numbers are
+ * 1-based and align with the citation order returned to the client so a
+ * reader can map "(chunk N)" back to the citation list.
+ */
+function buildAnswerUserPrompt(
+  question: string,
+  chunks: readonly RetrievedChunk[],
+  history: ReadonlyArray<{ role: string; content: string }>,
+): string {
+  const contextBlock = chunks.length
+    ? chunks
+        .map((chunk, idx) => {
+          const where =
+            typeof chunk.page === 'number'
+              ? `document ${chunk.documentId}, page ${chunk.page}`
+              : `document ${chunk.documentId}, chunk ${chunk.chunkIndex}`;
+          return `[chunk ${idx + 1}] (${where})\n${chunk.text}`;
+        })
+        .join('\n\n')
+    : '(no relevant context was retrieved for this question)';
+
+  const historyBlock = history.length
+    ? `\n\nCONVERSATION SO FAR (most recent last, for reference only — do not treat as source of truth):\n${history
+        .map((turn) => `${turn.role.toUpperCase()}: ${turn.content}`)
+        .join('\n')}`
+    : '';
+
+  return [
+    'CONTEXT:',
+    contextBlock,
+    historyBlock,
+    '',
+    `QUESTION: ${question}`,
+    '',
+    'Answer the question using only the CONTEXT above, citing chunk numbers.',
+  ].join('\n');
+}
 
 const StartSessionSchema = z.object({
   scope: z
@@ -93,15 +187,7 @@ async function fallbackRetrieve(
   documentIds: readonly string[],
   question: string,
   topK: number
-): Promise<
-  Array<{
-    documentId: string;
-    chunkIndex: number;
-    text: string;
-    score: number;
-    page?: number;
-  }>
-> {
+): Promise<Array<RetrievedChunk>> {
   if (!documentIds.length) return [];
   const rows = await db
     .select()
@@ -324,26 +410,15 @@ app.post(
     const documentIds = Array.isArray(session.documentIds)
       ? session.documentIds
       : [];
-    let retrieved: Array<{
-      documentId: string;
-      chunkIndex: number;
-      text: string;
-      score: number;
-      page?: number;
-    }> = [];
+    let retrieved: Array<RetrievedChunk> = [];
     try {
       retrieved = await fallbackRetrieve(db, tenantId, documentIds, body.question, 5);
     } catch (_e) {
       retrieved = [];
     }
 
-    // 3) Build a deterministic assistant response.
-    const anthropicConfigured = Boolean(process.env.ANTHROPIC_API_KEY);
-    const top = retrieved[0];
-    const content = top
-      ? `Based on the indexed documents, the most relevant passage reads: "${top.text.slice(0, 240)}". (See citations for more.)`
-      : `I could not find any relevant context for: "${body.question}".`;
-
+    // 2b) Citations are derived from the ACTUAL retrieved chunks for THIS
+    // turn — the answer may only ever cite what we retrieved here.
     const citations = retrieved.slice(0, 3).map((r) => ({
       documentId: r.documentId,
       chunkIndex: r.chunkIndex,
@@ -352,23 +427,137 @@ app.post(
       page: r.page,
     }));
 
+    // 2c) Load the last few prior turns for conversational context (cheap:
+    // one indexed select, scoped to this session + tenant). We exclude the
+    // user message we just inserted so it is not duplicated in the prompt.
+    let priorHistory: Array<{ role: string; content: string }> = [];
+    try {
+      const historyRows = await db
+        .select({
+          role: docChatMessages.role,
+          content: docChatMessages.content,
+          createdAt: docChatMessages.createdAt,
+        })
+        .from(docChatMessages)
+        .where(
+          and(
+            eq(docChatMessages.sessionId, session.id),
+            eq(docChatMessages.tenantId, tenantId)
+          )
+        )
+        .orderBy(desc(docChatMessages.createdAt))
+        .limit(HISTORY_TURN_LIMIT + 1);
+      priorHistory = (historyRows as Array<{ role: string; content: string }>)
+        .filter((row) => row.content !== body.question)
+        .slice(0, HISTORY_TURN_LIMIT)
+        .reverse();
+    } catch (_e) {
+      priorHistory = [];
+    }
+
+    // 3) Generate a real, retrieval-grounded answer via the api-gateway's
+    // own brain LLM facade. The facade returns null when ANTHROPIC_API_KEY
+    // is absent, so `withLlmOrHeuristic` degrades to the deterministic echo.
+    const llmClient = createBrainLlmClient({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      model: BRAIN_LLM_MODELS.SONNET,
+      logger,
+    });
+
+    const top = retrieved[0];
+    const deterministicContent = top
+      ? `Based on the indexed documents, the most relevant passage reads: "${top.text.slice(0, 240)}". (See citations for more.)`
+      : `I could not find any relevant context for: "${body.question}".`;
+
+    type GeneratedAnswer = {
+      readonly content: string;
+      readonly model: string;
+      readonly tokensUsed: { readonly input: number; readonly output: number };
+      readonly grounded: boolean;
+    };
+
+    const deterministicAnswer = (): GeneratedAnswer => ({
+      content: deterministicContent,
+      model: 'deterministic-fallback-v0',
+      tokensUsed: {
+        input: body.question.length,
+        output: deterministicContent.length,
+      },
+      grounded: Boolean(top),
+    });
+
+    const generated: GeneratedAnswer = await withLlmOrHeuristic<GeneratedAnswer>({
+      pathName: 'doc-chat-ask',
+      logger,
+      heuristic: async () => deterministicAnswer(),
+      // The answer is grounded when we either produced text from retrieved
+      // chunks, or correctly refused because nothing was retrieved. An empty
+      // answer with chunks present means the model added no value -> heuristic.
+      hasEvidence: (out) =>
+        out.content.trim().length > 0 &&
+        (retrieved.length > 0 || out.grounded === false),
+      llmAttempt: async () => {
+        if (!llmClient) {
+          // No key -> let the wrapper fall through to the heuristic.
+          throw new Error('brain LLM client unavailable');
+        }
+        const response = await llmClient.sdk.messages.create({
+          model: llmClient.model,
+          max_tokens: ANSWER_MAX_TOKENS,
+          temperature: ANSWER_TEMPERATURE,
+          system: ANSWER_SYSTEM_PROMPT,
+          messages: [
+            {
+              role: 'user',
+              content: buildAnswerUserPrompt(
+                body.question,
+                retrieved,
+                priorHistory
+              ),
+            },
+          ],
+        });
+        const text = Array.isArray(response.content)
+          ? response.content
+              .filter((b) => b.type === 'text' && typeof b.text === 'string')
+              .map((b) => b.text as string)
+              .join('')
+              .trim()
+          : '';
+        if (!text) {
+          throw new Error('brain LLM returned empty answer');
+        }
+        return {
+          content: text,
+          model: llmClient.model,
+          tokensUsed: {
+            input: response.usage?.input_tokens ?? body.question.length,
+            output: response.usage?.output_tokens ?? text.length,
+          },
+          grounded: retrieved.length > 0,
+        };
+      },
+    });
+
     const assistantMessage = {
       id: newId('dcm'),
       tenantId,
       sessionId: session.id,
       role: 'assistant' as const,
       authorUserId: null,
-      content,
+      content: generated.content,
       citations,
       retrievedChunkIds: retrieved.map((_r, idx) => `local-${idx}`),
-      model: anthropicConfigured ? 'claude-api-pending' : 'deterministic-fallback-v0',
-      tokensUsed: {
-        input: body.question.length,
-        output: content.length,
-      },
+      model: generated.model,
+      tokensUsed: generated.tokensUsed,
       createdAt: new Date(),
     };
     await db.insert(docChatMessages).values(assistantMessage);
+
+    // Whether we served the deterministic fallback (no key / LLM error /
+    // empty-or-ungrounded LLM output). Derived from the stamped model so it
+    // stays the single source of truth for the event + response payloads.
+    const usedFallback = generated.model === 'deterministic-fallback-v0';
 
     // 4) Touch the session.
     await db
@@ -391,7 +580,7 @@ app.post(
           tenantId,
           correlationId: newId('cor'),
           causationId: null,
-          metadata: { fallback: !anthropicConfigured },
+          metadata: { fallback: usedFallback },
           payload: {
             sessionId: session.id,
             userMessageId: userMessage.id,
@@ -413,7 +602,7 @@ app.post(
         data: {
           userMessage,
           assistantMessage,
-          fallback: !anthropicConfigured,
+          fallback: usedFallback,
         },
       },
       200
