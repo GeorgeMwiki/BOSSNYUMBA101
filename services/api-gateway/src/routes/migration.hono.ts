@@ -42,6 +42,18 @@ type Variables = {
 export function createMigrationRouter(deps: {
   getService: (tenantId: string) => MigrationService;
   authMiddleware?: (c: any, next: () => Promise<void>) => Promise<Response | void>;
+  // KI-013 — optional Migration Wizard copilot. When provided, the
+  // `POST /:runId/ask` route forwards the admin's chat turn to it; when
+  // omitted the route returns its honest 501. Kept structural so the
+  // gateway composition can pass any object exposing `run(...)`.
+  migrationWizardCopilot?: {
+    run(args: {
+      tenantId: string;
+      actorId: string;
+      runId: string;
+      message: string;
+    }): Promise<unknown>;
+  };
 }) {
   const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 

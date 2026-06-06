@@ -217,6 +217,14 @@
       "dataLoss": true,
       "envs": ["dev", "staging"],
       "notes": "Generated courses are rebuildable from the same domain + scenario inputs, but learner quiz progress (course_lessons quiz_score/status/completed_at) is lost. Production rollback must be coordinated by #ops."
+    },
+    {
+      "up": "0312_cases_photos.sql",
+      "down": "down/0312_down_cases_photos.sql",
+      "reverses": "ADD COLUMN cases.photos jsonb DEFAULT '[]'",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Drops case intake photo references. Photos promoted into the normalized evidence_attachments table are unaffected; only the lightweight intake-time refs on cases.photos are lost."
     }
   ]
 }

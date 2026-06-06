@@ -113,6 +113,7 @@ import { marketplaceRouter } from './routes/marketplace.hono';
 // portfolio owners.
 import { universalMarketplaceRouter } from './routes/marketplace/index.js';
 import { createMigrationRouter } from './routes/migration.hono';
+import { createMigrationWizardCopilotPort } from './composition/migration-wizard-wiring';
 import { negotiationsRouter } from './routes/negotiations.hono';
 import { createNotificationPreferencesRouter } from './routes/notification-preferences.hono';
 import { createNotificationWebhookRouter } from './routes/notification-webhooks.hono';
@@ -1138,6 +1139,17 @@ api.route('/marketplace-universal', universalMarketplaceRouter);
 // where available. For services that aren't yet wired, the factory gracefully
 // returns a 503/501 to the client rather than a synchronous throw — a pilot
 // can hit the endpoint, see the reason, and continue.
+// KI-013 — wire the Migration Wizard copilot. Gated on ANTHROPIC_API_KEY:
+// when present, the copilot runs real turns on the platform-standard
+// Anthropic client; when absent, the factory returns null and the
+// /migration/:runId/ask route keeps its honest 501.
+const migrationWizardCopilot = createMigrationWizardCopilotPort({ logger });
+logger.info(
+  { copilot: 'migration-wizard', wired: Boolean(migrationWizardCopilot) },
+  migrationWizardCopilot
+    ? 'migration-wizard copilot: live (Anthropic-backed)'
+    : 'migration-wizard copilot: null (ANTHROPIC_API_KEY unset — /ask returns 501)',
+);
 const migrationRouter = createMigrationRouter({
   getService: (_tenantId: string) => {
     const svc = serviceRegistry.migration;
@@ -1149,6 +1161,7 @@ const migrationRouter = createMigrationRouter({
     }
     return svc;
   },
+  ...(migrationWizardCopilot ? { migrationWizardCopilot } : {}),
 });
 // Notification preferences — the real store lives in the notifications
 // service; until the HTTP binding lands we return the posted shape

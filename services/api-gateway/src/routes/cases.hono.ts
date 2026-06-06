@@ -39,6 +39,22 @@ const CASE_STATUSES = [
 ] as const;
 const CASE_SEVERITIES = ['low', 'medium', 'high', 'critical', 'urgent'] as const;
 
+// Maintenance-evidence photos attached at case creation. The canonical
+// reference is a URL (remote https or inline data:/blob: URL — all valid
+// per the URL parser). The tenant intake clients additionally send a
+// `{ name, dataUrl|url }` object so the filename survives, so we accept
+// both shapes and normalize to `{ name, url }` before persisting. Capped
+// at 20 to bound payload size. Distinct from the richer
+// `evidence_attachments` table (file size / mime / verification).
+const PhotoRefSchema = z.union([
+  z.string().url(),
+  z.object({
+    name: z.string().max(255).optional(),
+    url: z.string().url().optional(),
+    dataUrl: z.string().url().optional(),
+  }),
+]);
+
 const CaseCreateSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(5000).optional(),
@@ -51,7 +67,27 @@ const CaseCreateSchema = z.object({
   amountInDispute: z.number().nonnegative().optional(),
   currency: z.string().length(3).optional(),
   tags: z.array(z.string()).optional(),
+  photos: z.array(PhotoRefSchema).max(20).optional(),
 });
+
+type PhotoRef = z.infer<typeof PhotoRefSchema>;
+
+/**
+ * Normalize the accepted photo shapes into a stable `{ name, url }[]`.
+ * Drops entries that carry no resolvable URL so a malformed item never
+ * persists as a null-URL reference.
+ */
+function normalizePhotos(
+  photos: readonly PhotoRef[] | undefined,
+): ReadonlyArray<{ name: string | null; url: string }> {
+  if (!photos) return [];
+  return photos.flatMap((p) => {
+    if (typeof p === 'string') return [{ name: null, url: p }];
+    const url = p.url ?? p.dataUrl;
+    if (!url) return [];
+    return [{ name: p.name ?? null, url }];
+  });
+}
 
 const CaseResolveSchema = z.object({
   resolution: z.string().min(1).max(2000).optional(),
@@ -88,6 +124,7 @@ function rowToCase(row: Record<string, unknown>) {
     resolvedAt: row.resolved_at,
     closedAt: row.closed_at,
     tags: row.tags || [],
+    photos: row.photos || [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -148,12 +185,13 @@ app.post('/', zValidator('json', CaseCreateSchema), withSecurityEvents({ action:
   const type = body.type || 'maintenance_dispute';
   const severity = body.severity || 'medium';
   const tags = body.tags || [];
+  const photos = normalizePhotos(body.photos);
 
   await db.execute(sql`
     INSERT INTO cases (
       id, tenant_id, property_id, unit_id, customer_id, lease_id,
       case_number, case_type, severity, status, title, description,
-      amount_in_dispute, currency, tags,
+      amount_in_dispute, currency, tags, photos,
       created_at, updated_at, created_by, updated_by
     ) VALUES (
       ${id}, ${auth.tenantId}, ${body.propertyId || null}, ${body.unitId || null},
@@ -162,6 +200,7 @@ app.post('/', zValidator('json', CaseCreateSchema), withSecurityEvents({ action:
       'open'::case_status, ${body.title}, ${body.description || null},
       ${body.amountInDispute != null ? body.amountInDispute : null},
       ${body.currency || null}, ${JSON.stringify(tags)}::jsonb,
+      ${JSON.stringify(photos)}::jsonb,
       NOW(), NOW(), ${auth.userId}, ${auth.userId}
     )
   `);

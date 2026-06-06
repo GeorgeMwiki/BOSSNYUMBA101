@@ -40,6 +40,7 @@ function makeDbStub() {
     amount_in_dispute: null,
     currency: null,
     tags: [],
+    photos: [{ name: 'tap.jpg', url: 'https://cdn.example.com/tap.jpg' }],
     assigned_to: null,
     resolved_at: null,
     closed_at: null,
@@ -164,6 +165,62 @@ describe('cases router — live data (replacing the 503 stub)', () => {
     expect(body.data.caseNumber).toBe('CASE-260420-0001');
     // Insert + one select for the returning row.
     expect(calls.map((c) => c.kind)).toContain('insert');
+  });
+
+  it('POST /cases accepts intake photos in object shape ({ name, dataUrl }) and persists', async () => {
+    // Mirrors the real customer-app maintenance-intake payload, which sends
+    // `{ name, dataUrl }` objects. Before migration 0312 these were dropped.
+    const { app, calls } = buildApp();
+    const res = await app.request('/cases', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${mintJwt()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Leaking kitchen tap',
+        description: 'Dripping since last night',
+        photos: [
+          { name: 'tap.jpg', dataUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRg==' },
+          'https://cdn.example.com/overflow.jpg',
+        ],
+      }),
+    });
+    expect(res.status).toBe(201);
+    expect(calls.map((c) => c.kind)).toContain('insert');
+    // Returned row surfaces the persisted photos via rowToCase.
+    const body = (await res.json()) as { data: { photos: unknown[] } };
+    expect(Array.isArray(body.data.photos)).toBe(true);
+  });
+
+  it('POST /cases rejects a non-URL photo reference (400)', async () => {
+    const { app } = buildApp();
+    const res = await app.request('/cases', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${mintJwt()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Bad photo',
+        photos: ['not a url'],
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('GET /cases/:id surfaces persisted photos via rowToCase', async () => {
+    const { app } = buildApp();
+    const res = await app.request('/cases/case-abc', {
+      headers: { Authorization: `Bearer ${mintJwt()}` },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      data: { photos: Array<{ name: string; url: string }> };
+    };
+    expect(body.data.photos).toEqual([
+      { name: 'tap.jpg', url: 'https://cdn.example.com/tap.jpg' },
+    ]);
   });
 
   it('GET /cases returns the tenant-scoped list and total', async () => {

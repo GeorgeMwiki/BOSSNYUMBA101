@@ -154,7 +154,13 @@ export const cases = pgTable(
     
     // Tags
     tags: jsonb('tags').default([]),
-    
+
+    // Intake photos (maintenance evidence attached at create time).
+    // Lightweight `{ name, url }[]` references — distinct from the
+    // normalized `evidenceAttachments` table which carries file size,
+    // mime-type, checksum, and a verification workflow. Migration 0312.
+    photos: jsonb('photos').notNull().default([]),
+
     // Resolution
     resolvedAt: timestamp('resolved_at', { withTimezone: true }),
     resolvedBy: text('resolved_by'),
