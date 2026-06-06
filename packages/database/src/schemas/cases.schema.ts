@@ -253,51 +253,49 @@ export const caseTimelines = pgTable(
 // Evidence Attachments Table
 // ============================================================================
 
+// Columns mirror the LIVE table shipped by migration
+// `0014_outbox_and_intelligence.sql` — the authoritative durable model
+// for case evidence (a maintenance/dispute case can have many rows).
+// Earlier revisions of this schema described a richer column set
+// (`evidence_type` / `title` / `file_size` / `verified` / `captured_by`
+// …) that was never migrated, so the ORM drifted from the database.
+// This definition is realigned to the columns that actually exist:
+//   id, tenant_id, case_id, uploaded_by, file_name, file_url,
+//   mime_type, file_size_bytes, description, exhibit_label, sealed,
+//   created_at, deleted_at.
+// `file_size_bytes` is the byte length (nullable — intake photos may
+// arrive without a server-known size); `uploaded_by` is the principal
+// id from the authenticated session.
 export const evidenceAttachments = pgTable(
   'evidence_attachments',
   {
     id: text('id').primaryKey(),
     tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
     caseId: text('case_id').notNull().references(() => cases.id, { onDelete: 'cascade' }),
-    
-    // Evidence info
-    evidenceType: evidenceTypeEnum('evidence_type').notNull(),
-    title: text('title').notNull(),
-    description: text('description'),
-    
+
+    // Actor
+    uploadedBy: text('uploaded_by').notNull(),
+
     // File info
-    fileUrl: text('file_url').notNull(),
     fileName: text('file_name').notNull(),
-    fileSize: integer('file_size').notNull(),
-    mimeType: text('mime_type').notNull(),
-    
-    // Source document reference
-    documentUploadId: text('document_upload_id'),
-    
-    // Integrity
-    checksum: text('checksum'),
-    
-    // Metadata
-    capturedAt: timestamp('captured_at', { withTimezone: true }),
-    capturedBy: text('captured_by'),
-    location: jsonb('location').default({}),
-    metadata: jsonb('metadata').default({}),
-    
-    // Verification
-    verified: boolean('verified').notNull().default(false),
-    verifiedAt: timestamp('verified_at', { withTimezone: true }),
-    verifiedBy: text('verified_by'),
-    
+    fileUrl: text('file_url').notNull(),
+    mimeType: text('mime_type'),
+    fileSizeBytes: integer('file_size_bytes'),
+
+    // Description / exhibit
+    description: text('description'),
+    exhibitLabel: text('exhibit_label'),
+
+    // Legal hold
+    sealed: boolean('sealed').notNull().default(false),
+
     // Timestamps
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    createdBy: text('created_by'),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
-    deletedBy: text('deleted_by'),
   },
   (table) => ({
     tenantIdx: index('evidence_attachments_tenant_idx').on(table.tenantId),
     caseIdx: index('evidence_attachments_case_idx').on(table.caseId),
-    evidenceTypeIdx: index('evidence_attachments_evidence_type_idx').on(table.evidenceType),
   })
 );
 

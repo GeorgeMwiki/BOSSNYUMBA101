@@ -828,7 +828,10 @@
     },
     "permissionYes": "Yes",
     "permissionNo": "No",
-    "submitFailed": "Could not submit your request. Please try again."
+    "submitFailed": "Could not submit your request. Please try again.",
+    "uploadingPhotos": "Uploading photos…",
+    "photosPartialFailure": "Your request was created, but {failed} of {total} photos could not be uploaded. You can add them again later.",
+    "photosAllFailed": "Your request was created, but the photos could not be uploaded. You can add them again later."
   },
   "leaseRenewal": {
     "title": "Lease Renewal",

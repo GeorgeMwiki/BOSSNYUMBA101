@@ -14,6 +14,7 @@ import {
   type PhotoPreview,
 } from '@/components/requests';
 import { api } from '@/lib/api';
+import { uploadCaseEvidence } from '@/lib/upload-case-evidence';
 import { ROUTES } from '@/lib/routes';
 
 /**
@@ -76,13 +77,20 @@ export default function NewRequestPage() {
   });
   const [photos, setPhotos] = useState<PhotoPreview[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  // Once the case is created we hold its id so a retry after a photo
+  // upload failure re-attaches the photos to the SAME case instead of
+  // creating a duplicate.
+  const [createdCaseId, setCreatedCaseId] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
     setError(null);
+    setWarning(null);
 
     // Fold structured selections the cases endpoint has no dedicated
     // columns for (location, access permission, preferred slot) into the
@@ -101,15 +109,50 @@ export default function NewRequestPage() {
     ];
 
     try {
-      await api.cases.create({
-        title: deriveTitle(formData.category, formData.description),
-        description: detailLines.join('\n'),
-        type: 'maintenance_dispute',
-        severity: PRIORITY_TO_SEVERITY[formData.priority] ?? 'medium',
-        tags,
-      });
+      // Reuse an already-created case on retry; only create on first pass.
+      let caseId = createdCaseId;
+      if (!caseId) {
+        const created = await api.cases.create({
+          title: deriveTitle(formData.category, formData.description),
+          description: detailLines.join('\n'),
+          type: 'maintenance_dispute',
+          severity: PRIORITY_TO_SEVERITY[formData.priority] ?? 'medium',
+          tags,
+        });
+        caseId = created.id;
+        setCreatedCaseId(caseId);
+      }
+
+      const hasPhotos = photos.some((p) => p.file instanceof File);
+      if (hasPhotos) {
+        setIsUploadingPhotos(true);
+        const { attempted, failed } = await uploadCaseEvidence(
+          caseId,
+          photos,
+          api.cases.uploadEvidence,
+        );
+        setIsUploadingPhotos(false);
+
+        if (failed.length > 0) {
+          // The case exists; some/all photos did not upload. Tell the
+          // truth — keep the user here so they can retry just the photos
+          // (the case will not be recreated). Drop the photos that
+          // already succeeded so a retry only re-sends the failures.
+          const failedIds = new Set(failed.map((p) => p.id));
+          setPhotos((current) => current.filter((p) => failedIds.has(p.id)));
+          setWarning(
+            failed.length === attempted
+              ? t('photosAllFailed')
+              : t('photosPartialFailure', { failed: failed.length, total: attempted }),
+          );
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       router.push(ROUTES.requests.submitted);
     } catch (err) {
+      setIsUploadingPhotos(false);
       setError(err instanceof Error ? err.message : t('submitFailed'));
       setIsSubmitting(false);
     }
@@ -269,6 +312,12 @@ export default function NewRequestPage() {
           </div>
         )}
 
+        {warning && (
+          <Alert variant="warning">
+            <AlertDescription>{warning}</AlertDescription>
+          </Alert>
+        )}
+
         {error && (
           <Alert variant="danger">
             <AlertDescription>{error}</AlertDescription>
@@ -281,7 +330,11 @@ export default function NewRequestPage() {
           className="btn-primary w-full py-3"
           disabled={!formData.category || !formData.description || isSubmitting}
         >
-          {isSubmitting ? t('submitting') : t('submitRequest')}
+          {isUploadingPhotos
+            ? t('uploadingPhotos')
+            : isSubmitting
+            ? t('submitting')
+            : t('submitRequest')}
         </button>
       </form>
     </>

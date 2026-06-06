@@ -828,7 +828,10 @@
     },
     "permissionYes": "Ndiyo",
     "permissionNo": "Hapana",
-    "submitFailed": "Imeshindwa kuwasilisha ombi lako. Tafadhali jaribu tena."
+    "submitFailed": "Imeshindwa kuwasilisha ombi lako. Tafadhali jaribu tena.",
+    "uploadingPhotos": "Inapakia picha…",
+    "photosPartialFailure": "Ombi lako limeundwa, lakini picha {failed} kati ya {total} hazikuweza kupakiwa. Unaweza kuziongeza tena baadaye.",
+    "photosAllFailed": "Ombi lako limeundwa, lakini picha hazikuweza kupakiwa. Unaweza kuziongeza tena baadaye."
   },
   "leaseRenewal": {
     "title": "Upyaji wa Mkataba",

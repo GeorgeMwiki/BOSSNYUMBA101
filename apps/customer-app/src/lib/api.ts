@@ -182,6 +182,18 @@ export interface CaseRecord {
   readonly updatedAt?: string;
 }
 
+/** A durable case evidence attachment as returned by the evidence endpoints. */
+export interface EvidenceRecord {
+  readonly id: string;
+  readonly caseId: string;
+  readonly fileName: string;
+  readonly fileUrl: string;
+  readonly mimeType?: string | null;
+  readonly fileSizeBytes?: number | null;
+  readonly caption?: string | null;
+  readonly createdAt?: string;
+}
+
 /** A tenant document as returned by `GET /documents`. */
 export interface DocumentRecord {
   readonly id: string;
@@ -418,6 +430,66 @@ export const api = {
     async list(params?: { page?: number; pageSize?: number; status?: string }): Promise<CaseRecord[]> {
       return requireLiveData<CaseRecord[]>(() =>
         ensureClient().get('/cases', { params: params ?? {} }),
+      );
+    },
+
+    /**
+     * Upload one photo/document as durable evidence for a case. The blob
+     * is streamed to the gateway as multipart/form-data; the gateway
+     * stores it in tenant-scoped object storage and persists an
+     * `evidence_attachments` row. Multipart bypasses the JSON api-client,
+     * so the Supabase bearer is resolved directly here (same single
+     * credential the rest of the app uses — see `onboarding.uploadDocument`).
+     *
+     * Throws on any non-2xx so callers can surface a per-file failure
+     * honestly rather than reporting a phantom success.
+     */
+    async uploadEvidence(
+      caseId: string,
+      file: File,
+      meta?: { caption?: string; fileName?: string },
+    ): Promise<EvidenceRecord> {
+      const formData = new FormData();
+      formData.append('file', file, meta?.fileName ?? file.name);
+      if (meta?.caption || meta?.fileName) {
+        formData.append(
+          'metadata',
+          JSON.stringify({
+            ...(meta.caption ? { caption: meta.caption } : {}),
+            ...(meta.fileName ? { fileName: meta.fileName } : {}),
+          }),
+        );
+      }
+
+      const token = await getAccessToken();
+      const response = await fetch(
+        `${getApiBaseUrl()}/cases/${encodeURIComponent(caseId)}/evidence`,
+        {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        },
+      );
+
+      if (!response.ok) {
+        let message = 'Evidence upload failed';
+        try {
+          const data = await response.json();
+          message = data?.error?.message ?? data?.message ?? message;
+        } catch {
+          // Keep the default message when the error body is not JSON.
+        }
+        throw new Error(message);
+      }
+
+      const body = await response.json();
+      return (body?.data ?? body) as EvidenceRecord;
+    },
+
+    /** List a case's durable evidence attachments, newest first. */
+    async listEvidence(caseId: string): Promise<EvidenceRecord[]> {
+      return requireLiveData<EvidenceRecord[]>(() =>
+        ensureClient().get(`/cases/${encodeURIComponent(caseId)}/evidence`),
       );
     },
   },
