@@ -11,7 +11,10 @@ import dynamic from 'next/dynamic';
 // Cite: nextjs.org/docs/app/getting-started/partial-prerendering
 // (Next.js 15 PPR + dynamic-import pattern).
 const WorkOrderTriage = dynamic(
-  () => import('@/screens/work-orders/WorkOrderTriage.js'),
+  () =>
+    import('@/screens/work-orders/WorkOrderTriage.js').then(
+      (m) => m.default,
+    ),
   {
     ssr: false,
     loading: () => (
