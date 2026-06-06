@@ -2,16 +2,27 @@
  * /v1/ask router tests.
  */
 
-import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
 import { Hono } from 'hono';
+import { SignJWT } from 'jose';
 
 // JWT secret + dotenv skip must be set BEFORE any router import so
-// the module captures the deterministic test secret.
-process.env.JWT_SECRET =
-  process.env.JWT_SECRET ||
-  'test-secret-jwt-0123456789abcdef0123456789abcdef';
-process.env.NODE_ENV = process.env.NODE_ENV || 'test';
-process.env.BOSSNYUMBA_SKIP_DOTENV = 'true';
+// the module captures the deterministic test secret. `hono-auth.ts`
+// (mounted by askRouter) reads JWT_SECRET at module top-level, so use
+// vi.hoisted to set both the gateway and Supabase secrets before the
+// hoisted router import is evaluated. No SUPABASE_URL → the Supabase
+// fallback uses the HS256 secret path (no JWKS server in tests).
+const ASK_SUPABASE_SECRET = 'ask-supabase-test-secret-1234567890-min32';
+vi.hoisted(() => {
+  process.env.JWT_SECRET =
+    process.env.JWT_SECRET ||
+    'test-secret-jwt-0123456789abcdef0123456789abcdef';
+  process.env.NODE_ENV = process.env.NODE_ENV || 'test';
+  process.env.BOSSNYUMBA_SKIP_DOTENV = 'true';
+  process.env.SUPABASE_JWT_SECRET = 'ask-supabase-test-secret-1234567890-min32';
+  delete process.env.SUPABASE_URL;
+  delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+});
 
 import askRouter from '../ask.hono';
 import { generateToken } from '../../../middleware/auth';
@@ -33,6 +44,25 @@ function bearer(role: UserRole, opts?: { userId?: string; tenantId?: string }): 
     permissions: ['*'],
     propertyAccess: ['*'],
   })}`;
+}
+
+// Mints a Supabase-shaped HS256 access token (iss=supabase + app_metadata),
+// exercising the gateway authMiddleware's Supabase fallback path that lets
+// the HQ "Ask" login token reach /api/v1/ask.
+async function supabaseBearer(
+  roles: string[],
+  opts?: { userId?: string; tenantId?: string },
+): Promise<string> {
+  const token = await new SignJWT({
+    app_metadata: { tenant_id: opts?.tenantId ?? 'sb-tnt-ask', roles },
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setIssuer('https://abc123.supabase.co/auth/v1')
+    .setExpirationTime('1h')
+    .setSubject(opts?.userId ?? 'sb-usr-ask')
+    .sign(new TextEncoder().encode(ASK_SUPABASE_SECRET));
+  return `Bearer ${token}`;
 }
 
 describe('POST /v1/ask — auth gate', () => {
@@ -60,6 +90,24 @@ describe('POST /v1/ask — auth gate', () => {
       },
     });
     expect(res.status).toBe(401);
+  });
+
+  // HQ "Ask" parity smoke check: a Supabase session token (ES256 in prod,
+  // HS256 here) must pass the auth gate — previously 401 INVALID_TOKEN
+  // because authMiddleware only accepted gateway HS256 tokens.
+  it('accepts a Supabase session token (no longer 401 INVALID_TOKEN)', async () => {
+    const res = await mount().request('/v1/ask', {
+      method: 'POST',
+      body: JSON.stringify({ question: 'When does my lease end?' }),
+      headers: {
+        'content-type': 'application/json',
+        authorization: await supabaseBearer(['RESIDENT']),
+      },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.answer).toContain('tenant');
   });
 });
 
