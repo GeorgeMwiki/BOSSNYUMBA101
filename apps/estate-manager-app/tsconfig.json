@@ -33,6 +33,21 @@
       ],
       "@bossnyumba/api-client/courses-types": [
         "../../packages/api-client/src/services/courses.ts"
+      ],
+      "@bossnyumba/api-client/client-types": [
+        "../../packages/api-client/src/client.ts"
+      ],
+      "@bossnyumba/api-client/invoices-types": [
+        "../../packages/api-client/src/services/invoices.ts"
+      ],
+      "@bossnyumba/api-client/customers-types": [
+        "../../packages/api-client/src/services/customers.ts"
+      ],
+      "@bossnyumba/api-client/leases-types": [
+        "../../packages/api-client/src/services/leases.ts"
+      ],
+      "@bossnyumba/api-client/arrears-types": [
+        "../../packages/api-client/src/hooks/useArrears.ts"
       ]
     },
     "allowJs": true,

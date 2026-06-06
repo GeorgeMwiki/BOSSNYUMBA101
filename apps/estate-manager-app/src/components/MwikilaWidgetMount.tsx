@@ -46,27 +46,34 @@ function useTrainingIntent(tenantId: string | null): void {
     const base =
       (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL) ||
       '/api/v1';
-    const token = window.localStorage.getItem('bossnyumba_token');
-    fetch(`${base.replace(/\/$/, '')}/training/next-step`, {
-      signal: ctrl.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((body) => {
+    // Unified onto Supabase: resolve the bearer from the live session
+    // (refreshes on the fly) instead of a stale `bossnyumba_token` key.
+    void (async () => {
+      try {
+        const token = await getAccessToken();
+        const res = await fetch(
+          `${base.replace(/\/$/, '')}/training/next-step`,
+          {
+            signal: ctrl.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          }
+        );
+        const body = res.ok ? await res.json() : null;
         if (body?.success && body.data) {
           const detail = body.data as TrainingNextStep;
           window.dispatchEvent(
             new CustomEvent('bossnyumba:training-intent', { detail })
           );
         }
-        setSeen(true);
-      })
-      .catch(() => {
+      } catch {
         /* ignore — widget still mounts without training-intent */
-      });
+      } finally {
+        setSeen(true);
+      }
+    })();
     return () => ctrl.abort();
   }, [tenantId, seen]);
 }

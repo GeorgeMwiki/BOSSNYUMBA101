@@ -38,13 +38,14 @@ export default function SettingsOverviewPage() {
   const { logout } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
 
-  const handleSignOut = (): void => {
+  const handleSignOut = async (): Promise<void> => {
     if (signingOut) return;
     setSigningOut(true);
-    // logout() is synchronous (clears localStorage + React Query cache),
-    // so we just navigate immediately. router.replace prevents a Back
-    // navigation re-entering authenticated screens with stale state.
-    logout();
+    // logout() clears the Supabase session + React Query cache. Await it
+    // so the session is fully revoked before we navigate; router.replace
+    // prevents a Back navigation re-entering authenticated screens with
+    // stale state.
+    await logout();
     router.replace('/login');
   };
 
@@ -83,7 +84,9 @@ export default function SettingsOverviewPage() {
         <div className="pt-4">
           <button
             type="button"
-            onClick={handleSignOut}
+            onClick={() => {
+              void handleSignOut();
+            }}
             disabled={signingOut}
             aria-busy={signingOut}
             className="w-full flex items-center justify-center gap-2 py-3 text-danger-600 font-medium hover:bg-danger-50 rounded-lg transition-colors disabled:opacity-60"

@@ -50,6 +50,7 @@ import {
   Empty,
   cn,
 } from '@bossnyumba/design-system';
+import { getAccessToken } from '@/lib/supabase';
 
 /* ─────────────────────────────  Types  ───────────────────────────── */
 
@@ -123,9 +124,12 @@ function getApiBase(): string | null {
   return raw.replace(/\/$/, '');
 }
 
-function getAuthHeader(): Readonly<Record<string, string>> {
-  if (typeof window === 'undefined') return {};
-  const token = window.localStorage.getItem('manager_token');
+// Unified onto Supabase (CLAUDE.md hard rule) — replaces the legacy
+// `manager_token` localStorage lookup. Resolves the bearer from the live
+// session (refreshes on the fly) and returns {} when signed out so the
+// gateway replies 401 → redirect to /login (handled below).
+async function getAuthHeader(): Promise<Readonly<Record<string, string>>> {
+  const token = await getAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -147,7 +151,7 @@ async function apiCall<T>(
       ...init,
       headers: {
         'Content-Type': 'application/json',
-        ...getAuthHeader(),
+        ...(await getAuthHeader()),
         ...(init?.headers ?? {}),
       },
       credentials: 'include',

@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import type React from 'react';
 import type { ComponentType } from 'react';
+import { usePathname } from 'next/navigation';
 
 /**
  * Wave-21 Agent R: defers heavy client-only mounts (Mwikila chat widget +
@@ -42,6 +43,17 @@ export function DeferredMounts({
   children,
   bottomNavigation,
 }: DeferredMountsProps): JSX.Element {
+  const pathname = usePathname();
+  // The public /login route is rendered without app chrome: no bottom
+  // navigation, chat widget, or command palette — all of which assume an
+  // authenticated session and would otherwise paint over the sign-in form.
+  const hideChrome =
+    pathname === '/login' || (pathname?.startsWith('/login/') ?? false);
+
+  if (hideChrome) {
+    return <>{children}</>;
+  }
+
   return (
     <MwikilaWidgetMount>
       <>

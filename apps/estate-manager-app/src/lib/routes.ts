@@ -12,6 +12,7 @@
 
 export const ROUTES = {
   home: '/',
+  login: '/login',
 
   announcements: {
     root: '/announcements',
@@ -74,6 +75,11 @@ export const ROUTES = {
 
   payments: {
     root: '/payments',
+    record: '/payments/record',
+    receive: '/payments/receive',
+    arrears: '/payments/arrears',
+    invoices: '/payments/invoices',
+    invoiceDetail: (id: string): string => `/payments/invoices/${id}`,
     detail: (id: string): string => `/payments/${id}`,
   },
 

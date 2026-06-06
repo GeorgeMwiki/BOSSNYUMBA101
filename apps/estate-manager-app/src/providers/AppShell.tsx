@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { QueryProvider } from './QueryProvider';
 import { ApiProvider } from './ApiProvider';
 import { AuthProvider } from './AuthProvider';
+import { AuthGate } from './AuthGate';
 import { LocaleSwitcher } from '@/components/LocaleSwitcher';
 
 export interface AppShellProps {
@@ -20,9 +21,13 @@ export interface AppShellProps {
  * queryClient.clear(); it sits *inside* ApiProvider so the initial
  * bootstrapping of the API client still runs before identity is read.
  *
- * Wave-21: fixed top-right LocaleSwitcher — the app has no dedicated
- * login page (field-staff flow), so this is the only reliable place to
- * surface the en/sw toggle before / during / after auth.
+ * AuthGate wraps the routed children so logged-out operators are bounced
+ * to /login instead of rendering protected pages that would 401. The
+ * public /login route renders through the gate untouched.
+ *
+ * Wave-21: fixed top-right LocaleSwitcher — surfaced here so the en/sw
+ * toggle is available before / during / after auth (including on the
+ * /login page).
  */
 export function AppShell({ children }: AppShellProps): JSX.Element {
   const tA11y = useTranslations('a11y');
@@ -37,7 +42,9 @@ export function AppShell({ children }: AppShellProps): JSX.Element {
             <div className="fixed top-[calc(env(safe-area-inset-top)+0.5rem)] right-2 z-40">
               <LocaleSwitcher className="inline-flex items-center gap-2 text-xs text-gray-600 bg-white/90 backdrop-blur rounded shadow-sm px-1" />
             </div>
-            <main id="main-content" tabIndex={-1}>{children}</main>
+            <main id="main-content" tabIndex={-1}>
+              <AuthGate>{children}</AuthGate>
+            </main>
             <Toaster />
           </AuthProvider>
         </ApiProvider>

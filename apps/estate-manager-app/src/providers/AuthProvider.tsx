@@ -3,16 +3,21 @@
 /**
  * AuthProvider — estate-manager-app identity + session context.
  *
- * Until Wave 4 this app only stored `auth_token` and `tenant_id` in
- * localStorage and read them ad hoc from the ApiProvider. Centralising
- * them here avoids drift (e.g. pages reading stale values), gives us a
- * single logout path that resets the React Query cache, and surfaces
- * the identity to layout components (e.g. avatar, tenant picker) via
- * `useAuth()` rather than prop drilling.
+ * Supabase is the canonical auth (CLAUDE.md hard rule). This provider is
+ * the single reactive mirror of the persisted Supabase session for the
+ * React tree: it hydrates on mount, then keeps `user`/`tenant`/`token`
+ * in sync with every auth transition (sign-in, sign-out, token refresh,
+ * cross-tab change) via `onAuthStateChange`.
  *
- * NOTE: login/signup for estate managers is still handled via the
- * admin/owner onboarding flow (no public signup). This provider only
- * manages the authenticated session.
+ * The previous implementation stored an opaque `auth_token` in
+ * localStorage and read it ad hoc. We have unified onto the Supabase
+ * session — the access token comes from the live session and the tenant
+ * id is read from the JWT `app_metadata.tenant_id` claim (server-managed;
+ * `user_metadata` is never trusted), mirroring the api-gateway trust
+ * boundary used by the customer-app.
+ *
+ * Operators are invited (no public signup); the email + password login
+ * flow lives at `/login` and calls `signInWithEmailPassword` here.
  */
 
 import React, {
@@ -24,11 +29,9 @@ import React, {
   useState,
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  getApiClient,
-  hasApiClient,
-  initializeApiClient,
-} from '@bossnyumba/api-client';
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { getApiClient, hasApiClient } from '@bossnyumba/api-client';
+import { getSupabase } from '@/lib/supabase';
 
 export interface ManagerUser {
   readonly id: string;
@@ -44,35 +47,96 @@ export interface ManagerTenant {
   readonly name: string;
 }
 
+export interface AuthActionResult {
+  readonly success: boolean;
+  readonly message?: string;
+}
+
 interface AuthContextValue {
   readonly user: ManagerUser | null;
   readonly tenant: ManagerTenant | null;
   readonly token: string | null;
   readonly isAuthenticated: boolean;
   readonly loading: boolean;
-  setSession: (input: {
-    user: ManagerUser;
-    tenant: ManagerTenant;
-    token: string;
-  }) => void;
-  setActiveTenant: (tenant: ManagerTenant) => void;
-  logout: () => void;
+  signInWithEmailPassword: (
+    email: string,
+    password: string
+  ) => Promise<AuthActionResult>;
+  logout: () => Promise<void>;
 }
-
-const AUTH_TOKEN_KEY = 'auth_token';
-const TENANT_ID_KEY = 'tenant_id';
-const USER_KEY = 'manager_user';
-const TENANT_KEY = 'manager_tenant';
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function readJson<T>(key: string): T | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
-    return null;
+/**
+ * Read a string field from a JSON-ish metadata bag without trusting the
+ * shape. Returns `undefined` for anything that is not a non-empty string.
+ */
+function readMetaString(
+  meta: Record<string, unknown> | undefined,
+  key: string
+): string | undefined {
+  const value = meta?.[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+/**
+ * Project a Supabase user onto the UI's `ManagerUser`. Tenant + role are
+ * read ONLY from `app_metadata` (server-managed) to mirror the
+ * api-gateway's trust boundary; profile fields fall back to
+ * `user_metadata` then to empty strings so freshly-invited accounts
+ * render without crashing.
+ */
+function mapSupabaseUser(supabaseUser: SupabaseUser): {
+  readonly user: ManagerUser;
+  readonly tenant: ManagerTenant | null;
+} {
+  const appMeta = (supabaseUser.app_metadata ?? {}) as Record<string, unknown>;
+  const userMeta = (supabaseUser.user_metadata ?? {}) as Record<
+    string,
+    unknown
+  >;
+
+  const firstName =
+    readMetaString(userMeta, 'first_name') ??
+    readMetaString(userMeta, 'firstName') ??
+    '';
+  const lastName =
+    readMetaString(userMeta, 'last_name') ??
+    readMetaString(userMeta, 'lastName') ??
+    '';
+
+  const tenantId = readMetaString(appMeta, 'tenant_id');
+  const tenantName =
+    readMetaString(appMeta, 'tenant_name') ??
+    readMetaString(userMeta, 'tenant_name') ??
+    '';
+
+  return {
+    user: {
+      id: supabaseUser.id,
+      email: supabaseUser.email ?? readMetaString(userMeta, 'email') ?? '',
+      firstName,
+      lastName,
+      role: readMetaString(appMeta, 'role') ?? readMetaString(userMeta, 'role'),
+      avatarUrl: readMetaString(userMeta, 'avatar_url'),
+    },
+    tenant: tenantId ? { id: tenantId, name: tenantName } : null,
+  };
+}
+
+/**
+ * Push the active access token into the shared api-client bearer so every
+ * `*Service` call carries `Authorization`. `setAccessToken` requires a
+ * string; when signing out we use `clearTokens()` (the client exposes no
+ * `setAccessToken(undefined)`), so callers never pass an empty bearer.
+ */
+function syncApiClientToken(nextToken: string | null): void {
+  if (!hasApiClient()) return;
+  const client = getApiClient();
+  if (nextToken) {
+    client.setAccessToken(nextToken);
+  } else {
+    client.clearTokens();
   }
 }
 
@@ -88,65 +152,96 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-    const storedToken = window.localStorage.getItem(AUTH_TOKEN_KEY);
-    const storedUser = readJson<ManagerUser>(USER_KEY);
-    const storedTenant =
-      readJson<ManagerTenant>(TENANT_KEY) ??
-      (window.localStorage.getItem(TENANT_ID_KEY)
-        ? { id: window.localStorage.getItem(TENANT_ID_KEY)!, name: '' }
-        : null);
+    const supabase = getSupabase();
+    let active = true;
 
-    setToken(storedToken);
-    setUser(storedUser);
-    setTenant(storedTenant);
-    setLoading(false);
+    const applySession = (session: Session | null): void => {
+      if (!active) return;
+      if (session?.user) {
+        const mapped = mapSupabaseUser(session.user);
+        setUser(mapped.user);
+        setTenant(mapped.tenant);
+        setToken(session.access_token);
+        syncApiClientToken(session.access_token);
+      } else {
+        setUser(null);
+        setTenant(null);
+        setToken(null);
+        syncApiClientToken(null);
+      }
+    };
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => applySession(data.session))
+      .catch(() => applySession(null))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      applySession(session);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const setSession = useCallback(
-    (input: { user: ManagerUser; tenant: ManagerTenant; token: string }) => {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(AUTH_TOKEN_KEY, input.token);
-        window.localStorage.setItem(TENANT_ID_KEY, input.tenant.id);
-        window.localStorage.setItem(USER_KEY, JSON.stringify(input.user));
-        window.localStorage.setItem(TENANT_KEY, JSON.stringify(input.tenant));
+  const signInWithEmailPassword = useCallback(
+    async (email: string, password: string): Promise<AuthActionResult> => {
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail || !password) {
+        return { success: false, message: 'Email and password are required.' };
       }
-      if (hasApiClient()) {
-        getApiClient().setAccessToken(input.token);
-      } else {
-        initializeApiClient({
-          baseUrl: '/api/v1',
-          tenantId: input.tenant.id,
-          accessToken: input.token,
+      try {
+        const { data, error } = await getSupabase().auth.signInWithPassword({
+          email: trimmedEmail,
+          password,
         });
+        if (error) {
+          return { success: false, message: error.message };
+        }
+        // Hydrate eagerly so callers that navigate on `success` see an
+        // authenticated context immediately, without waiting for the
+        // onAuthStateChange callback to fire.
+        if (data.session?.user) {
+          const mapped = mapSupabaseUser(data.session.user);
+          setUser(mapped.user);
+          setTenant(mapped.tenant);
+          setToken(data.session.access_token);
+          syncApiClientToken(data.session.access_token);
+        }
+        return { success: true };
+      } catch (err) {
+        return {
+          success: false,
+          message:
+            err instanceof Error
+              ? err.message
+              : 'Could not sign in. Please try again.',
+        };
       }
-      setToken(input.token);
-      setUser(input.user);
-      setTenant(input.tenant);
     },
     []
   );
 
-  const setActiveTenant = useCallback((next: ManagerTenant) => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(TENANT_ID_KEY, next.id);
-      window.localStorage.setItem(TENANT_KEY, JSON.stringify(next));
-    }
-    setTenant(next);
-  }, []);
-
-  const logout = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(AUTH_TOKEN_KEY);
-      window.localStorage.removeItem(TENANT_ID_KEY);
-      window.localStorage.removeItem(USER_KEY);
-      window.localStorage.removeItem(TENANT_KEY);
-    }
-    if (hasApiClient()) {
-      getApiClient().setAccessToken(undefined);
+  const logout = useCallback(async (): Promise<void> => {
+    try {
+      await getSupabase().auth.signOut();
+    } catch {
+      // Network failure on sign-out: supabase-js still clears the local
+      // session, so the user is logged out client-side regardless.
     }
     setToken(null);
     setUser(null);
     setTenant(null);
+    syncApiClientToken(null);
+    // Reset per-user cache so the next operator on the same device never
+    // sees the previous user's scoped data.
     queryClient.clear();
   }, [queryClient]);
 
@@ -157,11 +252,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       token,
       isAuthenticated: !!token,
       loading,
-      setSession,
-      setActiveTenant,
+      signInWithEmailPassword,
       logout,
     }),
-    [user, tenant, token, loading, setSession, setActiveTenant, logout]
+    [user, tenant, token, loading, signInWithEmailPassword, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

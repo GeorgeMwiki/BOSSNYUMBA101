@@ -2,12 +2,18 @@
  * API helpers for the /ask surface.
  *
  * Three responsibilities:
- *   1. Auth-aware base-URL + header resolution (localStorage token).
+ *   1. Auth-aware base-URL + header resolution (Supabase session token).
  *   2. Thread CRUD — list / get / create — over fetch with status-first
  *      return shape so callers map HTTP to degraded-states cleanly.
  *   3. SSE streaming — POST to /thread/:id/message, read the ReadableStream,
  *      decode bytes, parse SSE frames ("event: X\ndata: Y\n\n"), yield
  *      typed AgentEvent values. NO external lib.
+ *
+ * Wire contract (matches intelligence.hono.ts, all schemas `.strict()`):
+ *   - POST /thread            body { firstMessage }            → 201 { success, data: { threadId, title } }
+ *   - POST /thread/:id/message body { message, extendedThinking } → SSE stream
+ *   - GET  /threads                                            → { success, data: ThreadSummary[] }
+ *   - GET  /thread/:id                                         → { success, data: { thread, turns } }
  */
 
 import type {
@@ -17,6 +23,7 @@ import type {
   ThreadSummary,
 } from './types';
 import { getCsrfHeaders } from '@/lib/csrf';
+import { getAccessToken } from '@/lib/supabase';
 
 /* ──────────────────────────── Base config ──────────────────────────── */
 
@@ -26,14 +33,15 @@ function getApiBase(): string | null {
   return raw.replace(/\/$/, '');
 }
 
-function getAuthHeader(): Readonly<Record<string, string>> {
-  if (typeof window === 'undefined') return {};
-  // The app stores tokens under two keys depending on boot path —
-  // prefer `auth_token` (ApiProvider) then fall back to `manager_token`
-  // (graph explorer).
-  const token =
-    window.localStorage.getItem('auth_token') ||
-    window.localStorage.getItem('manager_token');
+/**
+ * Resolve the Authorization header from the live Supabase session. Unified
+ * onto Supabase (CLAUDE.md hard rule) — replaces the previous
+ * `auth_token` / `manager_token` localStorage lookup. Returns an empty
+ * object when signed out, so the gateway replies 401 and the caller maps
+ * it to the `unauthorized` degraded state.
+ */
+async function getAuthHeader(): Promise<Readonly<Record<string, string>>> {
+  const token = await getAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -100,12 +108,14 @@ export async function listThreads(): Promise<ApiResult<ReadonlyArray<ThreadSumma
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        ...getAuthHeader(),
+        ...(await getAuthHeader()),
       },
     });
     if (!res.ok) return degradedFromStatus(res.status);
-    const body = (await res.json()) as { readonly threads: ReadonlyArray<ThreadSummary> };
-    return { ok: true, data: body.threads ?? [] };
+    const body = (await res.json()) as {
+      readonly data?: ReadonlyArray<ThreadSummary>;
+    };
+    return { ok: true, data: body.data ?? [] };
   } catch (error) {
     console.error('listThreads failed', error);
     return {
@@ -139,16 +149,18 @@ export async function getThread(
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeader(),
+          ...(await getAuthHeader()),
         },
       },
     );
     if (!res.ok) return degradedFromStatus(res.status);
     const body = (await res.json()) as {
-      readonly thread: ThreadSummary;
-      readonly turns: ReadonlyArray<StoredTurn>;
+      readonly data: {
+        readonly thread: ThreadSummary;
+        readonly turns: ReadonlyArray<StoredTurn>;
+      };
     };
-    return { ok: true, data: body };
+    return { ok: true, data: body.data };
   } catch (error) {
     console.error('getThread failed', error);
     return {
@@ -178,17 +190,17 @@ export async function createThread(
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        ...getAuthHeader(),
+        ...(await getAuthHeader()),
         ...getCsrfHeaders(),
       },
-      body: JSON.stringify({ seedMessage }),
+      // Gateway schema is `.strict()` and expects `firstMessage`.
+      body: JSON.stringify({ firstMessage: seedMessage }),
     });
     if (!res.ok) return degradedFromStatus(res.status);
     const body = (await res.json()) as {
-      readonly threadId: string;
-      readonly title: string;
+      readonly data: { readonly threadId: string; readonly title: string };
     };
-    return { ok: true, data: body };
+    return { ok: true, data: body.data };
   } catch (error) {
     console.error('createThread failed', error);
     return {
@@ -245,11 +257,12 @@ export async function* streamMessage(
         headers: {
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
-          ...getAuthHeader(),
+          ...(await getAuthHeader()),
           ...getCsrfHeaders(),
         },
+        // Gateway schema is `.strict()` and expects `message`.
         body: JSON.stringify({
-          userMessage: args.userMessage,
+          message: args.userMessage,
           extendedThinking: args.extendedThinking,
         }),
         signal: args.signal,
