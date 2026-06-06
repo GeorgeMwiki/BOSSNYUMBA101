@@ -172,7 +172,7 @@ function buildSensorBundle(db: DbLike): SensorBundle {
       },
     },
     arrears: {
-      async arrearsTrend({ tenantId, periodStart }) {
+      async arrearsTrend({ tenantId }) {
         try {
           const res = await db.execute(sql`
             SELECT
@@ -206,7 +206,6 @@ function buildSensorBundle(db: DbLike): SensorBundle {
         } catch {
           return [];
         }
-        void periodStart;
       },
     },
     complaints: {

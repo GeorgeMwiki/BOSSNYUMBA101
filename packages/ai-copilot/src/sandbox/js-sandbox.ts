@@ -56,6 +56,13 @@
 // (which has a native binding via node-gyp-build). The runtime value
 // is loaded by `loadIvm()` below, hidden from the analyzer.
 import type ivm from 'isolated-vm';
+// `createRequire` gives us a CommonJS-style `require` inside this ESM
+// module without `eval` (replaces the old `eval('require')` trick). The
+// `isolated-vm` specifier is still hidden from bundler static analysis
+// because it is assembled at runtime via `['isolated','vm'].join('-')`.
+import { createRequire } from 'node:module';
+
+const nodeRequire = createRequire(import.meta.url);
 
 type IvmModule = typeof ivm;
 
@@ -89,10 +96,8 @@ function loadIvm(): IvmModule {
     throw new Error('isolated-vm sandbox is server-only');
   }
   try {
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    const dynamicRequire = eval('require') as (m: string) => unknown;
     const modName = ['isolated', 'vm'].join('-');
-    _ivmCache = dynamicRequire(modName) as IvmModule;
+    _ivmCache = nodeRequire(modName) as IvmModule;
     return _ivmCache;
   } catch (err) {
     const rawMsg = err instanceof Error ? err.message : String(err);

@@ -40,6 +40,6 @@ describe('chunkText', () => {
     const text = '## Section\n\n\n\nclause   one\t\tand   two';
     const out = chunkText(text, { seed: 's' });
     expect(out[0]?.text).not.toMatch(/\t/);
-    expect(out[0]?.text).not.toMatch(/   /);
+    expect(out[0]?.text).not.toMatch(/ {3}/);
   });
 });

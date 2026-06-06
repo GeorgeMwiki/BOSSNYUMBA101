@@ -48,25 +48,22 @@ const safeFetchAdapter: DynamicRegistryFetchPort = async (
   url: string,
   options?: DynamicRegistryFetchOptions,
 ): Promise<DynamicRegistryFetchResult> => {
-  try {
-    const res = await safeHttpFetch(url, {
-      method: options?.method ?? 'GET',
-      headers: options?.headers,
-      timeoutMs: options?.timeoutMs ?? 5_000,
-    });
-    return {
-      status: res.status,
-      ok: res.ok,
-      headers: res.headers,
-      json: () => res.json(),
-      text: () => res.text(),
-    };
-  } catch (err) {
-    // safeHttpFetch throws on policy violation. The router's L2 contract
-    // is "returns null on any failure"; re-throwing here lets the
-    // router's own try/catch (in `fetchers.ts`) handle it uniformly.
-    throw err;
-  }
+  // safeHttpFetch throws on policy violation. The router's L2 contract is
+  // "returns null on any failure"; we deliberately do NOT catch here so the
+  // error propagates to the router's own try/catch (in `fetchers.ts`), which
+  // handles every failure uniformly.
+  const res = await safeHttpFetch(url, {
+    method: options?.method ?? 'GET',
+    headers: options?.headers,
+    timeoutMs: options?.timeoutMs ?? 5_000,
+  });
+  return {
+    status: res.status,
+    ok: res.ok,
+    headers: res.headers,
+    json: () => res.json(),
+    text: () => res.text(),
+  };
 };
 
 export function wireDynamicModelRegistry(args: {

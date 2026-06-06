@@ -67,6 +67,7 @@ describe('buildMpesaReceiptUrl', () => {
   });
 
   it('falls back to the default base when the configured base is not a usable http(s) URL', () => {
+    // eslint-disable-next-line no-script-url -- intentional test fixture: asserts a `javascript:` base URL is rejected and falls back to the safe default. The string is never executed.
     for (const bad of ['not-a-url', 'ftp://x', 'javascript:alert(1)']) {
       const url = buildMpesaReceiptUrl(RECEIPT, { PAYMENTS_RECEIPT_BASE_URL: bad })!;
       expect(url.startsWith(MPESA_RECEIPT_DEFAULT_BASE_URL)).toBe(true);

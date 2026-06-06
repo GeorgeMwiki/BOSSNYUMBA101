@@ -45,6 +45,7 @@ function createFileLineWriter(path: string): LineWriter {
   return {
     async write(line: string): Promise<void> {
       try {
+        // eslint-disable-next-line security/detect-non-literal-fs-filename -- `path` is the operator-supplied OCSF_LOG_PATH read from env at bootstrap (see createOcsfBundle below), never user/request input; this is an append-only audit-log sink.
         await appendFile(path, line, { encoding: 'utf8' });
       } catch {
         // Fire-and-forget — never propagate file errors.
