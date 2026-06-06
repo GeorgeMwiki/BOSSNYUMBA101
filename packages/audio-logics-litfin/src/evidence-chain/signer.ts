@@ -38,6 +38,12 @@ export interface SigningKey {
   readonly secret: string;
 }
 
+/**
+ * Deterministic dev/test signing key. EXPORTED so dev/test callers can opt
+ * in EXPLICITLY (`signAudioAsEvidence({ ..., signerKey: DEFAULT_DEV_KEY })`);
+ * it is intentionally NOT a default for `signerKey` so a production caller
+ * can never silently sign audio evidence with a non-secret stub key.
+ */
 export const DEFAULT_DEV_KEY: SigningKey = Object.freeze({
   id: 'audio-evidence-dev-key',
   secret: 'bossnyumba-audio-logics-litfin-dev-stub-secret-DO-NOT-USE-IN-PROD',
@@ -51,7 +57,12 @@ export interface SignAudioAsEvidenceArgs {
   readonly transcriptionHash?: string;
   readonly consentId?: string;
   readonly claims?: ReadonlyArray<EvidenceClaim>;
-  readonly signerKey?: SigningKey;
+  /**
+   * REQUIRED signing key. Pass the real key in production, or
+   * `DEFAULT_DEV_KEY` explicitly in dev/test. There is deliberately no
+   * default so a forgotten key cannot silently fall back to the dev stub.
+   */
+  readonly signerKey: SigningKey;
   readonly nowIso?: string;
 }
 
@@ -66,7 +77,7 @@ export function signAudioAsEvidence(args: SignAudioAsEvidenceArgs): AudioEvidenc
   if (args.audio.bytes.length === 0) {
     throw new AudioLogicsLitfinError('audio bytes empty', 'evidence-empty-audio');
   }
-  const key = args.signerKey ?? DEFAULT_DEV_KEY;
+  const key = args.signerKey;
 
   const audioHash = createHash('sha256').update(args.audio.bytes).digest('hex');
   const claims = args.claims ?? [];

@@ -33,6 +33,13 @@ export interface SignedManifest {
   readonly signedAtIso: string;
 }
 
+/**
+ * Deterministic dev/test signing key. EXPORTED so dev/test callers can opt
+ * in EXPLICITLY (`signManifest(m, DEFAULT_DEV_KEY)`); it is intentionally
+ * NOT a default value for `signManifest` so a production caller can never
+ * silently sign a manifest with a non-secret stub key. Load the real key via
+ * `loadSigningKeyFromEnv()`.
+ */
 const DEFAULT_DEV_KEY: SigningKey = Object.freeze({
   id: 'dev-stub-key',
   secret: 'bossnyumba-dev-c2pa-stub-secret-never-use-in-prod',
@@ -42,10 +49,14 @@ const DEFAULT_DEV_KEY: SigningKey = Object.freeze({
  * Sign a manifest. The `claimSignature` field of the manifest is
  * REPLACED with the new signature — callers should not pre-compute it.
  * Returns the manifest as-passed-in plus signature metadata.
+ *
+ * `key` is REQUIRED: pass `loadSigningKeyFromEnv()` in production, or
+ * `DEFAULT_DEV_KEY` explicitly in dev/test. There is deliberately no
+ * default so a forgotten key cannot silently fall back to the dev stub.
  */
 export function signManifest(
   manifest: C2paManifest,
-  key: SigningKey = DEFAULT_DEV_KEY,
+  key: SigningKey,
   nowIso: string = new Date().toISOString(),
 ): SignedManifest {
   // Sign the canonical form WITH all final fields set EXCEPT claimSignature.

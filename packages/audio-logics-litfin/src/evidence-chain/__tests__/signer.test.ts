@@ -28,6 +28,7 @@ describe('signAudioAsEvidence + verifyAudioEvidence', () => {
         { key: 'consentReference', value: 'cn_test' },
         { key: 'capturedBy', value: 'voice-agent-1' },
       ],
+      signerKey: DEFAULT_DEV_KEY,
       nowIso: '2026-05-25T09:00:01.000Z',
     });
     expect(manifest.claimSignature).toMatch(/^hmac-sha256:audio-evidence-dev-key:[0-9a-f]+$/);
@@ -45,6 +46,7 @@ describe('signAudioAsEvidence + verifyAudioEvidence', () => {
       tenantId: 'tenant-7',
       captureTimestampIso: '2026-05-25T09:00:00.000Z',
       captureDeviceFingerprint: 'device-abc',
+      signerKey: DEFAULT_DEV_KEY,
     });
     const tampered = makeAudio(13);
     const result = verifyAudioEvidence({ audio: tampered, manifest });
@@ -59,6 +61,7 @@ describe('signAudioAsEvidence + verifyAudioEvidence', () => {
       captureTimestampIso: '2026-05-25T09:00:00.000Z',
       captureDeviceFingerprint: 'device-abc',
       claims: [{ key: 'consentReference', value: 'cn_test' }],
+      signerKey: DEFAULT_DEV_KEY,
     });
     const tamperedManifest = {
       ...manifest,
@@ -88,6 +91,7 @@ describe('signAudioAsEvidence + verifyAudioEvidence', () => {
       tenantId: 'tenant-7',
       captureTimestampIso: '2026-05-25T09:00:00.000Z',
       captureDeviceFingerprint: 'device-abc',
+      signerKey: DEFAULT_DEV_KEY,
     });
     const result = verifyAudioEvidence({
       audio,
@@ -104,8 +108,33 @@ describe('signAudioAsEvidence + verifyAudioEvidence', () => {
         tenantId: 't',
         captureTimestampIso: '2026-05-25T09:00:00.000Z',
         captureDeviceFingerprint: 'd',
+        signerKey: DEFAULT_DEV_KEY,
       }),
     ).toThrow(/empty/);
+  });
+
+  it('requires an explicit signerKey — the dev stub is never a silent default', () => {
+    // Compile-time guard: `signerKey` is REQUIRED. The `@ts-expect-error`
+    // FAILS the typecheck if a future change makes it optional again, so a
+    // caller can never silently sign audio evidence with the dev stub key.
+    const callWithoutKey = () =>
+      signAudioAsEvidence({
+        audio,
+        tenantId: 'tenant-req',
+        captureTimestampIso: '2026-05-25T09:00:00.000Z',
+        captureDeviceFingerprint: 'device-req',
+        // @ts-expect-error — signerKey is required; this object must not type-check.
+      });
+    expect(callWithoutKey).toBeTypeOf('function');
+    // The dev key remains usable, but only when passed EXPLICITLY.
+    const explicit = signAudioAsEvidence({
+      audio,
+      tenantId: 'tenant-req',
+      captureTimestampIso: '2026-05-25T09:00:00.000Z',
+      captureDeviceFingerprint: 'device-req',
+      signerKey: DEFAULT_DEV_KEY,
+    });
+    expect(explicit.signerKeyId).toBe(DEFAULT_DEV_KEY.id);
   });
 
   it('produces a stable manifest given the same inputs + signing key', () => {
@@ -115,6 +144,7 @@ describe('signAudioAsEvidence + verifyAudioEvidence', () => {
       captureTimestampIso: '2026-05-25T09:00:00.000Z',
       captureDeviceFingerprint: 'device-stable',
       claims: [{ key: 'a', value: '1' }],
+      signerKey: DEFAULT_DEV_KEY,
       nowIso: '2026-05-25T09:00:01.000Z',
     } as const;
     const m1 = signAudioAsEvidence(args);

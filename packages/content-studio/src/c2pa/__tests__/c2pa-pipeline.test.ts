@@ -46,7 +46,7 @@ describe('canonicalize', () => {
 describe('signManifest + verifyManifest', () => {
   it('signs and verifies round-trip with the dev key', () => {
     const m = buildC2paManifest(baseManifestArgs);
-    const signed = signManifest(m);
+    const signed = signManifest(m, DEFAULT_DEV_KEY);
     const v = verifyManifest(signed.manifest);
     expect(v.ok).toBe(true);
     if (!v.ok) return;
@@ -70,7 +70,7 @@ describe('signManifest + verifyManifest', () => {
 
   it('rejects a tampered manifest (any field change)', () => {
     const m = buildC2paManifest(baseManifestArgs);
-    const signed = signManifest(m);
+    const signed = signManifest(m, DEFAULT_DEV_KEY);
     const tampered = { ...signed.manifest, title: 'tampered title' } as typeof signed.manifest;
     const v = verifyManifest(tampered);
     expect(v.ok).toBe(false);
@@ -104,12 +104,26 @@ describe('signManifest + verifyManifest', () => {
     if (v.ok) return;
     expect(v.reason).toBe('malformed-signature');
   });
+
+  it('requires an explicit signing key — the dev stub is never a silent default', () => {
+    const m = buildC2paManifest(baseManifestArgs);
+    // Compile-time guard: `key` is REQUIRED. The `@ts-expect-error` FAILS the
+    // typecheck if a future change re-adds a default, so a caller can never
+    // silently sign with the dev stub key.
+    const callWithoutKey = () =>
+      // @ts-expect-error — key is required; this call must not type-check.
+      signManifest(m);
+    expect(callWithoutKey).toBeTypeOf('function');
+    // The dev key remains usable, but only when passed EXPLICITLY.
+    const explicit = signManifest(m, DEFAULT_DEV_KEY);
+    expect(explicit.keyId).toBe(DEFAULT_DEV_KEY.id);
+  });
 });
 
 describe('embedManifest', () => {
   it('default strategy is sidecar; sidecarBytes round-trips', async () => {
     const m = buildC2paManifest(baseManifestArgs);
-    const signed = signManifest(m).manifest;
+    const signed = signManifest(m, DEFAULT_DEV_KEY).manifest;
     const result = await embedManifest({
       asset: new Uint8Array([0xff, 0xd8, 0xff, 0xe0]),
       assetMime: 'image/jpeg',
@@ -223,7 +237,7 @@ describe('embedManifest', () => {
 describe('fullyVerify', () => {
   it('verifies a signed sidecar end-to-end', async () => {
     const m = buildC2paManifest(baseManifestArgs);
-    const signed = signManifest(m).manifest;
+    const signed = signManifest(m, DEFAULT_DEV_KEY).manifest;
     const sidecar = await embedManifest({
       asset: new Uint8Array([1, 2, 3]),
       assetMime: 'image/jpeg',
@@ -249,7 +263,7 @@ describe('fullyVerify', () => {
 
   it('rejects a tampered sidecar', async () => {
     const m = buildC2paManifest(baseManifestArgs);
-    const signed = signManifest(m).manifest;
+    const signed = signManifest(m, DEFAULT_DEV_KEY).manifest;
     const tampered = { ...signed, title: 'altered' };
     const result = fullyVerify({
       asset: new Uint8Array([1, 2, 3]),

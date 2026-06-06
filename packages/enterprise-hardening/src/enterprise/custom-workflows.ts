@@ -10,6 +10,7 @@
  */
 
 import { z } from 'zod';
+import { assertUrlSafe } from '../http/safe-http-fetch';
 
 /**
  * Workflow Status
@@ -408,7 +409,13 @@ export class WorkflowEngine {
         : 30_000;
 
       try {
-        const response = await fetch(String(this.interpolate(config.url, context)), {
+        const targetUrl = String(this.interpolate(config.url, context));
+        // SSRF guard: the workflow URL is operator-supplied. Screen scheme,
+        // port, internal-host string-gate, and DNS-resolved IP before any
+        // egress so a workflow can't be pointed at cloud metadata / RFC1918.
+        // Throws SafeHttpFetchError → caught below → fail-closed error result.
+        await assertUrlSafe(targetUrl);
+        const response = await fetch(targetUrl, {
           method: config.method,
           headers: config.headers,
           body: config.body ? JSON.stringify(this.interpolate(config.body, context)) : undefined,

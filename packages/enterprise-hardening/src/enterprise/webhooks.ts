@@ -9,6 +9,7 @@
  */
 
 import { z } from 'zod';
+import { assertUrlSafe } from '../http/safe-http-fetch';
 
 /**
  * Webhook Event Categories
@@ -277,6 +278,13 @@ export class WebhookManager {
     try {
       const payload = this.buildPayload(delivery.event);
       const signature = await this.signPayload(payload, endpoint.secret);
+
+      // SSRF guard: webhook endpoint URLs are operator-supplied. Screen
+      // scheme/port/internal-host/DNS-resolved-IP before egress so a
+      // registered endpoint can't be used to reach internal services or
+      // cloud metadata. Throws SafeHttpFetchError → caught below → the
+      // delivery is recorded as failed and retried/exhausted, never sent.
+      await assertUrlSafe(endpoint.url);
 
       const response = await fetch(endpoint.url, {
         method: 'POST',

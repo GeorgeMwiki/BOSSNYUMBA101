@@ -41,6 +41,7 @@ import {
   selectWebhookIdempotencyStore,
 } from './lib/idempotency-store-factory';
 import { buildWebhookIdempotencyKey } from './lib/idempotency-store';
+import { buildMpesaReceiptUrl } from './lib/mpesa-receipt';
 import { PaymentOrchestrationService, CreatePaymentRequest } from './services/payment-orchestration.service';
 import { LedgerService } from './services/ledger.service';
 import { ReconciliationService } from './services/reconciliation.service';
@@ -1540,12 +1541,16 @@ async function processStkCallbackRoute(
         },
         'M-PESA payment successful',
       );
+      // Daraja issues a receipt NUMBER, not a hosted receipt page. Mint a
+      // deterministic receipt resource URL from it so the value satisfies the
+      // `PaymentIntent.receiptUrl` `.url()` contract and the api-gateway
+      // receipt endpoint resolves instead of sitting at 409.
       await paymentOrchestrationService.handleWebhook(
         'mpesa',
         callback.CheckoutRequestID,
         'SUCCEEDED',
         stkTenant,
-        mpesaReceiptNumber?.toString(),
+        buildMpesaReceiptUrl(mpesaReceiptNumber?.toString()),
       );
     } else {
       const status: PaymentStatus = callback.ResultCode === 1032 ? 'CANCELLED' : 'FAILED';
@@ -1767,7 +1772,9 @@ app.post('/webhooks/mpesa/c2b/confirm', async (req: Request, res: Response) => {
       c2b.TransID,
       'SUCCEEDED',
       c2bTenant,
-      c2b.TransID,
+      // TransID is M-Pesa's authoritative C2B receipt number; mint a
+      // deterministic receipt resource URL from it (see STK path).
+      buildMpesaReceiptUrl(c2b.TransID),
       undefined
     ).catch(async (err) => {
       // M8: release the claim so Daraja's retry reprocesses instead of
