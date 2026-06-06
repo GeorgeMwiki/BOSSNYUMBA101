@@ -36,12 +36,22 @@ let MissingTenantContextError: ServerExports['MissingTenantContextError'];
 beforeAll(async () => {
   const prevNodeEnv = process.env.NODE_ENV;
   const prevMpesaSecret = process.env.MPESA_WEBHOOK_SECRET;
+  const prevDatabaseUrl = process.env.DATABASE_URL;
   // Force production-mode pino init (skip pino-pretty) but supply a
   // dummy webhook secret so the M-Pesa signature middleware's fail-closed
   // guard accepts the route mount.
   process.env.NODE_ENV = 'production';
   process.env.MPESA_WEBHOOK_SECRET =
     process.env.MPESA_WEBHOOK_SECRET ?? 'test-secret-not-used-here';
+  // M1/M3: in production the durable event-publisher AND idempotency-store
+  // selectors refuse to start without a durable backend (in-memory drops
+  // events / double-credits across replicas — the P0s we are fixing).
+  // This suite only needs `server.ts` to LOAD (it tests tenant
+  // resolution, not webhooks/events), so we hand it a dummy DATABASE_URL.
+  // The postgres-js client constructs lazily — no socket is opened and no
+  // route/event is exercised here — so this never touches a real DB.
+  process.env.DATABASE_URL =
+    process.env.DATABASE_URL ?? 'postgres://u:p@localhost:5432/none';
   const mod = await import('../server');
   resolveStripeTenantId = mod.resolveStripeTenantId;
   resolveMpesaTenantByShortCode = mod.resolveMpesaTenantByShortCode;
@@ -54,7 +64,14 @@ beforeAll(async () => {
   else process.env.NODE_ENV = prevNodeEnv;
   if (prevMpesaSecret === undefined) delete process.env.MPESA_WEBHOOK_SECRET;
   else process.env.MPESA_WEBHOOK_SECRET = prevMpesaSecret;
-});
+  if (prevDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+  else process.env.DATABASE_URL = prevDatabaseUrl;
+  // Cold dynamic-import of `server.ts` (which transitively pulls the
+  // whole composition root) runs 8–10s under parallel CI pressure —
+  // right at vitest's default 10s hook timeout. Give it the same
+  // generous budget `factory.test.ts` already uses for the same reason
+  // so a cold transform doesn't flake the suite.
+}, 60_000);
 
 describe('W4-A webhook tenant resolution', () => {
   describe('resolveStripeTenantId', () => {

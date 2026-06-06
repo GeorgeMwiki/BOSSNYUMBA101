@@ -50,6 +50,10 @@ import type { IAccountRepository } from './account.repository';
 import type { ILedgerRepository } from './ledger.repository';
 import type { IStatementRepository } from './statement.repository';
 import type { IDisbursementRepository } from './disbursement.repository';
+import {
+  inMemoryTransactionRunner,
+  type TransactionRunner,
+} from './transaction';
 
 export interface Repositories {
   paymentIntentRepository: IPaymentIntentRepository;
@@ -57,6 +61,19 @@ export interface Repositories {
   ledgerRepository: ILedgerRepository;
   statementRepository: IStatementRepository;
   disbursementRepository: IDisbursementRepository;
+  /**
+   * Runs the ledger persist step inside ONE transaction (M2). When the
+   * Drizzle client is wired this IS the Drizzle `db` (its `.transaction`
+   * gives real ACID atomicity + row locks). In the InMemory fallback it
+   * is the single-threaded no-op runner.
+   */
+  transactionRunner: TransactionRunner;
+  /**
+   * The raw Drizzle client, or null when running InMemory. Exposed so
+   * the composition root can build the Postgres-backed webhook
+   * idempotency store (M3) off the SAME client/pool.
+   */
+  databaseClient: DbClient | null;
 }
 
 interface FactoryLogger {
@@ -137,6 +154,8 @@ export function createRepositories(logger?: FactoryLogger): Repositories {
       ledgerRepository: new InMemoryLedgerRepository(),
       statementRepository: new InMemoryStatementRepository(),
       disbursementRepository: new InMemoryDisbursementRepository(),
+      transactionRunner: inMemoryTransactionRunner,
+      databaseClient: null,
     };
   }
 
@@ -160,5 +179,11 @@ export function createRepositories(logger?: FactoryLogger): Repositories {
     ledgerRepository: new DrizzleLedgerRepository(db),
     statementRepository: new DrizzleStatementRepository(db),
     disbursementRepository: new DrizzleDisbursementRepository(db),
+    // The Drizzle client is the transaction runner: db.transaction(...)
+    // gives the ledger persist step real ACID atomicity + SELECT … FOR
+    // UPDATE row locks (M2). All five repos share this one client, so
+    // every repo method called with the tx handle joins the same tx.
+    transactionRunner: db as TransactionRunner,
+    databaseClient: db,
   };
 }

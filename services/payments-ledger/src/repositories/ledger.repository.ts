@@ -14,6 +14,7 @@ import {
   EntryDirection,
   CurrencyCode
 } from '@bossnyumba/domain-models';
+import type { RepoTx } from './transaction';
 
 export interface LedgerEntryFilters {
   tenantId: TenantId;
@@ -47,9 +48,13 @@ export interface AccountBalance {
 export interface ILedgerRepository {
   /**
    * Create ledger entries (batch insert for journal)
-   * MUST be atomic - all entries created or none
+   * MUST be atomic - all entries created or none.
+   *
+   * `tx` (optional) enlists the insert in an existing transaction so it
+   * commits/rolls back together with the account-balance updates the
+   * caller performs in the same post (M2).
    */
-  createEntries(entries: LedgerEntry[]): Promise<LedgerEntry[]>;
+  createEntries(entries: LedgerEntry[], tx?: RepoTx): Promise<LedgerEntry[]>;
 
   /**
    * Get ledger entry by ID
@@ -90,11 +95,16 @@ export interface ILedgerRepository {
   ): Promise<LedgerEntry | null>;
 
   /**
-   * Get next sequence number for an account
+   * Get next sequence number for an account.
+   *
+   * `tx` (optional) reads MAX(sequence_number) inside the same
+   * transaction (after the account row is locked) so two concurrent
+   * posts to the same account cannot compute the same next sequence.
    */
   getNextSequenceNumber(
     accountId: AccountId,
-    tenantId: TenantId
+    tenantId: TenantId,
+    tx?: RepoTx
   ): Promise<number>;
 
   /**
@@ -143,7 +153,26 @@ export class InMemoryLedgerRepository implements ILedgerRepository {
   private entries: Map<string, LedgerEntry> = new Map();
   private sequenceCounters: Map<string, number> = new Map();
 
-  async createEntries(entries: LedgerEntry[]): Promise<LedgerEntry[]> {
+  /**
+   * Test/dev support: snapshot the store so a transaction runner can
+   * roll back to it on failure. NOT part of ILedgerRepository — the
+   * Drizzle adapter gets real ACID rollback from Postgres.
+   */
+  __snapshot(): { entries: Map<string, LedgerEntry>; seq: Map<string, number> } {
+    const entries = new Map<string, LedgerEntry>();
+    for (const [k, v] of this.entries) entries.set(k, { ...v });
+    return { entries, seq: new Map(this.sequenceCounters) };
+  }
+
+  __restore(snapshot: { entries: Map<string, LedgerEntry>; seq: Map<string, number> }): void {
+    this.entries = new Map();
+    for (const [k, v] of snapshot.entries) this.entries.set(k, { ...v });
+    this.sequenceCounters = new Map(snapshot.seq);
+  }
+
+  // `tx` is accepted to satisfy the interface; the InMemory store is
+  // single-threaded so there is no transaction to enlist.
+  async createEntries(entries: LedgerEntry[], _tx?: RepoTx): Promise<LedgerEntry[]> {
     // Atomic insert - all or nothing
     const created: LedgerEntry[] = [];
     for (const entry of entries) {
@@ -263,7 +292,8 @@ export class InMemoryLedgerRepository implements ILedgerRepository {
 
   async getNextSequenceNumber(
     accountId: AccountId,
-    tenantId: TenantId
+    tenantId: TenantId,
+    _tx?: RepoTx
   ): Promise<number> {
     const key = `${tenantId}:${accountId}`;
     const current = this.sequenceCounters.get(key) || 0;

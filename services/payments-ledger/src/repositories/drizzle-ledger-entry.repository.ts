@@ -54,6 +54,7 @@ import type {
   LedgerEntryFilters,
   LedgerPaginatedResult,
 } from './ledger.repository';
+import type { RepoTx } from './transaction';
 
 // ────────────────────────────────────────────────────────────────────
 // Row ⇄ Domain converters
@@ -139,10 +140,11 @@ function entryToInsert(e: LedgerEntry): typeof ledgerEntries.$inferInsert {
 export class DrizzleLedgerRepository implements ILedgerRepository {
   constructor(private readonly db: DatabaseClient) {}
 
-  async createEntries(entries: LedgerEntry[]): Promise<LedgerEntry[]> {
+  async createEntries(entries: LedgerEntry[], tx?: RepoTx): Promise<LedgerEntry[]> {
     if (entries.length === 0) return [];
 
-    const inserted = await this.db
+    const conn = tx ?? this.db;
+    const inserted = await conn
       .insert(ledgerEntries)
       .values(entries.map(entryToInsert))
       .returning();
@@ -311,11 +313,15 @@ export class DrizzleLedgerRepository implements ILedgerRepository {
   async getNextSequenceNumber(
     accountId: AccountId,
     tenantId: TenantId,
+    tx?: RepoTx,
   ): Promise<number> {
-    // MAX + 1. The race window between this read and the subsequent
-    // INSERT is closed by the (account_id, sequence_number) unique
-    // index — the INSERT will fail loudly, the caller retries.
-    const rows = await this.db
+    // MAX + 1. When called with `tx` AFTER the account row is locked
+    // (`findByIdForUpdate`), the lock serialises concurrent posts to the
+    // same account so two writers cannot read the same MAX. As a second
+    // line of defence the (account_id, sequence_number) unique index
+    // rejects any duplicate INSERT and the caller retries.
+    const conn = tx ?? this.db;
+    const rows = await conn
       .select({
         maxSeq: sql<number | null>`MAX(${ledgerEntries.sequenceNumber})`,
       })

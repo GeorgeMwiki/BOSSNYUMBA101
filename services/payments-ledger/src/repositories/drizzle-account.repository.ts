@@ -48,6 +48,7 @@ import type {
   AccountFilters,
   IAccountRepository,
 } from './account.repository';
+import type { RepoTx } from './transaction';
 
 // ────────────────────────────────────────────────────────────────────
 // Enum translation (domain ↔ DB)
@@ -152,8 +153,10 @@ export class DrizzleAccountRepository implements IAccountRepository {
   async findById(
     id: AccountId,
     tenantId: TenantId,
+    tx?: RepoTx,
   ): Promise<Account | null> {
-    const rows = await this.db
+    const conn = tx ?? this.db;
+    const rows = await conn
       .select()
       .from(accounts)
       .where(and(eq(accounts.id, id), eq(accounts.tenantId, tenantId)))
@@ -161,7 +164,30 @@ export class DrizzleAccountRepository implements IAccountRepository {
     return rows[0] ? rowToAccount(rows[0]) : null;
   }
 
-  async update(account: Account): Promise<Account> {
+  async findByIdForUpdate(
+    id: AccountId,
+    tenantId: TenantId,
+    tx?: RepoTx,
+  ): Promise<Account | null> {
+    // `SELECT … FOR UPDATE` takes a row lock that is held until the
+    // surrounding transaction commits/rolls back, serialising concurrent
+    // posts to the same account. Outside a transaction Postgres still
+    // accepts FOR UPDATE but the lock is released at statement end — so
+    // callers MUST pass `tx` for the lock to do its job. We do not throw
+    // when `tx` is absent (the InMemory adapter has no tx) but the
+    // LedgerService always supplies one.
+    const conn = tx ?? this.db;
+    const rows = await conn
+      .select()
+      .from(accounts)
+      .where(and(eq(accounts.id, id), eq(accounts.tenantId, tenantId)))
+      .limit(1)
+      .for('update');
+    return rows[0] ? rowToAccount(rows[0]) : null;
+  }
+
+  async update(account: Account, tx?: RepoTx): Promise<Account> {
+    const conn = tx ?? this.db;
     const updates = {
       customerId: account.customerId ?? null,
       ownerId: account.ownerId ?? null,
@@ -180,7 +206,7 @@ export class DrizzleAccountRepository implements IAccountRepository {
       updatedAt: new Date(),
     };
 
-    const updated = await this.db
+    const updated = await conn
       .update(accounts)
       .set(updates)
       .where(
@@ -349,7 +375,9 @@ export class DrizzleAccountRepository implements IAccountRepository {
     newBalanceMinorUnits: number,
     lastEntryId: string,
     expectedVersion: number,
+    tx?: RepoTx,
   ): Promise<boolean> {
+    const conn = tx ?? this.db;
     // Optimistic lock: the UPDATE only succeeds when the row's
     // entry_count still matches the version the caller saw. Returning
     // [] means another writer mutated the row in the meantime.
@@ -357,7 +385,7 @@ export class DrizzleAccountRepository implements IAccountRepository {
     // entryCount + 1 corresponds to the new version. lastEntryAt /
     // updatedAt are set to now() in the same UPDATE so we never read
     // them back and write a stale value.
-    const updated = await this.db
+    const updated = await conn
       .update(accounts)
       .set({
         balanceMinorUnits: newBalanceMinorUnits,

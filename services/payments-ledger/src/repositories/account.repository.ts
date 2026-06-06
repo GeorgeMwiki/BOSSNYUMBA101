@@ -13,6 +13,7 @@ import {
   AccountStatus,
   CurrencyCode
 } from '@bossnyumba/domain-models';
+import type { RepoTx } from './transaction';
 
 export interface AccountFilters {
   tenantId: TenantId;
@@ -31,14 +32,35 @@ export interface IAccountRepository {
   create(account: Account): Promise<Account>;
 
   /**
-   * Get account by ID
+   * Get account by ID.
+   *
+   * `tx` (optional) runs the read on an existing transaction so a
+   * caller composing a multi-statement post sees its own uncommitted
+   * writes. Omit for a normal autocommit read.
    */
-  findById(id: AccountId, tenantId: TenantId): Promise<Account | null>;
+  findById(id: AccountId, tenantId: TenantId, tx?: RepoTx): Promise<Account | null>;
 
   /**
-   * Update account
+   * Get account by ID WITH a row lock (`SELECT … FOR UPDATE`).
+   *
+   * M2: the ledger persist step must read each touched account under a
+   * lock, compute the new balance, and write it back — all inside one
+   * transaction — so concurrent posts to the same account serialise
+   * instead of losing updates. `tx` is REQUIRED in spirit (the lock only
+   * means anything inside a transaction); the InMemory adapter ignores
+   * it since it is single-threaded.
    */
-  update(account: Account): Promise<Account>;
+  findByIdForUpdate(
+    id: AccountId,
+    tenantId: TenantId,
+    tx?: RepoTx,
+  ): Promise<Account | null>;
+
+  /**
+   * Update account. `tx` (optional) enlists the write in an existing
+   * transaction.
+   */
+  update(account: Account, tx?: RepoTx): Promise<Account>;
 
   /**
    * Find accounts with filters
@@ -97,15 +119,19 @@ export interface IAccountRepository {
   ): Promise<Account[]>;
 
   /**
-   * Atomic balance update with optimistic locking
-   * Returns true if successful, false if version mismatch
+   * Atomic balance update with optimistic locking.
+   * Returns true if successful, false if version mismatch.
+   *
+   * `tx` (optional) enlists the conditional UPDATE in an existing
+   * transaction.
    */
   updateBalance(
     accountId: AccountId,
     tenantId: TenantId,
     newBalanceMinorUnits: number,
     lastEntryId: string,
-    expectedVersion: number
+    expectedVersion: number,
+    tx?: RepoTx
   ): Promise<boolean>;
 }
 
@@ -115,12 +141,32 @@ export interface IAccountRepository {
 export class InMemoryAccountRepository implements IAccountRepository {
   private accounts: Map<string, Account & { version: number }> = new Map();
 
+  /**
+   * Test/dev support: snapshot the store so a transaction runner can
+   * roll back to it on failure. NOT part of IAccountRepository — the
+   * Drizzle adapter gets real ACID rollback from Postgres. Shallow-copy
+   * each record (the records are treated immutably by callers).
+   */
+  __snapshot(): Map<string, Account & { version: number }> {
+    const copy = new Map<string, Account & { version: number }>();
+    for (const [k, v] of this.accounts) copy.set(k, { ...v });
+    return copy;
+  }
+
+  __restore(snapshot: Map<string, Account & { version: number }>): void {
+    this.accounts = new Map();
+    for (const [k, v] of snapshot) this.accounts.set(k, { ...v });
+  }
+
   async create(account: Account): Promise<Account> {
     this.accounts.set(account.id, { ...account, version: 1 });
     return account;
   }
 
-  async findById(id: AccountId, tenantId: TenantId): Promise<Account | null> {
+  // The InMemory store is single-threaded: `tx` is accepted to satisfy
+  // the interface but is a no-op (there is nothing to enlist and no
+  // concurrent writer to lock against).
+  async findById(id: AccountId, tenantId: TenantId, _tx?: RepoTx): Promise<Account | null> {
     const account = this.accounts.get(id);
     if (account && account.tenantId === tenantId) {
       const { version, ...data } = account;
@@ -129,7 +175,16 @@ export class InMemoryAccountRepository implements IAccountRepository {
     return null;
   }
 
-  async update(account: Account): Promise<Account> {
+  async findByIdForUpdate(
+    id: AccountId,
+    tenantId: TenantId,
+    tx?: RepoTx,
+  ): Promise<Account | null> {
+    // No row locks in a single-threaded Map — behaves like findById.
+    return this.findById(id, tenantId, tx);
+  }
+
+  async update(account: Account, _tx?: RepoTx): Promise<Account> {
     const existing = this.accounts.get(account.id);
     if (existing) {
       this.accounts.set(account.id, { ...account, version: existing.version + 1 });
@@ -257,7 +312,8 @@ export class InMemoryAccountRepository implements IAccountRepository {
     tenantId: TenantId,
     newBalanceMinorUnits: number,
     lastEntryId: string,
-    expectedVersion: number
+    expectedVersion: number,
+    _tx?: RepoTx
   ): Promise<boolean> {
     const account = this.accounts.get(accountId);
     if (!account || account.tenantId !== tenantId) {

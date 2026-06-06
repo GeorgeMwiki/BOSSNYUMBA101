@@ -15,23 +15,53 @@ import {
   JournalEntryLine,
   validateJournalBalance,
   createJournalId,
-  CurrencyCode
+  CurrencyCode,
+  PaymentIntentId
 } from '@bossnyumba/domain-models';
 import { createId } from '../domain-extensions';
 import { ILedgerRepository, AccountBalance } from '../repositories/ledger.repository';
 import { IAccountRepository } from '../repositories/account.repository';
 import { IEventPublisher, createEvent } from '../events/event-publisher';
+import type { PaymentDomainEvent } from '../events/payment-events';
 import {
   LedgerEntriesCreatedEvent,
   AccountBalanceUpdatedEvent
 } from '../events/payment-events';
 import { ILogger } from './payment-orchestration.service';
+import {
+  inMemoryTransactionRunner,
+  type RepoTx,
+  type TransactionRunner,
+} from '../repositories/transaction';
 
 export interface LedgerServiceDeps {
   ledgerRepository: ILedgerRepository;
   accountRepository: IAccountRepository;
   eventPublisher: IEventPublisher;
   logger: ILogger;
+  /**
+   * Runs the persist step (entry insert + account balance updates)
+   * inside ONE transaction (M2). Production passes the shared Drizzle
+   * client; tests/dev may omit it and get the single-threaded in-memory
+   * runner. The in-memory runner provides no rollback — correctness for
+   * the InMemory adapters comes from staging all writes until after the
+   * read/compute phase.
+   */
+  transactionRunner?: TransactionRunner;
+}
+
+/**
+ * One account's net effect within a single journal: the balance delta
+ * (sum of this journal's lines on the account) plus the per-line entries
+ * to write. The actual starting balance + sequence numbers are read
+ * UNDER THE ROW LOCK inside the transaction, not here.
+ */
+interface StagedAccount {
+  accountId: AccountId;
+  /** Net minor-unit delta to apply to the account balance. */
+  deltaMinorUnits: number;
+  /** Lines for this account, in journal order. */
+  lines: JournalEntryLine[];
 }
 
 /**
@@ -52,12 +82,14 @@ export class LedgerService {
   private accountRepository: IAccountRepository;
   private eventPublisher: IEventPublisher;
   private logger: ILogger;
+  private transactionRunner: TransactionRunner;
 
   constructor(deps: LedgerServiceDeps) {
     this.ledgerRepository = deps.ledgerRepository;
     this.accountRepository = deps.accountRepository;
     this.eventPublisher = deps.eventPublisher;
     this.logger = deps.logger;
+    this.transactionRunner = deps.transactionRunner ?? inMemoryTransactionRunner;
   }
 
   /**
@@ -75,130 +107,210 @@ export class LedgerService {
 
     const journalId = createJournalId();
     const now = new Date();
-    const entries: LedgerEntry[] = [];
-    const accountUpdates: Map<AccountId, { account: Account; newBalance: Money; entryId: LedgerEntryId }> = new Map();
 
-    // Process each line
+    // ── Phase 1: aggregate the journal per account ──────────────────
+    // A journal may touch the same account on multiple lines (e.g. the
+    // rentPayment template debits + credits the holding account). We
+    // group lines by account and pre-sum the net balance delta so each
+    // account is locked and updated exactly once inside the transaction.
+    const staged = new Map<AccountId, StagedAccount>();
     for (const line of request.lines) {
-      // Get account
-      const account = await this.accountRepository.findById(line.accountId, request.tenantId);
-      if (!account) {
-        throw new Error(`Account ${line.accountId} not found`);
-      }
-
-      const accountAggregate = new AccountAggregate(account);
-      if (!accountAggregate.canTransact()) {
-        throw new Error(`Account ${line.accountId} is not active`);
-      }
-
-      // Currency check
-      if (line.amount.currency !== account.currency) {
-        throw new Error(
-          `Currency mismatch: account ${line.accountId} is ${account.currency}, ` +
-          `but entry is ${line.amount.currency}`
-        );
-      }
-
-      // Get next sequence number
-      const sequenceNumber = await this.ledgerRepository.getNextSequenceNumber(
-        line.accountId,
-        request.tenantId
-      );
-
-      // Calculate new balance
-      const currentBalance = Money.fromMinorUnits(account.balanceMinorUnits, account.currency);
-      let newBalance: Money;
-      if (line.direction === 'DEBIT') {
-        newBalance = currentBalance.add(line.amount);
+      const signed =
+        line.direction === 'DEBIT'
+          ? line.amount.amountMinorUnits
+          : -line.amount.amountMinorUnits;
+      const existing = staged.get(line.accountId);
+      if (existing) {
+        existing.deltaMinorUnits += signed;
+        existing.lines.push(line);
       } else {
-        newBalance = currentBalance.subtract(line.amount);
+        staged.set(line.accountId, {
+          accountId: line.accountId,
+          deltaMinorUnits: signed,
+          lines: [line],
+        });
       }
-
-      // Create ledger entry
-      const entryId = createId<LedgerEntryId>(`le_${uuidv4()}`);
-      const entry: LedgerEntry = {
-        id: entryId,
-        tenantId: request.tenantId,
-        accountId: line.accountId,
-        journalId,
-        type: line.type,
-        direction: line.direction,
-        amount: line.amount,
-        balanceAfter: newBalance,
-        sequenceNumber,
-        effectiveDate: request.effectiveDate,
-        postedAt: now,
-        paymentIntentId: request.paymentIntentId,
-        leaseId: line.leaseId,
-        propertyId: line.propertyId,
-        unitId: line.unitId,
-        description: line.description,
-        metadata: line.metadata,
-        createdAt: now,
-        createdBy: request.createdBy,
-        updatedAt: now,
-        updatedBy: request.createdBy
-      };
-
-      entries.push(entry);
-      accountUpdates.set(line.accountId, {
-        account,
-        newBalance,
-        entryId
-      });
     }
 
-    // Persist entries atomically
-    const savedEntries = await this.ledgerRepository.createEntries(entries);
+    // Domain events for this post. The DURABLE outbox rows are written
+    // INSIDE the tx (co-commit, MUST-FIX 3a) so a crash between the ledger
+    // commit and the outbox write cannot lose them. In-process subscribers
+    // are notified ONLY after the tx commits (Phase 3), so a rolled-back
+    // post notifies nobody (M2).
+    const pendingEvents: PaymentDomainEvent[] = [];
 
-    // Update account balances
-    const updatedAccounts: Account[] = [];
-    for (const [accountId, update] of accountUpdates) {
-      const accountAggregate = new AccountAggregate(update.account);
-      accountAggregate.updateBalance(update.newBalance, update.entryId);
-      const updatedAccount = accountAggregate.toData();
-      await this.accountRepository.update(updatedAccount);
-      updatedAccounts.push(updatedAccount);
+    // ── Phase 2: atomic, row-locked persist + co-committed outbox ────
+    const { savedEntries, updatedAccounts } = await this.transactionRunner.transaction(
+      async (tx: RepoTx) => {
+        const entries: LedgerEntry[] = [];
+        const updated: Account[] = [];
 
-      // Publish balance update event
-      await this.eventPublisher.publish(
-        createEvent<AccountBalanceUpdatedEvent>(
-          'ACCOUNT_BALANCE_UPDATED',
-          'Account',
-          accountId,
-          request.tenantId,
-          {
-            previousBalance: Money.fromMinorUnits(
-              update.account.balanceMinorUnits,
-              update.account.currency
-            ).toData(),
-            newBalance: update.newBalance.toData(),
-            lastEntryId: update.entryId
+        for (const group of staged.values()) {
+          // Lock the account row for the duration of the transaction so
+          // concurrent posts to the same account serialise (no lost
+          // read-modify-write).
+          const account = await this.accountRepository.findByIdForUpdate(
+            group.accountId,
+            request.tenantId,
+            tx,
+          );
+          if (!account) {
+            throw new Error(`Account ${group.accountId} not found`);
           }
-        )
-      );
-    }
 
-    // Publish journal entries created event
-    await this.eventPublisher.publish(
-      createEvent<LedgerEntriesCreatedEvent>(
-        'LEDGER_ENTRIES_CREATED',
-        'Ledger',
-        journalId,
-        request.tenantId,
-        {
-          journalId,
-          entries: savedEntries.map(e => ({
-            entryId: e.id,
-            accountId: e.accountId,
-            type: e.type,
-            direction: e.direction,
-            amount: e.amount.toData()
-          })),
-          paymentIntentId: request.paymentIntentId
+          const aggregate = new AccountAggregate(account);
+          if (!aggregate.canTransact()) {
+            throw new Error(`Account ${group.accountId} is not active`);
+          }
+
+          // Walk this account's lines in order, threading a running
+          // balance that starts from the locked snapshot, so each
+          // entry's balanceAfter is correct even for multi-line groups.
+          let runningBalance = Money.fromMinorUnits(
+            account.balanceMinorUnits,
+            account.currency,
+          );
+          // Sequence numbers are read UNDER the lock; we increment
+          // locally across this account's lines within the journal.
+          let nextSeq = await this.ledgerRepository.getNextSequenceNumber(
+            group.accountId,
+            request.tenantId,
+            tx,
+          );
+
+          let lastEntryId: LedgerEntryId | null = null;
+          for (const line of group.lines) {
+            // Currency check against the locked row.
+            if (line.amount.currency !== account.currency) {
+              throw new Error(
+                `Currency mismatch: account ${group.accountId} is ${account.currency}, ` +
+                `but entry is ${line.amount.currency}`,
+              );
+            }
+
+            runningBalance =
+              line.direction === 'DEBIT'
+                ? runningBalance.add(line.amount)
+                : runningBalance.subtract(line.amount);
+
+            const entryId = createId<LedgerEntryId>(`le_${uuidv4()}`);
+            lastEntryId = entryId;
+            entries.push({
+              id: entryId,
+              tenantId: request.tenantId,
+              accountId: line.accountId,
+              journalId,
+              type: line.type,
+              direction: line.direction,
+              amount: line.amount,
+              balanceAfter: runningBalance,
+              sequenceNumber: nextSeq,
+              effectiveDate: request.effectiveDate,
+              postedAt: now,
+              paymentIntentId: request.paymentIntentId,
+              leaseId: line.leaseId,
+              propertyId: line.propertyId,
+              unitId: line.unitId,
+              description: line.description,
+              metadata: line.metadata,
+              createdAt: now,
+              createdBy: request.createdBy,
+              updatedAt: now,
+              updatedBy: request.createdBy,
+            });
+            nextSeq += 1;
+          }
+
+          // Persist the account's new balance on the SAME tx. We write
+          // the final running balance (after all of this account's
+          // lines) and point lastEntryId at the last entry posted.
+          const previousBalanceData = Money.fromMinorUnits(
+            account.balanceMinorUnits,
+            account.currency,
+          ).toData();
+          aggregate.updateBalance(runningBalance, lastEntryId!);
+          // Reflect every line we posted in entryCount. `updateBalance`
+          // bumps by one; set it UNCONDITIONALLY to the locked snapshot +
+          // this group's line count so entry_count stays in step with the
+          // ledger for single- AND multi-line groups (SHOULD-FIX — it also
+          // doubles as the optimistic-lock version, so an off-by-one on the
+          // single-line path would weaken that guard).
+          const updatedAccount = aggregate.toData();
+          updatedAccount.entryCount = account.entryCount + group.lines.length;
+          await this.accountRepository.update(updatedAccount, tx);
+          updated.push(updatedAccount);
+
+          pendingEvents.push(
+            createEvent<AccountBalanceUpdatedEvent>(
+              'ACCOUNT_BALANCE_UPDATED',
+              'Account',
+              group.accountId,
+              request.tenantId,
+              {
+                previousBalance: previousBalanceData,
+                newBalance: runningBalance.toData(),
+                lastEntryId: lastEntryId!,
+              },
+            ),
+          );
         }
-      )
+
+        // Insert ALL entries on the same tx — commits or rolls back
+        // together with the balance updates above.
+        const saved = await this.ledgerRepository.createEntries(entries, tx);
+
+        // Build the journal-level event now that entries are persisted,
+        // then co-commit EVERY event for this post to the durable outbox
+        // ON THIS TX (MUST-FIX 3a). If the tx rolls back, these outbox
+        // rows roll back with the entries + balances — no orphaned event,
+        // no lost event. We do NOT notify in-process handlers here; that
+        // happens post-commit in Phase 3.
+        pendingEvents.push(
+          createEvent<LedgerEntriesCreatedEvent>(
+            'LEDGER_ENTRIES_CREATED',
+            'Ledger',
+            journalId,
+            request.tenantId,
+            {
+              journalId,
+              entries: saved.map(e => ({
+                entryId: e.id,
+                accountId: e.accountId,
+                type: e.type,
+                direction: e.direction,
+                amount: e.amount.toData()
+              })),
+              paymentIntentId: request.paymentIntentId
+            }
+          )
+        );
+
+        if (this.eventPublisher.enqueueToOutbox) {
+          await this.eventPublisher.enqueueToOutbox(pendingEvents, tx);
+        }
+
+        return { savedEntries: saved, updatedAccounts: updated };
+      },
     );
+
+    // ── Phase 3: deliver to in-process subscribers AFTER commit ──────
+    // The durable outbox rows were already co-committed inside the tx
+    // (MUST-FIX 3a). Here we only fan out to live in-process subscribers.
+    // When the publisher does not implement the co-commit pair (e.g. a
+    // minimal test fake), fall back to the legacy post-commit publish so
+    // the durable write still happens.
+    // TODO(outbox-relay): a cross-process relay must drain Postgres
+    // `event_outbox` (status='pending') into the api-gateway event bus and
+    // mark rows published. Co-commit guarantees the row is written
+    // atomically with the ledger, but nothing yet ships it to other
+    // processes. Out of scope for this fix; tracked as a follow-up.
+    if (this.eventPublisher.enqueueToOutbox && this.eventPublisher.notifySubscribers) {
+      await this.eventPublisher.notifySubscribers(pendingEvents);
+    } else {
+      for (const event of pendingEvents) {
+        await this.eventPublisher.publish(event);
+      }
+    }
 
     this.logger.info('Journal entry posted', {
       journalId,
@@ -255,6 +367,22 @@ export class LedgerService {
    */
   async getJournalEntries(journalId: string, tenantId: TenantId): Promise<LedgerEntry[]> {
     return this.ledgerRepository.findByJournalId(journalId, tenantId);
+  }
+
+  /**
+   * Find ledger entries posted against a given payment intent.
+   *
+   * Used by the payment-success path (M5) as the idempotency check: a
+   * journal is posted for a succeeded payment only if none already
+   * exists for its paymentIntentId, so webhook redelivery cannot
+   * double-credit.
+   */
+  async findEntriesByPaymentIntent(
+    paymentIntentId: PaymentIntentId,
+    tenantId: TenantId,
+  ): Promise<LedgerEntry[]> {
+    const result = await this.ledgerRepository.find({ tenantId, paymentIntentId });
+    return result.entries;
   }
 
   /**

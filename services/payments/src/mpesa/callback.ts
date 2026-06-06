@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { randomUUID } from 'node:crypto';
 
 /**
  * Convert a decimal-string money amount (e.g. "5000.00") into integer
@@ -81,14 +82,93 @@ export interface ParsedC2BPayment {
 
 export type PaymentEventType = 'stk:success' | 'stk:failed' | 'stk:cancelled' | 'c2b:received';
 
-export class MpesaCallbackHandler extends EventEmitter {
-  private processedCallbacks: Set<string> = new Set();
-  private readonly callbackTTL: number = 24 * 60 * 60 * 1000; // 24 hours
+/**
+ * Durable idempotency store the handler can be given so dedup survives
+ * restarts and is shared across replicas (M3). Mirrors the connectors
+ * `IdempotencyStore` contract (`seenRecently` = record-and-check) and
+ * adds an optional `release` so a FAILED handler can free the key for a
+ * retry (M8). When omitted, the handler falls back to a TTL-bounded
+ * in-process map (single-process only).
+ */
+export interface CallbackIdempotencyStore {
+  /** Atomic record-and-check. Returns true if already seen (duplicate). */
+  seenRecently(key: string): Promise<boolean>;
+  /** Optional: free a previously-recorded key after a failed handler. */
+  release?(key: string): Promise<void>;
+}
 
-  constructor() {
+export interface MpesaCallbackHandlerOptions {
+  idempotencyStore?: CallbackIdempotencyStore;
+  /** TTL for the in-process fallback dedup map. Defaults to 24h. */
+  ttlMs?: number;
+}
+
+/**
+ * Sentinel token returned by `claimKey` when an injected (connectors)
+ * idempotency store is in use. That store is record-and-check and owns its
+ * own claim identity, so its `release(key)` takes no token; the in-process
+ * compare-and-delete path is bypassed for it. Kept distinct so the value
+ * is meaningful in logs/debugging.
+ */
+const INJECTED_STORE_TOKEN = '__injected_store__';
+
+export class MpesaCallbackHandler extends EventEmitter {
+  // In-process fallback dedup: key -> { token, expiry epoch ms }. NOT a
+  // Set we wipe wholesale — entries expire individually so a periodic
+  // sweep cannot open a double-credit window for still-valid keys. The
+  // per-claim `token` enables compare-and-delete on release (MUST-FIX 2).
+  private processedCallbacks: Map<string, { token: string; expiry: number }> =
+    new Map();
+  private readonly callbackTTL: number;
+  private readonly idempotencyStore?: CallbackIdempotencyStore;
+
+  constructor(options: MpesaCallbackHandlerOptions = {}) {
     super();
-    // Clean up old processed callbacks periodically
-    setInterval(() => this.cleanupProcessedCallbacks(), this.callbackTTL);
+    this.callbackTTL = options.ttlMs ?? 24 * 60 * 60 * 1000; // 24 hours
+    this.idempotencyStore = options.idempotencyStore;
+    // Periodically reap EXPIRED entries only (never a blanket clear).
+    setInterval(() => this.cleanupProcessedCallbacks(), 60 * 60 * 1000).unref?.();
+  }
+
+  /**
+   * Reserve a dedup key. Returns a release TOKEN when newly reserved
+   * (caller MUST process and keep the token) or `null` if already seen
+   * (duplicate, skip). Uses the injected durable store when present (which
+   * is record-and-check, so it has no token — we return a sentinel token
+   * the in-process release path ignores), else the in-process map.
+   */
+  private async claimKey(key: string): Promise<string | null> {
+    if (this.idempotencyStore) {
+      const seen = await this.idempotencyStore.seenRecently(key);
+      // The injected store owns its own dedup; the token is unused for it.
+      return seen ? null : INJECTED_STORE_TOKEN;
+    }
+    const now = Date.now();
+    const existing = this.processedCallbacks.get(key);
+    if (existing && existing.expiry > now) return null;
+    const token = randomUUID();
+    this.processedCallbacks.set(key, { token, expiry: now + this.callbackTTL });
+    return token;
+  }
+
+  /**
+   * Release a previously-claimed key so a retry can reprocess after a
+   * handler failure (M8). COMPARE-AND-DELETE on the in-process path: only
+   * removes the entry when the stored token matches `token`, so a stale
+   * releaser (whose claim TTL-expired and was re-won by another delivery)
+   * cannot drop the newer claim (MUST-FIX 2).
+   */
+  private async releaseKey(key: string, token: string): Promise<void> {
+    if (this.idempotencyStore) {
+      // The injected connectors store is record-and-check; its release
+      // takes only the key (it owns its own claim identity).
+      await this.idempotencyStore.release?.(key);
+      return;
+    }
+    const existing = this.processedCallbacks.get(key);
+    if (existing && existing.token === token) {
+      this.processedCallbacks.delete(key);
+    }
   }
 
   /**
@@ -184,12 +264,18 @@ export class MpesaCallbackHandler extends EventEmitter {
   ): Promise<{ success: boolean; message: string }> {
     const parsed = this.parseStkCallback(body);
 
-    // Check for duplicate callback
-    const callbackKey = `stk:${parsed.checkoutRequestId}`;
-    if (this.processedCallbacks.has(callbackKey)) {
+    // Dedup key: prefer the M-Pesa receipt number for a successful
+    // payment (the authoritative settlement id); fall back to the
+    // CheckoutRequestID on failure (no receipt is issued).
+    const dedupId =
+      parsed.success && parsed.mpesaReceiptNumber
+        ? parsed.mpesaReceiptNumber
+        : parsed.checkoutRequestId;
+    const callbackKey = `stk:${dedupId}`;
+    const claimToken = await this.claimKey(callbackKey);
+    if (!claimToken) {
       return { success: true, message: 'Callback already processed' };
     }
-    this.processedCallbacks.add(callbackKey);
 
     try {
       if (parsed.success) {
@@ -208,8 +294,9 @@ export class MpesaCallbackHandler extends EventEmitter {
         return { success: false, message: parsed.resultDesc };
       }
     } catch (error) {
-      // Re-add to queue for retry
-      this.processedCallbacks.delete(callbackKey);
+      // Release the claim so a provider retry reprocesses (M8). Compare-
+      // and-delete on our claim token so we only drop OUR claim (MUST-FIX 2).
+      await this.releaseKey(callbackKey, claimToken);
       throw error;
     }
   }
@@ -223,12 +310,12 @@ export class MpesaCallbackHandler extends EventEmitter {
   ): Promise<{ success: boolean; message: string }> {
     const parsed = this.parseC2BConfirmation(body);
 
-    // Check for duplicate
+    // Check for duplicate (TransID is M-Pesa's authoritative receipt for C2B).
     const callbackKey = `c2b:${parsed.transactionId}`;
-    if (this.processedCallbacks.has(callbackKey)) {
+    const claimToken = await this.claimKey(callbackKey);
+    if (!claimToken) {
       return { success: true, message: 'Confirmation already processed' };
     }
-    this.processedCallbacks.add(callbackKey);
 
     try {
       this.emit('c2b:received', parsed);
@@ -237,7 +324,9 @@ export class MpesaCallbackHandler extends EventEmitter {
       }
       return { success: true, message: 'Confirmation received' };
     } catch (error) {
-      this.processedCallbacks.delete(callbackKey);
+      // Release the claim so a provider retry reprocesses (M8). Compare-
+      // and-delete on our claim token so we only drop OUR claim (MUST-FIX 2).
+      await this.releaseKey(callbackKey, claimToken);
       throw error;
     }
   }
@@ -263,18 +352,43 @@ export class MpesaCallbackHandler extends EventEmitter {
   }
 
   /**
-   * Clean up old processed callbacks
+   * Reap ONLY expired in-process dedup entries.
+   *
+   * The previous implementation `.clear()`ed the entire set every 24h —
+   * which deleted still-valid keys and re-opened the double-credit window
+   * for callbacks Safaricom was still retrying (M3). We now expire each
+   * key individually by its recorded TTL. No-op when a durable store is
+   * injected (it owns its own expiry).
    */
   private cleanupProcessedCallbacks(): void {
-    // For simplicity, just clear all - in production you'd track timestamps
-    this.processedCallbacks.clear();
+    if (this.idempotencyStore) return;
+    const now = Date.now();
+    for (const [key, entry] of this.processedCallbacks.entries()) {
+      if (entry.expiry <= now) this.processedCallbacks.delete(key);
+    }
+  }
+
+  /** Test hook: run the periodic cleanup synchronously. */
+  runCleanupForTest(): void {
+    this.cleanupProcessedCallbacks();
   }
 
   /**
-   * Check if a callback was already processed
+   * Test hook: read the in-process claim token currently stored for a key
+   * (regardless of expiry), or undefined if absent. Used to assert the
+   * compare-and-delete behaviour on release (MUST-FIX 2).
+   */
+  peekClaimTokenForTest(key: string): string | undefined {
+    return this.processedCallbacks.get(key)?.token;
+  }
+
+  /**
+   * Check if a callback was already processed (in-process fallback only;
+   * the durable store is authoritative when injected).
    */
   isProcessed(type: 'stk' | 'c2b', id: string): boolean {
-    return this.processedCallbacks.has(`${type}:${id}`);
+    const entry = this.processedCallbacks.get(`${type}:${id}`);
+    return entry !== undefined && entry.expiry > Date.now();
   }
 
   /**

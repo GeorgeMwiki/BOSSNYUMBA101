@@ -36,12 +36,17 @@ import { TenantAggregate } from './domain-extensions';
 import { StripePaymentProvider } from './providers/stripe-provider';
 import { MpesaPaymentProvider } from './providers/mpesa-provider';
 import { resolvePlatformFeeBps } from './lib/platform-fee';
+import {
+  createRedisFromUrl,
+  selectWebhookIdempotencyStore,
+} from './lib/idempotency-store-factory';
+import { buildWebhookIdempotencyKey } from './lib/idempotency-store';
 import { PaymentOrchestrationService, CreatePaymentRequest } from './services/payment-orchestration.service';
 import { LedgerService } from './services/ledger.service';
 import { ReconciliationService } from './services/reconciliation.service';
 import { StatementGenerationService, GenerateStatementRequest } from './services/statement-generation.service';
 import { DisbursementService, DisbursementRequest } from './services/disbursement.service';
-import { InMemoryEventPublisher } from './events/event-publisher';
+import { createEventPublisher } from './events/event-publisher-factory';
 import { createRepositories } from './repositories/factory';
 import { ReconciliationJob } from './jobs/reconciliation.job';
 import { StatementGenerationJob } from './jobs/statement-generation.job';
@@ -308,16 +313,51 @@ const app = express();
 // =============================================================================
 
 const repos = createRepositories(logger);
-const { paymentIntentRepository, accountRepository, ledgerRepository, statementRepository, disbursementRepository } = repos;
-const eventPublisher = new InMemoryEventPublisher();
+const { paymentIntentRepository, accountRepository, ledgerRepository, statementRepository, disbursementRepository, transactionRunner, databaseClient } = repos;
+
+// =============================================================================
+// Event Publisher (M1)
+//
+// Durable, outbox-backed publisher when the DB is available so events
+// survive restarts and reach the api-gateway subscribers; in-memory only
+// in dev/test. In production with no DB, selection THROWS (the in-memory
+// publisher silently drops events — the P0 we are fixing).
+// =============================================================================
+const eventPublisher = createEventPublisher({
+  db: databaseClient,
+  isProduction: process.env.NODE_ENV === 'production',
+  logger,
+});
+
+// =============================================================================
+// Durable webhook idempotency store (M3)
+//
+// Replaces the process-local CallbackDeduplicator with a store that
+// survives restarts and is shared across replicas: Redis (SET NX EX)
+// when REDIS_URL is set, else a Postgres unique index, else (dev/test)
+// in-memory. In production with neither, selection THROWS.
+// =============================================================================
+const idempotencyRedis = createRedisFromUrl(process.env.REDIS_URL, logger);
+const { store: webhookIdempotencyStore, kind: webhookIdempotencyKind } =
+  selectWebhookIdempotencyStore({
+    redis: idempotencyRedis,
+    db: databaseClient,
+    isProduction: process.env.NODE_ENV === 'production',
+    logger,
+  });
+logger.info({ store: webhookIdempotencyKind }, 'webhook idempotency store initialised');
 
 // =============================================================================
 // Initialize Services
 // =============================================================================
 
-const paymentOrchestrationService = new PaymentOrchestrationService({
-  paymentIntentRepository,
+// LedgerService is constructed FIRST so the orchestrator can be wired
+// with it (M5: a succeeded payment posts a journal via the ledger).
+const ledgerService = new LedgerService({
+  ledgerRepository,
+  accountRepository,
   eventPublisher,
+  transactionRunner,
   logger: {
     info: (msg, ctx) => logger.info(ctx, msg),
     warn: (msg, ctx) => logger.warn(ctx, msg),
@@ -325,10 +365,12 @@ const paymentOrchestrationService = new PaymentOrchestrationService({
   }
 });
 
-const ledgerService = new LedgerService({
-  ledgerRepository,
-  accountRepository,
+const paymentOrchestrationService = new PaymentOrchestrationService({
+  paymentIntentRepository,
   eventPublisher,
+  // M5: book collected payments into the ledger on the automated path.
+  ledgerService,
+  accountRepository,
   logger: {
     info: (msg, ctx) => logger.info(ctx, msg),
     warn: (msg, ctx) => logger.warn(ctx, msg),
@@ -473,8 +515,6 @@ import { verifySupabaseAuthMiddleware } from './middleware/auth.middleware';
 import {
   mpesaIpAllowlistMiddleware,
   mpesaSignatureMiddleware,
-  mpesaDeduplicator,
-  CallbackDeduplicator,
 } from './middleware/mpesa-webhook.middleware';
 app.use((req, res, next) => {
   if (req.path === '/health' || req.path.startsWith('/webhooks/')) return next();
@@ -1411,6 +1451,127 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
 /**
  * POST /webhooks/mpesa/stk - Handle M-PESA STK Push callback
  */
+type MpesaStkCallback = z.infer<typeof MpesaStkCallbackSchema>['Body']['stkCallback'];
+
+/**
+ * Shared STK callback processor for both the `/webhooks/mpesa/stk` and
+ * `/api/v1/webhooks/mpesa/stk` routes.
+ *
+ * M3/M7/M8 idempotency:
+ *   - Resolve the tenant FIRST (STK is keyed to MPESA_BUSINESS_SHORT_CODE).
+ *   - Build a TENANT-SCOPED durable key (M7). Prefer the M-Pesa receipt
+ *     number for success dedup; fall back to CheckoutRequestID on failure
+ *     (no receipt is issued for a failed/cancelled STK).
+ *   - `claim` atomically against the durable store. A duplicate acks
+ *     without reprocessing — no double-credit across replicas/restarts.
+ *   - On a processing error, `release` the claim so a Safaricom retry can
+ *     reprocess (M8 — a failure must not burn the key), then still ack
+ *     200 (Safaricom treats non-2xx as retryable; the released key makes
+ *     the retry effective).
+ */
+async function processStkCallbackRoute(
+  callback: MpesaStkCallback,
+  res: Response,
+): Promise<void> {
+  // Resolve tenant BEFORE dedup so the key can be tenant-scoped (M7).
+  const stkTenantId = resolveMpesaStkTenantId();
+  if (!stkTenantId) {
+    logger.warn(
+      { checkoutRequestId: callback.CheckoutRequestID },
+      'M-PESA STK callback missing tenant context — ack without processing',
+    );
+    res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    return;
+  }
+  const stkTenant = asTenantId(stkTenantId);
+
+  const isSuccess = callback.ResultCode === 0;
+  const metadata = callback.CallbackMetadata?.Item || [];
+  const mpesaReceiptNumber = metadata.find((i) => i.Name === 'MpesaReceiptNumber')?.Value;
+
+  // Prefer the receipt number for success dedup; failures have none.
+  const dedupExternalId =
+    isSuccess && mpesaReceiptNumber
+      ? String(mpesaReceiptNumber)
+      : callback.CheckoutRequestID;
+  const idemKey = buildWebhookIdempotencyKey(stkTenantId, 'mpesa-stk', dedupExternalId);
+
+  const claimToken = await webhookIdempotencyStore.claim(idemKey);
+  if (!claimToken) {
+    // Duplicate. Before acking, self-heal the money-loss crash window
+    // (MUST-FIX 1): a prior delivery may have marked the intent SUCCEEDED
+    // then crashed before booking the ledger, leaving the key claimed but
+    // no journal. ensurePaymentBooked is idempotent — it books only when
+    // the intent is SUCCEEDED and has zero ledger entries.
+    if (isSuccess) {
+      try {
+        await paymentOrchestrationService.ensurePaymentBooked(
+          callback.CheckoutRequestID,
+          'mpesa',
+          stkTenant,
+        );
+      } catch (err) {
+        logger.error(
+          { err, checkoutRequestId: callback.CheckoutRequestID, idemKey },
+          'M-PESA STK duplicate self-heal (ensurePaymentBooked) failed — manual reconciliation may be required',
+        );
+      }
+    }
+    logger.info(
+      { checkoutRequestId: callback.CheckoutRequestID, idemKey },
+      'Duplicate M-PESA STK callback — acking without reprocessing',
+    );
+    res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    return;
+  }
+
+  try {
+    if (isSuccess) {
+      const amount = metadata.find((i) => i.Name === 'Amount')?.Value;
+      const transactionDate = metadata.find((i) => i.Name === 'TransactionDate')?.Value;
+      const phoneNumber = metadata.find((i) => i.Name === 'PhoneNumber')?.Value;
+      logger.info(
+        {
+          checkoutRequestId: callback.CheckoutRequestID,
+          amount,
+          mpesaReceiptNumber,
+          transactionDate,
+          phoneNumber,
+        },
+        'M-PESA payment successful',
+      );
+      await paymentOrchestrationService.handleWebhook(
+        'mpesa',
+        callback.CheckoutRequestID,
+        'SUCCEEDED',
+        stkTenant,
+        mpesaReceiptNumber?.toString(),
+      );
+    } else {
+      const status: PaymentStatus = callback.ResultCode === 1032 ? 'CANCELLED' : 'FAILED';
+      await paymentOrchestrationService.handleWebhook(
+        'mpesa',
+        callback.CheckoutRequestID,
+        status,
+        stkTenant,
+        undefined,
+        callback.ResultDesc,
+      );
+    }
+  } catch (err) {
+    // M8: processing failed — release the claim so the provider's retry
+    // reprocesses instead of being silently deduplicated. Compare-and-
+    // delete on the claim token so we only drop OUR claim (MUST-FIX 2).
+    await webhookIdempotencyStore.release(idemKey, claimToken);
+    logger.error(
+      { err, checkoutRequestId: callback.CheckoutRequestID, idemKey },
+      'M-PESA STK processing failed — released idempotency claim for retry',
+    );
+  }
+
+  res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+}
+
 app.post('/webhooks/mpesa/stk', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const validation = MpesaStkCallbackSchema.safeParse(req.body);
@@ -1426,70 +1587,7 @@ app.post('/webhooks/mpesa/stk', async (req: Request, res: Response, next: NextFu
       resultDesc: callback.ResultDesc
     }, 'M-PESA STK callback received');
 
-    // Idempotency — Safaricom retries every few minutes until it gets a
-    // 200 with {ResultCode: 0}. If we've already processed this
-    // CheckoutRequestID, ack and exit so we don't double-credit the ledger.
-    if (mpesaDeduplicator.seenBefore(`stk:${callback.CheckoutRequestID}`)) {
-      logger.info(
-        { checkoutRequestId: callback.CheckoutRequestID },
-        'Duplicate M-PESA STK callback — acking without reprocessing'
-      );
-      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
-    }
-
-    // W4-A: resolve tenantId from STK config BEFORE forwarding. STK is
-    // initiated against `MPESA_BUSINESS_SHORT_CODE`, which is keyed in the
-    // shortcode -> tenant map. Without a tenant we cannot scope the
-    // payment-intent lookup safely; log and ack to stop retries.
-    const stkTenantId = resolveMpesaStkTenantId();
-    if (!stkTenantId) {
-      logger.warn({ checkoutRequestId: callback.CheckoutRequestID }, 'M-PESA STK callback missing tenant context — ack without processing');
-      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
-    }
-    const stkTenant = asTenantId(stkTenantId);
-
-    // ResultCode 0 means success
-    const isSuccess = callback.ResultCode === 0;
-
-    if (isSuccess) {
-      // Extract metadata from callback
-      const metadata = callback.CallbackMetadata?.Item || [];
-      const amount = metadata.find(i => i.Name === 'Amount')?.Value;
-      const mpesaReceiptNumber = metadata.find(i => i.Name === 'MpesaReceiptNumber')?.Value;
-      const transactionDate = metadata.find(i => i.Name === 'TransactionDate')?.Value;
-      const phoneNumber = metadata.find(i => i.Name === 'PhoneNumber')?.Value;
-
-      logger.info({
-        checkoutRequestId: callback.CheckoutRequestID,
-        amount,
-        mpesaReceiptNumber,
-        transactionDate,
-        phoneNumber
-      }, 'M-PESA payment successful');
-
-      // Update payment status via orchestration service
-      await paymentOrchestrationService.handleWebhook(
-        'mpesa',
-        callback.CheckoutRequestID,
-        'SUCCEEDED',
-        stkTenant,
-        mpesaReceiptNumber?.toString()
-      );
-    } else {
-      // Payment failed or was cancelled
-      const status: PaymentStatus = callback.ResultCode === 1032 ? 'CANCELLED' : 'FAILED';
-      await paymentOrchestrationService.handleWebhook(
-        'mpesa',
-        callback.CheckoutRequestID,
-        status,
-        stkTenant,
-        undefined,
-        callback.ResultDesc
-      );
-    }
-
-    // M-PESA expects this specific response format
-    res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    await processStkCallbackRoute(callback, res);
   } catch (error) {
     logger.error({ err: error }, 'Error processing M-PESA callback');
     // Still return success to M-PESA to prevent retries
@@ -1608,21 +1706,6 @@ app.post('/webhooks/mpesa/c2b/confirm', async (req: Request, res: Response) => {
     }
     const c2b = parsed.data;
 
-    // CRITICAL-3 hardening: dedup key includes BusinessShortCode so a
-    // forged TransID submission for one tenant's paybill cannot pollute
-    // another tenant's dedup cache. `CallbackDeduplicator.tenantKey` is
-    // intentionally tenantId-aware; we use null here because the tenant
-    // mapping happens downstream from BusinessShortCode.
-    const c2bDedupKey = CallbackDeduplicator.tenantKey(
-      null,
-      'c2b',
-      `${c2b.BusinessShortCode}:${c2b.TransID}`
-    );
-    if (mpesaDeduplicator.seenBefore(c2bDedupKey)) {
-      logger.info({ transId: c2b.TransID }, 'duplicate M-PESA C2B confirmation; acking');
-      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
-    }
-
     logger.info(
       {
         event: 'c2b_confirm',
@@ -1636,14 +1719,45 @@ app.post('/webhooks/mpesa/c2b/confirm', async (req: Request, res: Response) => {
     );
 
     // W4-A: resolve tenantId from the C2B BusinessShortCode -> tenant map.
-    // Without a tenant we cannot scope the orchestrator lookup safely; we
-    // log and ack so Daraja stops retrying — operators reconcile manually.
+    // Resolved BEFORE dedup so the idempotency key is tenant-scoped (M7);
+    // without a tenant we cannot scope the orchestrator lookup safely, so
+    // we log and ack (Daraja stops retrying — operators reconcile manually).
     const c2bTenantId = resolveMpesaTenantByShortCode(c2b.BusinessShortCode);
     if (!c2bTenantId) {
       logger.warn({ transId: c2b.TransID, shortCode: c2b.BusinessShortCode }, 'M-PESA C2B confirmation missing tenant context — ack without processing');
       return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
     const c2bTenant = asTenantId(c2bTenantId);
+
+    // Durable, tenant-scoped idempotency (M3/M7). The external id keeps
+    // the BusinessShortCode + TransID so a forged TransID for one paybill
+    // cannot collide with another's, and the tenant prefix isolates
+    // tenants. TransID is M-Pesa's authoritative receipt for C2B.
+    const c2bIdemKey = buildWebhookIdempotencyKey(
+      c2bTenantId,
+      'mpesa-c2b',
+      `${c2b.BusinessShortCode}:${c2b.TransID}`,
+    );
+    const c2bClaimToken = await webhookIdempotencyStore.claim(c2bIdemKey);
+    if (!c2bClaimToken) {
+      // Duplicate. Self-heal the money-loss crash window (MUST-FIX 1): a
+      // prior delivery may have marked the intent SUCCEEDED then crashed
+      // before booking the ledger. ensurePaymentBooked is idempotent.
+      try {
+        await paymentOrchestrationService.ensurePaymentBooked(
+          c2b.TransID,
+          'mpesa_c2b',
+          c2bTenant,
+        );
+      } catch (err) {
+        logger.error(
+          { err, transId: c2b.TransID, idemKey: c2bIdemKey },
+          'C2B duplicate self-heal (ensurePaymentBooked) failed; payment may require manual reconciliation',
+        );
+      }
+      logger.info({ transId: c2b.TransID, idemKey: c2bIdemKey }, 'duplicate M-PESA C2B confirmation; acking');
+      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    }
 
     // Best-effort attribution. If we can't match the invoice here the
     // payment lands in an "unallocated" bucket for operators to assign
@@ -1655,12 +1769,15 @@ app.post('/webhooks/mpesa/c2b/confirm', async (req: Request, res: Response) => {
       c2bTenant,
       c2b.TransID,
       undefined
-    ).catch((err) => {
-      // Orchestrator failures are logged but must not propagate — we
-      // still must return 200 to Daraja so it stops retrying.
+    ).catch(async (err) => {
+      // M8: release the claim so Daraja's retry reprocesses instead of
+      // being deduplicated. Compare-and-delete on the claim token so we
+      // only drop OUR claim (MUST-FIX 2). Failures are logged but must
+      // not propagate — we still return 200 so Daraja stops the attempt.
+      await webhookIdempotencyStore.release(c2bIdemKey, c2bClaimToken);
       logger.error(
-        { err, transId: c2b.TransID },
-        'C2B orchestration failed; payment will require manual reconciliation'
+        { err, transId: c2b.TransID, idemKey: c2bIdemKey },
+        'C2B orchestration failed; released idempotency claim for retry; payment may require manual reconciliation'
       );
     });
 
@@ -1769,49 +1886,9 @@ app.post('/api/v1/payments/webhook/mpesa', async (req: Request, res: Response, n
       resultDesc: callback.ResultDesc
     }, 'M-PESA STK callback received via API path');
 
-    // Idempotency — same reasoning as /webhooks/mpesa/stk above.
-    if (mpesaDeduplicator.seenBefore(`stk:${callback.CheckoutRequestID}`)) {
-      logger.info(
-        { checkoutRequestId: callback.CheckoutRequestID },
-        'Duplicate M-PESA STK callback (API path) — acking without reprocessing'
-      );
-      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
-    }
-
-    // W4-A: resolve tenantId from STK config (same as /webhooks/mpesa/stk).
-    const apiStkTenantId = resolveMpesaStkTenantId();
-    if (!apiStkTenantId) {
-      logger.warn({ checkoutRequestId: callback.CheckoutRequestID }, 'M-PESA STK callback (API path) missing tenant context — ack without processing');
-      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
-    }
-    const apiStkTenant = asTenantId(apiStkTenantId);
-
-    const isSuccess = callback.ResultCode === 0;
-
-    if (isSuccess) {
-      const metadata = callback.CallbackMetadata?.Item || [];
-      const mpesaReceiptNumber = metadata.find(i => i.Name === 'MpesaReceiptNumber')?.Value;
-
-      await paymentOrchestrationService.handleWebhook(
-        'mpesa',
-        callback.CheckoutRequestID,
-        'SUCCEEDED',
-        apiStkTenant,
-        mpesaReceiptNumber?.toString()
-      );
-    } else {
-      const status: PaymentStatus = callback.ResultCode === 1032 ? 'CANCELLED' : 'FAILED';
-      await paymentOrchestrationService.handleWebhook(
-        'mpesa',
-        callback.CheckoutRequestID,
-        status,
-        apiStkTenant,
-        undefined,
-        callback.ResultDesc
-      );
-    }
-
-    res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    // Same durable, tenant-scoped, release-on-failure idempotency as
+    // /webhooks/mpesa/stk — shared helper (M3/M7/M8).
+    await processStkCallbackRoute(callback, res);
   } catch (error) {
     logger.error({ err: error }, 'Error processing M-PESA callback via API path');
     res.json({ ResultCode: 0, ResultDesc: 'Accepted' });

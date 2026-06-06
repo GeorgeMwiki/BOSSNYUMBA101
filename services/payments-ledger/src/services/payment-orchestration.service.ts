@@ -12,7 +12,9 @@ import {
   TenantId,
   CustomerId,
   LeaseId,
-  CurrencyCode
+  CurrencyCode,
+  LedgerEntry,
+  CreateJournalEntryRequest
 } from '@bossnyumba/domain-models';
 import type { PaymentStatus } from '../types';
 import { TenantAggregate, createId, calculatePlatformFee } from '../domain-extensions';
@@ -21,6 +23,7 @@ import {
   CreatePaymentResult
 } from '../providers/payment-provider.interface';
 import { IPaymentIntentRepository } from '../repositories/payment-intent.repository';
+import { IAccountRepository } from '../repositories/account.repository';
 import { IEventPublisher, createEvent } from '../events/event-publisher';
 import {
   PaymentIntentCreatedEvent,
@@ -88,10 +91,37 @@ export interface PaymentRefundResult {
   status: 'PENDING' | 'SUCCEEDED' | 'FAILED';
 }
 
+/**
+ * Narrow ledger capability the orchestrator needs (M5). Declared here
+ * (rather than importing the concrete `LedgerService`) to avoid an
+ * import cycle — `ledger.service.ts` imports `ILogger` from this file —
+ * and to keep the dependency inverted. `LedgerService` structurally
+ * satisfies this interface.
+ */
+export interface ILedgerPoster {
+  postJournalEntry(request: CreateJournalEntryRequest): Promise<unknown>;
+  findEntriesByPaymentIntent(
+    paymentIntentId: PaymentIntentId,
+    tenantId: TenantId,
+  ): Promise<LedgerEntry[]>;
+}
+
 export interface PaymentOrchestrationServiceDeps {
   paymentIntentRepository: IPaymentIntentRepository;
   eventPublisher: IEventPublisher;
   logger: ILogger;
+  /**
+   * Books the ledger when a payment succeeds (M5). Optional so existing
+   * call sites / tests that don't exercise the success path keep
+   * working; when omitted, a succeeded payment is marked + emits its
+   * event but is NOT booked (logged loudly). Production wires this.
+   */
+  ledgerService?: ILedgerPoster;
+  /**
+   * Resolves the customer-liability and platform-holding accounts used
+   * for the rent-payment journal (M5). Required alongside `ledgerService`.
+   */
+  accountRepository?: IAccountRepository;
 }
 
 /**
@@ -106,11 +136,15 @@ export class PaymentOrchestrationService {
   private repository: IPaymentIntentRepository;
   private eventPublisher: IEventPublisher;
   private logger: ILogger;
+  private ledgerService?: ILedgerPoster;
+  private accountRepository?: IAccountRepository;
 
   constructor(deps: PaymentOrchestrationServiceDeps) {
     this.repository = deps.paymentIntentRepository;
     this.eventPublisher = deps.eventPublisher;
     this.logger = deps.logger;
+    this.ledgerService = deps.ledgerService;
+    this.accountRepository = deps.accountRepository;
   }
 
   /**
@@ -359,38 +393,60 @@ export class PaymentOrchestrationService {
   }
 
   /**
-   * Handle payment success (called by webhook handler)
+   * Handle payment success (called by webhook handler).
+   *
+   * Webhook delivery is at-least-once (Safaricom/Stripe retry until they
+   * see a 200), so this method MUST be idempotent (M5):
+   *
+   *   - If the intent is already SUCCEEDED (a redelivery), we do NOT
+   *     re-mark it (the aggregate would throw) and we do NOT re-emit
+   *     PAYMENT_SUCCEEDED — but we still attempt the ledger booking,
+   *     which is itself idempotent on paymentIntentId, to self-heal the
+   *     case where a prior attempt marked the intent but crashed before
+   *     booking.
+   *   - Otherwise we mark succeeded, persist, book the ledger, and emit.
    */
   async handlePaymentSuccess(
     aggregate: PaymentIntentAggregate,
     tenantId: TenantId,
     receiptUrl?: string
   ): Promise<PaymentResult> {
-    aggregate.markSucceeded(receiptUrl);
-    const paymentIntent = aggregate.toData();
-    await this.repository.update(paymentIntent);
+    const alreadySucceeded = aggregate.status === 'SUCCEEDED';
 
-    await this.eventPublisher.publish(
-      createEvent<PaymentSucceededEvent>(
-        'PAYMENT_SUCCEEDED',
-        'PaymentIntent',
-        paymentIntent.id,
-        tenantId,
-        {
-          customerId: paymentIntent.customerId,
-          leaseId: paymentIntent.leaseId,
-          amount: paymentIntent.amount.toData(),
-          platformFee: paymentIntent.platformFee?.toData(),
-          netAmount: paymentIntent.netAmount?.toData(),
-          paidAt: paymentIntent.paidAt!,
-          receiptUrl
-        }
-      )
-    );
+    if (!alreadySucceeded) {
+      aggregate.markSucceeded(receiptUrl);
+      await this.repository.update(aggregate.toData());
+    }
+    const paymentIntent = aggregate.toData();
+
+    // Book the payment into the immutable ledger. Idempotent on
+    // paymentIntentId, so a redelivered webhook never double-credits.
+    await this.bookPaymentToLedger(paymentIntent, tenantId);
+
+    if (!alreadySucceeded) {
+      await this.eventPublisher.publish(
+        createEvent<PaymentSucceededEvent>(
+          'PAYMENT_SUCCEEDED',
+          'PaymentIntent',
+          paymentIntent.id,
+          tenantId,
+          {
+            customerId: paymentIntent.customerId,
+            leaseId: paymentIntent.leaseId,
+            amount: paymentIntent.amount.toData(),
+            platformFee: paymentIntent.platformFee?.toData(),
+            netAmount: paymentIntent.netAmount?.toData(),
+            paidAt: paymentIntent.paidAt!,
+            receiptUrl
+          }
+        )
+      );
+    }
 
     this.logger.info('Payment succeeded', {
       paymentIntentId: paymentIntent.id,
-      amount: paymentIntent.amount.toString()
+      amount: paymentIntent.amount.toString(),
+      redelivery: alreadySucceeded
     });
 
     return {
@@ -398,6 +454,163 @@ export class PaymentOrchestrationService {
       status: 'SUCCEEDED',
       receiptUrl
     };
+  }
+
+  /**
+   * Post the double-entry journal for a succeeded payment (M5).
+   *
+   * Books DEBIT platform-holding (cash/clearing received) / CREDIT
+   * customer-liability (reduce what the customer owes), tagged with the
+   * paymentIntentId so reconciliation and the idempotency check can find
+   * it. The post itself is atomic + row-locked (M2).
+   *
+   * IDEMPOTENT on paymentIntentId: if any ledger entry already exists for
+   * this payment we skip, so at-least-once webhook delivery cannot
+   * double-credit.
+   *
+   * Fail-loud: if the ledger capability is not wired, or the required
+   * accounts are missing, we throw so the webhook is retried and the
+   * payment is NOT silently lost. (Callers that must always ack to the
+   * provider — e.g. the C2B handler — already wrap this in a try/catch
+   * that logs for manual reconciliation.)
+   */
+  private async bookPaymentToLedger(
+    paymentIntent: PaymentIntent,
+    tenantId: TenantId,
+  ): Promise<void> {
+    if (!this.ledgerService || !this.accountRepository) {
+      this.logger.error(
+        'Payment succeeded but ledger posting is not wired — payment NOT booked',
+        { paymentIntentId: paymentIntent.id, tenantId },
+      );
+      throw new Error(
+        'LedgerService/accountRepository not configured: cannot book payment to ledger',
+      );
+    }
+
+    // Idempotency: skip if a journal already exists for this payment.
+    const existing = await this.ledgerService.findEntriesByPaymentIntent(
+      paymentIntent.id,
+      tenantId,
+    );
+    if (existing.length > 0) {
+      this.logger.info('Payment already booked to ledger — skipping (idempotent)', {
+        paymentIntentId: paymentIntent.id,
+        existingEntries: existing.length,
+      });
+      return;
+    }
+
+    // Resolve the two accounts for the rent-payment booking.
+    const holding = await this.accountRepository.findPlatformAccounts(
+      tenantId,
+      'PLATFORM_HOLDING',
+    );
+    if (!holding) {
+      throw new Error(`Platform holding account not found for tenant ${tenantId}`);
+    }
+    const liability = await this.accountRepository.findByCustomerAndType(
+      tenantId,
+      paymentIntent.customerId,
+      'CUSTOMER_LIABILITY',
+    );
+    if (!liability) {
+      throw new Error(
+        `Customer liability account not found for customer ${paymentIntent.customerId}`,
+      );
+    }
+
+    const gross = paymentIntent.amount;
+    // Balanced 2-line journal: cash in (debit holding), receivable down
+    // (credit customer liability). Both legs in the payment's currency —
+    // LedgerService re-validates currency against the locked account row.
+    const journal: CreateJournalEntryRequest = {
+      tenantId,
+      effectiveDate: paymentIntent.paidAt ?? new Date(),
+      paymentIntentId: paymentIntent.id,
+      lines: [
+        {
+          accountId: holding.id,
+          type: 'RENT_PAYMENT',
+          direction: 'DEBIT',
+          amount: gross,
+          description: 'Payment received into holding',
+          leaseId: paymentIntent.leaseId,
+        },
+        {
+          accountId: liability.id,
+          type: 'RENT_PAYMENT',
+          direction: 'CREDIT',
+          amount: gross,
+          description: 'Rent payment received',
+          leaseId: paymentIntent.leaseId,
+        },
+      ],
+      createdBy: 'system',
+    };
+
+    await this.ledgerService.postJournalEntry(journal);
+    this.logger.info('Payment booked to ledger', {
+      paymentIntentId: paymentIntent.id,
+      amount: gross.toString(),
+    });
+  }
+
+  /**
+   * Self-heal the mark→book crash window (MUST-FIX 1).
+   *
+   * The webhook routes claim the idempotency key BEFORE this service
+   * runs, and {@link handlePaymentSuccess} marks the intent SUCCEEDED +
+   * persists BEFORE it books the ledger. If the process crashes between
+   * the persist and the book, the key stays claimed: the provider's retry
+   * sees `claim() === duplicate`, acks, and would NEVER book — cash
+   * collected, no journal. (The self-heal inside `bookPaymentToLedger` is
+   * unreachable behind the route-level claim.)
+   *
+   * The DUPLICATE branch of each webhook route calls this BEFORE acking
+   * 200 so a crash-then-retry self-heals: look up the intent by its
+   * provider external id; if it is SUCCEEDED and has NO ledger entries,
+   * book it. Idempotent on `paymentIntentId` (via `bookPaymentToLedger`),
+   * so a normal duplicate (already booked) books zero extra, and a
+   * never-succeeded or unknown intent is a safe no-op.
+   *
+   * Fail-soft on lookup: a missing intent or non-success status returns
+   * without throwing (the caller has already deduped and only wants to
+   * heal a genuine gap). A booking failure DOES propagate so the caller
+   * can log it for manual reconciliation.
+   */
+  async ensurePaymentBooked(
+    externalId: string,
+    providerName: string,
+    tenantId: TenantId,
+  ): Promise<void> {
+    const paymentIntent = await this.repository.findByExternalId(
+      externalId,
+      providerName,
+      tenantId,
+    );
+    if (!paymentIntent) {
+      this.logger.warn('ensurePaymentBooked: no intent for external id — skipping', {
+        externalId,
+        providerName,
+        tenantId,
+      });
+      return;
+    }
+
+    // Only a SUCCEEDED payment should ever be booked. A duplicate of a
+    // pending/failed/cancelled callback must never create a journal.
+    if (paymentIntent.status !== 'SUCCEEDED') {
+      this.logger.info('ensurePaymentBooked: intent not SUCCEEDED — nothing to heal', {
+        paymentIntentId: paymentIntent.id,
+        status: paymentIntent.status,
+      });
+      return;
+    }
+
+    // bookPaymentToLedger is idempotent on paymentIntentId: it no-ops when
+    // a journal already exists, and books the gap when none does.
+    await this.bookPaymentToLedger(paymentIntent, tenantId);
   }
 
   /**
