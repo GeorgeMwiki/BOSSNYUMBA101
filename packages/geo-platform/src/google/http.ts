@@ -118,6 +118,16 @@ export async function fetchJson<T>(input: FetchJsonInput): Promise<GeoResult<T>>
     // strings today; this still catches the case where a future
     // change introduces a tenant-supplied URL upstream.
     await assertUrlSafe(input.url);
+    // The composed signal can already be aborted by the time we get
+    // here — e.g. the caller aborts during the (async) SSRF guard, or
+    // passes a pre-aborted signal. Real `fetch` rejects immediately in
+    // that case; short-circuit so we never open a socket (and never hang
+    // waiting on a request that was cancelled before it started).
+    if (signal.aborted) {
+      const abortErr = new Error('aborted');
+      abortErr.name = 'AbortError';
+      throw abortErr;
+    }
     response = await fetch(input.url, {
       method: input.method ?? 'GET',
       headers,

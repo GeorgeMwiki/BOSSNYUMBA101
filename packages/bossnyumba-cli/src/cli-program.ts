@@ -257,13 +257,13 @@ export function buildProgram(opts: BuildProgramOptions = {}): Command {
     .argument('<id>')
     .action(wrap(async (logger, id: string) => await leasesShowCommand({ logger, id })));
 
-  // ── properties ────────────────────────────────────────────────────────
-  const properties = program.command('properties').description('Property estates + maintenance workforce');
-  properties
+  // ── estate ──────────────────────────────────────────────────────────────
+  const estate = program.command('estate').description('Property estates + maintenance workforce');
+  estate
     .command('sites')
     .description('List property sites')
     .action(wrap(async (logger) => await propertiesSitesCommand({ logger })));
-  properties
+  estate
     .command('workers')
     .description('List maintenance workers')
     .action(wrap(async (logger) => await propertiesWorkersCommand({ logger })));

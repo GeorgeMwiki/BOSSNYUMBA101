@@ -87,9 +87,14 @@ function mkStubDeps(): EstateHandlerDeps {
     },
     bulkMarkForRenewalPrep: {
       leases: {
-        async bulkMarkForRenewalPrep() {
+        // Echo back the requested ids as "updated" so the handler's
+        // requested-vs-updated cross-reference marks each lease `flagged`.
+        // (The bulk test below requests le_1 / le_2.)
+        async bulkMarkForRenewalPrep(args: {
+          readonly leaseIds: ReadonlyArray<string>;
+        }) {
           return {
-            updated: ['lease_1', 'lease_2'],
+            updated: [...args.leaseIds],
             skipped: [],
           };
         },

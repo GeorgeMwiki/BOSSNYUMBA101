@@ -182,7 +182,12 @@ function walk(
   const out: Record<string, unknown> = {};
   for (const [key, v] of Object.entries(obj)) {
     const probe = caseInsensitive ? key.toLowerCase() : key;
-    if (fields.has(probe)) {
+    // A PII-named key blankets ONLY scalar leaves. When the value is a
+    // nested object/array (e.g. `address: { street, postalCode }`) we
+    // must recurse so the structure survives and each nested PII leaf is
+    // redacted individually — blanket-stringifying it would both lose the
+    // shape and silently skip nested non-PII fields.
+    if (fields.has(probe) && (v === null || typeof v !== 'object')) {
       out[key] = format(key);
       continue;
     }

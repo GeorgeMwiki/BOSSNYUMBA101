@@ -1,5 +1,5 @@
 /**
- * `bossnyumba properties sites / workers` — surface property + maintenance roll-ups.
+ * `bossnyumba estate sites / workers` — surface property + maintenance roll-ups.
  */
 
 import { requireSession } from './_session.js';

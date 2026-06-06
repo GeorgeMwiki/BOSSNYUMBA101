@@ -29,7 +29,14 @@ describe('error-budget-burn', () => {
   });
 
   it('burnRate spikes when error rate > allowed', () => {
-    expect(burnRate({ totalRequests: 100, badRequests: 10 }, slo)).toBe(100);
+    // 0.1 / (1 - 0.999) = 100 in exact arithmetic, but IEEE-754 makes
+    // `1 - 0.999` ≈ 0.0009999999999999, so the quotient lands a hair off
+    // 100. Assert closeness (matching the toBeCloseTo convention used by
+    // the "matches budget" case above) rather than bit-exact equality.
+    expect(burnRate({ totalRequests: 100, badRequests: 10 }, slo)).toBeCloseTo(
+      100,
+      5,
+    );
   });
 
   it('burnRate handles 100% SLO as infinite', () => {

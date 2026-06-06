@@ -77,8 +77,11 @@ export function createTrustCalibrator(
     };
   }
 
-  function applyDecay(state: InternalState): InternalState {
-    const days = daysBetween(state.lastUpdatedAt, nowIso());
+  function applyDecay(
+    state: InternalState,
+    asOfIso: string = nowIso(),
+  ): InternalState {
+    const days = daysBetween(state.lastUpdatedAt, asOfIso);
     if (days <= 0) return state;
     const halfLives = days / cfg.decayHalfLifeDays;
     const factor = Math.pow(0.5, halfLives);
@@ -152,7 +155,12 @@ export function createTrustCalibrator(
     async recordOutcome(outcome) {
       const key = k(outcome.agentId, outcome.capabilityId);
       const existing = states.get(key) ?? recordedNow();
-      const decayed = applyDecay(existing);
+      // Decay relative to the new outcome's observation time, NOT the
+      // wall clock. Replaying a batch of outcomes that share an
+      // observedAt must not decay between them — decay models
+      // *inactivity* between observations. Reads (getScore/list) decay
+      // forward to nowIso() to model inactivity since the last outcome.
+      const decayed = applyDecay(existing, outcome.observedAt);
       const next = applyOutcome(decayed, outcome);
       states.set(key, next);
     },

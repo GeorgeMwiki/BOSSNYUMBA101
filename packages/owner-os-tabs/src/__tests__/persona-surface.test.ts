@@ -34,12 +34,27 @@ describe('orderTabsForPersona', () => {
   });
 
   it('tenant sees rent / leases / maintenance bubble up', () => {
-    const base = defaultTabsFor('t3_mid_tier');
+    // `leases` is a tenant-weighted tab but is not part of any default
+    // scale tier (see scale-defaults.ts — no tier delta includes it), so
+    // we exercise reordering against an explicit base ladder that does.
+    // orderTabsForPersona is a pure reorder; it can only bubble up tabs
+    // that already exist in the base set.
+    const base = [
+      'docs',
+      'leases',
+      'maintenance',
+      'rent',
+      'chat',
+      'reminders',
+    ] as const;
     const ordered = orderTabsForPersona('tenant', base);
     expect(ordered[0]).toBe('chat');
-    expect(ordered).toContain('rent');
-    expect(ordered).toContain('leases');
-    expect(ordered).toContain('maintenance');
+    // tenant weights: rent 95 > leases 92 > maintenance 90 — they bubble
+    // above the unweighted `docs`/`reminders` tail.
+    const top4 = ordered.slice(0, 4);
+    expect(top4).toContain('rent');
+    expect(top4).toContain('leases');
+    expect(top4).toContain('maintenance');
   });
 
   it('returns a frozen array (immutability rule)', () => {

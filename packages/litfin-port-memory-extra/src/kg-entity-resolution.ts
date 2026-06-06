@@ -70,6 +70,71 @@ export const editDistanceCapped = (a: string, b: string, cap: number): number =>
   return Math.min(prev[n] ?? cap, cap);
 };
 
+/**
+ * Similarity between two individual tokens, abbreviation-aware.
+ *
+ * Plain Jaccard treats "apts" and "apartments" as fully disjoint, which
+ * sinks otherwise-obvious matches ("Riverside Apartments" vs "Riverside
+ * Apts") below even the review band. Real-world entity names abbreviate
+ * heavily, so a token comparator must reward:
+ *   - exact equality (1.0),
+ *   - one token being a clean prefix/abbreviation of the other
+ *     ("apt" → "apartment"),
+ *   - one token being an in-order subsequence of the other
+ *     ("apts" → "apartments"),
+ *   - a small typo, via normalized edit distance.
+ * The strongest signal wins.
+ */
+const tokenSim = (x: string, y: string): number => {
+  if (x === y) return 1;
+  if (x.length === 0 || y.length === 0) return 0;
+  const shorter = x.length <= y.length ? x : y;
+  const longer = x.length <= y.length ? y : x;
+
+  // Shared leading run — a clean prefix counts as a near-full match.
+  let common = 0;
+  const lim = Math.min(shorter.length, longer.length);
+  while (common < lim && shorter[common] === longer[common]) common++;
+  const prefixScore = common === shorter.length ? 0.85 : 0;
+
+  // In-order subsequence (handles internal abbreviations like apts).
+  let i = 0;
+  for (const ch of longer) {
+    if (i < shorter.length && ch === shorter[i]) i++;
+  }
+  const subseqScore =
+    i === shorter.length ? 0.5 + 0.5 * (shorter.length / longer.length) : 0;
+
+  const ed = editDistanceCapped(x, y, Math.max(x.length, y.length));
+  const editScore = 1 - ed / Math.max(x.length, y.length, 1);
+
+  return Math.max(prefixScore, subseqScore, editScore);
+};
+
+/**
+ * Soft token-set similarity: every token in each name is matched to its
+ * best counterpart in the other name, then both directions are averaged.
+ * This generalises Jaccard (identical token sets still score 1) while
+ * tolerating abbreviations and typos at the token level.
+ */
+const softTokenSetSimilarity = (a: string, b: string): number => {
+  const ta = tokens(a);
+  const tb = tokens(b);
+  if (ta.length === 0 && tb.length === 0) return 1;
+  if (ta.length === 0 || tb.length === 0) return 0;
+  const bestEach = (
+    src: readonly string[],
+    dst: readonly string[],
+  ): number => {
+    const sum = src.reduce((acc, t) => {
+      const best = dst.reduce((m, u) => Math.max(m, tokenSim(t, u)), 0);
+      return acc + best;
+    }, 0);
+    return sum / src.length;
+  };
+  return (bestEach(ta, tb) + bestEach(tb, ta)) / 2;
+};
+
 /** Default per-kind decision thresholds. Property requires high confidence. */
 export const DEFAULT_KIND_THRESHOLD: Readonly<Record<EntityKind, number>> = {
   person: 0.78,
@@ -110,11 +175,16 @@ export const resolve = (
   for (const ca of candidatesA) {
     for (const cb of candidatesB) {
       const j = jaccard(ca, cb);
-      // Edit distance gives a chance for typos (within 2 chars).
+      // Edit distance gives a chance for whole-string typos.
       const ed = editDistanceCapped(normalize(ca), normalize(cb), 3);
       const longer = Math.max(ca.length, cb.length, 1);
       const edScore = 1 - ed / longer;
-      const combo = 0.6 * j + 0.4 * edScore;
+      const jaccardCombo = 0.6 * j + 0.4 * edScore;
+      // Soft token-set similarity additionally recognises abbreviations
+      // (e.g. "Apts" ≈ "Apartments") that plain Jaccard misses. Take the
+      // strongest signal so we never score a pair lower than before — we
+      // only ever surface MORE matches into the review/merge bands.
+      const combo = Math.max(jaccardCombo, softTokenSetSimilarity(ca, cb));
       if (combo > bestScore) bestScore = combo;
     }
   }

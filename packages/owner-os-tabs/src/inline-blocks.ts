@@ -442,7 +442,12 @@ export const INLINE_BLOCK_TYPES: ReadonlyArray<InlineBlock['type']> = [
 
 // ─── Parser ─────────────────────────────────────────────────────────
 
-const INLINE_BLOCK_TAG = /<ui_block>\s*(\{[\s\S]*?\})\s*<\/ui_block>/gi;
+// The JSON capture is "tempered" so it can never swallow a closing
+// </ui_block> tag. Without this, a malformed (unterminated) block would
+// greedily extend its match across the following well-formed block,
+// silently dropping a valid block instead of just the broken one.
+const INLINE_BLOCK_TAG =
+  /<ui_block>\s*(\{(?:(?!<\/ui_block>)[\s\S])*?\})\s*<\/ui_block>/gi;
 const MAX_INLINE_BLOCKS = 8;
 
 export interface ParseInlineBlocksResult {
