@@ -85,6 +85,15 @@ export interface UseChatStreamOptions {
   readonly endpoint?: string;
   /** Extra request headers (e.g. Authorization). */
   readonly headers?: Record<string, string>;
+  /**
+   * Resolves the bearer token for the gateway, fetched fresh at send-time so
+   * a refreshed Supabase session is always honoured (the SSE POST is short,
+   * but the session can rotate between turns). May be sync or async; return
+   * `null` when unauthenticated (the gateway then answers 401, which the UI
+   * surfaces as an error rather than silently 404-ing). When omitted, no
+   * Authorization header is sent (e.g. the public marketing chat).
+   */
+  readonly getAuthToken?: () => Promise<string | null> | string | null;
   /** Optional extra body fields sent with every sendMessage. */
   readonly extraBody?: Record<string, unknown>;
   /** Max reconnection attempts on transient network errors. Default 2. */
@@ -131,6 +140,7 @@ export function useChatStream(
   const {
     endpoint = '/api/v1/ai/chat',
     headers,
+    getAuthToken,
     extraBody,
     maxReconnect = 2,
     onEvent,
@@ -186,6 +196,19 @@ export function useChatStream(
         ...extraBody,
       };
 
+      // Resolve the bearer token fresh for THIS request so a rotated session
+      // is always used. Failures resolve to "no token" → gateway 401 (a clean
+      // error), never a thrown unhandled rejection that aborts the stream.
+      const authHeaders: Record<string, string> = {};
+      if (getAuthToken) {
+        try {
+          const token = await getAuthToken();
+          if (token) authHeaders.Authorization = `Bearer ${token}`;
+        } catch {
+          /* unauthenticated — proceed; gateway answers 401 */
+        }
+      }
+
       let res: Response;
       try {
         res = await fetch(endpoint, {
@@ -194,6 +217,7 @@ export function useChatStream(
             'Content-Type': 'application/json',
             Accept: 'text/event-stream',
             ...(headers ?? {}),
+            ...authHeaders,
           },
           body: JSON.stringify(body),
           signal: abort.signal,
@@ -265,7 +289,7 @@ export function useChatStream(
         }
       }
     },
-    [endpoint, headers, personaId, extraBody, maxReconnect, applyEvent]
+    [endpoint, headers, getAuthToken, personaId, extraBody, maxReconnect, applyEvent]
   );
 
   const sendMessage = useCallback(

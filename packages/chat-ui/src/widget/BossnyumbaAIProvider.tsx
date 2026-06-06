@@ -38,6 +38,13 @@ export interface BossnyumbaAIProviderProps {
   readonly tenantId?: string | null;
   readonly featureEnabled?: boolean;
   readonly endpoint?: string;
+  /**
+   * Resolves the gateway bearer token (the host app's Supabase access token)
+   * at send-time. Without it the floating widget's SSE POST is unauthenticated
+   * and the gateway answers 401. Each portal app passes its own
+   * `getAccessToken` from `@/lib/supabase`.
+   */
+  readonly getAuthToken?: () => Promise<string | null> | string | null;
   readonly strings?: {
     readonly en?: Partial<WidgetStrings>;
     readonly sw?: Partial<WidgetStrings>;
@@ -64,6 +71,7 @@ export function BossnyumbaAIProvider({
   tenantId = null,
   featureEnabled = true,
   endpoint,
+  getAuthToken,
   strings,
   onChatEvent,
 }: BossnyumbaAIProviderProps): JSX.Element {
@@ -75,6 +83,7 @@ export function BossnyumbaAIProvider({
 
   const chat = useUnifiedChat({
     endpoint,
+    getAuthToken,
     persona: defaultPersona,
     tenantId,
     language,

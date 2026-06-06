@@ -24,6 +24,8 @@ import { useChatStream, type ChatStreamEvent } from '../hooks/useChatStream';
 
 export interface UseUnifiedChatOptions {
   readonly endpoint?: string;
+  /** Resolves the gateway bearer token (Supabase access token) at send-time. */
+  readonly getAuthToken?: () => Promise<string | null> | string | null;
   readonly persona: PersonaId;
   readonly tenantId: string | null;
   readonly language: Language;
@@ -66,6 +68,7 @@ function randId(prefix: string): string {
 export function useUnifiedChat(options: UseUnifiedChatOptions): UnifiedChat {
   const {
     endpoint = '/api/v1/ai/chat',
+    getAuthToken,
     persona,
     tenantId,
     language,
@@ -149,6 +152,7 @@ export function useUnifiedChat(options: UseUnifiedChatOptions): UnifiedChat {
   const stream = useChatStream(persona, {
     endpoint,
     headers,
+    getAuthToken,
     extraBody,
     onEvent,
   });
