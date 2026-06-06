@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Info } from 'lucide-react';
+import { Alert, AlertDescription } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
   CategorySelector,
@@ -12,7 +13,27 @@ import {
   PRIORITIES,
   type PhotoPreview,
 } from '@/components/requests';
+import { api } from '@/lib/api';
 import { ROUTES } from '@/lib/routes';
+
+/**
+ * Map the tenant-facing priority onto the backend `case_severity` enum
+ * (`packages/database` cases schema). The maintenance form's "emergency"
+ * is the engine's most severe `urgent`.
+ */
+const PRIORITY_TO_SEVERITY: Record<string, string> = {
+  emergency: 'urgent',
+  high: 'high',
+  normal: 'medium',
+  low: 'low',
+};
+
+/** Trim a free-text problem statement into a one-line case title. */
+function deriveTitle(category: string, description: string): string {
+  const firstLine = description.split('\n')[0]?.trim() ?? '';
+  const base = firstLine.length > 0 ? firstLine : category.replace(/_/g, ' ');
+  return base.length > 120 ? `${base.slice(0, 117)}...` : base;
+}
 
 /**
  * Static value sets — labels are resolved at render time from the
@@ -55,15 +76,43 @@ export default function NewRequestPage() {
   });
   const [photos, setPhotos] = useState<PhotoPreview[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
+    setError(null);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // Fold structured selections the cases endpoint has no dedicated
+    // columns for (location, access permission, preferred slot) into the
+    // description so nothing the tenant entered is silently dropped.
+    const detailLines = [
+      formData.description.trim(),
+      formData.location ? `${t('whereInUnit')}: ${t(`locations.${formData.location}`)}` : '',
+      formData.preferredSlot ? `${t('preferredTime')}: ${t(`timeSlots.${formData.preferredSlot}`)}` : '',
+      `${t('permissionLabel')}: ${formData.permissionToEnter ? t('permissionYes') : t('permissionNo')}`,
+    ].filter(Boolean);
 
-    router.push(ROUTES.requests.submitted);
+    const tags = [
+      `category:${formData.category}`,
+      `priority:${formData.priority}`,
+      ...(formData.location ? [`location:${formData.location}`] : []),
+    ];
+
+    try {
+      await api.cases.create({
+        title: deriveTitle(formData.category, formData.description),
+        description: detailLines.join('\n'),
+        type: 'maintenance_dispute',
+        severity: PRIORITY_TO_SEVERITY[formData.priority] ?? 'medium',
+        tags,
+      });
+      router.push(ROUTES.requests.submitted);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('submitFailed'));
+      setIsSubmitting(false);
+    }
   };
 
   const selectedPriority = PRIORITIES.find((p) => p.value === formData.priority);
@@ -218,6 +267,12 @@ export default function NewRequestPage() {
               </p>
             </div>
           </div>
+        )}
+
+        {error && (
+          <Alert variant="danger">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
         {/* Submit */}

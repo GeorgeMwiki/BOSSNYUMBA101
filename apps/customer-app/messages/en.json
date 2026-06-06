@@ -276,7 +276,10 @@
     "title": "Maintenance Requests",
     "unavailableTitle": "Live maintenance request history unavailable",
     "unavailableBody": "This screen previously rendered static request records. It now requires a live maintenance feed from the backend.",
-    "newAria": "New maintenance request"
+    "newAria": "New maintenance request",
+    "retry": "Retry",
+    "emptyTitle": "No maintenance requests yet",
+    "emptyBody": "Tap the + button to report an issue in your home."
   },
   "utilitiesPage": {
     "title": "Utilities",
@@ -822,7 +825,10 @@
       "afternoon": "Afternoon (12pm - 5pm)",
       "evening": "Evening (5pm - 8pm)",
       "any": "Any time"
-    }
+    },
+    "permissionYes": "Yes",
+    "permissionNo": "No",
+    "submitFailed": "Could not submit your request. Please try again."
   },
   "leaseRenewal": {
     "title": "Lease Renewal",
@@ -1263,5 +1269,41 @@
     "maintenancePage": {
       "inProgressLabel": "In Progress"
     }
+  },
+  "mpesaPay": {
+    "title": "Pay with M-Pesa",
+    "amountToPay": "Amount to pay",
+    "payWithMpesa": "Pay with M-Pesa",
+    "stkExplain": "We will send a payment request to your phone. Enter your M-Pesa PIN to approve it.",
+    "phoneLabel": "M-Pesa phone number",
+    "phonePlaceholder": "e.g. 0712 345 678",
+    "sendStkPrompt": "Send payment request",
+    "initiating": "Sending request...",
+    "invalidPhone": "Enter a valid M-Pesa phone number.",
+    "missingAmount": "No amount was provided for this payment.",
+    "rentPaymentDescription": "Rent payment",
+    "initiationFailed": "Could not start the payment. Please try again.",
+    "checkYourPhone": "Check your phone",
+    "enterPinPrompt": "Enter your M-Pesa PIN on the prompt to complete the payment.",
+    "expiresIn": "Request expires in {seconds}s",
+    "paymentSuccess": "Payment successful",
+    "paymentSuccessBody": "Your payment has been received. A receipt is available below.",
+    "paymentFailed": "Payment failed",
+    "paymentFailedBody": "The payment was not completed. No money was taken.",
+    "paymentTimeout": "The request timed out before it was approved. No money was taken.",
+    "tryAgain": "Try again"
+  },
+  "documentsList": {
+    "subtitle": "Your lease, statements, and other documents.",
+    "leaseSubtitle": "Your lease agreement and related records.",
+    "emptyHint": "Your documents will appear here.",
+    "retry": "Retry",
+    "download": "Download"
+  },
+  "receiptDownload": {
+    "receipt": "Receipt",
+    "noReceiptUrl": "No receipt is available yet.",
+    "downloadFailed": "Could not download the receipt. Please try again.",
+    "downloadReceiptAria": "Download receipt for {ref}"
   }
 }

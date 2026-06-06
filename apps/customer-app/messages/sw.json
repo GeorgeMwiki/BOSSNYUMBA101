@@ -276,7 +276,10 @@
     "title": "Maombi ya Matengenezo",
     "unavailableTitle": "Historia ya maombi ya matengenezo haipatikani",
     "unavailableBody": "Skrini hii hapo awali ilionyesha rekodi za maombi zisizo za kudumu. Sasa inahitaji mtiririko halisi wa matengenezo kutoka nyuma.",
-    "newAria": "Ombi jipya la matengenezo"
+    "newAria": "Ombi jipya la matengenezo",
+    "retry": "Jaribu tena",
+    "emptyTitle": "Hakuna maombi ya matengenezo bado",
+    "emptyBody": "Gusa kitufe cha + kuripoti tatizo nyumbani kwako."
   },
   "utilitiesPage": {
     "title": "Huduma",
@@ -822,7 +825,10 @@
       "afternoon": "Mchana (12pm - 5pm)",
       "evening": "Jioni (5pm - 8pm)",
       "any": "Wakati Wowote"
-    }
+    },
+    "permissionYes": "Ndiyo",
+    "permissionNo": "Hapana",
+    "submitFailed": "Imeshindwa kuwasilisha ombi lako. Tafadhali jaribu tena."
   },
   "leaseRenewal": {
     "title": "Upyaji wa Mkataba",
@@ -1263,5 +1269,41 @@
     "maintenancePage": {
       "inProgressLabel": "Inaendelea"
     }
+  },
+  "mpesaPay": {
+    "title": "Lipa kwa M-Pesa",
+    "amountToPay": "Kiasi cha kulipa",
+    "payWithMpesa": "Lipa kwa M-Pesa",
+    "stkExplain": "Tutatuma ombi la malipo kwenye simu yako. Weka PIN yako ya M-Pesa kuidhinisha.",
+    "phoneLabel": "Namba ya simu ya M-Pesa",
+    "phonePlaceholder": "mf. 0712 345 678",
+    "sendStkPrompt": "Tuma ombi la malipo",
+    "initiating": "Inatuma ombi...",
+    "invalidPhone": "Weka namba sahihi ya simu ya M-Pesa.",
+    "missingAmount": "Hakuna kiasi kilichotolewa kwa malipo haya.",
+    "rentPaymentDescription": "Malipo ya kodi",
+    "initiationFailed": "Imeshindwa kuanzisha malipo. Tafadhali jaribu tena.",
+    "checkYourPhone": "Angalia simu yako",
+    "enterPinPrompt": "Weka PIN yako ya M-Pesa kwenye ujumbe ili kukamilisha malipo.",
+    "expiresIn": "Ombi linaisha baada ya sekunde {seconds}",
+    "paymentSuccess": "Malipo yamefanikiwa",
+    "paymentSuccessBody": "Malipo yako yamepokelewa. Risiti inapatikana hapa chini.",
+    "paymentFailed": "Malipo yameshindwa",
+    "paymentFailedBody": "Malipo hayakukamilika. Hakuna pesa iliyochukuliwa.",
+    "paymentTimeout": "Ombi limeisha muda kabla ya kuidhinishwa. Hakuna pesa iliyochukuliwa.",
+    "tryAgain": "Jaribu tena"
+  },
+  "documentsList": {
+    "subtitle": "Mkataba wako, taarifa za malipo, na nyaraka nyingine.",
+    "leaseSubtitle": "Mkataba wako wa kupanga na rekodi zinazohusiana.",
+    "emptyHint": "Nyaraka zako zitaonekana hapa.",
+    "retry": "Jaribu tena",
+    "download": "Pakua"
+  },
+  "receiptDownload": {
+    "receipt": "Risiti",
+    "noReceiptUrl": "Hakuna risiti inayopatikana bado.",
+    "downloadFailed": "Imeshindwa kupakua risiti. Tafadhali jaribu tena.",
+    "downloadReceiptAria": "Pakua risiti ya {ref}"
   }
 }

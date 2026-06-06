@@ -65,6 +65,32 @@ export const ROUTES = {
     mpesa: '/payments/mpesa',
     bankTransfer: '/payments/bank-transfer',
     pay: '/payments/pay',
+    /**
+     * Method picker, optionally pre-bound to an existing pending payment
+     * intent (`id`) and its amount. When `id` is omitted the picker
+     * creates a fresh intent from the entered amount before settlement.
+     */
+    payWith: (params: { id?: string; amount?: number | string; currency?: string }): string => {
+      const q = new URLSearchParams();
+      if (params.id) q.set('id', params.id);
+      if (params.amount != null) q.set('amount', String(params.amount));
+      if (params.currency) q.set('currency', params.currency);
+      const qs = q.toString();
+      return qs ? `/payments/pay?${qs}` : '/payments/pay';
+    },
+    /**
+     * STK push screen. `amount` is shown to the user; `id`, when present,
+     * is the existing intent to settle (otherwise the screen creates one
+     * using `currency`).
+     */
+    mpesaWith: (params: { id?: string; amount?: number | string; currency?: string }): string => {
+      const q = new URLSearchParams();
+      if (params.id) q.set('id', params.id);
+      if (params.amount != null) q.set('amount', String(params.amount));
+      if (params.currency) q.set('currency', params.currency);
+      const qs = q.toString();
+      return qs ? `/payments/mpesa?${qs}` : '/payments/mpesa';
+    },
     mpesaWithAmount: (amount: number | string): string =>
       `/payments/mpesa?amount=${amount}`,
     bankTransferWithAmount: (amount: number | string): string =>

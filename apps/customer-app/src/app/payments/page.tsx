@@ -1,4 +1,3 @@
-// @ts-nocheck — shared Brain types / Payments response drift; tracked
 'use client';
 
 import Link from 'next/link';
@@ -8,7 +7,7 @@ import { AlertCircle, ChevronRight, CreditCard, Receipt } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { prefetchOnHover } from '@bossnyumba/performance-toolkit/lazy-load';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { api } from '@/lib/api';
+import { api, type PaymentRow } from '@/lib/api';
 import { ROUTES } from '@/lib/routes';
 
 export default function PaymentsPage() {
@@ -32,6 +31,16 @@ export default function PaymentsPage() {
   const balance = balanceQuery.data;
   const pending = pendingQuery.data ?? [];
   const history = historyQuery.data ?? [];
+
+  // The generic "Pay Now" tile mints a fresh intent for the outstanding
+  // balance via the method picker; carry the canonical amount + currency so
+  // the STK screen can create the intent without re-deriving them.
+  const balanceAmount = balance?.totalDue?.amount;
+  const balanceCurrency = balance?.totalDue?.currency;
+  const payNowHref =
+    balanceAmount && Number(balanceAmount) > 0
+      ? ROUTES.payments.payWith({ amount: Number(balanceAmount), currency: balanceCurrency })
+      : ROUTES.payments.pay;
 
   return (
     <>
@@ -74,9 +83,9 @@ export default function PaymentsPage() {
             <div className="text-sm text-gray-400">{t('reviewLedger')}</div>
           </Link>
           <Link
-            href={ROUTES.payments.mpesa}
+            href={payNowHref}
             className="card p-4"
-            {...prefetchOnHover(ROUTES.payments.mpesa)}
+            {...prefetchOnHover(ROUTES.payments.pay)}
           >
             <CreditCard className="mb-2 h-5 w-5 text-white" />
             <div className="font-medium text-white">{t('payNow')}</div>
@@ -93,16 +102,25 @@ export default function PaymentsPage() {
             {pending.length === 0 ? (
               <div className="text-sm text-gray-400">{t('noPendingPayments')}</div>
             ) : (
-              pending.map((payment: any) => (
-                <div key={payment.id} className="flex items-center justify-between rounded-xl border border-white/10 p-3">
+              pending.map((payment: PaymentRow) => (
+                <Link
+                  key={payment.id}
+                  href={ROUTES.payments.payWith({
+                    id: payment.id,
+                    amount: Number(payment.amount),
+                    currency: payment.currency,
+                  })}
+                  className="flex items-center justify-between rounded-xl border border-white/10 p-3 transition-colors hover:bg-white/5"
+                >
                   <div>
                     <div className="font-medium text-white">{payment.description || payment.paymentNumber}</div>
                     <div className="text-sm text-gray-400">{payment.status}</div>
                   </div>
-                  <div className="text-right">
+                  <div className="flex items-center gap-2">
                     <div className="text-white">{payment.currency} {Number(payment.amount).toLocaleString()}</div>
+                    <ChevronRight className="h-4 w-4 text-gray-500" />
                   </div>
-                </div>
+                </Link>
               ))
             )}
           </div>
@@ -119,7 +137,7 @@ export default function PaymentsPage() {
             {history.length === 0 ? (
               <div className="text-sm text-gray-400">{t('noPaymentHistory')}</div>
             ) : (
-              history.map((payment: any) => (
+              history.map((payment: PaymentRow) => (
                 <Link
                   key={payment.id}
                   href="/payments/history"

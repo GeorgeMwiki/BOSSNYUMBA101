@@ -115,22 +115,102 @@ async function requireLiveData<T>(request: () => Promise<{ data: T }>): Promise<
   }
 }
 
+/** A payment intent row as returned by `POST /payments` / `GET /payments/:id`. */
+export interface PaymentIntent {
+  readonly id: string;
+  readonly status: string;
+  readonly amount: number;
+  readonly currency: string;
+  readonly paymentNumber?: string;
+  readonly description?: string;
+}
+
+/** A payment list row (`/payments/pending`, `/payments/history`). */
+export interface PaymentRow {
+  readonly id: string;
+  readonly status: string;
+  readonly amount: number;
+  readonly currency: string;
+  readonly paymentNumber?: string;
+  readonly description?: string;
+  readonly paymentMethod?: string;
+  readonly completedAt?: string;
+  readonly createdAt?: string;
+}
+
+/** A single money amount + ISO-4217 code. */
+export interface MoneyAmount {
+  readonly amount: number;
+  readonly currency: string;
+}
+
+/** Response of `GET /payments/balance`. */
+export interface PaymentBalance {
+  readonly totalDue: MoneyAmount;
+  readonly breakdown: ReadonlyArray<{ readonly type: string; readonly amount: MoneyAmount }>;
+}
+
+/**
+ * Result of `POST /payments/:id/process`. For M-Pesa the gateway links the
+ * row to a payments-ledger engine intent and echoes `instructions` for the
+ * STK prompt. Polling still keys off the gateway `id`, not `intentId`.
+ */
+export interface ProcessPaymentResult {
+  readonly id: string;
+  readonly status: string;
+  readonly intentId?: string;
+  readonly instructions?: string;
+}
+
+/** Status payload returned by `GET /payments/:id/status`. */
+export interface IntentStatus {
+  readonly status: string;
+  readonly receiptNumber?: string;
+  readonly reason?: string;
+}
+
+/** A maintenance/dispute case as returned by the `/cases` endpoints. */
+export interface CaseRecord {
+  readonly id: string;
+  readonly caseNumber: string;
+  readonly title: string;
+  readonly description?: string;
+  readonly type: string;
+  readonly severity: string;
+  readonly status: string;
+  readonly createdAt: string;
+  readonly updatedAt?: string;
+}
+
+/** A tenant document as returned by `GET /documents`. */
+export interface DocumentRecord {
+  readonly id: string;
+  readonly name: string;
+  readonly type: string;
+  readonly category: string;
+  readonly mimeType?: string;
+  readonly size?: number;
+  readonly url?: string;
+  readonly verificationStatus?: string;
+  readonly createdAt?: string;
+}
+
 export const api = {
   payments: {
-    async getBalance() {
-      return requireLiveData(() => ensureClient().get('/payments/balance'));
+    async getBalance(): Promise<PaymentBalance> {
+      return requireLiveData<PaymentBalance>(() => ensureClient().get('/payments/balance'));
     },
 
-    async getHistory(page = 1, limit = 20) {
-      return requireLiveData(() =>
+    async getHistory(page = 1, limit = 20): Promise<PaymentRow[]> {
+      return requireLiveData<PaymentRow[]>(() =>
         ensureClient().get('/payments/history', {
           params: { page, limit },
         })
       );
     },
 
-    async getPending() {
-      return requireLiveData(() => ensureClient().get('/payments/pending'));
+    async getPending(): Promise<PaymentRow[]> {
+      return requireLiveData<PaymentRow[]>(() => ensureClient().get('/payments/pending'));
     },
 
     async requestPaymentPlan(data: {
@@ -152,6 +232,45 @@ export const api = {
     },
 
     /**
+     * Create a payment intent row (status `pending`) for the given amount.
+     * The returned `id` is the gateway payment id that `processPayment`,
+     * `getIntentStatus`, and `getReceiptUrl` all key off. Used by the
+     * generic "Pay Now" flow where no pending row exists yet — pending
+     * payments returned by `getPending` already carry an `id` and skip
+     * this step.
+     */
+    async createIntent(data: {
+      amount: number;
+      currency: string;
+      description?: string;
+      leaseId?: string;
+    }): Promise<PaymentIntent> {
+      return requireLiveData<PaymentIntent>(() =>
+        ensureClient().post('/payments', {
+          amount: { amount: data.amount, currency: data.currency },
+          description: data.description,
+          leaseId: data.leaseId,
+        }),
+      );
+    },
+
+    /**
+     * Trigger settlement of an existing payment intent. For M-Pesa this
+     * fires a live STK push (the gateway calls payments-ledger → Daraja).
+     * Idempotent server-side via a deterministic key derived from `id`, so
+     * a retry reuses the same engine intent rather than prompting the
+     * customer's phone twice.
+     */
+    async processPayment(
+      id: string,
+      data: { channel: string; phoneNumber?: string; accountReference?: string },
+    ): Promise<ProcessPaymentResult> {
+      return requireLiveData<ProcessPaymentResult>(() =>
+        ensureClient().post(`/payments/${id}/process`, data),
+      );
+    },
+
+    /**
      * Fetch the signed receipt URL for a completed payment intent. Used by
      * `ReceiptDownloadButton` after Stripe/M-Pesa report SUCCEEDED — the
      * gateway returns a short-lived URL pointing at storage.
@@ -165,10 +284,12 @@ export const api = {
     /**
      * Poll a payment intent's status while the user is waiting for an
      * STK Push to resolve. Returns the canonical `PENDING | PROCESSING |
-     * REQUIRES_ACTION | SUCCEEDED | FAILED | CANCELLED` string.
+     * REQUIRES_ACTION | SUCCEEDED | FAILED | CANCELLED` status plus, when
+     * terminal, the receipt/failure detail the gateway reconciled from the
+     * payments-ledger engine.
      */
-    async getIntentStatus(intentId: string): Promise<{ status: string }> {
-      return requireLiveData(() =>
+    async getIntentStatus(intentId: string): Promise<IntentStatus> {
+      return requireLiveData<IntentStatus>(() =>
         ensureClient().get(`/payments/${intentId}/status`),
       );
     },
@@ -272,6 +393,45 @@ export const api = {
       preferredTimeSlot?: string;
     }) {
       return requireLiveData(() => ensureClient().post('/inspections', data));
+    },
+  },
+
+  cases: {
+    /**
+     * Create a maintenance case. The gateway defaults `type` to
+     * `maintenance_dispute` and `severity` to `medium` when omitted; the
+     * tenant maintenance form maps its priority/category onto these.
+     */
+    async create(data: {
+      title: string;
+      description?: string;
+      type?: string;
+      severity?: string;
+      tags?: readonly string[];
+    }): Promise<CaseRecord> {
+      return requireLiveData<CaseRecord>(() =>
+        ensureClient().post('/cases', data),
+      );
+    },
+
+    /** List the tenant's cases, newest first. */
+    async list(params?: { page?: number; pageSize?: number; status?: string }): Promise<CaseRecord[]> {
+      return requireLiveData<CaseRecord[]>(() =>
+        ensureClient().get('/cases', { params: params ?? {} }),
+      );
+    },
+  },
+
+  documents: {
+    /** List the tenant's documents (lease, statements, IDs, reports). */
+    async list(params?: {
+      page?: number;
+      pageSize?: number;
+      type?: string;
+    }): Promise<DocumentRecord[]> {
+      return requireLiveData<DocumentRecord[]>(() =>
+        ensureClient().get('/documents', { params: params ?? {} }),
+      );
     },
   },
 };

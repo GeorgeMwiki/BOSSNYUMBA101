@@ -76,28 +76,27 @@ export function useStkPolling({
       setState({ kind: 'polling', attempt });
 
       try {
-        const result: any = await api.payments.getIntentStatus(intentId!);
+        const result = await api.payments.getIntentStatus(intentId!);
         if (cancelled) return;
         const status = String(result?.status ?? '').toLowerCase();
         if (TERMINAL_SUCCESS.has(status)) {
           setState({
             kind: 'succeeded',
-            receiptNumber: result?.receiptNumber ?? result?.mpesaReceipt,
+            receiptNumber: result?.receiptNumber,
           });
           return;
         }
         if (TERMINAL_FAILURE.has(status)) {
           setState({
             kind: 'failed',
-            reason: String(result?.reason ?? result?.failureMessage ?? status),
+            reason: String(result?.reason ?? status),
           });
           return;
         }
-      } catch (err) {
+      } catch {
         // Transient errors are swallowed and the loop continues — the
         // hard timeout will eventually fire if the backend stays down.
         if (cancelled) return;
-        console.error('STK status poll failed:', err);
       }
 
       // Exponential backoff: 3s, 4.5s, 6.75s, capped at 8s.

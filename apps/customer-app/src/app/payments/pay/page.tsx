@@ -70,6 +70,11 @@ function PayPageInner() {
   const searchParams = useSearchParams();
   const amountParam = searchParams.get('amount');
   const amount = amountParam ? parseInt(amountParam, 10) : CURRENT_BALANCE;
+  // An existing pending payment intent threaded from the payments index;
+  // forwarded to the STK screen so it settles the real row rather than
+  // minting a fresh intent.
+  const intentId = searchParams.get('id') ?? undefined;
+  const currency = searchParams.get('currency') ?? undefined;
 
   const { code: currencyCode, format: formatCurrency } = useCurrencyPreference();
 
@@ -83,7 +88,17 @@ function PayPageInner() {
     if (!selectedMethod) return;
 
     if (selectedMethod === 'mpesa') {
-      router.push(ROUTES.payments.mpesaWithAmount(paymentAmount));
+      // A custom (partial) amount means we can no longer settle the
+      // pre-existing intent verbatim, so drop the id and let the STK
+      // screen create an intent for the chosen amount.
+      const useExistingIntent = intentId && customAmount == null;
+      router.push(
+        ROUTES.payments.mpesaWith({
+          id: useExistingIntent ? intentId : undefined,
+          amount: paymentAmount,
+          currency,
+        }),
+      );
     } else if (selectedMethod === 'bank') {
       router.push(ROUTES.payments.bankTransferWithAmount(paymentAmount));
     }
