@@ -242,15 +242,16 @@ describe('databaseMiddleware — RLS GUC name invariant (F2)', () => {
       body: { ok: true },
     });
 
-    // Find the `set_config` call (it's the only execute() the
-    // middleware issues — but we filter defensively in case future
-    // wiring adds bookkeeping queries before/after).
-    const setConfigCalls = db.calls.filter((c) =>
-      c.sqlText.includes('set_config'),
+    // The middleware issues several `set_config` calls (the tenant GUC
+    // plus the defence-in-depth admin flags `app.is_bossnyumba_internal_admin`
+    // and `app.admin_scope`). We target the TENANT GUC specifically:
+    // exactly one call must set the canonical `app.current_tenant_id`.
+    const tenantGucCalls = db.calls.filter((c) =>
+      c.sqlText.includes('set_config') && c.sqlText.includes(CANONICAL_GUC),
     );
-    expect(setConfigCalls.length).toBe(1);
+    expect(tenantGucCalls.length).toBe(1);
 
-    const sql = setConfigCalls[0]!.sqlText;
+    const sql = tenantGucCalls[0]!.sqlText;
     // Canonical name must appear; legacy name must NOT.
     expect(sql).toContain(CANONICAL_GUC);
     expect(sql).not.toContain(LEGACY_GUC);
@@ -261,11 +262,13 @@ describe('databaseMiddleware — RLS GUC name invariant (F2)', () => {
 
     await app.request('/probe');
 
-    const setConfigCalls = db.calls.filter((c) =>
-      c.sqlText.includes('set_config'),
+    // Target the tenant GUC call specifically (the middleware also sets
+    // admin-flag GUCs — see the canonical-name test above).
+    const tenantGucCalls = db.calls.filter((c) =>
+      c.sqlText.includes('set_config') && c.sqlText.includes(CANONICAL_GUC),
     );
-    expect(setConfigCalls.length).toBe(1);
-    const call = setConfigCalls[0]!;
+    expect(tenantGucCalls.length).toBe(1);
+    const call = tenantGucCalls[0]!;
 
     // The rendered SQL must NOT contain the tenant uuid literally —
     // that would indicate string interpolation, which is the

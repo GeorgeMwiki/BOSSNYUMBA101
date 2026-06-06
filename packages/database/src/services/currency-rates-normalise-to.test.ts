@@ -14,6 +14,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { createCurrencyRatesService } from './currency-rates.service.js';
+import { logger } from '../logger.js';
 
 function fakeDbWithRates(rates: ReadonlyArray<[string, number]>) {
   return {
@@ -69,7 +70,7 @@ describe('CurrencyRatesService.normaliseTo (universal target)', () => {
   });
 
   it('unknown target falls back to USD with a warn', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
     const db = fakeDbWithRates([
       ['USD', 1.0],
       ['TZS', 0.000395],
@@ -84,7 +85,7 @@ describe('CurrencyRatesService.normaliseTo (universal target)', () => {
   });
 
   it('unknown source currency contributes 0 in target', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
     const db = fakeDbWithRates([
       ['USD', 1.0],
       ['TZS', 0.000395],

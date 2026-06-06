@@ -12,8 +12,11 @@ vi.mock('expo-linking', () => ({
   openURL: vi.fn(async () => true)
 }))
 
+// share.ts mints share links through `ownerApi.post`; mock that export
+// (not `managerApi`) so the offline case exercises the real
+// "API returned success:false" branch rather than a missing-export throw.
 vi.mock('../../api/client', () => ({
-  managerApi: {
+  ownerApi: {
     get: vi.fn(async () => ({ success: false })),
     post: vi.fn(async () => ({ success: false }))
   }
@@ -62,10 +65,15 @@ describe('staff-mobile superpowers/navigate', () => {
 })
 
 describe('staff-mobile superpowers/share', () => {
-  it('returns ok + fallback url when the API is offline', async () => {
+  // Contract per commit 61eeb98f "fix(no-fallback)": mobile share no
+  // longer mints a hardcoded fallback deep-link when the share-links API
+  // is unreachable. A failed API response surfaces { ok: false } with a
+  // diagnostic code so the UI can show a real failure (no fake URL leaks).
+  it('surfaces ok:false (no fallback url) when the share-links API is offline', async () => {
     const { shareEntity } = await import('../share')
     const res = await shareEntity({ entityType: 'ticket', entityId: 'tkt-7', title: 'Replace tap' })
-    expect(res.ok).toBe(true)
-    expect(res.url).toContain('ticket/tkt-7')
+    expect(res.ok).toBe(false)
+    expect(res.code).toBe('SHARE_LINK_EMPTY')
+    expect(res.url).toBeUndefined()
   })
 })

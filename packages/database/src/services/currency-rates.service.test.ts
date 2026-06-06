@@ -6,12 +6,13 @@
  *   • loadAll returns a Map keyed by code
  *   • normaliseToUsd converts a single TZS sum correctly
  *   • normaliseToUsd handles mixed currencies and sums them
- *   • Unknown currency codes contribute 0 (with console.warn)
+ *   • Unknown currency codes contribute 0 (with logger.warn)
  *   • Empty rates table → loadAll returns USD=1.0 fallback (no throw)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createCurrencyRatesService } from './currency-rates.service.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -59,15 +60,18 @@ function makeStubDb(rows: ReadonlyArray<StubRow> | Error): DatabaseClient {
 // ─────────────────────────────────────────────────────────────────────
 
 describe('createCurrencyRatesService', () => {
+  // The service emits structured warnings/errors via the package's pino
+  // `logger` (per CLAUDE.md "No console.log in services — Pino logger
+  // only"), so we spy on the logger's methods rather than console.
   // Inferred-type holders (vi.spyOn's generic return widens awkwardly
   // when annotated explicitly across vitest minor versions; let
   // inference do the work).
-  let warnSpy = vi.spyOn(console, 'warn');
-  let errorSpy = vi.spyOn(console, 'error');
+  let warnSpy = vi.spyOn(logger, 'warn');
+  let errorSpy = vi.spyOn(logger, 'error');
 
   beforeEach(() => {
-    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
+    errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -128,7 +132,7 @@ describe('createCurrencyRatesService', () => {
     expect(usd).toBeCloseTo(395 + 770 + 500, 6);
   });
 
-  it('unknown currency code contributes 0 and warns via console.warn', async () => {
+  it('unknown currency code contributes 0 and warns via logger.warn', async () => {
     const db = makeStubDb([
       { code: 'USD', rateToUsd: 1.0 },
       { code: 'TZS', rateToUsd: 0.000395 },

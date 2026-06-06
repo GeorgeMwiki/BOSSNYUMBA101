@@ -10,6 +10,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { Hono } from 'hono';
+import { createMiddleware } from 'hono/factory';
 
 // Pin the JWT secret BEFORE importing any router so all middlewares that
 // capture the secret at module init agree.
@@ -31,6 +32,33 @@ function bearer(role: string): string {
   })}`;
 }
 
+// These routers mount `databaseMiddleware`, which constructs a live
+// postgres-js client when the module-level USE_MOCK_DATA / DATABASE_URL
+// constants (captured at first import of middleware/database) resolve to
+// "live" — which can happen under full-suite runs where a sibling test
+// imported that module first with a DATABASE_URL set. Connecting to that
+// unreachable DSN hangs until the 10s test timeout, masking the role gate.
+//
+// Pre-injecting `db`/`repos` makes `databaseMiddleware` a no-op (it honours
+// an existing binding), so the request deterministically reaches the role
+// gate regardless of cross-file env/module state. The stub `execute`
+// satisfies the RLS `set_config` calls without a real connection.
+function stubDbContext() {
+  const db = { execute: async () => ({ rows: [] as never[] }) };
+  return createMiddleware(async (c, next) => {
+    c.set('db', db);
+    c.set('repos', {});
+    await next();
+  });
+}
+
+function mountWithStubDb(router: Hono): Hono {
+  const app = new Hono();
+  app.use('*', stubDbContext());
+  app.route('/', router);
+  return app;
+}
+
 describe('Role gates — mutations rejected for non-staff', () => {
   beforeAll(() => {
     // sanity: secret must have been pinned.
@@ -39,8 +67,7 @@ describe('Role gates — mutations rejected for non-staff', () => {
 
   it('customers router is reachable for RESIDENT with rejection (401/403)', async () => {
     const { customersRouter } = await import('../customers');
-    const app = new Hono();
-    app.route('/', customersRouter);
+    const app = mountWithStubDb(customersRouter);
     const auth = bearer(UserRole.RESIDENT);
 
     const delRes = await app.request('/abc', {
@@ -57,8 +84,7 @@ describe('Role gates — mutations rejected for non-staff', () => {
   it('leases POST is rejected for RESIDENT (403 or 401)', async () => {
     const mod = await import('../leases');
     const router = (mod as any).leasesRouter ?? (mod as any).default;
-    const app = new Hono();
-    app.route('/', router);
+    const app = mountWithStubDb(router);
     const auth = bearer(UserRole.RESIDENT);
 
     const postRes = await app.request('/', {
@@ -78,8 +104,7 @@ describe('Role gates — mutations rejected for non-staff', () => {
   it('invoices /:id/send is rejected for RESIDENT (403 or 401)', async () => {
     const mod = await import('../invoices');
     const router = (mod as any).invoicesApp ?? (mod as any).default;
-    const app = new Hono();
-    app.route('/', router);
+    const app = mountWithStubDb(router);
     const auth = bearer(UserRole.RESIDENT);
 
     const sendRes = await app.request('/inv-1/send', {
@@ -91,8 +116,7 @@ describe('Role gates — mutations rejected for non-staff', () => {
 
   it('tenants list is rejected for TENANT_ADMIN (cross-tenant = platform-only)', async () => {
     const mod = await import('../tenants.hono');
-    const app = new Hono();
-    app.route('/', mod.tenantsRouter);
+    const app = mountWithStubDb(mod.tenantsRouter);
     const auth = bearer(UserRole.TENANT_ADMIN);
     const listRes = await app.request('/', {
       method: 'GET',
@@ -103,8 +127,7 @@ describe('Role gates — mutations rejected for non-staff', () => {
 
   it('properties POST is rejected for RESIDENT', async () => {
     const mod = await import('../properties');
-    const app = new Hono();
-    app.route('/', mod.propertiesRouter);
+    const app = mountWithStubDb(mod.propertiesRouter);
     const auth = bearer(UserRole.RESIDENT);
 
     const postRes = await app.request('/', {
@@ -117,8 +140,7 @@ describe('Role gates — mutations rejected for non-staff', () => {
 
   it('units POST is rejected for RESIDENT', async () => {
     const mod = await import('../units');
-    const app = new Hono();
-    app.route('/', mod.unitsRouter);
+    const app = mountWithStubDb(mod.unitsRouter);
     const auth = bearer(UserRole.RESIDENT);
 
     const postRes = await app.request('/', {

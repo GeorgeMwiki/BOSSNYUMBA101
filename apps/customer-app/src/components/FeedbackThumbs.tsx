@@ -49,7 +49,10 @@ export function FeedbackThumbs({
   onFeedback,
   disabled = false,
 }: FeedbackThumbsProps): JSX.Element {
-  const t = useTranslations('feedbackThumbs');
+  // All copy lives under the P89-extracted `p89.feedbackThumbs` namespace.
+  // (The legacy top-level `feedbackThumbs` namespace was never present in
+  // the message catalogues — reading from it rendered missing-key fallbacks
+  // instead of the real "Thumbs up"/"Thumbs down" labels.)
   const tP89 = useTranslations('p89.feedbackThumbs');
   const [submitting, setSubmitting] = useState(false);
   const [submittedVerdict, setSubmittedVerdict] = useState<FeedbackVerdict | null>(null);
@@ -108,10 +111,10 @@ export function FeedbackThumbs({
       data-testid={`feedback-thumbs-${turnId}`}
     >
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span>{t('prompt')}</span>
+        <span>{tP89('prompt')}</span>
         <button
           type="button"
-          aria-label={t('thumbsUp')}
+          aria-label={tP89('thumbsUpAria')}
           aria-pressed={upChosen}
           disabled={buttonsDisabled}
           onClick={() => void submit('up')}
@@ -125,7 +128,7 @@ export function FeedbackThumbs({
         </button>
         <button
           type="button"
-          aria-label={t('thumbsDown')}
+          aria-label={tP89('thumbsDownAria')}
           aria-pressed={downChosen}
           disabled={buttonsDisabled}
           onClick={() => void submit('down')}

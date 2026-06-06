@@ -9,8 +9,8 @@
  *   const rawDb = createDatabaseClient(url)
  *   const db = withSlowQueryLogging(rawDb, { onSlowQuery: sendToObservability })
  *
- * The wrapper is additive: when no callback is supplied it falls back to a
- * plain console.warn (kept out of `console.log` per style guide). Threshold
+ * The wrapper is additive: when no callback is supplied it falls back to the
+ * package's pino `logger.warn` (no raw `console.*` per style guide). Threshold
  * defaults to 500 ms but may be overridden via env or options.
  */
 
@@ -37,8 +37,8 @@ export interface SlowQueryLoggerOptions {
    */
   readonly thresholdMs?: number
   /**
-   * Called once per slow query. Defaults to console.warn with a structured
-   * line — wire this into your observability stack in production.
+   * Called once per slow query. Defaults to the pino `logger.warn` with a
+   * structured line — wire this into your observability stack in production.
    */
   readonly onSlowQuery?: (event: SlowQueryEvent) => void
   /**

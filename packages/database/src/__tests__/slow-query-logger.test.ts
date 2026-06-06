@@ -7,6 +7,7 @@ import {
   withSlowQueryLogging,
   type SlowQueryEvent,
 } from '../slow-query-logger.js';
+import { logger } from '../logger.js';
 import type { DatabaseClient } from '../client.js';
 
 interface FakePostgresJsClient {
@@ -30,13 +31,16 @@ function makeDbWith(client: FakePostgresJsClient | undefined): DatabaseClient {
 }
 
 describe('withSlowQueryLogging', () => {
+  // The default slow-query handler and the configuration warning emit via
+  // the package's pino `logger` (per CLAUDE.md "No console.log in services
+  // — Pino logger only"), so we spy on logger.warn rather than console.warn.
   // Type widened from `ReturnType<typeof vi.spyOn>` to bypass a vitest
   // type-drift between MockInstance generic-arg counts (1.x → narrow,
   // newer → wide). The runtime behaviour is unchanged; the spy still
-  // captures every console.warn call.
+  // captures every logger.warn call.
   let warnSpy: ReturnType<typeof vi.spyOn> | (ReturnType<typeof vi.fn> & { mockRestore(): void });
   beforeEach(() => {
-    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined) as never;
+    warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => undefined) as never;
   });
   afterEach(() => {
     warnSpy.mockRestore();

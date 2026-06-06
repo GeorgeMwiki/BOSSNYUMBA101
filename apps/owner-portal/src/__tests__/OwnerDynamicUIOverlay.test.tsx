@@ -71,19 +71,21 @@ describe('OwnerDynamicUIOverlay', () => {
   });
 
   it('renders the learned-shortcuts panel headline when shortcuts are provided', () => {
+    // LearnedShortcut.label is a plain string ("Localised upstream" per
+    // its type doc) — the caller resolves the active locale before
+    // handing the entry to the panel. With language="sw" that's the
+    // Swahili label. (The previous fixture passed a {sw,en} object cast
+    // `as never`, which violated the contract and made ShortcutItem throw
+    // "Objects are not valid as a React child".)
     render(
       <OwnerDynamicUIOverlay
         language="sw"
         shortcuts={[
           {
             id: 's1',
-            action: 'rent.collect',
-            label: { sw: 'Kusanya kodi', en: 'Collect rent' },
-            score: 0.9,
-            frequency: 5,
-            lastUsedAt: Date.now(),
-            confirmationRate: 1,
-          } as never,
+            label: 'Kusanya kodi',
+            confidence: 0.9,
+          },
         ]}
       />,
     );

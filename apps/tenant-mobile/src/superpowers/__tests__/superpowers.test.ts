@@ -49,10 +49,15 @@ describe('tenant-mobile superpowers/navigate', () => {
 })
 
 describe('tenant-mobile superpowers/share', () => {
-  it('returns ok + fallback url when the API is offline', async () => {
+  // Contract per commit 61eeb98f "fix(no-fallback)": mobile share no
+  // longer mints a hardcoded fallback deep-link when the share-links API
+  // is unreachable. A failed API response surfaces { ok: false } with a
+  // diagnostic code so the UI can show a real failure (no fake URL leaks).
+  it('surfaces ok:false (no fallback url) when the share-links API is offline', async () => {
     const { shareEntity } = await import('../share')
     const res = await shareEntity({ entityType: 'lease', entityId: 'lease-7', title: 'Apartment lease' })
-    expect(res.ok).toBe(true)
-    expect(res.url).toContain('lease/lease-7')
+    expect(res.ok).toBe(false)
+    expect(res.code).toBe('SHARE_LINK_EMPTY')
+    expect(res.url).toBeUndefined()
   })
 })

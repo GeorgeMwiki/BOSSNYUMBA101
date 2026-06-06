@@ -189,20 +189,40 @@ beforeAll(() => {
 // Property 1 — seeder refuses NODE_ENV=production.
 // ============================================================================
 
-describe('Property 1 — seeder refuses production', () => {
-  it('the seeder source contains the production-refusal guard at main()', () => {
-    // We grep the seeder source rather than executing it so the test
-    // is hermetic. The guard string is intentionally specific so a
-    // refactor that removes it will fail this assertion.
-    const seedPath = resolve(
+describe('Property 1 — seeder refuses to run dangerously', () => {
+  it('the executable seeder is hard-gated and never written to without an explicit opt-in', () => {
+    // Architecture note (refactor): the write-side seeding logic lives in
+    // the executable seeder `packages/database/src/seed.ts`. The
+    // `bossnyumba-test-users.seed.ts` module is now a pure DATA fixture
+    // (the BOSSNYUMBA_TEST_USERS metadata array) with NO DB/auth side
+    // effects. We pin the safety invariant where it actually lives.
+    //
+    // We grep the seeder source rather than executing it so the test is
+    // hermetic. The guard strings are intentionally specific so a
+    // refactor that removes the gate fails this assertion.
+    const execSeedPath = resolve(
+      __dirname,
+      '../../../../packages/database/src/seed.ts',
+    );
+    const execSrc = readFileSync(execSeedPath, 'utf8');
+    // Hard opt-in gate — the demo seed throws unless SEED_DEMO=true, so
+    // it can never write a tenant/admin/property by accident (in any
+    // environment, including production).
+    expect(execSrc).toContain("process.env.SEED_DEMO !== 'true'");
+    expect(execSrc).toMatch(/Refusing to run demo seed/);
+    // No hardcoded DB fallback — the DSN must come from the environment.
+    expect(execSrc).toContain("requireEnv('DATABASE_URL')");
+
+    // The test-users fixture must remain a pure data module — it must NOT
+    // open a DB client or create auth users (which would bypass the gate
+    // above). Assert it carries no client/seed side-effect imports.
+    const fixturePath = resolve(
       __dirname,
       '../../../../packages/database/src/seeds/bossnyumba-test-users.seed.ts',
     );
-    const src = readFileSync(seedPath, 'utf8');
-    expect(src).toContain("process.env.NODE_ENV === 'production'");
-    expect(src).toMatch(
-      /refuses to run with NODE_ENV=production/,
-    );
+    const fixtureSrc = readFileSync(fixturePath, 'utf8');
+    expect(fixtureSrc).not.toContain('createDatabaseClient');
+    expect(fixtureSrc).not.toMatch(/auth\.admin\.createUser|signUp/);
   });
 });
 
@@ -211,30 +231,33 @@ describe('Property 1 — seeder refuses production', () => {
 // ============================================================================
 
 describe('Property 2 — passwords loaded from env, never committed', () => {
-  it('every seed-user password reads from SEED_TEST_*_PASSWORD via requireEnv', () => {
-    const seedPath = resolve(
+  it('the executable seeder reads its admin password from env via requireEnv', () => {
+    // After the refactor, the only seed path that mints credentials is
+    // the executable seeder. It MUST load every password from the
+    // environment (requireEnv) and never inline a literal.
+    const execSeedPath = resolve(
+      __dirname,
+      '../../../../packages/database/src/seed.ts',
+    );
+    const execSrc = readFileSync(execSeedPath, 'utf8');
+    expect(execSrc).toContain("requireEnv('SEED_ADMIN_PASSWORD')");
+    // No literal password assignment like `adminPassword = 'demo123'`
+    // or `password: 'demo123'` that would short-circuit the env path.
+    expect(execSrc).not.toMatch(/(?:password|Password)\s*[:=]\s*['"][^'"$]{6,}['"]/);
+  });
+
+  it('the test-users fixture commits zero credentials (pure data module)', () => {
+    // The strongest form of "passwords never committed": the fixture
+    // carries no password field or literal at all — it is metadata only
+    // (id / email / role / language / tenant slug). Credentials are
+    // provisioned out-of-band against Supabase Auth.
+    const fixturePath = resolve(
       __dirname,
       '../../../../packages/database/src/seeds/bossnyumba-test-users.seed.ts',
     );
-    const src = readFileSync(seedPath, 'utf8');
-
-    // The five canonical env vars MUST all be referenced inside
-    // requireEnv() calls. Direct string-literal passwords MUST NOT.
-    const expectedEnvVars = [
-      'SEED_TEST_BOSSNYUMBA_ADMIN_PASSWORD',
-      'SEED_TEST_OWNER_PASSWORD',
-      'SEED_TEST_MANAGER_PASSWORD',
-      'SEED_TEST_EMPLOYEE_PASSWORD',
-      'SEED_TEST_BUYER_PASSWORD',
-    ];
-    for (const v of expectedEnvVars) {
-      expect(src).toContain(`requireEnv('${v}')`);
-    }
-    // Sanity — no literal password lines like `password: 'demo123'`
-    // that would short-circuit the env path. (The dev-only fallback
-    // `optionalEnv()` exists but it's NEVER called for passwords —
-    // only for tenant id / name.)
-    expect(src).not.toMatch(/password:\s*['"][^'"$]{6,}['"]\s*,/);
+    const fixtureSrc = readFileSync(fixturePath, 'utf8');
+    expect(fixtureSrc).not.toMatch(/password/i);
+    expect(fixtureSrc).not.toMatch(/passwordHash|secret|token/i);
   });
 });
 

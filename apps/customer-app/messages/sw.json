@@ -1192,6 +1192,7 @@
       "title": "Ukweli uliotangazwa"
     },
     "feedbackThumbs": {
+      "prompt": "Je, hii ilisaidia?",
       "reasonPlaceholder": "Niambie kilichoenda vibaya (si lazima)",
       "reasonAriaLabel": "Sababu ya maoni",
       "thumbsUpAria": "Kidole gumba juu",

@@ -1192,6 +1192,7 @@
       "title": "Declared facts"
     },
     "feedbackThumbs": {
+      "prompt": "Was this helpful?",
       "reasonPlaceholder": "Tell me what was wrong (optional)",
       "reasonAriaLabel": "Feedback reason",
       "thumbsUpAria": "Thumbs up",

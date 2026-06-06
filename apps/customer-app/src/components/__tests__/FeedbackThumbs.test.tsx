@@ -1,18 +1,33 @@
+import type { ReactElement } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
 import { FeedbackThumbs } from '../FeedbackThumbs';
+import enMessages from '../../../messages/en.json';
+
+// FeedbackThumbs reads its copy via next-intl's `useTranslations`, which
+// requires a NextIntlClientProvider ancestor. Wrap every render with the
+// real `en` catalogue so the aria-labels ("Thumbs up"/"Thumbs down") and
+// reason-input strings resolve exactly as they do in the running app.
+function renderWithIntl(ui: ReactElement): ReturnType<typeof render> {
+  return render(
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      {ui}
+    </NextIntlClientProvider>,
+  );
+}
 
 describe('FeedbackThumbs', () => {
   it('renders both 👍 and 👎 buttons', () => {
     const onFeedback = vi.fn().mockResolvedValue(undefined);
-    render(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} />);
+    renderWithIntl(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} />);
     expect(screen.getByLabelText('Thumbs up')).toBeInTheDocument();
     expect(screen.getByLabelText('Thumbs down')).toBeInTheDocument();
   });
 
   it("calls onFeedback('up') when 👍 is clicked", async () => {
     const onFeedback = vi.fn().mockResolvedValue(undefined);
-    render(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} />);
+    renderWithIntl(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} />);
     await act(async () => {
       fireEvent.click(screen.getByLabelText('Thumbs up'));
     });
@@ -22,7 +37,7 @@ describe('FeedbackThumbs', () => {
 
   it('reveals the reason input after 👎 is clicked', async () => {
     const onFeedback = vi.fn().mockResolvedValue(undefined);
-    render(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} />);
+    renderWithIntl(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} />);
     expect(screen.queryByLabelText('Feedback reason')).not.toBeInTheDocument();
     await act(async () => {
       fireEvent.click(screen.getByLabelText('Thumbs down'));
@@ -33,7 +48,7 @@ describe('FeedbackThumbs', () => {
 
   it("submits with the reason text via onFeedback('down', reason)", async () => {
     const onFeedback = vi.fn().mockResolvedValue(undefined);
-    render(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} />);
+    renderWithIntl(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} />);
     await act(async () => {
       fireEvent.click(screen.getByLabelText('Thumbs down'));
     });
@@ -51,7 +66,7 @@ describe('FeedbackThumbs', () => {
       .fn()
       .mockRejectedValueOnce(new Error('Server down'))
       .mockResolvedValueOnce(undefined);
-    render(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} />);
+    renderWithIntl(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} />);
     const upBtn = screen.getByLabelText('Thumbs up') as HTMLButtonElement;
     await act(async () => {
       fireEvent.click(upBtn);
@@ -69,7 +84,7 @@ describe('FeedbackThumbs', () => {
 
   it('disables both buttons when the `disabled` prop is true', () => {
     const onFeedback = vi.fn().mockResolvedValue(undefined);
-    render(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} disabled />);
+    renderWithIntl(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} disabled />);
     const up = screen.getByLabelText('Thumbs up') as HTMLButtonElement;
     const down = screen.getByLabelText('Thumbs down') as HTMLButtonElement;
     expect(up.disabled).toBe(true);
@@ -84,7 +99,7 @@ describe('FeedbackThumbs', () => {
     const onFeedback = vi.fn(
       () => new Promise<void>((r) => { resolve = r; }),
     );
-    render(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} />);
+    renderWithIntl(<FeedbackThumbs turnId="t1" onFeedback={onFeedback} />);
     const up = screen.getByLabelText('Thumbs up') as HTMLButtonElement;
     const down = screen.getByLabelText('Thumbs down') as HTMLButtonElement;
     await act(async () => {
