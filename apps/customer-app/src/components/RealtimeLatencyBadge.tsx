@@ -37,8 +37,7 @@ function colorForP95(p95: number): string {
 function getApiBase(): string {
   // Best-effort detection — keeps the badge self-contained without
   // coupling to the project's API client export shape.
-  const env = (import.meta as unknown as { env?: Record<string, string> }).env;
-  const configured = env?.VITE_API_URL?.trim();
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
   if (configured) {
     const trimmed = configured.replace(/\/$/, '');
     return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;

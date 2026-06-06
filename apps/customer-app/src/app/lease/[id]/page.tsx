@@ -18,14 +18,14 @@
  *   - `useParcelActivityForLease({ leaseId })` -> recent log entries
  */
 
-import { useMemo } from 'react';
+import { use, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Activity, Sparkles, Gauge } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 
 interface PageProps {
-  readonly params: { readonly id: string };
+  readonly params: Promise<{ readonly id: string }>;
 }
 
 interface LeaseKpiTile {
@@ -57,12 +57,13 @@ function useLeaseKpisStub(_leaseId: string): {
 export default function TenantLeaseDetailPage({ params }: PageProps) {
   const t = useTranslations('tenantLeaseDetail');
   const enabled = isFeatureEnabled('lease_kpi_panel_enabled');
-  const { data } = useLeaseKpisStub(params.id);
+  const { id } = use(params);
+  const { data } = useLeaseKpisStub(id);
 
   if (!enabled) {
     return (
       <>
-        <PageHeader title={t('title')} subtitle={t('subtitle')} showBack />
+        <PageHeader title={t('title')} showBack />
         <section className="px-4 py-12 text-center">
           <Sparkles className="mx-auto h-10 w-10 text-sky-500" />
           <h2 className="mt-4 text-lg font-semibold">{t('disabledTitle')}</h2>
@@ -74,7 +75,7 @@ export default function TenantLeaseDetailPage({ params }: PageProps) {
 
   return (
     <>
-      <PageHeader title={t('title')} subtitle={t('subtitle')} showBack />
+      <PageHeader title={t('title')} showBack />
       <section className="px-4 py-4 space-y-4" data-testid="lease-detail-root">
         <div
           data-testid="lease-kpis"

@@ -414,6 +414,7 @@ export default function MaintenancePage() {
 
 function TicketCard({ ticket }: { ticket: MaintenanceTicket }) {
   const tCard = useTranslations('maintenanceScreen');
+  const statusConfig = useStatusConfig();
   const status = statusConfig[ticket.status];
   const priorityCfg = priorityConfig[ticket.priority];
   const StatusIcon = status.icon;
