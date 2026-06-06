@@ -19,9 +19,14 @@ export const LOCALE_COOKIE = 'bossnyumba_locale';
 
 export type Messages = typeof sw;
 
+// sw is the structural source of truth for `Messages`. en is the same message
+// bag with full key parity, but TS infers slightly different literal/array
+// shapes between the two JSON imports (e.g. [] -> never[] vs string[]), so a
+// direct cast is rejected as non-overlapping. Both are valid message
+// dictionaries at runtime; widen through `unknown` to accept en's inferred shape.
 const dictionaries: Record<Locale, Messages> = {
   sw,
-  en: en as Messages,
+  en: en as unknown as Messages,
 };
 
 /**
