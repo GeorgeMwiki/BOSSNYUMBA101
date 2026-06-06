@@ -1144,6 +1144,12 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       let sensorResult: SensorCallResult;
       let debateRoundsCompleted: number | undefined;
       let debateConverged: boolean | undefined;
+      // True once the multi-LLM synthesizer detour has produced a merged
+      // multi-vendor answer at step 7. The post-judge three-agent debate
+      // gate consults this so it does NOT re-run a second expensive
+      // deliberation on top of the synthesis (same double-spend guard the
+      // step-7 debate detour already gets via `debateRoundsCompleted`).
+      let synthesizerRan = false;
       const sensorStart = clock().getTime();
       if (debateEligible && deps.debate) {
         const debateStart = clock().getTime();
@@ -1223,6 +1229,9 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
             modelId: synthOut.modelId,
             sensorId: '__multi-llm-synthesizer__',
           };
+          // Multi-vendor deliberation already happened — suppress the
+          // post-judge three-agent debate gate so we don't double-spend.
+          synthesizerRan = true;
           traceStep(
             'sensor-call',
             sensorStart,
@@ -1376,13 +1385,15 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       // proposal that violates TZ Rental Act / KRA tax filing is flagged
       // before the synthesizer commits. Failures collapse to the legacy
       // single-shot path (debate is best-effort; the judge already vetted
-      // the original). Skipped when the step-7 detour debate already ran
-      // — the older detour ALREADY produced a multi-voice synthesis, so
-      // re-running the 3-agent path would double-spend tokens.
+      // the original). Skipped when EITHER the step-7 detour debate OR the
+      // step-7 multi-LLM synthesizer already ran — both produce a
+      // multi-vendor answer, so re-running the 3-agent path would
+      // double-spend tokens.
       if (
         (req.stakes === 'high' || req.stakes === 'critical') &&
         req.estimatedCostUsd === undefined &&
-        debateRoundsCompleted === undefined
+        debateRoundsCompleted === undefined &&
+        !synthesizerRan
       ) {
         const debateGateStart = clock().getTime();
         try {

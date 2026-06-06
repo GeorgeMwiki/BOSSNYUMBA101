@@ -5,12 +5,16 @@
  * Uses an in-memory fake of the `RolloutRegistryPort` so we can drive
  * every status transition path without touching the DB.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   createRolloutController,
   type RolloutPromptRow,
   type RolloutRegistryPort,
 } from '../rollout-controller.js';
+// The controller logs registry failures via the pino-backed `logger`
+// (CLAUDE.md "No console.log in services — Pino logger only"), so the
+// failure-path assertion must spy on `logger.error`, not `console.error`.
+import { logger } from '../../../logger.js';
 
 function makeFakeRegistry(initial: ReadonlyArray<RolloutPromptRow> = []): {
   port: RolloutRegistryPort;
@@ -47,10 +51,14 @@ function makeFakeRegistry(initial: ReadonlyArray<RolloutPromptRow> = []): {
 }
 
 describe('createRolloutController', () => {
-  let errorSpy = vi.spyOn(console, 'error');
+  let errorSpy = vi.spyOn(logger, 'error');
 
   beforeEach(() => {
-    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
   });
 
   it('returns null when no rows exist for the capability', async () => {

@@ -92,26 +92,26 @@ export const TOOL_ROUTE_MAP: Readonly<Record<string, ToolRoute>> = Object.freeze
       method: 'GET',
       queryKeys: ['asOfDate', 'locale'],
     }),
-    property_marketplace_listings: r({
+    property_listings_listings: r({
       path: '/api/v1/marketplace/listings',
       method: 'GET',
     }),
-    property_workforce_list: r({
-      path: '/api/v1/property/workforce',
+    property_maintenance_list: r({
+      path: '/api/v1/maintenance',
       method: 'GET',
       queryKeys: ['scope'],
     }),
-    property_geology_samples: r({
-      path: '/api/v1/property/geology/samples',
+    property_inspections_samples: r({
+      path: '/api/v1/inspections',
       method: 'GET',
       queryKeys: ['scopeId'],
     }),
-    property_production_today: r({
-      path: '/api/v1/property/production/today',
+    property_occupancy_today: r({
+      path: '/api/v1/occupancy-timeline',
       method: 'GET',
     }),
-    property_cooperatives_list: r({
-      path: '/api/v1/property/cooperatives',
+    property_landlords_list: r({
+      path: '/api/v1/cooperatives',
       method: 'GET',
     }),
     property_insurance_policies: r({

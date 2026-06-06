@@ -126,7 +126,12 @@ describe('multi-llm-synthesizer kernel wire-up', () => {
     const synthesizer: MultiLLMSynthesizerPort = { synthesize };
 
     const sov = composeSovereign({ extraSensors: [sensor], synthesizer });
-    const decision = await sov.kernel.think(makeRequest());
+    // `stakes: 'medium'` isolates the (stakes-independent) synthesis-
+    // routing decision from the orthogonal high-stakes post-judge
+    // three-agent debate gate, which legitimately makes its own sensor
+    // calls when stakes ∈ {high, critical}. The single-shot primary
+    // sensor must run exactly once on this turn.
+    const decision = await sov.kernel.think(makeRequest({ stakes: 'medium' }));
 
     expect(synthesize).not.toHaveBeenCalled();
     expect(callCount()).toBe(1);
@@ -146,7 +151,13 @@ describe('multi-llm-synthesizer kernel wire-up', () => {
     const synthesizer: MultiLLMSynthesizerPort = { synthesize };
 
     const sov = composeSovereign({ extraSensors: [sensor], synthesizer });
-    const decision = await sov.kernel.think(makeRequest({ requireSynthesis: true }));
+    // `stakes: 'medium'` keeps the synthesizer eligible (eligibility is
+    // stakes-independent) while keeping the orthogonal high-stakes
+    // three-agent debate gate out of the picture, so the single-shot
+    // fallback sensor call is counted on its own.
+    const decision = await sov.kernel.think(
+      makeRequest({ requireSynthesis: true, stakes: 'medium' }),
+    );
 
     expect(synthesize).toHaveBeenCalledTimes(1);
     expect(callCount()).toBe(1); // single-shot sensor fallback ran

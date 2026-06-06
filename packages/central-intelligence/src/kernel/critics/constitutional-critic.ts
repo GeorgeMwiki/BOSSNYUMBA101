@@ -172,34 +172,41 @@ export function createConstitutionalCritic(
 
   return {
     async score(reflection) {
-      const scores = client
-        ? await scoreWithClaude({
-            reflection,
-            rules,
-            client,
-            modelId,
-          })
-        : scoreHeuristic(reflection, rules);
+      if (!client) {
+        const scores = scoreHeuristic(reflection, rules);
+        const overall =
+          scores.length > 0
+            ? scores.reduce((s, r) => s + r.score, 0) / scores.length
+            : 1;
+        return {
+          clusterId: reflection.clusterId,
+          overall,
+          passed: overall >= passThreshold,
+          scores,
+        };
+      }
 
+      const { scores, modelId: servedModelId } = await scoreWithClaude({
+        reflection,
+        rules,
+        client,
+        modelId,
+      });
       const overall =
         scores.length > 0
           ? scores.reduce((s, r) => s + r.score, 0) / scores.length
           : 1;
-      const verdict: CriticVerdict = client
-        ? {
-            clusterId: reflection.clusterId,
-            overall,
-            passed: overall >= passThreshold,
-            scores,
-            modelId,
-          }
-        : {
-            clusterId: reflection.clusterId,
-            overall,
-            passed: overall >= passThreshold,
-            scores,
-          };
-      return verdict;
+      return {
+        clusterId: reflection.clusterId,
+        overall,
+        passed: overall >= passThreshold,
+        scores,
+        // Record the model the SDK actually served (Anthropic echoes the
+        // resolved model in `resp.model`) so the verdict reflects the
+        // true critic, not just the requested alias. Falls back to the
+        // requested id when the response omits it.
+        modelId: servedModelId,
+      };
     },
   };
 }
@@ -255,9 +262,15 @@ interface ClaudeScoreArgs {
   readonly modelId: string;
 }
 
+interface ClaudeScoreResult {
+  readonly scores: ReadonlyArray<CriticScore>;
+  /** The model that actually served the request (falls back to requested). */
+  readonly modelId: string;
+}
+
 async function scoreWithClaude(
   args: ClaudeScoreArgs,
-): Promise<ReadonlyArray<CriticScore>> {
+): Promise<ClaudeScoreResult> {
   const constitution = args.rules
     .map((r) => `- [${r.id}] (${r.category}) ${r.description}`)
     .join('\n');
@@ -283,10 +296,16 @@ async function scoreWithClaude(
       .filter((c) => c.type === 'text')
       .map((c) => c.text ?? '')
       .join('');
-    return parseScoresLenient(text, args.rules);
+    return {
+      scores: parseScoresLenient(text, args.rules),
+      modelId: resp.model ?? args.modelId,
+    };
   } catch (error) {
     logger.warn('constitutional-critic: Claude call failed; falling back to heuristic', { value: error instanceof Error ? error.message : String(error) });
-    return scoreHeuristic(args.reflection, args.rules);
+    return {
+      scores: scoreHeuristic(args.reflection, args.rules),
+      modelId: args.modelId,
+    };
   }
 }
 

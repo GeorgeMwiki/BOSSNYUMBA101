@@ -22,6 +22,11 @@ import {
   _seedJwksForTests,
   _createLocalJwksForTests,
 } from '../config/supabase-auth.js';
+// `verifySupabaseJwt` emits its server-side triage + SECURITY logs via
+// the pino-backed `logger` (CLAUDE.md "No console.log in services — Pino
+// logger only"), so the logging assertions below spy on `logger.error`,
+// not `console.error`.
+import { logger } from '../logger.js';
 
 const SECRET = 'test-secret-for-jwt-verification-1234567890';
 const enc = new TextEncoder().encode(SECRET);
@@ -108,8 +113,8 @@ describe('F9: jose error detail leak', () => {
 
   it('production: bad signature → generic invalid_token (no jose detail)', async () => {
     process.env.NODE_ENV = 'production';
-    const consoleErrSpy = vi
-      .spyOn(console, 'error')
+    const errorSpy = vi
+      .spyOn(logger, 'error')
       .mockImplementation(() => undefined);
     const token = await mintToken({
       sub: 'user-9',
@@ -132,14 +137,14 @@ describe('F9: jose error detail leak', () => {
     expect(caught?.message).not.toMatch(/jose/i);
     expect(caught?.message).not.toMatch(/exp/i);
     // Server-side logging must still emit the detail for triage.
-    expect(consoleErrSpy).toHaveBeenCalled();
-    const logArg = consoleErrSpy.mock.calls[0]?.[0];
+    expect(errorSpy).toHaveBeenCalled();
+    const logArg = errorSpy.mock.calls[0]?.[0];
     expect(String(logArg)).toMatch(/token rejected/i);
   });
 
   it('production: expired token → generic invalid_token (no exp detail)', async () => {
     process.env.NODE_ENV = 'production';
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(logger, 'error').mockImplementation(() => undefined);
     // Mint a token that's already expired
     const expired = await new SignJWT({
       sub: 'user-x',
@@ -210,7 +215,7 @@ describe('F6: tenant_id self-promotion via user_metadata', () => {
   let errorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
   });
 
   afterEach(() => {

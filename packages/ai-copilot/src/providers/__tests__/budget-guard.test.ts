@@ -15,6 +15,10 @@ import type {
   AnthropicSdkLike,
 } from '../anthropic-client.js';
 import type { CostLedger } from '../../cost-ledger.js';
+// The guard logs a swallowed recordUsage failure via the pino-backed
+// `logger` (CLAUDE.md "No console.log in services — Pino logger only"),
+// so the assertion spies on `logger.error`, not `console.error`.
+import { logger } from '../../logger.js';
 
 function makeResponse(): AnthropicMessageResponse {
   return {
@@ -190,7 +194,7 @@ describe('withBudgetGuard', () => {
         throw new Error('write failed');
       }),
     });
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
     const guarded = withBudgetGuard(makeInner(), {
       ledger,
       context: () => ({ tenantId: 't1' }),

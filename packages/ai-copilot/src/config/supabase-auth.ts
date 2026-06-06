@@ -270,7 +270,7 @@ export async function verifySupabaseJwt(
     userTenantId.length > 0 &&
     userTenantId !== tenantId
   ) {
-    // SECURITY-level alert. Use console.error so it surfaces in any
+    // SECURITY-level alert via the pino logger so it surfaces in any
     // structured-log pipeline (Sentry, Datadog, CloudWatch, etc.).
     // We intentionally include both values so a security responder can
     // identify the attempted target tenant.

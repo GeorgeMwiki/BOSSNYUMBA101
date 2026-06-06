@@ -18,7 +18,13 @@ import {
   type BoardElement,
 } from './board-element-types.js';
 
-const TAG_PATTERN = /<board_add>\s*(\{[\s\S]*?\})\s*<\/board_add>/gi;
+// Match a `<board_add>…</board_add>` tag with ANY inner content. The
+// previous pattern only matched when the body was a JSON object, which
+// left orphan / malformed tags (e.g. `<board_add>nonsense</board_add>`)
+// visible as raw XML in the chat bubble. We now capture whatever is
+// inside and decide JSON validity in the callback, so the tag is ALWAYS
+// stripped from the body (the documented defensive policy).
+const TAG_PATTERN = /<board_add>([\s\S]*?)<\/board_add>/gi;
 const MAX_ELEMENTS_PER_TURN = 12;
 
 export interface ParseBoardElementsResult {
@@ -43,12 +49,12 @@ export function parseBoardElements(text: string): ParseBoardElementsResult {
   const seenIds = new Set<string>();
   let dropped = 0;
 
-  const body = text.replace(TAG_PATTERN, (_match, json: string) => {
+  const body = text.replace(TAG_PATTERN, (_match, inner: string) => {
     if (elements.length >= MAX_ELEMENTS_PER_TURN) {
       dropped += 1;
       return '';
     }
-    const parsed = safeParseJson(json);
+    const parsed = safeParseJson(inner.trim());
     if (!parsed || typeof parsed !== 'object') {
       dropped += 1;
       return '';
