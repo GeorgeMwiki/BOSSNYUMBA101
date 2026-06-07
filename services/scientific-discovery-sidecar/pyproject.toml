@@ -28,7 +28,7 @@ dependencies = [
     "scikit-learn==1.6.0",
     "statsmodels==0.14.4",
     "networkx==3.4.2",
-    "pyarrow==18.1.0",
+    "pyarrow==23.0.1",  # bumped from 18.1.0 — GHSA-rgxp-2hwp-jwgg (HIGH)
     # Prometheus middleware — exposes /metrics on the same port as the app
     # (k8s manifest at infra/k8s/scientific-discovery-sidecar/base/servicemonitor.yaml
     # scrapes /metrics on port 8000).
@@ -37,7 +37,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest==8.3.4",
+    "pytest==9.0.3",  # reconciled with requirements.txt — GHSA-6w46-j5rx-g56g
     "httpx==0.28.1",
     "anyio==4.7.0",
     "ruff==0.8.4",
