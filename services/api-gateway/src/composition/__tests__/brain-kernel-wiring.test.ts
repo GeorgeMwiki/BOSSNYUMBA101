@@ -356,6 +356,125 @@ describe('createBrainKernelWiring', () => {
     }
   });
 
+  // ───────────────────────────────────────────────────────────────────
+  // Phase F.3 — orchestrator main-loop LIVE-BY-DEFAULT wiring.
+  // ───────────────────────────────────────────────────────────────────
+
+  it('routes think() through the orchestrator main-loop when enabled (LIVE)', async () => {
+    const fake = createFakeFactory({ responseText: 'ledger is balanced' });
+    const wiring = createBrainKernelWiring({
+      buildBudgetGuardedAnthropicClient: fake.factory,
+      enableOrchestratorMainLoop: true,
+    });
+    expect(wiring).not.toBeNull();
+
+    const decision = await wiring!.think({
+      threadId: 'orch-thread-1',
+      userMessage: 'what is the rent ledger status?',
+      scope: {
+        kind: 'tenant',
+        tenantId: 'tenant-orch',
+        actorUserId: 'user-orch',
+        roles: ['estate-manager'],
+        personaId: 'estate-manager-head',
+      },
+      tier: 'property',
+      stakes: 'low',
+      surface: 'estate-manager-app',
+    });
+
+    // The orchestrator translator stamps provenance with the synthetic
+    // 'orchestrator' sensor/model id — the load-bearing proof that the
+    // main-loop path ran rather than the legacy 13-step pipeline.
+    expect(decision.kind).toBe('answer');
+    expect(decision.provenance.sensorId).toBe('orchestrator');
+    expect(decision.provenance.modelId).toBe('orchestrator');
+    if (decision.kind === 'answer') {
+      expect(decision.text).toBe('ledger is balanced');
+    }
+    // The main-loop's LLM router DID call the Anthropic SDK.
+    expect(fake.messageRequests.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('emits the LIVE boot log when the main-loop is enabled', () => {
+    const info = vi.fn();
+    const fake = createFakeFactory();
+    const wiring = createBrainKernelWiring({
+      buildBudgetGuardedAnthropicClient: fake.factory,
+      enableOrchestratorMainLoop: true,
+      logger: { info },
+    });
+    expect(wiring).not.toBeNull();
+    const liveLog = info.mock.calls.find(
+      (c) => typeof c[1] === 'string' && c[1].includes('main-loop LIVE'),
+    );
+    expect(liveLog).toBeDefined();
+    const meta = liveLog?.[0] as Record<string, unknown>;
+    expect(meta.router).toBe('anthropic-sdk');
+    expect(meta.dispatcher).toBe('registry');
+  });
+
+  it('threads the 9 production hook ports into the main-loop when bindings supplied', () => {
+    const info = vi.fn();
+    const fake = createFakeFactory();
+    const wiring = createBrainKernelWiring({
+      buildBudgetGuardedAnthropicClient: fake.factory,
+      enableOrchestratorMainLoop: true,
+      orchestratorBindings: { db: null, tenantId: '_platform' },
+      logger: { info },
+    });
+    expect(wiring).not.toBeNull();
+    // The bindings chain was built (9 hooks) and surfaced on the slot.
+    expect(wiring!.orchestratorBindings).not.toBeNull();
+    expect(wiring!.orchestratorBindings!.hookChain.list()).toHaveLength(9);
+    // The LIVE boot log reports the hook count threaded into the loop.
+    const liveLog = info.mock.calls.find(
+      (c) => typeof c[1] === 'string' && c[1].includes('main-loop LIVE'),
+    );
+    expect((liveLog?.[0] as Record<string, unknown>).hooks).toBe(9);
+  });
+
+  it('graceful degrade: legacy 13-step pipeline runs when the main-loop is NOT enabled', async () => {
+    const fake = createFakeFactory({ responseText: 'legacy answer' });
+    const warn = vi.fn();
+    // enableOrchestratorMainLoop omitted → no orchestrator block →
+    // legacy pipeline. This is the no-LLM-router posture the
+    // service-registry produces when ANTHROPIC_API_KEY is absent
+    // (Boolean(llmRouter) === false).
+    const wiring = createBrainKernelWiring({
+      buildBudgetGuardedAnthropicClient: fake.factory,
+      logger: { warn },
+    });
+    expect(wiring).not.toBeNull();
+
+    const decision = await wiring!.think({
+      threadId: 'legacy-thread-1',
+      userMessage: 'status?',
+      scope: {
+        kind: 'tenant',
+        tenantId: 'tenant-legacy',
+        actorUserId: 'user-legacy',
+        roles: ['tenant'],
+        personaId: 'voice-agent-default',
+      },
+      tier: 'tenant',
+      stakes: 'low',
+      surface: 'tenant-app',
+    });
+
+    // Legacy path: provenance carries a REAL sensor id (an anthropic
+    // sensor), never the synthetic 'orchestrator' stamp.
+    expect(decision.provenance.sensorId).not.toBe('orchestrator');
+    expect(decision.provenance.modelId).not.toBe('orchestrator');
+    // The wiring still constructs + answers (no throw, no crash).
+    expect(decision.kind).toMatch(/^(answer|softened|refusal)$/);
+    // The degrade boot log fired.
+    const degradeLog = warn.mock.calls.find(
+      (c) => typeof c[1] === 'string' && c[1].includes('degraded → legacy'),
+    );
+    expect(degradeLog).toBeDefined();
+  });
+
   it('does not propagate kernel-side sensor errors past the wiring', async () => {
     // SDK that throws on every call. The kernel's failover router
     // walks the chain (opus → sonnet → haiku) and ultimately surfaces

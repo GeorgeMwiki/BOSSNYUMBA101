@@ -58,6 +58,7 @@ import {
   createInMemoryDecisionTraceStore,
   createNullEmbedder,
   createOpenAiEmbedder,
+  orchestrator,
   registerSeedBrainTools,
   type ApprovalGate,
   type BrainToolRegistry,
@@ -68,10 +69,20 @@ import {
   type MultiLLMSynthesizerPort,
   type SeedBrainToolDeps,
 } from '@bossnyumba/central-intelligence';
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import {
   buildOrchestratorBindings,
   type OrchestratorBindings,
 } from './orchestrator-bindings.js';
+
+/** The orchestrator's `LLMRouter` port — the main-loop's sensor leg. */
+type LLMRouter = orchestrator.LLMRouter;
+/** The orchestrator's `Dispatcher` port — the main-loop's actuator. */
+type Dispatcher = orchestrator.Dispatcher;
+/** The orchestrator's `ToolSearch` port — the main-loop's per-tick tool retriever. */
+type ToolSearch = orchestrator.ToolSearch;
+/** Goal-similarity descriptor the `ToolSearch` ranks over. */
+type ToolDescriptor = orchestrator.ToolDescriptor;
 
 /**
  * Concrete `BrainKernel` shape derived from the factory. Keeping the
@@ -200,14 +211,13 @@ export interface BrainKernelWiringDeps {
    * Phase F.3 — production-grade orchestrator hook-chain bindings.
    *
    * When provided, the wiring constructs the 9-hook PreToolUse /
-   * PostToolUse / Stop chain via `buildOrchestratorBindings(...)` and
-   * surfaces the assembled HookChain on the return value
-   * (`wiring.orchestratorBindings`). The chain is NOT yet threaded into
-   * `composeSovereign({ orchestrator: ... })` because the LLM router +
-   * dispatcher adapters ship in a separate PR (see service-registry
-   * comments on the `agent: null` slot). Once those land, the wiring
-   * threads them in along with `bindings.deps` and the kernel's
-   * `think()` route flips to the Claude-Code-style main-loop.
+   * PostToolUse / Stop chain via `buildOrchestratorBindings(...)` and —
+   * when `enableOrchestratorMainLoop` is also set — threads the chain's
+   * 9 real ports into `composeSovereign({ orchestrator: ... })` alongside
+   * the LLM router + dispatcher adapters. The kernel's `think()` route
+   * then flips to the Claude-Code-style main-loop (live-by-default). The
+   * assembled HookChain is also surfaced on the return value
+   * (`wiring.orchestratorBindings`) for diagnostics.
    *
    * Typed as `unknown` for the db slot to dodge the namespace-vs-type
    * drift (TS2709) the rest of this composition layer routes around.
@@ -226,6 +236,38 @@ export interface BrainKernelWiringDeps {
     /** Optional proposer id for ledger writes. */
     readonly proposer?: string;
   };
+  /**
+   * Phase F.3 — LIVE orchestrator wire-up signal.
+   *
+   * When `true`, the wiring builds the orchestrator's `LLMRouter` from the
+   * Anthropic client it already composed (tool_use-preserving) + the
+   * `Dispatcher` from the local seeded `toolRegistry`, then threads the
+   * `orchestrator` block into `composeSovereign({ orchestrator: ... })`.
+   * The kernel's `think()` then routes through the Claude-Code-style
+   * main-loop (live-by-default — `useByDefault` left unset → true inside
+   * the kernel). When falsy / absent the legacy 13-step pipeline runs.
+   *
+   * The service-registry sets this to `Boolean(llmRouter)` so the
+   * presence of an Anthropic key (which is what makes `llmRouter`
+   * non-null) is the single switch that turns the main-loop on.
+   */
+  readonly enableOrchestratorMainLoop?: boolean;
+  /**
+   * Optional explicit `LLMRouter` override. When provided it replaces the
+   * default Anthropic-SDK router (e.g. to route the main-loop through the
+   * MultiLLMRouter cost-cascade). Typed as `unknown` so this wiring file
+   * does not pick up a hard type dependency on the orchestrator namespace
+   * at the slot boundary; the structural shape must match
+   * `orchestrator.LLMRouter`.
+   */
+  readonly llmRouter?: unknown;
+  /**
+   * Optional explicit `Dispatcher` override. When provided it replaces the
+   * default registry-backed dispatcher. Typed as `unknown` for the same
+   * reason as `llmRouter`; the structural shape must match
+   * `orchestrator.Dispatcher`.
+   */
+  readonly dispatcher?: unknown;
   /**
    * Optional multi-LLM synthesizer port for the kernel's deep-reasoning
    * path. When wired, turns carrying `req.requireSynthesis === true` are
@@ -288,10 +330,11 @@ export interface BrainKernelWiring {
   /**
    * Phase F.3 — production-grade orchestrator hook-chain bindings.
    * Null when the caller did not pass `deps.orchestratorBindings`.
-   * Surfaces `{ hookChain, deps }` so a future composition extension
-   * (LLM router + dispatcher adapter) can thread the chain into
-   * `composeSovereign({ orchestrator: ... })` and flip kernel.think()
-   * onto the Claude-Code-style main loop.
+   * Surfaces `{ hookChain, deps }`. When `enableOrchestratorMainLoop` is
+   * set these same `deps` ports are threaded into
+   * `composeSovereign({ orchestrator: ... })`, so the kernel's
+   * `think()` runs the Claude-Code-style main loop with this exact
+   * 9-hook chain enforcing policy.
    */
   readonly orchestratorBindings: OrchestratorBindings | null;
 }
@@ -452,58 +495,15 @@ export function createBrainKernelWiring(
   // fallback) so the kernel branch is uniform.
   const embedder = resolveEmbedder(envSource, deps.logger);
 
-  let kernel: BrainKernel;
-  try {
-    const composeArgs: Parameters<typeof composeSovereign>[0] = {
-      anthropicClient: anthropicMessagesClient as Parameters<
-        typeof composeSovereign
-      >[0]['anthropicClient'],
-      killswitch,
-      traceRecorder: decisionTraceRecorder,
-      uncertaintyPolicy,
-      toolRegistry,
-      embedder,
-    };
-    if (deps.synthesizer) {
-      // readonly on ComposeSovereignConfig — re-cast through a
-      // mutable view to preserve the immutable type on the public
-      // surface while still passing the wire in. Mirrors the pattern
-      // used by `approvalPolicyResolver` above.
-      (composeArgs as { synthesizer?: MultiLLMSynthesizerPort }).synthesizer =
-        deps.synthesizer;
-    }
-    if (deps.approvalPolicyResolver) {
-      // Structural duck-cast: the database service's
-      // `ApprovalPolicyResolver` shape already matches the kernel's
-      // duck-typed port.
-      (
-        composeArgs as { approvalPolicyResolver?: unknown }
-      ).approvalPolicyResolver = deps.approvalPolicyResolver;
-    }
-    const sovereign = composeSovereign(composeArgs);
-    kernel = sovereign.kernel;
-  } catch (err) {
-    if (deps.logger?.warn) {
-      deps.logger.warn(
-        {
-          wiring: 'brain-kernel',
-          error: err instanceof Error ? err.message : String(err),
-        },
-        'brain-kernel: composeSovereign failed; degrading',
-      );
-    }
-    return null;
-  }
-
   // Phase F.3 — build the production-grade orchestrator hook-chain
-  // bindings. We construct the chain even when the caller did not pass
-  // `deps.orchestratorBindings` so the wiring still surfaces a
-  // structurally-complete (real-port-bound) chain for diagnostic /
-  // future-wiring use. The kernel's `composeSovereign({...})` call
-  // above does NOT yet thread the chain in — the LLM router +
-  // dispatcher adapters ship as a separate PR. When the caller skips
-  // the bindings block, we surface `null` so the audit script doesn't
-  // mis-classify the absence as a no-op chain.
+  // bindings BEFORE composeSovereign so the 9 real ports (`bindings.deps`)
+  // can be threaded into the kernel's `orchestrator` block (the
+  // Claude-Code-style main-loop). We construct the chain even when the
+  // caller did not pass `deps.orchestratorBindings` so the wiring still
+  // surfaces a structurally-complete (real-port-bound) chain for
+  // diagnostics. When the caller skips the bindings block, we surface
+  // `null` so the audit script doesn't mis-classify the absence as a
+  // no-op chain.
   let orchestratorBindings: OrchestratorBindings | null = null;
   if (deps.orchestratorBindings) {
     try {
@@ -548,6 +548,119 @@ export function createBrainKernelWiring(
         );
       }
     }
+  }
+
+  // Phase F.3 — resolve the orchestrator's two required ports. The
+  // `LLMRouter` defaults to an Anthropic-SDK adapter over the SAME client
+  // the sensors use (tool_use-preserving → `Decision`); the `Dispatcher`
+  // defaults to a registry-backed actuator over the local seeded
+  // `toolRegistry` (zod-gated, audited tool execution through the same
+  // catalog the legacy pipeline uses). Either can be overridden by the
+  // caller. When the main-loop is not enabled, both stay null and the
+  // legacy 13-step pipeline runs.
+  const orchestratorPorts = deps.enableOrchestratorMainLoop
+    ? resolveOrchestratorPorts({
+        anthropicClient: anthropicMessagesClient,
+        toolRegistry,
+        envSource,
+        ...(deps.logger ? { logger: deps.logger } : {}),
+        ...(deps.llmRouter !== undefined ? { llmRouterOverride: deps.llmRouter } : {}),
+        ...(deps.dispatcher !== undefined
+          ? { dispatcherOverride: deps.dispatcher }
+          : {}),
+      })
+    : null;
+
+  let kernel: BrainKernel;
+  try {
+    const composeArgs: Parameters<typeof composeSovereign>[0] = {
+      anthropicClient: anthropicMessagesClient as Parameters<
+        typeof composeSovereign
+      >[0]['anthropicClient'],
+      killswitch,
+      traceRecorder: decisionTraceRecorder,
+      uncertaintyPolicy,
+      toolRegistry,
+      embedder,
+    };
+    if (deps.synthesizer) {
+      // readonly on ComposeSovereignConfig — re-cast through a
+      // mutable view to preserve the immutable type on the public
+      // surface while still passing the wire in. Mirrors the pattern
+      // used by `approvalPolicyResolver` above.
+      (composeArgs as { synthesizer?: MultiLLMSynthesizerPort }).synthesizer =
+        deps.synthesizer;
+    }
+    if (deps.approvalPolicyResolver) {
+      // Structural duck-cast: the database service's
+      // `ApprovalPolicyResolver` shape already matches the kernel's
+      // duck-typed port.
+      (
+        composeArgs as { approvalPolicyResolver?: unknown }
+      ).approvalPolicyResolver = deps.approvalPolicyResolver;
+    }
+    // Phase F.3 — LIVE-BY-DEFAULT. When the main-loop is enabled and we
+    // obtained a router + dispatcher, thread the `orchestrator` block in,
+    // reusing the 9 production hook ports already built in
+    // `orchestratorBindings.deps`. `useByDefault` is left UNSET so it
+    // defaults TRUE inside the kernel (`resolveOrchestratorRoutingEnabled`):
+    // the kernel's `think()` routes through the Claude-Code-style
+    // main-loop. When no router could be built (no LLM), we skip the
+    // block and the legacy 13-step pipeline runs — graceful degrade,
+    // zero hard blockers.
+    if (orchestratorPorts) {
+      // `orchestrator` is readonly on ComposeSovereignConfig — assign
+      // through a mutable view (same pattern as `synthesizer` above).
+      (
+        composeArgs as {
+          orchestrator?: NonNullable<
+            Parameters<typeof composeSovereign>[0]['orchestrator']
+          >;
+        }
+      ).orchestrator = buildOrchestratorBlock(
+        orchestratorPorts,
+        orchestratorBindings,
+      );
+    }
+    const sovereign = composeSovereign(composeArgs);
+    kernel = sovereign.kernel;
+  } catch (err) {
+    if (deps.logger?.warn) {
+      deps.logger.warn(
+        {
+          wiring: 'brain-kernel',
+          error: err instanceof Error ? err.message : String(err),
+        },
+        'brain-kernel: composeSovereign failed; degrading',
+      );
+    }
+    return null;
+  }
+
+  // Phase F.3 — single boot log recording whether the main-loop is LIVE
+  // or the kernel degraded to the legacy pipeline. Pino only (the
+  // duck-typed logger the wiring already accepts) — never console.
+  if (orchestratorPorts) {
+    deps.logger?.info?.(
+      {
+        wiring: 'brain-kernel',
+        router: orchestratorPorts.routerKind,
+        dispatcher: orchestratorPorts.dispatcherKind,
+        // Number of BrainTools indexed into the main-loop's ToolSearch.
+        // Non-zero confirms the live orchestrator can call tools (the
+        // residual fix); 0 would mean it degraded to text-only.
+        toolSearchSize: orchestratorPorts.toolSearchSize,
+        hooks: orchestratorBindings
+          ? orchestratorBindings.hookChain.list().length
+          : 0,
+      },
+      'brain-kernel: orchestrator main-loop LIVE (Claude-Code-style)',
+    );
+  } else {
+    deps.logger?.warn?.(
+      { wiring: 'brain-kernel' },
+      'brain-kernel: orchestrator degraded → legacy pipeline (no LLM router)',
+    );
   }
 
   if (deps.logger?.info) {
@@ -617,4 +730,279 @@ function resolveEmbedder(
     }
     return createNullEmbedder();
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Phase F.3 — orchestrator port resolution.
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * The two required orchestrator ports plus a provenance tag for the boot
+ * log (so operators can see whether the default adapters or an injected
+ * override is live).
+ */
+interface ResolvedOrchestratorPorts {
+  readonly router: LLMRouter;
+  readonly dispatcher: Dispatcher;
+  /**
+   * Populated `ToolSearch` built from the SAME seeded `BrainToolRegistry`
+   * the dispatcher actuates. Without this, the kernel binds its default
+   * `createInMemoryToolSearch([])` (EMPTY) — the main-loop's per-tick
+   * `searchRelevant(...)` would then find NOTHING and the live
+   * orchestrator could only emit text, never a `tool_call`. Threading a
+   * populated store here is what gives the live orchestrator full
+   * tool-calling powers over the 5 seed + 12 platform BrainTools.
+   */
+  readonly toolSearch: ToolSearch;
+  readonly routerKind: 'anthropic-sdk' | 'override';
+  readonly dispatcherKind: 'registry' | 'override';
+  /** Number of tool descriptors indexed into the ToolSearch (boot log). */
+  readonly toolSearchSize: number;
+}
+
+/**
+ * Resolve the main-loop's `LLMRouter` + `Dispatcher`.
+ *
+ * Defaults (production path):
+ *   - router     → `createAnthropicLLMRouter` over the same Anthropic
+ *                  Messages client the kernel sensors use. Tool_use
+ *                  blocks survive into the `Decision` ADT. The model id
+ *                  comes from `KERNEL_ORCHESTRATOR_MODEL` (env) or
+ *                  `getModelLatest('sonnet')` — never hard-coded.
+ *   - dispatcher → `createRegistryDispatcher` over the local seeded
+ *                  `BrainToolRegistry` (the SAME catalog the legacy
+ *                  pipeline runs; zod-gated + audited per tool).
+ *   - toolSearch → `createInMemoryToolSearch` over descriptors derived
+ *                  from THAT SAME registry, so the main-loop's per-tick
+ *                  `searchRelevant(goal, 8)` can actually surface the
+ *                  seed + platform BrainTools to the model. Without it the
+ *                  kernel binds an EMPTY default and the live orchestrator
+ *                  is text-only (the residual this wiring closes).
+ *
+ * Overrides (e.g. routing the main-loop through the MultiLLMRouter
+ * cost-cascade) are accepted as structurally-typed `unknown` and cast at
+ * this boundary. The `toolSearch` always tracks the local registry — a
+ * router override does not change which tools the catalog can execute.
+ */
+function resolveOrchestratorPorts(args: {
+  readonly anthropicClient: KernelAnthropicSdkLike;
+  readonly toolRegistry: BrainToolRegistry;
+  readonly envSource: Readonly<Record<string, string | undefined>>;
+  readonly logger?: BrainKernelWiringDeps['logger'];
+  readonly llmRouterOverride?: unknown;
+  readonly dispatcherOverride?: unknown;
+}): ResolvedOrchestratorPorts {
+  const modelId =
+    args.envSource['KERNEL_ORCHESTRATOR_MODEL']?.trim() ||
+    getModelLatest('sonnet');
+
+  const router: LLMRouter =
+    args.llmRouterOverride !== undefined
+      ? (args.llmRouterOverride as LLMRouter)
+      : orchestrator.createAnthropicLLMRouter(
+          // The kernel's `KernelAnthropicSdkLike` shape (messages.create)
+          // is a structural subset of the adapter's `AnthropicRouterClient`.
+          args.anthropicClient as orchestrator.AnthropicRouterClient,
+          {
+            modelId,
+            ...(args.logger?.warn
+              ? {
+                  logger: {
+                    warn: (msg: string, meta?: Record<string, unknown>): void =>
+                      args.logger?.warn?.({ wiring: 'brain-kernel', ...meta }, msg),
+                  },
+                }
+              : {}),
+          },
+        );
+
+  const dispatcher: Dispatcher =
+    args.dispatcherOverride !== undefined
+      ? (args.dispatcherOverride as Dispatcher)
+      : orchestrator.createRegistryDispatcher(args.toolRegistry, {
+          ...(args.logger?.warn
+            ? {
+                logger: {
+                  warn: (msg: string, meta?: Record<string, unknown>): void =>
+                    args.logger?.warn?.({ wiring: 'brain-kernel', ...meta }, msg),
+                },
+              }
+            : {}),
+        });
+
+  // Build a POPULATED ToolSearch from the SAME seeded registry the
+  // dispatcher actuates. This is the residual fix: the kernel's default
+  // `createInMemoryToolSearch([])` is EMPTY, so the main-loop could only
+  // emit text. Indexing the registry's catalog here lets the per-tick
+  // `searchRelevant(...)` surface the seed + platform BrainTools so the
+  // live orchestrator can call them — full tool-calling parity.
+  const descriptors = buildToolDescriptorsFromRegistry(args.toolRegistry);
+  const toolSearch: ToolSearch = orchestrator.createInMemoryToolSearch(descriptors);
+
+  return {
+    router,
+    dispatcher,
+    toolSearch,
+    routerKind: args.llmRouterOverride !== undefined ? 'override' : 'anthropic-sdk',
+    dispatcherKind:
+      args.dispatcherOverride !== undefined ? 'override' : 'registry',
+    toolSearchSize: descriptors.length,
+  };
+}
+
+/**
+ * Map every `BrainToolSpec` in the seeded registry onto the orchestrator's
+ * `ToolDescriptor` shape so the main-loop's `ToolSearch` can rank them by
+ * goal-similarity.
+ *
+ * `ToolDescriptor` carries `name` + `description` + `keywords` (+ optional
+ * `sampleArgs`) — it has NO JSON-schema field, so per-tool argument
+ * guidance cannot ride on the descriptor (see RESIDUAL note below). The
+ * keyword-overlap ranker (`createInMemoryToolSearch`) matches the goal text
+ * against `[...keywords, ...tokenise(description)]`, so we seed `keywords`
+ * from the tool NAME tokens (the description is already tokenised by the
+ * ranker) plus the zod input schema's top-level field names — which makes
+ * a tool retrievable by the vocabulary of its own arguments
+ * (e.g. `tenantProfileId`, `certificateId`).
+ *
+ * Residual #2 (tool input schemas): a `BrainToolSpec` DOES carry a zod
+ * `schemaIn`, but the `ToolDescriptor` has nowhere to put a JSON schema and
+ * the Anthropic router adapter already advertises a permissive
+ * `{type:'object', additionalProperties:true}` schema for every tool (see
+ * `anthropic-llm-router.ts:PERMISSIVE_TOOL_SCHEMA`). We therefore surface
+ * the schema's field NAMES as `keywords`/`sampleArgs` (retrieval guidance)
+ * rather than inventing a JSON schema. The dispatcher's `registry.runTool`
+ * zod gate still enforces the real per-tool contract at execution time.
+ */
+function buildToolDescriptorsFromRegistry(
+  registry: BrainToolRegistry,
+): ReadonlyArray<ToolDescriptor> {
+  return registry.list().map((spec) => {
+    const fieldNames = extractSchemaFieldNames(spec.schemaIn);
+    const keywords = Array.from(
+      new Set([...tokeniseToolName(spec.name), ...fieldNames]),
+    );
+    return {
+      name: spec.name,
+      description: spec.description,
+      keywords,
+      // Concatenated into the (embedding) corpus + matched by the keyword
+      // ranker via tokenisation of the description — argument names help a
+      // goal phrased in the tool's own vocabulary retrieve it.
+      ...(fieldNames.length > 0 ? { sampleArgs: fieldNames } : {}),
+    };
+  });
+}
+
+/**
+ * Split a camelCase / dotted tool name into lowercase keyword tokens so
+ * the overlap ranker can match a natural-language goal against it
+ * (e.g. `lookupTenantArrears` → `lookup`, `tenant`, `arrears`;
+ * `platform.tenant.suspend` → `platform`, `tenant`, `suspend`). Tokens
+ * shorter than 3 chars are dropped to mirror the ranker's own
+ * `tokenise` (which ignores <3-char words).
+ */
+function tokeniseToolName(name: string): ReadonlyArray<string> {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .split(/[^a-zA-Z0-9]+/)
+    .map((t) => t.toLowerCase())
+    .filter((t) => t.length > 2);
+}
+
+/**
+ * Best-effort extraction of the top-level field names from a zod object
+ * schema. Used ONLY to enrich `ToolDescriptor` retrieval keywords — NOT to
+ * build a JSON schema. Non-object schemas (unions, primitives) and any
+ * shape we can't introspect collapse to an empty list; the tool stays
+ * retrievable by its name + description tokens. We read `_def.shape`
+ * defensively (zod's internal) and never throw.
+ */
+function extractSchemaFieldNames(schema: unknown): ReadonlyArray<string> {
+  try {
+    const def = (schema as { _def?: { shape?: unknown } })?._def;
+    const shape = typeof def?.shape === 'function'
+      ? (def.shape as () => Record<string, unknown>)()
+      : (def?.shape as Record<string, unknown> | undefined);
+    if (!shape || typeof shape !== 'object') return [];
+    return Object.keys(shape).filter((k) => k.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Build the `composeSovereign({ orchestrator })` block. Reuses the 9
+ * production hook ports already constructed in `orchestratorBindings.deps`
+ * (PII → permission → four-eye → denylist → rate → cost → sandbox →
+ * audit → ledger-seal) so the main-loop enforces IDENTICAL policy to the
+ * production hook chain.
+ *
+ * `toolSearch` is threaded in explicitly (built from the seeded registry in
+ * `resolveOrchestratorPorts`) so the main-loop's per-tick
+ * `searchRelevant(...)` surfaces the real BrainTool catalog instead of the
+ * kernel's EMPTY `createInMemoryToolSearch([])` default. The remaining
+ * orchestrator-side stores (plan / session / context-budget / memory) fall
+ * to the kernel's in-memory defaults — those carry no per-tenant policy and
+ * no tool catalog.
+ *
+ * `useByDefault` is deliberately UNSET → the kernel defaults it TRUE, so
+ * the main-loop is LIVE BY DEFAULT in this production composition.
+ */
+function buildOrchestratorBlock(
+  ports: ResolvedOrchestratorPorts,
+  bindings: OrchestratorBindings | null,
+): NonNullable<Parameters<typeof composeSovereign>[0]['orchestrator']> {
+  const block: {
+    router: LLMRouter;
+    dispatcher: Dispatcher;
+    toolSearch: ToolSearch;
+    piiScrubber?: OrchestratorBindings['deps']['piiScrubber'];
+    toolScopes?: OrchestratorBindings['deps']['toolScopes'];
+    approvalPolicy?: OrchestratorBindings['deps']['approvalPolicy'];
+    toolDenylist?: {
+      globalDenylist?: ReadonlyArray<string>;
+      dynamic?: OrchestratorBindings['deps']['toolDenylist'];
+    };
+    rateLimit?: {
+      counter?: OrchestratorBindings['deps']['rateLimitCounter'];
+      maxCallsPerWindow?: number;
+      windowMs?: number;
+    };
+    costCircuit?: OrchestratorBindings['deps']['costCircuit'];
+    sandboxResolver?: OrchestratorBindings['deps']['sandboxResolver'];
+    auditSink?: OrchestratorBindings['deps']['auditSink'];
+    ledgerSeal?: OrchestratorBindings['deps']['ledgerSeal'];
+  } = {
+    router: ports.router,
+    dispatcher: ports.dispatcher,
+    toolSearch: ports.toolSearch,
+  };
+
+  // Reuse the already-built 9 production ports. When the bindings block
+  // is absent (caller did not pass `orchestratorBindings`), the kernel's
+  // own in-memory defaults bind — still a working, fail-closed main-loop.
+  if (bindings) {
+    const d = bindings.deps;
+    block.piiScrubber = d.piiScrubber;
+    block.toolScopes = d.toolScopes;
+    block.approvalPolicy = d.approvalPolicy;
+    block.toolDenylist = {
+      dynamic: d.toolDenylist,
+      ...(d.globalDenylist ? { globalDenylist: d.globalDenylist } : {}),
+    };
+    block.rateLimit = {
+      counter: d.rateLimitCounter,
+      maxCallsPerWindow: d.rateLimitConfig.maxCallsPerWindow,
+      windowMs: d.rateLimitConfig.windowMs,
+    };
+    block.costCircuit = d.costCircuit;
+    block.sandboxResolver = d.sandboxResolver;
+    block.auditSink = d.auditSink;
+    block.ledgerSeal = d.ledgerSeal;
+  }
+
+  return block as NonNullable<
+    Parameters<typeof composeSovereign>[0]['orchestrator']
+  >;
 }

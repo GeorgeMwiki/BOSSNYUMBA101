@@ -2272,12 +2272,20 @@ function buildServicesInner(
         // Phase F.3 — production-grade orchestrator hook chain. The
         // 9-hook PreToolUse / PostToolUse / Stop chain binds to real
         // Drizzle / `scrubPii` / approval-gate / sovereign-ledger
-        // adapters so policy enforcement matches production posture
-        // even before the LLM router + dispatcher adapter lands.
+        // adapters so policy enforcement matches production posture.
         orchestratorBindings: {
           db,
           tenantId: '_platform',
         },
+        // Phase F.3 — LIVE-BY-DEFAULT main-loop. `llmRouter` is non-null
+        // exactly when `ANTHROPIC_API_KEY` is configured; gating on it
+        // means the kernel's `think()` routes through the Claude-Code-
+        // style orchestrator main-loop whenever an LLM is available, and
+        // falls back to the legacy 13-step pipeline (no throw) when it
+        // is not. The wiring builds the `LLMRouter` from the same
+        // Anthropic client (tool_use-preserving) + the `Dispatcher` from
+        // its seeded tool registry; `useByDefault` stays unset → true.
+        enableOrchestratorMainLoop: Boolean(llmRouter),
       });
       // Fill the agent slot with a REAL in-tree agent loop
       // (`createCentralIntelligenceAgent`) backed by the per-tenant
@@ -2400,6 +2408,13 @@ function buildServicesInner(
     voiceAgent: (() => {
       const brainKernel = createBrainKernelWiring({
         buildBudgetGuardedAnthropicClient,
+        // Phase F.3 — voice turns also route through the orchestrator
+        // main-loop when an LLM is available (gated on `llmRouter`,
+        // non-null iff `ANTHROPIC_API_KEY` is set). This path supplies
+        // no `orchestratorBindings`, so the kernel binds its in-memory
+        // fail-closed hook defaults; the legacy pipeline still runs when
+        // no LLM is configured (graceful degrade, no throw).
+        enableOrchestratorMainLoop: Boolean(llmRouter),
       });
       return createVoiceAgentWiring({
         db,

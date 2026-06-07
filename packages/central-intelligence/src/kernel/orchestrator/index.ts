@@ -286,3 +286,25 @@ export {
   type DispatchedPlannerKind,
   type PlannerStakes,
 } from './planner-dispatcher.js';
+
+// Phase F.3 — concrete adapters for the main-loop's two required ports.
+// `createAnthropicLLMRouter` binds the `LLMRouter` to an Anthropic
+// Messages client; `createRegistryDispatcher` binds the `Dispatcher` to
+// a seeded `BrainToolRegistry`. The pure `decisionFromBlocks` /
+// `decisionFromParts` helpers project an LLM turn onto a single
+// `Decision` and are reused by provider-specific adapters in the
+// composition root. See `adapters/index.ts`.
+export {
+  createAnthropicLLMRouter,
+  createRegistryDispatcher,
+  decisionFromBlocks,
+  decisionFromParts,
+  type AnthropicRouterClient,
+  type AnthropicRouterMessage,
+  type AnthropicRouterToolDef,
+  type AnthropicRouterResponse,
+  type AnthropicLLMRouterConfig,
+  type RegistryDispatcherConfig,
+  type LLMContentBlock,
+  type ExtractedToolCall,
+} from './adapters/index.js';
