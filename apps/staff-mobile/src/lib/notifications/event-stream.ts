@@ -27,7 +27,6 @@ import { AppState, type AppStateStatus } from 'react-native'
 // `react-native-sse` is already a dependency (see package.json deps).
 // The default export is a class compatible with the WHATWG EventSource API
 // PLUS optional headers + reconnection options.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import EventSourceImpl from 'react-native-sse'
 
 import { API_BASE_URL } from '../../api/config'

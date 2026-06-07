@@ -32,10 +32,8 @@ import { validateVegaSpec, quickVegaShapeCheck } from '../validate';
 // renders. We explicitly type the lazy component as `ComponentType<any>`
 // so DTS emission works even when react-vega is only present as a peer
 // dependency at consume time (and therefore has no shipped types here).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const VegaLite: ComponentType<any> = lazy(async () => {
   // @ts-ignore — module is a peer dep of the consuming app
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const m: any = await import('react-vega');
   return { default: m.VegaLite };
 });
@@ -119,7 +117,6 @@ export function VegaChart(props: VegaChartProps): JSX.Element {
                 <span className="text-xs text-muted-foreground">loading chart…</span>
               }
             >
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               <VegaLite spec={fullSpec as any} actions={false} renderer="canvas" />
             </Suspense>
           </ClientOnly>

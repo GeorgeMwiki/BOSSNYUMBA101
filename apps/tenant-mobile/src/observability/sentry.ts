@@ -110,7 +110,6 @@ async function loadSentry(): Promise<SentryLike | null> {
       // Use require so Metro resolves at bundle time and tsc does not
       // require ES-module dynamic-import support under the current
       // tsconfig (strict + exactOptionalPropertyTypes).
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
       const mod: any = require(pkg);
       if (mod?.init && mod?.captureException) {
         state.sentry = mod as SentryLike;

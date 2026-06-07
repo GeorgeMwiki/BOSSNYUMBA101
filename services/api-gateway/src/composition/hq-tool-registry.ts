@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * HQ-tool registry composition — wires the 12 `platform.*` BrainTools
  * onto a `BrainToolRegistry` at api-gateway boot.

@@ -97,7 +97,6 @@ describe('createIdempotencyMiddleware (CRITICAL-7)', () => {
       xTenantIdHeader: 'tenant_victim',
     });
     let nextCalled = false;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await mw(ctx as any, async () => {
       nextCalled = true;
     });
@@ -117,7 +116,6 @@ describe('createIdempotencyMiddleware (CRITICAL-7)', () => {
       authTenantId: 'tenant_real',
     });
     let nextCalled = false;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await mw(ctx as any, async () => {
       nextCalled = true;
     });

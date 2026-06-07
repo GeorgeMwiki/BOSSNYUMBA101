@@ -42,7 +42,6 @@ export async function renderPdf(
     // Dynamic import keeps the cold start path free of Playwright when
     // PDF rendering is never invoked. The module cache means warm calls
     // pay essentially zero cost.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const playwright: any = await import('playwright').catch(() => null);
     if (!playwright || typeof playwright.chromium?.launch !== 'function') {
       return html;

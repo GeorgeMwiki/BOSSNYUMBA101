@@ -212,9 +212,7 @@ describe('createKillswitchFanoutPublisher — defensive paths', () => {
     const publish = createKillswitchFanoutPublisher({
       crossPortalBus: Promise.resolve(fakeBus),
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await expect((publish as any)(null)).resolves.toBeUndefined();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await expect((publish as any)(undefined)).resolves.toBeUndefined();
     expect(publishMock).not.toHaveBeenCalled();
   });

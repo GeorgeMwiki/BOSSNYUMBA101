@@ -108,7 +108,6 @@ function encodePng(width: number, height: number, rgba: Buffer): Buffer {
   }
   // Wrap with zlib (Adler-32 trailer) — use Node's deflateSync.
   // We use require()-style dynamic import to keep this file ESM-friendly.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const zlib = require('node:zlib') as typeof import('node:zlib');
   const idatPayload = zlib.deflateSync(scanlines);
   const idatChunk = makeChunk('IDAT', idatPayload);

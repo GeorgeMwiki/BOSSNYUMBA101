@@ -79,9 +79,7 @@ export class DocxRealRenderer implements IDocumentRenderer {
     let DocxtemplaterCtor: unknown;
     try {
       // Dynamic imports so the package compiles without these optional deps.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       PizZipCtor = (await import('pizzip')).default;
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       DocxtemplaterCtor = (await import('docxtemplater')).default;
     } catch (err) {
       throw new RendererError(

@@ -34,7 +34,6 @@ vi.mock('@bossnyumba/database', () => {
 });
 
 declare global {
-  // eslint-disable-next-line no-var
   var __memoryMocks: {
     episodic: any;
     semantic: any;

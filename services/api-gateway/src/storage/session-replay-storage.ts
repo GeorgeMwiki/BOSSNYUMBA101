@@ -328,7 +328,6 @@ export interface StorageSelectionLogger {
 const defaultLogger: StorageSelectionLogger = {
   // eslint-disable-next-line no-console
   info: (m, c) => console.info(`[session-replay] ${m}`, c ?? {}),
-  // eslint-disable-next-line no-console
   warn: (m, c) => console.warn(`[session-replay] ${m}`, c ?? {}),
 };
 

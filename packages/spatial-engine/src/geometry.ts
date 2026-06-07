@@ -32,7 +32,6 @@ type TurfArea = (geom: { type: string; coordinates: unknown }) => number;
 
 let turfArea: TurfArea | null = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const turf = require('@turf/turf') as { area?: TurfArea };
   if (turf && typeof turf.area === 'function') {
     turfArea = turf.area;

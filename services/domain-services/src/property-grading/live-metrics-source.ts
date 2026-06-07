@@ -37,7 +37,6 @@ import type {
 // per-query column aliases; narrowing to unknown would force casts at
 // every .select()/.from()/.where() chain without adding safety. Inner
 // callbacks below are narrowed to structural row shapes.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
 
 export interface LiveMetricsSourceConfig {

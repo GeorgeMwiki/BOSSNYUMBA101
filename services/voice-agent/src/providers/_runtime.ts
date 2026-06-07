@@ -16,7 +16,6 @@
  * remain ~200 lines each.
  */
 import { logger } from '../logger.js';
-/* eslint-disable no-console */
 
 import { setTimeout as delay, clearTimeout as clearDelay } from 'node:timers';
 import { assertUrlSafe } from '@bossnyumba/enterprise-hardening';

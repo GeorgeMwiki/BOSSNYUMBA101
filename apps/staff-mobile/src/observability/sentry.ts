@@ -47,7 +47,6 @@ interface PilotEventContext {
 }
 
 function createLogger(_config: unknown): Logger {
-  // eslint-disable-next-line no-console
   const sink = (level: 'info' | 'warn' | 'error' | 'debug') =>
     (msg: string, ...rest: unknown[]): void => {
       // Console is the only universally-available sink on-device until
@@ -59,7 +58,6 @@ function createLogger(_config: unknown): Logger {
     info: sink('info'),
     warn: sink('warn'),
     error: (msg: string, err?: Error, ctx?: Readonly<Record<string, unknown>>) => {
-      // eslint-disable-next-line no-console
       console.error(`[staff-mobile] ${msg}`, err, ctx);
     },
     debug: sink('debug'),
@@ -161,7 +159,6 @@ async function loadSentry(): Promise<SentryLike | null> {
       // Use require so Metro resolves at bundle time and tsc does not
       // require ES-module dynamic-import support under the current
       // tsconfig (strict + exactOptionalPropertyTypes).
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
       const mod: any = require(pkg);
       if (mod?.init && mod?.captureException) {
         state.sentry = mod as SentryLike;

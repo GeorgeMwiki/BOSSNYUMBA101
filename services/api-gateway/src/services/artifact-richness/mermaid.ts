@@ -85,7 +85,6 @@ function mermaidFallbackHtml(source: string, language: ArtifactLanguage): string
 
 async function tryHeadlessMermaid(source: string): Promise<string | null> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const playwright: any = await import('playwright').catch(() => null);
     if (!playwright || typeof playwright.chromium?.launch !== 'function') {
       return null;

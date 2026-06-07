@@ -336,7 +336,6 @@ describe('createSessionReplayRetention', () => {
 
   it('throws when db is missing', () => {
     expect(() =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createSessionReplayRetention({ db: undefined as any }),
     ).toThrow(/db is required/);
   });

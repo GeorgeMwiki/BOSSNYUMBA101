@@ -84,7 +84,6 @@ function scrubMeta(meta: Record<string, unknown> | undefined): Record<string, un
   if (!meta) return meta;
   if (!cachedScrubFn) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const mod = require('../middleware/classification-scrubber');
       cachedScrubFn = typeof mod.scrubPayload === 'function'
         ? (mod.scrubPayload as (p: unknown) => unknown)

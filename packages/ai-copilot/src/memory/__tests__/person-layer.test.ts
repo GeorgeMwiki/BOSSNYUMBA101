@@ -310,7 +310,6 @@ describe('upsertPersonalFact + loadPersonLayer roundtrip', () => {
     const { db } = createFakeDriver();
     await upsertPersonalFact({
       personId: 'person-asha',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       cellKind: 'bogus' as any,
       key: 'x',
       value: {},

@@ -220,7 +220,6 @@ describe('catalog schemas — accept good payloads', () => {
       });
       if (!r.success) {
         // Aid debugging by surfacing the validation issue list.
-        // eslint-disable-next-line no-console
         console.error(entry.key, r.error.issues);
       }
       expect(r.success).toBe(true);

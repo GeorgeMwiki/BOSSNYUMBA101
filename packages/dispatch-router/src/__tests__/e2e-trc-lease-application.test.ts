@@ -214,7 +214,6 @@ describe('E2E: TRC EMU officer requests godown 3 lease for Mr Juma', () => {
     expect(eventKinds).toContain('proposal_approved');
 
     // Demo log (printed when running with --reporter=verbose).
-    // eslint-disable-next-line no-console
     console.info('TRC EMU LEASE-APPLICATION DEMO PASSED', {
       capture_id: captureResult.capture.id,
       proposal_id: leaseProposal!.id,

@@ -565,7 +565,6 @@ if (process.env.NODE_ENV !== 'test') {
       { err: err instanceof Error ? err.message : String(err) },
       'Environment validation failed — aborting boot'
     );
-    // eslint-disable-next-line no-process-exit
     process.exit(1);
   }
 }
@@ -653,7 +652,6 @@ app.use(
       // Lazy-require ioredis — the ESM / CJS export shape varies across
       // bundlers; mirror the pattern already used by the deep-health probe
       // so both code paths pick up the same constructor.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const ioredisMod = require('ioredis');
       const RedisCtor =
         ioredisMod?.default ?? ioredisMod?.Redis ?? ioredisMod;

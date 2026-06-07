@@ -38,7 +38,6 @@ export class ReactPdfRenderer implements IDocumentRenderer {
         // Dynamic import so the module loads without the peer being
         // present in every deployment; declared in package.json.
         const pdf = (await import('@react-pdf/renderer')) as {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           renderToBuffer?: (element: any) => Promise<Buffer>;
         };
         if (!pdf.renderToBuffer) {

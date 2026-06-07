@@ -31,7 +31,6 @@ import { sql } from 'drizzle-orm';
 import type pino from 'pino';
 
 export interface TranslationWiringInput {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   readonly db: any | null;
   readonly logger: pino.Logger;
 }
@@ -59,7 +58,6 @@ function makeSqlRunner(db: { execute: (q: unknown) => Promise<unknown> }): SqlRu
     ) {
       const stmt = buildParamSql(query, params);
       const result = await db.execute(stmt);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rows = (result as any).rows ?? (result as unknown as Row[]);
       return rows as ReadonlyArray<Row>;
     },

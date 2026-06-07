@@ -10,7 +10,6 @@ import { loadFixture } from './fixtures.js';
  */
 async function isDepAvailable(name: string): Promise<boolean> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mod = await (import(name as string).catch(() => null));
     return mod !== null;
   } catch {

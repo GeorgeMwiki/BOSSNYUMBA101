@@ -128,7 +128,6 @@ function buildJwtVerifier(): JwtVerifier | undefined {
       try {
         // Use jsonwebtoken if available; otherwise decode manually.
         // The gateway already bundles jsonwebtoken via auth middleware.
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const jwt = require('jsonwebtoken');
         const decoded = jwt.verify(token, secret) as Record<string, unknown>;
         if (!decoded || typeof decoded !== 'object') return null;

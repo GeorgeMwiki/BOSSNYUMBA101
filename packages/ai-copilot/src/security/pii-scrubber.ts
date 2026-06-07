@@ -1,9 +1,3 @@
-/* eslint-disable bossnyumba/no-jurisdictional-literal --
- * PII scrubber pattern catalogue: NIDA / TIN / KRA-PIN / +254 / +255
- * references are redaction-pattern labels and replacement placeholders,
- * not flowing logic. The country-coupled placeholders ARE the contract
- * — security taxonomy needs the named PII type per regulator (Case 3).
- */
 /**
  * BOSSNYUMBA AI PII scrubber — Wave-11 AI security hardening.
  *

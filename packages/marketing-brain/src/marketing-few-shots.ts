@@ -1,11 +1,3 @@
-/* eslint-disable bossnyumba/no-jurisdictional-literal --
- * Marketing few-shot prose mentions real-world East African regulators
- * (KRA, TRA, NIDA) and payment rails (M-Pesa, Airtel Money, Azam Pay,
- * GePG) as descriptive content — the AI prospect-facing chat needs to
- * reference these by name when describing what BOSSNYUMBA integrates
- * with. Case 4 (persona text). The cross-country rebind happens at the
- * scenario-selection layer, not in the few-shot prose itself.
- */
 /**
  * Marketing Few-Shot Library — Mr. Mwikila, estate edition.
  *

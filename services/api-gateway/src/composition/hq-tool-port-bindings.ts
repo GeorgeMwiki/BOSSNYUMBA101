@@ -38,7 +38,6 @@
  *   diagnostic flags, JSDoc) — not flowing logic. The connector adapter
  *   itself is allowlisted (packages/connectors/src/adapters/nida-adapter.ts).
  */
-/* eslint-disable bossnyumba/no-jurisdictional-literal -- NIDA port-composition wiring (env-var names + diagnostics, Case 3) */
 
 import {
   createEardhiAdapter,

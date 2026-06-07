@@ -442,7 +442,6 @@ export class VendorDispatchOrchestrator {
       // Never let an event failure tear down the orchestration call.
       // Observability handles DLQ retries.
       const message = error instanceof Error ? error.message : String(error);
-      // eslint-disable-next-line no-console
       console.error(`vendor-dispatch: event publish failed (${event.eventType}): ${message}`);
     }
   }

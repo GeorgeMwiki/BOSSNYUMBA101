@@ -59,9 +59,7 @@ export function verifyGepgSignature(
   // Uses gepg-rsa-signature.ts (pure Node crypto, zero external XML deps).
   // Keys loaded lazily from GEPG_SIGNING_CERT_PEM env or GEPG_SIGNING_CERT_PATH
   // file. Falls back to invalid if no public cert configured.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { verifyGepgEnvelope } = require('./gepg-rsa-signature') as typeof import('./gepg-rsa-signature');
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { loadGepgKeys } = require('./key-loader') as typeof import('./key-loader');
   const keys = loadGepgKeys();
   if (keys.source === 'missing' || !keys.publicCertPem) {

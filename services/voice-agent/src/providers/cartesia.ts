@@ -21,7 +21,6 @@
  *
  * Returns an error frame (not a throw) when the upstream returns non-200.
  */
-/* eslint-disable no-console */
 
 import { Buffer } from 'node:buffer';
 

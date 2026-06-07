@@ -105,7 +105,6 @@ function registry() {
       return createGraphAgentToolkit(queryService);
     } catch (err) {
       // Use the gateway's pino logger if exposed, else fall back to console.
-      // eslint-disable-next-line no-console
       console.error('brain.hono: failed to construct graph toolkit', err);
       return undefined;
     }
@@ -315,7 +314,6 @@ brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource:
           429,
         );
       }
-      // eslint-disable-next-line no-console
       console.warn('brain.hono: budget pre-flight check failed (non-fatal)', e?.message ?? e);
     }
   }

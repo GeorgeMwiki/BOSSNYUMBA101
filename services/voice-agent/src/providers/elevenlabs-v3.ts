@@ -14,7 +14,6 @@
  * Returns an error frame (not a throw) when the upstream returns non-200,
  * per the task spec.
  */
-/* eslint-disable no-console */
 
 import {
   AsyncQueue,

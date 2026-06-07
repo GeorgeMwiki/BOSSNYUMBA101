@@ -128,7 +128,6 @@ function auditAuthResolution(args: {
   });
   // eslint-disable-next-line no-console
   if (args.outcome === 'allow') console.info(line);
-  // eslint-disable-next-line no-console
   else console.warn(line);
 }
 

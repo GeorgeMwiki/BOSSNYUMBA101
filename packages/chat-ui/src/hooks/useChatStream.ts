@@ -256,7 +256,6 @@ export function useChatStream(
         // Simple SSE parser — split on double-newline, then split each event
         // into its `event:` / `data:` lines. Robust enough for our own server
         // output; not a full-featured EventSource replacement.
-        // eslint-disable-next-line no-constant-condition
         while (true) {
           if (!mountedRef.current || abort.signal.aborted) break;
           const { done, value } = await reader.read();

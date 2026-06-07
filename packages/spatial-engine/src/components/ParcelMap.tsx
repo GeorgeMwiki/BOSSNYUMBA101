@@ -21,7 +21,7 @@ import { logger } from '../logger.js';
 // MapLibre & Geoman are PEER deps — typed as `any` here so the
 // package's tsc run does not require the libraries to be installed in
 // every workspace. Consumer apps install the real packages.
-type AnyMap = any; // eslint-disable-line @typescript-eslint/no-explicit-any
+type AnyMap = any;
 
 export interface ParcelClickEvent {
   readonly parcelId: string;
@@ -90,7 +90,7 @@ export function ParcelMap(props: ParcelMapProps): React.ReactElement {
       if (typeof window === 'undefined') return; // SSR guard
       if (!containerRef.current) return;
 
-      let maplibregl: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+      let maplibregl: any;
       try {
         // Dynamic import so consumers without maplibre installed still
         // get a clean tsc + bundle.

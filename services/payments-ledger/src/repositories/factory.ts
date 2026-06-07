@@ -97,7 +97,6 @@ function buildDatabaseClient(
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { createDatabaseClient } = require('@bossnyumba/database') as {
       createDatabaseClient: (url: string) => unknown;
     };

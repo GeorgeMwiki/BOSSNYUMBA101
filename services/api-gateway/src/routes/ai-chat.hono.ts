@@ -83,7 +83,6 @@ function registry() {
       const neo4j = createNeo4jClient();
       return createGraphAgentToolkit(createGraphQueryService(neo4j));
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('ai-chat.router: failed to construct graph toolkit', err);
       return undefined;
     }
@@ -257,7 +256,6 @@ router.post('/chat', withSecurityEvents({ action: 'ai-chat.create', resource: 'a
         );
       }
       // Ledger-lookup failures must not block the chat — log once and proceed.
-      // eslint-disable-next-line no-console
       console.warn('ai-chat.router: budget pre-flight check failed (non-fatal)', e?.message ?? e);
     }
   }

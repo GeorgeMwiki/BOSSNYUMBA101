@@ -73,7 +73,6 @@ interface AuditAppendPayload {
 }
 
 async function appendAuditEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: any,
   payload: AuditAppendPayload,
 ): Promise<string> {

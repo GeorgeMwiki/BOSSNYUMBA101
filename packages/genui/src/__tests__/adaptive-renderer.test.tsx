@@ -18,7 +18,6 @@ describe('AdaptiveRenderer — H10 schema re-validation at dispatch', () => {
     // dispatcher pre-check.
     const onUnknownKind = vi.fn();
     const { container } = render(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       <AdaptiveRenderer
         uiPart={{ kind: 'markdown-card' } as any}
         onUnknownKind={onUnknownKind}
@@ -58,7 +57,6 @@ describe('AdaptiveRenderer — H11 unknown-kind telemetry', () => {
     window.addEventListener('genui:unknown-kind', evtSpy);
     try {
       render(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         <AdaptiveRenderer
           uiPart={{ kind: 'totally-new-primitive-the-client-does-not-know' } as any}
           onUnknownKind={onUnknownKind}
@@ -85,7 +83,6 @@ describe('AdaptiveRenderer — H11 unknown-kind telemetry', () => {
     // Render must not throw.
     expect(() =>
       render(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         <AdaptiveRenderer
           uiPart={{ kind: 'made-up' } as any}
           onUnknownKind={onUnknownKind}

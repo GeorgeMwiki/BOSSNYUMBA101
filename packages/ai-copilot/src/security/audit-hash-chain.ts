@@ -296,7 +296,6 @@ function rowHashRole(
  *
  * @internal — not exported from the package barrel.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function rowHashMatches(
   entry: HashedAuditEntry,
   secrets: ResolvedSecrets,
