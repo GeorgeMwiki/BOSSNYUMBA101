@@ -365,10 +365,33 @@ async function insertCrossRefs(
 
 // ─── public entrypoint ──────────────────────────────────────────────
 
+/**
+ * Grow the knowledge graph from a freshly-ingested doc.
+ *
+ * RLS (#16 follow-up): `boundDb` is the REQUEST-bound tenant transaction
+ * handle (`c.get('db')`) threaded down from the corpus-upload handler,
+ * which mounts `databaseMiddleware`. Passing it means the `entity_index`
+ * + `entity_cross_references` writes below run inside the transaction
+ * where `app.current_tenant_id` is bound via `SET LOCAL`, so RLS
+ * enforces end-to-end under a non-BYPASSRLS role — instead of escaping
+ * to the raw process-singleton client.
+ *
+ * When `boundDb` is omitted we fall back to the singleton `getDb()` so
+ * out-of-request callers (and the no-DB unit tests) keep their existing
+ * behaviour unchanged. The queries are identical either way; only the
+ * connection the writes execute on differs.
+ */
 export async function growKnowledgeGraphFromDoc(
   input: GrowKnowledgeInput,
+  boundDb?: UpsertableDb | null,
 ): Promise<GrowKnowledgeResult> {
-  const db = getDb() as unknown as UpsertableDb | null;
+  // `undefined` ⇒ no handle threaded in (out-of-request caller / tests):
+  // resolve the process singleton. An explicit value (incl. null) is
+  // honoured as-is so the caller's degraded-mode decision is respected.
+  const db =
+    boundDb === undefined
+      ? (getDb() as unknown as UpsertableDb | null)
+      : boundDb;
   const entities = extractEntities(input.uploadId, input.parsed, input.chunks);
   if (!db) {
     return Object.freeze({

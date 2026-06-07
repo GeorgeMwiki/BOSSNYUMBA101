@@ -354,7 +354,13 @@ app.post('/', async (c: any) => {
   const deps: IngestionDeps = {
     persistence: createDrizzlePersistence(db),
     embedder: resolveEmbedder(),
-    grower: createDefaultKnowledgeGraphGrower(),
+    // RLS (#16 follow-up): pass the request-bound tenant tx (`c.get('db')`,
+    // resolved above) into the grower so its entity_index /
+    // entity_cross_references writes run inside the same transaction where
+    // databaseMiddleware bound `app.current_tenant_id` — keeping the
+    // knowledge-graph writes RLS-enforced end-to-end instead of escaping
+    // to the raw singleton client.
+    grower: createDefaultKnowledgeGraphGrower(db),
     logger: {
       info: (obj, msg) =>
         moduleLogger.info(msg ?? 'brain-ingest', obj as Record<string, unknown>),
