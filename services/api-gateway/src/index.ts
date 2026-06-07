@@ -407,6 +407,9 @@ import {
   type NotificationDispatcher,
 } from './workers/event-subscribers';
 import { ensureTenantIsolation } from './middleware/tenant-context.middleware';
+// RLS Option A — boot-time BYPASSRLS posture probe (logs once whether the
+// connecting role actually enforces row-level security).
+import { logRlsRolePosture } from './middleware/database';
 import { assertApiKeyConfig } from './middleware/api-key-registry';
 import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
@@ -2126,6 +2129,15 @@ if (require.main === module) {
   server = app.listen(port, () => {
     logger.info({ port }, 'API Gateway started');
   });
+
+  // RLS Option A — log the connecting role's BYPASSRLS posture once at
+  // boot. RLS only ENFORCES under a NON-BYPASS role; a DATABASE_URL
+  // pointing at Supabase's `postgres` / `service_role` (both BYPASSRLS)
+  // makes every tenant policy inert. The probe is best-effort and never
+  // throws into the boot path. Skipped under test (no live DSN).
+  if (process.env.NODE_ENV !== 'test') {
+    void logRlsRolePosture();
+  }
 
   // Gap 7 — attach the brain-voice realtime WebSocket bridge to the live HTTP
   // server. Honest-degrade: BossNyumba's gateway has no `ws` dependency yet, so

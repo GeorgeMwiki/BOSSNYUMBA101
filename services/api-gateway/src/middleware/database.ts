@@ -132,6 +132,56 @@ export interface Repositories {
 let repositories: Repositories | null = null;
 
 /**
+ * RepoEncryptionDeps shape — the `{ encPort, encAudit }` bag every
+ * encryption-aware repository constructor accepts. Declared explicitly
+ * so `buildRepositories` (below) has a typed dependency surface rather
+ * than an inline object literal repeated at each call site.
+ */
+interface RepoDeps {
+  encPort: EncryptionPort | null;
+  encAudit: FieldEncryptionAuditSink | null;
+}
+
+/**
+ * Construct the full repository bag against a given database handle.
+ *
+ * The handle is normally the process-singleton `db`, but it can equally
+ * be a per-request transaction handle (`tx`) — drizzle's `PgTransaction`
+ * exposes the same query-builder surface the repositories use, so the
+ * SAME repository code runs its SELECT/INSERT/UPDATE/DELETE on whichever
+ * connection the handle is bound to. The RLS middleware exploits this to
+ * give a request tenant-scoped repos that execute inside the transaction
+ * where `SET LOCAL app.current_tenant_id` is active, so every policy
+ * predicate fires.
+ *
+ * Extracted from the previously-duplicated bodies of `getRepositories`
+ * and `initRepositoriesAsync` so all three construction sites (sync
+ * singleton, async boot, per-request tx) stay in lock-step.
+ */
+function buildRepositories(
+  database: DatabaseClient,
+  deps: RepoDeps,
+): Repositories {
+  return {
+    tenants: new TenantRepository(database, deps),
+    users: new UserRepository(database, deps),
+    properties: new PropertyRepository(database),
+    units: new UnitRepository(database),
+    customers: new CustomerRepository(database, deps),
+    leases: new LeaseRepository(database, deps),
+    invoices: new InvoiceRepository(database, deps),
+    payments: new PaymentRepository(database, deps),
+    workOrders: new WorkOrderRepository(database),
+    vendors: new VendorRepository(database),
+    messaging: new MessagingRepository(database, deps),
+    inspections: new InspectionRepository(database),
+    scheduling: new SchedulingRepository(database),
+    compliance: new ComplianceRepository(database),
+    documents: new DocumentRepository(database),
+  };
+}
+
+/**
  * Build the field-level encryption port + audit sink. Lazy so a missing
  * `ENCRYPTION_MASTER_KEY` in dev does not crash the boot — the repos
  * degrade to plaintext mode and surface a single startup warning. In
@@ -227,24 +277,7 @@ function getRepositories(): Repositories | null {
       encPort = res.port;
       encAudit = res.audit;
     });
-    const deps = { encPort, encAudit };
-    repositories = {
-      tenants: new TenantRepository(database, deps),
-      users: new UserRepository(database, deps),
-      properties: new PropertyRepository(database),
-      units: new UnitRepository(database),
-      customers: new CustomerRepository(database, deps),
-      leases: new LeaseRepository(database, deps),
-      invoices: new InvoiceRepository(database, deps),
-      payments: new PaymentRepository(database, deps),
-      workOrders: new WorkOrderRepository(database),
-      vendors: new VendorRepository(database),
-      messaging: new MessagingRepository(database, deps),
-      inspections: new InspectionRepository(database),
-      scheduling: new SchedulingRepository(database),
-      compliance: new ComplianceRepository(database),
-      documents: new DocumentRepository(database),
-    };
+    repositories = buildRepositories(database, { encPort, encAudit });
     logger.info('Repositories initialized');
   }
 
@@ -262,24 +295,7 @@ export async function initRepositoriesAsync(): Promise<Repositories | null> {
   const database = getDatabase();
   if (!database) return null;
   const { port, audit } = await buildEncryption(database);
-  const deps = { encPort: port, encAudit: audit };
-  repositories = {
-    tenants: new TenantRepository(database, deps),
-    users: new UserRepository(database, deps),
-    properties: new PropertyRepository(database),
-    units: new UnitRepository(database),
-    customers: new CustomerRepository(database, deps),
-    leases: new LeaseRepository(database, deps),
-    invoices: new InvoiceRepository(database, deps),
-    payments: new PaymentRepository(database, deps),
-    workOrders: new WorkOrderRepository(database),
-    vendors: new VendorRepository(database),
-    messaging: new MessagingRepository(database, deps),
-    inspections: new InspectionRepository(database),
-    scheduling: new SchedulingRepository(database),
-    compliance: new ComplianceRepository(database),
-    documents: new DocumentRepository(database),
-  };
+  repositories = buildRepositories(database, { encPort: port, encAudit: audit });
   return repositories;
 }
 
@@ -293,33 +309,174 @@ declare module 'hono' {
 }
 
 import { sql } from 'drizzle-orm';
+import { withTenantContext } from '@bossnyumba/database';
+
+/**
+ * RLS ENFORCEMENT NOTE (read before touching this middleware)
+ * ───────────────────────────────────────────────────────────
+ * RLS only *enforces* when the gateway connects to Postgres as a role
+ * that does NOT carry the BYPASSRLS attribute. Supabase's `postgres` /
+ * `service_role` roles are BYPASSRLS, so a `DATABASE_URL` pointing at
+ * either makes every policy below inert — the queries still run, RLS is
+ * just skipped. For true defence-in-depth, PRODUCTION must connect as a
+ * dedicated NON-BYPASS login role (e.g. `app_authenticated`) whose GRANTs
+ * cover the tenant-scoped tables. The code here is correct under BOTH
+ * postures; it simply cannot *enforce* under a BYPASS role. The boot
+ * sequence emits a one-shot log (see `logRlsRolePosture` below) recording
+ * which DSN posture is active so operators can spot a BYPASS misconfig.
+ */
+
+/**
+ * Per-request GUC names bound by this middleware (documented here as the
+ * single source of truth; the names appear as SQL literals in the
+ * `set_config(...)` calls below because drizzle would otherwise treat a
+ * `${variable}` as a bound *parameter* rather than inline SQL):
+ *   - app.current_tenant_id            tenant predicate (canonical)
+ *   - app.tenant_id                    legacy alias (bound by withTenantContext)
+ *   - app.is_service_role              service-role bypass (=false here)
+ *   - app.is_bossnyumba_internal_admin internal-admin global-table writes
+ *   - app.admin_scope                  admin four-eye pending-approvals gate
+ */
+
+/**
+ * Resolve the two defence-in-depth admin flags from the JWT role.
+ * Pure — no I/O — so both binding paths share identical logic.
+ */
+function resolveAdminFlags(role: string | undefined): {
+  isInternalAdmin: boolean;
+  isAdminScope: boolean;
+} {
+  const upper = String(role ?? '').toUpperCase();
+  return {
+    // Migration 0295 (discovered_jurisdictions) gates writes behind
+    // `app.is_bossnyumba_internal_admin = 'true'`.
+    isInternalAdmin: upper === 'PLATFORM_ADMIN' || upper === 'ADMIN',
+    // Migration 0301 `admin_four_eye_admin_scope` on
+    // `admin_superpower_pending_approvals` requires `app.admin_scope='true'`.
+    isAdminScope:
+      upper === 'SUPER_ADMIN' || upper === 'ADMIN' || upper === 'SUPPORT',
+  };
+}
+
+/**
+ * Bind every per-request GUC inside the supplied transaction using
+ * `SET LOCAL` semantics (`set_config(..., true)`), then run the rest of
+ * the request pipeline INSIDE the same transaction. This is the path
+ * that makes RLS actually fire: the tenant predicate
+ * `tenant_id = current_setting('app.current_tenant_id', true)` resolves
+ * against the value we bound, and the binding is transaction-scoped so
+ * it cannot leak across requests on a pooled (transaction-mode) connection.
+ *
+ * The tx handle replaces `db`/`repos` on the Hono context for the
+ * duration of the request so handler queries (`c.get('repos')`,
+ * `c.get('db')`) execute on the tenant-bound connection.
+ */
+async function runInTenantTx(
+  c: Parameters<Parameters<typeof createMiddleware>[0]>[0],
+  database: DatabaseClient,
+  baseRepos: Repositories | null,
+  tenantId: string,
+  role: string | undefined,
+  next: () => Promise<void>,
+  /**
+   * Set to `true` the instant control passes to `next()`. Lets the
+   * caller tell a GUC-binding failure (we never reached the handler →
+   * fail closed with a security error) apart from a handler error
+   * (must propagate to Hono's normal error path) when the transaction
+   * rejects.
+   */
+  reachedHandler: { value: boolean },
+): Promise<void> {
+  const { isInternalAdmin, isAdminScope } = resolveAdminFlags(role);
+  await withTenantContext(database, tenantId, async (tx) => {
+    // `withTenantContext` already bound app.current_tenant_id +
+    // app.tenant_id + app.is_service_role (=false) via SET LOCAL. Bind
+    // the two remaining defence-in-depth admin flags the same way so
+    // they too are transaction-scoped and cannot leak across the pool.
+    // GUC names are SQL literals (constants, never user input — no
+    // injection risk); only the boolean value is parameterised.
+    await tx.execute(
+      sql`SELECT set_config('app.is_bossnyumba_internal_admin', ${isInternalAdmin ? 'true' : 'false'}, true)`,
+    );
+    await tx.execute(
+      sql`SELECT set_config('app.admin_scope', ${isAdminScope ? 'true' : 'false'}, true)`,
+    );
+    // Expose the tx-bound handle + tx-bound repos to the handler so its
+    // queries run on THIS connection, where the GUCs are live.
+    const txDb = tx as unknown as DatabaseClient;
+    const txRepos = baseRepos ? buildRepositories(txDb, { encPort, encAudit }) : baseRepos;
+    c.set('db', txDb);
+    c.set('repos', txRepos);
+    reachedHandler.value = true;
+    await next();
+  });
+}
+
+/**
+ * Legacy session-scoped binding path. Used ONLY when the resolved `db`
+ * handle does not expose a `.transaction()` method — i.e. unit-test
+ * stubs that pre-inject a recording/shim `db` to exercise routers
+ * without a live Postgres. Production drizzle clients always expose
+ * `.transaction`, so they take the tx path above. We keep this path so
+ * the existing test doubles (which assert `set_config(..., false)`
+ * calls) continue to pass unchanged.
+ */
+async function bindGucsSessionScoped(
+  database: DatabaseClient,
+  tenantId: string,
+  role: string | undefined,
+): Promise<void> {
+  const { isInternalAdmin, isAdminScope } = resolveAdminFlags(role);
+  // GUC names are SQL literals (constants, never user input — no
+  // injection risk); only the tenant id + boolean values are
+  // parameterised (set_config's third arg defends against GUC injection).
+  await database.execute(
+    sql`SELECT set_config('app.current_tenant_id', ${tenantId}, false)`,
+  );
+  await database.execute(
+    sql`SELECT set_config('app.is_bossnyumba_internal_admin', ${isInternalAdmin ? 'true' : 'false'}, false)`,
+  );
+  await database.execute(
+    sql`SELECT set_config('app.admin_scope', ${isAdminScope ? 'true' : 'false'}, false)`,
+  );
+}
 
 /**
  * Database middleware
  *
- * Injects database client and repositories into request context AND sets
- * `app.current_tenant_id` on the connection so the RLS policies attached to
- * every tenant-scoped table actually fire. Without this set, every RLS
- * `tenant_id = current_setting('app.current_tenant_id')` predicate would
- * evaluate to NULL = NULL (FALSE) — silently zero rows or, worse, RLS bypass
- * depending on Postgres setting.
+ * Injects the database client + repositories into the request context
+ * AND binds the RLS tenant context so the policies attached to every
+ * tenant-scoped table actually fire.
  *
- * GUC name canonicalisation: this middleware sets `app.current_tenant_id`.
- * Migration 0172 unified `public.current_app_tenant_id()` (the helper used
- * by 0155 / 0156 / 0169 policies) to read the same name, so every
- * tenant-scoped policy now agrees on a single GUC. The legacy
- * `app.tenant_id` name is retained as a COALESCE fallback inside the
- * helper for out-of-band tooling — DO NOT introduce a second
- * set_config call here for that legacy name.
+ * RLS Option A wiring (defence-in-depth):
+ *  1. Resolve the authenticated principal `authMiddleware` attached to
+ *     `c.get('auth')`.
+ *  2. When a tenant is present and the resolved `db` is a real
+ *     transaction-capable drizzle client, wrap the ENTIRE downstream
+ *     pipeline (`next()` — i.e. any further middleware AND the route
+ *     handler) in ONE transaction that has `SET LOCAL
+ *     app.current_tenant_id` (+ admin flags) bound. The tx handle and
+ *     tx-bound repositories are placed on the context so handler queries
+ *     execute on that connection and RLS predicates resolve. The
+ *     transaction commits when the handler resolves and rolls back if it
+ *     throws — keeping each request's writes atomic.
+ *  3. When `db` is a test stub without `.transaction`, fall back to the
+ *     legacy per-statement `set_config(..., false)` binding (the value a
+ *     pre-tx connection persisted for the duration of the request).
  *
- * Order of operations:
- *  1. Look up the authenticated principal that `authMiddleware` already
- *     attached to `c.get('auth')`.
- *  2. Cast the tenant id and call `SET LOCAL app.current_tenant_id = ...`
- *     on the same connection that subsequent repo queries will use. The
- *     `SET LOCAL` form scopes the setting to the current transaction; we
- *     wrap it in `BEGIN`/`COMMIT` (or use postgres.js' implicit txn) so the
- *     setting cannot leak across requests sharing the pool.
+ * GUC name: this middleware binds `app.current_tenant_id` (canonical;
+ * migration 0172/0175 helper `public.current_app_tenant_id()` reads it,
+ * with `app.tenant_id` as a COALESCE fallback — `withTenantContext`
+ * binds BOTH so policies agree across phases).
+ *
+ * STREAMING / SSE NOTE: long-lived SSE handlers (ai-chat, brain-*,
+ * cockpit-stream, cross-portal-subscribe, intelligence,
+ * admin-jarvis-stream) DELIBERATELY do NOT mount this middleware — they
+ * use `authMiddleware` only and bind their own GUC around the discrete
+ * data reads (see `bindTenantGuc` in brain.hono.ts). That keeps a
+ * request-long transaction (which would pin a pooled connection for the
+ * whole stream) off the streaming path. Do NOT add `databaseMiddleware`
+ * to a streaming router without first scoping the tx to the reads.
  */
 export const databaseMiddleware = createMiddleware(async (c, next) => {
   // Unit tests can pre-populate `db` and `repos` on the context to exercise
@@ -348,64 +505,126 @@ export const databaseMiddleware = createMiddleware(async (c, next) => {
     );
   }
 
-  // Set RLS tenant context BEFORE any repository runs queries.
-  if (database && !useMockData) {
-    const auth = c.get('auth') as { tenantId?: string; role?: string } | undefined;
-    const tenantId = auth?.tenantId;
-    if (tenantId) {
-      try {
-        // postgres.js executes one statement per call on a checked-out connection.
-        // `SET` (not `SET LOCAL`) lasts the session — for a pooled connection that
-        // means until the next setting overrides it. Since every authenticated
-        // request resets it before any read, no cross-tenant leak is possible.
-        // Using `set_config` avoids interpolation issues and is safe against
-        // SQL injection via the boolean third argument.
-        await database.execute(
-          sql`SELECT set_config('app.current_tenant_id', ${tenantId}, false)`
-        );
-        // Wave launch-green JC-1 — internal-admin GUC for global-table RLS.
-        // Migration 0295 (discovered_jurisdictions) gates writes behind
-        // `app.is_bossnyumba_internal_admin = 'true'`. Set the flag based
-        // on the JWT role so only platform admin / admin sessions can mutate
-        // the cache; every other request leaves the GUC reset to 'false'
-        // and the RLS policy denies the write. The third arg `false` ⇒
-        // session-scope on the pooled connection (mirrors tenant binding).
-        const role = String(auth?.role ?? '').toUpperCase();
-        const isInternalAdmin = role === 'PLATFORM_ADMIN' || role === 'ADMIN';
-        await database.execute(
-          sql`SELECT set_config('app.is_bossnyumba_internal_admin', ${isInternalAdmin ? 'true' : 'false'}, false)`
-        );
-        // Wave OWNER-OS — admin_scope GUC for the admin-superpowers
-        // four-eye gate (migration 0301). The RLS policy
-        // `admin_four_eye_admin_scope` on
-        // `admin_superpower_pending_approvals` requires
-        // `app.admin_scope='true'` so non-admin sessions cannot read
-        // or write pending approvals even via raw SQL. Set from the
-        // JWT role; defense in depth alongside `requireRole` on the
-        // admin routes themselves.
-        const isAdminScope =
-          role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT';
-        await database.execute(
-          sql`SELECT set_config('app.admin_scope', ${isAdminScope ? 'true' : 'false'}, false)`
-        );
-      } catch (error) {
-        logger.error({ error, tenantId }, 'Failed to set RLS tenant context');
-        return c.json(
-          {
-            success: false,
-            error: {
-              code: 'RLS_CONTEXT_FAILED',
-              message: 'Could not establish tenant security context.',
-            },
-          },
-          500
-        );
-      }
-    }
+  const auth = c.get('auth') as { tenantId?: string; role?: string } | undefined;
+  const tenantId = auth?.tenantId;
+
+  // No tenant (public / auth / webhook routes) or no live db → skip the
+  // tenant tx entirely and run the handler against the singleton handle.
+  // RLS fails closed for these paths: with no GUC bound, the policy
+  // predicate is NULL and tenant-scoped tables return zero rows.
+  if (!database || useMockData || !tenantId) {
+    await next();
+    return;
   }
 
-  await next();
+  // Capability detection: real drizzle clients expose `.transaction`.
+  // Test doubles that only stub `.execute` take the legacy session path
+  // so their existing assertions keep passing.
+  const txCapable =
+    typeof (database as { transaction?: unknown }).transaction === 'function';
+
+  // Tracks whether control reached the route handler. Lets us tell a
+  // GUC-binding failure (fail closed) from a handler error (propagate).
+  const reachedHandler = { value: false };
+  try {
+    if (txCapable) {
+      await runInTenantTx(
+        c,
+        database,
+        repos,
+        tenantId,
+        auth?.role,
+        next,
+        reachedHandler,
+      );
+    } else {
+      await bindGucsSessionScoped(database, tenantId, auth?.role);
+      reachedHandler.value = true;
+      await next();
+    }
+  } catch (error) {
+    if (reachedHandler.value) {
+      // The handler ran and threw (or the transaction failed to commit
+      // after the handler resolved). Either way the error belongs to the
+      // request pipeline, not to our security setup — propagate it so the
+      // route's own error handling / Hono onError reports it unchanged.
+      throw error;
+    }
+    // We never reached the handler ⇒ binding the tenant context failed.
+    // Fail closed with a security error rather than running the handler
+    // with an unbound (NULL) tenant GUC.
+    logger.error({ error, tenantId }, 'Failed to establish RLS tenant context');
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'RLS_CONTEXT_FAILED',
+          message: 'Could not establish tenant security context.',
+        },
+      },
+      500
+    );
+  }
 });
+
+/**
+ * Best-effort detection of the connecting role's BYPASSRLS posture,
+ * logged once at boot so operators can spot a misconfigured DSN.
+ *
+ * RLS Option A only *enforces* under a NON-BYPASS role. Supabase's
+ * `postgres` / `service_role` roles carry BYPASSRLS, which silently
+ * disables every policy. This probe runs `SHOW is_superuser` +
+ * `SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user` and
+ * logs a WARN when the active role bypasses RLS so the gap is visible
+ * in the boot log rather than only in a pen-test. The probe NEVER
+ * throws into the boot path — a failure is logged and swallowed.
+ */
+export async function logRlsRolePosture(): Promise<void> {
+  const database = getDatabase();
+  if (!database) {
+    logger.info(
+      { rls: 'inactive', reason: 'no-database-url' },
+      'RLS posture: no live database — tenant policies not exercised',
+    );
+    return;
+  }
+  try {
+    const rows = (await database.execute(
+      sql`SELECT current_user AS role,
+                 (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user) AS bypassrls,
+                 current_setting('is_superuser') AS is_superuser`,
+    )) as unknown as ReadonlyArray<{
+      role?: string;
+      bypassrls?: boolean | null;
+      is_superuser?: string | null;
+    }>;
+    const row = Array.isArray(rows) ? rows[0] : (rows as { rows?: unknown[] })?.rows?.[0];
+    const r = (row ?? {}) as {
+      role?: string;
+      bypassrls?: boolean | null;
+      is_superuser?: string | null;
+    };
+    const bypasses =
+      r.bypassrls === true || String(r.is_superuser).toLowerCase() === 'on';
+    if (bypasses) {
+      logger.warn(
+        { role: r.role, bypassrls: r.bypassrls, isSuperuser: r.is_superuser },
+        'RLS posture: connecting role BYPASSES row-level security — policies are INERT. ' +
+          'For defence-in-depth, set DATABASE_URL to a NON-BYPASS role (e.g. app_authenticated).',
+      );
+    } else {
+      logger.info(
+        { role: r.role },
+        'RLS posture: connecting role enforces row-level security (non-BYPASS).',
+      );
+    }
+  } catch (error) {
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'RLS posture: could not determine connecting role BYPASSRLS attribute (probe failed; non-fatal).',
+    );
+  }
+}
 
 /**
  * Check whether test-only in-memory mode is active

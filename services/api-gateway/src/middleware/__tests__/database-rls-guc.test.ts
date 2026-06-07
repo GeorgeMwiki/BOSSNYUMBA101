@@ -325,3 +325,176 @@ describe('databaseMiddleware — RLS GUC name invariant (F2)', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// RLS Option A — transaction-scoped binding path.
+//
+// The recording stub above has NO `.transaction()` method, so it exercises
+// the LEGACY session-scoped fallback. Real drizzle clients DO expose
+// `.transaction`, which triggers the tx path: the middleware opens ONE
+// transaction, binds the GUCs with `SET LOCAL` (set_config third arg
+// `true`), exposes the tx-bound handle/repos to the handler, and commits
+// when the handler resolves. These tests lock in that behaviour with a
+// tx-capable stub.
+// ---------------------------------------------------------------------------
+
+interface TxRecordedCall {
+  readonly sqlText: string;
+  readonly params: ReadonlyArray<unknown>;
+}
+
+/**
+ * A db stub that DOES support `.transaction(fn)` so the middleware takes
+ * the RLS Option A tx path. The tx handle records every `execute` call;
+ * `.transaction` resolves with whatever the callback returns (mirroring
+ * drizzle/postgres-js commit-on-resolve semantics).
+ */
+function makeTxCapableDb(): {
+  readonly transaction: <T>(fn: (tx: unknown) => Promise<T>) => Promise<T>;
+  readonly execute: (sql: unknown) => Promise<{ rows: never[] }>;
+  readonly txCalls: ReadonlyArray<TxRecordedCall>;
+  beganTransaction: () => boolean;
+} {
+  const txCalls: TxRecordedCall[] = [];
+  let began = false;
+  const txHandle = {
+    execute: async (sql: unknown) => {
+      txCalls.push(extractSqlAndParams(sql));
+      return { rows: [] as never[] };
+    },
+    // The repository constructors call drizzle query-builder methods, but
+    // this test's handler does not touch repos, so a minimal handle is
+    // sufficient. `select`/`insert` are stubbed defensively in case repo
+    // construction touches them lazily (it does not).
+    select: () => ({ from: () => ({ where: () => [] }) }),
+  };
+  return {
+    transaction: async <T,>(fn: (tx: unknown) => Promise<T>): Promise<T> => {
+      began = true;
+      return fn(txHandle);
+    },
+    // Top-level execute should NOT be used on the tx path; record nothing.
+    execute: async () => ({ rows: [] as never[] }),
+    get txCalls() {
+      return txCalls;
+    },
+    beganTransaction: () => began,
+  };
+}
+
+function buildTxApp(tenantId: string): {
+  app: Hono;
+  db: ReturnType<typeof makeTxCapableDb>;
+  seenInsideTx: { db: unknown; repos: unknown };
+} {
+  const db = makeTxCapableDb();
+  const seenInsideTx: { db: unknown; repos: unknown } = { db: null, repos: null };
+  const app = new Hono();
+  app.use('*', async (c, next) => {
+    c.set('auth' as never, {
+      tenantId,
+      userId: 'u-tx',
+      role: 'ADMIN',
+    } as never);
+    c.set('db' as never, db as never);
+    // Pre-inject a repos object so the middleware rebuilds tenant-bound
+    // repos from the tx handle (non-null base ⇒ buildRepositories runs).
+    c.set('repos' as never, { sentinel: 'base' } as never);
+    await next();
+  });
+  app.use('*', databaseMiddleware);
+  app.get('/probe', (c) => {
+    // Capture what the handler sees so we can prove the tx handle + repos
+    // were swapped onto the context.
+    seenInsideTx.db = c.get('db' as never);
+    seenInsideTx.repos = c.get('repos' as never);
+    return c.json({ ok: true });
+  });
+  return { app, db, seenInsideTx };
+}
+
+describe('databaseMiddleware — RLS Option A tx-scoped binding', () => {
+  let original: string | undefined;
+  beforeEach(() => {
+    original = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'test';
+  });
+  afterEach(() => {
+    if (original === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = original;
+  });
+
+  it('opens ONE transaction and binds GUCs with SET LOCAL (set_config third arg = true)', async () => {
+    const { app, db } = buildTxApp(TENANT_FIXTURE);
+
+    const res = await app.request('/probe');
+    expect(res.status).toBe(200);
+
+    // The transaction must have been opened.
+    expect(db.beganTransaction()).toBe(true);
+
+    // The canonical tenant GUC must be bound exactly once inside the tx.
+    // (withTenantContext also binds the legacy `app.tenant_id` alias with
+    // the same value, so a params-only filter would match two calls — we
+    // target the canonical name specifically.)
+    const canonicalTenantCalls = db.txCalls.filter(
+      (c) =>
+        c.sqlText.includes('set_config') &&
+        c.sqlText.includes(CANONICAL_GUC) &&
+        c.params.includes(TENANT_FIXTURE),
+    );
+    expect(canonicalTenantCalls.length).toBe(1);
+    // The legacy alias is also bound (back-compat with 0146-era tooling).
+    const legacyTenantCalls = db.txCalls.filter(
+      (c) =>
+        c.sqlText.includes('set_config') &&
+        c.sqlText.includes(LEGACY_GUC) &&
+        c.params.includes(TENANT_FIXTURE),
+    );
+    expect(legacyTenantCalls.length).toBe(1);
+
+    // Every set_config call on the tx path must use SET LOCAL scope —
+    // i.e. the boolean literal `true` as the third arg. drizzle inlines
+    // boolean literals into the SQL text, so assert the rendered text
+    // carries `, true)` and never `, false)` (which would be session
+    // scope and would leak across the pooled connection).
+    const setConfigCalls = db.txCalls.filter((c) =>
+      c.sqlText.includes('set_config'),
+    );
+    expect(setConfigCalls.length).toBeGreaterThanOrEqual(1);
+    for (const call of setConfigCalls) {
+      expect(call.sqlText).toContain(', true)');
+      expect(call.sqlText).not.toContain(', false)');
+    }
+  });
+
+  it('binds the canonical GUC name and never the value via string interpolation', async () => {
+    const { app, db } = buildTxApp(TENANT_FIXTURE);
+    await app.request('/probe');
+
+    const canonical = db.txCalls.filter((c) =>
+      c.sqlText.includes(CANONICAL_GUC),
+    );
+    expect(canonical.length).toBeGreaterThanOrEqual(1);
+    // The tenant uuid must arrive as a bound parameter, not inlined.
+    for (const call of db.txCalls) {
+      if (call.sqlText.includes(CANONICAL_GUC)) {
+        expect(call.sqlText).not.toContain(TENANT_FIXTURE);
+        expect(call.params).toContain(TENANT_FIXTURE);
+      }
+    }
+  });
+
+  it('swaps the tx-bound db + repos onto the context for the handler', async () => {
+    const { app, seenInsideTx } = buildTxApp(TENANT_FIXTURE);
+    await app.request('/probe');
+
+    // The handler must NOT see the original base repos sentinel — it must
+    // see freshly-built tenant-bound repos constructed from the tx handle.
+    expect(seenInsideTx.repos).toBeTruthy();
+    expect((seenInsideTx.repos as { sentinel?: string }).sentinel).toBeUndefined();
+    // And the db on the context must be a transaction handle (it records
+    // execute calls), not the top-level client.
+    expect(seenInsideTx.db).toBeTruthy();
+  });
+});
