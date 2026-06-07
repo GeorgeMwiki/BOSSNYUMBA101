@@ -65,30 +65,33 @@ describe.skipIf(!RUN)('RLS cross-tenant isolation (real Postgres, non-BYPASS rol
 
     // 1) Create the NON-BYPASS test role + grant it the privileges it
     //    needs on the tables under test. Idempotent so re-runs are safe.
-    await db.execute(sql`
+    // NOTE: TEST_ROLE is inlined as a SQL string literal via sql.raw (it is a
+    // hardcoded constant, not user input). A bound param ($1) cannot be used
+    // inside a DO $$ ... $$ block body — Postgres raises 42P18.
+    await db.execute(sql.raw(`
       DO $$
       BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${TEST_ROLE}) THEN
-          EXECUTE format('CREATE ROLE %I NOLOGIN NOBYPASSRLS', ${TEST_ROLE});
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${TEST_ROLE}') THEN
+          EXECUTE format('CREATE ROLE %I NOLOGIN NOBYPASSRLS', '${TEST_ROLE}');
         END IF;
       END
       $$;
-    `);
+    `));
     // The 0155 RLS policies are scoped `TO authenticated`; make our test
     // role a member of `authenticated` (when that role exists — it is
     // seeded in the CI Postgres gate) so those policies apply to it. The
     // 0001 `properties_tenant_isolation` policy applies to PUBLIC anyway,
     // so isolation holds even if this membership grant is skipped — but we
     // add it to faithfully mirror the production `authenticated` posture.
-    await db.execute(sql`
+    await db.execute(sql.raw(`
       DO $$
       BEGIN
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-          EXECUTE format('GRANT authenticated TO %I', ${TEST_ROLE});
+          EXECUTE format('GRANT authenticated TO %I', '${TEST_ROLE}');
         END IF;
       END
       $$;
-    `);
+    `));
     // RLS runs AFTER the privilege check, so the role needs table grants
     // for the SELECT to reach the policy layer at all.
     await db.execute(sql`GRANT SELECT, INSERT ON public.properties TO ${sql.raw(TEST_ROLE)}`);
