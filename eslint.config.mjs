@@ -188,9 +188,17 @@ export default [
       'bossnyumba/require-csrf-headers': 'error',
 
       // ---- Security plugin tuning ----
-      // Object-injection is noisy on TS with typed keys; keep as warn so CI
-      // surfaces it but doesn't block legitimate typed array access.
-      'security/detect-object-injection': 'warn',
+      // detect-object-injection flags EVERY computed member access (obj[key])
+      // as "possible injection" — in a typed codebase this is overwhelmingly
+      // false-positive (closed const maps keyed by known literals, arrays
+      // indexed by numeric loop counters). eslint-plugin-security's own README
+      // documents this rule's very high false-positive rate. Genuine
+      // object-injection risk (user-controlled keys → prototype pollution) is
+      // mitigated by zod validation at the boundaries + security review; we
+      // disable this single noisy rule so the higher-signal security rules
+      // below (non-literal-fs, child-process, eval, no-secrets, …) aren't
+      // drowned out by ~900 FP warnings. All other security rules stay ON.
+      'security/detect-object-injection': 'off',
       'security/detect-non-literal-fs-filename': 'error',
       'security/detect-child-process': 'error',
       'security/detect-non-literal-regexp': 'warn',
