@@ -109,6 +109,16 @@ export interface HookContext {
   readonly tickStartedAt: number;
   /** Caller-supplied granted scope set (defence-in-depth for permission hook). */
   readonly grantedScopes?: ReadonlyArray<string>;
+  /**
+   * C1 — cumulative recursion depth of the CURRENT orchestrator turn in
+   * the spawn tree. The root turn is depth 0; a turn running inside a
+   * spawned child carries the child's depth so the dispatcher can govern
+   * a grandchild spawn against the cumulative tree depth (NOT a per-turn
+   * reset). Threaded by the main-loop from `OrchestratorRequest.spawnDepth`.
+   * Absent ⇒ treated as 0 (root) — backward-compatible with callers that
+   * never spawn.
+   */
+  readonly spawnDepth?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────

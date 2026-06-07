@@ -28,8 +28,10 @@ import {
   createInMemorySubAgentSpawner,
   createInMemoryWakeScheduler,
   createInMemoryMonitorRegistry,
+  createInFlightSpawnSemaphore,
   type SubAgentSpawner,
   type SubAgentSpawnContext,
+  type SubAgentSpawnHandle,
   type LoopActuators,
 } from '../adapters/loop-actuators.js';
 import type { Decision } from '../decision.js';
@@ -329,6 +331,178 @@ describe('registry dispatcher — all-variant degrade with zero actuators', () =
     expect(wake.kind).toBe('wake_ack');
     expect(monitor.kind).toBe('monitor_ack');
     expect(spawn.kind).toBe('spawn_ack');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// C1 — TRANSITIVE depth cap. The dispatcher must read the CURRENT turn's
+// depth PER-TURN from `ctx.spawnDepth` (threaded by the main-loop from the
+// child's `OrchestratorRequest.spawnDepth`), NOT from the boot-time
+// `currentDepth`. The dispatcher is a process singleton, so the boot value
+// is permanently 0 — the original non-transitive bug. These prove a
+// depth-N child refuses at the cap even though the dispatcher booted at 0.
+// ─────────────────────────────────────────────────────────────────────
+
+describe('registry dispatcher — C1 transitive depth cap (per-turn ctx.spawnDepth)', () => {
+  it('reads the child depth from ctx.spawnDepth, not the boot-time currentDepth', async () => {
+    const spawner = createInMemorySubAgentSpawner();
+    // Dispatcher booted with NO currentDepth (so the fallback is 0 — the
+    // singleton bug). The cap is 3.
+    const dispatcher = createRegistryDispatcher(emptyRegistry(), {
+      loopActuators: { subAgentSpawner: spawner, maxSpawnDepth: 3 },
+    });
+
+    // A grandchild turn carries spawnDepth=2 on its ctx → its own spawn
+    // would create a depth-3 child (allowed, == cap).
+    const ctxDepth2: HookContext = { ...CTX, spawnDepth: 2 };
+    const ok = await dispatcher.dispatch(SPAWN_DECISION, ctxDepth2);
+    expect(ok.kind).toBe('spawn_ack');
+    if (ok.kind === 'spawn_ack') {
+      // Spawner WAS invoked (depth 3 is within the cap).
+      expect(ok.handoffToken).toBe('inproc:sub-maint-1');
+    }
+    // The spawner saw the CUMULATIVE child depth (2 + 1 = 3), proving the
+    // per-turn ctx depth flowed through (not the boot 0 → child 1).
+    expect(spawner.recorded()[0]?.depth).toBe(3);
+  });
+
+  it('REFUSES a depth-N child at the cap even though the dispatcher booted at depth 0', async () => {
+    const spawner = createInMemorySubAgentSpawner();
+    const dispatcher = createRegistryDispatcher(emptyRegistry(), {
+      // Booted at the default (currentDepth 0); the singleton would never
+      // see a deeper turn if it only read boot state.
+      loopActuators: { subAgentSpawner: spawner, maxSpawnDepth: 3 },
+    });
+
+    // A depth-3 turn's spawn would create a depth-4 child → exceeds cap 3.
+    const ctxDepth3: HookContext = { ...CTX, spawnDepth: 3 };
+    const refused = await dispatcher.dispatch(SPAWN_DECISION, ctxDepth3);
+
+    expect(refused.kind).toBe('spawn_ack');
+    if (refused.kind === 'spawn_ack') {
+      expect(refused.handoffToken).toBe('refused-depth:sub-maint-1');
+    }
+    // The spawner was NEVER invoked — the transitive cap held.
+    expect(spawner.recorded()).toHaveLength(0);
+  });
+
+  it('per-turn ctx depth OVERRIDES the boot-time currentDepth fallback', async () => {
+    const spawner = createInMemorySubAgentSpawner();
+    const dispatcher = createRegistryDispatcher(emptyRegistry(), {
+      // Boot fallback says depth 0, but the ctx says depth 3 → ctx wins.
+      loopActuators: {
+        subAgentSpawner: spawner,
+        maxSpawnDepth: 3,
+        currentDepth: 0,
+      },
+    });
+    const refused = await dispatcher.dispatch(SPAWN_DECISION, {
+      ...CTX,
+      spawnDepth: 3,
+    });
+    expect(refused.kind).toBe('spawn_ack');
+    if (refused.kind === 'spawn_ack') {
+      expect(refused.handoffToken).toBe('refused-depth:sub-maint-1');
+    }
+    expect(spawner.recorded()).toHaveLength(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// C2 — process-wide in-flight concurrency cap. The dispatcher must refuse
+// a spawn cleanly (degrade-ACK, parent continues) when the shared
+// semaphore is saturated, rather than launching an unbounded number of
+// concurrent child turns.
+// ─────────────────────────────────────────────────────────────────────
+
+describe('registry dispatcher — C2 in-flight concurrency cap', () => {
+  it('refuses a spawn when the in-flight semaphore is saturated (degrade-ACK)', async () => {
+    // A spawner whose children NEVER settle, so each acquired slot stays
+    // taken — the semaphore saturates after `limit` spawns.
+    const neverSettles = new Promise<void>(() => {});
+    const blockingSpawner: SubAgentSpawner = {
+      async spawn(): Promise<SubAgentSpawnHandle> {
+        return {
+          handoffToken: 'inproc:held',
+          mode: 'in-process',
+          onSettled: neverSettles,
+        };
+      },
+    };
+    const semaphore = createInFlightSpawnSemaphore(2);
+    const dispatcher = createRegistryDispatcher(emptyRegistry(), {
+      loopActuators: {
+        subAgentSpawner: blockingSpawner,
+        inFlightSpawns: semaphore,
+      },
+    });
+
+    const a = await dispatcher.dispatch(SPAWN_DECISION, CTX);
+    const b = await dispatcher.dispatch(SPAWN_DECISION, CTX);
+    const c = await dispatcher.dispatch(SPAWN_DECISION, CTX);
+
+    // First two acquire slots and launch; the third is refused.
+    expect(a.kind).toBe('spawn_ack');
+    expect(b.kind).toBe('spawn_ack');
+    expect(c.kind).toBe('spawn_ack');
+    if (c.kind === 'spawn_ack') {
+      expect(c.handoffToken).toBe('refused-concurrency:sub-maint-1');
+    }
+    expect(semaphore.inFlight()).toBe(2);
+  });
+
+  it('releases the slot when a child settles, admitting the next spawn', async () => {
+    let resolveChild: () => void = () => {};
+    const settle = new Promise<void>((r) => {
+      resolveChild = r;
+    });
+    const spawner: SubAgentSpawner = {
+      async spawn(): Promise<SubAgentSpawnHandle> {
+        return { handoffToken: 'inproc:x', mode: 'in-process', onSettled: settle };
+      },
+    };
+    const semaphore = createInFlightSpawnSemaphore(1);
+    const dispatcher = createRegistryDispatcher(emptyRegistry(), {
+      loopActuators: { subAgentSpawner: spawner, inFlightSpawns: semaphore },
+    });
+
+    const first = await dispatcher.dispatch(SPAWN_DECISION, CTX);
+    expect(first.kind).toBe('spawn_ack');
+    expect(semaphore.inFlight()).toBe(1);
+
+    // Saturated → next refuses.
+    const blocked = await dispatcher.dispatch(SPAWN_DECISION, CTX);
+    if (blocked.kind === 'spawn_ack') {
+      expect(blocked.handoffToken).toBe('refused-concurrency:sub-maint-1');
+    }
+
+    // Child completes → slot frees.
+    resolveChild();
+    await settle;
+    await Promise.resolve();
+    expect(semaphore.inFlight()).toBe(0);
+
+    // Now a new spawn is admitted again.
+    const admitted = await dispatcher.dispatch(SPAWN_DECISION, CTX);
+    if (admitted.kind === 'spawn_ack') {
+      expect(admitted.handoffToken).toBe('inproc:x');
+    }
+  });
+
+  it('releases the slot when the spawner throws (no concurrency-budget leak)', async () => {
+    const throwingSpawner: SubAgentSpawner = {
+      async spawn(): Promise<never> {
+        throw new Error('spawn infra down');
+      },
+    };
+    const semaphore = createInFlightSpawnSemaphore(1);
+    const dispatcher = createRegistryDispatcher(emptyRegistry(), {
+      loopActuators: { subAgentSpawner: throwingSpawner, inFlightSpawns: semaphore },
+    });
+    const result = await dispatcher.dispatch(SPAWN_DECISION, CTX);
+    expect(result.kind).toBe('spawn_ack');
+    // The slot taken before the throw was released on the degrade path.
+    expect(semaphore.inFlight()).toBe(0);
   });
 });
 

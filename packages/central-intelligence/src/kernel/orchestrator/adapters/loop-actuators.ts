@@ -75,9 +75,27 @@ export interface SubAgentSpawnHandle {
    * crash-resilient scheduler; `in-process` = spawned on a background
    * task in the current process (degrade when no durable infra);
    * `refused-depth` = the recursion cap blocked the spawn (the parent
-   * still continues, the child never runs).
+   * still continues, the child never runs); `refused-concurrency` = the
+   * process-wide in-flight semaphore was saturated (the parent continues,
+   * the child never runs).
    */
-  readonly mode: 'durable' | 'in-process' | 'refused-depth';
+  readonly mode:
+    | 'durable'
+    | 'in-process'
+    | 'refused-depth'
+    | 'refused-concurrency';
+  /**
+   * C2 — optional completion signal for fire-and-forget child turns. When
+   * the spawner can observe the child's lifetime (e.g. the in-process
+   * fallback that runs the child on a detached task), it resolves this
+   * promise when the child finishes so the dispatcher releases its
+   * in-flight-spawn slot at the RIGHT time (true concurrency cap, not just
+   * admission control). Absent ⇒ the dispatcher releases the slot
+   * immediately on spawn (admission-rate cap) — still bounded, never a
+   * leak. The promise NEVER rejects: a child failure resolves it (the
+   * spawner logs the failure separately).
+   */
+  readonly onSettled?: Promise<void>;
 }
 
 /**
@@ -207,12 +225,80 @@ export interface LoopActuators {
    */
   readonly maxSpawnDepth?: number;
   /**
-   * The depth of the CURRENT orchestrator turn. The root turn is 0; a
-   * dispatcher running inside a spawned child is constructed with this
-   * set to the child's depth so a grandchild spawn is governed against
-   * the cumulative tree depth. Defaults to 0 (root).
+   * C1 — the depth of the CURRENT orchestrator turn used as a FALLBACK
+   * when the per-turn `HookContext.spawnDepth` is absent. The dispatcher
+   * is a process singleton, so this boot-time value alone is NON-
+   * TRANSITIVE (it never changes per child turn). The dispatcher now reads
+   * `ctx.spawnDepth` PER-TURN first and only falls back to this when the
+   * context carries no depth. Defaults to 0 (root). Retained for
+   * backward-compat + tests that exercise the dispatcher without threading
+   * a per-turn ctx depth.
    */
   readonly currentDepth?: number;
+  /**
+   * C2 — per-turn breadth cap. The maximum number of `spawn_sub_md`
+   * Decisions a SINGLE orchestrator turn may actuate. Without this, a turn
+   * that emits N spawns × depth fans out N^depth children. A turn that
+   * exceeds the count gets a clean degrade-ACK (NOT an unbounded fan-out).
+   * Enforced in the main loop alongside the depth cap. Defaults to
+   * `DEFAULT_MAX_SPAWNS_PER_TURN`. A value of 0 forbids ALL spawning.
+   */
+  readonly maxSpawnsPerTurn?: number;
+  /**
+   * C2 — process-wide in-flight-spawn ceiling. The maximum number of
+   * concurrent child turns the spawner may have running at once across the
+   * WHOLE process. A spawn attempted while the semaphore is saturated gets
+   * a clean degrade-ACK (`refused-concurrency`) rather than piling on. The
+   * dispatcher acquires a slot BEFORE invoking the spawner and the
+   * fire-and-forget child releases it on completion. Defaults to
+   * `DEFAULT_MAX_IN_FLIGHT_SPAWNS`.
+   */
+  readonly inFlightSpawns?: InFlightSpawnSemaphore;
+}
+
+/**
+ * C2 — process-wide in-flight-spawn semaphore. A non-blocking counter the
+ * dispatcher consults before launching a child turn: `tryAcquire()` returns
+ * `false` (the dispatcher then degrade-ACKs) when the ceiling is reached, and
+ * `release()` frees a slot when a child completes. Deliberately synchronous +
+ * non-blocking — the orchestrator must NEVER await a free slot (that would
+ * stall the parent turn); it refuses the excess spawn cleanly instead.
+ */
+export interface InFlightSpawnSemaphore {
+  /** Try to take one slot. Returns true on success, false when saturated. */
+  tryAcquire(): boolean;
+  /** Release one slot previously taken. Idempotent-safe: never goes < 0. */
+  release(): void;
+  /** Current number of taken slots (diagnostics / tests). */
+  inFlight(): number;
+  /** The configured ceiling (diagnostics / tests). */
+  readonly limit: number;
+}
+
+/**
+ * Build a process-wide in-flight-spawn semaphore. One instance is shared by
+ * the composition root across every dispatcher in the process so the ceiling
+ * bounds the WHOLE spawn tree, not a single turn.
+ */
+export function createInFlightSpawnSemaphore(
+  limit: number = DEFAULT_MAX_IN_FLIGHT_SPAWNS,
+): InFlightSpawnSemaphore {
+  const ceiling = Math.max(0, Math.floor(limit));
+  let taken = 0;
+  return {
+    tryAcquire(): boolean {
+      if (taken >= ceiling) return false;
+      taken += 1;
+      return true;
+    },
+    release(): void {
+      if (taken > 0) taken -= 1;
+    },
+    inFlight(): number {
+      return taken;
+    },
+    limit: ceiling,
+  };
 }
 
 /**
@@ -223,6 +309,22 @@ export interface LoopActuators {
  * fail-closed ceiling against an LLM that loops on self-spawn.
  */
 export const DEFAULT_MAX_SPAWN_DEPTH = 3;
+
+/**
+ * C2 — default per-turn breadth cap. A single turn may actuate at most 5
+ * `spawn_sub_md` Decisions; the 6th refuses cleanly. Chosen small: a real
+ * property-ops turn rarely needs to fan out to more than a handful of
+ * sub-MDs at once, and bounding breadth × the depth cap keeps the worst-case
+ * tree (5^3 = 125) far below a host-exhausting blow-up.
+ */
+export const DEFAULT_MAX_SPAWNS_PER_TURN = 5;
+
+/**
+ * C2 — default process-wide in-flight-spawn ceiling. At most 16 child turns
+ * may run concurrently across the whole process. Bounds peak resource use
+ * regardless of how many parent turns are live; excess spawns degrade-ACK.
+ */
+export const DEFAULT_MAX_IN_FLIGHT_SPAWNS = 16;
 
 // ─────────────────────────────────────────────────────────────────────
 // In-memory recorders — degrade-path sinks + deterministic test doubles.

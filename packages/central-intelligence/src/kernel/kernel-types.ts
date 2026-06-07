@@ -171,6 +171,16 @@ export interface ThoughtRequest {
    * sensor call. Absent action ⇒ tier-policy gate is a no-op.
    */
   readonly action?: string;
+  /**
+   * C1 — cumulative recursion depth of this turn in the sub-MD spawn tree.
+   * The root turn omits this (treated as 0); when the composition root
+   * re-invokes `think()` for a freshly-spawned child sub-MD it forwards
+   * the child's depth here so the orchestrator's depth cap bounds the
+   * CUMULATIVE tree across durable + in-process hops, not a per-turn reset.
+   * Threaded straight through to `OrchestratorRequest.spawnDepth` by
+   * `toOrchestratorRequest`. The legacy 13-step pipeline ignores it.
+   */
+  readonly spawnDepth?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────

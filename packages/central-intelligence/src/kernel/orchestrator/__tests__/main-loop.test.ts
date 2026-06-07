@@ -679,3 +679,83 @@ describe('main-loop think()', () => {
     expect(stopCount).toBe(1);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// C2 — per-turn spawn-count cap. A single turn must NOT actuate more than
+// `maxSpawnsPerTurn` spawns; once the cap is hit the loop refuses further
+// spawns this turn (continues, but no dispatch) so a turn cannot fan out
+// an unbounded child tree.
+// ─────────────────────────────────────────────────────────────────────
+
+describe('main-loop C2 — per-turn spawn-count cap', () => {
+  function backgroundSpawnDecision(n: number): Decision {
+    return {
+      kind: 'spawn_sub_md',
+      spawn: {
+        subMdId: `sub-${n}`,
+        scope: {
+          kind: 'tenant',
+          tenantId: 't_1',
+          actorUserId: 'u_1',
+          roles: ['owner'],
+          personaId: 'p_1',
+        },
+        initialInput: {},
+        prompt: 'do sub-task',
+        // fire-and-forget so the parent keeps looping and can emit more.
+        fireAndForget: true,
+      },
+    };
+  }
+
+  it('actuates at most maxSpawnsPerTurn spawns, refusing the rest cleanly', async () => {
+    const dispatcher = recordingDispatcher();
+    // The router emits a NEW background spawn every tick — left uncapped it
+    // would dispatch one per turn until budget exhaustion (maxTurns).
+    let n = 0;
+    const router: LLMRouter = {
+      async call(): Promise<Decision> {
+        n += 1;
+        return backgroundSpawnDecision(n);
+      },
+    };
+    const deps: OrchestratorDeps = {
+      ...makeDeps(router, dispatcher),
+      // mutate-tier spawns are allowed under default permission mode.
+      toolRiskTier: () => 'mutate',
+      maxSpawnsPerTurn: 2,
+    };
+    const req: OrchestratorRequest = { ...makeReq(), budget: { maxTurns: 10 } };
+
+    const out = await think(req, deps);
+
+    // Loop ran to budget exhaustion (plan never completes), but only 2
+    // spawns were ever dispatched — the cap held across the whole turn.
+    const spawnDispatches = dispatcher.calls.filter(
+      (d) => d.kind === 'spawn_sub_md',
+    );
+    expect(spawnDispatches).toHaveLength(2);
+    expect(out.kind).toBe('budget-exhausted');
+  });
+
+  it('maxSpawnsPerTurn=0 forbids ALL spawning this turn', async () => {
+    const dispatcher = recordingDispatcher();
+    let n = 0;
+    const router: LLMRouter = {
+      async call(): Promise<Decision> {
+        n += 1;
+        return backgroundSpawnDecision(n);
+      },
+    };
+    const deps: OrchestratorDeps = {
+      ...makeDeps(router, dispatcher),
+      toolRiskTier: () => 'mutate',
+      maxSpawnsPerTurn: 0,
+    };
+    const req: OrchestratorRequest = { ...makeReq(), budget: { maxTurns: 5 } };
+    await think(req, deps);
+    expect(
+      dispatcher.calls.filter((d) => d.kind === 'spawn_sub_md'),
+    ).toHaveLength(0);
+  });
+});

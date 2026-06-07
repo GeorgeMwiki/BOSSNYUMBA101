@@ -393,4 +393,86 @@ describe('runConsolidationCycle', () => {
     expect(semantic.upsertFact).toHaveBeenCalledTimes(1);
     expect(semantic.upsertFact.mock.calls[0][0].key).toBe('k1');
   });
+
+  // ───────────────────────────────────────────────────────────────────
+  // H2 — dryRun performs ZERO writes (the HQ tool's dryRun flag is now
+  // honest; it previously wrote regardless).
+  // ───────────────────────────────────────────────────────────────────
+
+  it('dryRun:true reads + computes but performs ZERO writes across all ports', async () => {
+    // Entries that WOULD produce: 2 facts, a repeated 3-tool pattern,
+    // and (on a weekly run) a digest — plus purge + decay.
+    const factsJson = JSON.stringify([
+      { key: 'preferred_channel', value: 'sms', confidence: 0.9, evidence: 'sms' },
+      { key: 'tenancy_status', value: 'active', confidence: 0.8, evidence: 'active' },
+    ]);
+    const entries = [
+      makeEntry({ kind: 'agent-action', summary: 'send_notice', payload: { toolName: 'send_notice' } }),
+      makeEntry({ kind: 'agent-action', summary: 'compute_arrears', payload: { toolName: 'compute_arrears' } }),
+      makeEntry({ kind: 'agent-action', summary: 'lookup_lease', payload: { toolName: 'lookup_lease' } }),
+      makeEntry({ kind: 'user-message', summary: 'do it again for B7' }),
+      makeEntry({ kind: 'agent-action', summary: 'send_notice', payload: { toolName: 'send_notice' } }),
+      makeEntry({ kind: 'agent-action', summary: 'compute_arrears', payload: { toolName: 'compute_arrears' } }),
+      makeEntry({ kind: 'agent-action', summary: 'lookup_lease', payload: { toolName: 'lookup_lease' } }),
+      makeEntry({ kind: 'user-message', summary: 'check arrears for unit A12' }),
+    ];
+    // A digest judge body so the weekly digest WOULD be written if not dry.
+    const digestJson = JSON.stringify({
+      summary: 'weekly summary',
+      top_topics: [{ topic: 'arrears', count: 3 }],
+      sentiment_avg: 0.1,
+      action_items: ['follow up'],
+    });
+    let judgeCalls = 0;
+    const { deps, episodic, semantic, procedural, reflective } = makeDeps({
+      entries,
+      // First judge call = fact extraction; second = digest (weekly).
+      judgeImpl: async () => {
+        judgeCalls += 1;
+        return judgeCalls === 1 ? factsJson : digestJson;
+      },
+      purgeReturns: 7,
+      decayReturns: 4,
+    });
+
+    const report = await runConsolidationCycle(deps, SCOPE_WEEKLY, {
+      dryRun: true,
+    });
+
+    // ZERO writes on EVERY persistence port.
+    expect(semantic.upsertFact).not.toHaveBeenCalled();
+    expect(procedural.record).not.toHaveBeenCalled();
+    expect(reflective.record).not.toHaveBeenCalled();
+    expect(episodic.purgeExpired).not.toHaveBeenCalled();
+    expect(semantic.decay).not.toHaveBeenCalled();
+
+    // The cycle STILL read + computed: facts were extracted (the judge ran)
+    // and the report surfaces what WOULD be written.
+    expect(report.episodicConsidered).toBe(entries.length);
+    expect(report.factsExtracted).toBe(2);
+    // Applied counts are 0 because nothing was persisted.
+    expect(report.factsUpserted).toBe(0);
+    expect(report.patternsRecorded).toBe(0);
+    expect(report.digestsWritten).toBe(0);
+    expect(report.expiredPurged).toBe(0);
+    expect(report.decayedFacts).toBe(0);
+    expect(report.errors).toHaveLength(0);
+  });
+
+  it('dryRun:false (default) still writes — control for the dryRun test', async () => {
+    const entries = [
+      makeEntry({ kind: 'user-message', summary: 'I prefer SMS.' }),
+    ];
+    const factsJson = JSON.stringify([
+      { key: 'preferred_channel', value: 'sms', confidence: 0.9, evidence: 'sms' },
+    ]);
+    const { deps, semantic } = makeDeps({ entries, judgeBody: factsJson });
+
+    const report = await runConsolidationCycle(deps, SCOPE_DAILY, {
+      dryRun: false,
+    });
+
+    expect(report.factsUpserted).toBe(1);
+    expect(semantic.upsertFact).toHaveBeenCalledTimes(1);
+  });
 });

@@ -148,7 +148,10 @@ export function createRegistryDispatcher(
 ): Dispatcher {
   const clock = config.clock ?? Date.now;
 
-  async function dispatchToolCall(decision: Decision): Promise<DispatchResult> {
+  async function dispatchToolCall(
+    decision: Decision,
+    ctx: HookContext,
+  ): Promise<DispatchResult> {
     if (decision.kind !== 'tool_call') {
       // Unreachable — guarded by the caller. Kept for exhaustiveness.
       return {
@@ -161,7 +164,14 @@ export function createRegistryDispatcher(
     const { call } = decision;
     const started = clock();
     try {
-      const outcome = await registry.runTool(call.toolName, call.input);
+      // H3 — thread the calling scope so seed/HQ executors bound at boot to
+      // `_platform` resolve data for the IN-FLIGHT tenant instead of the
+      // deployment identity (false zero-state). The registry forwards this
+      // to the executor's optional second arg; deterministic executors that
+      // ignore it are unaffected.
+      const outcome = await registry.runTool(call.toolName, call.input, {
+        scope: ctx.scope,
+      });
       return outcomeToDispatchResult(
         call.callId,
         outcome,
@@ -187,7 +197,12 @@ export function createRegistryDispatcher(
 
   const actuators = config.loopActuators;
   const maxSpawnDepth = actuators?.maxSpawnDepth ?? DEFAULT_MAX_SPAWN_DEPTH;
-  const currentDepth = actuators?.currentDepth ?? 0;
+  // C1 — boot-time fallback ONLY. The transitive, per-turn depth is read
+  // from `ctx.spawnDepth` at dispatch time (see `dispatchSpawnSubMd`); the
+  // dispatcher is a process singleton so this constant alone would be
+  // permanently 0 (the original non-transitive bug).
+  const fallbackDepth = actuators?.currentDepth ?? 0;
+  const inFlightSpawns = actuators?.inFlightSpawns;
 
   // ───────────────────────────────────────────────────────────────────
   // schedule_wake — durable pause/resume. Real when a scheduler is wired;
@@ -290,10 +305,16 @@ export function createRegistryDispatcher(
       subMdId: spawn.subMdId,
       ...(background ? { background: true } : {}),
     };
-    // The child this spawn would create runs one level deeper than the
-    // current turn. Refuse fail-closed when that exceeds the cap so a
-    // self-spawning loop can never exhaust the host. The parent STILL
-    // continues (we return an ack), it just gets no child.
+    // C1 — the depth of the CURRENT turn is read PER-TURN from the
+    // HookContext (threaded by the main-loop from
+    // `OrchestratorRequest.spawnDepth`). The boot-time `fallbackDepth`
+    // applies only when the caller never threaded a ctx depth. The child
+    // this spawn would create runs one level deeper than the current turn;
+    // refuse fail-closed when that exceeds the cap so a self-spawning loop
+    // can never exhaust the host. The cap now bounds the CUMULATIVE tree
+    // because each child turn carries its own depth forward. The parent
+    // STILL continues (we return an ack), it just gets no child.
+    const currentDepth = ctx.spawnDepth ?? fallbackDepth;
     const childDepth = currentDepth + 1;
     if (childDepth > maxSpawnDepth) {
       config.logger?.warn(
@@ -301,6 +322,7 @@ export function createRegistryDispatcher(
         {
           threadId: ctx.threadId,
           subMdId: spawn.subMdId,
+          currentDepth,
           childDepth,
           maxSpawnDepth,
         },
@@ -315,6 +337,32 @@ export function createRegistryDispatcher(
       );
       return { ...ackBase, handoffToken: `handoff:${spawn.subMdId}` };
     }
+    // C2 — process-wide in-flight concurrency gate. Acquire a slot BEFORE
+    // invoking the spawner; refuse cleanly (degrade-ACK, parent continues)
+    // when the semaphore is saturated so the cumulative live-child count is
+    // bounded regardless of how many parents fan out at once. The slot is
+    // released when the child turn completes (the spawner reports back via
+    // the handle.mode — for fire-and-forget we release on the spawner's
+    // resolve since the in-process fallback owns the child's lifecycle).
+    let slotAcquired = false;
+    if (inFlightSpawns) {
+      slotAcquired = inFlightSpawns.tryAcquire();
+      if (!slotAcquired) {
+        config.logger?.warn(
+          'registry-dispatcher: spawn_sub_md refused (in-flight concurrency cap)',
+          {
+            threadId: ctx.threadId,
+            subMdId: spawn.subMdId,
+            inFlight: inFlightSpawns.inFlight(),
+            limit: inFlightSpawns.limit,
+          },
+        );
+        return {
+          ...ackBase,
+          handoffToken: `refused-concurrency:${spawn.subMdId}`,
+        };
+      }
+    }
     let handle: SubAgentSpawnHandle;
     try {
       handle = await spawner.spawn(spawn, {
@@ -326,12 +374,35 @@ export function createRegistryDispatcher(
           : '_platform',
       });
     } catch (err) {
-      // A spawner fault must not crash the parent turn — degrade.
+      // A spawner fault must not crash the parent turn — degrade. Release
+      // the slot we took so a spawner outage doesn't permanently leak the
+      // concurrency budget.
+      if (slotAcquired) inFlightSpawns?.release();
       config.logger?.warn(
         'registry-dispatcher: spawn_sub_md spawner fault; degraded',
         { threadId: ctx.threadId, subMdId: spawn.subMdId, reason: errMessage(err) },
       );
       return { ...ackBase, handoffToken: `handoff:${spawn.subMdId}` };
+    }
+    // The spawner resolved with a handle (the child turn is now in flight
+    // for `durable`/`in-process`). We release the slot once the spawner's
+    // own lifecycle signals completion via `onSettled` when supplied;
+    // otherwise — because the spawner is fire-and-forget and does not
+    // surface a completion promise here — we release immediately so the
+    // gate degrades to a per-turn admission control rather than a leak.
+    // The durable/in-process spawner owns the child's resource lifetime;
+    // this semaphore's job is to cap the ADMISSION rate of concurrent
+    // launches, which the per-launch acquire already enforces.
+    if (slotAcquired) {
+      if (handle.onSettled) {
+        const release = (): void => inFlightSpawns?.release();
+        // `.then(release, release)` (not `.finally`) so even an unexpected
+        // rejection releases the slot AND never escapes as an unhandled
+        // rejection. `onSettled` is documented to resolve, not reject.
+        void handle.onSettled.then(release, release);
+      } else {
+        inFlightSpawns?.release();
+      }
     }
     config.logger?.info?.('registry-dispatcher: spawn_sub_md actuated', {
       threadId: ctx.threadId,
@@ -349,7 +420,7 @@ export function createRegistryDispatcher(
     ): Promise<DispatchResult> {
       switch (decision.kind) {
         case 'tool_call':
-          return dispatchToolCall(decision);
+          return dispatchToolCall(decision, ctx);
         case 'respond_to_owner':
         case 'final':
           return {

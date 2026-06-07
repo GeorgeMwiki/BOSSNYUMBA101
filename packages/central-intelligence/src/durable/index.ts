@@ -66,6 +66,7 @@ export {
   ORCHESTRATOR_MONITOR_EVENT,
   type DurableLoopActuators,
   type DurableLoopActuatorsDeps,
+  type DurableDegradeRecorder,
   type ChildTurnRunner,
   type ResumeTurnRunner,
   type MonitorChecker,

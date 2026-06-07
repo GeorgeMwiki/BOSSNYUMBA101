@@ -3159,6 +3159,7 @@ function toOrchestratorRequest(req: ThoughtRequest): OrchestratorRequest {
     tier: ThoughtRequest['tier'];
     persona: string;
     grantedScopes?: ReadonlyArray<string>;
+    spawnDepth?: number;
   } = {
     threadId: req.threadId,
     userMessage: req.userMessage,
@@ -3172,6 +3173,13 @@ function toOrchestratorRequest(req: ThoughtRequest): OrchestratorRequest {
   };
   if (req.grantedScopes && req.grantedScopes.length > 0) {
     base.grantedScopes = req.grantedScopes;
+  }
+  // C1 — forward the cumulative spawn-tree depth so the orchestrator's
+  // depth cap is transitive: a child sub-MD turn carries its depth into
+  // the main-loop, which threads it onto `HookContext.spawnDepth` for the
+  // dispatcher's per-turn cap check.
+  if (typeof req.spawnDepth === 'number') {
+    base.spawnDepth = req.spawnDepth;
   }
   return base;
 }

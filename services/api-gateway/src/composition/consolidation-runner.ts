@@ -79,6 +79,21 @@ export interface ConsolidationRunnerOptions {
   readonly cycleConfig?: Partial<ConsolidationConfig>;
   /** Haiku model id; defaults to the dynamic-registry's "haiku" family. */
   readonly modelId?: string;
+  /**
+   * H2 — scope the tick to a SINGLE tenant. When set, active-scope
+   * discovery is filtered to this tenant only so a tenant-scoped HQ tool
+   * call processes that tenant's memory instead of fanning across EVERY
+   * tenant (the prior behaviour, which ignored the caller's tenantId).
+   * `null` / omitted ⇒ all active tenants (the platform-wide tick).
+   */
+  readonly tenantId?: string | null;
+  /**
+   * H2 — dry-run. When `true`, every cycle runs in read-only/compute mode
+   * (no memory writes). Threaded into each `runConsolidationCycle` via the
+   * cycle config so the HQ tool's advertised `dryRun:true` is honest
+   * instead of writing regardless.
+   */
+  readonly dryRun?: boolean;
 }
 
 export interface ConsolidationRunnerSummary {
@@ -138,6 +153,14 @@ export async function runConsolidationForActiveTenants(
     return { ...emptySummary(), errors: [asMsg(error)] };
   }
 
+  // H2 — when a tenantId is supplied, scope the tick to that tenant only so
+  // a tenant-scoped HQ tool call does NOT fan out across every tenant. We
+  // filter post-discovery (rather than push the predicate into the SQL) so
+  // a custom `discoverScopes` override is honoured uniformly.
+  if (options.tenantId !== undefined && options.tenantId !== null) {
+    scopes = scopes.filter((s) => s.tenantId === options.tenantId);
+  }
+
   const deps: ConsolidationDeps = {
     episodic,
     semantic,
@@ -154,6 +177,14 @@ export async function runConsolidationForActiveTenants(
   const reports: ConsolidationReport[] = [];
   const errors: string[] = [];
 
+  // H2 — fold the runner-level dryRun into the per-cycle config so every
+  // cycle runs read-only when the caller requested a dry-run. An explicit
+  // `cycleConfig.dryRun` is preserved if the caller set one directly.
+  const cycleConfig: Partial<ConsolidationConfig> | undefined =
+    options.dryRun === true
+      ? { ...(options.cycleConfig ?? {}), dryRun: true }
+      : options.cycleConfig;
+
   for (const scope of scopes) {
     const cycleScope: ConsolidationScope = {
       tenantId: scope.tenantId,
@@ -164,7 +195,7 @@ export async function runConsolidationForActiveTenants(
       const report = await runConsolidationCycle(
         deps,
         cycleScope,
-        options.cycleConfig,
+        cycleConfig,
       );
       reports.push(report);
       factsUpserted += report.factsUpserted;

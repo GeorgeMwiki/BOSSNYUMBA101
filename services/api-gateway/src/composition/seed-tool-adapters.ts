@@ -20,12 +20,14 @@
  *                                    record" rather than crashing. Flip to
  *                                    a real adapter when the registry lands.
  *
- * The kernel's `BrainToolSpec.executor` is `(input) => Promise<output>`
- * with NO scope parameter — the deps are bound ONCE at composition time.
- * These adapters therefore close over the deployment `tenantId` the
- * brain-kernel wiring is constructed under (`_platform` on the primary
- * path). The per-request principal is re-bound by the kernel tool
- * pipeline when a tenant-scoped turn dispatches the tool.
+ * H3 — per-turn tenant scoping. The kernel's `BrainToolSpec.executor` now
+ * receives an optional `BrainToolInvocationContext` carrying the CALLING
+ * scope (the dispatcher threads `HookContext.scope` through
+ * `registry.runTool(name, input, { scope })`). These adapters read the
+ * tenant from that per-turn scope and fall back to the boot-time
+ * `deps.tenantId` (`_platform` on the primary path) ONLY when no
+ * tenant-scoped context is supplied. A tenant-scoped turn therefore yields
+ * THAT tenant's arrears / market-rate rather than the platform zero-state.
  *
  * Every adapter degrades gracefully: a missing case / missing snapshot
  * resolves to a valid zero-state output (never a throw), and a hard DB
@@ -52,6 +54,7 @@ type MarketRateSnapshotShape = Awaited<
 >[number];
 import type {
   SeedBrainToolDeps,
+  BrainToolInvocationContext,
   LookupTenantArrearsInput,
   LookupTenantArrearsOutput,
   GetMarketRateBandInput,
@@ -85,6 +88,26 @@ export interface SeedToolAdapterDeps {
 const DEFAULT_CURRENCY = 'TZS';
 
 /**
+ * H3 — resolve the tenant the executor should bind to for THIS call. Prefer
+ * the per-turn calling scope (a tenant-scoped turn carries
+ * `scope.kind === 'tenant'` + `tenantId`); fall back to the boot-time
+ * deployment tenant (`_platform` on the primary path) ONLY when no
+ * tenant-scoped context is supplied (e.g. a platform-HQ turn or a legacy
+ * caller that did not thread scope). This is what makes a tenant-scoped turn
+ * yield that tenant's data instead of the platform zero-state.
+ */
+function resolveTenantId(
+  deps: SeedToolAdapterDeps,
+  ctx?: BrainToolInvocationContext,
+): string {
+  const scope = ctx?.scope;
+  if (scope && scope.kind === 'tenant' && scope.tenantId) {
+    return scope.tenantId;
+  }
+  return deps.tenantId;
+}
+
+/**
  * Build the real-backed seed-tool deps. The two backed tools delegate to
  * existing infrastructure; `checkComplianceCertificate` degrades honestly
  * (no registry adapter exists).
@@ -108,7 +131,10 @@ function makeLookupTenantArrears(
   const projection = createArrearsProjectionService();
   return async (
     input: LookupTenantArrearsInput,
+    ctx?: BrainToolInvocationContext,
   ): Promise<LookupTenantArrearsOutput> => {
+    // H3 — bind to the IN-FLIGHT tenant, not the boot-time `_platform`.
+    const tenantId = resolveTenantId(deps, ctx);
     const asOf = input.asOfDate ? new Date(input.asOfDate) : new Date();
     const asOfDate = isValidDate(asOf)
       ? asOf.toISOString().slice(0, 10)
@@ -120,7 +146,7 @@ function makeLookupTenantArrears(
     let loaded: Awaited<ReturnType<ArrearsEntryLoader>>;
     try {
       loaded = await deps.arrearsEntryLoader({
-        tenantId: deps.tenantId,
+        tenantId,
         arrearsCaseId: input.tenantProfileId,
       });
     } catch (err) {
@@ -145,7 +171,7 @@ function makeLookupTenantArrears(
     }
 
     const result = projection.project({
-      tenantId: deps.tenantId,
+      tenantId,
       arrearsCaseId: input.tenantProfileId,
       customerId: loaded.customerId,
       currency: loaded.currency,
@@ -175,13 +201,16 @@ function makeGetMarketRateBand(
 ): SeedBrainToolDeps['getMarketRateBand'] {
   return async (
     input: GetMarketRateBandInput,
+    ctx?: BrainToolInvocationContext,
   ): Promise<GetMarketRateBandOutput> => {
+    // H3 — bind to the IN-FLIGHT tenant, not the boot-time `_platform`.
+    const tenantId = resolveTenantId(deps, ctx);
     let snapshots: ReadonlyArray<MarketRateSnapshotShape>;
     try {
-      snapshots = await service.listRecent(deps.tenantId, { limit: 50 });
+      snapshots = await service.listRecent(tenantId, { limit: 50 });
     } catch (err) {
       deps.logger?.warn?.(
-        { err: errMessage(err), tenantId: deps.tenantId },
+        { err: errMessage(err), tenantId },
         'seed-tool getMarketRateBand: snapshot read failed',
       );
       throw err instanceof Error ? err : new Error('market-rate read failed');

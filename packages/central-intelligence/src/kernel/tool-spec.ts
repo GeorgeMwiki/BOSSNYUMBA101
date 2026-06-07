@@ -34,10 +34,29 @@
  */
 
 import { z } from 'zod';
+import type { ScopeContext } from '../types.js';
 
 // ---------- Public types ----------
 
 export type BrainToolTier = 'free' | 'pro' | 'enterprise';
+
+/**
+ * H3 — per-invocation context threaded to a tool executor at dispatch
+ * time. The deterministic tool layer is composed ONCE at boot, so an
+ * executor that needs the in-flight tenant (e.g. the arrears / market-rate
+ * seed tools) cannot close over it — it must read it PER CALL from here.
+ * Optional + back-compatible: executors that ignore the second arg keep
+ * their old `(input) => Promise<output>` shape and behaviour.
+ */
+export interface BrainToolInvocationContext {
+  /**
+   * Scope (tenant | platform) of the turn that emitted this tool call. The
+   * dispatcher threads `HookContext.scope` here so a seed tool resolves
+   * data for the CALLING tenant rather than the boot-time `_platform`
+   * deployment identity.
+   */
+  readonly scope?: ScopeContext;
+}
 
 export interface BrainToolSpec<I = unknown, O = unknown> {
   readonly name: string;
@@ -46,7 +65,16 @@ export interface BrainToolSpec<I = unknown, O = unknown> {
   readonly schemaOut: z.ZodType<O>;
   readonly tier: BrainToolTier;
   readonly requiresApproval: boolean;
-  readonly executor: (input: I) => Promise<O>;
+  /**
+   * Execute the tool. The optional second arg carries the per-invocation
+   * context (today: the calling scope) so executors can bind to the
+   * in-flight tenant instead of a boot constant (H3). Executors that don't
+   * need it simply omit the parameter.
+   */
+  readonly executor: (
+    input: I,
+    ctx?: BrainToolInvocationContext,
+  ) => Promise<O>;
 }
 
 export interface BrainToolAuditRow {
@@ -75,7 +103,16 @@ export interface BrainToolRegistry {
   register<I, O>(spec: BrainToolSpec<I, O>): void;
   get(name: string): BrainToolSpec | null;
   list(): ReadonlyArray<BrainToolSpec>;
-  runTool<O>(name: string, payload: unknown): Promise<BrainToolOutcome<O>>;
+  /**
+   * Run a tool by name. The optional `ctx` carries the per-invocation
+   * context (today: the calling scope) so the executor can bind to the
+   * in-flight tenant (H3). Omitting it preserves the prior behaviour.
+   */
+  runTool<O>(
+    name: string,
+    payload: unknown,
+    ctx?: BrainToolInvocationContext,
+  ): Promise<BrainToolOutcome<O>>;
   clear(): void;
 }
 
@@ -129,6 +166,7 @@ export function createBrainToolRegistry(
   async function runTool<O>(
     name: string,
     payload: unknown,
+    invocationCtx?: BrainToolInvocationContext,
   ): Promise<BrainToolOutcome<O>> {
     const spec = specs.get(name);
     if (!spec) {
@@ -154,7 +192,10 @@ export function createBrainToolRegistry(
 
     let raw: unknown;
     try {
-      raw = await spec.executor(inputParse.data);
+      // H3 — thread the per-invocation context (calling scope) so an
+      // executor can bind to the in-flight tenant instead of a boot
+      // constant. Passing `undefined` when absent keeps legacy behaviour.
+      raw = await spec.executor(inputParse.data, invocationCtx);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await safeAudit({
@@ -433,11 +474,18 @@ export function triageMaintenanceTicket(
 // ─────────────────────────────────────────────────────────────────────
 
 export interface SeedBrainToolDeps {
-  readonly lookupTenantArrears: (input: LookupTenantArrearsInput) => Promise<LookupTenantArrearsOutput>;
+  readonly lookupTenantArrears: (
+    input: LookupTenantArrearsInput,
+    ctx?: BrainToolInvocationContext,
+  ) => Promise<LookupTenantArrearsOutput>;
   readonly checkComplianceCertificate: (
     input: CheckComplianceCertificateInput,
+    ctx?: BrainToolInvocationContext,
   ) => Promise<CheckComplianceCertificateOutput>;
-  readonly getMarketRateBand: (input: GetMarketRateBandInput) => Promise<GetMarketRateBandOutput>;
+  readonly getMarketRateBand: (
+    input: GetMarketRateBandInput,
+    ctx?: BrainToolInvocationContext,
+  ) => Promise<GetMarketRateBandOutput>;
 }
 
 export function registerSeedBrainTools(

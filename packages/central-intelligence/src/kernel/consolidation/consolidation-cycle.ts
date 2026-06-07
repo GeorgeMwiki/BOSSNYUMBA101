@@ -63,6 +63,12 @@ export async function runConsolidationCycle(
   const errors: string[] = [];
   const startedAt = new Date().toISOString();
   const now = cfg.now ?? new Date();
+  // H2 — when dryRun is set, READ + COMPUTE but write NOTHING. Every
+  // persistence call below is gated on `!dryRun` so the HQ tool's `dryRun`
+  // flag is honest (it previously wrote regardless). The report still
+  // surfaces what WOULD be written via `factsExtracted` / detected
+  // patterns; the *applied* counts stay 0 because nothing was persisted.
+  const dryRun = cfg.dryRun === true;
 
   // ─────────────── Phase 0: read recent episodic ───────────────
   const since = new Date(now.getTime() - cfg.windowDays * 24 * 60 * 60 * 1000);
@@ -91,22 +97,25 @@ export async function runConsolidationCycle(
   if (scope.userId && episodic.length > 0) {
     const facts = await extractFacts(deps, episodic, logger, errors);
     factsExtracted = facts.length;
-    for (const fact of facts) {
-      if (fact.confidence < cfg.minFactConfidence) continue;
-      try {
-        await deps.semantic.upsertFact({
-          tenantId: scope.tenantId,
-          userId: scope.userId,
-          key: fact.key,
-          value: { value: fact.value, evidence: fact.evidence },
-          confidence: fact.confidence,
-          source: 'consolidated',
-        });
-        factsUpserted += 1;
-      } catch (error) {
-        const msg = `semantic.upsertFact failed for key=${fact.key}: ${asMsg(error)}`;
-        logger.warn(msg);
-        errors.push(msg);
+    // H2 — dryRun: compute the extracted facts (above) but persist none.
+    if (!dryRun) {
+      for (const fact of facts) {
+        if (fact.confidence < cfg.minFactConfidence) continue;
+        try {
+          await deps.semantic.upsertFact({
+            tenantId: scope.tenantId,
+            userId: scope.userId,
+            key: fact.key,
+            value: { value: fact.value, evidence: fact.evidence },
+            confidence: fact.confidence,
+            source: 'consolidated',
+          });
+          factsUpserted += 1;
+        } catch (error) {
+          const msg = `semantic.upsertFact failed for key=${fact.key}: ${asMsg(error)}`;
+          logger.warn(msg);
+          errors.push(msg);
+        }
       }
     }
   }
@@ -115,28 +124,33 @@ export async function runConsolidationCycle(
   let patternsRecorded = 0;
   if (scope.userId && episodic.length > 0) {
     const patterns = detectPatterns(episodic, cfg);
-    for (const p of patterns) {
-      try {
-        await deps.procedural.record({
-          tenantId: scope.tenantId,
-          userId: scope.userId,
-          patternName: p.patternName,
-          toolSequence: p.toolSequence,
-          triggerKeywords: p.triggerKeywords,
-          success: true,
-        });
-        patternsRecorded += 1;
-      } catch (error) {
-        const msg = `procedural.record failed for ${p.patternName}: ${asMsg(error)}`;
-        logger.warn(msg);
-        errors.push(msg);
+    // H2 — dryRun: detect patterns (above) but persist none.
+    if (!dryRun) {
+      for (const p of patterns) {
+        try {
+          await deps.procedural.record({
+            tenantId: scope.tenantId,
+            userId: scope.userId,
+            patternName: p.patternName,
+            toolSequence: p.toolSequence,
+            triggerKeywords: p.triggerKeywords,
+            success: true,
+          });
+          patternsRecorded += 1;
+        } catch (error) {
+          const msg = `procedural.record failed for ${p.patternName}: ${asMsg(error)}`;
+          logger.warn(msg);
+          errors.push(msg);
+        }
       }
     }
   }
 
   // ─────────────── Phase 3: weekly reflective digest ───────────────
   let digestsWritten = 0;
-  if (scope.periodKind === 'weekly' && episodic.length > 0) {
+  // H2 — dryRun: skip the digest generation + write entirely (the judge
+  // call is a side-effect-free read, but persisting the digest is a write).
+  if (scope.periodKind === 'weekly' && episodic.length > 0 && !dryRun) {
     const digest = await generateDigest(deps, episodic, logger, errors);
     if (digest) {
       try {
@@ -161,8 +175,9 @@ export async function runConsolidationCycle(
   }
 
   // ─────────────── Phase 4: purge expired episodic ───────────────
+  // H2 — dryRun: purging is a destructive write; skip it.
   let expiredPurged = 0;
-  if (cfg.purgeExpired) {
+  if (cfg.purgeExpired && !dryRun) {
     try {
       expiredPurged = await deps.episodic.purgeExpired();
     } catch (error) {
@@ -173,8 +188,9 @@ export async function runConsolidationCycle(
   }
 
   // ─────────────── Phase 5: decay semantic confidence ───────────────
+  // H2 — dryRun: decay mutates stored confidence; skip it.
   let decayedFacts = 0;
-  if (cfg.applyDecay) {
+  if (cfg.applyDecay && !dryRun) {
     try {
       decayedFacts = await deps.semantic.decay({
         tenantId: scope.tenantId,

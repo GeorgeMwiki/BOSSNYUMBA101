@@ -61,6 +61,7 @@ import {
   renderPlanModePreview,
   type PermissionMode,
 } from './permission-mode.js';
+import { DEFAULT_MAX_SPAWNS_PER_TURN } from './adapters/loop-actuators.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Public request / response shapes
@@ -91,6 +92,18 @@ export interface OrchestratorRequest {
    * ceiling of `mutate` allows `read` + `mutate`; etc.
    */
   readonly subMdRiskTierCeiling?: RiskTier;
+  /**
+   * C1 — cumulative recursion depth of THIS turn in the spawn tree. The
+   * root turn omits this (treated as 0); a child turn spawned by a parent
+   * carries the child's depth so the dispatcher's depth cap bounds the
+   * CUMULATIVE tree, not a per-turn reset. Threaded into
+   * `HookContext.spawnDepth`, which the registry dispatcher reads per-turn
+   * when deciding whether a further `spawn_sub_md` would exceed
+   * `maxSpawnDepth`. The composition root forwards
+   * `SubAgentSpawnContext.depth` here when re-invoking `think()` for a
+   * child sub-MD (both the durable hop and the in-process path).
+   */
+  readonly spawnDepth?: number;
 }
 
 /**
@@ -237,6 +250,17 @@ export interface OrchestratorDeps {
    * behaviour (NOT recommended).
    */
   readonly maxPermissionDenyRetries?: number;
+  /**
+   * C2 — per-turn breadth cap. The maximum number of `spawn_sub_md`
+   * Decisions a SINGLE `think()` turn may actuate. Without this, a turn
+   * that emits N spawns fans out N children, and across `maxSpawnDepth`
+   * levels that is N^depth. Once a turn hits the cap, every further
+   * spawn this turn gets a clean degrade (the spawn is refused, an audit
+   * context message is injected, and the loop continues) rather than an
+   * unbounded fan-out. Defaults to `DEFAULT_MAX_SPAWNS_PER_TURN`. A value
+   * of 0 forbids ALL spawning this turn.
+   */
+  readonly maxSpawnsPerTurn?: number;
   readonly clock?: () => number;
   readonly logger?: {
     info(msg: string, meta?: Record<string, unknown>): void;
@@ -326,6 +350,11 @@ export async function thinkExtended(
     userMessage: req.userMessage,
     tickStartedAt: clock(),
     ...(req.grantedScopes ? { grantedScopes: req.grantedScopes } : {}),
+    // C1 — carry the cumulative spawn-tree depth into every dispatch so the
+    // registry dispatcher governs a further spawn against the CUMULATIVE
+    // depth (transitive across durable + in-process hops), not a per-turn
+    // reset. Root turns omit `spawnDepth` ⇒ depth 0.
+    ...(req.spawnDepth !== undefined ? { spawnDepth: req.spawnDepth } : {}),
   };
 
   // H4 — Centralised helper. Whenever a lifecycle hook (session-start,
@@ -421,6 +450,14 @@ export async function thinkExtended(
   const denyRetryLimit =
     deps.maxPermissionDenyRetries ?? DEFAULT_PERMISSION_DENY_RETRIES;
   let consecutivePermissionDenies = 0;
+
+  // C2 — per-turn breadth cap. Count how many `spawn_sub_md` Decisions this
+  // turn has actuated; once it reaches `spawnsPerTurnLimit` every further
+  // spawn this turn is refused cleanly (degrade-ACK + context injection)
+  // so a single turn cannot fan out an unbounded child tree.
+  const spawnsPerTurnLimit =
+    deps.maxSpawnsPerTurn ?? DEFAULT_MAX_SPAWNS_PER_TURN;
+  let spawnsThisTurn = 0;
 
   while (budget.remaining() && !plan.isComplete()) {
     const goal = plan.currentGoal();
@@ -592,6 +629,31 @@ export async function thinkExtended(
     // permissionMode into the spawn payload so the child orchestrator
     // inherits the policy — transitivity across the spawn tree.
     if (decision.kind === 'spawn_sub_md') {
+      // C2 — per-turn breadth cap. Refuse cleanly once this turn has
+      // already actuated `spawnsPerTurnLimit` spawns. The turn keeps going
+      // (we inject a context message so the model can wrap up or pick a
+      // single follow-up) but no further child is spawned this turn — a
+      // hard ceiling on N-way fan-out that, combined with the depth cap,
+      // bounds the cumulative tree at maxSpawnsPerTurn^maxSpawnDepth.
+      if (spawnsThisTurn >= spawnsPerTurnLimit) {
+        budget = budget.consume({
+          kind: 'tool_error',
+          callId: `spawn:${decision.spawn.subMdId}`,
+          message: `per-turn spawn cap (${spawnsPerTurnLimit}) reached`,
+          latencyMs: 0,
+        });
+        deps.logger?.warn?.('main-loop: spawn_sub_md refused (per-turn cap)', {
+          threadId: req.threadId,
+          subMdId: decision.spawn.subMdId,
+          spawnsThisTurn,
+          spawnsPerTurnLimit,
+        });
+        pendingContextInjections.push({
+          role: 'system',
+          content: `[spawn-cap] this turn already spawned ${spawnsThisTurn} sub-agents (max ${spawnsPerTurnLimit}); no further spawns will run this turn. Finish with the results you have or pick a single highest-priority follow-up.`,
+        });
+        continue;
+      }
       const spawnPmEval = evaluatePermissionMode(
         {
           currentMode: permissionMode,
@@ -738,6 +800,12 @@ export async function thinkExtended(
 
     // subagent lifecycle hooks for spawn_sub_md decisions.
     if (toRun.kind === 'spawn_sub_md') {
+      // C2 — count this actuated spawn toward the per-turn breadth cap.
+      // Incremented AFTER dispatch so a spawn that was depth/concurrency-
+      // refused by the dispatcher (it still returns a spawn_ack) also
+      // counts — the model has spent a spawn slot regardless of whether a
+      // child actually launched, which keeps the turn bounded.
+      spawnsThisTurn += 1;
       const subStart = await deps.hookChain.runSubagentStart(
         {
           subMdId: toRun.spawn.subMdId,

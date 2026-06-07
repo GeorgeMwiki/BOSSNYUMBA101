@@ -304,3 +304,153 @@ describe('seed tool — checkComplianceCertificate (honest degrade)', () => {
     expect(sink.rows().some((r) => r.name === 'checkComplianceCertificate' && r.outcome === 'ok')).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// H3 — per-turn tenant scoping. The executors are bound at boot to the
+// deployment tenant (`_platform` on the primary path); a tenant-scoped turn
+// must bind to the CALLING tenant (threaded via the dispatcher's
+// `registry.runTool(name, input, { scope })`) so the tool yields that
+// tenant's data — NOT the platform zero-state.
+// ---------------------------------------------------------------------------
+
+describe('seed tool — H3 per-turn tenant scoping', () => {
+  /**
+   * Boot the registry under `_platform` (the bug scenario) and capture the
+   * tenantId each backing call actually receives. The arrears loader + the
+   * market-rate db both record the tenant they were asked about.
+   */
+  function platformBootRegistry() {
+    const seenArrearsTenants: string[] = [];
+    const seenMarketTenants: string[] = [];
+
+    const loader: ArrearsEntryLoader = async ({ tenantId, arrearsCaseId }) => {
+      seenArrearsTenants.push(tenantId);
+      if (arrearsCaseId === 'unknown') return null;
+      return {
+        customerId: 'cust_x',
+        currency: 'TZS',
+        entries: [
+          {
+            id: 'e1',
+            tenantId,
+            customerId: 'cust_x',
+            currency: 'TZS',
+            invoiceId: null,
+            relatedEntryId: null,
+            entryType: 'charge' as const,
+            amountMinorUnits: 1_000,
+            description: 'rent',
+            transactionDate: '2026-01-01T00:00:00Z',
+            postedAt: '2026-01-01T00:00:00Z',
+          },
+        ],
+      };
+    };
+
+    // A db whose listRecent path records the tenant filter via the
+    // market-rate service. The service calls `.where(...)` with the tenant
+    // predicate; we can't see that arg here, so instead we use the snapshot
+    // row's tenantId echo to prove a non-platform tenant flowed through by
+    // returning a tenant-tagged row only for the scoped tenant.
+    const fakeDb = makeFakeDb([
+      { ...snapshotRow(), tenantId: 't_beta' },
+    ]) as never;
+
+    const deps = buildSeedToolDeps({
+      db: fakeDb,
+      arrearsEntryLoader: loader,
+      // BUG SCENARIO — boot under the platform identity.
+      tenantId: '_platform',
+    });
+    const sink = createInMemoryBrainToolAuditSink();
+    const registry = createBrainToolRegistry({ auditSink: sink });
+    registerSeedBrainTools(registry, deps);
+    return {
+      dispatcher: createRegistryDispatcher(registry),
+      seenArrearsTenants,
+      seenMarketTenants,
+    };
+  }
+
+  const TENANT_CTX = {
+    threadId: 'th-beta',
+    scope: {
+      kind: 'tenant' as const,
+      tenantId: 't_beta',
+      actorUserId: 'u_b',
+      roles: ['estate-manager'],
+      personaId: 'estate-manager-head',
+    },
+    tier: 'tenant' as const,
+    userMessage: 'arrears for my tenant',
+    tickStartedAt: 0,
+  };
+
+  it('lookupTenantArrears binds to the CALLING tenant (t_beta), not the boot _platform', async () => {
+    const { dispatcher, seenArrearsTenants } = platformBootRegistry();
+    const result = await dispatcher.dispatch(
+      {
+        kind: 'tool_call',
+        call: {
+          toolName: 'lookupTenantArrears',
+          input: { tenantProfileId: 'case_b' },
+          callId: 'h3-1',
+        },
+      },
+      TENANT_CTX,
+    );
+    expect(result.kind).toBe('tool_ok');
+    // The arrears ledger was loaded for the IN-FLIGHT tenant, NOT `_platform`.
+    expect(seenArrearsTenants).toContain('t_beta');
+    expect(seenArrearsTenants).not.toContain('_platform');
+  });
+
+  it('falls back to the boot tenant when the turn is platform-scoped (no tenant ctx)', async () => {
+    const { dispatcher, seenArrearsTenants } = platformBootRegistry();
+    const platformCtx = {
+      ...TENANT_CTX,
+      scope: {
+        kind: 'platform' as const,
+        actorUserId: 'u_admin',
+        roles: ['platform-admin'],
+        personaId: 'sovereign-admin',
+      },
+    };
+    await dispatcher.dispatch(
+      {
+        kind: 'tool_call',
+        call: {
+          toolName: 'lookupTenantArrears',
+          input: { tenantProfileId: 'case_p' },
+          callId: 'h3-2',
+        },
+      },
+      platformCtx,
+    );
+    // No tenant scope → falls back to the boot-time deployment tenant.
+    expect(seenArrearsTenants).toContain('_platform');
+  });
+
+  it('getMarketRateBand returns the scoped tenant\'s comp band', async () => {
+    const { dispatcher } = platformBootRegistry();
+    const result = await dispatcher.dispatch(
+      {
+        kind: 'tool_call',
+        call: {
+          toolName: 'getMarketRateBand',
+          input: { bedrooms: 2, unitType: '2br', propertyId: 'prop_1' },
+          callId: 'h3-3',
+        },
+      },
+      TENANT_CTX,
+    );
+    expect(result.kind).toBe('tool_ok');
+    if (result.kind === 'tool_ok') {
+      // Non-zero band proves the tenant-scoped read returned real data
+      // (the platform zero-state would be sampleSize 0).
+      const out = result.output as { sampleSize: number; median: number };
+      expect(out.sampleSize).toBe(42);
+      expect(out.median).toBe(520);
+    }
+  });
+});

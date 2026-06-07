@@ -153,6 +153,9 @@ describe('durable loop actuators — DURABLE path', () => {
     const client = createCapturingClient();
     const built = createDurableLoopActuators({
       composition: enabledComposition(client),
+      // H1 — the DURABLE path asserts true durable behaviour, which now
+      // requires the composition root to attest a registered consumer.
+      consumerRegistered: true,
       ...noopRunners(),
     });
     expect(built.durable).toBe(true);
@@ -164,6 +167,9 @@ describe('durable loop actuators — DURABLE path', () => {
     const client = createCapturingClient();
     const built = createDurableLoopActuators({
       composition: enabledComposition(client),
+      // H1 — the DURABLE path asserts true durable behaviour, which now
+      // requires the composition root to attest a registered consumer.
+      consumerRegistered: true,
       ...noopRunners(),
     });
     const handle = await built.actuators.subAgentSpawner!.spawn(SPAWN, SPAWN_CTX);
@@ -180,6 +186,9 @@ describe('durable loop actuators — DURABLE path', () => {
     const ran: Array<{ subMdId: string; depth: number }> = [];
     const built = createDurableLoopActuators({
       composition: enabledComposition(client),
+      // H1 — the DURABLE path asserts true durable behaviour, which now
+      // requires the composition root to attest a registered consumer.
+      consumerRegistered: true,
       ...noopRunners(),
       childTurnRunner: async (a) => {
         ran.push({ subMdId: a.subMdId, depth: a.depth });
@@ -203,6 +212,9 @@ describe('durable loop actuators — DURABLE path', () => {
     const resumed: string[] = [];
     const built = createDurableLoopActuators({
       composition: enabledComposition(client),
+      // H1 — the DURABLE path asserts true durable behaviour, which now
+      // requires the composition root to attest a registered consumer.
+      consumerRegistered: true,
       ...noopRunners(),
       resumeTurnRunner: async (a) => {
         resumed.push(a.resumeToken);
@@ -230,6 +242,12 @@ describe('durable loop actuators — DURABLE path', () => {
     let checks = 0;
     const built = createDurableLoopActuators({
       composition: enabledComposition(client),
+      // H1 — the DURABLE path asserts true durable behaviour, which now
+      // requires the composition root to attest a registered consumer.
+      consumerRegistered: true,
+      // M2 — a REAL predicate checker is wired below, so attest the monitor
+      // is available (otherwise it degrade-ACKs instead of arming a poll).
+      monitorAvailable: true,
       ...noopRunners(),
       // Fire on the 2nd poll tick.
       monitorChecker: async () => {
@@ -260,6 +278,12 @@ describe('durable loop actuators — DURABLE path', () => {
     const resumed: string[] = [];
     const built = createDurableLoopActuators({
       composition: enabledComposition(client),
+      // H1 — the DURABLE path asserts true durable behaviour, which now
+      // requires the composition root to attest a registered consumer.
+      consumerRegistered: true,
+      // M2 — drive the durable poll loop directly; attest availability so it
+      // arms (this test exercises the EXPIRY branch of an armed monitor).
+      monitorAvailable: true,
       ...noopRunners(),
       monitorChecker: async () => false,
       monitorResumeRunner: async (a) => {
@@ -329,5 +353,173 @@ describe('durable loop actuators — DEGRADE path', () => {
     expect(handle.mode).toBe('recorded');
     expect(client.sent).toHaveLength(0);
     expect(warns.some((m) => m.includes('monitor recorded'))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// H1 — durable PRODUCER honesty. `composition.enabled === true` only means
+// the producer CAN enqueue; it says nothing about whether a CONSUMER (serve
+// handler) is registered. Enqueuing onto an unserved bus would black-hole
+// the event while reporting `mode:'durable'` success — a silent drop. The
+// producers must NOT report durable success unless a consumer is attested.
+// ---------------------------------------------------------------------------
+
+describe('durable loop actuators — H1 producer honesty (no false durable success)', () => {
+  it('does NOT report durable when enabled but no consumer is registered', () => {
+    const client = createCapturingClient();
+    const warns: string[] = [];
+    const built = createDurableLoopActuators({
+      composition: enabledComposition(client),
+      // consumerRegistered omitted → false (fail-closed).
+      ...noopRunners(),
+      logger: { warn: (_m, msg) => warns.push(msg) },
+    });
+    expect(built.durable).toBe(false);
+    expect(warns.some((m) => m.includes('no consumer registered'))).toBe(true);
+  });
+
+  it('spawn falls back to in-process (NOT durable) and does NOT enqueue when no consumer is registered', async () => {
+    const client = createCapturingClient();
+    let ranChild = false;
+    const built = createDurableLoopActuators({
+      composition: enabledComposition(client),
+      ...noopRunners(),
+      childTurnRunner: async () => {
+        ranChild = true;
+      },
+      // consumerRegistered omitted → durable is NOT trusted.
+    });
+    const handle = await built.actuators.subAgentSpawner!.spawn(SPAWN, SPAWN_CTX);
+    // Honest: in-process, not a false `durable`.
+    expect(handle.mode).toBe('in-process');
+    // The event was NOT enqueued onto the unserved bus.
+    expect(client.sent).toHaveLength(0);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(ranChild).toBe(true);
+  });
+
+  it('wake reports recorded (NOT durable) and does NOT enqueue when no consumer is registered', async () => {
+    const client = createCapturingClient();
+    const built = createDurableLoopActuators({
+      composition: enabledComposition(client),
+      ...noopRunners(),
+    });
+    const handle = await built.actuators.scheduler!.schedule(WAKE);
+    expect(handle.mode).toBe('recorded');
+    expect(client.sent).toHaveLength(0);
+  });
+
+  it('reports durable ONLY when a consumer is attested', async () => {
+    const client = createCapturingClient();
+    const built = createDurableLoopActuators({
+      composition: enabledComposition(client),
+      consumerRegistered: true,
+      ...noopRunners(),
+    });
+    expect(built.durable).toBe(true);
+    const handle = await built.actuators.subAgentSpawner!.spawn(SPAWN, SPAWN_CTX);
+    expect(handle.mode).toBe('durable');
+    expect(client.sent).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M1 — wake/monitor degrade is REPLAYABLE, not log-only. When a degrade
+// recorder is wired the intent is persisted there so a supervisor can act.
+// ---------------------------------------------------------------------------
+
+describe('durable loop actuators — M1 replayable degrade recorder', () => {
+  it('records the wake intent to the degrade recorder (not just a log)', async () => {
+    const client = createCapturingClient();
+    const recordedWakes: Array<{ threadId: string; resumeToken: string }> = [];
+    const built = createDurableLoopActuators({
+      composition: disabledComposition(client),
+      ...noopRunners(),
+      degradeRecorder: {
+        recordWake: (req) => {
+          recordedWakes.push({ threadId: req.threadId, resumeToken: req.resumeToken });
+        },
+      },
+    });
+    const handle = await built.actuators.scheduler!.schedule(WAKE);
+    expect(handle.mode).toBe('recorded');
+    // The intent landed in the replayable recorder — not silently dropped.
+    expect(recordedWakes).toEqual([
+      { threadId: 'th-parent', resumeToken: 'resume-1' },
+    ]);
+  });
+
+  it('records the monitor intent to the degrade recorder', async () => {
+    const client = createCapturingClient();
+    const recordedMonitors: string[] = [];
+    const built = createDurableLoopActuators({
+      composition: disabledComposition(client),
+      ...noopRunners(),
+      degradeRecorder: {
+        recordMonitor: (reg) => {
+          recordedMonitors.push(reg.watchId);
+        },
+      },
+    });
+    await built.actuators.monitorRegistry!.register(MONITOR);
+    expect(recordedMonitors).toEqual(['w-1']);
+  });
+
+  it('never throws when the degrade recorder itself fails', async () => {
+    const client = createCapturingClient();
+    const built = createDurableLoopActuators({
+      composition: disabledComposition(client),
+      ...noopRunners(),
+      degradeRecorder: {
+        recordWake: () => {
+          throw new Error('recorder down');
+        },
+      },
+    });
+    // Producer must still resolve with the honest recorded handle.
+    const handle = await built.actuators.scheduler!.schedule(WAKE);
+    expect(handle.mode).toBe('recorded');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M2 — monitor must NOT arm a doomed poll when no real predicate source is
+// attested. Arming a poll backed by an always-false stub burns durable
+// steps for a guaranteed expiry; instead the producer degrade-ACKs.
+// ---------------------------------------------------------------------------
+
+describe('durable loop actuators — M2 monitor availability gate', () => {
+  it('degrade-ACKs (no enqueue) when durable but monitorAvailable is unset', async () => {
+    const client = createCapturingClient();
+    const warns: string[] = [];
+    const built = createDurableLoopActuators({
+      composition: enabledComposition(client),
+      consumerRegistered: true,
+      // monitorAvailable omitted → no real predicate source.
+      ...noopRunners(),
+      logger: { warn: (_m, msg) => warns.push(msg) },
+    });
+    const handle = await built.actuators.monitorRegistry!.register(MONITOR);
+    // Recorded (not 'registered') and NOT enqueued — no doomed poll armed.
+    expect(handle.mode).toBe('recorded');
+    expect(
+      client.sent.filter((s) => s.name === ORCHESTRATOR_MONITOR_EVENT),
+    ).toHaveLength(0);
+    expect(warns.some((m) => m.includes('not armed'))).toBe(true);
+  });
+
+  it('arms the durable monitor when monitorAvailable is attested', async () => {
+    const client = createCapturingClient();
+    const built = createDurableLoopActuators({
+      composition: enabledComposition(client),
+      consumerRegistered: true,
+      monitorAvailable: true,
+      ...noopRunners(),
+    });
+    const handle = await built.actuators.monitorRegistry!.register(MONITOR);
+    expect(handle.mode).toBe('registered');
+    expect(
+      client.sent.filter((s) => s.name === ORCHESTRATOR_MONITOR_EVENT),
+    ).toHaveLength(1);
   });
 });

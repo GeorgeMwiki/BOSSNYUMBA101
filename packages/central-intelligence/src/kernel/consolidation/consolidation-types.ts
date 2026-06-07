@@ -97,6 +97,19 @@ export interface ConsolidationConfig {
    * time; overridable for deterministic tests.
    */
   readonly now?: Date;
+  /**
+   * H2 — dry-run mode. When `true`, the cycle still READS episodic memory
+   * and runs the judge so it can COMPUTE what it WOULD persist (facts,
+   * patterns, digests), but performs ZERO write side-effects: no
+   * `semantic.upsertFact`, no `procedural.record`, no `reflective.record`,
+   * no `episodic.purgeExpired`, no `semantic.decay`. The returned report's
+   * counts reflect what would have been written (`factsExtracted` /
+   * detected patterns), and the *Upserted/Recorded/Written/Purged/Decayed
+   * counts that imply a mutation are reported as 0 (nothing was applied).
+   * Defaults to `false` (apply writes). Makes the `dryRun` flag the HQ
+   * tool advertises HONEST instead of writing anyway.
+   */
+  readonly dryRun?: boolean;
 }
 
 export const DEFAULT_CONSOLIDATION_CONFIG: ConsolidationConfig = {

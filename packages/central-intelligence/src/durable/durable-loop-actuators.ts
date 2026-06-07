@@ -54,6 +54,20 @@ import type {
   WakeScheduleHandle,
   WakeScheduler,
 } from '../kernel/orchestrator/adapters/loop-actuators.js';
+
+/**
+ * M1 — replayable degrade sink. When durable execution is unavailable, the
+ * wake / monitor producers cannot safely suspend-and-resume, so instead of a
+ * LOG-ONLY drop they hand the intent to this sink (the composition root
+ * wires the in-memory recorders from `loop-actuators.ts`, or a DB-backed
+ * record once a table exists). A supervisor (e.g. the wake-loop cron) can
+ * then replay recorded intents. The producers NEVER throw if the sink
+ * fails — they log and still return the honest `recorded` handle.
+ */
+export interface DurableDegradeRecorder {
+  recordWake?(req: WakeRequest): void | Promise<void>;
+  recordMonitor?(reg: MonitorRegistration): void | Promise<void>;
+}
 import type { SubMdSpawn } from '../kernel/orchestrator/decision.js';
 import type { ScopeContext } from '../types.js';
 
@@ -171,6 +185,43 @@ export interface DurableLoopActuatorsDeps {
    * omitted, degrade records the intent + logs (never silently drops).
    */
   readonly inProcessFallback?: boolean;
+  /**
+   * H1 — durable-consumer honesty gate. `composition.enabled === true`
+   * only means the PRODUCER side can enqueue events; it says NOTHING about
+   * whether a CONSUMER (the Inngest serve handler that runs the 3 function
+   * definitions) is actually registered and bound. If we report
+   * `mode:'durable'` while no consumer is registered, every enqueued
+   * spawn/wake/monitor event is black-holed while the brain believes it
+   * succeeded — a silent drop.
+   *
+   * The composition root MUST set this to `true` ONLY when it has actually
+   * wired the serve handler (and bound `services.inngestRuntime`) so the
+   * enqueued events get consumed. When `false`/omitted, the producers
+   * treat durable as UNAVAILABLE and fall back to in-process / recorded —
+   * never reporting false durable success. Defaults to `false`
+   * (fail-closed: durable is only trusted when explicitly attested).
+   */
+  readonly consumerRegistered?: boolean;
+  /**
+   * M1 — optional replayable sink for the wake / monitor degrade path.
+   * When durable is unavailable the producers cannot suspend-and-resume; if
+   * this is wired the intent is RECORDED here (inspectable / replayable)
+   * instead of only logged. Omitted ⇒ the producers still log + return the
+   * honest `recorded` handle (no silent drop), they just have nowhere to
+   * persist the intent.
+   */
+  readonly degradeRecorder?: DurableDegradeRecorder;
+  /**
+   * M2 — monitor-predicate availability attestation. The durable monitor
+   * arms a bounded poll loop that calls `monitorChecker` each tick; if the
+   * checker is a "not yet bound" stub (always returns false) the poll is a
+   * GUARANTEED expiry that burns N durable steps for nothing. Set this to
+   * `false` (the default) when no REAL predicate source is wired so the
+   * monitor producer degrade-ACKs ("monitoring not yet available") instead
+   * of arming a doomed poll. Set `true` ONLY when `monitorChecker` is bound
+   * to a real event-bus / DB condition check.
+   */
+  readonly monitorAvailable?: boolean;
 }
 
 /** Default poll cadence for the durable monitor function. */
@@ -207,7 +258,20 @@ export function createDurableLoopActuators(
   deps: DurableLoopActuatorsDeps,
 ): DurableLoopActuators {
   const { composition } = deps;
-  const durable = composition.enabled === true;
+  // H1 — durable is trusted ONLY when the producer side is enabled AND a
+  // consumer (serve handler) is attested as registered. Enqueuing onto a
+  // bus whose functions nothing serves would black-hole the event while
+  // reporting success; gating on `consumerRegistered` keeps the producer
+  // honest — it falls back to in-process / recorded otherwise.
+  const consumerRegistered = deps.consumerRegistered === true;
+  const durable = composition.enabled === true && consumerRegistered;
+  if (composition.enabled === true && !consumerRegistered) {
+    deps.logger?.warn?.(
+      { appId: composition.config.appId },
+      'durable-loop-actuators: DURABLE_EXEC_ENABLED but no consumer registered; ' +
+        'falling back to in-process/recorded (not reporting false durable success)',
+    );
+  }
   const pollIntervalMs =
     deps.monitorPollIntervalMs ?? DEFAULT_MONITOR_POLL_INTERVAL_MS;
 
@@ -284,8 +348,12 @@ async function spawnViaActuator(
 
   // In-process fire-and-forget fallback. We do NOT await the child turn —
   // the parent must keep looping. A child failure is logged, not thrown.
+  // The returned `onSettled` promise resolves when the detached child turn
+  // finishes so the dispatcher's in-flight-spawn semaphore (C2) releases
+  // its slot at the right time — a TRUE concurrency cap, not just admission
+  // control. It never rejects (a child failure is logged + resolves).
   if (deps.inProcessFallback !== false) {
-    runChildInBackground(deps, {
+    const onSettled = runChildInBackground(deps, {
       subMdId: spawn.subMdId,
       childThreadId,
       parentThreadId: ctx.parentThreadId,
@@ -295,7 +363,11 @@ async function spawnViaActuator(
       scope: ctx.scope,
       initialInput: spawn.initialInput,
     });
-    return { handoffToken: `inproc:${childThreadId}`, mode: 'in-process' };
+    return {
+      handoffToken: `inproc:${childThreadId}`,
+      mode: 'in-process',
+      onSettled,
+    };
   }
 
   deps.logger?.warn?.(
@@ -330,9 +402,12 @@ async function scheduleViaActuator(
       );
     }
   }
-  // Degrade: the wake intent is recorded via the log so it is not lost.
-  // (A non-durable runtime cannot safely suspend-and-resume, so we do not
-  // fire a real timer here — recording keeps the contract honest.)
+  // Degrade: a non-durable runtime cannot safely suspend-and-resume, so we
+  // do not fire a real timer. M1 — persist the intent to the replayable
+  // recorder (when wired) so a supervisor can act on it, and log either
+  // way. The returned `recorded` mode is honest: the brain MUST NOT assume
+  // a follow-up turn was scheduled.
+  await recordDegradeWake(deps, req);
   deps.logger?.warn?.(
     { threadId: req.threadId, wakeAt: req.wakeAt, resumeToken: req.resumeToken },
     'durable-loop-actuators: wake recorded (no durable scheduler)',
@@ -340,12 +415,40 @@ async function scheduleViaActuator(
   return { resumeToken: req.resumeToken, mode: 'recorded' };
 }
 
+async function recordDegradeWake(
+  deps: DurableLoopActuatorsDeps,
+  req: WakeRequest,
+): Promise<void> {
+  if (!deps.degradeRecorder?.recordWake) return;
+  try {
+    await deps.degradeRecorder.recordWake(req);
+  } catch (err) {
+    // The recorder is itself degraded — log, never throw out of a producer.
+    deps.logger?.warn?.(
+      { err: errMessage(err), threadId: req.threadId },
+      'durable-loop-actuators: wake degrade-recorder failed',
+    );
+  }
+}
+
 async function armMonitorViaActuator(
   deps: DurableLoopActuatorsDeps,
   durable: boolean,
   reg: MonitorRegistration,
 ): Promise<MonitorRegisterHandle> {
-  if (durable) {
+  // M2 — only arm the durable poll when a REAL predicate source is attested.
+  // Arming a poll backed by an always-false stub checker is a guaranteed
+  // expiry that burns N durable steps for nothing; degrade-ACK instead so
+  // the brain knows monitoring is not yet available (recorded, not armed).
+  const canMonitor = durable && deps.monitorAvailable === true;
+  if (durable && deps.monitorAvailable !== true) {
+    deps.logger?.warn?.(
+      { watchId: reg.watchId, threadId: reg.threadId, predicate: reg.predicate },
+      'durable-loop-actuators: monitor not armed (no predicate source); ' +
+        'degrade-ACK instead of doomed poll',
+    );
+  }
+  if (canMonitor) {
     try {
       await deps.composition.client.send({
         name: ORCHESTRATOR_MONITOR_EVENT,
@@ -365,6 +468,10 @@ async function armMonitorViaActuator(
       );
     }
   }
+  // M1 — persist the monitor intent to the replayable recorder (when wired)
+  // so it is not a log-only drop, and log either way. `recorded` mode is
+  // honest: nothing is actively watching.
+  await recordDegradeMonitor(deps, reg);
   deps.logger?.warn?.(
     { watchId: reg.watchId, threadId: reg.threadId, predicate: reg.predicate },
     'durable-loop-actuators: monitor recorded (no durable registry)',
@@ -372,23 +479,46 @@ async function armMonitorViaActuator(
   return { watchId: reg.watchId, mode: 'recorded' };
 }
 
+async function recordDegradeMonitor(
+  deps: DurableLoopActuatorsDeps,
+  reg: MonitorRegistration,
+): Promise<void> {
+  if (!deps.degradeRecorder?.recordMonitor) return;
+  try {
+    await deps.degradeRecorder.recordMonitor(reg);
+  } catch (err) {
+    deps.logger?.warn?.(
+      { err: errMessage(err), watchId: reg.watchId },
+      'durable-loop-actuators: monitor degrade-recorder failed',
+    );
+  }
+}
+
 /**
  * Detached in-process child turn. We deliberately do NOT await the
  * promise at the call site (fire-and-forget); a rejection is caught here
  * so it never becomes an unhandled rejection that crashes the host.
+ *
+ * Returns a `settled` promise that resolves (never rejects) when the child
+ * turn finishes, so the caller's in-flight-spawn semaphore (C2) can release
+ * its slot at the right time. The parent still does NOT await this — it is
+ * handed to the dispatcher purely for slot bookkeeping.
  */
 function runChildInBackground(
   deps: DurableLoopActuatorsDeps,
   args: Parameters<ChildTurnRunner>[0],
-): void {
-  void Promise.resolve()
+): Promise<void> {
+  return Promise.resolve()
     .then(() => deps.childTurnRunner(args))
-    .catch((err) => {
-      deps.logger?.error?.(
-        { err: errMessage(err), subMdId: args.subMdId },
-        'durable-loop-actuators: in-process child turn failed',
-      );
-    });
+    .then(
+      () => undefined,
+      (err) => {
+        deps.logger?.error?.(
+          { err: errMessage(err), subMdId: args.subMdId },
+          'durable-loop-actuators: in-process child turn failed',
+        );
+      },
+    );
 }
 
 // ---------------------------------------------------------------------------

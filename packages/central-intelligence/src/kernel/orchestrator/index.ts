@@ -317,10 +317,14 @@ export {
 // production impls live in `../../durable/durable-loop-actuators.ts`.
 export {
   DEFAULT_MAX_SPAWN_DEPTH,
+  DEFAULT_MAX_SPAWNS_PER_TURN,
+  DEFAULT_MAX_IN_FLIGHT_SPAWNS,
+  createInFlightSpawnSemaphore,
   createInMemoryWakeScheduler,
   createInMemoryMonitorRegistry,
   createInMemorySubAgentSpawner,
   type LoopActuators,
+  type InFlightSpawnSemaphore,
   type SubAgentSpawner,
   type SubAgentSpawnContext,
   type SubAgentSpawnHandle,

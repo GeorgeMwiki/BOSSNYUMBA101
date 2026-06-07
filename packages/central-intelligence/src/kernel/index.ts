@@ -371,6 +371,7 @@ export {
   SEED_BRAIN_TOOL_NAMES,
   type BrainToolTier,
   type BrainToolSpec,
+  type BrainToolInvocationContext,
   type BrainToolAuditRow,
   type BrainToolAuditSink,
   type BrainToolOutcome,
