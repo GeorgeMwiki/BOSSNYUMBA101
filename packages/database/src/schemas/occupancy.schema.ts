@@ -33,7 +33,15 @@ export const occupancyStatusEnum = pgEnum('occupancy_status', [
   'abandoned',
 ]);
 
-export const onboardingStateEnum = pgEnum('onboarding_state', [
+// PG type name is `occupancy_onboarding_state`, NOT `onboarding_state`:
+// migration 0278 already ships a TABLE named `onboarding_state` (the per-
+// tenant Day-1 jumpstart gate, an unrelated concept), and in Postgres a
+// table implicitly occupies its own name in the TYPE namespace — so
+// `CREATE TYPE onboarding_state AS ENUM (...)` is impossible (the name is
+// taken). The TS export name stays `onboardingStateEnum` and the column
+// stays `onboarding_state`; only the underlying enum *type* is renamed to
+// break the collision. See migration 0313 (enum + occupancies table).
+export const onboardingStateEnum = pgEnum('occupancy_onboarding_state', [
   'a0_pre_move_in',
   'a1_welcome_setup',
   'a2_utilities',

@@ -1,0 +1,37 @@
+-- ============================================================================
+-- Migration 0312b — reconcile the payment_plan_status enum (add 'proposed').
+--
+-- WHY (drift catch-up, 2026-06-07 verification pass)
+-- ──────────────────────────────────────────────────
+-- The canonical Drizzle enum for payment_plan_status (payment.schema.ts, the
+-- one re-exported at top level via `export *`) is:
+--     proposed | pending_approval | approved | active | completed
+--             | defaulted | cancelled
+-- and `payment_plans.status` defaults to 'proposed'.
+--
+-- The enum the DB actually has was shipped by 0001b_add_missing_entities.sql:
+--     draft | pending_approval | approved | active | completed
+--           | defaulted | cancelled
+-- i.e. it leads with 'draft' and has NO 'proposed' value. (A second, namespaced
+-- Drizzle copy in payment-plan.schema.ts still models the legacy 'draft' lead
+-- value for the legacy payment_plan_agreements table — both spellings are in
+-- use, so we ADD 'proposed' rather than rename 'draft'.)
+--
+-- 0313 creates the new `payment_plans` table with `status ... DEFAULT 'proposed'`.
+-- A column DEFAULT that names an enum label requires that label to already be
+-- COMMITTED — Postgres forbids using a value added by `ALTER TYPE ... ADD VALUE`
+-- inside the *same* transaction that adds it ("unsafe use of new value of enum
+-- type"). The migration runner (packages/database/src/run-migrations.ts) wraps
+-- each file in its own `sql.begin()` and commits it before the next file runs,
+-- so the correct, documented fix is to add the value HERE — in its own file
+-- that commits first — and let 0313 (the next file) safely default to it.
+--
+-- `ALTER TYPE ... ADD VALUE` is run as a bare top-level statement (NOT inside a
+-- DO/PL-pgSQL block, where adding-then-not-using is still subject to the same
+-- in-transaction restriction). `ADD VALUE IF NOT EXISTS` is natively idempotent,
+-- so re-running this file (or applying it to a DB drizzle-kit already healed) is
+-- a clean no-op. 0001b always creates the type earlier in the lex order, so the
+-- type is guaranteed to exist on both fresh and existing databases.
+-- ============================================================================
+
+ALTER TYPE "public"."payment_plan_status" ADD VALUE IF NOT EXISTS 'proposed';
