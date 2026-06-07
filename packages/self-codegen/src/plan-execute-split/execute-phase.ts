@@ -40,6 +40,7 @@ export function globToRegex(glob: string): RegExp {
       return '[^/]*';
     },
   );
+  // eslint-disable-next-line security/detect-non-literal-regexp -- reason: escaped is produced by deterministic glob-to-regex translation from a trusted internal allowlist, not user-supplied input
   return new RegExp(`^${escaped}$`);
 }
 

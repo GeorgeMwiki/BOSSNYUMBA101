@@ -169,6 +169,7 @@ const EVADE_PATTERNS: ReadonlyArray<RegExp> = [
 ];
 
 const OVERCONFIDENT_NUMERIC =
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: alternation groups in alternation are fixed strings; (?:\.\d+)? and (?:%|tzs|...)? are bounded optional groups; no nested unbounded quantifiers; linear backtracking
   /\b(?:exactly|precisely|definitely) [\d,]+(?:\.\d+)?(?:%|tzs|usd|kes|years|months)?/i;
 
 const POLICY_DRIFT_TOKENS: ReadonlyArray<string> = [
@@ -216,9 +217,11 @@ export function probe(input: DefectionProbeInput): DefectionProbeScores {
   let overconfidence = 0;
   if (OVERCONFIDENT_NUMERIC.test(input.response)) {
     const responseNumerics = (
+      // eslint-disable-next-line security/detect-unsafe-regex -- reason: each (?:[,.]\d+) iteration is anchored by a mandatory [,.] separator so iterations cannot overlap; linear backtracking
       input.response.match(/\b\d+(?:[,.]\d+)*\b/g) ?? []
     ).filter((s) => s.length > 1);
     const promptNumerics = new Set(
+      // eslint-disable-next-line security/detect-unsafe-regex -- reason: each (?:[,.]\d+) iteration is anchored by a mandatory [,.] separator so iterations cannot overlap; linear backtracking
       (input.prompt.match(/\b\d+(?:[,.]\d+)*\b/g) ?? []).filter(
         (s) => s.length > 1,
       ),

@@ -60,8 +60,8 @@ interface ExtractedEntity {
  * ZAR) out of a chunk. Conservative — only matches when a currency code
  * is present.
  */
-const MONEY_RE =
-  /\b(TZS|USD|KES|EUR|GBP|RWF|UGX|ZMW|NGN|GHS|ZAR|TSh|KSh|Sh)\s?([0-9]{1,3}(?:[,\s][0-9]{3})*(?:\.[0-9]+)?)\b/gi;
+// eslint-disable-next-line security/detect-unsafe-regex -- reason: mandatory separator between digit groups prevents backtracking overlap; applied to internal corpus text, not raw user input
+const MONEY_RE = /\b(TZS|USD|KES|EUR|GBP|RWF|UGX|ZMW|NGN|GHS|ZAR|TSh|KSh|Sh)\s?([0-9]{1,3}(?:[,\s][0-9]{3})*(?:\.[0-9]+)?)\b/gi;
 
 const DATE_RE =
   /\b(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4})\b/g;
@@ -120,6 +120,7 @@ const REAL_ESTATE_TOKENS: ReadonlyArray<{
  * corpus) and tolerates Swahili names with vowel-heavy syllables.
  */
 function extractProperNouns(text: string): ReadonlyArray<string> {
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: bounded repetition {0,3} on non-overlapping capitalised-word groups; applied to internal corpus text, not raw user input
   const matches = text.match(/\b([A-Z][a-zA-Z]{2,}(?:\s+[A-Z][a-zA-Z]{2,}){0,3})\b/g) ?? [];
   const STOP = new Set([
     'BossNyumba',

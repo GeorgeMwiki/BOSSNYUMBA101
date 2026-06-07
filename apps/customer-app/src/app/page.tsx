@@ -63,7 +63,7 @@ export default function HomePage() {
     if (typeof window === 'undefined') return;
     let sid = window.sessionStorage.getItem(SESSION_KEY);
     if (!sid) {
-      sid = `mk_${Math.random().toString(36).slice(2, 10)}`;
+      sid = `mk_${crypto.randomUUID().slice(0, 8)}`;
       window.sessionStorage.setItem(SESSION_KEY, sid);
     }
     setSessionId(sid);

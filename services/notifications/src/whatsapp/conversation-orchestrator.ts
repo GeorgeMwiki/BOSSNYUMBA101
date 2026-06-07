@@ -723,7 +723,7 @@ export class ConversationOrchestrator {
       // eslint-disable-next-line no-control-regex -- intentional: strip control chars from tenant-supplied name before template substitution.
       .replace(/[\x00-\x1f\x7f]/g, '')
       .replace(/\u200b/g, '').replace(/\u200c/g, '').replace(/\u200d/g, '').replace(/\ufeff/g, '')
-      .replace(/[,\-]/g, '')
+      .replace(/[,-]/g, '')
       .trim();
     // Allow letters (any Unicode script), digits, spaces, dot and apostrophe only.
     const name = rawName.replace(/[^\p{L}\d\s.']+/gu, '').trim() || 'Emergency Contact';

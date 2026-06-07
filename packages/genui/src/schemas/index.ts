@@ -134,10 +134,10 @@ export const KpiGridPartSchema = z
  * host portal MAY further constrain via runtime origin matching, but
  * the schema enforces the lowest-common floor.
  */
-const FORM_ACTION_ALLOWED_PATH =
-  /^\/api\/gateway\/forms\/[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)?\/?$/;
-const FORM_ACTION_ALLOWED_ABS =
-  /^https:\/\/[a-zA-Z0-9._-]+\/api\/gateway\/forms\/[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)?\/?$/;
+// eslint-disable-next-line security/detect-unsafe-regex -- reason: linear; character classes are non-overlapping single-byte sets with no nested quantifiers; no ReDoS risk
+const FORM_ACTION_ALLOWED_PATH = /^\/api\/gateway\/forms\/[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)?\/?$/;
+// eslint-disable-next-line security/detect-unsafe-regex -- reason: linear; character classes are non-overlapping; hostname and path segments use distinct bounded char classes
+const FORM_ACTION_ALLOWED_ABS = /^https:\/\/[a-zA-Z0-9._-]+\/api\/gateway\/forms\/[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)?\/?$/;
 
 export const PrefillFormActionSchema = z
   .string()

@@ -63,6 +63,7 @@ const PATTERNS = [
   {
     kind: 'amount' as const,
     pattern:
+      // eslint-disable-next-line security/detect-unsafe-regex -- reason: quantifiers are all bounded ({1,3}, {3}, {1,2}); the outer group (?:[,\s][0-9]{3})* repeats a fixed-width chunk, no nested overlapping repetition
       /(?:TZS|TSH|KES|KSh|USD|\$)?\s*([0-9]{1,3}(?:[,\s][0-9]{3})*(?:\.[0-9]{1,2})?)\s*(?:TZS|TSH|KES|KSh|USD|\/=|-)?/g,
     normalize: (raw: string): number => {
       const digits = raw.replace(/[^0-9.]/g, '');
@@ -119,6 +120,7 @@ const PATTERNS = [
   {
     // Kenya national ID is 7-8 digits (heuristic; needs context)
     kind: 'national_id_ke' as const,
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: all quantifiers are bounded (\s*, ?, {7,8}); no nested repetition on variable-length groups
     pattern: /\bID\s*(?:no\.?|number)?\s*[:#]?\s*(\d{7,8})\b/gi,
     normalize: (raw: string): string => raw.replace(/\D/g, ''),
     minConfidence: 0.7,
@@ -176,6 +178,7 @@ export function extractFromMessage(
   for (const spec of PATTERNS) {
     if (options.kinds && !options.kinds.includes(spec.kind)) continue;
     // Re-create regex to reset `lastIndex` across calls
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: source and flags come from the hardcoded PATTERNS constant above, not from user input
     const re = new RegExp(spec.pattern.source, spec.pattern.flags);
     let match: RegExpExecArray | null;
     while ((match = re.exec(text)) !== null) {

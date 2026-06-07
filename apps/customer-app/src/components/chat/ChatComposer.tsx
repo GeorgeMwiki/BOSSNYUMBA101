@@ -94,10 +94,7 @@ export function ChatComposer({
         try {
           const dataUrl = await readAsDataUrl(file);
           additions.push({
-            id:
-              typeof crypto !== 'undefined' && 'randomUUID' in crypto
-                ? crypto.randomUUID()
-                : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            id: crypto.randomUUID(),
             name: file.name,
             dataUrl,
           });
@@ -130,10 +127,7 @@ export function ChatComposer({
         return;
       }
 
-      const localId =
-        typeof crypto !== 'undefined' && 'randomUUID' in crypto
-          ? crypto.randomUUID()
-          : `local-${Date.now()}`;
+      const localId = crypto.randomUUID();
       const attachments = pending.map((p) => ({
         name: p.name,
         dataUrl: p.dataUrl,

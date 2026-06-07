@@ -29,6 +29,7 @@ function neutralizeInnerDelimiters(content: string, delimiterId: string): string
   if (content.length === 0) return content;
   // Find any occurrence of <<<END_XYZ>>> with the same id and neutralise it
   const escapedId = delimiterId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // eslint-disable-next-line security/detect-non-literal-regexp -- reason: escapedId is produced by regex-escaping an internal delimiter string, not user-supplied input; the pattern is bounded
   const re = new RegExp(`<<<END_[A-Z_]+_${escapedId}>>>`, 'g');
   return content.replace(re, '[neutralised-delimiter]');
 }

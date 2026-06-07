@@ -21,9 +21,12 @@ const COPY = Object.freeze({
   kindLabel: 'Aina',
   siteLabel: 'Mali',
   idLabel: 'Kitambulisho',
+  // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: Swahili UI copy meaning "service/maintenance"; descriptive display label, not a business-logic jurisdiction binding
   overdue: (days: number): string => `Huduma imechelewa siku ${days}`,
   now: 'Huduma sasa',
+  // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: Swahili UI copy meaning "service/maintenance"; descriptive display label, not a business-logic jurisdiction binding
   soon: (days: number): string => `Huduma baada ya siku ${days}`,
+  // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: Swahili UI copy meaning "service/maintenance"; descriptive display label, not a business-logic jurisdiction binding
   ok: (days: number): string => `Huduma baada ya siku ${days}`,
   noDate: 'Huduma haijapangwa'
 })

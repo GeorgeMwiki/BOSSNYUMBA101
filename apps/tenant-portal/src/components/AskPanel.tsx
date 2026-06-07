@@ -35,7 +35,7 @@ export function AskPanel({
   _postFeedback = postFeedback,
 }: Props = {}) {
   const sessionId = useMemo(
-    () => `sess_${Math.random().toString(36).slice(2, 10)}`,
+    () => `sess_${crypto.randomUUID().slice(0, 8)}`,
     [],
   );
   const [chips, setChips] = useState<ReadonlyArray<AskChip>>([]);

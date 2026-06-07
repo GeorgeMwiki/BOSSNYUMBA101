@@ -18,6 +18,7 @@ export type InspectionItem = z.infer<typeof inspectionItemSchema>
 export const inspectionFormSchema = z.object({
   inspectionId: z.string().trim().min(3).max(40),
   kind: inspectionKindSchema,
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: bounded anchored pattern, no nested repetition, linear-time
   depth: z.string().trim().regex(/^\d+(\.\d+)?$/u),
   assetTag: z.string().trim().max(40).optional().default('')
 })

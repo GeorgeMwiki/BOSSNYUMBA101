@@ -4,6 +4,7 @@ const numericString = z
   .string()
   .trim()
   .min(1)
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: bounded anchored pattern, no nested repetition, linear-time
   .regex(/^\d+(\.\d+)?$/u)
 
 const positiveDecimal = numericString.refine((value) => Number(value) > 0, {

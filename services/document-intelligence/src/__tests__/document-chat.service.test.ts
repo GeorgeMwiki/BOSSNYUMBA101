@@ -89,6 +89,7 @@ describe('DocumentChatService', () => {
     });
     await expect(
       svc.ask({ tenantId: 't1', sessionId: session.id, question: 'Hello?', askedBy: 'u1' })
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: DocChatError.CITATION_REQUIRED is an internal enum string constant used to build a test matcher, not user-supplied input
     ).rejects.toThrow(new RegExp(DocChatError.CITATION_REQUIRED));
   });
 

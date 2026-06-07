@@ -54,11 +54,11 @@ function getAuditor(): ReturnType<typeof auditor.createAuditorAgent> {
 // The patterns are intentionally permissive — the only thing the
 // auditor cares about is whether the response cites >=1 evidence id.
 
-const INLINE_EVIDENCE_RE =
-  /\[evidence(?::[A-Za-z0-9_\-:.]+)+\]|\[evidence:\s*([A-Za-z0-9_\-:.]+)\s*\]/g;
+// eslint-disable-next-line security/detect-unsafe-regex -- reason: character class [A-Za-z0-9_\-:.] has no overlap/nesting; each outer + iteration must consume ≥1 mandatory non-backtracking char; linear on trusted LLM output
+const INLINE_EVIDENCE_RE = /\[evidence(?::[A-Za-z0-9_\-:.]+)+\]|\[evidence:\s*([A-Za-z0-9_\-:.]+)\s*\]/g;
 const FOOTER_HEADER_RE = /^(?:sources|vyanzo)\s*:\s*$/im;
-const FOOTER_LINE_RE =
-  /(?:^|\n)\s*[-*]\s*(?:evidence_id\s*:\s*)?([A-Za-z0-9_\-:.]+)/g;
+// eslint-disable-next-line security/detect-unsafe-regex -- reason: bounded character class with no overlap; applied to trusted LLM-generated text, not raw user input
+const FOOTER_LINE_RE = /(?:^|\n)\s*[-*]\s*(?:evidence_id\s*:\s*)?([A-Za-z0-9_\-:.]+)/g;
 
 export function extractEvidenceIds(responseText: string): readonly string[] {
   if (typeof responseText !== 'string' || responseText.length === 0) {

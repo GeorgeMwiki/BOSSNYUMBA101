@@ -5,6 +5,7 @@ export const fuelLogFormSchema = z.object({
   litres: z
     .string()
     .trim()
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: bounded anchored pattern, no nested repetition, linear-time
     .regex(/^\d+(\.\d+)?$/u)
     .refine((value) => Number(value) > 0, { message: 'positive' })
 })

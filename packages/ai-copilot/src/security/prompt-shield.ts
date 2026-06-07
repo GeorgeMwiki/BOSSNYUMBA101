@@ -52,11 +52,15 @@ interface InjectionPattern {
 
 const PATTERNS: readonly InjectionPattern[] = [
   // Role / instruction override
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: (all\s+)? is a bounded optional group; no nested repetition on the outer match; prompt-injection security scanner on LLM input, not attacker-controllable regex
   { regex: /ignore\s+(all\s+)?previous\s+instructions/i, category: 'instruction_override', severity: 'critical', name: 'ignore_previous' },
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: flat alternation of fixed literal words inside each group; \s+ between groups; no overlapping nested quantifiers
   { regex: /forget\s+(all\s+)?(your|the)\s+(rules|instructions|guidelines)/i, category: 'instruction_override', severity: 'critical', name: 'forget_rules' },
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: flat alternation of fixed literal words; optional (all\s+)? is single-level bounded group; no catastrophic backtracking path
   { regex: /disregard\s+(all\s+)?(your|the|prior)\s+(instructions|rules|guidelines)/i, category: 'instruction_override', severity: 'critical', name: 'disregard_instructions' },
   { regex: /override\s+(your|the|system|all)\s+(rules|instructions|guidelines|constraints)/i, category: 'instruction_override', severity: 'critical', name: 'override_rules' },
   { regex: /you\s+are\s+now\s+(a|an|the)\s+/i, category: 'role_manipulation', severity: 'high', name: 'role_reassignment' },
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: optional inner group (if\s+you\s+are\s+)? is bounded single occurrence; outer alternation has fixed branches; no nested repetition
   { regex: /act\s+as\s+(if\s+you\s+are\s+)?(a|an|the)\s+/i, category: 'role_manipulation', severity: 'medium', name: 'act_as' },
   { regex: /pretend\s+(to\s+be|you\s+are)\s+/i, category: 'role_manipulation', severity: 'medium', name: 'pretend_to_be' },
   { regex: /switch\s+(to|into)\s+(evil|unrestricted|jailbreak|developer|admin)\s+mode/i, category: 'role_manipulation', severity: 'critical', name: 'mode_switch' },
@@ -76,10 +80,15 @@ const PATTERNS: readonly InjectionPattern[] = [
   { regex: /SYSTEM\s*PROMPT\s*:/i, category: 'delimiter_attack', severity: 'critical', name: 'system_prompt_label' },
 
   // Data exfiltration
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: flat alternation of fixed keywords; optional (system\s+)? is single bounded group; no nested overlapping quantifiers
   { regex: /repeat\s+(back|your)\s+(system\s+)?prompt/i, category: 'data_exfiltration', severity: 'high', name: 'repeat_prompt' },
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: flat alternation of fixed literals in each group; optional (system\s+)? is a single bounded group; no catastrophic backtracking path
   { regex: /what\s+(are|is)\s+your\s+(system\s+)?(prompt|instructions|rules)/i, category: 'data_exfiltration', severity: 'high', name: 'reveal_prompt' },
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: flat alternation of fixed keywords in each group; optional (system\s+)? is single bounded occurrence; no nested overlapping quantifiers
   { regex: /show\s+me\s+(your|the)\s+(system\s+)?(prompt|instructions|config)/i, category: 'data_exfiltration', severity: 'high', name: 'show_prompt' },
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: flat alternation of fixed modifier keywords; optional (system\s+)? is a single bounded group; prompt-injection data-exfiltration detector
   { regex: /output\s+(your|the)\s+(entire|full|complete)\s+(system\s+)?prompt/i, category: 'data_exfiltration', severity: 'critical', name: 'output_prompt' },
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: optional (system\s+)? is a single bounded group with no nested repetition; flat literal structure
   { regex: /print\s+(your|the)\s+(system\s+)?prompt/i, category: 'data_exfiltration', severity: 'high', name: 'print_prompt' },
   { regex: /leak\s+(your|the|any)\s+(internal|system|private|secret)/i, category: 'data_exfiltration', severity: 'critical', name: 'leak_internal' },
   { regex: /send\s+(all|my|user|this)\s+(data|info|information)\s+to\s+/i, category: 'data_exfiltration', severity: 'critical', name: 'send_data' },
@@ -87,6 +96,7 @@ const PATTERNS: readonly InjectionPattern[] = [
 
   // System probing
   { regex: /what\s+model\s+are\s+you/i, category: 'system_probe', severity: 'low', name: 'model_probe' },
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: optional (of\s+)? is a single bounded group; no nested overlapping quantifiers; system-probe detector for AI version queries
   { regex: /what\s+version\s+(of\s+)?AI/i, category: 'system_probe', severity: 'low', name: 'version_probe' },
   { regex: /ANTHROPIC_API_KEY|OPENAI_API_KEY|SUPABASE_SERVICE_ROLE|BOSSNYUMBA_SECRET/i, category: 'system_probe', severity: 'critical', name: 'specific_key_probe' },
   { regex: /environment\s+variable/i, category: 'system_probe', severity: 'medium', name: 'env_var_probe' },
@@ -121,10 +131,12 @@ const PATTERNS: readonly InjectionPattern[] = [
   // Match "execute arbitrary shell command", "run shell command", "invoke system code", etc.
   // Either an optional qualifier (arbitrary|raw) then a shell-type word, OR a shell-type word
   // alone, followed by command|code|script.
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: optional ((?:arbitrary|raw)\s+)? is a single bounded group; all other groups contain flat alternations of fixed keywords; no overlapping nested repetition
   { regex: /\b(?:execute|run|spawn|invoke)\s+(?:(?:arbitrary|raw)\s+)?(?:shell|bash|powershell|cmd|system|arbitrary)\s+(?:command|code|script)/i, category: 'tool_abuse', severity: 'critical', name: 'arbitrary_exec' },
   { regex: /\b(?:emergency|urgent|critical)\s+(?:override|bypass|escalation|approval)\b/i, category: 'role_manipulation', severity: 'high', name: 'emergency_override' },
   { regex: /\b(?:maintenance|debug|diagnostic|service)\s+mode\s+(?:enabled|active|engaged|on)\b/i, category: 'role_manipulation', severity: 'high', name: 'maintenance_mode' },
   { regex: /(?:^|\n)\s*(?:-{3,}|\*{3,}|={3,}|_{3,})\s*(?:\n|$)/, category: 'delimiter_attack', severity: 'medium', name: 'markdown_separator' },
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: optional (?:[A-Z_]{3,}_)? is a single bounded group; [_\s-]? is bounded single-character; no nested overlapping repetition; security scanner for API key probe attempts
   { regex: /\b(?:reveal|show|leak|print|output|dump)\s+(?:my|your|the|any)\s+(?:[A-Z_]{3,}_)?(?:API|SECRET|ACCESS|PRIVATE)[_\s-]?KEY\b/i, category: 'system_probe', severity: 'critical', name: 'api_key_probe' },
 ];
 

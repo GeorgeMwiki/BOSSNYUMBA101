@@ -229,7 +229,7 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
       if (kickoffTimeout !== null) clearTimeout(kickoffTimeout);
       timers.forEach(window.clearTimeout);
     };
-  }, []);
+  }, [choreo]);
 
   return (
     <section className="relative isolate overflow-hidden">

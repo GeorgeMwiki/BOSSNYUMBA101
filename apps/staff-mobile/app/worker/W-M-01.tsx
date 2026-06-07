@@ -9,6 +9,7 @@ import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
 const SCREEN_ID = 'W-M-01'
+// eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: TZ-launch default dial code in worker login UI; locale selection handles expansion markets
 const TZ_DIAL_CODE = '+255'
 
 type LoginStage = 'phone' | 'fingerprint' | 'ready'

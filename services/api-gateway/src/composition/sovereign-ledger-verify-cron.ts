@@ -135,6 +135,7 @@ async function emit(
   try {
     await bus.publish({
       event: {
+        // eslint-disable-next-line no-restricted-syntax -- reason: correlation/tracing eventId, not a secret or security token
         eventId: `sov_ledger_${eventType}_${Date.now()}_${Math.random()
           .toString(36)
           .slice(2, 8)}`,

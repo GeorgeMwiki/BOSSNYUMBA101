@@ -111,7 +111,7 @@ function PpeReceipt(): JSX.Element {
     }
   })
 
-  const items = query.data?.data ?? []
+  const items = useMemo(() => query.data?.data ?? [], [query.data])
   const networkError = query.error?.status === 0 || query.error?.status === 503
   const totalQty = useMemo(
     () => items.reduce((sum, item) => sum + Math.max(item.quantity, 0), 0),

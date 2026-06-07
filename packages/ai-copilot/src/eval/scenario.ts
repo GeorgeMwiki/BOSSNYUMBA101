@@ -136,6 +136,7 @@ export function evaluateScenario(
         }
       }
       if (scenario.expect.expectProposedAction.verbRegex) {
+        // eslint-disable-next-line security/detect-non-literal-regexp -- reason: verbRegex is authored in static test scenario definitions (trusted eval config), never from runtime user input
         const re = new RegExp(
           scenario.expect.expectProposedAction.verbRegex,
           'i'

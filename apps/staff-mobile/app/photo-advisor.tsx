@@ -73,6 +73,31 @@ function PhotoAdvisorBody(): JSX.Element {
 
   const mutation = usePhotoAdvisor()
 
+  const requestLocation = useCallback(async (): Promise<void> => {
+    setGpsState('requesting')
+    try {
+      const perm = await Location.requestForegroundPermissionsAsync()
+      if (perm.status !== 'granted') {
+        setGpsState('denied')
+        setCoords(null)
+        return
+      }
+      const fix = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High
+      })
+      setCoords({
+        latitude: fix.coords.latitude,
+        longitude: fix.coords.longitude,
+        accuracyMetres: fix.coords.accuracy ?? null,
+        capturedAt: fix.timestamp
+      })
+      setGpsState('granted')
+    } catch {
+      setGpsState('denied')
+      setCoords(null)
+    }
+  }, [])
+
   const takePhoto = useCallback(async (): Promise<void> => {
     setCaptureError(null)
     const perm = await ImagePicker.getCameraPermissionsAsync()
@@ -111,32 +136,7 @@ function PhotoAdvisorBody(): JSX.Element {
     } catch {
       setCaptureError('capture_failed')
     }
-  }, [])
-
-  const requestLocation = useCallback(async (): Promise<void> => {
-    setGpsState('requesting')
-    try {
-      const perm = await Location.requestForegroundPermissionsAsync()
-      if (perm.status !== 'granted') {
-        setGpsState('denied')
-        setCoords(null)
-        return
-      }
-      const fix = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High
-      })
-      setCoords({
-        latitude: fix.coords.latitude,
-        longitude: fix.coords.longitude,
-        accuracyMetres: fix.coords.accuracy ?? null,
-        capturedAt: fix.timestamp
-      })
-      setGpsState('granted')
-    } catch {
-      setGpsState('denied')
-      setCoords(null)
-    }
-  }, [])
+  }, [requestLocation])
 
   const submit = useCallback((): void => {
     if (!photo) {

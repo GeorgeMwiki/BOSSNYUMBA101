@@ -245,6 +245,7 @@ export class AbacEngine {
 
       case 'matches':
         if (typeof attrValue === 'string' && typeof compareValue === 'string') {
+          // eslint-disable-next-line security/detect-non-literal-regexp -- reason: compareValue is a policy-author-controlled pattern from the ABAC policy definition, not user-supplied input
           const regex = new RegExp(compareValue);
           return regex.test(attrValue);
         }

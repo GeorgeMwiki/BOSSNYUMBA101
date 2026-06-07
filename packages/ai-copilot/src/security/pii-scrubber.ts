@@ -152,6 +152,7 @@ const PII_PATTERNS: readonly PiiPattern[] = [
   // IP.
   {
     type: 'ip_address',
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: (?:\d{1,3}\.){3} repeats a strictly bounded fixed-width token; no nested overlapping quantifiers; PII scanner on trusted internal text, not attacker-controlled regex input
     regex: /\b(?:\d{1,3}\.){3}\d{1,3}\b/,
     replacement: '[IP]',
   },
@@ -190,6 +191,7 @@ const PII_PATTERNS: readonly PiiPattern[] = [
 // for jurisdiction-specific PII the standalone patterns can't catch.
 const NIN_CONTEXT_RX = /(?:\bNIN\b|national\s+identification\s+number|nin\s+yangu\s+ni)[\s:]*(\d{11})\b/i;
 const MPESA_PIN_CONTEXT_RX =
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: alternation of literal phrases; no nested unbounded quantifiers; \s+ transitions between flat alternatives; PII context scanner on internal text
   /(?:m[-\s]?pesa\s+pin|mpesa\s+pin|pin\s+ya\s+m[-\s]?pesa|pin\s+yangu\s+ya\s+m[-\s]?pesa|my\s+m[-\s]?pesa\s+pin)\s+(?:is\s+|ni\s+)?(\d{4,6})\b/i;
 
 // Round-3 audit C13 — base64 detection.
@@ -210,6 +212,7 @@ const CONTEXT_PATTERNS: readonly ContextPattern[] = [
   // English/Swahili phone context.
   {
     regex:
+      // eslint-disable-next-line security/detect-unsafe-regex -- reason: alternation of fixed literal phrases with \s+ separators; no nested overlapping quantifiers; PII context trigger scanner
       /(?:my\s+(?:phone\s+)?number\s+is|namba\s+yangu\s+ni|piga\s+simu|call\s+me\s+(?:on|at))\s+/i,
     piiRegex: /\+?\d[\d\s-]{7,}/,
     type: 'phone_number',
@@ -225,6 +228,7 @@ const CONTEXT_PATTERNS: readonly ContextPattern[] = [
   // NIDA / national ID.
   {
     regex:
+      // eslint-disable-next-line security/detect-unsafe-regex -- reason: alternation of fixed Swahili/English trigger phrases; optional suffixes are bounded (?:...)? not nested repeating; PII context trigger scanner
       /(?:my\s+(?:national\s+)?id(?:\s+number)?\s+is|kitambulisho\s+changu(?:\s+ni)?|nida\s+yangu(?:\s+ni)?)\s+/i,
     piiRegex: /\d[\d\s-]{8,}/,
     type: 'national_id',
@@ -234,6 +238,7 @@ const CONTEXT_PATTERNS: readonly ContextPattern[] = [
   // Trigger phrase first, then the canonical 11-char PIN in tail.
   {
     regex:
+      // eslint-disable-next-line security/detect-unsafe-regex -- reason: alternation of fixed literal phrases; optional groups (?:...)? are bounded single-occurrence suffixes; no nested unbounded repetition; PII context trigger scanner
       /(?:my\s+kra(?:\s+pin)?(?:\s+is)?|nambari\s+yangu\s+ya\s+kra(?:\s+ni)?|kra\s+pin\s+is)\s+/i,
     piiRegex: /[A-Z]\d{9}[A-Z]/,
     type: 'kra_pin',
@@ -264,6 +269,7 @@ interface CompiledPiiPattern extends PiiPattern {
 const COMPILED_PII_PATTERNS: readonly CompiledPiiPattern[] = PII_PATTERNS.map(
   (p) => ({
     ...p,
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: p.regex.source comes from the hardcoded PII_PATTERNS constant array defined above; flag augmentation adds 'g' for global scan; not user-controlled input
     globalRegex: new RegExp(
       p.regex.source,
       p.regex.flags.includes('g') ? p.regex.flags : `${p.regex.flags}g`

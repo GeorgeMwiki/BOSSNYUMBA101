@@ -364,6 +364,7 @@ export class PolicyEvaluator {
       case ConditionOperator.MATCHES:
         if (typeof sourceValue === 'string' && typeof comparisonValue === 'string') {
           try {
+            // eslint-disable-next-line security/detect-non-literal-regexp -- reason: comparisonValue is a policy-author-controlled condition pattern from the policy definition, not user-supplied input
             return new RegExp(comparisonValue).test(sourceValue);
           } catch {
             return false;

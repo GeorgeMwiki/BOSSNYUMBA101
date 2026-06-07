@@ -133,6 +133,7 @@ export function createRiskRecomputeJobTracker(): RiskRecomputeJobTracker {
 
   return {
     create(input) {
+      // eslint-disable-next-line no-restricted-syntax -- reason: internal job tracking ID, not a secret or security token
       const jobId = `risk_${Date.now().toString(36)}_${Math.random()
         .toString(36)
         .slice(2, 8)}`;

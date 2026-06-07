@@ -194,6 +194,7 @@ function makeRunId(): string {
   if (typeof globalThis.crypto?.randomUUID === 'function') {
     return `run_${globalThis.crypto.randomUUID()}`;
   }
+  // eslint-disable-next-line no-restricted-syntax -- reason: fallback path when globalThis.crypto.randomUUID is unavailable; not a secret
   return `run_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 

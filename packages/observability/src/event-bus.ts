@@ -427,6 +427,7 @@ export class EventBus {
       return pattern === value;
     }
 
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: pattern is an internal event-bus subscription pattern with only * wildcards; trusted caller-controlled, not user input
     const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
     return regex.test(value);
   }

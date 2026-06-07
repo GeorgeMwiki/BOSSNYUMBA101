@@ -32,6 +32,7 @@ export async function setAuthToken(token: string | null): Promise<void> {
   cache.token = token
   cache.loaded = true
   try {
+    // eslint-disable-next-line security/detect-possible-timing-attacks -- reason: comparing to literal null (not a secret); no timing oracle possible
     if (token === null) {
       await AsyncStorage.removeItem(TOKEN_KEY)
       return

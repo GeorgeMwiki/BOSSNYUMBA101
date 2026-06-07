@@ -133,7 +133,7 @@ function AuditPackagesView(): JSX.Element {
     }
   })
 
-  const entries = entriesQuery.data ?? []
+  const entries = useMemo(() => entriesQuery.data ?? [], [entriesQuery.data])
 
   const packages = useMemo<ReadonlyArray<PackageSummary>>(() => {
     return computeQuarterlyPackages(entries)

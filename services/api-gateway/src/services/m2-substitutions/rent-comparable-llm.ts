@@ -124,6 +124,7 @@ export async function defaultHeuristicRentComparable(
   input: RentComparableInput,
 ): Promise<RentComparableRecommendation> {
   const numericFromDescription = (text: string): number | null => {
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: mandatory separator between digit groups prevents backtracking; alternation is ordered so longer form matches first; applied to trusted LLM description text
     const match = text.match(/(\d{1,3}(?:[,_ ]\d{3})+|\d+)/);
     if (!match) return null;
     const cleaned = match[1]!.replace(/[,_ ]/g, '');

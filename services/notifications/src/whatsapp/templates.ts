@@ -1074,6 +1074,7 @@ export function renderTemplate(
 ): string {
   let result = template;
   for (const [key, value] of Object.entries(variables)) {
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: key is a property name from a trusted internal variables record, not user-supplied input; braces are literal characters in the template placeholder syntax
     const placeholder = new RegExp(`{{${key}}}`, 'g');
     result = result.replace(placeholder, String(value));
   }

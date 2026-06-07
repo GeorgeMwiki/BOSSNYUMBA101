@@ -1422,7 +1422,7 @@ function degradedRegistry(
     llmBudgetGovernor: createLLMBudgetGovernor({
       store: wireBudgetStore({
         db: null,
-        logger: { warn: (meta, msg) => console.warn('llm-budget:', msg ?? '', meta) },
+        logger: { warn: (meta, msg) => logger.warn(`llm-budget: ${msg ?? ''}`, meta as Record<string, unknown>) },
       }),
     }),
     arrears: {
@@ -1512,7 +1512,7 @@ function degradedRegistry(
     // discovery (slash + sub-agents + skills) keep working.
     agentStack: createAgentStackBundle({
       buildBudgetGuardedAnthropicClient: null,
-      logger: { warn: (meta, msg) => console.warn('agent-stack:', msg ?? '', meta) },
+      logger: { warn: (meta, msg) => logger.warn(`agent-stack: ${msg ?? ''}`, meta as Record<string, unknown>) },
     }),
     // Central Intelligence — no concrete LLM adapter ships here (it
     // lives in a separate service). In degraded mode we still wire the
@@ -2072,8 +2072,8 @@ function buildServicesInner(
   const killswitchFanoutPublisher = createKillswitchFanoutPublisher({
     crossPortalBus: liveCrossPortalBus,
     logger: {
-      info: (obj, msg) => console.info('killswitch-fanout:', msg ?? '', obj),
-      warn: (obj, msg) => console.warn('killswitch-fanout:', msg ?? '', obj),
+      info: (obj, msg) => logger.info(`killswitch-fanout: ${msg ?? ''}`, obj as Record<string, unknown>),
+      warn: (obj, msg) => logger.warn(`killswitch-fanout: ${msg ?? ''}`, obj as Record<string, unknown>),
     },
   });
   const notificationDispatcherAdapter = createNotificationDispatcherAdapter({
@@ -2272,7 +2272,7 @@ function buildServicesInner(
     agentStack: createAgentStackBundle({
       buildBudgetGuardedAnthropicClient:
         (buildBudgetGuardedAnthropicClient as AgentStackBudgetGuardedAnthropicFactory | null),
-      logger: { warn: (meta, msg) => console.warn('agent-stack:', msg ?? '', meta) },
+      logger: { warn: (meta, msg) => logger.warn(`agent-stack: ${msg ?? ''}`, meta as Record<string, unknown>) },
     }),
     // Central Intelligence — `agent` is the in-tree streaming agent loop
     // backed by the per-tenant budget-guarded Anthropic client (wired via
@@ -2861,9 +2861,9 @@ function buildServicesInner(
     wakeLoopCron: createWakeLoopCronSupervisor({
       db,
       logger: {
-        info: (obj, msg) => console.info('wake-loop-cron:', msg ?? '', obj),
-        warn: (obj, msg) => console.warn('wake-loop-cron:', msg ?? '', obj),
-        error: (obj, msg) => console.error('wake-loop-cron:', msg ?? '', obj),
+        info: (obj, msg) => logger.info(`wake-loop-cron: ${msg ?? ''}`, obj as Record<string, unknown>),
+        warn: (obj, msg) => logger.warn(`wake-loop-cron: ${msg ?? ''}`, obj as Record<string, unknown>),
+        error: (obj, msg) => logger.error(`wake-loop-cron: ${msg ?? ''}`, obj as Record<string, unknown>),
       },
       // Wave-K Tier-3 follow-up — bind the Drizzle-backed kernel-goals
       // service as the wake-loop's stall-scan repo. The service already
@@ -2914,8 +2914,8 @@ function buildServicesInner(
       source: createSensoriumActiveSessionSource(db),
       reflexionWriter: createReflexionBufferService(db),
       logger: {
-        info: (obj, msg) => console.info('idle-session-emitter:', msg ?? '', obj),
-        warn: (obj, msg) => console.warn('idle-session-emitter:', msg ?? '', obj),
+        info: (obj, msg) => logger.info(`idle-session-emitter: ${msg ?? ''}`, obj as Record<string, unknown>),
+        warn: (obj, msg) => logger.warn(`idle-session-emitter: ${msg ?? ''}`, obj as Record<string, unknown>),
       },
     }),
     // A2b-2 wires #8 + #9 — bind the AI audit-chain HMAC verifier
@@ -2939,9 +2939,9 @@ function buildServicesInner(
         db,
         eventBus,
         logger: {
-          info: (obj, msg) => console.info('audit-verify-cron:', msg ?? '', obj),
-          warn: (obj, msg) => console.warn('audit-verify-cron:', msg ?? '', obj),
-          error: (obj, msg) => console.error('audit-verify-cron:', msg ?? '', obj),
+          info: (obj, msg) => logger.info(`audit-verify-cron: ${msg ?? ''}`, obj as Record<string, unknown>),
+          warn: (obj, msg) => logger.warn(`audit-verify-cron: ${msg ?? ''}`, obj as Record<string, unknown>),
+          error: (obj, msg) => logger.error(`audit-verify-cron: ${msg ?? ''}`, obj as Record<string, unknown>),
         },
       });
     })(),

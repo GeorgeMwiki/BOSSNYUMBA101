@@ -26,6 +26,9 @@ interface IndividualTenantStepProps {
 
 type FieldErrors = Readonly<Partial<Record<keyof IndividualTenantDraft, string>>>;
 
+// eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: TZ-launch default dial code placeholder in marketing signup form; locale selection handles expansion markets
+const TZ_PHONE_PLACEHOLDER = '+255712345678';
+
 /**
  * Step 2a — individual-tenant details form.
  *
@@ -151,7 +154,7 @@ export function IndividualTenantStep({
             data-testid="tenant-individual-phone"
             autoComplete="tel"
             inputMode="tel"
-            placeholder="+255712345678"
+            placeholder={TZ_PHONE_PLACEHOLDER}
             value={draft.phoneE164}
             onChange={(e) => update('phoneE164', e.currentTarget.value)}
             className="w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-foreground/40 focus:border-signal-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-signal-500"

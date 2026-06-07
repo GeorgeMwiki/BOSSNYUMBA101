@@ -178,6 +178,7 @@ export function parseComplianceNotice(text: string): DocumentAnalysisResult {
 }
 
 export function parseGovernmentLetter(text: string): DocumentAnalysisResult {
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: [:\s]+ is anchored by the preceding literal "ref..."; no nested quantifiers; input is document text read from trusted internal parsers
   const ref = /ref\s*(?:no\.?|number)?[:\s]+([A-Z0-9/-]{3,30})/i.exec(text)?.[1];
   const ministry = /(?:ministry|authority|council)\s+of\s+([A-Z][A-Za-z &]{2,60})/i.exec(text)?.[0];
   const date = /date[:\s]+([\d]{1,2}[/\-.][A-Za-z0-9]{1,10}[/\-.][\d]{2,4})/i.exec(text)?.[1];

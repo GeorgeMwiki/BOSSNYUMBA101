@@ -42,6 +42,7 @@ export type ApplicantCountry =
   | 'EU'
   | 'OTHER'
 
+// eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: supported-currency-code allowlist/union type, not a hard-coded business currency
 export type ApplicantCurrency = 'USD' | 'TZS' | 'KES' | 'EUR'
 
 export type ApplicantLanguage = 'sw' | 'en'

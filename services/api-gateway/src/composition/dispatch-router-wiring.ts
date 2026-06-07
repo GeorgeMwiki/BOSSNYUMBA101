@@ -234,6 +234,7 @@ export function createStubEstateHandlerDeps(): EstateHandlerDeps {
   // explicit "stub the write" path the task description allows.
   const auditChain = {
     async append() {
+      // eslint-disable-next-line no-restricted-syntax -- reason: stub/test audit ID, not a secret or security token
       return { id: `stub_audit_${Math.random().toString(36).slice(2, 8)}` };
     },
   };
@@ -250,16 +251,19 @@ export function createStubEstateHandlerDeps(): EstateHandlerDeps {
           return null;
         },
         async createPerson() {
+          // eslint-disable-next-line no-restricted-syntax -- reason: stub/test person ID, not a secret or security token
           return { id: `stub_person_${Math.random().toString(36).slice(2, 8)}` };
         },
       },
       ledger: {
         async post() {
+          // eslint-disable-next-line no-restricted-syntax -- reason: stub/test ledger ID, not a secret or security token
           return { id: `stub_ledger_${Math.random().toString(36).slice(2, 8)}` };
         },
       },
       applications: {
         async draftApplication() {
+          // eslint-disable-next-line no-restricted-syntax -- reason: stub/test application ID, not a secret or security token
           return { id: `stub_app_${Math.random().toString(36).slice(2, 8)}` };
         },
       },
@@ -269,11 +273,13 @@ export function createStubEstateHandlerDeps(): EstateHandlerDeps {
     postReceiptDraft: {
       ledger: {
         async draft() {
+          // eslint-disable-next-line no-restricted-syntax -- reason: stub/test ledger draft ID, not a secret or security token
           return { id: `stub_ledger_draft_${Math.random().toString(36).slice(2, 8)}` };
         },
       },
       receipts: {
         async draft() {
+          // eslint-disable-next-line no-restricted-syntax -- reason: stub/test receipt ID, not a secret or security token
           return { id: `stub_receipt_${Math.random().toString(36).slice(2, 8)}` };
         },
       },

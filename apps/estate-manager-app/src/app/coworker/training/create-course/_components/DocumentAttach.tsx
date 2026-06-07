@@ -54,7 +54,7 @@ export function DocumentAttach({
   function addDoc(): void {
     if (!canAdd) return;
     const next: AttachedDocument = {
-      documentId: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      documentId: `doc-${crypto.randomUUID().slice(0, 8)}`,
       documentName: name.trim(),
       documentType: type.trim(),
       summary: summary.trim(),

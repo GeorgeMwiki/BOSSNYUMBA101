@@ -96,6 +96,7 @@ export const CURRENCY_SYMBOLS: readonly string[] = Object.freeze([
  * number followed by the label, e.g. `1,500 KES`). The `i` flag makes
  * casing irrelevant.
  */
+// eslint-disable-next-line security/detect-non-literal-regexp -- reason: pattern built from hardcoded SUPPORTED_CURRENCY_CODES and INFORMAL_CURRENCY_LABELS module-level constants, not user input
 export const CURRENCY_CODE_RE = new RegExp(
   `\\b(?:${alternation([
     ...SUPPORTED_CURRENCY_CODES,
@@ -108,6 +109,7 @@ export const CURRENCY_CODE_RE = new RegExp(
 );
 
 /** Symbol-style detector (e.g. `$1,500`, `€450`). */
+// eslint-disable-next-line security/detect-non-literal-regexp -- reason: pattern built from hardcoded CURRENCY_SYMBOLS module-level constant, not user input
 export const CURRENCY_SYMBOL_RE = new RegExp(
   `(?:${alternation([...CURRENCY_SYMBOLS])})\\s*\\d[\\d,]*(?:\\.\\d+)?`,
 );

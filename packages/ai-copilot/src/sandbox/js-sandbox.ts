@@ -102,6 +102,7 @@ function loadIvm(): IvmModule {
   } catch (err) {
     const rawMsg = err instanceof Error ? err.message : String(err);
     // Strip any absolute filesystem path (information disclosure).
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: (?:\/[^\s/]+){2,} repeats a fixed negated-class token, no nested overlapping quantifiers; applied only to an error message string, not user-controllable input
     const safeMsg = rawMsg.replace(/(?:\/[^\s/]+){2,}/g, '<path>');
     _ivmInitErrorMessage = `isolated-vm load failed: ${safeMsg}`;
     throw new Error(_ivmInitErrorMessage);

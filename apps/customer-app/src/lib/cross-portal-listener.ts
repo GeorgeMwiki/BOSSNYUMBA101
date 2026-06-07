@@ -234,6 +234,7 @@ export function startCrossPortalListener(
     attempt += 1;
     const backoff = Math.min(
       maxBackoffMs,
+      // eslint-disable-next-line no-restricted-syntax -- reason: jitter for exponential backoff delay, not an ID or secret
       Math.floor(Math.min(30, 2 ** attempt) * 100) + Math.floor(Math.random() * 200),
     );
     reconnectTimer = setTimeout(() => {

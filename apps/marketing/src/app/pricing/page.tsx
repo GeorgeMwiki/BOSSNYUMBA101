@@ -99,6 +99,7 @@ const COPY: Record<Locale, PageCopy> = {
       'Eight answers we hear most often. Have another? Ask Mr. Mwikila in the chat widget — he speaks Swahili by default.',
     ctaHeading: 'Start today. No card needed.',
     ctaSub: (smallholder) =>
+      // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: static marketing copy / TZ-launch pricing CTA, not a tenant business-logic binding
       `The ${smallholder} tier is free up to 5 units — sign up with your M-Pesa number or email.`,
     ctaPrimary: 'Sign Up',
     ctaSecondary: 'Book a 20-minute demo',
@@ -120,6 +121,7 @@ const COPY: Record<Locale, PageCopy> = {
       'Majibu nane tunayoulizwa mara nyingi. Una swali lingine? Muulize Bw. Mwikila kwenye dirisha la mazungumzo — anaongea Kiswahili kwa chaguo-msingi.',
     ctaHeading: 'Anza leo. Hakuna kadi inayohitajika.',
     ctaSub: (smallholder) =>
+      // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: static marketing copy / TZ-launch pricing CTA in Swahili locale, not a tenant business-logic binding
       `Daraja la ${smallholder} ni bure hadi vyumba 5 — jisajili kwa nambari yako ya M-Pesa au barua pepe.`,
     ctaPrimary: 'Jisajili',
     ctaSecondary: 'Weka onyesho la dakika 20',

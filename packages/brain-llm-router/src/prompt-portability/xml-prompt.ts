@@ -133,7 +133,9 @@ export function lintPortability(text: string): readonly string[] {
   }
   // Detect unclosed tags.
   for (const tag of ALL_XML_SECTIONS) {
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: tag comes from ALL_XML_SECTIONS constant tuple ('role'|'context'|'tools'|'task'|'examples'|'output_format'), never user input
     const opens = (text.match(new RegExp(`<${tag}>`, 'g')) ?? []).length;
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: tag comes from ALL_XML_SECTIONS constant tuple ('role'|'context'|'tools'|'task'|'examples'|'output_format'), never user input
     const closes = (text.match(new RegExp(`</${tag}>`, 'g')) ?? []).length;
     if (opens !== closes) {
       issues.push(`tag <${tag}> opens=${opens} closes=${closes} (must match)`);

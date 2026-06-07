@@ -109,10 +109,13 @@ const EXFIL_ENDPOINTS: ReadonlyArray<RegExp> = [
  * an earlier tool output.
  */
 const PROMPT_INJECTION_IN_ARGS: ReadonlyArray<RegExp> = [
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: (all\s+)? is a bounded optional group; no nested unbounded quantifiers; linear backtracking
   /ignore\s+(all\s+)?previous/i,
   /system\s+prompt/i,
   /you\s+are\s+now/i,
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: (all\s+)? is a bounded optional group followed by fixed alternation; linear backtracking
   /forget\s+(all\s+)?(your|the)\s+(rules|instructions)/i,
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: (all\s+)? is a bounded optional group followed by fixed alternation; linear backtracking
   /disregard\s+(all\s+)?(your|the|prior)/i,
   /override\s+(your|the|system)/i,
   /new\s+instructions?\s*:/i,

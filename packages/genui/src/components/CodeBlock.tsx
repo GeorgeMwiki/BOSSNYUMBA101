@@ -150,6 +150,7 @@ interface Token {
 function tokenise(line: string, language: string): ReadonlyArray<Token> {
   const tokens: Token[] = [];
   if (language === 'json') {
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: linear regex; [^"\\] and \\. are mutually exclusive alternatives (no overlap), so no backtracking catastrophe
     const re = /("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?)|(true|false|null)|([{}[\],:])/g;
     let lastIdx = 0;
     let m: RegExpExecArray | null;
@@ -180,6 +181,7 @@ function tokenise(line: string, language: string): ReadonlyArray<Token> {
   if (!keywordSet) return [{ text: line, cls: '' }];
 
   // tokenise: comment, string, number, ident, other
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: linear regex; comment and string alternatives are bounded by newline/non-overlapping char classes; no nested quantifiers with overlap
   const re = /(--[^\n]*|\/\/[^\n]*|#[^\n]*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(-?\d+(?:\.\d+)?)|([A-Za-z_][A-Za-z0-9_]*)/g;
   let lastIdx = 0;
   let m: RegExpExecArray | null;

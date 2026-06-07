@@ -10,6 +10,7 @@
  * than inventing numbers.
  */
 
+import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import {
   creditRatingSnapshots,
@@ -290,7 +291,7 @@ export class PostgresCreditRatingRepository implements CreditRatingRepository {
 
   async saveSnapshot(rating: CreditRating): Promise<void> {
     await asInsertRunner(this.db).insert(creditRatingSnapshots).values({
-      id: `crs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+      id: `crs_${randomUUID()}`,
       tenantId: rating.tenantId,
       customerId: rating.customerId,
       numericScore: rating.numericScore,

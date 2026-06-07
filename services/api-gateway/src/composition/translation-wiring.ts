@@ -90,6 +90,7 @@ export function wireTranslation(
   input: TranslationWiringInput,
 ): TranslationWiringResult {
   const apiKey = resolveAnthropicKey();
+  // eslint-disable-next-line security/detect-possible-timing-attacks -- reason: null-presence check on config value, not a secret comparison; no side-channel risk
   if (apiKey === null) {
     input.logger.warn(
       'translation: ANTHROPIC_API_KEY not set — translate() will fall back to source text',

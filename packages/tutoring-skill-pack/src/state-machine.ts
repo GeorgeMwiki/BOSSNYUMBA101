@@ -95,6 +95,7 @@ export function scoreCheckAnswer(
 ): 'correct' | 'incorrect' {
   let re: RegExp;
   try {
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: expected_pattern is an author-controlled seed pattern from the tutoring content definition, not user-supplied input
     re = new RegExp(check.expected_pattern, 'i');
   } catch {
     // Pattern is malformed in the seed; degrade to a substring match.

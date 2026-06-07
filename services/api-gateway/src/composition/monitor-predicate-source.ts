@@ -218,16 +218,19 @@ const TAGGED_TOKEN = '([A-Za-z0-9_\\-.]+)';
 function extractRef(text: string, kinds: ReadonlyArray<string>): string | undefined {
   for (const kind of kinds) {
     const k = escapeRe(kind);
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: k is regex-escaped via escapeRe(); kinds are internal predicate config strings, not user input
     const tagged = new RegExp(`${k}\\s*[:=#]\\s*${TAGGED_TOKEN}`, 'i').exec(text);
     if (tagged?.[1]) return tagged[1];
   }
   for (const kind of kinds) {
     const k = escapeRe(kind);
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: k is regex-escaped via escapeRe(); kinds are internal predicate config strings, not user input
     const phrased = new RegExp(`(?:for|on|of|the)\\s+${k}\\s+${ID_TOKEN}`, 'i').exec(text);
     if (phrased?.[1]) return phrased[1];
   }
   for (const kind of kinds) {
     const k = escapeRe(kind);
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: k is regex-escaped via escapeRe(); kinds are internal predicate config strings, not user input
     const bare = new RegExp(`${k}\\s+${ID_TOKEN}`, 'i').exec(text);
     if (bare?.[1]) return bare[1];
   }

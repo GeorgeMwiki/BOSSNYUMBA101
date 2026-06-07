@@ -50,10 +50,7 @@ function writeQueue(jobs: readonly QueuedJob[]): void {
 }
 
 function makeClientJobId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return `job_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return crypto.randomUUID();
 }
 
 /**

@@ -84,6 +84,7 @@ export interface VerifyVerdict {
  */
 function rationaleCitesClause(rationale: string, clauseId: string): boolean {
   const escaped = clauseId.replace(/-/g, '[-_]?');
+  // eslint-disable-next-line security/detect-non-literal-regexp -- reason: pattern built from constitution clause IDs (e.g. "C01", "C-11"), which are internal constants from BOSSNYUMBA_CONSTITUTION_V1, never user input
   return new RegExp(`\\b${escaped}\\b`, 'i').test(rationale);
 }
 

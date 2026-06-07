@@ -84,7 +84,7 @@ export function buildNotificationItem(
   const id =
     typeof idCandidate === 'string' && idCandidate.length > 0
       ? idCandidate
-      : `${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      : `${kind}-${crypto.randomUUID().slice(0, 8)}`;
   return {
     id,
     kind,

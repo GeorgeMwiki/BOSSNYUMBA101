@@ -136,10 +136,7 @@ export function MaintenanceTicketModal({
       for (const f of Array.from(files).slice(0, PHOTO_LIMIT)) {
         try {
           next.push({
-            id:
-              typeof crypto !== 'undefined' && 'randomUUID' in crypto
-                ? crypto.randomUUID()
-                : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            id: crypto.randomUUID(),
             name: f.name,
             dataUrl: await readAsDataUrl(f),
           });
