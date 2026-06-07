@@ -32,22 +32,36 @@
  *     marker is rejected and the heuristic is used as fallback.
  */
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import Anthropic from '@anthropic-ai/sdk';
 import type { Logger } from 'pino';
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
-// Model constants (2026 Anthropic IDs — match ai-copilot's ModelTier)
+// Model accessors — resolver-backed so every dispatch tracks the LATEST id.
+// Each property read calls the dynamic registry (L1 cache → L2 provider
+// /v1/models → L3 baseline), so callers never pin a stale literal. The shape
+// is preserved for back-compat (`BRAIN_LLM_MODELS.SONNET`), and the object is
+// frozen with getter-only properties (immutable: no setters).
 // ---------------------------------------------------------------------------
 
-export const BRAIN_LLM_MODELS = {
-  HAIKU: 'claude-haiku-4-5-20251001',
-  SONNET: 'claude-sonnet-4-6',
-  OPUS: 'claude-opus-4-6',
-} as const;
+export const BRAIN_LLM_MODELS: Readonly<{
+  readonly HAIKU: string;
+  readonly SONNET: string;
+  readonly OPUS: string;
+}> = Object.freeze({
+  get HAIKU(): string {
+    return getModelLatest('haiku');
+  },
+  get SONNET(): string {
+    return getModelLatest('sonnet');
+  },
+  get OPUS(): string {
+    return getModelLatest('opus');
+  },
+});
 
-export type BrainLlmModelId =
-  (typeof BRAIN_LLM_MODELS)[keyof typeof BRAIN_LLM_MODELS];
+export type BrainLlmModelId = string;
 
 // ---------------------------------------------------------------------------
 // Client surface — thin facade so tests can inject a hand-rolled stub

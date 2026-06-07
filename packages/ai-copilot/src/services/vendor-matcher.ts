@@ -4,6 +4,7 @@
  */
 
 import OpenAI from 'openai';
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import { z } from 'zod';
 import { VENDOR_MATCHING_PROMPT } from '../prompts/index.js';
 import {
@@ -152,7 +153,7 @@ export class VendorMatcherService {
 
   constructor(config: VendorMatcherConfig) {
     this.openai = new OpenAI({ apiKey: config.openaiApiKey });
-    this.model = config.model ?? 'gpt-4-turbo-preview';
+    this.model = config.model ?? getModelLatest('gpt-5');
     this.temperature = config.temperature ?? 0.3;
     this.maxTokens = config.maxTokens ?? 2048;
   }

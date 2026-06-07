@@ -63,15 +63,20 @@ export const MODELS: Readonly<Record<ModelFamily, string>> = Object.freeze({
   sonnet:
     process.env.BOSSNYUMBA_MODEL_BASELINE_SONNET ?? 'claude-sonnet-4-6',
   haiku:
-    process.env.BOSSNYUMBA_MODEL_BASELINE_HAIKU ??
-    'claude-haiku-4-5-20251001',
+    process.env.BOSSNYUMBA_MODEL_BASELINE_HAIKU ?? 'claude-haiku-4-5',
   'gpt-5':
     process.env.BOSSNYUMBA_MODEL_BASELINE_GPT_5 ?? 'gpt-5.4',
   'gpt-5-mini':
     process.env.BOSSNYUMBA_MODEL_BASELINE_GPT_5_MINI ?? 'gpt-5.4-mini',
   'gpt-realtime':
+    // Undated floor (matches the opus/sonnet/haiku alias convention) so L2
+    // tracks the newest `gpt-*realtime` minor. The dated `-2025-06-03` pin
+    // was a prior-generation gpt-4o build; operators on the current
+    // generation should set BOSSNYUMBA_MODEL_BASELINE_GPT_REALTIME to the
+    // June-2026 realtime id (the L2 /v1/models query promotes it
+    // automatically when an OPENAI_API_KEY is present).
     process.env.BOSSNYUMBA_MODEL_BASELINE_GPT_REALTIME ??
-    'gpt-4o-realtime-preview-2025-06-03',
+    'gpt-4o-realtime-preview',
   whisper:
     process.env.BOSSNYUMBA_MODEL_BASELINE_WHISPER ?? 'whisper-1',
   tts: process.env.BOSSNYUMBA_MODEL_BASELINE_TTS ?? 'tts-1',

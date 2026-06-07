@@ -3,8 +3,8 @@
  * `@bossnyumba/translation` facade.
  *
  * Builds:
- *   1. A Claude translator (Anthropic SDK, claude-sonnet-4-5, temp 0)
- *      configured with the BossNyumba real-estate domain hint.
+ *   1. A Claude translator (Anthropic SDK, latest Sonnet via the dynamic
+ *      registry, temp 0) configured with the BossNyumba domain hint.
  *   2. A Drizzle-backed cache adapter that targets the
  *      `translation_cache` table (migration 0303).
  *   3. A Pino logger shim that routes through the api-gateway's Pino.
@@ -26,6 +26,7 @@ import {
   createClaudeTranslator,
   type SqlRunner,
 } from '@bossnyumba/translation';
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import { sql } from 'drizzle-orm';
 import type pino from 'pino';
 
@@ -105,7 +106,13 @@ export function wireTranslation(
 
   try {
     const client = new Anthropic({ apiKey });
-    const translator = createClaudeTranslator({ client });
+    // Inject the latest Sonnet id from the dynamic registry so translation
+    // dispatch tracks the current model instead of the package's in-house
+    // fallback literal.
+    const translator = createClaudeTranslator({
+      client,
+      config: { model: getModelLatest('sonnet') },
+    });
 
     const cache =
       input.db !== null
@@ -130,7 +137,7 @@ export function wireTranslation(
 
     setGlobalTranslate(translate);
     input.logger.info(
-      'translation: bound (Claude sonnet-4-5 + Drizzle cache + Pino logger)',
+      'translation: bound (latest Claude Sonnet via registry + Drizzle cache + Pino logger)',
     );
     return { bound: true };
   } catch (err) {

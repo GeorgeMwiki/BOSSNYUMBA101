@@ -30,9 +30,10 @@
 // Constants
 // ===========================================================================
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
+
 import { logger } from '../logger.js';
 const COHERE_RERANK_URL = 'https://api.cohere.com/v2/rerank';
-const COHERE_RERANK_MODEL = 'rerank-v3.5';
 const COHERE_RERANK_TIMEOUT_MS = 12_000;
 /** Cohere's per-request document cap. We clip on the client so we
  *  never trip the 422 hard limit. */
@@ -41,7 +42,12 @@ const COHERE_RERANK_MAX_DOCS = 1000;
  *  truncates anyway; we cap to keep the request body bounded. */
 const COHERE_RERANK_MAX_DOC_CHARS = 16_000;
 
-export const COHERE_RERANK_MODEL_ID = COHERE_RERANK_MODEL;
+/**
+ * Back-compat export. Resolves the latest rerank id through the dynamic
+ * registry (L1 cache → L2 Cohere /v1/models → L3 baseline) instead of pinning
+ * a literal, so consumers reading this id track the current reranker.
+ */
+export const COHERE_RERANK_MODEL_ID: string = getModelLatest('cohere-rerank');
 
 // ===========================================================================
 // Types
@@ -135,7 +141,7 @@ export async function rerankCandidates<T extends RerankCandidate>(
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: COHERE_RERANK_MODEL,
+        model: getModelLatest('cohere-rerank'),
         query,
         documents,
         top_n: topN,

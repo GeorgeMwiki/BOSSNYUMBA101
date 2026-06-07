@@ -83,6 +83,13 @@ interface UpstreamSocket {
 // Gemini Live upstream.
 // ───────────────────────────────────────────────────────────────────────────
 
+// Gemini Live BidiGenerateContent requires a NATIVE-AUDIO model variant, which
+// is a specialization the dynamic registry's generic `gemini-flash` family does
+// NOT track (its matcher would also select text-only flash builds and could
+// route duplex voice to a non-audio model). This default is therefore an
+// operator-overridable pin: set GEMINI_VOICE_MODEL to the current
+// native-audio id (e.g. the June-2026 Gemini Live audio model). Deliberate pin
+// — kept literal because no registry family models the native-audio variant.
 const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash-preview-native-audio';
 const GEMINI_LIVE_BASE_URL =
   'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';

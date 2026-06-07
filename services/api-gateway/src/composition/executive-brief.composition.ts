@@ -43,6 +43,7 @@ import {
   type AuditChainPort,
   type RetrievalHit,
 } from '@bossnyumba/executive-brief-engine';
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import type { GraphTraversalPort, GraphHop, EdgeType } from '@bossnyumba/org-graph';
 import { sql } from 'drizzle-orm';
 
@@ -332,7 +333,8 @@ function buildHaikuLlm(): HaikuLlmPort {
             'anthropic-version': '2023-06-01',
           },
           body: JSON.stringify({
-            model: 'claude-3-5-haiku-20241022',
+            // Latest Haiku via the dynamic registry — never a pinned literal.
+            model: getModelLatest('haiku'),
             max_tokens: maxOutputTokens ?? 2048,
             system,
             messages: [{ role: 'user', content: user }],
@@ -341,7 +343,7 @@ function buildHaikuLlm(): HaikuLlmPort {
         if (!resp.ok) return { text: '[]', costMicros: 0 };
         const json = await resp.json() as { content?: Array<{ text?: string }>; usage?: { input_tokens?: number; output_tokens?: number } };
         const text = (json.content?.[0]?.text || '').toString();
-        // Pricing (Haiku 3.5): $0.80 / 1M input, $4 / 1M output.
+        // Pricing (Haiku tier): $0.80 / 1M input, $4 / 1M output.
         const inMicros = Math.floor(((json.usage?.input_tokens ?? 0) * 0.8) / 1_000);
         const outMicros = Math.floor(((json.usage?.output_tokens ?? 0) * 4) / 1_000);
         return { text, costMicros: inMicros + outMicros };

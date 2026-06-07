@@ -1,21 +1,25 @@
 /**
  * Claude translator port — wraps @anthropic-ai/sdk.
  *
- * Uses claude-sonnet-4-5-20250929 at temperature 0 (deterministic).
- * Domain hint: BossNyumba — Tanzanian residential & commercial real
- * estate property management. Tanzanian Swahili variant rule applied
- * (formal-ish, second-person -wewe / mwenye, "mwathirika wa kodi"
- * for "rent-burdened tenant", etc.).
+ * Runs the latest Sonnet at temperature 0 (deterministic). Domain hint:
+ * BossNyumba — Tanzanian residential & commercial real estate property
+ * management. Tanzanian Swahili variant rule applied (formal-ish,
+ * second-person -wewe / mwenye, "mwathirika wa kodi" for "rent-burdened
+ * tenant", etc.).
  *
- * The Claude SDK is injected so unit tests pass a stub without
- * touching the network.
+ * The Claude SDK is injected so unit tests pass a stub without touching the
+ * network. This package is intentionally decoupled from the brain-llm-router
+ * (no dep, no `process.env`); the PRODUCTION composition root injects the
+ * resolved id via `config.model = getModelLatest('sonnet')`. `BN_CLAUDE_MODEL`
+ * below is only the last-resort in-package default (undated alias so the
+ * provider serves the newest Sonnet build).
  */
 
 import type Anthropic from '@anthropic-ai/sdk';
 import type { ClaudeTranslatorPort, Locale, Register } from './types.js';
 import { assertNoContamination } from './contamination.js';
 
-export const BN_CLAUDE_MODEL = 'claude-sonnet-4-5-20250929';
+export const BN_CLAUDE_MODEL = 'claude-sonnet-4-6';
 
 export interface ClaudeTranslatorConfig {
   readonly model?: string;

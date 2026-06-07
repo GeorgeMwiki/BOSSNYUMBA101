@@ -38,6 +38,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -181,7 +182,9 @@ async function loadAnthropic(): Promise<AnthropicLike | null> {
 // Prompt + translation
 // ---------------------------------------------------------------------------
 
-const TRANSLATE_MODEL = 'claude-haiku-4-5-20251001';
+// Cheapest tier for re-translation. Resolved per-call through the dynamic
+// registry (L1 cache → L2 provider /v1/models → L3 baseline) so the endpoint
+// always dispatches the latest Haiku id rather than a pinned literal.
 const MAX_TOKENS = 1_024;
 
 const LANGUAGE_LABEL: Record<'en' | 'sw', string> = {
@@ -203,7 +206,7 @@ async function translateViaAnthropic(
   req: TranslateRequest,
 ): Promise<string> {
   const response = await client.messages.create({
-    model: TRANSLATE_MODEL,
+    model: getModelLatest('haiku'),
     max_tokens: MAX_TOKENS,
     system: buildSystemPrompt(req.from, req.to),
     messages: [{ role: 'user', content: req.text }],

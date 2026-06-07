@@ -184,8 +184,8 @@ describe('Phase D D7 — tenant-tier-aware pick() (Anthropic leg)', () => {
     const ledger = createCostLedger({ repo });
     const ant = stubProvider(
       'anthropic',
-      ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
-      () => okResp('claude-haiku-4-5-20251001'),
+      ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
+      () => okResp('claude-haiku-4-5'),
     );
     const router = createMultiLLMRouter({
       providers: {
@@ -197,7 +197,8 @@ describe('Phase D D7 — tenant-tier-aware pick() (Anthropic leg)', () => {
       ledger,
     });
     const pick = router.pick({ taskType: 'analysis', tenantTier: 'free' });
-    expect(pick?.modelId).toBe('claude-haiku-4-5-20251001');
+    // Free tier resolves to the de-dated Haiku alias via the dynamic registry.
+    expect(pick?.modelId).toBe('claude-haiku-4-5');
   });
 
   it('falls back to task-bound preferred model when tier-pick is unsupported', () => {

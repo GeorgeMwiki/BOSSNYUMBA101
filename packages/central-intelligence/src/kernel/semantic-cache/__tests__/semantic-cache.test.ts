@@ -348,7 +348,9 @@ describe('createSemanticCache — lookup + store', () => {
     const registry = createCostRateRegistry();
     expect(registry.rateFor('claude-sonnet-4-6').promptUsdPer1k).toBe(0.003);
     expect(registry.rateFor('claude-opus-4-6').promptUsdPer1k).toBe(0.015);
-    expect(registry.rateFor('claude-haiku-4-5-20251001').promptUsdPer1k).toBe(
+    // De-dated haiku key — matches the dispatch id resolved via
+    // getModelLatest('haiku') and the registry baseline `claude-haiku-4-5`.
+    expect(registry.rateFor('claude-haiku-4-5').promptUsdPer1k).toBe(
       0.0008,
     );
     // Unknown id → falls back to Sonnet (the BossNyumba default).

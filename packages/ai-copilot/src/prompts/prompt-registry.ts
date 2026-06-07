@@ -6,6 +6,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import {
   PromptId,
   asPromptId,
@@ -133,7 +134,9 @@ export class InMemoryPromptStorage implements PromptStorageBackend {
 export class PromptRegistry {
   constructor(
     private storage: PromptStorageBackend,
-    private defaultModelId: string = 'gpt-4-turbo-preview'
+    // Resolves the latest GPT-5 id via the dynamic registry when the caller
+    // does not pin one — no stale literal default.
+    private defaultModelId: string = getModelLatest('gpt-5')
   ) {}
 
   /**

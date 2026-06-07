@@ -74,9 +74,20 @@ export interface DocChatLlmLogger {
 // Config + prompt
 // ---------------------------------------------------------------------------
 
-/** 2026 Anthropic model IDs — mirrors `ModelTier` in `anthropic-client.ts`. */
+/**
+ * In-package fallback model IDs (undated aliases that track the latest minor).
+ *
+ * These are only the LAST-RESORT default for `config.model`. This package is
+ * deliberately decoupled from the brain-llm-router and never reads
+ * `process.env` (see file header), so it cannot call the dynamic registry
+ * itself. The PRODUCTION composition root MUST inject the resolved id —
+ * `config.model = getModelLatest('sonnet')` from
+ * `@bossnyumba/brain-llm-router/dynamic-registry` — so the live path always
+ * dispatches the latest model. The aliases below mirror the registry
+ * baselines (undated, so the provider serves the newest build).
+ */
 export const DOC_CHAT_MODELS = {
-  HAIKU: 'claude-haiku-4-5-20251001',
+  HAIKU: 'claude-haiku-4-5',
   SONNET: 'claude-sonnet-4-6',
   OPUS: 'claude-opus-4-6',
 } as const;

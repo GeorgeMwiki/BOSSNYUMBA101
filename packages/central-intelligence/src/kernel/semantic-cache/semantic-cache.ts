@@ -125,7 +125,13 @@ export const OPUS_4_6_RATE: ModelCostRate = Object.freeze({
 });
 
 export const HAIKU_4_5_RATE: ModelCostRate = Object.freeze({
-  modelId: 'claude-haiku-4-5-20251001',
+  // Undated key so it MATCHES the dispatch id the kernel resolves via
+  // `getModelLatest('haiku')` (registry baseline `claude-haiku-4-5`).
+  // A dated key here would miss `rateFor()` and silently fall back to the
+  // Sonnet rate, corrupting cost-saved telemetry. This is a pricing-book
+  // key (not a dispatch literal) — kept literal on purpose, but kept in
+  // lock-step with the registry alias.
+  modelId: 'claude-haiku-4-5',
   promptUsdPer1k: 0.0008,
   completionUsdPer1k: 0.004,
 });

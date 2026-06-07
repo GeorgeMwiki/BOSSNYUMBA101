@@ -39,6 +39,7 @@ import type {
   BrainLLMMessage,
   BrainLLMResponse,
 } from '@bossnyumba/brain-llm-router';
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 
 const logger = pino({ name: 'public-marketing' });
 
@@ -149,14 +150,14 @@ async function runMarketingLLM(
   const ladder: ReadonlyArray<{ readonly model: string; readonly client: BrainLLMClient; readonly name: string }> = [
     ...(anthropic
       ? [{
-          model: process.env.BOSSNYUMBA_CHAT_ANTHROPIC_MODEL?.trim() || 'claude-sonnet-4-5-20250929',
+          model: process.env.BOSSNYUMBA_CHAT_ANTHROPIC_MODEL?.trim() || getModelLatest('sonnet'),
           client: anthropic,
           name: 'anthropic',
         }]
       : []),
     ...(openai
       ? [{
-          model: process.env.BOSSNYUMBA_CHAT_OPENAI_MODEL?.trim() || 'gpt-4o-2024-11-20',
+          model: process.env.BOSSNYUMBA_CHAT_OPENAI_MODEL?.trim() || getModelLatest('gpt-5'),
           client: openai,
           name: 'openai',
         }]

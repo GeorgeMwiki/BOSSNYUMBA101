@@ -10,6 +10,7 @@
  */
 
 import OpenAI from 'openai';
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import { z } from 'zod';
 import { DISPUTE_RISK_PROMPT, VENDOR_SCORE_PROMPT } from '../prompts/copilot-prompts.js';
 
@@ -425,7 +426,7 @@ export class RiskScoringService {
 
   constructor(config: RiskScoringConfig) {
     this.openai = new OpenAI({ apiKey: config.openaiApiKey });
-    this.model = config.model ?? 'gpt-4-turbo-preview';
+    this.model = config.model ?? getModelLatest('gpt-5');
     this.temperature = config.temperature ?? 0.2;
     this.maxTokens = config.maxTokens ?? 3000;
   }

@@ -16,9 +16,10 @@
  *     `conversation.item.input_audio_transcription.completed`
  *                                          --> emit PartialTranscript for user audio
  *
- * Required env: `OPENAI_API_KEY`. Optional: `OPENAI_VOICE_MODEL` (defaults to
- * `gpt-4o-realtime-preview`). When the key is missing we fall back to the
- * deterministic stub so unit tests stay hermetic.
+ * Required env: `OPENAI_API_KEY`. Optional: `OPENAI_VOICE_MODEL` (overrides the
+ * model; otherwise the latest `gpt-realtime` id is resolved via the dynamic
+ * registry). When the key is missing we fall back to the deterministic stub so
+ * unit tests stay hermetic.
  */
 /* eslint-disable no-console */
 
@@ -41,7 +42,6 @@ import type {
 } from './types.js';
 
 const PROVIDER: ProviderName = 'gpt-realtime-2';
-const DEFAULT_MODEL = 'gpt-4o-realtime-preview';
 const REALTIME_BASE = 'wss://api.openai.com/v1/realtime';
 
 /** Required environment variables documented for ops / CI secret-scan. */
@@ -81,7 +81,9 @@ export function createGptRealtime2Provider(): GptRealtime2Provider {
         return createStubHandle(sessionId, options);
       }
 
-      const model = readEnv('OPENAI_VOICE_MODEL') ?? DEFAULT_MODEL;
+      // Env override wins; otherwise resolve the latest realtime id via the
+      // dynamic registry (L2 /v1/models → L3 baseline) — never a pinned literal.
+      const model = readEnv('OPENAI_VOICE_MODEL') ?? getModelLatest('gpt-realtime');
       const wsUrl = `${REALTIME_BASE}?model=${encodeURIComponent(model)}`;
 
       const transcriptQueue = new AsyncQueue<PartialTranscript>();

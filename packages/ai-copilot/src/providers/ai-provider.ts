@@ -5,6 +5,8 @@
  * Supports OpenAI, Azure OpenAI, and can be extended for others.
  */
 
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
+
 import { AIResult, AIError, aiOk, aiErr, ModelId, asModelId } from '../types/core.types.js';
 import { CompiledPrompt } from '../types/prompt.types.js';
 
@@ -240,7 +242,11 @@ export class OpenAIProvider implements AIProvider {
 
   async complete(request: AICompletionRequest): Promise<AIResult<AICompletionResponse, AIProviderError>> {
     const startTime = Date.now();
-    const modelId = request.modelOverride ?? request.prompt.modelConfig.modelId ?? this.config.defaultModel ?? 'gpt-4-turbo-preview';
+    // Final dispatch fallback flows through the dynamic registry so a
+    // missing override never pins a stale generation. (The `modelInfoMap`
+    // / `supportedModels` catalog below stays literal — it is a
+    // capability + pricing book keyed by exact id, not a dispatch target.)
+    const modelId = request.modelOverride ?? request.prompt.modelConfig.modelId ?? this.config.defaultModel ?? getModelLatest('gpt-5');
     const timeoutMs = request.timeoutMs ?? this.config.defaultTimeoutMs ?? 60000;
 
     try {

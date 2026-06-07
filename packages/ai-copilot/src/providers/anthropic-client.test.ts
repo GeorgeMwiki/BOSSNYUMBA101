@@ -55,7 +55,9 @@ const validPayload: TestShape = {
 
 describe('ModelTier', () => {
   it('pins 2026 Claude model IDs', () => {
-    expect(ModelTier.HAIKU).toBe('claude-haiku-4-5-20251001');
+    // Undated alias (de-dated to track the latest Haiku minor + match the
+    // brain-llm-router registry baseline and the resolved dispatch id).
+    expect(ModelTier.HAIKU).toBe('claude-haiku-4-5');
     expect(ModelTier.SONNET).toBe('claude-sonnet-4-6');
     expect(ModelTier.OPUS).toBe('claude-opus-4-6');
   });

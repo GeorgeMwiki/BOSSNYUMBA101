@@ -45,10 +45,16 @@ export interface AnthropicProviderConfig {
 /**
  * Anthropic model identifiers (2026 Messages API).
  */
+// Undated aliases that track the latest minor build per family (matches the
+// brain-llm-router registry baselines). De-dated `HAIKU_4_5` so this constant —
+// used both as a dispatch default AND as a pricing-book key in `router.ts` —
+// matches the id the kernel resolves via `getModelLatest('haiku')`; a dated
+// alias would miss the cost lookup and mis-bill. Dynamic call sites should
+// prefer `getModelLatest(...)`; these remain for typed defaults + price keys.
 export const ANTHROPIC_MODELS = {
   OPUS_4_6: 'claude-opus-4-6',
   SONNET_4_6: 'claude-sonnet-4-6',
-  HAIKU_4_5: 'claude-haiku-4-5-20251001',
+  HAIKU_4_5: 'claude-haiku-4-5',
 } as const;
 
 export type AnthropicModelId =

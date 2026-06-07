@@ -27,7 +27,10 @@ import { z } from 'zod';
  * `anthropic.ts` so both modules can co-exist without drift.
  */
 export const ModelTier = {
-  HAIKU: 'claude-haiku-4-5-20251001',
+  // Undated alias (mirrors `ANTHROPIC_MODELS.HAIKU_4_5` + the registry
+  // baseline) so dispatch defaults and cost-map keys agree with the id the
+  // kernel resolves via `getModelLatest('haiku')`.
+  HAIKU: 'claude-haiku-4-5',
   SONNET: 'claude-sonnet-4-6',
   OPUS: 'claude-opus-4-6',
 } as const;

@@ -70,6 +70,7 @@ import type {
   BrainLLMMessage,
   BrainLLMResponse,
 } from '@bossnyumba/brain-llm-router';
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import { createAdaptiveStreamController } from '../services/brain/sse-adaptive';
 
 const logger = pino({
@@ -515,11 +516,11 @@ teachApp.post('/teach', zValidator('json', TeachChatSchema), async (c) => {
       process.env.BOSSNYUMBA_HOME_ANTHROPIC_MODEL?.trim() ||
       process.env.BOSSNYUMBA_CHAT_ANTHROPIC_MODEL?.trim() ||
       process.env.ANTHROPIC_MODEL_DEFAULT?.trim() ||
-      'claude-sonnet-4-5-20250929';
+      getModelLatest('sonnet');
     const openaiModel =
       process.env.BOSSNYUMBA_HOME_OPENAI_MODEL?.trim() ||
       process.env.BOSSNYUMBA_CHAT_OPENAI_MODEL?.trim() ||
-      'gpt-4o-2024-11-20';
+      getModelLatest('gpt-5');
     if (anthropic) {
       ladder.push({ model: anthropicModel, client: anthropic, providerName: 'anthropic' });
     }

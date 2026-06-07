@@ -204,7 +204,12 @@ export async function generateBrief(
   await safeRecordCost(deps.costBudget, {
     tenantId: args.tenantId,
     costMicros: hypothesisResult.costMicros,
-    model: 'claude-3-5-haiku',
+    // Cost-attribution label for the Haiku tier. Kept as an undated alias
+    // (current generation) rather than the prior `claude-3-5-haiku` pin so
+    // telemetry reflects the model the injected HaikuLlmPort actually
+    // dispatches. (This package is decoupled from the brain-llm-router, so it
+    // cannot call the resolver; the composition root owns the real model.)
+    model: 'claude-haiku-4-5',
     correlationId: `brief:${args.persona.id}`,
   });
 
@@ -253,7 +258,9 @@ export async function generateBrief(
   await safeRecordCost(deps.costBudget, {
     tenantId: args.tenantId,
     costMicros: debateResult.totalCostMicros,
-    model: 'claude-3-5-sonnet',
+    // Undated alias (current generation), not the prior `claude-3-5-sonnet`
+    // pin — see the Haiku cost-label note above.
+    model: 'claude-sonnet-4-6',
     correlationId: `brief:${args.persona.id}`,
   });
 

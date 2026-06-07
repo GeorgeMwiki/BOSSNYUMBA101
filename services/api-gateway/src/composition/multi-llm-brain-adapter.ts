@@ -36,14 +36,12 @@
 
 import {
   AnthropicProvider,
-  ANTHROPIC_MODELS,
   OpenAIChatProvider,
-  OPENAI_MODELS,
   DeepSeekProvider,
-  DEEPSEEK_MODELS,
   createMultiLLMSynthesizer,
   type SynthesizerProposerRegistration,
 } from '@bossnyumba/ai-copilot/providers';
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import type { BrainPort, BrainRequest, BrainResponse, BrainCitation } from '@bossnyumba/role-aware-advisor';
 
 export interface WireMultiLLMBrainOpts {
@@ -76,17 +74,17 @@ function buildProposers(env: Readonly<Record<string, string | undefined>>): Prop
       registration: {
         id: 'anthropic-sonnet',
         provider: new AnthropicProvider({ apiKey: anthropicKey }),
-        model: ANTHROPIC_MODELS.SONNET_4_6,
+        model: getModelLatest('sonnet'),
       },
     });
   }
   if (openaiKey.length > 0) {
     proposers.push({
-      id: 'openai-gpt4o',
+      id: 'openai-gpt5',
       registration: {
-        id: 'openai-gpt4o',
+        id: 'openai-gpt5',
         provider: new OpenAIChatProvider({ apiKey: openaiKey }),
-        model: OPENAI_MODELS.GPT_4O,
+        model: getModelLatest('gpt-5'),
       },
     });
   }
@@ -96,7 +94,7 @@ function buildProposers(env: Readonly<Record<string, string | undefined>>): Prop
       registration: {
         id: 'deepseek-chat',
         provider: new DeepSeekProvider({ apiKey: deepseekKey }),
-        model: DEEPSEEK_MODELS.CHAT,
+        model: getModelLatest('deepseek-chat'),
       },
     });
   }
@@ -133,7 +131,7 @@ export function wireMultiLLMBrain(opts: WireMultiLLMBrainOpts = {}): BrainPort |
   const synthesizer: SynthesizerProposerRegistration = {
     id: 'anthropic-opus',
     provider: new AnthropicProvider({ apiKey: anthropicKey }),
-    model: ANTHROPIC_MODELS.OPUS_4_6,
+    model: getModelLatest('opus'),
   };
 
   const synth = createMultiLLMSynthesizer({
@@ -175,7 +173,9 @@ export function wireMultiLLMBrain(opts: WireMultiLLMBrainOpts = {}): BrainPort |
           templateId: 'role-aware-advisor',
           version: 1,
           modelConfig: {
-            modelId: ANTHROPIC_MODELS.SONNET_4_6,
+            // Placeholder only — the synthesizer overrides modelId per
+            // proposer/synthesizer at dispatch. Resolved via the registry.
+            modelId: getModelLatest('sonnet'),
             maxTokens: Math.min(Math.max(req.maxTokens ?? 600, 64), 4096),
             temperature: 0.2,
           },

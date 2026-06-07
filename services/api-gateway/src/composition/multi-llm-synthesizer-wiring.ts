@@ -45,13 +45,11 @@
 import {
   createMultiLLMSynthesizer,
   AnthropicProvider,
-  ANTHROPIC_MODELS,
   OpenAIChatProvider,
-  OPENAI_MODELS,
   DeepSeekProvider,
-  DEEPSEEK_MODELS,
   type SynthesizerProposerRegistration,
 } from '@bossnyumba/ai-copilot/providers';
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import type {
   MultiLLMSynthesizerPort,
   MultiLLMSynthesizerCall,
@@ -117,7 +115,7 @@ function buildAnthropicProposer(
     registration: {
       id: 'anthropic-sonnet',
       provider,
-      model: ANTHROPIC_MODELS.SONNET_4_6,
+      model: getModelLatest('sonnet'),
     },
   };
 }
@@ -125,11 +123,11 @@ function buildAnthropicProposer(
 function buildOpenAiProposer(apiKey: string): ProposerBuild {
   const provider = new OpenAIChatProvider({ apiKey });
   return {
-    id: 'openai-gpt4o',
+    id: 'openai-gpt5',
     registration: {
-      id: 'openai-gpt4o',
+      id: 'openai-gpt5',
       provider,
-      model: OPENAI_MODELS.GPT_4O,
+      model: getModelLatest('gpt-5'),
     },
   };
 }
@@ -141,7 +139,7 @@ function buildDeepSeekProposer(apiKey: string): ProposerBuild {
     registration: {
       id: 'deepseek-chat',
       provider,
-      model: DEEPSEEK_MODELS.CHAT,
+      model: getModelLatest('deepseek-chat'),
     },
   };
 }
@@ -182,8 +180,8 @@ function buildSynthesizeCallToRequest(
       version: 1,
       modelConfig: {
         // The synthesizer overrides modelId per-proposer, so this is a
-        // placeholder. We pick a sensible default.
-        modelId: ANTHROPIC_MODELS.SONNET_4_6,
+        // placeholder. Resolved via the dynamic registry (latest Sonnet).
+        modelId: getModelLatest('sonnet'),
         maxTokens: 2048,
         temperature: 0.2,
       },
@@ -281,7 +279,7 @@ export function createMultiLLMSynthesizerWiring(
   const synthesizer: SynthesizerProposerRegistration = {
     id: 'anthropic-opus',
     provider: synthesizerProvider,
-    model: ANTHROPIC_MODELS.OPUS_4_6,
+    model: getModelLatest('opus'),
   };
 
   const inner = createMultiLLMSynthesizer({
