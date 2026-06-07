@@ -79,6 +79,16 @@ export interface HqToolPortBindingsDeps {
   readonly callerResolver: HqCallerResolver;
   /** Cross-portal publisher for killswitch + announcement fan-out. */
   readonly publishCrossPortalEvent?: unknown;
+  /**
+   * Optional consolidation worker for `platform.run_consolidation_tick`.
+   * Pass-through to {@link createHqToolRegistry}'s `consolidationWorker`
+   * slot. When present the HQ tool runs a real consolidation tick (the
+   * composition root bridges the in-process runner via
+   * `createConsolidationWorkerAdapter`); when absent the tool keeps its
+   * existing "not yet wired" refusal. Structurally typed so this file
+   * does not pick up a hard dependency on the worker port shape.
+   */
+  readonly consolidationWorker?: unknown;
   /** Optional structured logger. */
   readonly logger?: HqToolPortBindingsLogger;
   /** Override the env source for tests. */
@@ -147,6 +157,9 @@ export function createHqToolPortBindings(
   const hqToolRegistry = createHqToolRegistry({
     callerResolver: deps.callerResolver,
     db: (deps.db ?? null) as never,
+    ...(deps.consolidationWorker
+      ? { consolidationWorker: deps.consolidationWorker as never }
+      : {}),
     ...(deps.publishCrossPortalEvent
       ? { publishCrossPortalEvent: deps.publishCrossPortalEvent as never }
       : {}),

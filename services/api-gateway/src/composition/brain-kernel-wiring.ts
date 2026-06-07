@@ -269,6 +269,17 @@ export interface BrainKernelWiringDeps {
    */
   readonly dispatcher?: unknown;
   /**
+   * PART A — loop actuators. The three ports (`subAgentSpawner`,
+   * `scheduler`, `monitorRegistry` + recursion governors) that make the
+   * main-loop's `spawn_sub_md` / `schedule_wake` / `monitor` Decisions
+   * execute for REAL. Threaded into the DEFAULT registry dispatcher's
+   * `loopActuators` config. A null bundle (or a null port within) makes
+   * the matching variant degrade gracefully (record + log + ACK). Ignored
+   * when a `dispatcher` override is supplied (the override owns its own
+   * actuation). Typed as the orchestrator's `LoopActuators` structurally.
+   */
+  readonly loopActuators?: orchestrator.LoopActuators;
+  /**
    * Optional multi-LLM synthesizer port for the kernel's deep-reasoning
    * path. When wired, turns carrying `req.requireSynthesis === true` are
    * routed through a mixture-of-agents fan-out (Anthropic + OpenAI +
@@ -568,6 +579,9 @@ export function createBrainKernelWiring(
         ...(deps.dispatcher !== undefined
           ? { dispatcherOverride: deps.dispatcher }
           : {}),
+        ...(deps.loopActuators !== undefined
+          ? { loopActuators: deps.loopActuators }
+          : {}),
       })
     : null;
 
@@ -791,6 +805,7 @@ function resolveOrchestratorPorts(args: {
   readonly logger?: BrainKernelWiringDeps['logger'];
   readonly llmRouterOverride?: unknown;
   readonly dispatcherOverride?: unknown;
+  readonly loopActuators?: orchestrator.LoopActuators;
 }): ResolvedOrchestratorPorts {
   const modelId =
     args.envSource['KERNEL_ORCHESTRATOR_MODEL']?.trim() ||
@@ -825,8 +840,21 @@ function resolveOrchestratorPorts(args: {
                 logger: {
                   warn: (msg: string, meta?: Record<string, unknown>): void =>
                     args.logger?.warn?.({ wiring: 'brain-kernel', ...meta }, msg),
+                  ...(args.logger?.info
+                    ? {
+                        info: (msg: string, meta?: Record<string, unknown>): void =>
+                          args.logger?.info?.({ wiring: 'brain-kernel', ...meta }, msg),
+                      }
+                    : {}),
                 },
               }
+            : {}),
+          // PART A — REAL loop actuation. When the composition root wires
+          // the durable (Inngest-backed) actuators, the dispatcher executes
+          // spawn_sub_md / schedule_wake / monitor for real; a null bundle
+          // (or a null port within) degrades that variant gracefully.
+          ...(args.loopActuators !== undefined
+            ? { loopActuators: args.loopActuators }
             : {}),
         });
 

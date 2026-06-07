@@ -52,3 +52,24 @@ export {
   type EvictionFlowServices,
   type EvictionFlowStartedEvent,
 } from './functions/eviction-flow.js';
+
+// PART A — durable loop actuators. Production impls of the orchestrator's
+// `SubAgentSpawner` / `WakeScheduler` / `MonitorRegistry` ports over the
+// Inngest durable-execution layer. Composed at the api-gateway root and
+// threaded into `createRegistryDispatcher({ loopActuators })`. Degrades to
+// in-process / recorded fallbacks when `DURABLE_EXEC_ENABLED` is off.
+export {
+  createDurableLoopActuators,
+  DEFAULT_MONITOR_POLL_INTERVAL_MS,
+  SUB_MD_SPAWN_EVENT,
+  ORCHESTRATOR_WAKE_EVENT,
+  ORCHESTRATOR_MONITOR_EVENT,
+  type DurableLoopActuators,
+  type DurableLoopActuatorsDeps,
+  type ChildTurnRunner,
+  type ResumeTurnRunner,
+  type MonitorChecker,
+  type SubMdSpawnRequestedEvent,
+  type OrchestratorWakeRequestedEvent,
+  type OrchestratorMonitorArmedEvent,
+} from './durable-loop-actuators.js';

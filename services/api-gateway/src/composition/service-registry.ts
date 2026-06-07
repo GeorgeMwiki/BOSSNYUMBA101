@@ -241,6 +241,10 @@ import {
   createHqToolPortBindings,
   type HqToolPortBindings,
 } from './hq-tool-port-bindings.js';
+// PART B — real-backed seed-tool deps + consolidation worker bridge.
+import { buildSeedToolDeps } from './seed-tool-adapters.js';
+import { createConsolidationWorkerAdapter } from './hq-tool-registry.js';
+import { runConsolidationForActiveTenants } from './consolidation-runner.js';
 import {
   createMarketSurveillanceWiring,
   type MarketSurveillanceWiring,
@@ -383,6 +387,10 @@ import {
   createInMemoryConversationMemory,
   createInMemoryAuditSinkAndReader,
   createConversationAuditRecorder,
+  // PART A — durable (Inngest-backed) loop actuators + composition.
+  createInngestComposition,
+  createDurableLoopActuators,
+  type DurableLoopActuators,
   type CentralIntelligenceAgent,
   type ConversationMemory,
   type ConversationAuditReader,
@@ -2228,6 +2236,45 @@ function buildServicesInner(
       // through the real adapter when bound (and through the existing
       // deterministic placeholder refusal otherwise — see
       // NOT_YET_WIRED_REASON in @bossnyumba/central-intelligence).
+      // PART B — `run_consolidation_tick` real backing. Bridge the
+      // in-process `runConsolidationForActiveTenants(db, anthropic, opts)`
+      // library onto B1's `ConsolidationWorkerLike` port via
+      // `createConsolidationWorkerAdapter`. The runner replays each active
+      // tenant's reflective-memory cycle (Haiku judge + Drizzle memory
+      // ports). When no Anthropic client is configured the runner is a
+      // no-op summary (the library guards on a null anthropic), so the HQ
+      // tool degrades cleanly rather than crashing. `dryRun` is logged but
+      // the library always applies (it has no dry-run mode yet).
+      const consolidationWorker = buildBudgetGuardedAnthropicClient
+        ? createConsolidationWorkerAdapter({
+            runner: {
+              runForActiveTenants: async () => {
+                const sdk = buildBudgetGuardedAnthropicClient(
+                  '_platform',
+                  'consolidation.tick',
+                ).sdk;
+                const summary = await runConsolidationForActiveTenants(
+                  db as never,
+                  sdk as never,
+                );
+                return {
+                  tenantsProcessed: summary.tenantsProcessed,
+                  factsUpserted: summary.factsUpserted,
+                  patternsRecorded: summary.patternsRecorded,
+                  digestsWritten: summary.digestsWritten,
+                  expiredPurged: summary.expiredPurged,
+                  decayedFacts: summary.decayedFacts,
+                  errors: summary.errors,
+                };
+              },
+            },
+            logger: {
+              warn: (obj, msg) =>
+                logger.warn('consolidation-worker', { arg0: msg ?? '', obj }),
+            },
+          })
+        : null;
+
       const hqPortBindings: HqToolPortBindings = createHqToolPortBindings({
         db,
         callerResolver: {
@@ -2243,6 +2290,8 @@ function buildServicesInner(
             scopes: ['platform:*'] as ReadonlyArray<string>,
           }),
         },
+        // PART B — real `platform.run_consolidation_tick` backing.
+        ...(consolidationWorker ? { consolidationWorker } : {}),
         logger: {
           info: (obj, msg) =>
             logger.info('hq-tool-port-bindings', { arg0: msg ?? '', obj })
@@ -2255,6 +2304,92 @@ function buildServicesInner(
             ,
         },
       });
+      // PART A — durable loop actuators. Compose the Inngest-backed
+      // SubAgentSpawner / WakeScheduler / MonitorRegistry that turn the
+      // main-loop's spawn_sub_md / schedule_wake / monitor Decisions from
+      // ACK-only stubs into REAL crash-resilient execution.
+      //
+      // Late-binding: the actuators' runner callbacks need the kernel that
+      // `createBrainKernelWiring` produces, but the wiring needs the
+      // actuators to build its dispatcher — a cycle. We resolve it with a
+      // mutable `kernelHolder` the runners read at INVOCATION time (always
+      // after the wiring has returned + populated it), never at
+      // construction time. Inngest function handlers + the in-process
+      // fallback both fire strictly later, so the ref is always set.
+      const kernelHolder: { kernel: BrainKernelWiringSlot['kernel'] | null } = {
+        kernel: null,
+      };
+      const inngestComposition = createInngestComposition({
+        config: {
+          appId: 'bossnyumba-api-gateway',
+          ...(process.env.INNGEST_EVENT_KEY
+            ? { eventKey: process.env.INNGEST_EVENT_KEY }
+            : {}),
+          ...(process.env.INNGEST_SIGNING_KEY
+            ? { signingKey: process.env.INNGEST_SIGNING_KEY }
+            : {}),
+          enabled: process.env.DURABLE_EXEC_ENABLED === 'true',
+        },
+      });
+      const durableLoopActuators: DurableLoopActuators = createDurableLoopActuators(
+        {
+          composition: inngestComposition,
+          // Spawn a child Mr. Mwikila on the sub-task — a fresh think()
+          // turn scoped to the child thread + the parent's scope, carrying
+          // the recursion depth so the child dispatcher governs deeper
+          // spawns. Fire-and-forget: the parent never blocks on this.
+          childTurnRunner: async (a) => {
+            const k = kernelHolder.kernel;
+            if (!k) return;
+            await k.think({
+              threadId: a.childThreadId,
+              userMessage: a.prompt || 'Continue the delegated sub-task.',
+              scope: a.scope,
+              tier: 'tenant',
+              persona: a.persona,
+            } as never);
+          },
+          // Resume a woken / monitor-fired thread — re-invoke think() with
+          // the wake reason as the inbound turn so the model can pick up
+          // where it paused.
+          resumeTurnRunner: async (a) => {
+            const k = kernelHolder.kernel;
+            if (!k) return;
+            await k.think({
+              threadId: a.threadId,
+              userMessage: `[resume:${a.resumeToken}] ${a.reason}`,
+              scope: a.scope,
+              tier: 'tenant',
+              persona: 'mr-mwikila',
+            } as never);
+          },
+          monitorResumeRunner: async (a) => {
+            const k = kernelHolder.kernel;
+            if (!k) return;
+            await k.think({
+              threadId: a.threadId,
+              userMessage: `[monitor:${a.resumeToken}] ${a.reason}`,
+              scope: a.scope,
+              tier: 'tenant',
+              persona: 'mr-mwikila',
+            } as never);
+          },
+          // Predicate evaluation has no real event-bus binding yet —
+          // returns false so the durable monitor polls until it expires
+          // (honest: never fabricates a fire). A follow-up binds this to
+          // the platform event bus / a DB condition check.
+          monitorChecker: async () => false,
+          logger: {
+            info: (obj, msg) =>
+              logger.info('durable-loop-actuators', { arg0: msg ?? '', obj }),
+            warn: (obj, msg) =>
+              logger.warn('durable-loop-actuators', { arg0: msg ?? '', obj }),
+            error: (obj, msg) =>
+              logger.error('durable-loop-actuators', { arg0: msg ?? '', obj }),
+          },
+        },
+      );
+
       // Wave-K T1 — brain-kernel wiring with env-driven killswitch,
       // always-on decision-trace recorder, seeded tool registry, and
       // env-flagged uncertainty policy. Null when no Anthropic key
@@ -2269,6 +2404,23 @@ function buildServicesInner(
         approvalPolicyResolver: createApprovalPolicyService(db),
         sensorRoutingService: createSensorRoutingService(db),
         hqToolRegistry: hqPortBindings.hqToolRegistry,
+        // PART B — real-backed seed-tool deps. `lookupTenantArrears` +
+        // `getMarketRateBand` execute against live infra; the third seed
+        // tool `checkComplianceCertificate` degrades honestly (no registry
+        // backing). Without this the registry boots with
+        // `buildPlaceholderSeedToolDeps` which throws on every call.
+        seedToolDeps: buildSeedToolDeps({
+          db,
+          arrearsEntryLoader,
+          tenantId: '_platform',
+          logger: {
+            warn: (obj, msg) =>
+              logger.warn('seed-tool-adapters', { arg0: msg ?? '', obj }),
+          },
+        }),
+        // PART A — REAL loop actuation threaded into the default registry
+        // dispatcher. Null ports within the bundle degrade per-variant.
+        loopActuators: durableLoopActuators.actuators,
         // Phase F.3 — production-grade orchestrator hook chain. The
         // 9-hook PreToolUse / PostToolUse / Stop chain binds to real
         // Drizzle / `scrubPii` / approval-gate / sovereign-ledger
@@ -2287,6 +2439,10 @@ function buildServicesInner(
         // its seeded tool registry; `useByDefault` stays unset → true.
         enableOrchestratorMainLoop: Boolean(llmRouter),
       });
+      // PART A — close the late-binding cycle: the actuators' runner
+      // callbacks now resolve to the live kernel. Any spawn / wake /
+      // monitor that fires from here on re-invokes a real think() turn.
+      kernelHolder.kernel = brainKernel?.kernel ?? null;
       // Fill the agent slot with a REAL in-tree agent loop
       // (`createCentralIntelligenceAgent`) backed by the per-tenant
       // budget-guarded Anthropic client. Wired whenever an Anthropic
@@ -2408,12 +2564,33 @@ function buildServicesInner(
     voiceAgent: (() => {
       const brainKernel = createBrainKernelWiring({
         buildBudgetGuardedAnthropicClient,
+        // PART C — thread the SAME db-backed orchestrator bindings the
+        // primary path uses so voice turns enforce the real 9-hook chain
+        // (PII → permission → four-eye → denylist → rate → cost → sandbox
+        // → audit → ledger-seal) instead of the kernel's in-memory
+        // fail-closed defaults. Previously this path supplied no
+        // `orchestratorBindings`, so a voice turn ran the main-loop with
+        // weaker, in-memory-only policy enforcement.
+        orchestratorBindings: {
+          db,
+          tenantId: '_platform',
+        },
+        // PART C — voice turns also get the real-backed seed tools so
+        // `lookupTenantArrears` / `getMarketRateBand` execute against live
+        // infra rather than the placeholder that throws.
+        seedToolDeps: buildSeedToolDeps({
+          db,
+          arrearsEntryLoader,
+          tenantId: '_platform',
+          logger: {
+            warn: (obj, msg) =>
+              logger.warn('seed-tool-adapters', { arg0: msg ?? '', obj }),
+          },
+        }),
         // Phase F.3 — voice turns also route through the orchestrator
         // main-loop when an LLM is available (gated on `llmRouter`,
-        // non-null iff `ANTHROPIC_API_KEY` is set). This path supplies
-        // no `orchestratorBindings`, so the kernel binds its in-memory
-        // fail-closed hook defaults; the legacy pipeline still runs when
-        // no LLM is configured (graceful degrade, no throw).
+        // non-null iff `ANTHROPIC_API_KEY` is set). The legacy pipeline
+        // still runs when no LLM is configured (graceful degrade, no throw).
         enableOrchestratorMainLoop: Boolean(llmRouter),
       });
       return createVoiceAgentWiring({

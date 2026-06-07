@@ -38,6 +38,29 @@ export {
 } from './registry-dispatcher.js';
 
 export {
+  DEFAULT_MAX_SPAWN_DEPTH,
+  createInMemoryWakeScheduler,
+  createInMemoryMonitorRegistry,
+  createInMemorySubAgentSpawner,
+  type LoopActuators,
+  type SubAgentSpawner,
+  type SubAgentSpawnContext,
+  type SubAgentSpawnHandle,
+  type WakeScheduler,
+  type WakeRequest,
+  type WakeScheduleHandle,
+  type MonitorRegistry,
+  type MonitorRegistration,
+  type MonitorRegisterHandle,
+  type RecordedSpawn,
+  type RecordedWake,
+  type RecordedMonitor,
+  type InMemoryWakeScheduler,
+  type InMemoryMonitorRegistry,
+  type InMemorySubAgentSpawner,
+} from './loop-actuators.js';
+
+export {
   decisionFromBlocks,
   decisionFromParts,
   type LLMContentBlock,
