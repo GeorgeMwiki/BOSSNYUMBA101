@@ -26,6 +26,7 @@
     "audit:fix": "pnpm audit --audit-level=high",
     "audit:jurisdictional": "node scripts/audit-jurisdictional-literals.mjs",
     "audit:not-yet-wired": "node scripts/audit-not-yet-wired.mjs",
+    "audit:tenant-predicate": "node scripts/audit-tenant-predicate.mjs",
     "bench:forecast": "tsx evals/forecasting-bench/run.ts",
     "bench:forecast:test": "vitest run --root evals/forecasting-bench",
     "migrate": "pnpm -C packages/database db:migrate",
