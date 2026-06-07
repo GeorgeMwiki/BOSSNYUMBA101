@@ -51,12 +51,15 @@ describe('TenantIdentityService (stub)', () => {
     );
   });
 
-  it('mergeDuplicates accepts (primaryId, duplicateId) and rejects NOT_IMPLEMENTED', async () => {
-    expect(svc.mergeDuplicates.length).toBe(2);
+  it('mergeDuplicates accepts (primaryId, duplicateId, platformTenantId) and rejects NOT_IMPLEMENTED', async () => {
+    // Tenant-scoped merge — the platformTenantId arg is what makes the merge
+    // safe on the global, no-RLS tenant_identities table (see C-1 fix).
+    expect(svc.mergeDuplicates.length).toBe(3);
     await expect(
       svc.mergeDuplicates(
         'id-1' as TenantIdentityId,
-        'id-2' as TenantIdentityId
+        'id-2' as TenantIdentityId,
+        'tnt_acme'
       )
     ).rejects.toThrow(/NOT_IMPLEMENTED/);
   });

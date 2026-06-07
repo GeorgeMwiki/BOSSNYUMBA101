@@ -105,4 +105,22 @@ describe('OtpService', () => {
     const svc = new OtpService();
     await expect(svc.send(ID, '')).rejects.toThrow(/phone is required/);
   });
+
+  // H-3: the code↔hash comparison is constant-time (crypto.timingSafeEqual).
+  // We can't measure timing in a unit test, but we assert the semantics it
+  // must preserve: a wrong code of the SAME length as the real one is a clean
+  // MISMATCH (not an early-exit), and the correct code still verifies after a
+  // wrong attempt — i.e. the constant-time path did not corrupt the record.
+  it('rejects a same-length wrong code as MISMATCH then accepts the right one', async () => {
+    const { dispatcher, sent } = capturedDispatcher();
+    const svc = new OtpService(new InMemoryOtpStore(), dispatcher);
+    await svc.send(ID, '+255712345678');
+    const code = extractCode(sent[0].message);
+    // Build a 6-digit wrong code with the SAME length as the real one.
+    const wrong = code === '000000' ? '111111' : '000000';
+    const miss = await svc.verify(ID, wrong);
+    expect(miss).toEqual({ verified: false, reason: 'MISMATCH' });
+    const ok = await svc.verify(ID, code);
+    expect(ok.verified).toBe(true);
+  });
 });

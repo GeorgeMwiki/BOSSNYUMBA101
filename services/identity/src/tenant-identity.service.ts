@@ -136,17 +136,21 @@ export class TenantIdentityService {
   }
 
   /**
-   * Merge duplicate identities surfaced by phone-backfill migration.
-   * All memberships on `duplicateId` are re-parented to `primaryId` and
-   * the duplicate is deactivated. Atomic; logged via the repo layer.
+   * Merge duplicate identities surfaced by phone-backfill migration, scoped to
+   * `platformTenantId`. Only the duplicate's memberships in that tenant are
+   * re-parented to `primaryId`; the global duplicate identity is deactivated
+   * only when it is not shared by another tenant. Atomic; enforced at the repo
+   * layer. The caller (route) MUST additionally verify both identities are
+   * visible within `platformTenantId` before invoking this.
    */
   async mergeDuplicates(
     primaryId: TenantIdentityId,
-    duplicateId: TenantIdentityId
+    duplicateId: TenantIdentityId,
+    platformTenantId: string
   ): Promise<TenantIdentity> {
     if (!this.identityRepo) {
       throw new NotImplementedError('mergeDuplicates');
     }
-    return this.identityRepo.merge(primaryId, duplicateId);
+    return this.identityRepo.merge(primaryId, duplicateId, platformTenantId);
   }
 }

@@ -80,6 +80,30 @@ export class OrgMembershipService {
   }
 
   /**
+   * Fetch a single membership (or null). Read-through to the repo — used by
+   * callers that must authorize a membership before acting on it (e.g.
+   * verifying its platform tenant matches the caller's before leave/block).
+   */
+  async findById(
+    membershipId: OrgMembershipId
+  ): Promise<OrgMembership | null> {
+    if (!this.membershipRepo) {
+      throw new NotImplementedError('findById');
+    }
+    return this.membershipRepo.findById(membershipId);
+  }
+
+  /** List every membership attached to a TenantIdentity (all statuses). */
+  async listForIdentity(
+    identityId: TenantIdentityId
+  ): Promise<readonly OrgMembership[]> {
+    if (!this.membershipRepo) {
+      throw new NotImplementedError('listForIdentity');
+    }
+    return this.membershipRepo.findByIdentity(identityId);
+  }
+
+  /**
    * Tenant-initiated leave. Flips status -> LEFT and deactivates (not
    * deletes) the shadow User. Re-redeeming a code creates a fresh
    * membership row rather than resurrecting this one.

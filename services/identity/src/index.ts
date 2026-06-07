@@ -89,3 +89,13 @@ export { normalizePhoneForCountry } from './phone-normalize.js';
 
 // Notifications-backed SMS dispatcher (for production wiring)
 export { NotificationsSmsDispatcher } from './otp/notifications-sms-dispatcher.js';
+export type {
+  DispatcherLogger,
+  EnqueueNotificationFn,
+  EnqueueNotificationPayload,
+  EnqueueNotificationResult,
+} from './otp/notifications-sms-dispatcher.js';
+
+// OTP composition-root factory (production wiring — Redis store + SMS dispatch)
+export { createOtpService } from './otp/otp-factory.js';
+export type { OtpFactoryDeps } from './otp/otp-factory.js';

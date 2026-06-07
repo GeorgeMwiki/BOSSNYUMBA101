@@ -251,10 +251,20 @@ export class PostgresOrgMembershipRepository {
         .set({ status: 'LEFT', leftAt: now })
         .where(eq(orgMemberships.id, id as unknown as string))
         .returning();
+      // Tenant-scoped shadow-user deactivation. `users` is a tenant-scoped
+      // table (BYPASSRLS role in prod ⇒ RLS is inert), so the shadow-user
+      // update MUST carry a tenant predicate or it is a cross-tenant write
+      // surface. The membership row already authoritatively carries the
+      // platform tenant the shadow user lives in — reuse it.
       await tx
         .update(users)
         .set({ status: 'deactivated' as const })
-        .where(eq(users.id, row.userId));
+        .where(
+          and(
+            eq(users.id, row.userId),
+            eq(users.tenantId, row.platformTenantId)
+          )
+        );
       return rowToMembership(updated[0]);
     });
   }
@@ -282,10 +292,18 @@ export class PostgresOrgMembershipRepository {
         .set({ status: 'BLOCKED', blockedAt: now, blockReason: reason })
         .where(eq(orgMemberships.id, id as unknown as string))
         .returning();
+      // Tenant-scoped shadow-user suspension — see `leave` for the rationale.
+      // The membership row carries the platform tenant; the predicate keeps
+      // this UPDATE inside the shadow user's own tenant.
       await tx
         .update(users)
         .set({ status: 'suspended' as const })
-        .where(eq(users.id, row.userId));
+        .where(
+          and(
+            eq(users.id, row.userId),
+            eq(users.tenantId, row.platformTenantId)
+          )
+        );
       return rowToMembership(updated[0]);
     });
   }

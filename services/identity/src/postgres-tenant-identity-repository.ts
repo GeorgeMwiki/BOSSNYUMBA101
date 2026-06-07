@@ -4,12 +4,14 @@
  * Implements persistence for the global cross-org identity table. Phone is
  * the canonical key — all lookups go through the normalized form.
  *
- * Merge is transactional: on `merge(primaryId, duplicateId)` we move every
- * membership row from the duplicate to the primary, flag the duplicate as
- * DEACTIVATED + merged_into_id = primary, and commit atomically. Uniqueness
- * on `(tenantIdentityId, organizationId)` in `org_memberships` means a
- * pre-existing membership on the primary wins; the duplicate's copy is
- * dropped rather than re-parented.
+ * Merge is transactional AND tenant-scoped: `merge(primaryId, duplicateId,
+ * platformTenantId)` only ever touches rows in the caller's `platformTenantId`
+ * (the table is global / BYPASSRLS, so scope is enforced in the predicates,
+ * not by RLS). In-tenant duplicate memberships are re-parented to the primary
+ * (or dropped when uniqueness on `(tenantIdentityId, organizationId)` would
+ * collide); the global duplicate identity is flagged DEACTIVATED +
+ * merged_into_id only when it has NO memberships left in any OTHER tenant.
+ * Commit is atomic.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -178,21 +180,40 @@ export class PostgresTenantIdentityRepository {
   }
 
   /**
-   * Merge `duplicateId` into `primaryId`. Atomic:
-   *  1. Locate memberships on the duplicate.
-   *  2. For each: if the primary already has a membership in the same
-   *     organization, drop the duplicate's row (uniqueness would block
-   *     re-parenting anyway). Otherwise re-parent by updating
-   *     tenant_identity_id to the primary.
-   *  3. Mark the duplicate DEACTIVATED and record merged_into_id.
+   * Merge `duplicateId` into `primaryId`, scoped to `platformTenantId`.
+   *
+   * `tenant_identities` is a GLOBAL cross-org table with no RLS, and the prod
+   * DB role is BYPASSRLS, so an unscoped merge would re-parent / deactivate
+   * rows belonging to OTHER tenants — a cross-tenant hijack. Every write here
+   * is therefore additionally predicated on `platform_tenant_id` so a
+   * tenant-admin can only ever merge duplicates *as seen within their own
+   * tenant*:
+   *
+   *  1. Consider ONLY the duplicate's memberships in `platformTenantId`.
+   *  2. For each: if the primary already has a membership in the same org
+   *     (also in this tenant), drop the duplicate's row (the unique
+   *     (identity, org) index would block re-parenting anyway). Otherwise
+   *     re-parent by pointing tenant_identity_id at the primary.
+   *  3. Deactivate the global duplicate identity ONLY when it has NO remaining
+   *     memberships in any OTHER tenant. If it is still shared by another
+   *     tenant, leave the identity ACTIVE (deactivating a shared global row
+   *     would harm those tenants) — we only merge the in-tenant memberships.
+   *
+   * Atomic — all steps run in one transaction.
    */
   async merge(
     primaryId: TenantIdentityId,
-    duplicateId: TenantIdentityId
+    duplicateId: TenantIdentityId,
+    platformTenantId: string
   ): Promise<TenantIdentity> {
     if (primaryId === duplicateId) {
       throw new Error(
         'PostgresTenantIdentityRepository.merge: primaryId === duplicateId'
+      );
+    }
+    if (!platformTenantId || platformTenantId.trim().length === 0) {
+      throw new Error(
+        'PostgresTenantIdentityRepository.merge: platformTenantId is required'
       );
     }
     return this.db.transaction(async (tx) => {
@@ -217,21 +238,33 @@ export class PostgresTenantIdentityRepository {
         );
       }
 
+      // Primary's org set WITHIN the caller's tenant — used to decide
+      // drop-vs-reparent. An org belongs to exactly one platform tenant, so a
+      // primary membership in a different tenant can never collide with an
+      // in-tenant re-parent and must not influence this decision.
       const primaryMembershipRows = await tx
         .select({ organizationId: orgMemberships.organizationId })
         .from(orgMemberships)
         .where(
-          eq(orgMemberships.tenantIdentityId, primaryId as unknown as string)
+          and(
+            eq(orgMemberships.tenantIdentityId, primaryId as unknown as string),
+            eq(orgMemberships.platformTenantId, platformTenantId)
+          )
         );
       const primaryOrgIds = new Set<string>(
         primaryMembershipRows.map((r: { organizationId: string }) => r.organizationId)
       );
 
+      // Only the duplicate's memberships in the caller's tenant are candidates
+      // for drop / re-parent. Rows in other tenants are left untouched.
       const duplicateMemberships = await tx
         .select()
         .from(orgMemberships)
         .where(
-          eq(orgMemberships.tenantIdentityId, duplicateId as unknown as string)
+          and(
+            eq(orgMemberships.tenantIdentityId, duplicateId as unknown as string),
+            eq(orgMemberships.platformTenantId, platformTenantId)
+          )
         );
 
       const idsToDrop: string[] = [];
@@ -248,22 +281,49 @@ export class PostgresTenantIdentityRepository {
         await tx
           .update(orgMemberships)
           .set({ status: 'LEFT', leftAt: new Date() })
-          .where(inArray(orgMemberships.id, idsToDrop));
+          .where(
+            and(
+              inArray(orgMemberships.id, idsToDrop),
+              eq(orgMemberships.platformTenantId, platformTenantId)
+            )
+          );
       }
       if (idsToReparent.length > 0) {
         await tx
           .update(orgMemberships)
           .set({ tenantIdentityId: primaryId as unknown as string })
-          .where(inArray(orgMemberships.id, idsToReparent));
+          .where(
+            and(
+              inArray(orgMemberships.id, idsToReparent),
+              eq(orgMemberships.platformTenantId, platformTenantId)
+            )
+          );
       }
 
-      await tx
-        .update(tenantIdentities)
-        .set({
-          status: 'DEACTIVATED',
-          mergedIntoId: primaryId as unknown as string,
-        })
-        .where(eq(tenantIdentities.id, duplicateId as unknown as string));
+      // Deactivate the global identity ONLY when no OTHER tenant still has a
+      // membership on it. Otherwise the identity is shared — leave it ACTIVE
+      // and merge just the in-tenant memberships.
+      const otherTenantRows = await tx
+        .select({ id: orgMemberships.id })
+        .from(orgMemberships)
+        .where(
+          and(
+            eq(orgMemberships.tenantIdentityId, duplicateId as unknown as string),
+            sql`${orgMemberships.platformTenantId} <> ${platformTenantId}`
+          )
+        )
+        .limit(1);
+      const sharedWithOtherTenant = otherTenantRows.length > 0;
+
+      if (!sharedWithOtherTenant) {
+        await tx
+          .update(tenantIdentities)
+          .set({
+            status: 'DEACTIVATED',
+            mergedIntoId: primaryId as unknown as string,
+          })
+          .where(eq(tenantIdentities.id, duplicateId as unknown as string));
+      }
 
       const refreshed = await tx
         .select()

@@ -19,13 +19,42 @@ interface Logger {
   error(message: string, meta?: LogMeta): void;
 }
 
+/**
+ * Pino redaction config — secrets + PII. `phone`/`recipient` cover OTP-dispatch
+ * logs (an SMS recipient is personally-identifying data) and `code` covers the
+ * OTP value. The `*.`- and `*.*.`-prefixed variants catch nested meta: the
+ * identity loggers wrap call-site meta under a `value` key (e.g.
+ * `{ value: { recipient } }`), and pino's redact paths are not implicitly
+ * recursive. Exported so the redaction contract is unit-testable against the
+ * exact same paths the live logger uses.
+ */
+export const LOG_REDACT = {
+  paths: [
+    'password',
+    'token',
+    'secret',
+    'apiKey',
+    'authorization',
+    'phone',
+    'recipient',
+    'code',
+    '*.password',
+    '*.token',
+    '*.secret',
+    '*.phone',
+    '*.recipient',
+    '*.code',
+    '*.*.phone',
+    '*.*.recipient',
+    '*.*.code',
+  ],
+  censor: '[REDACTED]',
+} as const;
+
 const pinoLogger = pino({
   level: process.env.LOG_LEVEL ?? 'info',
   base: { service: 'identity' },
-  redact: {
-    paths: ['password', 'token', 'secret', 'apiKey', 'authorization', '*.password', '*.token', '*.secret'],
-    censor: '[REDACTED]',
-  },
+  redact: { paths: [...LOG_REDACT.paths], censor: LOG_REDACT.censor },
 });
 
 export const logger: Logger = {

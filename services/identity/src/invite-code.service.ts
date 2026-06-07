@@ -73,6 +73,28 @@ export class InviteCodeService {
   }
 
   /**
+   * Fetch a single code record (or null). Read-through to the repo — used by
+   * callers that must authorize a code before acting on it (e.g. verifying it
+   * belongs to the caller's platform tenant before revoke).
+   */
+  async findByCode(code: InviteCode): Promise<InviteCodeRecord | null> {
+    if (!this.inviteRepo) {
+      throw new NotImplementedError('findByCode');
+    }
+    return this.inviteRepo.findByCode(code);
+  }
+
+  /** List every code issued for an organization (ascending by issue time). */
+  async listForOrg(
+    orgId: OrganizationId
+  ): Promise<readonly InviteCodeRecord[]> {
+    if (!this.inviteRepo) {
+      throw new NotImplementedError('listForOrg');
+    }
+    return this.inviteRepo.listForOrg(orgId);
+  }
+
+  /**
    * Atomically redeem a code for a given TenantIdentity:
    *   1. Validate code (not expired, under max-redemptions, not revoked).
    *   2. Create shadow User row in the org's platform tenant.

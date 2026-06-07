@@ -159,7 +159,8 @@ describe('TenantIdentityService (wired)', () => {
     await expect(
       svc.mergeDuplicates(
         'tid_1' as TenantIdentityId,
-        'tid_2' as TenantIdentityId
+        'tid_2' as TenantIdentityId,
+        'tnt_acme'
       )
     ).rejects.toThrow(/NOT_IMPLEMENTED/);
   });

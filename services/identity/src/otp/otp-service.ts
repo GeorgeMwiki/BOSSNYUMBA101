@@ -16,7 +16,8 @@
  * contract is stable.
  */
 
-import { randomInt, createHash } from 'node:crypto';
+import { randomInt, createHash, timingSafeEqual } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import type { TenantIdentityId } from '@bossnyumba/domain-models';
 
 /** Default TTL for an OTP code — 5 minutes. */
@@ -107,6 +108,23 @@ export interface OtpVerifyResult {
  */
 function hashCode(code: string): string {
   return createHash('sha256').update(code).digest('hex');
+}
+
+/**
+ * Constant-time comparison of two hex-encoded SHA-256 digests. Both inputs are
+ * fixed-length (64 hex chars) by construction, but we still guard the length
+ * before `timingSafeEqual` (which throws on mismatched buffer lengths) and
+ * treat any length divergence as a non-match. This removes the early-exit
+ * timing side-channel of a naive `===` so a submitted code cannot be inferred
+ * byte-by-byte from response timing.
+ */
+function constantTimeHexEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, 'hex');
+  const bufB = Buffer.from(b, 'hex');
+  if (bufA.length === 0 || bufA.length !== bufB.length) {
+    return false;
+  }
+  return timingSafeEqual(bufA, bufB);
 }
 
 /**
@@ -370,7 +388,7 @@ export class OtpService {
       return { verified: false, reason: 'EXPIRED' };
     }
     const submitted = hashCode(code);
-    if (submitted !== record.codeHash) {
+    if (!constantTimeHexEqual(submitted, record.codeHash)) {
       const nextAttempts = record.attempts + 1;
       if (nextAttempts >= OTP_MAX_ATTEMPTS) {
         await this.store.delete(identityId);

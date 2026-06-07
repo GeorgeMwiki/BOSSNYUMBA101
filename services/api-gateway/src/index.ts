@@ -208,6 +208,15 @@ import cockpitStreamRouter from './routes/cockpit-stream.hono';
 // startup with their token + app + platform; soft-revoke via DELETE
 // preserves the audit trail. Tenant-scoped from the JWT.
 import devicePushTokensRouter from './routes/device-push-tokens.hono';
+// Cross-org identity (#12) — invites, org memberships, phone-OTP onboarding,
+// identity merge. Backs @bossnyumba/identity. Tenant scope is enforced at the
+// route layer (tenant_identities is cross-org with no RLS); the JWT is the
+// only source of tenant truth.
+import { createIdentityRouter } from './routes/identity.hono';
+import {
+  buildIdentityServices,
+  createIdentityContextMiddleware,
+} from './composition/identity-wiring';
 // Lease history chain-of-custody — append step + show trace. Backs
 // the `lease_history.append_step` + `lease_history.show_trace` brain
 // tools. Hash-chained, append-only.
@@ -742,6 +751,23 @@ try {
   );
   serviceRegistry = buildServices({ db: null });
 }
+
+// ----------------------------------------------------------------------------
+// Identity services (#12) — cross-org identity, invites, memberships, OTP.
+// Built once and memoized as a promise (the OTP factory may resolve a Redis
+// store). The identity context middleware awaits this per request and merges
+// the services under `services.identity`. Resolves to null in degraded mode,
+// where the identity router returns 503 IDENTITY_NOT_CONFIGURED.
+// ----------------------------------------------------------------------------
+const identityServicesPromise = buildIdentityServices(getDb(), logger).catch(
+  (err) => {
+    logger.error(
+      { err: err instanceof Error ? err.message : String(err) },
+      'identity-wiring: build failed — identity routes will 503'
+    );
+    return null;
+  }
+);
 
 // ----------------------------------------------------------------------------
 // Translation facade binding — runs once after the service registry is up so
@@ -1281,6 +1307,13 @@ api.route('/cockpit', cockpitStreamRouter);
 // service fans out across all active tokens for a user. Tenant-scoped
 // via the JWT.
 api.route('/device-push-tokens', devicePushTokensRouter);
+// Cross-org identity (#12) — invites, memberships, phone-OTP onboarding,
+// merge-duplicates. The identity context middleware merges the composed
+// identity services onto `c.get('services').identity` before the router runs;
+// tenant scope is derived from the verified JWT and enforced in the route
+// (tenant_identities is cross-org with no RLS). Returns 503 in degraded mode.
+api.use('/identity/*', createIdentityContextMiddleware(identityServicesPromise));
+api.route('/identity', createIdentityRouter());
 // Lease history chain-of-custody — POST /leases/:id/history/steps and
 // GET /leases/:id/history. Backs the lease_history.* brain tools.
 api.route('/leases', leaseHistoryRouter);
