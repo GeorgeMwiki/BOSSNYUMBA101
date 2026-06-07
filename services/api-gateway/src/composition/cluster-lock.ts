@@ -73,6 +73,8 @@ export const CLUSTER_LOCK_IDS = {
   MWIKILA_AUTONOMOUS: 7321946218472908,
   NOTIFICATION_DISPATCH: 7321946218472909,
   NOTIFICATION_DISPATCH_REAPER: 7321946218472910,
+  /** In-memory dispatcher DLQ drainer (services/notifications dlq-drainer). */
+  NOTIFICATION_DLQ_DRAIN: 7321946218472911,
 } as const;
 
 export type ClusterLockName = keyof typeof CLUSTER_LOCK_IDS;
