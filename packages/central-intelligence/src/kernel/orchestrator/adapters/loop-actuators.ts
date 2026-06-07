@@ -144,12 +144,16 @@ export interface WakeScheduleHandle {
   /** Echo of the resume token the parent records on its `wake_ack`. */
   readonly resumeToken: string;
   /**
-   * `durable` = persisted onto the crash-resilient scheduler;
-   * `recorded` = scheduler absent, the intent was recorded (e.g. an
-   * audit / log row) but NOT durably scheduled — degrade, never a
-   * silent drop.
+   * `durable` = persisted onto the crash-resilient scheduler (Inngest);
+   * `in-process` = armed on the in-process wake supervisor — the resume
+   * WILL fire at `wakeAt` via a process-local timer/heartbeat tick, but
+   * the schedule is lost if the process restarts in the wait window
+   * (real execution, NOT crash-resilient);
+   * `recorded` = no active scheduler at all, the intent was recorded
+   * (e.g. an audit / log / replay row) but NOT actively scheduled —
+   * degrade, never a silent drop.
    */
-  readonly mode: 'durable' | 'recorded';
+  readonly mode: 'durable' | 'in-process' | 'recorded';
 }
 
 /**
@@ -184,11 +188,18 @@ export interface MonitorRegisterHandle {
   /** Echo of the watch id the parent records on its `monitor_ack`. */
   readonly watchId: string;
   /**
-   * `registered` = persisted onto a real recurring-check / DB registry;
-   * `recorded` = registry absent, intent recorded but not actively
-   * watched — degrade, never a silent drop.
+   * `registered` = persisted onto a real recurring-check / DB registry
+   * (durable, crash-resilient);
+   * `in-process` = armed on the in-process monitor supervisor — the
+   * predicate is polled by a process-local timer/heartbeat tick and the
+   * resume fires when it trips (real execution, NOT crash-resilient;
+   * the watch is lost on process restart). Only used when a REAL
+   * predicate source (`monitorChecker`) is attested;
+   * `recorded` = registry absent (or no predicate source attested),
+   * intent recorded but not actively watched — degrade, never a silent
+   * drop.
    */
-  readonly mode: 'registered' | 'recorded';
+  readonly mode: 'registered' | 'in-process' | 'recorded';
 }
 
 /**

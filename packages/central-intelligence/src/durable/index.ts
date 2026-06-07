@@ -74,3 +74,32 @@ export {
   type OrchestratorWakeRequestedEvent,
   type OrchestratorMonitorArmedEvent,
 } from './durable-loop-actuators.js';
+
+// PART A (PRIMARY) — in-process wake/monitor supervisor. The DEPLOY-FREE
+// `WakeScheduler` (+ `MonitorRegistry`) the registry dispatcher uses by
+// default: `schedule_wake` arms a real process-local timer that resumes the
+// orchestrator turn at `wakeAt` with NO Inngest dependency. Monitor arms a
+// real in-process poll only when a predicate source is attested; honest
+// degrade-record otherwise. Driven by `start()`'s internal interval and/or an
+// external heartbeat `tick()`.
+export {
+  createInProcessWakeScheduler,
+  type InProcessWakeSupervisor,
+  type InProcessWakeSchedulerDeps,
+  type InProcessSupervisorLogger,
+  type InProcessTickOutcome,
+} from './in-process-wake-scheduler.js';
+
+// PART A (SECONDARY) — in-process Inngest runtime. The consumer/serve side the
+// hand-rolled `/api/v1/inngest` webhook dispatches to: maps `event.name` →
+// registered `DurableFunctionDefinition` and runs its body. Makes the durable
+// producer/consumer path code-complete; crash-resilient suspend still needs a
+// deployed Inngest worker (see the module header).
+export {
+  createInProcessInngestRuntime,
+  type InProcessInngestRuntime,
+  type InProcessInngestRuntimeDeps,
+  type InProcessInngestRuntimeLogger,
+  type InngestRuntimeEvent,
+  type InngestRuntimeResult,
+} from './in-process-inngest-runtime.js';

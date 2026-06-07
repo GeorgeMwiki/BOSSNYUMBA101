@@ -390,10 +390,19 @@ import {
   // PART A — durable (Inngest-backed) loop actuators + composition.
   createInngestComposition,
   createDurableLoopActuators,
+  // PART A (PRIMARY) — in-process wake/monitor supervisor (deploy-free) +
+  // (SECONDARY) in-process Inngest runtime (serve-side event router).
+  createInProcessWakeScheduler,
+  createInProcessInngestRuntime,
   // C2 — process-wide in-flight-spawn semaphore (concurrency cap on
   // concurrent child turns) threaded into the registry dispatcher.
   orchestrator,
   type DurableLoopActuators,
+  type InProcessWakeSupervisor,
+  type InProcessInngestRuntime,
+  type ChildTurnRunner,
+  type ResumeTurnRunner,
+  type MonitorChecker,
   type CentralIntelligenceAgent,
   type ConversationMemory,
   type ConversationAuditReader,
@@ -1048,6 +1057,29 @@ export interface ServiceRegistry {
    *  until `start()` is called from the gateway boot sequence. */
   readonly wakeLoopCron: WakeLoopCronSupervisor | null;
 
+  /**
+   * PRIMARY — in-process wake/monitor supervisor. The DEPLOY-FREE actuator
+   * the registry dispatcher uses for the orchestrator's `schedule_wake` /
+   * `monitor` Decisions: `schedule_wake` arms a real process-local resume
+   * that fires the bound `kernel.think()` at `wakeAt` with NO Inngest
+   * dependency. `index.ts` calls `.start()` (self-drive interval) at boot and
+   * `.stop()` at shutdown; the gateway heartbeat also drives `.tick()`. Null
+   * in degraded mode (no kernel to resume). This is what makes the
+   * orchestrator's wake loop ACTUALLY EXECUTE without a worker deploy.
+   */
+  readonly inProcessWakeSupervisor: InProcessWakeSupervisor | null;
+
+  /**
+   * SECONDARY — in-process Inngest runtime (consumer/serve side). The
+   * `/api/v1/inngest` webhook reads this off `services.inngestRuntime` and
+   * dispatches verified events to it; it routes `event.name` → the registered
+   * durable function definitions (the 3 loop-actuator defs). Non-null in live
+   * mode so the webhook no longer 503s; null in degraded mode. NOTE: this
+   * makes the durable path code-complete, but crash-resilient suspend still
+   * requires a deployed Inngest worker (see the binding-site comment).
+   */
+  readonly inngestRuntime: InProcessInngestRuntime | null;
+
   /** Sovereign-ledger verify cron (Wave-K Tier-3). Periodically walks
    *  the sovereign action-ledger chain for every active tenant and
    *  emits `sovereign-ledger.verified` / `sovereign-ledger.tampered`
@@ -1521,6 +1553,11 @@ function degradedRegistry(
     // K7 parity-litfin Gap H — wake-loop cron is null in degraded mode
     // (no DB means no tenants to iterate, no read ports to bind).
     wakeLoopCron: null,
+    // PART A — in-process wake/monitor supervisor + Inngest runtime are null
+    // in degraded mode: the brain kernel is not wired without infra, so there
+    // is no `kernel.think()` to resume and no durable functions to route to.
+    inProcessWakeSupervisor: null,
+    inngestRuntime: null,
     // Wave-K Tier-3 — sovereign-ledger verify cron is null in degraded
     // mode (no DB → no chain rows to walk).
     sovereignLedgerVerifyCron: null,
@@ -2051,6 +2088,19 @@ function buildServicesInner(
     },
   });
 
+  // PART A — holder for the in-process loop actuators surfaced from the
+  // `centralIntelligence` IIFE below. The supervisor + Inngest runtime are
+  // built inside that IIFE (they close over `kernelHolder`); this holder lets
+  // the top-level registry fields reference them. The `centralIntelligence`
+  // property is evaluated BEFORE the `inProcessWakeSupervisor` / `inngestRuntime`
+  // fields in the returned literal (source order), so the holder is populated
+  // by the time those fields read it. Mirrors the existing `kernelHolder`
+  // late-binding pattern.
+  const cnsLoopActuatorHolder: {
+    supervisor: InProcessWakeSupervisor | null;
+    runtime: InProcessInngestRuntime | null;
+  } = { supervisor: null, runtime: null };
+
   return {
     marketplace: {
       listing: listingService,
@@ -2353,86 +2403,127 @@ function buildServicesInner(
       const degradeWakeRecorder = orchestrator.createInMemoryWakeScheduler();
       const degradeMonitorRecorder =
         orchestrator.createInMemoryMonitorRegistry();
+
+      // PART A — shared runner callbacks. BOTH the in-process supervisor
+      // (PRIMARY, deploy-free) and the durable actuators (SECONDARY,
+      // deploy-gated on Inngest) bind to the SAME kernel via these closures.
+      // Defining them once keeps the two execution paths behaviourally
+      // identical — only the suspend/resume MECHANISM differs (a process-
+      // local timer vs Inngest's durable sleep).
+      //
+      // Spawn a child Mr. Mwikila on the sub-task — a fresh think() turn
+      // scoped to the child thread + the parent's scope, carrying the
+      // recursion depth so the child dispatcher governs deeper spawns.
+      // Fire-and-forget: the parent never blocks on this.
+      const childTurnRunner: ChildTurnRunner = async (a) => {
+        const k = kernelHolder.kernel;
+        if (!k) return;
+        await k.think({
+          threadId: a.childThreadId,
+          userMessage: a.prompt || 'Continue the delegated sub-task.',
+          scope: a.scope,
+          tier: 'tenant',
+          persona: a.persona,
+          // C1 — forward the child's cumulative spawn-tree depth so the
+          // orchestrator's depth cap is TRANSITIVE: a grandchild spawn is
+          // governed against the cumulative tree, not a per-turn reset.
+          spawnDepth: a.depth,
+        } as never);
+      };
+      // Resume a woken thread — re-invoke think() with the wake reason as the
+      // inbound turn so the model picks up where it paused. Bound to BOTH the
+      // in-process wake supervisor and the durable wake function.
+      const resumeTurnRunner: ResumeTurnRunner = async (a) => {
+        const k = kernelHolder.kernel;
+        if (!k) return;
+        await k.think({
+          threadId: a.threadId,
+          // M3 — fence + sanitise the resume metadata so a model-chosen
+          // reason/token cannot smuggle instructions into the resumed turn
+          // (prompt-injection seam).
+          userMessage: fenceResumeMetadata({
+            kind: 'resume',
+            resumeToken: a.resumeToken,
+            reason: a.reason,
+          }),
+          scope: a.scope,
+          tier: 'tenant',
+          persona: 'mr-mwikila',
+        } as never);
+      };
+      const monitorResumeRunner: ResumeTurnRunner = async (a) => {
+        const k = kernelHolder.kernel;
+        if (!k) return;
+        await k.think({
+          threadId: a.threadId,
+          // M3 — fence + sanitise the monitor metadata (the predicate id can
+          // be model-chosen) — non-instruction system context only.
+          userMessage: fenceResumeMetadata({
+            kind: 'monitor',
+            resumeToken: a.resumeToken,
+            reason: a.reason,
+          }),
+          scope: a.scope,
+          tier: 'tenant',
+          persona: 'mr-mwikila',
+        } as never);
+      };
+      // M2 — no real event-bus / DB predicate source is wired yet, so this
+      // checker is an honest always-false stub. It is the SAME source the
+      // in-process monitor uses; both gate on `monitorAvailable` (kept false
+      // until a real predicate source binds) so neither arms a doomed poll.
+      const monitorChecker: MonitorChecker = async () => false;
+      // RESIDUAL (monitor predicate source) — to make `monitor` EXECUTE
+      // (in-process or durable) bind `monitorChecker` to a real condition
+      // check (e.g. a Drizzle read of `rent_payments` / `inspections`, or an
+      // event-bus subscription that flips a per-watch flag) keyed by
+      // `predicate`, then set `monitorAvailable: true` in BOTH the in-process
+      // supervisor (below) and `createDurableLoopActuators` — that single
+      // flip arms the watch. Until then monitor honestly degrade-records.
+      const monitorPredicateSourceAvailable = false;
+
+      // PRIMARY — in-process wake/monitor supervisor. This is the DEFAULT
+      // actuator the registry dispatcher uses for `schedule_wake` / `monitor`:
+      // it arms a real process-local resume that fires on a tick with NO
+      // Inngest dependency. `index.ts` calls `.start()` (self-drive interval)
+      // and the gateway heartbeat also drives `.tick()`. Lifecycle is exposed
+      // on the registry so boot can start it + shutdown can stop it.
+      const inProcessWakeSupervisor = createInProcessWakeScheduler({
+        resumeTurnRunner,
+        monitorResumeRunner,
+        monitorChecker,
+        // Honest: only arm in-process monitor polls once a real predicate
+        // source is bound (see RESIDUAL note above).
+        monitorAvailable: monitorPredicateSourceAvailable,
+        logger: {
+          info: (obj, msg) =>
+            logger.info('in-process-wake-scheduler', { arg0: msg ?? '', obj }),
+          warn: (obj, msg) =>
+            logger.warn('in-process-wake-scheduler', { arg0: msg ?? '', obj }),
+          error: (obj, msg) =>
+            logger.error('in-process-wake-scheduler', { arg0: msg ?? '', obj }),
+        },
+      });
+
       const durableLoopActuators: DurableLoopActuators = createDurableLoopActuators(
         {
           composition: inngestComposition,
-          // H1 — `consumerRegistered` is deliberately LEFT UNSET (false).
-          // This composition root does NOT yet register the 3 durable
-          // function definitions on an Inngest serve handler, nor bind
-          // `services.inngestRuntime`, so no consumer would run the enqueued
-          // spawn/wake/monitor events. Leaving this false makes the durable
-          // producers HONEST: even with DURABLE_EXEC_ENABLED=true they fall
-          // back to in-process / recorded and log, instead of reporting
-          // `mode:'durable'` success while the events black-hole. Flip to
-          // `true` in the SAME change that wires the serve handler.
-          // Spawn a child Mr. Mwikila on the sub-task — a fresh think()
-          // turn scoped to the child thread + the parent's scope, carrying
-          // the recursion depth so the child dispatcher governs deeper
-          // spawns. Fire-and-forget: the parent never blocks on this.
-          childTurnRunner: async (a) => {
-            const k = kernelHolder.kernel;
-            if (!k) return;
-            await k.think({
-              threadId: a.childThreadId,
-              userMessage: a.prompt || 'Continue the delegated sub-task.',
-              scope: a.scope,
-              tier: 'tenant',
-              persona: a.persona,
-              // C1 — forward the child's cumulative spawn-tree depth so the
-              // orchestrator's depth cap is TRANSITIVE: a grandchild spawn
-              // is governed against the cumulative tree, not a per-turn
-              // reset. `a.depth` is the depth the dispatcher computed for
-              // THIS child (childDepth) and the durable event carried it
-              // forward; the in-process path must propagate it too.
-              spawnDepth: a.depth,
-            } as never);
-          },
-          // Resume a woken / monitor-fired thread — re-invoke think() with
-          // the wake reason as the inbound turn so the model can pick up
-          // where it paused.
-          resumeTurnRunner: async (a) => {
-            const k = kernelHolder.kernel;
-            if (!k) return;
-            await k.think({
-              threadId: a.threadId,
-              // M3 — fence + sanitise the resume metadata so a model-chosen
-              // reason/token cannot smuggle instructions into the child's
-              // user turn (prompt-injection seam).
-              userMessage: fenceResumeMetadata({
-                kind: 'resume',
-                resumeToken: a.resumeToken,
-                reason: a.reason,
-              }),
-              scope: a.scope,
-              tier: 'tenant',
-              persona: 'mr-mwikila',
-            } as never);
-          },
-          monitorResumeRunner: async (a) => {
-            const k = kernelHolder.kernel;
-            if (!k) return;
-            await k.think({
-              threadId: a.threadId,
-              // M3 — fence + sanitise the monitor metadata (the predicate id
-              // can be model-chosen) — non-instruction system context only.
-              userMessage: fenceResumeMetadata({
-                kind: 'monitor',
-                resumeToken: a.resumeToken,
-                reason: a.reason,
-              }),
-              scope: a.scope,
-              tier: 'tenant',
-              persona: 'mr-mwikila',
-            } as never);
-          },
-          // M2 — no real event-bus / DB predicate source is wired yet, so
-          // `monitorAvailable` is LEFT UNSET (false): the monitor producer
-          // degrade-ACKs ("monitoring not yet available") instead of arming
-          // a poll backed by this always-false stub (which would be a
-          // guaranteed expiry that burns durable steps). The checker stays
-          // honest (never fabricates a fire) for when a real source lands;
-          // flip `monitorAvailable: true` in the SAME change that binds it.
-          monitorChecker: async () => false,
+          // H1 — `consumerRegistered` is now TRUE: this same change binds
+          // `services.inngestRuntime` to an in-process runtime that routes
+          // Inngest events → the registered function definitions (see
+          // `inngestRuntime` below), so enqueued spawn/wake/monitor events
+          // are actually consumed. The durable PRODUCERS are therefore honest
+          // to report `mode:'durable'` — but ONLY when `composition.enabled`
+          // (DURABLE_EXEC_ENABLED=true) AND a real Inngest worker is present;
+          // by default `enabled` is false so this whole durable path stays
+          // dormant and the PRIMARY in-process supervisor handles wakes.
+          consumerRegistered: true,
+          childTurnRunner,
+          resumeTurnRunner,
+          monitorResumeRunner,
+          monitorChecker,
+          // M2 — gated on the same honest flag as the in-process monitor.
+          monitorAvailable: monitorPredicateSourceAvailable,
           // M1 — replayable degrade sink. When durable is unavailable the
           // wake/monitor intent is RECORDED here (inspectable) instead of a
           // log-only drop. The in-memory recorders give a supervisor / ops
@@ -2463,10 +2554,57 @@ function buildServicesInner(
       // reset). Merged into the loop-actuator bundle below; the depth cap
       // and per-turn breadth cap default inside the kernel/dispatcher.
       const inFlightSpawnSemaphore = orchestrator.createInFlightSpawnSemaphore();
+      // PRIMARY — port selection. `schedule_wake` / `monitor` route to the
+      // IN-PROCESS supervisor by default so they EXECUTE with no Inngest
+      // deploy gate. Only when the durable path is genuinely active
+      // (`durableLoopActuators.durable === true`: DURABLE_EXEC_ENABLED=true +
+      // an attested consumer + a real Inngest worker) do we prefer the
+      // crash-resilient durable ports instead. `subAgentSpawner` always uses
+      // the durable actuator — its own in-process fallback already runs the
+      // child turn without Inngest, so spawn executes on either path.
+      const wakeScheduler: orchestrator.WakeScheduler = durableLoopActuators.durable
+        ? durableLoopActuators.actuators.scheduler!
+        : inProcessWakeSupervisor.scheduler;
+      const monitorRegistry: orchestrator.MonitorRegistry =
+        durableLoopActuators.durable
+          ? durableLoopActuators.actuators.monitorRegistry!
+          : inProcessWakeSupervisor.monitorRegistry;
       const loopActuatorsBundle: orchestrator.LoopActuators = {
         ...durableLoopActuators.actuators,
+        scheduler: wakeScheduler,
+        monitorRegistry,
         inFlightSpawns: inFlightSpawnSemaphore,
       };
+
+      // SECONDARY — bind `services.inngestRuntime` (the consumer/serve side
+      // the `/api/v1/inngest` webhook dispatches to). It routes an incoming
+      // Inngest event → the registered durable function definitions (the 3
+      // `durableLoopActuators.definitions`; task-agent / eviction defs are not
+      // composed at this root yet, so they are absent from the routing table
+      // until they are). With this bound the webhook no longer 503s and an
+      // enqueued spawn/wake/monitor event is consumed instead of black-holed
+      // — which is exactly why `consumerRegistered: true` above is now honest.
+      //
+      // DEPLOY-GATE: this in-process runtime makes the durable path
+      // CODE-COMPLETE, but `step.sleepUntil` resolves immediately here (no
+      // control plane to park the function). True crash-resilient suspend
+      // still needs a deployed Inngest worker. By default DURABLE_EXEC_ENABLED
+      // is off, so nothing ENQUEUES onto this path — the PRIMARY in-process
+      // supervisor handles wakes — and the runtime simply stands ready.
+      const inProcessInngestRuntime = createInProcessInngestRuntime({
+        definitions: durableLoopActuators.definitions,
+        logger: {
+          info: (obj, msg) =>
+            logger.info('in-process-inngest-runtime', { arg0: msg ?? '', obj }),
+          warn: (obj, msg) =>
+            logger.warn('in-process-inngest-runtime', { arg0: msg ?? '', obj }),
+          error: (obj, msg) =>
+            logger.error('in-process-inngest-runtime', { arg0: msg ?? '', obj }),
+        },
+      });
+      // Surface both to the top-level registry (see `cnsLoopActuatorHolder`).
+      cnsLoopActuatorHolder.supervisor = inProcessWakeSupervisor;
+      cnsLoopActuatorHolder.runtime = inProcessInngestRuntime;
 
       // Wave-K T1 — brain-kernel wiring with env-driven killswitch,
       // always-on decision-trace recorder, seeded tool registry, and
@@ -2699,6 +2837,13 @@ function buildServicesInner(
       // supervisor degrades safely on its own.
       kernelGoalsRepo: createKernelGoalsService(db as never),
     }),
+    // PRIMARY — in-process wake/monitor supervisor + SECONDARY Inngest
+    // runtime, surfaced from the `centralIntelligence` IIFE (evaluated above
+    // this point, so the holder is populated). Both are null when the brain
+    // kernel was not wired (no Anthropic key) — then there is nothing to
+    // resume, so the supervisor would be inert anyway.
+    inProcessWakeSupervisor: cnsLoopActuatorHolder.supervisor,
+    inngestRuntime: cnsLoopActuatorHolder.runtime,
     // Wave-K Tier-3 — sovereign-ledger verify supervisor. Shares the
     // composition-root event bus so verdicts emit on the same channel
     // as the rest of the platform's observability events.

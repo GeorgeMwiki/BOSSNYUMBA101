@@ -2074,6 +2074,12 @@ async function gracefulShutdown(signal: string): Promise<void> {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: wake-loop cron stop failed');
   }
   try {
+    serviceRegistry.inProcessWakeSupervisor?.stop();
+    logger.info('shutdown: in-process wake supervisor stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: in-process wake supervisor stop failed');
+  }
+  try {
     serviceRegistry.idleSessionEmitter?.stop();
     logger.info('shutdown: idle-session emitter stopped');
   } catch (err) {
@@ -2227,6 +2233,12 @@ if (require.main === module) {
   // so the brain wakes on cadence even when no CronJob is installed.
   // Degraded-mode (no DB) is internally a no-op; safe to call unconditionally.
   serviceRegistry.wakeLoopCron?.start();
+  // PRIMARY — in-process wake/monitor supervisor. Arms the self-drive
+  // interval that fires the orchestrator's `schedule_wake` resumes (and any
+  // in-process monitor polls) at their due time with NO Inngest deploy gate.
+  // Until this call a scheduled wake would sit armed but never tick. Null in
+  // degraded mode (no kernel to resume); `?.` makes the call a safe no-op.
+  serviceRegistry.inProcessWakeSupervisor?.start();
   // Central Command Phase B B2 — idle-session emitter supervisor. Scans
   // `sensorium_event_log` every minute and writes a reflexion-buffer entry
   // for every (tenant, user, session) tuple that has gone idle ≥ 5 min.
