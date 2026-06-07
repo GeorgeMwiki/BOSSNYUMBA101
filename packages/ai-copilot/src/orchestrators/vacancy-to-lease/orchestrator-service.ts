@@ -147,6 +147,7 @@ function defaultNow(): string {
 function defaultId(): string {
   // Lightweight prefix + random hex, no external dep. Safe for non-
   // cryptographic use (the runId is audit-keyed by tenantId anyway).
+  // eslint-disable-next-line no-restricted-syntax -- non-crypto runId, audit-keyed by tenantId; collision-resistance (not unguessability) is the requirement
   const rand = Math.random().toString(16).slice(2, 10);
   const ts = Date.now().toString(36);
   return `vpr_${ts}_${rand}`;

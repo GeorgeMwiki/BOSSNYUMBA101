@@ -13,6 +13,7 @@
  * alternative explanations when the learner is idle on a concept.
  */
 
+import { randomUUID } from 'node:crypto';
 import type { TrainingRepository } from './training-repository.js';
 import type {
   NextTrainingStep,
@@ -44,7 +45,7 @@ export interface TrainingDeliveryDeps {
 }
 
 function defaultId(prefix: string): string {
-  const rand = Math.random().toString(36).slice(2, 10);
+  const rand = randomUUID().replace(/-/g, '').slice(0, 8);
   return `${prefix}_${Date.now()}_${rand}`;
 }
 

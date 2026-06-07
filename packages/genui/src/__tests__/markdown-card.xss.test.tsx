@@ -78,7 +78,7 @@ describe('MarkdownCard — XSS regression (C3)', () => {
     // browser surfaces this back to the user as literal `&lt;` text in
     // the link, not as a `<` glyph — still safe. We assert the
     // double-escaped form to keep the test honest about reality.
-    const md = `[ok](https://example.com/dangerous<\'"&>path)`;
+    const md = `[ok](https://example.com/dangerous<'"&>path)`;
     const { container } = render(
       <MarkdownCard kind="markdown-card" markdown={md} />,
     );

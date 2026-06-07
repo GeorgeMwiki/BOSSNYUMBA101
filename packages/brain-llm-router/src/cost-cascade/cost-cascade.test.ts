@@ -121,7 +121,9 @@ describe('runCascade', () => {
     let runs = 0;
     let totalCascadeCost = 0;
     while (runs < 100) {
+      // eslint-disable-next-line no-restricted-syntax -- test data generation; not security-sensitive
       const cheap = Math.random() > 0.6 ? 0.9 : 0.3;
+      // eslint-disable-next-line no-restricted-syntax -- test data generation; not security-sensitive
       const mid = Math.random() > 0.05 ? 0.92 : 0.4;
       const top = 0.99;
       let pulls = 0;

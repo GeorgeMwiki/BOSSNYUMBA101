@@ -25,6 +25,7 @@
  * heavy transitive deps.
  */
 
+import { randomUUID } from 'node:crypto';
 import {
   MONTHLY_CLOSE_STEPS,
   type ApproveStepInput,
@@ -76,7 +77,9 @@ export class MonthlyCloseOrchestrator {
     this.platformFeePct = deps.platformFeePct ?? DEFAULT_PLATFORM_FEE_PCT;
     this.kraMriRatePct = deps.kraMriRatePct ?? DEFAULT_KRA_MRI_RATE_PCT;
     this.clock = deps.clock ?? (() => new Date());
-    this.idGen = deps.idGen ?? (() => `mc_${Math.random().toString(36).slice(2)}_${Date.now()}`);
+    this.idGen =
+      deps.idGen ??
+      (() => `mc_${randomUUID().replace(/-/g, '').slice(0, 11)}_${Date.now()}`);
   }
 
   // ---------------------------------------------------------------------

@@ -36,7 +36,11 @@ export interface WebhookDlqDeps {
 function defaultId(): string {
   // Node 19+ has global crypto.randomUUID.
   const g = globalThis as { readonly crypto?: { readonly randomUUID?: () => string } };
-  return g.crypto?.randomUUID?.() ?? `wh-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return (
+    g.crypto?.randomUUID?.() ??
+    // eslint-disable-next-line no-restricted-syntax -- last-resort fallback only when crypto.randomUUID above is unavailable
+    `wh-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  );
 }
 
 export function createWebhookDlqRouter(deps: WebhookDlqDeps): Hono {

@@ -100,7 +100,7 @@ export function ScannerCamera(props: ScannerCameraProps): JSX.Element {
 
     const dataUrl = deskewFrame(video, quad);
     const next: ScannedPage = {
-      id: `page_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      id: `page_${Date.now()}_${crypto.randomUUID().slice(0, 4)}`,
       dataUrl,
       quad: quad ?? undefined,
       capturedAt: new Date().toISOString(),

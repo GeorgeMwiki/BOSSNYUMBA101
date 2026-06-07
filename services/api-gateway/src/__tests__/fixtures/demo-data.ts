@@ -780,6 +780,7 @@ export function getActiveByTenant<T extends { tenantId: string; deletedAt?: Date
 
 // Mutation helpers for properties and units (in-memory store for demo)
 function generateId(prefix: string): string {
+  // eslint-disable-next-line no-restricted-syntax -- demo/test fixture id; uniqueness suffices, not security-sensitive
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 

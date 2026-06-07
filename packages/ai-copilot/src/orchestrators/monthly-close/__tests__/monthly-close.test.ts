@@ -327,6 +327,7 @@ function buildFixture(options: {
     platformFeePct: options.platformFeePct ?? 10,
     kraMriRatePct: 7.5,
     clock: () => new Date('2026-04-01T02:00:00Z'),
+    // eslint-disable-next-line no-restricted-syntax -- test fixture id generator; uniqueness suffices, not security-sensitive
     idGen: () => `id_${Math.random().toString(36).slice(2)}`,
   });
 

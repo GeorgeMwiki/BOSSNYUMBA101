@@ -372,6 +372,7 @@ export class AnthropicProvider implements AIProvider {
       lastErr = err;
       if (!err.retryable || attempt === maxRetries) return aiErr(err);
       // Exponential backoff with jitter
+      // eslint-disable-next-line no-restricted-syntax -- retry-jitter timing, not an ID/secret; unguessability is irrelevant here
       const wait = baseMs * 2 ** attempt + Math.floor(Math.random() * baseMs);
       await new Promise((r) => setTimeout(r, wait));
     }

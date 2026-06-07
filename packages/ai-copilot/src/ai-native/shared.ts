@@ -21,7 +21,7 @@
  *     `@bossnyumba/compliance-plugins`.
  */
 
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 // ---------------------------------------------------------------------------
 // Prompt-hash audit helper
@@ -130,7 +130,7 @@ export function safeJsonParse<T = unknown>(raw: string): T | null {
   try {
     return JSON.parse(body.trim()) as T;
   } catch {
-    const firstBrace = body.search(/[\[{]/);
+    const firstBrace = body.search(/[[{]/);
     if (firstBrace < 0) return null;
     const candidate = body.slice(firstBrace);
     try {
@@ -146,7 +146,7 @@ export function safeJsonParse<T = unknown>(raw: string): T | null {
 // ---------------------------------------------------------------------------
 
 export function newId(prefix: string): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 8)}`;
 }
 
 // ---------------------------------------------------------------------------

@@ -239,7 +239,7 @@ const LEASE_FIELDS: ReadonlyArray<FieldSpec> = [
       labelLookup(
         t,
         ['lease start date', 'start date', 'commencement date', 'tarehe ya kuanza'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       ),
   },
   {
@@ -249,7 +249,7 @@ const LEASE_FIELDS: ReadonlyArray<FieldSpec> = [
       labelLookup(
         t,
         ['lease end date', 'end date', 'expiry date', 'tarehe ya kumalizika'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       ),
   },
 ];
@@ -374,7 +374,7 @@ const PAYMENT_FIELDS: ReadonlyArray<FieldSpec> = [
       const labelled = labelLookup(
         t,
         ['payment date', 'date of payment', 'tarehe ya malipo'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       );
       if (labelled.length > 0) return labelled;
       const all = extractAllDates(t);
@@ -415,7 +415,7 @@ const NIDA_FIELDS: ReadonlyArray<FieldSpec> = [
       labelLookup(
         t,
         ['date of birth', 'dob', 'tarehe ya kuzaliwa'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       ),
   },
 ];
@@ -438,7 +438,7 @@ const SURVEY_FIELDS: ReadonlyArray<FieldSpec> = [
       labelLookup(
         t,
         ['inspection date', 'date of inspection', 'tarehe ya ukaguzi'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       ),
   },
   {
@@ -504,7 +504,7 @@ const RENEWAL_FIELDS: ReadonlyArray<FieldSpec> = [
       labelLookup(
         t,
         ['renewal date', 'requested renewal', 'tarehe ya kuomba upya'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       ),
   },
 ];
@@ -532,7 +532,7 @@ const TERMINATION_FIELDS: ReadonlyArray<FieldSpec> = [
       labelLookup(
         t,
         ['effective date', 'vacating date', 'tarehe ya kuondoka'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       ),
   },
 ];
@@ -547,7 +547,7 @@ const VENDOR_INVOICE_FIELDS: ReadonlyArray<FieldSpec> = [
     key: 'invoice_number',
     kind: 'entity',
     extract: (t) => {
-      const m = /\binvoice\s*(?:no\.?|number)?[:\s]+([A-Z0-9\-]{3,24})\b/i.exec(t);
+      const m = /\binvoice\s*(?:no\.?|number)?[:\s]+([A-Z0-9-]{3,24})\b/i.exec(t);
       return m && m[1] ? [{ value: m[1], confidence: 0.95, matchedText: m[0] }] : [];
     },
   },

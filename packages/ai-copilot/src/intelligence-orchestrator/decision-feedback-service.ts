@@ -13,6 +13,8 @@
  * @module intelligence-orchestrator/decision-feedback-service
  */
 
+import { randomUUID } from 'node:crypto';
+
 export type OperatorVerdict =
   | 'approved'
   | 'rejected'
@@ -105,7 +107,7 @@ export class DecisionFeedbackService {
       throw new Error('decision-feedback: tenantId is required');
     }
     const record: DecisionFeedbackRecord = {
-      id: `df-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: `df-${Date.now()}-${randomUUID().replace(/-/g, '').slice(0, 6)}`,
       tenantId: input.tenantId,
       turnId: input.turnId,
       personaId: input.personaId,

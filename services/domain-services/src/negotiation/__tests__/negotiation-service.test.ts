@@ -469,6 +469,7 @@ describe('NegotiationService', () => {
 
     // AI picks random offer in [1, floor-1] on every call.
     const ai: AiCounterGenerator = async () => ({
+      // eslint-disable-next-line no-restricted-syntax -- test data generation; not security-sensitive
       offer: Math.max(1, Math.floor(Math.random() * 79_999)),
       concessions: [],
       rationale: 'adversarial',

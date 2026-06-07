@@ -12,6 +12,7 @@
  * repository guarantees re-running produces the same logical path row.
  */
 
+import { randomUUID } from 'node:crypto';
 import { ESTATE_CONCEPTS, type Concept } from './concepts-catalog.js';
 import { PROFESSOR_PROMPT_LAYER } from '../personas/sub-personas/professor-persona.js';
 import type {
@@ -34,7 +35,7 @@ export interface TrainingGeneratorDeps {
 }
 
 function defaultId(prefix: string): string {
-  const rand = Math.random().toString(36).slice(2, 10);
+  const rand = randomUUID().replace(/-/g, '').slice(0, 8);
   return `${prefix}_${Date.now()}_${rand}`;
 }
 

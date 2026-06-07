@@ -400,7 +400,8 @@ function generateChunkId(): string {
   // is well within the storage adapter's `isSafeChunkId` regex.
   return globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function'
     ? globalThis.crypto.randomUUID()
-    : `srpl_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+    : // eslint-disable-next-line no-restricted-syntax -- last-resort fallback only when the Web Crypto randomUUID above is unavailable
+      `srpl_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
 }
 
 export const sessionReplayRouter = app;

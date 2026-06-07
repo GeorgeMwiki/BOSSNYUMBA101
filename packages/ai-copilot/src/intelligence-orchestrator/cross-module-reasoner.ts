@@ -12,6 +12,7 @@
  * @module intelligence-orchestrator/cross-module-reasoner
  */
 
+import { randomUUID } from 'node:crypto';
 import type {
   PaymentsSnapshot,
   MaintenanceSnapshot,
@@ -41,7 +42,7 @@ export function generateCrossModuleInsights(
   const insights: CrossModuleInsight[] = [];
   const ts = Date.now();
   const nextId = (): string =>
-    `cmi-${ts}-${Math.random().toString(36).slice(2, 8)}`;
+    `cmi-${ts}-${randomUUID().replace(/-/g, '').slice(0, 6)}`;
 
   // Rule 1: Arrears rising AND maintenance cost spike → tenant dissatisfaction
   if (

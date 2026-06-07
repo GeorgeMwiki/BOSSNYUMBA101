@@ -13,6 +13,7 @@
  * an assistant message whose `citations` array is empty.
  */
 
+import { randomUUID } from 'node:crypto';
 import type { EmbeddingService } from './embedding-service.js';
 
 export type DocChatScope = 'single_document' | 'multi_document' | 'group_chat';
@@ -106,7 +107,7 @@ export interface DocChatServiceOptions {
 }
 
 function randomId(prefix: string): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return `${prefix}_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 6)}`;
 }
 
 export class DocumentChatService {

@@ -9,13 +9,14 @@
  * so the fallback layer can reason about retryability uniformly.
  */
 
+import { randomUUID } from 'node:crypto';
 import type { BrainLLMRequest, BrainLLMResponse, ProviderName } from '../types.js';
 import { BrainLLMError } from '../types.js';
 
-/** Generate a stable response id (no crypto dep — fits in 250 lines). */
+/** Generate a stable response id. */
 export function makeResponseId(provider: ProviderName): string {
   const ts = Date.now().toString(36);
-  const rand = Math.random().toString(36).slice(2, 8);
+  const rand = randomUUID().replace(/-/g, '').slice(0, 6);
   return `msg_${provider}_${ts}_${rand}`;
 }
 

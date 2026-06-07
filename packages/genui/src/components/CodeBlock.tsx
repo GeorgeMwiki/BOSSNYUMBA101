@@ -150,7 +150,7 @@ interface Token {
 function tokenise(line: string, language: string): ReadonlyArray<Token> {
   const tokens: Token[] = [];
   if (language === 'json') {
-    const re = /("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?)|(true|false|null)|([{}\[\],:])/g;
+    const re = /("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?)|(true|false|null)|([{}[\],:])/g;
     let lastIdx = 0;
     let m: RegExpExecArray | null;
     while ((m = re.exec(line))) {

@@ -20,6 +20,7 @@ export interface PhotoPickerState {
 }
 
 function newId(): string {
+  // eslint-disable-next-line no-restricted-syntax -- React Native client-local id (no Web Crypto); uniqueness suffices, not security-sensitive
   return `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 

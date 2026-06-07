@@ -11,9 +11,9 @@ export const CASE_STUDY_10_FIRST_90_DAYS = defineCaseStudy({
 
 The newly appointed asset manager, Wanjala, has 90 days to deliver week-12 milestones: reconciled rent roll, named caretaker at each block, live maintenance-ticket system, refreshed OPEX baseline, vendor bench rationalisation, tenant-satisfaction baseline, and an investment committee board book showing month-4 onward steady-state.
 
-Week 1 (the "take control" week) is the most important. Wanjala has to: (1) personally visit every block, introduce herself to every caretaker, and photograph every common area; (2) mirror-copy all financial records from seller\'s systems; (3) change signatory on all utility and service-charge accounts; (4) send the "new management" letter to every tenant via WhatsApp, SMS, and physical notice; (5) freeze all discretionary spend; (6) inventory keys, masters, and overrides; (7) re-key the letting office. Missing any of these creates a 90-day drag.
+Week 1 (the "take control" week) is the most important. Wanjala has to: (1) personally visit every block, introduce herself to every caretaker, and photograph every common area; (2) mirror-copy all financial records from seller's systems; (3) change signatory on all utility and service-charge accounts; (4) send the "new management" letter to every tenant via WhatsApp, SMS, and physical notice; (5) freeze all discretionary spend; (6) inventory keys, masters, and overrides; (7) re-key the letting office. Missing any of these creates a 90-day drag.
 
-Week 2 — the rent-roll reconciliation. Wanjala runs the seller\'s rent roll against bank statements for the last 12 months. Three typical discrepancies surface: (a) tenants paying off-schedule with side-deals unknown to seller; (b) 4-6 "ghost" payments that cannot be matched to a tenant; (c) 2-3 legitimate tenants whose leases are expired but who have been paying at the same rate.
+Week 2 — the rent-roll reconciliation. Wanjala runs the seller's rent roll against bank statements for the last 12 months. Three typical discrepancies surface: (a) tenants paying off-schedule with side-deals unknown to seller; (b) 4-6 "ghost" payments that cannot be matched to a tenant; (c) 2-3 legitimate tenants whose leases are expired but who have been paying at the same rate.
 
 Week 3-4 — physical condition audit. Independent building surveyor walks every unit. Produces a defects schedule by unit, by common area. Wanjala cross-checks against the pre-close capex audit. Any defects that were not in the audit get added to the year-1 capex plan.
 
@@ -23,7 +23,7 @@ Week 6 — vendor bench. Audit all existing maintenance vendors. Terminate the p
 
 Week 7-8 — tenant outreach. Wanjala personally calls every tenant in the 30-unit Kilimani block (it is the most problematic). Shorter outreach for Westlands and Parklands. Open-ended question: "What one thing about this building should be better?"
 
-Week 9 — OPEX reset. Rebase OPEX using actual 8-week post-close data annualised. Identify the 3 biggest surprises vs seller\'s representation. Typical surprise: utility pass-throughs are 12-18 percent lower than seller\'s P&L because seller was cross-subsidising service charge from rent.
+Week 9 — OPEX reset. Rebase OPEX using actual 8-week post-close data annualised. Identify the 3 biggest surprises vs seller's representation. Typical surprise: utility pass-throughs are 12-18 percent lower than seller's P&L because seller was cross-subsidising service charge from rent.
 
 Week 10 — arrears sweep. Categorize every arrears case as (a) payment plan viable, (b) legal escalation, (c) write-off. Set targets per category.
 
@@ -31,7 +31,7 @@ Week 11 — systems. Portfolio management system, tenant-portal app, maintenance
 
 Week 12 — IC board book. Wanjala presents the 90-day summary, the rebased OPEX, the year-1 capex plan, the tenant-satisfaction baseline, the vendor-bench changes, and the year-2 stabilised NOI projection.
 
-The 90-day plan always sounds simple in theory. In practice it has three failure modes: caretaker politics (week 5), rent-roll surprise pockets (week 2), and board drift (week 12). Wanjala\'s predecessor on a similar deal burned 6 months because he skipped week 1 and let caretakers set the cadence.`,
+The 90-day plan always sounds simple in theory. In practice it has three failure modes: caretaker politics (week 5), rent-roll surprise pockets (week 2), and board drift (week 12). Wanjala's predecessor on a similar deal burned 6 months because he skipped week 1 and let caretakers set the cadence.`,
   dataTable: {
     title: 'First 90 days — 12 milestones',
     rows: [

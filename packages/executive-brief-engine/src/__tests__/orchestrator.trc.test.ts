@@ -328,6 +328,7 @@ const TRC_PRIOR_BRIEF: PriorBriefLookupPort = {
 
 const TRC_AUDIT_CHAIN: AuditChainPort = {
   async append() {
+    // eslint-disable-next-line no-restricted-syntax -- test fixture id; uniqueness suffices, not security-sensitive
     return `aud_${Math.random().toString(36).slice(2)}`;
   },
 };

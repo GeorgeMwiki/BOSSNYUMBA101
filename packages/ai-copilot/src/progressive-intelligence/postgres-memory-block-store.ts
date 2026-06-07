@@ -24,6 +24,7 @@
  * package's transitive deps into the unit test.
  */
 
+import { randomUUID } from 'node:crypto';
 import type {
   MemoryBlock,
   MemoryBlockStore,
@@ -57,7 +58,7 @@ export interface MemoryBlockDbPort {
 export type IdGenerator = () => string;
 
 const defaultIdGen: IdGenerator = () =>
-  `mb_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+  `mb_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 9)}`;
 
 /**
  * Concrete Drizzle-backed `MemoryBlockStore`.

@@ -7,7 +7,7 @@ export const CASE_STUDY_07_HOLDOVER_DRAMA = defineCaseStudy({
   country: 'KE',
   tags: ['holdover', 'eviction', 'lease-end', 'settlement', 'dispute'],
   difficulty: 'intermediate',
-  narrative: `Unit 4B at Lavington Green is a 3-bedroom apartment leased to a tenant, Mr. Chege, on a 2-year lease ending 30 April 2026. Rent is Ksh 140,000 per month. Deposit: Ksh 280,000. The landlord\'s property manager, Shiro, issues the 60-day notice of non-renewal on 28 February — the landlord wants to sell the unit to a buyer who has already put down a letter of intent contingent on vacant possession at 1 June 2026.
+  narrative: `Unit 4B at Lavington Green is a 3-bedroom apartment leased to a tenant, Mr. Chege, on a 2-year lease ending 30 April 2026. Rent is Ksh 140,000 per month. Deposit: Ksh 280,000. The landlord's property manager, Shiro, issues the 60-day notice of non-renewal on 28 February — the landlord wants to sell the unit to a buyer who has already put down a letter of intent contingent on vacant possession at 1 June 2026.
 
 Mr. Chege initially acknowledges the notice over WhatsApp. On 15 March, Shiro follows up with a check-out schedule. Mr. Chege replies: "I have been discussing with your landlord directly. She said I can stay month-to-month." Shiro checks with the landlord, Mrs. Kamau. Mrs. Kamau says there was no such conversation — though she recalls Mr. Chege asking if she "would consider" extending, and she said "let me think about it." The "yes" is a fabrication.
 
@@ -15,13 +15,13 @@ From 1 April onwards, the tenant stops responding to check-out coordination mess
 
 On 1 May, Shiro is at an impasse. The buyer is calling daily. The lease termination is lawful. Mr. Chege is now technically a "tenant at sufferance" — in holdover. Shiro has three realistic paths.
 
-Path 1 — Court eviction. File for eviction in the Environment & Land Court. Timeline: 60-90 days minimum given case backlog. Cost: ~Ksh 180k legal + filing. Outcome: near-certain eviction order, possibly with costs awarded, but the buyer\'s LOI expires 1 July. If eviction takes the full 90 days, the sale falls through.
+Path 1 — Court eviction. File for eviction in the Environment & Land Court. Timeline: 60-90 days minimum given case backlog. Cost: ~Ksh 180k legal + filing. Outcome: near-certain eviction order, possibly with costs awarded, but the buyer's LOI expires 1 July. If eviction takes the full 90 days, the sale falls through.
 
 Path 2 — Settlement. Offer Mr. Chege a one-time "move-out incentive" of Ksh 150,000 plus 14-day grace. Dignified; risks rewarding bad behaviour; sets precedent.
 
 Path 3 — Police + bailiffs on day 30 of holdover. High-risk; likely illegal self-help in most Kenyan contexts without a court order; reputational damage; could trigger tenant counter-suit and liability.
 
-Mr. Chege\'s angle: Shiro has heard informally from another tenant that Mr. Chege lost his job in March and is waiting on a delayed severance from his employer, which will land "any day now." He is embarrassed. His wife is expecting their second child in July. Shiro now has to triangulate legal strategy + buyer relationship + human circumstance.
+Mr. Chege's angle: Shiro has heard informally from another tenant that Mr. Chege lost his job in March and is waiting on a delayed severance from his employer, which will land "any day now." He is embarrassed. His wife is expecting their second child in July. Shiro now has to triangulate legal strategy + buyer relationship + human circumstance.
 
 The landlord, Mrs. Kamau, has also now admitted she feels guilty — "the poor man" — and is oscillating on whether to sell at all. But the buyer has already given the legal transfer instructions to their lawyers. Backing out has its own costs.`,
   dataTable: {

@@ -35,6 +35,7 @@ function freshSignalId(source: SignalSourceId): string {
   try {
     return `sig_${source}_${randomUUID()}`;
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- last-resort fallback only when the CSPRNG (randomUUID) above is unavailable
     return `sig_${source}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   }
 }

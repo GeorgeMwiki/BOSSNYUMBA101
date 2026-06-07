@@ -69,9 +69,9 @@ export function parseLeaseAgreement(text: string): DocumentAnalysisResult {
   const flags: string[] = [];
   const parties = /lessor[:\s]+([A-Z][A-Za-z '&.-]{2,80})/i.exec(text)?.[1];
   const tenant = /lessee[:\s]+([A-Z][A-Za-z '&.-]{2,80})/i.exec(text)?.[1];
-  const rent = /rent[^\n]{0,200}?(KES|TZS|UGX|RWF)\s*([\d,\.]+)/i.exec(text);
-  const start = /commencement\s+date[^\n]{0,60}?([\d]{1,2}[\/\-.][A-Za-z0-9]{1,10}[\/\-.][\d]{2,4})/i.exec(text)?.[1];
-  const end = /(?:end|expiry)\s+date[^\n]{0,60}?([\d]{1,2}[\/\-.][A-Za-z0-9]{1,10}[\/\-.][\d]{2,4})/i.exec(text)?.[1];
+  const rent = /rent[^\n]{0,200}?(KES|TZS|UGX|RWF)\s*([\d,.]+)/i.exec(text);
+  const start = /commencement\s+date[^\n]{0,60}?([\d]{1,2}[/\-.][A-Za-z0-9]{1,10}[/\-.][\d]{2,4})/i.exec(text)?.[1];
+  const end = /(?:end|expiry)\s+date[^\n]{0,60}?([\d]{1,2}[/\-.][A-Za-z0-9]{1,10}[/\-.][\d]{2,4})/i.exec(text)?.[1];
   if (!rent) flags.push('rent_not_detected');
   if (!start || !end) flags.push('lease_dates_incomplete');
   if (!tenant) flags.push('tenant_name_missing');
@@ -92,7 +92,7 @@ export function parseLeaseAgreement(text: string): DocumentAnalysisResult {
 
 export function parseRentRoll(text: string): DocumentAnalysisResult {
   const rows: Array<{ unit: string; rent: number; status: string }> = [];
-  const lineRegex = /\b([A-Z0-9][A-Z0-9\-/]{0,8})\s+(?:KES|TZS|UGX|RWF)?\s*([\d,\.]+)\s+(occupied|vacant|notice|arrears)\b/gi;
+  const lineRegex = /\b([A-Z0-9][A-Z0-9\-/]{0,8})\s+(?:KES|TZS|UGX|RWF)?\s*([\d,.]+)\s+(occupied|vacant|notice|arrears)\b/gi;
   let m: RegExpExecArray | null;
   while ((m = lineRegex.exec(text)) !== null) {
     rows.push({
@@ -113,7 +113,7 @@ export function parseRentRoll(text: string): DocumentAnalysisResult {
 
 export function parseTenantApplication(text: string): DocumentAnalysisResult {
   const name = /applicant\s+name[:\s]+([A-Z][A-Za-z '&.-]{2,80})/i.exec(text)?.[1];
-  const income = /(?:monthly|annual)\s+income[:\s]+(?:KES|TZS|UGX|RWF)?\s*([\d,\.]+)/i.exec(text);
+  const income = /(?:monthly|annual)\s+income[:\s]+(?:KES|TZS|UGX|RWF)?\s*([\d,.]+)/i.exec(text);
   const employer = /employer[:\s]+([A-Z][A-Za-z0-9 '&.-]{2,80})/i.exec(text)?.[1];
   const references = Array.from(text.matchAll(/referee\s*\d*[:\s]+([A-Z][A-Za-z '&.-]{2,80})/gi)).map((r) => r[1]);
   const flags: string[] = [];
@@ -134,9 +134,9 @@ export function parseTenantApplication(text: string): DocumentAnalysisResult {
 }
 
 export function parseMaintenanceInvoice(text: string): DocumentAnalysisResult {
-  const invoiceNo = /invoice\s*(?:no\.?|number)[:\s]+([A-Z0-9\-]{3,20})/i.exec(text)?.[1];
-  const total = /total[:\s]+(?:KES|TZS|UGX|RWF)?\s*([\d,\.]+)/i.exec(text);
-  const vat = /vat\s*\(?(\d{1,2})%?\)?[:\s]*(?:KES|TZS|UGX|RWF)?\s*([\d,\.]+)/i.exec(text);
+  const invoiceNo = /invoice\s*(?:no\.?|number)[:\s]+([A-Z0-9-]{3,20})/i.exec(text)?.[1];
+  const total = /total[:\s]+(?:KES|TZS|UGX|RWF)?\s*([\d,.]+)/i.exec(text);
+  const vat = /vat\s*\(?(\d{1,2})%?\)?[:\s]*(?:KES|TZS|UGX|RWF)?\s*([\d,.]+)/i.exec(text);
   const vendor = /vendor[:\s]+([A-Z][A-Za-z0-9 '&.-]{2,80})/i.exec(text)?.[1];
   const flags: string[] = [];
   if (!invoiceNo) flags.push('invoice_number_missing');
@@ -178,9 +178,9 @@ export function parseComplianceNotice(text: string): DocumentAnalysisResult {
 }
 
 export function parseGovernmentLetter(text: string): DocumentAnalysisResult {
-  const ref = /ref\s*(?:no\.?|number)?[:\s]+([A-Z0-9\/\-]{3,30})/i.exec(text)?.[1];
+  const ref = /ref\s*(?:no\.?|number)?[:\s]+([A-Z0-9/-]{3,30})/i.exec(text)?.[1];
   const ministry = /(?:ministry|authority|council)\s+of\s+([A-Z][A-Za-z &]{2,60})/i.exec(text)?.[0];
-  const date = /date[:\s]+([\d]{1,2}[\/\-.][A-Za-z0-9]{1,10}[\/\-.][\d]{2,4})/i.exec(text)?.[1];
+  const date = /date[:\s]+([\d]{1,2}[/\-.][A-Za-z0-9]{1,10}[/\-.][\d]{2,4})/i.exec(text)?.[1];
   const flags: string[] = [];
   if (!ref) flags.push('reference_missing');
   return {

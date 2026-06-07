@@ -11,6 +11,8 @@
  * across organisations.
  */
 
+import { randomUUID } from 'node:crypto';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -143,7 +145,8 @@ export function createSemanticMemory(deps: SemanticMemoryDeps): SemanticMemory {
   const now = deps.now ?? (() => new Date());
   const genId =
     deps.idGenerator ??
-    (() => `mem_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`);
+    (() =>
+      `mem_${Date.now().toString(36)}_${randomUUID().replace(/-/g, '').slice(0, 8)}`);
 
   return {
     async remember(input) {

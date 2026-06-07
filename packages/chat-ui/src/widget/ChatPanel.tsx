@@ -94,6 +94,7 @@ export function ChatPanel({ chat, strings, onClose, variant = 'floating', render
 
   const onMicDown = useCallback(() => {
     setIsListening(true);
+    // eslint-disable-next-line no-restricted-syntax -- cosmetic mic-level animation, not an ID/secret; unguessability is irrelevant
     setVoiceLevels(Array.from({ length: 16 }, () => Math.random()));
   }, []);
 

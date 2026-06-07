@@ -8,6 +8,8 @@
  * Deps are injected so tests can control the random source and the clock.
  */
 
+import crypto from 'node:crypto';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -48,9 +50,9 @@ const DEFAULT_TOKEN_COUNT = 3;
 const DEFAULT_CACHE_LIMIT = 500;
 
 function defaultRng(): string {
-  return Array.from({ length: 12 }, () =>
-    Math.random().toString(36).charAt(2),
-  ).join('');
+  // Canary tokens MUST be unguessable (see file header): use a CSPRNG, not
+  // Math.random(). 9 random bytes → 12 base64url chars (~72 bits of entropy).
+  return crypto.randomBytes(9).toString('base64url');
 }
 
 // ---------------------------------------------------------------------------

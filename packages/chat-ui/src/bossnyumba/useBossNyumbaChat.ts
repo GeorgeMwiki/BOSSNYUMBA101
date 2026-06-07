@@ -131,6 +131,7 @@ function genId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
+  // eslint-disable-next-line no-restricted-syntax -- last-resort fallback only when crypto.randomUUID above is unavailable
   return `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 

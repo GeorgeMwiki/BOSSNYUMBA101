@@ -13,6 +13,7 @@ import type { DomainEvent } from './types';
 
 function createTestEvent(type: string, payload: Record<string, unknown> = {}): DomainEvent {
   return {
+    // eslint-disable-next-line no-restricted-syntax -- test fixture id; uniqueness suffices, not security-sensitive
     id: `evt_${Math.random().toString(36).slice(2)}`,
     type,
     aggregateType: 'Test',

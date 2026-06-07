@@ -5,6 +5,8 @@
  * The two agent cohorts compose via the ai-native/index.ts namespace exports.
  */
 
+import { randomUUID } from 'node:crypto';
+
 export interface Citation {
   readonly kind:
     | 'market_signal'
@@ -60,6 +62,6 @@ export function promptHashDjb2(prompt: string): string {
 }
 
 export function generateId(prefix: string): string {
-  const rand = Math.random().toString(36).slice(2, 10);
+  const rand = randomUUID().replace(/-/g, '').slice(0, 8);
   return `${prefix}_${Date.now()}_${rand}`;
 }

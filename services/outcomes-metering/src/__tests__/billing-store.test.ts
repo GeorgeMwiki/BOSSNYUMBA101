@@ -16,10 +16,12 @@ import { createInMemoryBillingStore } from '../store/billing-store.js';
 
 function meteringRecord(over: Partial<MeteringRecord> = {}): MeteringRecord {
   return {
+    // eslint-disable-next-line no-restricted-syntax -- test fixture id; uniqueness suffices, not security-sensitive
     recordId: 'rec_' + Math.random().toString(36).slice(2),
     outcomeKind: 'ticket_resolved_within_sla',
     tenantId: 't_demo',
     propertyId: 'p_a',
+    // eslint-disable-next-line no-restricted-syntax -- test fixture id; uniqueness suffices, not security-sensitive
     eventId: 'evt_' + Math.random().toString(36).slice(2),
     qualified: true,
     reason: 'resolved within SLA',

@@ -8,6 +8,8 @@
  * computed by the existing audit module; we just record the link.
  */
 
+import { randomUUID } from 'node:crypto';
+
 export type AuditDomain =
   | 'finance'
   | 'leasing'
@@ -83,7 +85,9 @@ export class AutonomousActionAudit {
     const confidence = clamp01(input.confidence);
     const now = this.deps.clock?.() ?? new Date();
     const initial: AutonomousActionRecord = {
-      id: this.deps.idFactory?.() ?? `auton_${now.getTime()}_${Math.random().toString(36).slice(2, 8)}`,
+      id:
+        this.deps.idFactory?.() ??
+        `auton_${now.getTime()}_${randomUUID().replace(/-/g, '').slice(0, 6)}`,
       tenantId: input.tenantId,
       actorPersona: input.actorPersona,
       action: input.action,

@@ -29,6 +29,7 @@
  * (SC-08 Tool Sandbox + Agent Sandbox + Policy Engine).
  */
 
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'fs';
 import { load as yamlLoad } from 'js-yaml';
 
@@ -342,7 +343,7 @@ function freezeResponse(
 }
 
 function generateRequestId(): string {
-  const rand = Math.random().toString(36).slice(2, 10);
+  const rand = randomUUID().replace(/-/g, '').slice(0, 8);
   const ts = Date.now().toString(36);
   return `policy-${ts}-${rand}`;
 }

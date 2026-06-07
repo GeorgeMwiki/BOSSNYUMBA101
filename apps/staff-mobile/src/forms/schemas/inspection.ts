@@ -55,6 +55,7 @@ export function generateInspectionId(now: Date = new Date()): string {
   const startOfYear = new Date(Date.UTC(year, 0, 0))
   const diffMs = now.getTime() - startOfYear.getTime()
   const dayOfYear = Math.floor(diffMs / (24 * 60 * 60 * 1000))
+  // eslint-disable-next-line no-restricted-syntax -- React Native client-local inspection ref suffix (no Web Crypto); uniqueness suffices, not security-sensitive
   const suffix = Math.random().toString(36).slice(2, 4).toUpperCase()
   const dayPart = String(dayOfYear).padStart(3, '0')
   return `INS-${year}-${dayPart}${suffix}`

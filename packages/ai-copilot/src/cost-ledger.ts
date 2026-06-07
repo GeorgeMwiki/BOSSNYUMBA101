@@ -22,6 +22,8 @@
  * the network round-trip so a runaway tenant can't rack up charges.
  */
 
+import { randomUUID } from 'node:crypto';
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -317,5 +319,6 @@ export function createCostLedger(deps: CostLedgerDeps): CostLedger {
 }
 
 function randomSuffix(): string {
-  return Math.random().toString(36).slice(2, 10);
+  // CSPRNG-backed suffix (not Math.random) for collision-resistant IDs.
+  return randomUUID().replace(/-/g, '').slice(0, 8);
 }

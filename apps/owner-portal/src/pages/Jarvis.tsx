@@ -64,7 +64,7 @@ export default function Jarvis(): JSX.Element {
   const t = useTranslations('p89.jarvis');
   const [draft, setDraft] = useState('');
   const [threadId] = useState(
-    () => `own_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    () => `own_${Date.now()}_${crypto.randomUUID().slice(0, 6)}`,
   );
   const [pendingImages, setPendingImages] = useState<ReadonlyArray<File>>([]);
   // Default to streaming for visibly faster UX; the toggle lets owners

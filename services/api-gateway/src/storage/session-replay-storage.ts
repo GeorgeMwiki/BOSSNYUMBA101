@@ -144,7 +144,7 @@ function resolveLocalPath(rootDir: string, chunkIdOrUri: string): string {
 /** A chunkId must be a UUID-like opaque token. Path-traversal characters
  *  reject the request before any FS call. */
 function isSafeChunkId(id: string): boolean {
-  return /^[A-Za-z0-9_\-]{4,128}$/.test(id);
+  return /^[A-Za-z0-9_-]{4,128}$/.test(id);
 }
 
 // ─────────────────────────────────────────────────────────────────────

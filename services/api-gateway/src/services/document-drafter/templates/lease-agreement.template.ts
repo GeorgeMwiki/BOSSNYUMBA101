@@ -138,7 +138,7 @@ export const leaseAgreementTemplate: UniversalTemplate = {
       '',
       '## 6. Termination',
       '',
-      `Either party may terminate by giving ${v.noticePeriodDays} days\' written notice.`,
+      `Either party may terminate by giving ${v.noticePeriodDays} days' written notice.`,
       '',
       '## 7. Governing Law',
       '',

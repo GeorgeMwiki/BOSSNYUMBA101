@@ -163,6 +163,7 @@ export class ShadowService {
     try {
       return `shd_${randomUUID()}`;
     } catch {
+      // eslint-disable-next-line no-restricted-syntax -- last-resort fallback only when the CSPRNG (randomUUID) above is unavailable
       return `shd_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     }
   }

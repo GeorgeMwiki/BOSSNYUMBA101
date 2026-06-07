@@ -32,6 +32,7 @@
  * are duck-typed interfaces wired by the composition root.
  */
 
+import { randomUUID } from 'node:crypto';
 import type { StageLogger } from './types.js';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -344,7 +345,7 @@ function buildLessonReflection(input: {
 }
 
 function defaultId(thoughtId: string): string {
-  const suffix = Math.random().toString(36).slice(2, 8);
+  const suffix = randomUUID().replace(/-/g, '').slice(0, 6);
   return `refl_cot_${thoughtId}_${suffix}`;
 }
 

@@ -38,6 +38,7 @@ function makeLogger(): WorkerLogger & { calls: { level: string; obj: unknown; ms
 
 function makeEntry(overrides: Partial<ReservoirEntry> = {}): ReservoirEntry {
   return {
+    // eslint-disable-next-line no-restricted-syntax -- test fixture id; uniqueness suffices, not security-sensitive
     thoughtId: `t_${Math.random().toString(36).slice(2, 8)}`,
     tenantId: 'tenant-a',
     userId: 'user-1',

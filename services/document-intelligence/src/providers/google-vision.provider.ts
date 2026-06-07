@@ -268,13 +268,13 @@ function averagePageConfidence(pages: ReadonlyArray<VisionPage>): number {
 export function extractKeyValuePairs(rawText: string): ExtractedField[] {
   if (!rawText) return [];
   const patterns: ReadonlyArray<{ name: string; re: RegExp }> = [
-    { name: 'full_name', re: /(?:full\s*name|name)\s*[:\-]\s*(.+)/i },
-    { name: 'id_number', re: /(?:id\s*(?:no|number)|id#)\s*[:\-]\s*([A-Za-z0-9\-]+)/i },
-    { name: 'date_of_birth', re: /(?:date\s*of\s*birth|dob)\s*[:\-]\s*([\d\/\-\.]+)/i },
-    { name: 'issue_date', re: /issue\s*date\s*[:\-]\s*([\d\/\-\.]+)/i },
-    { name: 'expiry_date', re: /(?:expiry\s*date|expires?)\s*[:\-]\s*([\d\/\-\.]+)/i },
-    { name: 'nationality', re: /nationality\s*[:\-]\s*(.+)/i },
-    { name: 'gender', re: /(?:sex|gender)\s*[:\-]\s*([A-Za-z]+)/i },
+    { name: 'full_name', re: /(?:full\s*name|name)\s*[:-]\s*(.+)/i },
+    { name: 'id_number', re: /(?:id\s*(?:no|number)|id#)\s*[:-]\s*([A-Za-z0-9-]+)/i },
+    { name: 'date_of_birth', re: /(?:date\s*of\s*birth|dob)\s*[:-]\s*([\d/.-]+)/i },
+    { name: 'issue_date', re: /issue\s*date\s*[:-]\s*([\d/.-]+)/i },
+    { name: 'expiry_date', re: /(?:expiry\s*date|expires?)\s*[:-]\s*([\d/.-]+)/i },
+    { name: 'nationality', re: /nationality\s*[:-]\s*(.+)/i },
+    { name: 'gender', re: /(?:sex|gender)\s*[:-]\s*([A-Za-z]+)/i },
   ];
 
   const out: ExtractedField[] = [];
