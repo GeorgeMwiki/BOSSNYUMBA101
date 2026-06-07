@@ -5,8 +5,16 @@
 
 export type TenantId = string & { readonly __brand?: 'TenantId' };
 
-/** Supported notification channels */
-export type NotificationChannel = 'sms' | 'email' | 'push' | 'whatsapp';
+/**
+ * Supported notification channels.
+ *
+ * `in_app` is the always-available terminal channel: it persists a row the
+ * customer / owner / estate portals read (via their notifications inbox + the
+ * cockpit SSE stream). It has no external provider to fail, so the dispatcher
+ * uses it as the last hop of every cross-channel fallback chain — a delivery
+ * only truly dead-letters if even the in-app persistence fails.
+ */
+export type NotificationChannel = 'sms' | 'email' | 'push' | 'whatsapp' | 'in_app';
 
 /** Supported locales for i18n */
 export type SupportedLocale = 'en' | 'sw';

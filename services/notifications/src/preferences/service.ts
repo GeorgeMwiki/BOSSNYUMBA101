@@ -34,6 +34,9 @@ const DEFAULT_CHANNELS: ChannelPreferences = {
   sms: true,
   push: true,
   whatsapp: false,
+  // In-app inbox defaults ON — it is the always-available terminal the
+  // dispatcher falls back to so a notification is never silently dropped.
+  in_app: true,
 };
 
 const DEFAULT_TEMPLATES: TemplatePreferences = {

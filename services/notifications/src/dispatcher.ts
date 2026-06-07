@@ -58,6 +58,12 @@ export interface DispatchResult {
   accepted: boolean;
   /** Present when `accepted === true`. */
   externalId?: string;
+  /**
+   * Present when the notification was delivered on a DIFFERENT channel than
+   * requested (cross-channel fallback fired). Absent when delivered on the
+   * originally requested channel. Lets callers / observability see a fallback.
+   */
+  deliveredVia?: NotificationChannel;
   /** Present when suppressed by preferences — never a retryable failure. */
   suppressedReason?: 'channel_disabled' | 'template_disabled' | 'quiet_hours';
   /** Present when ALL retries have been exhausted and the send was dead-lettered. */
@@ -112,6 +118,21 @@ export const deadLetterQueueInspector = {
   clear(): void {
     inMemoryDeadLetterQueue.length = 0;
   },
+  /**
+   * Atomically remove and return up to `max` records (FIFO). Used by the
+   * DLQ drainer to claim a batch for redelivery. Records the drainer fails
+   * to redeliver are re-pushed via `push`.
+   */
+  drain(max = 50): DeadLetterRecord[] {
+    return inMemoryDeadLetterQueue.splice(0, Math.max(0, max));
+  },
+  /** Re-queue a record (used by the drainer to defer a failed redelivery). */
+  push(record: DeadLetterRecord): void {
+    inMemoryDeadLetterQueue.push(record);
+  },
+  size(): number {
+    return inMemoryDeadLetterQueue.length;
+  },
 };
 
 const defaultDeadLetterSink: Required<DispatcherDeps>['deadLetterSink'] = {
@@ -119,6 +140,19 @@ const defaultDeadLetterSink: Required<DispatcherDeps>['deadLetterSink'] = {
     inMemoryDeadLetterQueue.push(record);
   },
 };
+
+/**
+ * Drainable dead-letter source contract — the surface the DLQ drainer
+ * consumes. The default in-memory implementation is
+ * `deadLetterQueueInspector`; multi-replica deployments inject a
+ * Redis/Postgres-backed source whose `drain()` is an atomic claim so two
+ * replicas never redeliver the same record.
+ */
+export interface DrainableDeadLetterSource {
+  drain(max?: number): Promise<DeadLetterRecord[]> | DeadLetterRecord[];
+  push(record: DeadLetterRecord): Promise<void> | void;
+  size?(): Promise<number> | number;
+}
 
 // Round-3 audit H5 fix — idempotency-key store. Default is in-memory
 // (single-pod). Multi-pod deployments must inject a Redis-backed store
@@ -169,15 +203,23 @@ function defaultSleep(ms: number): Promise<void> {
  * tenant-B's SMS through tenant-A's Twilio account → tenant-A billed
  * for tenant-B's traffic, and the cross-tenant credential leak.
  *
- * Returns `null` if no provider is configured for the tenant — the
- * caller dead-letters with a typed `NO_TENANT_PROVIDER` reason.
+ * "Without-fail" failover fix — the previous implementation used
+ * `.find()` and returned ONLY the first configured provider, so if
+ * SendGrid was configured but down, the send dead-lettered without ever
+ * trying SES or SMTP. We now return EVERY configured provider for the
+ * tenant, in registry order, so the attempt loop can fail over through
+ * the array (provider[0] → provider[1] → …) before giving up on the
+ * channel.
+ *
+ * Returns an empty array if no provider is configured for the tenant —
+ * the caller advances to the next channel in the fallback chain.
  */
-function selectProvider(
+function selectConfiguredProviders(
   providers: INotificationProvider[] | undefined,
   tenantId: TenantId
-): INotificationProvider | null {
-  if (!providers || providers.length === 0) return null;
-  return providers.find((p) => p.isConfigured(tenantId)) ?? null;
+): INotificationProvider[] {
+  if (!providers || providers.length === 0) return [];
+  return providers.filter((p) => p.isConfigured(tenantId));
 }
 
 /**
@@ -226,6 +268,67 @@ function isNonRetryable(err: unknown): boolean {
     return true;
   }
   return false;
+}
+
+// ---------------------------------------------------------------------------
+// Cross-channel fallback chains
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-priority cross-channel fallback order. When EVERY configured provider
+ * of a channel is exhausted, the dispatcher advances to the next channel in
+ * the chain so the notification still reaches the user on a different rail.
+ *
+ * Every chain ends in `in_app` — the portal inbox provider that is always
+ * configured and only fails if the inbox store itself is down. That is the
+ * "without-fail" guarantee: a notification only truly dead-letters when even
+ * the in-app persistence fails.
+ *
+ * The chain is keyed by priority because urgency changes the right trade-off:
+ *   - `emergency` (e.g. OTP, safety incident) fans across the loudest rails
+ *     first (WhatsApp → SMS → email) before the inbox.
+ *   - `high` mirrors emergency but without push noise.
+ *   - `normal` / `low` keep cost down: try the requested rail, then settle in
+ *     the inbox rather than spending on multiple paid channels.
+ *
+ * The REQUESTED channel is always attempted first (prepended at runtime);
+ * these arrays describe the *fallback* order after it.
+ */
+const FALLBACK_CHAINS: Record<NotificationPriority, readonly NotificationChannel[]> = {
+  emergency: ['whatsapp', 'sms', 'email', 'push', 'in_app'],
+  high: ['whatsapp', 'sms', 'email', 'in_app'],
+  normal: ['in_app'],
+  low: ['in_app'],
+};
+
+/**
+ * Build the ordered channel chain for a dispatch: the requested channel
+ * first, then the priority's fallback channels (de-duplicated, requested
+ * channel removed from the tail), guaranteeing `in_app` is present as the
+ * terminal hop.
+ */
+function buildChannelChain(
+  requested: NotificationChannel,
+  priority: NotificationPriority
+): NotificationChannel[] {
+  const fallback = FALLBACK_CHAINS[priority] ?? FALLBACK_CHAINS.normal;
+  const ordered: NotificationChannel[] = [requested];
+  for (const ch of fallback) {
+    if (!ordered.includes(ch)) ordered.push(ch);
+  }
+  // Hard guarantee: in_app is always the terminal even if a future chain
+  // edit forgets it.
+  if (!ordered.includes('in_app')) ordered.push('in_app');
+  return ordered;
+}
+
+interface ChannelAttemptOutcome {
+  accepted: boolean;
+  externalId?: string;
+  attempts: number;
+  lastError: string;
+  /** True when the failure is non-retryable AND no further provider helped. */
+  nonRetryable: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -304,86 +407,110 @@ export async function enqueueNotification(
     }
   }
 
-  // ---- 2. Provider selection ----
-  // Round-3 audit H2 fix — never fall back to `providers[0]`. A
-  // tenant with no provider configured DLQ'd with an explicit reason
-  // instead of silently routing through another tenant's account.
-  const provider = selectProvider(providers[input.channel], input.tenantId);
-  if (!provider) {
-    const reason = `No provider configured for tenant '${input.tenantId}' on channel '${input.channel}'`;
-    await handleDeadLetter(input, 1, reason, deadLetterSink, deps.eventBus);
-    const result: DispatchResult = {
-      accepted: false,
-      deadLettered: true,
-      attempts: 1,
-      lastError: reason,
-    };
-    if (idempotencyScopedKey && idempotencyStore) {
-      await Promise.resolve(
-        idempotencyStore.recordOrLoad(idempotencyScopedKey, result)
-      );
-    }
-    return result;
-  }
+  // ---- 2. Build the cross-channel chain ----
+  // The requested channel first, then the priority's fallback channels,
+  // terminating in `in_app`. We walk the chain and only dead-letter after
+  // EVERY channel (including the always-available in-app inbox) is exhausted.
+  const priority = input.priority ?? 'normal';
+  const chain = buildChannelChain(input.channel, priority);
 
-  // ---- 3. Attempt loop with exponential backoff + jitter ----
-  const sendParams: SendParams = {
-    tenantId: input.tenantId,
-    to: input.recipient,
-    subject: input.subject,
-    body: input.body,
-    title: input.title,
-    data: input.data,
-  };
-
+  let totalAttempts = 0;
   let lastError = 'unknown error';
-  let attempts = 0;
-  let nonRetryable = false;
+  let lastNonRetryable = false;
+  const triedChannels: NotificationChannel[] = [];
+  const skippedDisabled: NotificationChannel[] = [];
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    attempts = attempt;
-    try {
-      const result: SendResult = await provider.send(sendParams);
-      if (result.success) {
-        const success: DispatchResult = {
-          accepted: true,
-          externalId: result.externalId,
-          attempts,
-        };
-        if (idempotencyScopedKey && idempotencyStore) {
-          await Promise.resolve(
-            idempotencyStore.recordOrLoad(idempotencyScopedKey, success)
-          );
-        }
-        return success;
-      }
-      lastError = result.error ?? 'provider returned success=false';
-      // Provider-level non-retryable signal via `result.errorCode`.
-      const sr = result as SendResult & { errorCode?: string | number };
-      if (sr.errorCode !== undefined && isNonRetryable({ code: sr.errorCode })) {
-        nonRetryable = true;
-        break;
-      }
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : String(err);
-      // Round-3 audit H3 fix — bail out on non-retryable errors
-      // instead of burning the retry budget.
-      if (isNonRetryable(err)) {
-        nonRetryable = true;
-        break;
+  for (let ci = 0; ci < chain.length; ci++) {
+    const channel = chain[ci]!;
+    const isRequested = ci === 0;
+
+    // ---- 2a. Per-channel preference gate ----
+    // The requested channel was already gated in step 1 (its suppression is
+    // a terminal `suppressedReason`, not a fallback trigger). For FALLBACK
+    // channels we re-check: a user who disabled SMS should not receive the
+    // fallback over SMS — we skip to the next channel instead. The in-app
+    // terminal defaults ON, so a user who has not opted out still gets it.
+    if (!isRequested && input.userId) {
+      const gate = await prefs.checkAllowed({
+        userId: input.userId,
+        tenantId: input.tenantId,
+        channel,
+        templateId: input.templateId,
+        priority,
+      });
+      if (!gate.allowed) {
+        skippedDisabled.push(channel);
+        continue;
       }
     }
 
-    if (attempt < maxAttempts) {
-      await sleep(computeBackoffMs(attempt, backoffBaseMs));
+    // ---- 2b. Select ALL configured providers for the channel (failover) ----
+    const channelProviders = selectConfiguredProviders(
+      providers[channel],
+      input.tenantId
+    );
+    if (channelProviders.length === 0) {
+      // No provider on this channel for this tenant — advance the chain.
+      // (Round-3 audit H2: we never borrow another tenant's provider.)
+      lastError = `no configured provider on channel '${channel}'`;
+      continue;
     }
+
+    triedChannels.push(channel);
+
+    const outcome = await attemptChannel({
+      input,
+      channel,
+      providers: channelProviders,
+      maxAttempts,
+      backoffBaseMs,
+      sleep,
+    });
+    totalAttempts += outcome.attempts;
+
+    if (outcome.accepted) {
+      const success: DispatchResult = {
+        accepted: true,
+        externalId: outcome.externalId,
+        attempts: totalAttempts,
+        // Surface the delivered channel when it differs from requested so
+        // callers/observability can see a fallback happened.
+        ...(channel !== input.channel ? { deliveredVia: channel } : {}),
+      };
+      if (idempotencyScopedKey && idempotencyStore) {
+        await Promise.resolve(
+          idempotencyStore.recordOrLoad(idempotencyScopedKey, success)
+        );
+      }
+      return success;
+    }
+
+    lastError = outcome.lastError;
+    lastNonRetryable = outcome.nonRetryable;
+    // Channel exhausted (all providers failed / non-retryable) — fall
+    // through to the next channel in the chain.
   }
 
-  // ---- 4. DLQ + event emission ----
+  // ---- 3. DLQ + event emission ----
+  // Reached only when EVERY channel in the chain — including the in-app
+  // terminal — failed or was unavailable. This is the genuine
+  // "could not be delivered anywhere" case.
+  const triedSummary =
+    triedChannels.length > 0
+      ? `tried=[${triedChannels.join(',')}]`
+      : 'tried=[none configured]';
+  const skippedSummary =
+    skippedDisabled.length > 0
+      ? ` skippedDisabled=[${skippedDisabled.join(',')}]`
+      : '';
+  const finalError = `all channels exhausted (${triedSummary}${skippedSummary}): ${
+    lastNonRetryable ? `non-retryable: ${lastError}` : lastError
+  }`;
+
   await handleDeadLetter(
     input,
-    attempts,
-    nonRetryable ? `non-retryable: ${lastError}` : lastError,
+    totalAttempts || 1,
+    finalError,
     deadLetterSink,
     deps.eventBus
   );
@@ -391,8 +518,8 @@ export async function enqueueNotification(
   const failure: DispatchResult = {
     accepted: false,
     deadLettered: true,
-    attempts,
-    lastError,
+    attempts: totalAttempts || 1,
+    lastError: finalError,
   };
   if (idempotencyScopedKey && idempotencyStore) {
     await Promise.resolve(
@@ -400,6 +527,100 @@ export async function enqueueNotification(
     );
   }
   return failure;
+}
+
+/**
+ * Attempt delivery on a SINGLE channel: iterate the channel's configured
+ * providers in order (failover), and for each provider run the
+ * retry-with-backoff loop. Returns as soon as any provider+attempt succeeds.
+ *
+ * Failover semantics:
+ *   - A provider that throws / returns success=false is retried up to
+ *     `maxAttempts` with exponential backoff + jitter.
+ *   - A NON-retryable error (e.g. invalid recipient) does not burn the retry
+ *     budget for that provider — we move straight to the next provider.
+ *   - When all providers are exhausted, the channel has failed; the caller
+ *     advances to the next channel in the cross-channel chain.
+ */
+async function attemptChannel(args: {
+  input: EnqueueNotificationInput;
+  channel: NotificationChannel;
+  providers: readonly INotificationProvider[];
+  maxAttempts: number;
+  backoffBaseMs: number;
+  sleep: (ms: number) => Promise<void>;
+}): Promise<ChannelAttemptOutcome> {
+  const { input, channel, providers, maxAttempts, backoffBaseMs, sleep } = args;
+
+  const sendParams: SendParams = {
+    tenantId: input.tenantId,
+    to: input.recipient,
+    subject: input.subject,
+    body: input.body,
+    title: input.title,
+    data: input.data,
+    // Carry the user id so the in-app terminal can address its inbox row
+    // even when `to` is an external address (phone/email/token).
+    userId: input.userId,
+  };
+
+  let attempts = 0;
+  let lastError = 'unknown error';
+  let nonRetryable = false;
+
+  for (let pi = 0; pi < providers.length; pi++) {
+    const provider = providers[pi]!;
+    let providerNonRetryable = false;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      attempts += 1;
+      try {
+        const result: SendResult = await provider.send(sendParams);
+        if (result.success) {
+          return {
+            accepted: true,
+            externalId: result.externalId,
+            attempts,
+            lastError: '',
+            nonRetryable: false,
+          };
+        }
+        lastError = `[${channel}:${provider.name}] ${result.error ?? 'provider returned success=false'}`;
+        const sr = result as SendResult & { errorCode?: string | number };
+        if (sr.errorCode !== undefined && isNonRetryable({ code: sr.errorCode })) {
+          providerNonRetryable = true;
+          break;
+        }
+      } catch (err) {
+        lastError = `[${channel}:${provider.name}] ${
+          err instanceof Error ? err.message : String(err)
+        }`;
+        // Round-3 audit H3 — bail out of THIS provider's retry loop on a
+        // non-retryable error, then fail over to the next provider.
+        if (isNonRetryable(err)) {
+          providerNonRetryable = true;
+          break;
+        }
+      }
+
+      // Backoff before the next attempt of the SAME provider only.
+      if (attempt < maxAttempts) {
+        await sleep(computeBackoffMs(attempt, backoffBaseMs));
+      }
+    }
+
+    // This provider is exhausted. Remember whether its last failure was
+    // non-retryable; if a LATER provider also fails we keep the most recent
+    // signal. Fall over to the next provider in the array.
+    nonRetryable = providerNonRetryable;
+  }
+
+  return {
+    accepted: false,
+    attempts,
+    lastError,
+    nonRetryable,
+  };
 }
 
 async function handleDeadLetter(

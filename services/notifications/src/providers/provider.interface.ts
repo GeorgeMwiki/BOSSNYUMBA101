@@ -13,6 +13,13 @@ export interface SendParams {
   body: string;
   title?: string;
   data?: Record<string, string>;
+  /**
+   * Internal user id of the recipient. Required by the in-app provider
+   * (which keys its inbox rows by user, not by an external address) and
+   * carried through so the cross-channel fallback can reach the in-app
+   * terminal even when `to` is an external address (phone/email/token).
+   */
+  userId?: string;
 }
 
 /**

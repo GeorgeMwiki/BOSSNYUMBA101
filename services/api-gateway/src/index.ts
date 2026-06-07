@@ -392,6 +392,10 @@ import {
 // Notification-dispatch drainer + stale-'sending' reaper. The dispatcher is
 // fully built but was never started, so enqueued notifications never sent.
 import { startNotificationDispatchDrainer } from './composition/notification-dispatch-drainer';
+// DLQ drainer for the reliability-aware `enqueueNotification` dispatcher
+// (provider failover + cross-channel fallback). Re-delivers records that
+// dead-lettered during a transient total outage so they still reach the user.
+import { startNotificationDlqDrainer } from './composition/notification-dlq-drainer';
 import { createDecisionRetrospectiveWorker } from './workers/decision-retrospective-worker';
 // Wave CLOSED-LOOP — outcome reconciliation worker. Reads pending
 // brain predictions whose horizon has elapsed, asks the per-entity
@@ -735,6 +739,7 @@ let idempotencySweeperStop: (() => void) | undefined;
 // Notification-dispatch drainer + reaper stop handle — set at boot, cleared
 // by graceful shutdown so both interval loops stop before the pool closes.
 let notificationDispatchDrainerStop: (() => void) | undefined;
+let notificationDlqDrainerStop: (() => void) | undefined;
 try {
   serviceRegistry = buildServices({ db: getDb() });
   if (serviceRegistry.isLive) {
@@ -2109,6 +2114,12 @@ async function gracefulShutdown(signal: string): Promise<void> {
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: notification-dispatch drainer stop failed');
   }
+  try {
+    notificationDlqDrainerStop?.();
+    logger.info('shutdown: notification-dlq drainer stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: notification-dlq drainer stop failed');
+  }
 
   // Step 4 — close the HTTP server. Wrapped in a promise so we can
   // await the drain completion.
@@ -2278,6 +2289,17 @@ if (require.main === module) {
   // gated); the reaper resets rows wedged in 'sending' (crashed mid-send)
   // back to 'pending'. Internally degrades to a no-op when no DB / in tests.
   notificationDispatchDrainerStop = startNotificationDispatchDrainer({
+    db: clusterLockDb,
+    logger,
+  });
+
+  // DLQ drainer for the reliability-aware `enqueueNotification` dispatcher.
+  // When provider failover + cross-channel fallback (terminating in the in-app
+  // inbox) ALL fail during a transient outage, the record dead-letters; this
+  // drainer re-runs the full chain on a timer (advisory-lock gated, one
+  // replica) so it still lands. No-op without the notifications package / in
+  // tests.
+  notificationDlqDrainerStop = startNotificationDlqDrainer({
     db: clusterLockDb,
     logger,
   });

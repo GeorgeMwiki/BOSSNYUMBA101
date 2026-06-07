@@ -209,7 +209,52 @@ export {
 // Providers
 // ============================================================================
 export { providerRegistry } from './providers/index.js';
+export { InAppProvider, inAppProvider } from './providers/in-app/portal.js';
 export type { INotificationProvider, SendParams } from './providers/provider.interface.js';
+
+// ============================================================================
+// Dispatcher — failover + cross-channel fallback ("without-fail" delivery)
+// ============================================================================
+//
+// The dispatcher's `enqueueNotification` is the CANONICAL, reliability-aware
+// delivery entry point: dispatch-time preference re-check, provider failover
+// WITHIN a channel, cross-channel fallback terminating in the always-available
+// in-app inbox, retry/backoff, idempotency, and DLQ on terminal failure. Every
+// reminder/alert/message source MUST route through this (so it inherits the
+// "without-fail" guarantees) rather than calling a provider directly.
+//
+// It is exported under BOTH names:
+//   - `enqueueNotification` — the canonical name origination sources resolve
+//     (e.g. identity-wiring's OTP SMS dispatch).
+//   - `dispatchNotification` — an explicit alias for call sites that want the
+//     intent to read unambiguously.
+//
+// The legacy BullMQ producer (which only enqueues a job for a separate worker
+// and does NOT do failover/fallback) is exported below under the distinct
+// `enqueueQueuedNotification` / `enqueueBulkQueuedNotifications` names so it can
+// never be mistaken for the reliability path.
+export {
+  enqueueNotification,
+  enqueueNotification as dispatchNotification,
+  deadLetterQueueInspector,
+  type EnqueueNotificationInput,
+  type DispatchResult,
+  type DispatcherDeps,
+  type DeadLetterRecord,
+  type DrainableDeadLetterSource,
+  type NotificationPriority as DispatchPriority,
+} from './dispatcher.js';
+
+// ============================================================================
+// Dead-letter drainer — re-delivers dead-lettered notifications with backoff
+// ============================================================================
+export {
+  createDlqDrainer,
+  type DlqDrainerDeps,
+  type DlqDrainerHandle,
+  type DlqDrainResult,
+  type DlqDrainerLogger,
+} from './dlq-drainer.js';
 
 // ============================================================================
 // Templates
@@ -218,9 +263,17 @@ export { resolveTemplate } from './templates/index.js';
 export type { TemplateData, RenderedTemplate as ResolvedTemplate } from './templates/manager.js';
 
 // ============================================================================
-// Queue
+// Queue (LEGACY — BullMQ producer/consumer)
 // ============================================================================
-export { addToQueue as enqueueNotification, addBulkToQueue as enqueueBulkNotifications } from './queue/producer.js';
+//
+// These only enqueue/process a BullMQ job and do NOT perform the dispatcher's
+// failover + cross-channel fallback. Renamed away from `enqueueNotification`
+// so the canonical reliability path (the dispatcher, above) owns that name and
+// no origination source accidentally bypasses failover by importing the queue.
+export {
+  addToQueue as enqueueQueuedNotification,
+  addBulkToQueue as enqueueBulkQueuedNotifications,
+} from './queue/producer.js';
 export { createNotificationWorker as startNotificationConsumer, stopNotificationConsumer } from './queue/consumer.js';
 
 // ============================================================================

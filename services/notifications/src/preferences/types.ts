@@ -9,6 +9,13 @@ export interface ChannelPreferences {
   sms?: boolean;
   push?: boolean;
   whatsapp?: boolean;
+  /**
+   * In-app inbox channel. Defaults ON and is the terminal fallback the
+   * dispatcher uses so a notification always lands somewhere the user can
+   * see it. A user MAY still toggle it off, but the dispatcher's
+   * fallback chain treats it as the last resort.
+   */
+  in_app?: boolean;
 }
 
 export type TemplatePreferences = Partial<Record<NotificationTemplateId, boolean>>;
