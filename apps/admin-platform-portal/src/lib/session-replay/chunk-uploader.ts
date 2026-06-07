@@ -113,7 +113,6 @@ export function createChunkUploader(
   function pruneAged(): void {
     const cutoff = clock() - maxAgeMs;
     for (let i = buffer.length - 1; i >= 0; i -= 1) {
-      // eslint-disable-next-line security/detect-object-injection -- numeric loop counter bounded by buffer.length
       const c = buffer[i];
       if (c && c.enqueuedAt < cutoff) {
         buffer.splice(i, 1);

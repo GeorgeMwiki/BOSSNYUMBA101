@@ -313,7 +313,6 @@ function VerdictBadge({
   readonly verdict: AcquisitionRecommendation['verdict'];
   readonly tone: 'positive' | 'caution' | 'warning' | 'danger';
 }): JSX.Element {
-  // eslint-disable-next-line security/detect-object-injection -- compile-time literal object with TS-narrowed key
   const toneClass = {
     positive: 'border-success/40 text-success',
     caution: 'border-signal-500/40 text-signal-500',

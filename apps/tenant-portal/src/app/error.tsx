@@ -26,7 +26,6 @@ export default function SegmentError({
     // Surface the failure in the browser console so we can correlate with
     // Sentry / server logs; the digest is server-side to avoid leaking
     // sensitive details to the client UI.
-    // eslint-disable-next-line no-console
     console.error('[tenant-portal] segment error', error);
   }, [error]);
 

@@ -65,7 +65,6 @@ function brainRegistry(): BrainRegistry {
       // non-fatal so the Brain still boots without graph tools. Operators
       // should treat this as HIGH severity — graph-dependent personas
       // will return TOOL_NOT_FOUND.
-      // eslint-disable-next-line no-console
       console.error(
         JSON.stringify({
           level: 'error',

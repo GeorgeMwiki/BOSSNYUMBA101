@@ -324,7 +324,6 @@ function GreenAngleReportView({
  */
 function SdgRadar({ vector }: { readonly vector: ReadonlyArray<number> }): JSX.Element {
   const padded = useMemo(() => {
-    // eslint-disable-next-line security/detect-object-injection -- numeric loop counter 0..16, bounded indices
     const padded17 = Array.from({ length: 17 }, (_, i) => vector[i] ?? 0);
     const max = Math.max(1, ...padded17);
     return padded17.map((v) => v / max);

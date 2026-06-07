@@ -21,7 +21,6 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     // Surface to browser/Sentry console. Not user-visible.
-    // eslint-disable-next-line no-console
     console.error('[marketing] route error:', error);
   }, [error]);
 

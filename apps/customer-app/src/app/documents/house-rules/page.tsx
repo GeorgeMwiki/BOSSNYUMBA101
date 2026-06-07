@@ -102,7 +102,6 @@ export default function HouseRulesPage() {
         // Backend not ready — fall back to the boilerplate set. We log the
         // reason so it surfaces in observability without making the page
         // unusable.
-        // eslint-disable-next-line no-console
         console.warn(
           'house-rules endpoint unavailable, using fallback policies',
           { status: res.status },
@@ -113,7 +112,6 @@ export default function HouseRulesPage() {
         setRules(body.data);
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.warn('house-rules fetch failed, using fallback', err);
       setRules(FALLBACK_RULES);
       setUsingFallback(true);

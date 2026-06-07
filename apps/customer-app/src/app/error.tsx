@@ -19,7 +19,6 @@ export default function AppError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // eslint-disable-next-line no-console
     console.error('[customer-app] route error:', error);
   }, [error]);
 

@@ -18,7 +18,7 @@ export function requirePublicBaseUrl(
 ): string {
   const fromEnv =
     typeof process !== 'undefined'
-      ? // eslint-disable-next-line security/detect-object-injection -- envName is a compile-time literal from trusted call sites
+      ?
         process.env?.[envName]?.trim()
       : undefined;
   if (fromEnv && fromEnv.length > 0) return fromEnv;

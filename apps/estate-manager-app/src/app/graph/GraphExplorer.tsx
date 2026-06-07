@@ -348,7 +348,6 @@ export function GraphExplorer(): JSX.Element {
   // omitted from deps. The plugin name `react-hooks/exhaustive-deps` is not
   // registered in this app's ESLint config (Next.js linter resolves it
   // unconditionally otherwise), so we suppress all rules on the line instead.
-  // eslint-disable-next-line
   useEffect(() => {
     if (hasData && query) {
       void runSearch(query, depth);

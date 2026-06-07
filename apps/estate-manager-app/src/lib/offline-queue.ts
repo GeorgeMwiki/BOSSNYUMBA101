@@ -39,7 +39,6 @@ function readQueue(): readonly QueuedJob[] {
     if (!Array.isArray(parsed)) return [];
     return parsed as readonly QueuedJob[];
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('offline-queue: failed to parse stored queue', error);
     return [];
   }
