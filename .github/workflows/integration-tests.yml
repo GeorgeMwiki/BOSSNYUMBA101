@@ -1,0 +1,157 @@
+# =============================================================================
+# Integration Tests — DB-backed suites against a throwaway Postgres
+# =============================================================================
+# The unit-test matrix in `ci.yml` runs `pnpm -r test` with NO database, so
+# every suite gated on a live connection self-skips:
+#
+#   packages/database/src/__tests__/migration-writer.integration.test.ts
+#     describe.skipIf(!DATABASE_URL)  — 3 tests
+#   packages/database/src/__tests__/brain-thread.integration.test.ts
+#     describe.skipIf(!DATABASE_URL)  — 2 tests
+#   packages/database/src/__tests__/user-action-tracker.test.ts
+#     describe.skipIf(!LIVE_DB)       — 1 cross-tenant-isolation test
+#
+# That is the final test gate: 6 DB-integration tests that never execute in
+# CI. This workflow spins an ephemeral postgres:16 service, applies every
+# migration with `db:migrate`, then runs the database package's test suite
+# with DATABASE_URL + LIVE_DB=1 exported so all six gated tests run for real.
+#
+# Recipe (roles + pgvector) mirrors `migration-apply-check.yml`: the vanilla
+# Postgres image has none of the Supabase JWT-claim roles the RLS migrations
+# reference, and several migrations need the `vector` extension — both must be
+# provisioned before `db:migrate` or the apply fails on a fresh DB.
+#
+# This complements (does not replace):
+#   - ci.yml             — mock-free unit matrix + Playwright e2e
+#   - migration-apply-check.yml — fresh-DB apply of every migration in order
+# =============================================================================
+
+name: Integration Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: integration-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8.15.0'
+
+jobs:
+  database-integration:
+    name: Database integration tests (real Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: bossnyumba
+          POSTGRES_PASSWORD: bossnyumba
+          POSTGRES_DB: bossnyumba_integration
+        ports:
+          - 5432:5432
+        # Block until the server accepts connections before any step runs.
+        options: >-
+          --health-cmd "pg_isready -U bossnyumba"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      # Canonical connection string consumed by createDatabaseClient and
+      # run-migrations (db:migrate). Setting it here flips RUN=true in the
+      # skipIf-gated suites so they execute instead of skipping.
+      DATABASE_URL: postgres://bossnyumba:bossnyumba@localhost:5432/bossnyumba_integration
+      # Flips on the user_action_tracker cross-tenant isolation suite,
+      # which gates on `process.env.LIVE_DB === '1'`.
+      LIVE_DB: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for Postgres to be ready
+        run: |
+          set -e
+          for i in $(seq 1 30); do
+            if pg_isready -h localhost -p 5432 -U bossnyumba >/dev/null 2>&1; then
+              echo "Postgres ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Postgres did not become ready within 30s"
+          exit 1
+
+      - name: Enable pgvector extension
+        # Several migrations (e.g. 0188, 0133, 0026) CREATE EXTENSION vector
+        # or declare vector columns. Provision it up front so db:migrate does
+        # not fail on a fresh DB.
+        env:
+          PGPASSWORD: bossnyumba
+        run: |
+          psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_integration \
+            -c "CREATE EXTENSION IF NOT EXISTS vector" 2>&1 | tail -3 || \
+            echo "::warning::pgvector not available — migrations that depend on it may fail"
+
+      - name: Seed Supabase roles (authenticated, anon, service_role)
+        # Vanilla postgres:16 has none of the Supabase JWT-claim roles the RLS
+        # migrations reference (CREATE POLICY ... TO authenticated, GRANT ...
+        # TO anon). Create them idempotently so the fresh-DB apply mirrors
+        # production. NOLOGIN matches the Supabase convention.
+        env:
+          PGPASSWORD: bossnyumba
+        run: |
+          psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_integration <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+              CREATE ROLE authenticated NOLOGIN;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+              CREATE ROLE anon NOLOGIN;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+              CREATE ROLE service_role NOLOGIN BYPASSRLS;
+            END IF;
+          END
+          $$;
+          SQL
+
+      - name: Apply migrations (db:migrate)
+        # Runs packages/database `tsx src/run-migrations.ts`, which applies every
+        # *.sql in migrations/ in order. The DB-integration tests insert into
+        # tenants/users directly, so the schema must exist before they run.
+        run: pnpm migrate
+
+      - name: Run database integration tests
+        # DATABASE_URL + LIVE_DB are inherited from the job env, so the
+        # skipIf-gated suites execute against the real Postgres above.
+        run: pnpm -C packages/database test
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: integration-coverage
+          path: packages/database/coverage
+          retention-days: 7
+          if-no-files-found: ignore
