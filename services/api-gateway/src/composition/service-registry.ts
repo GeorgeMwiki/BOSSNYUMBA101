@@ -266,6 +266,16 @@ import {
   type AuditVerifyCronSupervisor,
 } from './audit-verify-cron.js';
 import { createDrizzleAiAuditChainRepo } from './ai-audit-chain-repo.js';
+// M2 — real monitor-predicate source. Backs the orchestrator's `monitor`
+// Decision with tenant-scoped Drizzle reads so a watch FIRES when its
+// condition is met (rent paid, inspection completed, work-order closed,
+// lease signed/renewed/expired) instead of degrade-recording. Bound as the
+// `monitorChecker` for BOTH the in-process supervisor and the durable
+// actuators below; flips `monitorAvailable` to true.
+import {
+  createMonitorPredicateChecker,
+  type MonitorAnthropicClient,
+} from './monitor-predicate-source.js';
 import {
   createSecuritySuite,
   type SecuritySuite,
@@ -2468,19 +2478,44 @@ function buildServicesInner(
           persona: 'mr-mwikila',
         } as never);
       };
-      // M2 — no real event-bus / DB predicate source is wired yet, so this
-      // checker is an honest always-false stub. It is the SAME source the
-      // in-process monitor uses; both gate on `monitorAvailable` (kept false
-      // until a real predicate source binds) so neither arms a doomed poll.
-      const monitorChecker: MonitorChecker = async () => false;
-      // RESIDUAL (monitor predicate source) — to make `monitor` EXECUTE
-      // (in-process or durable) bind `monitorChecker` to a real condition
-      // check (e.g. a Drizzle read of `rent_payments` / `inspections`, or an
-      // event-bus subscription that flips a per-watch flag) keyed by
-      // `predicate`, then set `monitorAvailable: true` in BOTH the in-process
-      // supervisor (below) and `createDurableLoopActuators` — that single
-      // flip arms the watch. Until then monitor honestly degrade-records.
-      const monitorPredicateSourceAvailable = false;
+      // M2 — REAL monitor-predicate source. Evaluates the watch's free-text
+      // predicate against tenant-scoped Drizzle reads (RLS-bound via
+      // `withTenantContext`): payment/arrears (rent/invoice paid, balance
+      // cleared, arrears settled), inspection completed, work-order closed,
+      // and lease signed/renewed/expired/active. Genuinely free-text
+      // predicates fall back to a cheap per-tenant Haiku boolean grounded in
+      // a small snapshot (and degrade to `false` when no Anthropic key is
+      // configured — a documented residual, never a fake fire). NEVER throws:
+      // a DB/LLM fault or an unknown predicate ⇒ `false` + a structured log,
+      // so the poll simply continues / expires honestly. This SAME checker is
+      // bound to BOTH the in-process supervisor and the durable actuators.
+      const monitorChecker: MonitorChecker = createMonitorPredicateChecker({
+        db,
+        // Per-tenant budget-guarded SDK so a free-text evaluation debits the
+        // WATCH'S tenant (not a shared pool). Null when no key is configured
+        // ⇒ free-text degrades to `false`; structured predicates still fire.
+        ...(buildBudgetGuardedAnthropicClient
+          ? {
+              buildAnthropicClient: (tenantId: string) =>
+                buildBudgetGuardedAnthropicClient(tenantId, 'monitor.predicate')
+                  .sdk as unknown as MonitorAnthropicClient,
+            }
+          : {}),
+        logger: {
+          info: (obj, msg) =>
+            logger.info('monitor-predicate-source', { arg0: msg ?? '', obj }),
+          warn: (obj, msg) =>
+            logger.warn('monitor-predicate-source', { arg0: msg ?? '', obj }),
+          error: (obj, msg) =>
+            logger.error('monitor-predicate-source', { arg0: msg ?? '', obj }),
+        },
+      });
+      // M2 — predicate source is now REAL (see `monitorChecker` above), so the
+      // monitor poll is armed instead of degrade-recorded. This single flag
+      // (consumed by BOTH the in-process supervisor and
+      // `createDurableLoopActuators` below) is what turns `monitor` Decisions
+      // from honest-degrade into FIRE-on-condition.
+      const monitorPredicateSourceAvailable = true;
 
       // PRIMARY — in-process wake/monitor supervisor. This is the DEFAULT
       // actuator the registry dispatcher uses for `schedule_wake` / `monitor`:
