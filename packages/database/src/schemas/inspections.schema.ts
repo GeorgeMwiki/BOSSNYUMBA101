@@ -98,6 +98,10 @@ export const inspectionItems = pgTable(
   'inspection_items',
   {
     id: text('id').primaryKey(),
+    // Tenant scope — declared NOT NULL in migration 0014. Under the prod
+    // BYPASSRLS role RLS is inert, so every repository query MUST filter on
+    // this column or tenants can read each other's inspection items.
+    tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
     inspectionId: text('inspection_id').notNull().references(() => inspections.id, { onDelete: 'cascade' }),
 
     // Item details
@@ -112,6 +116,7 @@ export const inspectionItems = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
+    tenantIdx: index('inspection_items_tenant_idx').on(table.tenantId),
     inspectionIdx: index('inspection_items_inspection_idx').on(table.inspectionId),
     roomIdx: index('inspection_items_room_idx').on(table.inspectionId, table.room),
   })
@@ -125,6 +130,10 @@ export const inspectionSignatures = pgTable(
   'inspection_signatures',
   {
     id: text('id').primaryKey(),
+    // Tenant scope — declared NOT NULL in migration 0014. Under the prod
+    // BYPASSRLS role RLS is inert, so every repository query MUST filter on
+    // this column or tenants can read each other's inspection signatures.
+    tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
     inspectionId: text('inspection_id').notNull().references(() => inspections.id, { onDelete: 'cascade' }),
 
     // Signer info
@@ -137,6 +146,7 @@ export const inspectionSignatures = pgTable(
     signedBy: text('signed_by'),
   },
   (table) => ({
+    tenantIdx: index('inspection_signatures_tenant_idx').on(table.tenantId),
     inspectionIdx: index('inspection_signatures_inspection_idx').on(table.inspectionId),
     signerTypeIdx: index('inspection_signatures_signer_type_idx').on(table.signerType),
   })

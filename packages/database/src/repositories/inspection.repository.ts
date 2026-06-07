@@ -153,14 +153,23 @@ export class InspectionRepository {
     return buildPaginatedResult(rows, total, { limit, offset });
   }
 
-  async addItem(data: typeof inspectionItems.$inferInsert) {
-    const [row] = await this.db.insert(inspectionItems).values(data).returning();
+  async addItem(
+    tenantId: TenantId,
+    data: Omit<typeof inspectionItems.$inferInsert, 'tenantId'>
+  ) {
+    // tenant_id is NOT NULL (migration 0014) and is set from the caller's
+    // auth context here so an insert can never land in the wrong tenant.
+    const [row] = await this.db
+      .insert(inspectionItems)
+      .values({ ...data, tenantId })
+      .returning();
     return row!;
   }
 
   async updateItem(
     id: string,
     inspectionId: string,
+    tenantId: TenantId,
     data: Partial<typeof inspectionItems.$inferInsert>
   ) {
     const [row] = await this.db
@@ -169,30 +178,49 @@ export class InspectionRepository {
       .where(
         and(
           eq(inspectionItems.id, id),
-          eq(inspectionItems.inspectionId, inspectionId)
+          eq(inspectionItems.inspectionId, inspectionId),
+          eq(inspectionItems.tenantId, tenantId)
         )
       )
       .returning();
     return row ?? null;
   }
 
-  async getItems(inspectionId: string) {
+  async getItems(inspectionId: string, tenantId: TenantId) {
     return this.db
       .select()
       .from(inspectionItems)
-      .where(eq(inspectionItems.inspectionId, inspectionId))
+      .where(
+        and(
+          eq(inspectionItems.inspectionId, inspectionId),
+          eq(inspectionItems.tenantId, tenantId)
+        )
+      )
       .orderBy(asc(inspectionItems.room), asc(inspectionItems.item));
   }
 
-  async addSignature(data: typeof inspectionSignatures.$inferInsert) {
-    const [row] = await this.db.insert(inspectionSignatures).values(data).returning();
+  async addSignature(
+    tenantId: TenantId,
+    data: Omit<typeof inspectionSignatures.$inferInsert, 'tenantId'>
+  ) {
+    // tenant_id is NOT NULL (migration 0014) and is set from the caller's
+    // auth context here so an insert can never land in the wrong tenant.
+    const [row] = await this.db
+      .insert(inspectionSignatures)
+      .values({ ...data, tenantId })
+      .returning();
     return row!;
   }
 
-  async getSignatures(inspectionId: string) {
+  async getSignatures(inspectionId: string, tenantId: TenantId) {
     return this.db
       .select()
       .from(inspectionSignatures)
-      .where(eq(inspectionSignatures.inspectionId, inspectionId));
+      .where(
+        and(
+          eq(inspectionSignatures.inspectionId, inspectionId),
+          eq(inspectionSignatures.tenantId, tenantId)
+        )
+      );
   }
 }
