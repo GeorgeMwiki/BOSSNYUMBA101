@@ -61,18 +61,18 @@ export async function ingest(deps: IngestionDeps, req: IngestRequest): Promise<I
   });
   log?.info({ tenantId, userId, uploadId, sourceKind: doc.sourceKind, sizeBytes }, 'brain-ingest: upload row inserted');
 
-  await deps.persistence.updateUploadStatus({ uploadId, status: 'parsing' });
+  await deps.persistence.updateUploadStatus({ tenantId, uploadId, status: 'parsing' });
   let parsed: ParsedDoc;
   try {
     parsed = await parseIncomingDoc(doc);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log?.warn({ tenantId, uploadId, error: message }, 'brain-ingest: parse failed');
-    await deps.persistence.updateUploadStatus({ uploadId, status: 'failed', errorMessage: message, markProcessed: true });
+    await deps.persistence.updateUploadStatus({ tenantId, uploadId, status: 'failed', errorMessage: message, markProcessed: true });
     return failedReceipt(uploadId, message);
   }
 
-  await deps.persistence.updateUploadStatus({ uploadId, status: 'chunking' });
+  await deps.persistence.updateUploadStatus({ tenantId, uploadId, status: 'chunking' });
   const chunks = chunkText(parsed.text, { seed: uploadId });
   log?.info({ tenantId, uploadId, chunks: chunks.length }, 'brain-ingest: chunked');
 
@@ -87,10 +87,10 @@ export async function ingest(deps: IngestionDeps, req: IngestRequest): Promise<I
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log?.warn({ tenantId, uploadId, error: message }, 'brain-ingest: embed failed');
-    await deps.persistence.updateUploadStatus({ uploadId, status: 'failed', errorMessage: `embed: ${message}`, markProcessed: true });
+    await deps.persistence.updateUploadStatus({ tenantId, uploadId, status: 'failed', errorMessage: `embed: ${message}`, markProcessed: true });
     return failedReceipt(uploadId, message);
   }
-  await deps.persistence.updateUploadStatus({ uploadId, status: 'embedded', chunksCount: embedded.length });
+  await deps.persistence.updateUploadStatus({ tenantId, uploadId, status: 'embedded', chunksCount: embedded.length });
 
   try {
     await deps.persistence.upsertChunks({
@@ -103,7 +103,7 @@ export async function ingest(deps: IngestionDeps, req: IngestRequest): Promise<I
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log?.error({ tenantId, uploadId, error: message }, 'brain-ingest: chunk persistence failed');
-    await deps.persistence.updateUploadStatus({ uploadId, status: 'failed', errorMessage: `persist_chunks: ${message}`, markProcessed: true });
+    await deps.persistence.updateUploadStatus({ tenantId, uploadId, status: 'failed', errorMessage: `persist_chunks: ${message}`, markProcessed: true });
     return failedReceipt(uploadId, message);
   }
 
@@ -144,6 +144,7 @@ export async function ingest(deps: IngestionDeps, req: IngestRequest): Promise<I
   }
 
   await deps.persistence.updateUploadStatus({
+    tenantId,
     uploadId,
     status: 'indexed',
     chunksCount: embedded.length,

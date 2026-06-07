@@ -2,7 +2,7 @@
  * Persistence layer for the Company-Brain ingestion service.
  * Ported from Borjie persistence.ts.
  */
-import { sql } from 'drizzle-orm';
+import { and, sql } from 'drizzle-orm';
 import {
   corpusDocUploads,
   corpusDocSummaries,
@@ -47,6 +47,7 @@ export interface IngestionPersistence {
     readonly metadata: Readonly<Record<string, unknown>>;
   }): Promise<{ readonly uploadId: string }>;
   updateUploadStatus(args: {
+    readonly tenantId: string;
     readonly uploadId: string;
     readonly status: CorpusDocStatus;
     readonly chunksCount?: number | undefined;
@@ -95,7 +96,15 @@ export function createDrizzlePersistence(db: IngestionDb): IngestionPersistence 
       if (args.entitiesExtracted !== undefined) patch['entitiesExtracted'] = args.entitiesExtracted;
       if (args.errorMessage !== undefined) patch['errorMessage'] = args.errorMessage.slice(0, 2000);
       if (args.markProcessed) patch['processedAt'] = new Date();
-      await db.update(corpusDocUploads).set(patch).where(sql`id = ${args.uploadId}`);
+      // Tenant-scope the status UPDATE: a PK-only WHERE would let a caller
+      // mutate another tenant's upload row. corpus_doc_uploads.tenant_id is
+      // NOT NULL (migration 0280).
+      await db
+        .update(corpusDocUploads)
+        .set(patch)
+        .where(
+          and(sql`id = ${args.uploadId}`, sql`tenant_id = ${args.tenantId}`),
+        );
     },
     async upsertChunks(args) {
       for (const chunk of args.chunks) {

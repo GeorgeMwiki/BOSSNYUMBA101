@@ -24,10 +24,18 @@ export class DrizzleGdprRepository implements GdprRepository {
   }
 
   async update(row: GdprDeletionRequest): Promise<GdprDeletionRequest> {
+    // Tenant-scope the UPDATE on its own tenant_id (matches findById's
+    // composite predicate). Without it the PK-only WHERE would let a
+    // forged/mismatched tenantId mutate another tenant's request row.
     await this.db
       .update(gdprDeletionRequests)
       .set(toRow(row))
-      .where(eq(gdprDeletionRequests.id, row.id));
+      .where(
+        and(
+          eq(gdprDeletionRequests.id, row.id),
+          eq(gdprDeletionRequests.tenantId, row.tenantId),
+        ),
+      );
     return row;
   }
 

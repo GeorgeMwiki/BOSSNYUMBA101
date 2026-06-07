@@ -314,11 +314,15 @@ publicApp.get('/:token', async (c: any) => {
     );
   }
 
-  // No tenant filter here because the public resolver pre-dates the GUC.
-  // Defence in depth: rely on the UNIQUE(token) index + downstream
-  // entity-fetch path which DOES enforce tenant_id at render time.
+  // Public token-scoped share-link resolver. The opaque 256-bit token IS
+  // the capability (UNIQUE(token) index). This router is mounted OUTSIDE
+  // auth/databaseMiddleware so there is no current_tenant_id GUC to scope
+  // by; the row's own tenant_id gates the downstream entity-fetch/render
+  // path. A LIST/management query would be tenant-scoped (see GET / and
+  // DELETE /:id above), but a resolve-by-token is intentionally cross-tenant.
   const [row] = await db
     .select()
+    // tenant-predicate-allow: public token resolver, gated by UNIQUE(token)
     .from(shareLinks)
     .where(eq(shareLinks.token, token))
     .limit(1);
@@ -341,9 +345,12 @@ publicApp.get('/:token', async (c: any) => {
     );
   }
 
-  // Best-effort usage bump — non-blocking on failure.
+  // Best-effort usage bump — non-blocking on failure. Keyed by the exact
+  // row id already resolved by its capability token above (public resolver,
+  // no GUC); not a cross-tenant scan.
   try {
     await db
+      // tenant-predicate-allow: usage counter on the token-resolved row id
       .update(shareLinks)
       .set({ usedCount: (row.usedCount ?? 0) + 1, lastUsedAt: new Date() })
       .where(eq(shareLinks.id, row.id));

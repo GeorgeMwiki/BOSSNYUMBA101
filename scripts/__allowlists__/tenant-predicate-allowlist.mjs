@@ -191,6 +191,97 @@ export const TENANT_PREDICATE_PATH_ALLOWLIST = [
       'management, platform monthly revenue). Mounted only behind the ' +
       'platform-admin guard; never reachable by a tenant-scoped session.',
   },
+
+  // ─── Service-account infra: relays / sweepers / reapers ───────────────
+  // These run on a background timer WITHOUT a tenant JWT (no
+  // app.current_tenant_id GUC). They drain/garbage-collect platform-wide
+  // queues and logs by primary key / status / age, never by tenant. The
+  // tenant-scoped READS of these same tables (e.g. routes/notifications.ts,
+  // packages/database session-replay & episodic services) live in OTHER
+  // files and remain fully gated — these path entries scope ONLY the
+  // infra files, so a missing predicate on a user-facing read still flags.
+  {
+    path: 'services/payments-ledger/src/repositories/drizzle-outbox.repository.ts',
+    reason:
+      'Transactional-outbox relay-drain repository. event_outbox is the ' +
+      'at-least-once delivery queue ordered by sequence_number; tenant_id ' +
+      'is nullable (platform-level events). The relay reads unpublished ' +
+      'rows and flips status by id — cross-tenant by the outbox pattern, ' +
+      'not a tenant data surface. (event_outbox)',
+  },
+  {
+    path: 'services/api-gateway/src/composition/idempotency-sweeper.ts',
+    reason:
+      'Background sweeper that expires/prunes idempotency_keys platform-' +
+      'wide by created_at/expires_at. Keys are scoped by Idempotency-Key, ' +
+      'not tenant; the sweep is intentionally cross-tenant infra GC. ' +
+      '(idempotency_keys)',
+  },
+  {
+    path: 'services/api-gateway/src/composition/notification-dispatch-drainer.ts',
+    reason:
+      'Service-account drainer that re-queues notification_dispatch_log ' +
+      "rows stuck in delivery_status='sending' past the stale cutoff. Runs " +
+      'without a tenant JWT and updates by delivery state — cross-tenant ' +
+      'by design. User-facing reads in routes/notifications.ts stay tenant-' +
+      'scoped. (notification_dispatch_log)',
+  },
+  {
+    path: 'services/api-gateway/src/composition/session-replay-retention.ts',
+    reason:
+      'Retention sweeper: lists + deletes expired session_replay_chunks by ' +
+      'received_at / id for storage GC. Platform-wide by design; the tenant-' +
+      'scoped reads live in packages/database session-replay service. ' +
+      '(session_replay_chunks)',
+  },
+  {
+    path: 'services/api-gateway/src/composition/consolidation-runner.ts',
+    reason:
+      'Memory "sleep cycle" — its sole query is `SELECT DISTINCT tenant_id, ' +
+      'user_id FROM kernel_memory_episodic` to discover every active scope ' +
+      'to consolidate. Cross-tenant discovery is the whole point; each ' +
+      'per-scope cycle thereafter is tenant-bound. (kernel_memory_episodic)',
+  },
+  {
+    path: 'services/api-gateway/src/workers/lease-expiry-alert-cron.ts',
+    reason:
+      'Service-account cron. Its lease/unit reads are tenant-scoped and ' +
+      'already pass; the only un-predicated writes are notification_' +
+      'dispatch_log delivery-status updates keyed by the exact dispatch ' +
+      'row id the cron just sent — infra delivery tracking, not a tenant ' +
+      'surface. (notification_dispatch_log)',
+  },
+  {
+    path: 'services/api-gateway/src/services/jurisdiction-discovery/drizzle-corpus.ts',
+    reason:
+      'Jurisdiction-discovery corpus search. intelligence_corpus_chunks is ' +
+      'a global-OR-tenant table (tenant_id NULLABLE — NULL ⇒ global ' +
+      'BossNyumba corpus, migration 0285); this adapter searches the ' +
+      'platform-global jurisdiction knowledge that is shared across all ' +
+      'tenants by design. (intelligence_corpus_chunks)',
+  },
+
+  // ─── Public / cross-tenant marketplace + admin four-eye surfaces ──────
+  {
+    path: 'services/api-gateway/src/routes/marketplace/listings.hono.ts',
+    reason:
+      'Public rental-marketplace surface — the marketplace IS the cross-' +
+      'tenant discovery layer (an applicant in tenant A applies to a ' +
+      "listing owned by tenant B; the application records under the " +
+      "listing's tenant). Anonymous /nearby + apply-by-id read published " +
+      'listings across tenants. Authoritative tenant-scoped writes go ' +
+      'through services/domain-services postgres-marketplace-repository.ts ' +
+      '(NOT covered here, so still gated). (marketplace_listings)',
+  },
+  {
+    path: 'services/api-gateway/src/routes/admin/superpowers.hono.ts',
+    reason:
+      'Admin four-eye approval flow. The flagged undo_journal UPDATE writes ' +
+      'provenance onto the exact journal row resolved earlier in the same ' +
+      'request chain (keyed by that id), behind the platform-admin guard. ' +
+      'Owner-facing undo_journal queries (routes/owner/undo-journal.hono.ts) ' +
+      'remain tenant-scoped. (undo_journal)',
+  },
 ];
 
 /**
