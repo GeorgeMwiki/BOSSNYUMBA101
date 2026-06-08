@@ -98,6 +98,8 @@ import { brainRouter } from './routes/brain.hono';
 import { brainComposeRouter } from './routes/brain-compose.hono';
 import { brainTeachRouter } from './routes/brain-teach.hono';
 import { brainDispatchRouter } from './routes/brain-dispatch.hono';
+// BN-EXE-09 — long-horizon missions backend (drives @bossnyumba/long-horizon-agent).
+import { missionsRouter } from './routes/missions.hono';
 import { attachBrainVoiceWebSocket } from './routes/brain-voice.hono';
 import { maintenanceRouter } from './routes/maintenance.hono';
 import { hrRouter } from './routes/hr.hono';
@@ -528,6 +530,12 @@ import { createWebhookDlqRouter } from './routes/webhook-dlq.hono';
 // ingestion pipeline). PUBLIC under /api/v1/corpus/upload, auth +
 // databaseMiddleware enforced at the router level.
 import corpusUploadRouter from './routes/corpus/upload.hono';
+// Deep research — make the grounded research engine reachable on demand.
+// `buildResearchWiring()` builds the engine (corpus pgvector + live web
+// search + brain-llm-router plan/synthesis) and returns it with its router;
+// the engine is attached to the service registry so the router can read it
+// via `c.get('services').researchEngine`.
+import { buildResearchWiring } from './composition/research/research-wiring';
 // Wave launch-green JC-1 (real-estate) — jurisdiction-discovery loopback
 // endpoint. Mounted at the express ROOT under
 // /internal/jurisdiction-discovery so the brain-tool descriptor can
@@ -1067,6 +1075,14 @@ api.use('*', createMetricsMiddleware());
 // FIXED H-2: apply tenant-isolation enforcement globally on all /api/v1/* routes.
 // Auth middleware still runs first per-router; this is a defense-in-depth layer.
 api.use('*', ensureTenantIsolation);
+// Deep research — build the grounded research engine and attach it to the
+// service registry BEFORE the service-context middleware binds the registry
+// onto each request, so `/research/*` routes can read it via
+// `c.get('services').researchEngine`. The router is mounted further below
+// alongside the other `/api/v1` routers.
+const researchWiring = buildResearchWiring();
+(serviceRegistry as unknown as { researchEngine?: unknown }).researchEngine =
+  researchWiring.engine;
 // Inject the service registry + flat tenantId/userId into the request ctx
 // so 22 new routers can pull real service instances out of the context.
 api.use('*', createServiceContextMiddleware(serviceRegistry));
@@ -1134,6 +1150,11 @@ api.route('/document-intelligence', documentIntelligenceRoutes);
 // Wave launch-green C10 — Company Brain corpus upload (5-stage ingestion).
 // POST /api/v1/corpus/upload
 api.route('/corpus/upload', corpusUploadRouter);
+// Deep research — grounded research endpoint. POST /api/v1/research/reactive
+// and /deep-dive run plan → corpus + live web (parallel) → score →
+// cited synthesis → cross-reference verify. Engine attached to the service
+// registry above; router reads it via `c.get('services').researchEngine`.
+api.route('/research', researchWiring.router);
 // Piece C — Executive briefs (T1-T3 only) + subscription cadence registry.
 api.route('/briefs', executiveBriefRouter);
 api.route('/briefing-subscriptions', briefingSubscriptionRouter);
@@ -1159,6 +1180,10 @@ api.route('/brain', brainRouter);
 api.route('/brain', brainComposeRouter);
 api.route('/brain', brainTeachRouter);
 api.route('/brain', brainDispatchRouter);
+// BN-EXE-09 — long-horizon missions backend. List / create / track + step
+// dispatch driving @bossnyumba/long-horizon-agent. Replaces the owner-portal
+// MissionsPage useMissionsStub dead-end.
+api.route('/missions', missionsRouter);
 api.route('/maintenance', maintenanceRouter);
 api.route('/hr', hrRouter);
 api.route('/customer', customerAppRouter);
@@ -2262,7 +2287,34 @@ if (require.main === module) {
   // in-process monitor polls) at their due time with NO Inngest deploy gate.
   // Until this call a scheduled wake would sit armed but never tick. Null in
   // degraded mode (no kernel to resume); `?.` makes the call a safe no-op.
-  serviceRegistry.inProcessWakeSupervisor?.start();
+  //
+  // BN-EXE-08 — REHYDRATE first (before start), so any wake/monitor armed
+  // before a restart is reloaded from the durable Postgres store and resumes
+  // on the next tick. Ordered in an IIFE so `.start()` only arms the interval
+  // AFTER the pending set is loaded. No-op when no store is bound (the explicit
+  // storeless fallback). NEVER throws into the boot path — a store fault starts
+  // with an empty pending set.
+  void (async () => {
+    const supervisor = serviceRegistry.inProcessWakeSupervisor;
+    if (!supervisor) return;
+    try {
+      const rehydrated = await supervisor.rehydrate();
+      logger.info(
+        {
+          wakesLoaded: rehydrated.wakesLoaded,
+          monitorsLoaded: rehydrated.monitorsLoaded,
+          durable: supervisor.durable,
+        },
+        'boot: rehydrated durable wakes/monitors before supervisor start',
+      );
+    } catch (err) {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        'boot: durable wake rehydrate failed; starting with empty pending set',
+      );
+    }
+    supervisor.start();
+  })();
   // Central Command Phase B B2 — idle-session emitter supervisor. Scans
   // `sensorium_event_log` every minute and writes a reflexion-buffer entry
   // for every (tenant, user, session) tuple that has gone idle ≥ 5 min.

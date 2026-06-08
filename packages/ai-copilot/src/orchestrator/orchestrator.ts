@@ -63,6 +63,7 @@ import {
 import {
   AIProvider,
   AIMessage,
+  StreamTokenSink,
 } from '../providers/ai-provider.js';
 import {
   ANTHROPIC_MODELS,
@@ -99,6 +100,14 @@ export interface TurnRequest {
   maxHandoffDepth?: number;
   /** Max tool-call loop iterations per persona invocation. Default 5. */
   maxToolLoopIterations?: number;
+  /**
+   * GENUINE token streaming sink. When provided (and the provider supports
+   * streaming), the persona's answer is streamed token-by-token to this sink
+   * as it is generated — used by {@link streamTurn} to emit real-time `delta`
+   * events instead of replaying a finished response. Omitting it preserves the
+   * exact non-streaming `handleTurn` behaviour.
+   */
+  onToken?: StreamTokenSink;
 }
 
 export interface TurnResult {
@@ -519,6 +528,12 @@ export class Orchestrator {
         {
           category: hardCategory ?? undefined,
           reason: `persona:${persona.id} depth:${depth} iter:${iter}`,
+          // GENUINE streaming — forward the persona's tokens to the caller's
+          // sink as they are produced. The sink is responsible for routing
+          // them onto the wire (see `streamTurn`). On tool-loop iterations the
+          // model emits little/no prose; the user-visible answer is the final
+          // text-only iteration, which streams live here.
+          ...(req.onToken ? { onToken: req.onToken } : {}),
         }
       );
       if (!advResult.success) {
@@ -985,11 +1000,15 @@ export const TurnRequestSchema = z.object({
 // want incremental updates: typing deltas, tool-call/tool-result chips, and
 // a proposed-action card before turn_end.
 //
-// Rather than re-implement the state machine we wrap `handleTurn` in an
-// async generator: we await the real turn, then emit coarse delta events
-// (chunked from the final response text). This keeps the production logic
-// single-sourced in `handleTurn` and avoids duplicating governance/review/
-// handoff plumbing.
+// GENUINE streaming: we feed `handleTurn` an `onToken` sink that pushes every
+// model-produced text fragment onto an in-memory queue THE MOMENT it lands off
+// the Anthropic SSE wire. This generator drains that queue concurrently with
+// the in-flight turn, yielding `delta` events in real time — the user sees the
+// answer being written, not a typewriter replay of a finished response. The
+// production state machine stays single-sourced in `handleTurn`, so governance,
+// review, handoff and tool plumbing are unchanged. tool_call/tool_result/
+// handoff/proposed_action chips are emitted from the resolved accumulator after
+// the turn settles (the chat-ui renders them independently of the text deltas).
 //
 // The event shape mirrors what the 4 chat UIs (`useChatStream` hook) expect.
 // ---------------------------------------------------------------------------
@@ -1037,7 +1056,7 @@ export type StreamTurnEvent =
       readonly advisorConsulted: boolean;
     };
 
-export interface StreamTurnRequest extends TurnRequest {
+export interface StreamTurnRequest extends Omit<TurnRequest, 'onToken'> {
   /**
    * AbortSignal — if the caller disconnects (e.g. SSE client closed) the
    * generator stops emitting events. We cannot cancel a Promise already in
@@ -1045,9 +1064,16 @@ export interface StreamTurnRequest extends TurnRequest {
    * what SSE clients care about.
    */
   readonly signal?: AbortSignal;
-  /** Characters per emitted delta. Default 24. */
+  /**
+   * FALLBACK chunk size. Only used when the provider cannot stream tokens
+   * (no `completeStream`) and we degrade to chunking the finished text.
+   * Default 24.
+   */
   readonly chunkSize?: number;
-  /** Delay between deltas in ms. Default 12. */
+  /**
+   * FALLBACK delay between fallback chunks in ms. Only used in the degraded
+   * (non-streaming-provider) path. Default 12.
+   */
   readonly chunkDelayMs?: number;
 }
 
@@ -1056,9 +1082,11 @@ export interface StreamTurnRequest extends TurnRequest {
  *
  * Event ordering contract with chat-ui `useChatStream`:
  *   1. turn_start (always first — establishes threadId)
- *   2. tool_call / tool_result pairs (zero or more, in dispatch order)
- *   3. handoff events (zero or more)
- *   4. delta chunks (one or more) — the persona text, chunked
+ *   2. delta events (one or more) — the persona text, streamed LIVE as the
+ *      model produces each token (real-time, not a replay)
+ *   3. tool_call / tool_result pairs (zero or more) — emitted after the turn
+ *      settles, from the accumulator (the chat-ui renders chips independently)
+ *   4. handoff events (zero or more)
  *   5. proposed_action (optional — only when a PROPOSED_ACTION was parsed)
  *   6. turn_end (always last — carries totalTokens + totalCost)
  *
@@ -1093,7 +1121,54 @@ export async function* streamTurn(
   }
 
   const start = Date.now();
-  const result = await orchestrator.handleTurn(req);
+
+  // Live token bridge: `onToken` is called synchronously from inside the
+  // turn (off the Anthropic SSE wire). We push fragments onto a queue and a
+  // tiny notifier wakes the drain loop below so deltas leave for the browser
+  // the instant they arrive — genuine streaming, not a post-hoc chunked replay.
+  const tokenQueue: string[] = [];
+  let streamedAny = false;
+  let wake: (() => void) | null = null;
+  const onToken: StreamTokenSink = (delta) => {
+    if (signal?.aborted || !delta) return;
+    tokenQueue.push(delta);
+    streamedAny = true;
+    if (wake) {
+      const w = wake;
+      wake = null;
+      w();
+    }
+  };
+
+  // Kick off the turn WITHOUT awaiting — we want to drain tokens concurrently.
+  let turnSettled = false;
+  const turnPromise = orchestrator
+    .handleTurn({ ...req, onToken })
+    .finally(() => {
+      turnSettled = true;
+      if (wake) {
+        const w = wake;
+        wake = null;
+        w();
+      }
+    });
+
+  // Drain loop: yield queued deltas as they arrive; sleep on a notifier when
+  // the queue is empty until either more tokens land or the turn settles.
+  while (!turnSettled || tokenQueue.length > 0) {
+    if (signal?.aborted) break;
+    if (tokenQueue.length > 0) {
+      const content = tokenQueue.shift() as string;
+      yield { type: 'delta', content };
+      continue;
+    }
+    if (turnSettled) break;
+    await new Promise<void>((resolve) => {
+      wake = resolve;
+    });
+  }
+
+  const result = await turnPromise;
 
   if (signal?.aborted) {
     yield {
@@ -1125,6 +1200,21 @@ export async function* streamTurn(
 
   const turn = result.data;
 
+  // Fallback: if the provider could not stream tokens (no `completeStream`),
+  // no deltas were emitted above — degrade gracefully by chunking the final
+  // text so the chat-ui still renders an answer.
+  if (!streamedAny && turn.responseText) {
+    const text = turn.responseText;
+    const size = Math.max(1, chunkSize);
+    for (let i = 0; i < text.length; i += size) {
+      if (signal?.aborted) break;
+      yield { type: 'delta', content: text.slice(i, i + size) };
+      if (chunkDelayMs > 0 && i + size < text.length) {
+        await new Promise<void>((resolve) => setTimeout(resolve, chunkDelayMs));
+      }
+    }
+  }
+
   for (const tc of turn.toolCalls) {
     if (signal?.aborted) break;
     yield { type: 'tool_call', name: tc.tool };
@@ -1134,16 +1224,6 @@ export async function* streamTurn(
   for (const h of turn.handoffs) {
     if (signal?.aborted) break;
     yield { type: 'handoff', from: h.from, to: h.to, objective: h.objective };
-  }
-
-  const text = turn.responseText;
-  const size = Math.max(1, chunkSize);
-  for (let i = 0; i < text.length; i += size) {
-    if (signal?.aborted) break;
-    yield { type: 'delta', content: text.slice(i, i + size) };
-    if (chunkDelayMs > 0 && i + size < text.length) {
-      await new Promise<void>((resolve) => setTimeout(resolve, chunkDelayMs));
-    }
   }
 
   if (turn.proposedAction) {

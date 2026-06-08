@@ -4162,6 +4162,9 @@ importers:
       '@bossnyumba/llm-budget-governor':
         specifier: workspace:*
         version: link:../../packages/llm-budget-governor
+      '@bossnyumba/long-horizon-agent':
+        specifier: workspace:*
+        version: link:../../packages/long-horizon-agent
       '@bossnyumba/lpms-connector':
         specifier: workspace:*
         version: link:../../packages/lpms-connector

@@ -23,6 +23,7 @@ import {
   ModelInfo,
   AIContentBlock,
   AIMessage,
+  StreamTokenSink,
 } from './ai-provider.js';
 import { applyPrefixCache } from './anthropic-prefix-cache.js';
 
@@ -129,17 +130,34 @@ export class AnthropicProvider implements AIProvider {
     ]);
   }
 
-  async complete(
-    request: AICompletionRequest
-  ): Promise<AIResult<AICompletionResponse, AIProviderError>> {
-    const startTime = Date.now();
-    const modelId =
-      request.modelOverride ??
-      request.prompt.modelConfig.modelId ??
-      this.config.defaultModel ??
-      ANTHROPIC_MODELS.SONNET_4_6;
-    const timeoutMs = request.timeoutMs ?? this.config.defaultTimeoutMs ?? 60_000;
+  /**
+   * Resolve the dispatch model + per-request timeout (shared by streaming and
+   * non-streaming paths).
+   */
+  private resolveModel(request: AICompletionRequest): {
+    modelId: string;
+    timeoutMs: number;
+  } {
+    return {
+      modelId:
+        request.modelOverride ??
+        request.prompt.modelConfig.modelId ??
+        this.config.defaultModel ??
+        ANTHROPIC_MODELS.SONNET_4_6,
+      timeoutMs: request.timeoutMs ?? this.config.defaultTimeoutMs ?? 60_000,
+    };
+  }
 
+  /**
+   * Build the Anthropic Messages API request body from an
+   * `AICompletionRequest`. Single-sourced so `complete` and `completeStream`
+   * send byte-identical requests (only the `stream` flag differs). Returns the
+   * prefix-cached body — never mutates the input.
+   */
+  private buildRequestBody(
+    request: AICompletionRequest,
+    modelId: string,
+  ): Record<string, unknown> {
     // Build messages — either use priorMessages (multi-turn / tool loop) or
     // construct a single-shot user message from the prompt.
     const messages: Array<{
@@ -169,16 +187,6 @@ export class AnthropicProvider implements AIProvider {
     if (request.prompt.modelConfig.topP !== undefined)
       body.top_p = request.prompt.modelConfig.topP;
 
-    // Anthropic enforces `^[a-zA-Z0-9_-]{1,128}$` on every tool name. Our
-    // internal skill names use dotted segments (e.g. `skill.maintenance.triage`)
-    // so we sanitize on the way out and reverse the mapping when a `tool_use`
-    // block references the sanitized name. The mapping is deterministic
-    // (dot → `__`, colon → `___`) so it round-trips 1:1.
-    const sanitizeToolName = (name: string): string =>
-      name.replace(/\./g, '__').replace(/:/g, '___');
-    const restoreToolName = (name: string): string =>
-      name.replace(/___/g, ':').replace(/__/g, '.');
-
     if (request.tools && request.tools.length > 0) {
       body.tools = request.tools.map((t) => ({
         name: sanitizeToolName(t.name),
@@ -191,20 +199,34 @@ export class AnthropicProvider implements AIProvider {
     // system prompt + tools array as `cache_control: ephemeral` so
     // repeat turns reuse the same prefix at ~80% cost reduction. The
     // policy honours the 1-2 breakpoint recommendation (max 4) and
-    // never mutates the input — `applyPrefixCache` returns a fresh
-    // body that we re-assign before the retry loop.
+    // never mutates the input — `applyPrefixCache` returns a fresh body.
     const prefixCacheResult = applyPrefixCache(
       body as Parameters<typeof applyPrefixCache>[0],
       {},
     );
-    const cachedBody = prefixCacheResult.body as Record<string, unknown>;
-    const result = await this.requestWithRetry(cachedBody, timeoutMs);
-    if (!result.success) {
-      const e = (result as { success: false; error: AIProviderError }).error;
-      return aiErr(e);
-    }
-    const data = result.data;
+    return prefixCacheResult.body as Record<string, unknown>;
+  }
 
+  /**
+   * Map a settled Anthropic Messages response (whether assembled from a stream
+   * or returned whole) into our `AICompletionResponse`. Shared so streaming and
+   * non-streaming paths produce identical shapes.
+   */
+  private toCompletionResponse(
+    data: {
+      content?: Array<Record<string, unknown>>;
+      stop_reason?: string;
+      usage?: {
+        input_tokens?: number;
+        output_tokens?: number;
+        cache_creation_input_tokens?: number;
+        cache_read_input_tokens?: number;
+      };
+    },
+    request: AICompletionRequest,
+    modelId: string,
+    startTime: number,
+  ): AICompletionResponse {
     const rawContent: AIContentBlock[] = Array.isArray(data.content)
       ? data.content.map((b) => normalizeContentBlock(b))
       : [];
@@ -243,7 +265,7 @@ export class AnthropicProvider implements AIProvider {
           }
         : undefined;
 
-    return aiOk({
+    return {
       content,
       parsedJson,
       modelId: asModelId(modelId),
@@ -263,7 +285,93 @@ export class AnthropicProvider implements AIProvider {
           }))
         : undefined,
       rawContent,
-    });
+    };
+  }
+
+  async complete(
+    request: AICompletionRequest
+  ): Promise<AIResult<AICompletionResponse, AIProviderError>> {
+    const startTime = Date.now();
+    const { modelId, timeoutMs } = this.resolveModel(request);
+    const cachedBody = this.buildRequestBody(request, modelId);
+    const result = await this.requestWithRetry(cachedBody, timeoutMs);
+    if (!result.success) {
+      const e = (result as { success: false; error: AIProviderError }).error;
+      return aiErr(e);
+    }
+    return aiOk(
+      this.toCompletionResponse(result.data, request, modelId, startTime),
+    );
+  }
+
+  /**
+   * Genuine token streaming over the Anthropic Messages SSE API.
+   *
+   * Opens `/v1/messages` with `stream: true`, forwards every `text_delta`
+   * fragment to `onToken` AS IT ARRIVES (no buffering, no replay), and
+   * assembles the full content/tool_use blocks + usage from the SSE events so
+   * the resolved `AICompletionResponse` is byte-identical to `complete()`.
+   * This keeps the orchestrator's tool-loop, governance and review plumbing
+   * unchanged while delivering real-time output to the user.
+   *
+   * Streaming responses are NOT retried mid-flight (a partial stream cannot be
+   * safely replayed); transport-level failures surface as a structured error.
+   */
+  async completeStream(
+    request: AICompletionRequest,
+    onToken: StreamTokenSink,
+  ): Promise<AIResult<AICompletionResponse, AIProviderError>> {
+    const startTime = Date.now();
+    const { modelId, timeoutMs } = this.resolveModel(request);
+    const body = { ...this.buildRequestBody(request, modelId), stream: true };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(
+        `${this.config.baseUrl ?? 'https://api.anthropic.com'}/v1/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': this.config.apiKey,
+            'anthropic-version': this.config.apiVersion ?? DEFAULT_API_VERSION,
+            accept: 'text/event-stream',
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        },
+      );
+      if (!response.ok || !response.body) {
+        const errorBody = (await response
+          .json()
+          .catch(() => ({}))) as Record<string, unknown>;
+        clearTimeout(timeoutId);
+        return this.handleApiError(response.status, errorBody);
+      }
+
+      const assembled = await consumeMessageStream(response.body, onToken);
+      clearTimeout(timeoutId);
+      return aiOk(
+        this.toCompletionResponse(assembled, request, modelId, startTime),
+      );
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        return aiErr({
+          code: 'TIMEOUT',
+          message: `Anthropic stream timed out after ${timeoutMs}ms`,
+          provider: this.providerId,
+          retryable: true,
+        });
+      }
+      return aiErr({
+        code: 'PROVIDER_ERROR',
+        message: error instanceof Error ? error.message : String(error),
+        provider: this.providerId,
+        retryable: true,
+      });
+    }
   }
 
   /**
@@ -450,6 +558,168 @@ export class AnthropicProvider implements AIProvider {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// Anthropic enforces `^[a-zA-Z0-9_-]{1,128}$` on every tool name. Our internal
+// skill names use dotted segments (e.g. `skill.maintenance.triage`) so we
+// sanitize on the way out and reverse the mapping when a `tool_use` block
+// references the sanitized name. The mapping is deterministic (dot → `__`,
+// colon → `___`) so it round-trips 1:1.
+function sanitizeToolName(name: string): string {
+  return name.replace(/\./g, '__').replace(/:/g, '___');
+}
+function restoreToolName(name: string): string {
+  return name.replace(/___/g, ':').replace(/__/g, '.');
+}
+
+interface AssembledMessage {
+  content: Array<Record<string, unknown>>;
+  stop_reason?: string;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
+  };
+}
+
+/**
+ * Consume an Anthropic Messages SSE stream from a `ReadableStream`, forwarding
+ * each `text_delta` to `onToken` as it arrives and assembling the final message
+ * (text + tool_use blocks + usage) the same shape `requestOnce` returns.
+ *
+ * Anthropic stream event sequence (anthropic-version 2023-06-01):
+ *   message_start            → usage.input_tokens, empty content
+ *   content_block_start      → opens a text|tool_use block at `index`
+ *   content_block_delta      → text_delta (text) | input_json_delta (tool args)
+ *   content_block_stop       → closes the block at `index`
+ *   message_delta            → stop_reason + usage.output_tokens
+ *   message_stop             → terminal
+ */
+async function consumeMessageStream(
+  body: ReadableStream<Uint8Array>,
+  onToken: StreamTokenSink,
+): Promise<AssembledMessage> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  // Per-index block accumulators. text blocks accumulate `.text`; tool_use
+  // blocks accumulate a partial JSON string we parse on content_block_stop.
+  const blocks = new Map<
+    number,
+    | { type: 'text'; text: string }
+    | { type: 'tool_use'; id: string; name: string; partialJson: string }
+  >();
+  const assembled: AssembledMessage = { content: [], usage: {} };
+
+  const handleEvent = (raw: string): void => {
+    // Each SSE record is one or more `field: value` lines. We only need `data:`.
+    const dataLines = raw
+      .split('\n')
+      .filter((l) => l.startsWith('data:'))
+      .map((l) => l.slice('data:'.length).trim());
+    if (dataLines.length === 0) return;
+    const payload = dataLines.join('');
+    if (!payload || payload === '[DONE]') return;
+
+    let evt: Record<string, unknown>;
+    try {
+      evt = JSON.parse(payload) as Record<string, unknown>;
+    } catch {
+      return; // ignore malformed keep-alive / partial frames
+    }
+    const type = String(evt.type ?? '');
+
+    if (type === 'message_start') {
+      const msg = evt.message as { usage?: AssembledMessage['usage'] } | undefined;
+      if (msg?.usage) assembled.usage = { ...assembled.usage, ...msg.usage };
+      return;
+    }
+    if (type === 'content_block_start') {
+      const index = Number(evt.index ?? 0);
+      const block = (evt.content_block as Record<string, unknown>) ?? {};
+      if (block.type === 'tool_use') {
+        blocks.set(index, {
+          type: 'tool_use',
+          id: String(block.id ?? ''),
+          name: String(block.name ?? ''),
+          partialJson: '',
+        });
+      } else {
+        blocks.set(index, { type: 'text', text: '' });
+      }
+      return;
+    }
+    if (type === 'content_block_delta') {
+      const index = Number(evt.index ?? 0);
+      const delta = (evt.delta as Record<string, unknown>) ?? {};
+      const cur = blocks.get(index);
+      if (delta.type === 'text_delta' && typeof delta.text === 'string') {
+        const text = delta.text;
+        if (cur && cur.type === 'text') cur.text += text;
+        else blocks.set(index, { type: 'text', text });
+        // GENUINE streaming — forward the fragment the instant it lands.
+        if (text) onToken(text);
+      } else if (
+        delta.type === 'input_json_delta' &&
+        typeof delta.partial_json === 'string' &&
+        cur &&
+        cur.type === 'tool_use'
+      ) {
+        cur.partialJson += delta.partial_json;
+      }
+      return;
+    }
+    if (type === 'message_delta') {
+      const d = (evt.delta as { stop_reason?: string }) ?? {};
+      if (d.stop_reason) assembled.stop_reason = d.stop_reason;
+      const usage = evt.usage as { output_tokens?: number } | undefined;
+      if (usage?.output_tokens !== undefined)
+        assembled.usage = { ...assembled.usage, output_tokens: usage.output_tokens };
+      return;
+    }
+    // content_block_stop / message_stop / ping — nothing to accumulate.
+  };
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      // Normalise CRLF → LF so the blank-line record separator is uniform
+      // whether the upstream emits `\n\n` or `\r\n\r\n`.
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+      // SSE records are separated by a blank line.
+      let sep = buffer.indexOf('\n\n');
+      while (sep !== -1) {
+        const record = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        handleEvent(record);
+        sep = buffer.indexOf('\n\n');
+      }
+    }
+    if (buffer.trim()) handleEvent(buffer);
+  } finally {
+    reader.releaseLock();
+  }
+
+  // Materialise blocks in index order.
+  assembled.content = [...blocks.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([, blk]) => {
+      if (blk.type === 'text') return { type: 'text', text: blk.text };
+      let input: Record<string, unknown> = {};
+      if (blk.partialJson.trim()) {
+        try {
+          input = JSON.parse(blk.partialJson) as Record<string, unknown>;
+        } catch {
+          input = {};
+        }
+      }
+      return { type: 'tool_use', id: blk.id, name: blk.name, input };
+    });
+
+  return assembled;
+}
 
 function normalizeContentBlock(b: Record<string, unknown>): AIContentBlock {
   const type = String(b.type ?? '');

@@ -88,6 +88,14 @@ export {
   type InProcessWakeSchedulerDeps,
   type InProcessSupervisorLogger,
   type InProcessTickOutcome,
+  type RehydrateOutcome,
+  // Durable backing-store port (PURE). The api-gateway composition root binds
+  // a Postgres impl so armed wakes/monitors survive a process restart; the
+  // storeless supervisor is the explicit fallback only.
+  type DurableWakeStore,
+  type PersistedWakeRecord,
+  type PersistedMonitorRecord,
+  type PersistedPendingSet,
 } from './in-process-wake-scheduler.js';
 
 // PART A (SECONDARY) — in-process Inngest runtime. The consumer/serve side the

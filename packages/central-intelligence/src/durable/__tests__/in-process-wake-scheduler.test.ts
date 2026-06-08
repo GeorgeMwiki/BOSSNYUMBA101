@@ -24,6 +24,60 @@ import type {
   MonitorRegistration,
 } from '../../kernel/orchestrator/adapters/loop-actuators.js';
 import type { ScopeContext } from '../../types.js';
+import type {
+  DurableWakeStore,
+  PersistedMonitorRecord,
+  PersistedPendingSet,
+  PersistedWakeRecord,
+} from '../in-process-wake-scheduler.js';
+
+/**
+ * In-memory `DurableWakeStore` double — records the persisted set + the
+ * delete calls so a test can assert the supervisor writes on arm, deletes on
+ * fire/expiry, and rehydrates the pending set. Mirrors the Postgres impl's
+ * contract (UPSERT by key, delete-by-key no-op when absent).
+ */
+function createFakeDurableStore(
+  seed?: PersistedPendingSet,
+): DurableWakeStore & {
+  wakes: Map<string, PersistedWakeRecord>;
+  monitors: Map<string, PersistedMonitorRecord>;
+  deletedWakes: string[];
+  deletedMonitors: string[];
+} {
+  const wakes = new Map<string, PersistedWakeRecord>();
+  const monitors = new Map<string, PersistedMonitorRecord>();
+  const deletedWakes: string[] = [];
+  const deletedMonitors: string[] = [];
+  for (const w of seed?.wakes ?? []) wakes.set(w.resumeToken, w);
+  for (const m of seed?.monitors ?? []) monitors.set(m.watchId, m);
+  return {
+    wakes,
+    monitors,
+    deletedWakes,
+    deletedMonitors,
+    async saveWake(record) {
+      wakes.set(record.resumeToken, record);
+    },
+    async deleteWake(resumeToken) {
+      wakes.delete(resumeToken);
+      deletedWakes.push(resumeToken);
+    },
+    async saveMonitor(record) {
+      monitors.set(record.watchId, record);
+    },
+    async deleteMonitor(watchId) {
+      monitors.delete(watchId);
+      deletedMonitors.push(watchId);
+    },
+    async loadPending() {
+      return {
+        wakes: [...wakes.values()],
+        monitors: [...monitors.values()],
+      };
+    },
+  };
+}
 
 const SCOPE: ScopeContext = {
   kind: 'tenant',
@@ -265,5 +319,154 @@ describe('in-process wake scheduler — lifecycle', () => {
     await new Promise((r) => setTimeout(r, 1_200));
     sup.stop();
     expect(fired).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DURABLE — the BN-EXE-08 unblock: a store makes arms survive a restart.
+// ---------------------------------------------------------------------------
+
+describe('in-process wake scheduler — DURABLE store makes wakes survive restart', () => {
+  it('reports durable when a store is bound, in-process otherwise', async () => {
+    const storeless = createInProcessWakeScheduler({
+      resumeTurnRunner: async () => {},
+      clock: () => 1_000,
+    });
+    expect(storeless.durable).toBe(false);
+    const durable = createInProcessWakeScheduler({
+      resumeTurnRunner: async () => {},
+      clock: () => 1_000,
+      store: createFakeDurableStore(),
+    });
+    expect(durable.durable).toBe(true);
+  });
+
+  it('schedule persists the wake AND reports the crash-resilient mode', async () => {
+    const store = createFakeDurableStore();
+    const sup = createInProcessWakeScheduler({
+      resumeTurnRunner: async () => {},
+      clock: () => 1_000,
+      store,
+    });
+    const handle = await sup.scheduler.schedule(
+      makeWake({ wakeAt: wakeAt(60_000, 1_000), resumeToken: 'rt-durable' }),
+    );
+    // The mode upgrades to the truthful 'durable' (survives restart).
+    expect(handle.mode).toBe('durable');
+    expect(store.wakes.has('rt-durable')).toBe(true);
+    expect(store.wakes.get('rt-durable')?.threadId).toBe('th-parent');
+  });
+
+  it('a fired wake is DELETED from the store (no re-fire after restart)', async () => {
+    const now = 10_000;
+    const store = createFakeDurableStore();
+    const sup = createInProcessWakeScheduler({
+      resumeTurnRunner: async () => {},
+      clock: () => now,
+      store,
+    });
+    await sup.scheduler.schedule(
+      makeWake({ wakeAt: wakeAt(-1_000, now), resumeToken: 'rt-fire' }),
+    );
+    expect(store.wakes.has('rt-fire')).toBe(true);
+    await sup.tick(now);
+    // Removed from the durable store so a later rehydrate cannot re-fire it.
+    expect(store.wakes.has('rt-fire')).toBe(false);
+    expect(store.deletedWakes).toContain('rt-fire');
+  });
+
+  it('rehydrate reloads a pending wake armed before a "restart" so it fires', async () => {
+    const now = 50_000;
+    // Simulate a restart: a fresh supervisor over a store that already holds a
+    // wake whose wakeAt is in the past (armed before the crash).
+    const seed: PersistedPendingSet = {
+      wakes: [
+        {
+          resumeToken: 'rt-survived',
+          threadId: 'th-survivor',
+          wakeAtMs: now - 1_000,
+          reason: 'follow-up after restart',
+          scope: SCOPE,
+        },
+      ],
+      monitors: [],
+    };
+    const store = createFakeDurableStore(seed);
+    const resumed: string[] = [];
+    const sup = createInProcessWakeScheduler({
+      resumeTurnRunner: async (a) => {
+        resumed.push(a.resumeToken);
+      },
+      clock: () => now,
+      store,
+    });
+    // Before rehydrate the in-memory set is empty.
+    expect(sup.pendingWakeCount()).toBe(0);
+    const outcome = await sup.rehydrate();
+    expect(outcome.wakesLoaded).toBe(1);
+    expect(sup.pendingWakeCount()).toBe(1);
+    // The reloaded wake is due → it fires on the next tick.
+    expect((await sup.tick(now)).wakesFired).toBe(1);
+    expect(resumed).toEqual(['rt-survived']);
+    // And it is cleaned out of the store.
+    expect(store.wakes.has('rt-survived')).toBe(false);
+  });
+
+  it('a store fault on save degrades to an in-memory arm (never drops the wake)', async () => {
+    const now = 10_000;
+    const faultingStore: DurableWakeStore = {
+      async saveWake() {
+        throw new Error('db down');
+      },
+      async deleteWake() {},
+      async saveMonitor() {},
+      async deleteMonitor() {},
+      async loadPending() {
+        return { wakes: [], monitors: [] };
+      },
+    };
+    let fired = 0;
+    const sup = createInProcessWakeScheduler({
+      resumeTurnRunner: async () => {
+        fired += 1;
+      },
+      clock: () => now,
+      store: faultingStore,
+    });
+    // The save throws inside schedule, but the arm still lands in memory and
+    // the handle still reports durable mode (the contract: never drop).
+    const handle = await sup.scheduler.schedule(
+      makeWake({ wakeAt: wakeAt(-1_000, now), resumeToken: 'rt-fault' }),
+    );
+    expect(handle.mode).toBe('durable');
+    expect(sup.pendingWakeCount()).toBe(1);
+    // It still fires from memory this process lifetime.
+    await sup.tick(now);
+    expect(fired).toBe(1);
+  });
+
+  it('rehydrate is a no-op (zero outcome) when no store is bound', async () => {
+    const sup = createInProcessWakeScheduler({
+      resumeTurnRunner: async () => {},
+      clock: () => 1_000,
+    });
+    const outcome = await sup.rehydrate();
+    expect(outcome).toEqual({ wakesLoaded: 0, monitorsLoaded: 0 });
+  });
+
+  it('monitor persists + reports registered when a predicate source is attested', async () => {
+    const store = createFakeDurableStore();
+    const checker: MonitorChecker = async () => false;
+    const sup = createInProcessWakeScheduler({
+      resumeTurnRunner: async () => {},
+      monitorResumeRunner: async () => {},
+      monitorChecker: checker,
+      monitorAvailable: true,
+      clock: () => 1_000,
+      store,
+    });
+    const handle = await sup.monitorRegistry.register(MONITOR);
+    expect(handle.mode).toBe('registered');
+    expect(store.monitors.has('w-1')).toBe(true);
   });
 });

@@ -579,6 +579,17 @@ export * from './undo-journal.schema.js';
 //                        not enforce uniqueness under split-brain.
 export * from './idempotency-keys.schema.js';
 
+//   - durable_scheduled_wakes / durable_armed_monitors : crash-resilient
+//                        backing store for the orchestrator's schedule_wake /
+//                        monitor Decisions (mig 0315). The in-process wake
+//                        supervisor (central-intelligence) persists every
+//                        armed entry here and rehydrates the pending set on
+//                        boot so a "wake me when X" armed before a restart
+//                        survives the redeploy. PG impl of the pure
+//                        DurableWakeStore port: services/api-gateway/src/
+//                        composition/durable-wake-store.ts.
+export * from './durable-scheduled-wakes.schema.js';
+
 // ─── Wave OWNER-OS — server-side tab persistence (migration 0300) ────
 //   - owner_tabs : per-(tenant, user) tab strip ledger. Closes commit
 //                  a935776e's deliberate localStorage-only deferral.

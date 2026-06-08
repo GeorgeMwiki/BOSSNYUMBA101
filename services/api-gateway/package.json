@@ -43,6 +43,7 @@
     "@bossnyumba/document-reconciliation": "workspace:*",
     "@bossnyumba/learning-signal-emitter": "workspace:*",
     "@bossnyumba/ledger-attestor": "workspace:*",
+    "@bossnyumba/long-horizon-agent": "workspace:*",
     "@bossnyumba/privacy-router": "workspace:*",
     "@bossnyumba/regulator-sim": "workspace:*",
     "@bossnyumba/ussd-engine": "workspace:*",

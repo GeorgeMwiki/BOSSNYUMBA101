@@ -225,6 +225,14 @@
       "dataLoss": true,
       "envs": ["dev", "staging"],
       "notes": "Drops case intake photo references. Photos promoted into the normalized evidence_attachments table are unaffected; only the lightweight intake-time refs on cases.photos are lost."
+    },
+    {
+      "up": "0315_durable_scheduled_wakes.sql",
+      "down": "down/0315_down_durable_scheduled_wakes.sql",
+      "reverses": "CREATE TABLE durable_scheduled_wakes + durable_armed_monitors + unique/scan indexes + RLS policies (tenant_isolation + service_role_bypass) + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Drops the crash-resilient backing store for the orchestrator's schedule_wake / monitor Decisions. Any armed-but-not-yet-fired wakes/monitors are lost; the supervisor degrades to the storeless in-process fallback (arms lost on restart again). No money/audit data here."
     }
   ]
 }

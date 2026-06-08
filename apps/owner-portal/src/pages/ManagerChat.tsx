@@ -5,6 +5,12 @@
  * Wires @bossnyumba/chat-ui (mode detector, blackboard, adaptive renderer)
  * against the shared Brain SSE endpoint at /api/v1/ai/chat.
  *
+ * Consumes GENUINE token streaming: the gateway's `streamTurn` feeds an
+ * `onToken` sink off the Anthropic SSE wire, so `delta` events arrive in
+ * real time as the model writes — not a replay of a completed turn. Locale
+ * purity is preserved (the active persona stays single-language; we only
+ * stream that text incrementally).
+ *
  * Mount point: /admin/manager-chat
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
