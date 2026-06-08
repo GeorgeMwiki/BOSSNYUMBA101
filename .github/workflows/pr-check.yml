@@ -12,7 +12,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
+  # isolated-vm@6.1.2 (V8-isolate sandbox in ai-copilot +
+  # central-intelligence) declares engines.node >=22; on Node 20 the
+  # optional dep is skipped and the type-only import fails TS2307.
+  NODE_VERSION: '22'
   PNPM_VERSION: '8'
 
 jobs:

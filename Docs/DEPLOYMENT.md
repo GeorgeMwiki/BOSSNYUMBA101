@@ -77,11 +77,25 @@ Services expose ports on localhost:
 
 ### Database migrations
 
+There is exactly **one supported migration command**:
+
 ```bash
-pnpm db:migrate
+pnpm --filter @bossnyumba/database run db:migrate
 ```
 
-This runs all migrations in `packages/database/src/migrations/` in lexical order.
+(`make db-migrate` and the repo-root `pnpm migrate` are aliases for the same
+thing.) It runs `packages/database/src/run-migrations.ts`, the single canonical
+runner, which applies all migrations in `packages/database/src/migrations/` in
+lexical order and records each one in the `drizzle.__drizzle_migrations` ledger
+(hash-keyed, idempotent). This is the same runner CI, container boot, and the
+Helm migration job use.
+
+`scripts/migrate-prod.sh` (→ `scripts/migrate-prod.ts`) is a thin operator
+wrapper that delegates to this exact runner and the exact same ledger — it does
+**not** maintain a separate `_migrations` table. Never run two different
+migration tools against one database; doing so used to risk re-applying the
+full chain off a divergent ledger.
+
 pgvector activation is a migration (`0001_enable_pgvector.sql`) — Postgres
 must be on the `pgvector/pgvector:pg15` image or an RDS instance whose
 parameter group has `vector` in `shared_preload_libraries`.
@@ -166,7 +180,9 @@ aws ecs run-task \
   --network-configuration "<same as api-gateway>"
 ```
 
-The task definition runs `pnpm db:migrate` against `$DATABASE_URL` from
+The task definition runs the single canonical command
+`pnpm --filter @bossnyumba/database run db:migrate`
+(`packages/database/src/run-migrations.ts`) against `$DATABASE_URL` from
 Secrets Manager and exits 0 on success.
 
 ---
@@ -298,7 +314,7 @@ plus a DNS flip. Every operational concern below is covered.
 
 4. **Apply migrations + seed platform defaults**
    ```bash
-   pnpm --filter @bossnyumba/database migrate:deploy
+   pnpm --filter @bossnyumba/database run db:migrate
    pnpm --filter @bossnyumba/database seed:platform
    ```
 

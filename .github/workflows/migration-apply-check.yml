@@ -2,10 +2,21 @@
 # Migration Apply Check — every migration must apply cleanly on a fresh DB
 # =============================================================================
 #
-# Spins up an ephemeral Postgres 17 service container, then applies every
-# *.sql file in `packages/database/src/migrations/` in lexical order
-# against it. A single failed apply fails the job — earlier migrations
+# Installs an ephemeral PostgreSQL 17 cluster WITH PostGIS and pgvector, then
+# applies every *.sql file in `packages/database/src/migrations/` in lexical
+# order against it. A single failed apply fails the job — earlier migrations
 # break later ones, so the whole chain is the unit of correctness.
+#
+# DB image rationale (must mirror Supabase prod = PG17.6 + pgvector + postgis):
+#   The previous vanilla `postgres:17` service container shipped NEITHER
+#   pgvector NOR postgis, so every vector-typed migration (0285/0286/0288/
+#   0313) hard-failed with `type "vector" does not exist`, and the postgis
+#   baseline (CREATE EXTENSION postgis) failed too. There is no single
+#   official image at PG17 carrying both extensions, so we runner-install
+#   from the PostgreSQL APT repository (PGDG):
+#     postgresql-17 + postgresql-17-postgis-3 + postgresql-17-pgvector
+#   This matches Supabase, which ships both extensions natively, and is kept
+#   in lockstep with the sibling migration-apply-fresh.yml.
 #
 # This workflow is the runtime complement to:
 #   - .github/workflows/db-migrations-check.yml — destructive-statement lint
@@ -46,25 +57,7 @@ jobs:
   apply-all-migrations:
     name: Apply every migration in order against Postgres 17
     runs-on: ubuntu-latest
-    # Pin Postgres major version to the production target. Bump in lockstep
-    # with the production cluster's PostgreSQL version.
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: bossnyumba
-          POSTGRES_PASSWORD: bossnyumba
-          POSTGRES_DB: bossnyumba_migration_check
-        ports:
-          - 5432:5432
-        # Wait for the server to actually accept connections before any
-        # job step runs. 30-second budget is conservative — pg_isready
-        # typically returns within 3-4s on GitHub's runners.
-        options: >-
-          --health-cmd "pg_isready -U bossnyumba"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 30
+    timeout-minutes: 15
     env:
       DATABASE_URL: postgres://bossnyumba:bossnyumba@localhost:5432/bossnyumba_migration_check
       # The apply-check script's defaults match the production layout —
@@ -77,38 +70,46 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: Wait for Postgres to be ready
+      # Runner-installed Postgres 17 with BOTH PostGIS and pgvector. The
+      # previous vanilla `postgres:17` service container shipped neither, so
+      # the postgis baseline (CREATE EXTENSION postgis) and every vector-typed
+      # migration (0285/0286/0288/0313) cascaded into failure. This mirrors
+      # the sibling migration-apply-fresh.yml (and Supabase, which ships both
+      # extensions natively).
+      - name: Install + start PostgreSQL 17 + PostGIS + pgvector (PGDG)
         run: |
           set -e
-          for i in $(seq 1 30); do
-            if pg_isready -h localhost -p 5432 -U bossnyumba >/dev/null 2>&1; then
-              echo "Postgres ready after ${i}s"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "::error::Postgres did not become ready within 30s"
-          exit 1
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-17 postgresql-17-postgis-3 postgresql-17-pgvector
+          sudo systemctl stop postgresql 2>/dev/null || true
+          for v in 16 17; do sudo pg_dropcluster --stop "$v" main 2>/dev/null || true; done
+          sudo pg_createcluster 17 main -p 5432 -- --auth-local=trust --auth-host=trust
+          sudo pg_ctlcluster 17 main start
+          for i in $(seq 1 30); do sudo -u postgres pg_isready -p 5432 >/dev/null 2>&1 && break; sleep 1; done
+          sudo -u postgres psql -p 5432 -v ON_ERROR_STOP=1 -c "CREATE ROLE bossnyumba LOGIN SUPERUSER PASSWORD 'bossnyumba'"
+          sudo -u postgres psql -p 5432 -v ON_ERROR_STOP=1 -c "CREATE DATABASE bossnyumba_migration_check OWNER bossnyumba"
+          echo "PostgreSQL 17 + PostGIS + pgvector ready on :5432"
 
-      - name: Try CREATE EXTENSION vector (best-effort)
-        # pgvector is bundled in postgres:17 starting with the official
-        # bookworm builds. If the extension isn't available the apply
-        # script falls back to the 0178 schema guard and continues.
+      - name: Try CREATE EXTENSION vector + postgis (best-effort)
         run: |
-          PGPASSWORD=bossnyumba psql -h localhost -U bossnyumba -d bossnyumba_migration_check \
-            -c "CREATE EXTENSION IF NOT EXISTS vector" 2>&1 | tail -3 || \
-            echo "::warning::pgvector not available — migrations that depend on it may fail"
+          for ext in vector postgis postgis_topology pgcrypto "uuid-ossp" pg_trgm citext btree_gist; do
+            PGPASSWORD=bossnyumba psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_migration_check \
+              -c "CREATE EXTENSION IF NOT EXISTS \"${ext}\"" 2>&1 | tail -1 || \
+              echo "::warning::extension ${ext} not available"
+          done
 
       - name: Seed Supabase roles (authenticated, anon, service_role)
         # Supabase Postgres provisions these roles at cluster init time. CI's
-        # vanilla postgres:17 image has none of them — so every RLS migration
-        # since 0155 (CREATE POLICY ... TO authenticated, GRANT ... TO anon)
-        # explodes with `role "authenticated" does not exist`. Create them
-        # idempotently before applying any migration so the fresh-DB run
-        # mirrors production. NOLOGIN matches the Supabase convention — these
-        # are JWT-claim aliases, never login users.
+        # fresh cluster has none of them — so every RLS migration since 0155
+        # (CREATE POLICY ... TO authenticated, GRANT ... TO anon) explodes
+        # with `role "authenticated" does not exist`. Create them idempotently
+        # before applying any migration so the fresh-DB run mirrors production.
+        # NOLOGIN matches the Supabase convention — these are JWT-claim
+        # aliases, never login users.
         env:
           PGPASSWORD: bossnyumba
         run: |
@@ -134,10 +135,13 @@ jobs:
         # `psql -v ON_ERROR_STOP=1`. The script writes a markdown report
         # to .audit/migration-apply.md that captures the first ERROR
         # line per failed file for fast triage.
+        env:
+          PGPASSWORD: bossnyumba
         run: |
           node scripts/migration-apply-check.mjs \
             --migrations-dir="${MIGRATIONS_DIR}" \
             --db-url="${DATABASE_URL}" \
+            --enable-vector=true \
             --report=.audit/migration-apply.md
 
       - name: Smoke query — verify public schema landed
@@ -146,7 +150,7 @@ jobs:
         # apply silently no-op'd and we should hard-fail.
         run: |
           set -e
-          ROWS=$(PGPASSWORD=bossnyumba psql -h localhost -U bossnyumba -d bossnyumba_migration_check -tA \
+          ROWS=$(PGPASSWORD=bossnyumba psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_migration_check -tA \
             -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' LIMIT 5")
           if [ -z "$ROWS" ]; then
             echo "::error::Smoke query returned zero rows — public schema did not materialize"
@@ -180,7 +184,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
       - name: Run migration safety lint
         env:
           # On PRs, scope to files changed vs the PR base; on push to

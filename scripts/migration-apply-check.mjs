@@ -192,6 +192,40 @@ function maybeEnableVector(dbUrl) {
   return result.status === 0;
 }
 
+function bootstrapDrizzleLedger(dbUrl) {
+  // Faithfully mirror the production runner's pre-apply bootstrap in
+  // packages/database/src/run-migrations.ts (~L270-277). The runner
+  // ALWAYS creates schema "drizzle" + table "drizzle.__drizzle_migrations"
+  // BEFORE applying any migration, so the preempt migrations
+  // (0159b / 0164c9 / 0186b / 0210b / 0226b) can INSERT their hash
+  // into that ledger. Without this bootstrap the apply-check is
+  // unfaithful: those migrations fail with
+  //   relation "drizzle.__drizzle_migrations" does not exist
+  // even though they apply cleanly under the real runner.
+  //
+  // The column shape (id / hash / created_at) is copied EXACTLY from
+  // the runner; do not drift it. ON_ERROR_STOP=1 so a bootstrap
+  // failure surfaces loudly rather than masking later ledger errors.
+  const bootstrapSql = [
+    'CREATE SCHEMA IF NOT EXISTS drizzle;',
+    'CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (',
+    '  id SERIAL PRIMARY KEY,',
+    '  hash TEXT NOT NULL,',
+    '  created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT',
+    ');',
+  ].join('\n');
+  const result = spawnSync(
+    'psql',
+    [dbUrl, '-v', 'ON_ERROR_STOP=1', '-X', '-q', '-c', bootstrapSql],
+    { encoding: 'utf8' },
+  );
+  if (result.status !== 0) {
+    throw new Error(
+      `drizzle ledger bootstrap failed (CREATE SCHEMA / __drizzle_migrations): ${result.stderr || result.error}`,
+    );
+  }
+}
+
 function renderMarkdown(results) {
   const total = results.length;
   const passed = results.filter((r) => r.passed);
@@ -283,6 +317,14 @@ async function main() {
       // eslint-disable-next-line no-console
       console.log(`  pgvector available: ${ok}`);
     }
+
+    // Mirror the production runner: create the drizzle schema + ledger
+    // table BEFORE applying any migration, so the preempt migrations can
+    // INSERT into drizzle.__drizzle_migrations (see run-migrations.ts
+    // ~L270-277). This does not change apply order or which dirs apply.
+    // eslint-disable-next-line no-console
+    console.log('Bootstrapping drizzle.__drizzle_migrations ledger (mirrors run-migrations.ts)...');
+    bootstrapDrizzleLedger(args.dbUrl);
 
     const files = findMigrationFiles(args.migrationsDir);
     // eslint-disable-next-line no-console
