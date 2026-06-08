@@ -9,6 +9,8 @@ import { managerApi } from '../../src/api/client'
 import { ApiError } from '../../src/api/errors'
 import { useOnlineStatus } from '../../src/offline/useOnlineStatus'
 import { useAuth } from '../../src/auth/useAuth'
+import { useI18n } from '../../src/i18n/useI18n'
+import type { Lang } from '../../src/auth/types'
 import { enqueueWrite } from '../../src/sync/queue'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
@@ -18,15 +20,75 @@ const SCREEN_ID = 'W-M-12'
 // roster (GET /attendance) is NOT implemented, so history stays env-missing.
 const MISSING_HISTORY_ENDPOINT = 'GET /api/v1/field/staff (attendance history)'
 
-const COPY = {
-  loading: 'Inatuma... · Submitting...',
-  emptyHistory: 'Historia ya zamu haitaonyeshwa hadi endpoint ya orodha iundwe.',
-  errorPrefix: 'Hitilafu: ',
-  missing: `Endpoint haijaundwa: ${MISSING_HISTORY_ENDPOINT}`,
-  inOk: 'Umeingia kazini kwenye seva.',
-  outOk: 'Umetoka kazini kwenye seva.',
-  queued: 'Imehifadhiwa offline kwa sync.'
-} as const
+// Locale-keyed copy. Resolved from the signed-in user via `useI18n` →
+// `useAuth` so the screen renders strictly single-language per the active
+// toggle — no EN/SW mixing.
+type Copy = {
+  readonly loading: string
+  readonly emptyHistory: string
+  readonly errorPrefix: string
+  readonly missing: string
+  readonly inOk: string
+  readonly outOk: string
+  readonly queued: string
+  readonly shiftStatus: string
+  readonly summary: string
+  readonly history: string
+  readonly start: string
+  readonly startHint: string
+  readonly stop: string
+  readonly stopHint: string
+  readonly today: string
+  readonly thisWeek: string
+  readonly hrs: string
+  readonly inProgress: string
+  readonly serverSuffix: string
+}
+
+const STRINGS: Record<Lang, Copy> = {
+  en: {
+    loading: 'Submitting…',
+    emptyHistory: 'Shift history will not show until the list endpoint is built.',
+    errorPrefix: 'Error: ',
+    missing: `Endpoint not built: ${MISSING_HISTORY_ENDPOINT}`,
+    inOk: 'You are clocked in on the server.',
+    outOk: 'You are clocked out on the server.',
+    queued: 'Saved offline for sync.',
+    shiftStatus: 'Shift status',
+    summary: 'Summary',
+    history: 'Shift history',
+    start: 'Start shift',
+    startHint: 'Tap to start your shift',
+    stop: 'End shift',
+    stopHint: 'Tap to end your shift',
+    today: 'Today',
+    thisWeek: 'This week',
+    hrs: 'hrs',
+    inProgress: 'in progress',
+    serverSuffix: '(server)',
+  },
+  sw: {
+    loading: 'Inatuma…',
+    emptyHistory: 'Historia ya zamu haitaonyeshwa hadi endpoint ya orodha iundwe.',
+    errorPrefix: 'Hitilafu: ',
+    missing: `Endpoint haijaundwa: ${MISSING_HISTORY_ENDPOINT}`,
+    inOk: 'Umeingia kazini kwenye seva.',
+    outOk: 'Umetoka kazini kwenye seva.',
+    queued: 'Imehifadhiwa offline kwa sync.',
+    shiftStatus: 'Hali ya zamu',
+    summary: 'Muhtasari',
+    history: 'Kumbukumbu ya zamu',
+    start: 'Anza Saa',
+    startHint: 'Bonyeza ili kuanza zamu',
+    stop: 'Mwisho Saa',
+    stopHint: 'Bonyeza ili kumaliza zamu',
+    today: 'Leo',
+    thisWeek: 'Wiki hii',
+    hrs: 'saa',
+    inProgress: 'inaendelea',
+    serverSuffix: '(seva)',
+  },
+}
 
 interface AttendanceRow {
   readonly id: string
@@ -76,6 +138,8 @@ export default function Screen(): JSX.Element {
 
 function HoursLog(): JSX.Element {
   const { user } = useAuth()
+  const { lang } = useI18n()
+  const copy = STRINGS[lang]
   const { online } = useOnlineStatus()
   const [segments, setSegments] = useState<ReadonlyArray<LocalSegment>>([])
   const [openSegmentId, setOpenSegmentId] = useState<string | null>(null)
@@ -199,63 +263,63 @@ function HoursLog(): JSX.Element {
 
   return (
     <View>
-      <Section title="Hali ya zamu">
+      <Section title={copy.shiftStatus}>
         {submitting ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={colors.gold} />
-            <Text style={styles.muted}>{COPY.loading}</Text>
+            <Text style={styles.muted}>{copy.loading}</Text>
           </View>
         ) : clockedIn ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Mwisho Saa"
+            accessibilityLabel={copy.stop}
             onPress={clockOut}
             style={({ pressed }) => [styles.bigButton, styles.stop, pressed && styles.pressed]}
           >
-            <Text style={styles.bigButtonLabel}>Mwisho Saa</Text>
-            <Text style={styles.bigButtonHint}>Bonyeza ili kumaliza zamu</Text>
+            <Text style={styles.bigButtonLabel}>{copy.stop}</Text>
+            <Text style={styles.bigButtonHint}>{copy.stopHint}</Text>
           </Pressable>
         ) : (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Anza Saa"
+            accessibilityLabel={copy.start}
             onPress={clockIn}
             style={({ pressed }) => [styles.bigButton, styles.start, pressed && styles.pressed]}
           >
-            <Text style={styles.bigButtonLabelDark}>Anza Saa</Text>
-            <Text style={styles.bigButtonHintDark}>Bonyeza ili kuanza zamu</Text>
+            <Text style={styles.bigButtonLabelDark}>{copy.start}</Text>
+            <Text style={styles.bigButtonHintDark}>{copy.startHint}</Text>
           </Pressable>
         )}
         {!online ? <PreviewBanner kind="offline" /> : null}
-        {notice === 'in-ok' ? <Text style={styles.successText}>{COPY.inOk}</Text> : null}
-        {notice === 'out-ok' ? <Text style={styles.successText}>{COPY.outOk}</Text> : null}
-        {notice === 'queued' ? <Text style={styles.warnText}>{COPY.queued}</Text> : null}
+        {notice === 'in-ok' ? <Text style={styles.successText}>{copy.inOk}</Text> : null}
+        {notice === 'out-ok' ? <Text style={styles.successText}>{copy.outOk}</Text> : null}
+        {notice === 'queued' ? <Text style={styles.warnText}>{copy.queued}</Text> : null}
         {submitError && !networkError ? (
-          <Text style={styles.errorText}>{COPY.errorPrefix}{submitError.message}</Text>
+          <Text style={styles.errorText}>{copy.errorPrefix}{submitError.message}</Text>
         ) : null}
       </Section>
-      <Section title="Muhtasari">
+      <Section title={copy.summary}>
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Leo</Text>
-            <Text style={styles.summaryValue}>{todayHours.toFixed(1)} hrs</Text>
+            <Text style={styles.summaryLabel}>{copy.today}</Text>
+            <Text style={styles.summaryValue}>{todayHours.toFixed(1)} {copy.hrs}</Text>
           </View>
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Wiki hii</Text>
-            <Text style={styles.summaryValue}>{weekHours.toFixed(1)} hrs</Text>
+            <Text style={styles.summaryLabel}>{copy.thisWeek}</Text>
+            <Text style={styles.summaryValue}>{weekHours.toFixed(1)} {copy.hrs}</Text>
           </View>
         </View>
       </Section>
-      <Section title="Kumbukumbu ya zamu">
+      <Section title={copy.history}>
         <PreviewBanner kind="env-missing" />
-        <Text style={styles.missing}>{COPY.missing}</Text>
+        <Text style={styles.missing}>{copy.missing}</Text>
         {segments.length === 0 ? (
-          <Text style={styles.muted}>{COPY.emptyHistory}</Text>
+          <Text style={styles.muted}>{copy.emptyHistory}</Text>
         ) : (
           segments.map((segment) => (
             <View key={segment.id} style={styles.segment}>
-              <Text style={styles.segmentPrimary}>{formatRange(segment)}</Text>
-              <Text style={styles.segmentSecondary}>{describeDuration(segment)}</Text>
+              <Text style={styles.segmentPrimary}>{formatRange(segment, copy.inProgress)}</Text>
+              <Text style={styles.segmentSecondary}>{describeDuration(segment, copy)}</Text>
             </View>
           ))
         )}
@@ -293,21 +357,23 @@ function sumHours(
     }, 0)
 }
 
-function formatRange(segment: LocalSegment): string {
+function formatRange(segment: LocalSegment, inProgressLabel: string): string {
   const start = new Date(segment.startedAtISO)
   const end = segment.endedAtISO ? new Date(segment.endedAtISO) : null
-  return `${formatTime(start)} – ${end ? formatTime(end) : 'inaendelea'}`
+  return `${formatTime(start)} – ${end ? formatTime(end) : inProgressLabel}`
 }
 
 function formatTime(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
-function describeDuration(segment: LocalSegment): string {
-  if (segment.hoursWorked) return `${Number(segment.hoursWorked).toFixed(1)} hrs (seva)`
+function describeDuration(segment: LocalSegment, copy: Copy): string {
+  if (segment.hoursWorked) {
+    return `${Number(segment.hoursWorked).toFixed(1)} ${copy.hrs} ${copy.serverSuffix}`
+  }
   const end = segment.endedAtISO ? new Date(segment.endedAtISO).getTime() : Date.now()
   const hours = (end - new Date(segment.startedAtISO).getTime()) / (60 * 60 * 1000)
-  return `${hours.toFixed(1)} hrs`
+  return `${hours.toFixed(1)} ${copy.hrs}`
 }
 
 const styles = StyleSheet.create({

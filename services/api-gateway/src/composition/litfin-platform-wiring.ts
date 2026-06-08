@@ -14,9 +14,13 @@
  *
  *   - `@bossnyumba/document-ai`: 5 OCR adapters + chat-with-doc +
  *     form extraction + multilingual + e-signature + accessibility.
- *     Pre-wired via `createDocumentAI()` (mock OCR + mock e-sig as
- *     ports-default). Production swap: pass Anthropic / DocuSign
- *     ports via `createDocumentAI({ brain, eSignature, ocr })`.
+ *     Pre-wired via `createDocumentAI({ ocr, brain })` with env-gated
+ *     real ports: Anthropic Vision OCR when `OCR_PROVIDER` +
+ *     `ANTHROPIC_API_KEY` are set, a real Claude brain when
+ *     `ANTHROPIC_API_KEY` is set, and a deterministic empty-fixture mock
+ *     OCR otherwise (never fixture ID data). E-sig stays the mock port.
+ *     Per-tenant swap: pass concrete ports via
+ *     `createLitfinPlatformBundle({ documentAi: { brain, ocr, embedder } })`.
  *
  *   - `@bossnyumba/progressive-intelligence`: entity resolution +
  *     active learning + live coaching + streaming + profile
@@ -50,7 +54,16 @@ import {
   type SecurityHardening,
   type SecurityHeaderEnv,
 } from '@bossnyumba/security-hardening';
-import { createDocumentAI, type DocumentAI } from '@bossnyumba/document-ai';
+import {
+  createDocumentAI,
+  createAnthropicVisionAdapter,
+  createMockOCRAdapter,
+  type DocumentAI,
+  type BrainPort,
+  type EmbedderPort,
+  type OCRPort,
+} from '@bossnyumba/document-ai';
+import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import {
   createProgressiveIntelligence,
   createDeterministicMockEmbedder,
@@ -61,6 +74,7 @@ import {
   type AuditChainStore,
 } from '@bossnyumba/document-quality-guarantor';
 import { createAudioCapture, type AudioCapture } from '@bossnyumba/audio-capture';
+import { logger } from '../utils/logger.js';
 
 export interface LitfinPlatformBundle {
   /** WebAuthn + TOTP + headers + rate-limit + anomaly namespace. */
@@ -84,8 +98,10 @@ export interface LitfinPlatformBundle {
    */
   readonly securityHardeningInstance: SecurityHardening;
 
-  /** Pre-wired Document AI facade with mock OCR + mock e-sig. Swap
-   *  by passing concrete ports at composition time. */
+  /** Pre-wired Document AI facade with env-gated real OCR + brain ports
+   *  (Anthropic when keyed, empty-fixture mock OCR otherwise) + mock
+   *  e-sig. Swap per-tenant ports at composition time via the
+   *  `LitfinPlatformBundleConfig.documentAi` overrides. */
   readonly documentAIInstance: DocumentAI;
 
   /** Pre-wired Progressive Intelligence facade with deterministic
@@ -119,11 +135,124 @@ function resolveSecurityHeadersEnv(): SecurityHeaderEnv {
 }
 
 /**
+ * Resolve the Document-AI OCR port from env at composition time.
+ *
+ * Module-G fix: `createDocumentAI()` previously defaulted to an empty-
+ * fixture mock OCR, so every document-intelligence call silently
+ * produced blank text. We now gate the OCR provider on `OCR_PROVIDER`:
+ *
+ *   - `OCR_PROVIDER=anthropic_vision` (or `anthropic` / `claude`) with
+ *     `ANTHROPIC_API_KEY` present wires the real Claude Vision adapter
+ *     (strong on Swahili / French scans + handwriting). The model id is
+ *     resolved via the dynamic registry — never a pinned literal.
+ *   - Anything else (or a missing key) returns the deterministic mock —
+ *     never fixture ID data, just an empty parse — with a single warn so
+ *     the gap is observable instead of silent.
+ *
+ * Reads `process.env` here because this IS the bundle's composition
+ * root (same posture as `resolveSecurityHeadersEnv` above and the sibling
+ * brain wirings); no `process.env` access leaks into request paths.
+ */
+function resolveDocumentAiOcrPort(): OCRPort {
+  const provider = (process.env.OCR_PROVIDER ?? '').trim().toLowerCase();
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  const wantsVision =
+    provider === 'anthropic_vision' ||
+    provider === 'anthropic' ||
+    provider === 'claude' ||
+    provider === 'vision';
+
+  if (wantsVision && apiKey) {
+    return createAnthropicVisionAdapter({
+      apiKey,
+      model: getModelLatest('opus'),
+    });
+  }
+
+  if (wantsVision && !apiKey) {
+    logger.warn(
+      'OCR_PROVIDER requested Anthropic Vision but ANTHROPIC_API_KEY is unset — ' +
+        'falling back to empty-fixture mock OCR (no real text extraction).'
+    );
+  }
+  return createMockOCRAdapter({ fixture: { pages: [] } });
+}
+
+/**
+ * Resolve a Document-AI `BrainPort` from env at composition time. When
+ * `ANTHROPIC_API_KEY` is present we wire a thin Claude completion adapter
+ * (same fetch posture as `executive-brief.composition.ts`); otherwise we
+ * return `undefined` so form-extraction + chat-with-doc degrade cleanly
+ * rather than calling a fake brain. The real per-tenant budget-guarded
+ * brain can be injected via `createLitfinPlatformBundle({ brain })`.
+ */
+function resolveDocumentAiBrainPort(): BrainPort | undefined {
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) return undefined;
+  return {
+    async complete(prompt, options) {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: getModelLatest('opus'),
+          max_tokens: options?.maxTokens ?? 2048,
+          temperature: options?.temperature ?? 0,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      if (!resp.ok) {
+        throw new Error(`document-ai brain HTTP ${resp.status}`);
+      }
+      const json = (await resp.json()) as {
+        readonly content?: ReadonlyArray<{ readonly text?: string }>;
+        readonly usage?: { readonly input_tokens?: number; readonly output_tokens?: number };
+      };
+      const text = (json.content ?? [])
+        .map((part) => part.text ?? '')
+        .join('');
+      const tokensUsed =
+        (json.usage?.input_tokens ?? 0) + (json.usage?.output_tokens ?? 0);
+      return { text, tokensUsed };
+    },
+  };
+}
+
+/**
+ * Optional injectable overrides for the Document-AI facade. Lets a
+ * per-tenant / budget-guarded brain, a concrete embedder, an e-signature
+ * provider, or an OCR port be threaded in from a richer composition root.
+ * Every field is optional — when omitted the bundle env-gates a sensible
+ * default (real Anthropic OCR/brain when keyed, mock otherwise) so the
+ * gateway still boots without external creds.
+ */
+export interface LitfinPlatformBundleConfig {
+  readonly documentAi?: {
+    readonly ocr?: OCRPort;
+    readonly brain?: BrainPort;
+    readonly embedder?: EmbedderPort;
+  };
+}
+
+/**
  * Build the LITFIN platform bundle. Always non-null in both degraded
  * and live modes; all 5 facades have safe in-memory / mock-port
  * defaults so the gateway boots without external creds.
+ *
+ * Module-G fix: the Document-AI facade is no longer `createDocumentAI()`
+ * with zero args (which silently defaulted to empty-fixture mock OCR and
+ * no brain). It now receives env-gated real adapters — a real OCR port
+ * (Anthropic Vision when `OCR_PROVIDER` + `ANTHROPIC_API_KEY` are set)
+ * and a real brain port (when `ANTHROPIC_API_KEY` is set) — with explicit
+ * injectable overrides via `config.documentAi` for per-tenant wiring.
  */
-export function createLitfinPlatformBundle(): LitfinPlatformBundle {
+export function createLitfinPlatformBundle(
+  config: LitfinPlatformBundleConfig = {}
+): LitfinPlatformBundle {
   return Object.freeze({
     securityHardening: SecurityHardeningNs,
     documentAI: DocumentAINs,
@@ -133,7 +262,11 @@ export function createLitfinPlatformBundle(): LitfinPlatformBundle {
     securityHardeningInstance: createSecurityHardening({
       headersEnv: resolveSecurityHeadersEnv(),
     }),
-    documentAIInstance: createDocumentAI(),
+    documentAIInstance: createDocumentAI({
+      ocr: config.documentAi?.ocr ?? resolveDocumentAiOcrPort(),
+      brain: config.documentAi?.brain ?? resolveDocumentAiBrainPort(),
+      embedder: config.documentAi?.embedder,
+    }),
     progressiveIntelligenceInstance: createProgressiveIntelligence({
       embedder: createDeterministicMockEmbedder(),
     }),

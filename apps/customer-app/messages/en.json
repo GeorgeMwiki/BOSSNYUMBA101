@@ -551,6 +551,22 @@
     "retry": "Retry",
     "untitled": "Conversation"
   },
+  "messageThread": {
+    "loading": "Loading conversation…",
+    "errorLoad": "Failed to load this conversation.",
+    "notFound": "Conversation not found.",
+    "empty": "No messages in this conversation yet.",
+    "retry": "Retry",
+    "back": "Back to messages",
+    "composerPlaceholder": "Write a message…",
+    "send": "Send",
+    "sending": "Sending…",
+    "sendUnavailable": "Sending messages isn't available yet. You can still read this conversation.",
+    "sendFailed": "Couldn't send your message. Please try again.",
+    "you": "You",
+    "manager": "Property manager",
+    "system": "System"
+  },
   "feedbackPage": {
     "title": "Submit Feedback",
     "typeSuggestion": "Suggestion",

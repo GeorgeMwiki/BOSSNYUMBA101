@@ -551,6 +551,22 @@
     "retry": "Jaribu tena",
     "untitled": "Mazungumzo"
   },
+  "messageThread": {
+    "loading": "Inapakia mazungumzo…",
+    "errorLoad": "Imeshindwa kupakia mazungumzo haya.",
+    "notFound": "Mazungumzo hayajapatikana.",
+    "empty": "Bado hakuna ujumbe katika mazungumzo haya.",
+    "retry": "Jaribu tena",
+    "back": "Rudi kwenye ujumbe",
+    "composerPlaceholder": "Andika ujumbe…",
+    "send": "Tuma",
+    "sending": "Inatuma…",
+    "sendUnavailable": "Kutuma ujumbe bado hakupatikani. Bado unaweza kusoma mazungumzo haya.",
+    "sendFailed": "Imeshindwa kutuma ujumbe wako. Tafadhali jaribu tena.",
+    "you": "Wewe",
+    "manager": "Msimamizi wa nyumba",
+    "system": "Mfumo"
+  },
   "feedbackPage": {
     "title": "Wasilisha Maoni",
     "typeSuggestion": "Pendekezo",

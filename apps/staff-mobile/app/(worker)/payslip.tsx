@@ -2,7 +2,9 @@
  * Worker payslip screen — payroll chain L-B (issue #193).
  *
  * Shows the worker's most recent payroll line item: hours, base,
- * overtime, bonus, deduction, net. Bilingual sw/en (default sw).
+ * overtime, bonus, deduction, net. Locale resolves from the signed-in
+ * user (`useI18n` → `useAuth`) so the screen renders strictly single-
+ * language per the active toggle — no hardcoded `lang`, no EN/SW mixing.
  * Backend: GET /api/v1/owner/payroll/runs/:id (worker reads their own
  * line item from the response).
  */
@@ -12,53 +14,86 @@ import { StyleSheet, Text, View } from 'react-native'
 import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
+import { useI18n } from '../../src/i18n/useI18n'
+import type { Lang } from '../../src/auth/types'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
 const SCREEN_ID = 'W-PAY'
 
+const PLACEHOLDER = '—'
+
 interface PayslipLine {
+  readonly key: string
   readonly label: string
-  readonly value: string
+}
+
+type Copy = {
+  readonly title: string
+  readonly subtitle: string
+  readonly breakdown: string
+  readonly net: string
+  readonly lines: ReadonlyArray<PayslipLine>
+}
+
+const STRINGS: Record<Lang, Copy> = {
+  en: {
+    title: 'Your payslip',
+    subtitle: 'Latest period. Funds disburse via M-Pesa B2C once the owner commits.',
+    breakdown: 'Breakdown',
+    net: 'You will receive',
+    lines: [
+      { key: 'hours', label: 'Hours worked' },
+      { key: 'overtimeHours', label: 'Overtime hours' },
+      { key: 'base', label: 'Base' },
+      { key: 'overtime', label: 'Overtime' },
+      { key: 'bonus', label: 'Bonus' },
+      { key: 'deduction', label: 'Deduction' },
+    ],
+  },
+  sw: {
+    title: 'Payslip yako',
+    subtitle: 'Kipindi cha hivi karibuni. Pesa hutumwa kwa M-Pesa.',
+    breakdown: 'Maelezo',
+    net: 'Jumla utakayopokea',
+    lines: [
+      { key: 'hours', label: 'Masaa ya kazi' },
+      { key: 'overtimeHours', label: 'Masaa ya ziada' },
+      { key: 'base', label: 'Mshahara wa msingi' },
+      { key: 'overtime', label: 'Mshahara wa ziada' },
+      { key: 'bonus', label: 'Bonasi' },
+      { key: 'deduction', label: 'Makato' },
+    ],
+  },
 }
 
 export default function PayslipScreen(): JSX.Element {
   return (
     <RoleGuard screenId={SCREEN_ID}>
       <ScreenShell screenId={SCREEN_ID}>
-        <PayslipView lang="sw" />
+        <PayslipView />
       </ScreenShell>
     </RoleGuard>
   )
 }
 
-function PayslipView({ lang }: { lang: 'sw' | 'en' }): JSX.Element {
-  const isSw = lang === 'sw'
-  const lines = useMemo<PayslipLine[]>(
-    () => [
-      { label: isSw ? 'Masaa ya kazi' : 'Hours worked', value: '—' },
-      { label: isSw ? 'Masaa ya ziada' : 'Overtime hours', value: '—' },
-      { label: isSw ? 'Mshahara wa msingi' : 'Base', value: '— TZS' },
-      { label: isSw ? 'Mshahara wa ziada' : 'Overtime', value: '— TZS' },
-      { label: isSw ? 'Bonasi' : 'Bonus', value: '— TZS' },
-      { label: isSw ? 'Makato' : 'Deduction', value: '— TZS' },
-    ],
-    [isSw],
+function PayslipView(): JSX.Element {
+  const { lang } = useI18n()
+  const copy = STRINGS[lang]
+  const rows = useMemo(
+    () => copy.lines.map((line) => ({ ...line, value: PLACEHOLDER })),
+    [copy.lines],
   )
 
   return (
     <View style={styles.root}>
-      <Text style={styles.title}>{isSw ? 'Payslip yako' : 'Your payslip'}</Text>
-      <Text style={styles.subtitle}>
-        {isSw
-          ? 'Kipindi cha hivi karibuni. Pesa hutumwa kwa M-Pesa.'
-          : 'Latest period. Funds disburse via M-Pesa B2C once the owner commits.'}
-      </Text>
+      <Text style={styles.title}>{copy.title}</Text>
+      <Text style={styles.subtitle}>{copy.subtitle}</Text>
 
-      <Section title={isSw ? 'Maelezo' : 'Breakdown'}>
+      <Section title={copy.breakdown}>
         <View style={styles.table}>
-          {lines.map((line) => (
-            <View key={line.label} style={styles.row}>
+          {rows.map((line) => (
+            <View key={line.key} style={styles.row}>
               <Text style={styles.label}>{line.label}</Text>
               <Text style={styles.value}>{line.value}</Text>
             </View>
@@ -67,10 +102,8 @@ function PayslipView({ lang }: { lang: 'sw' | 'en' }): JSX.Element {
       </Section>
 
       <View style={styles.netCard}>
-        <Text style={styles.netLabel}>
-          {isSw ? 'Jumla utakayopokea' : 'You will receive'}
-        </Text>
-        <Text style={styles.netValue}>— TZS</Text>
+        <Text style={styles.netLabel}>{copy.net}</Text>
+        <Text style={styles.netValue}>{PLACEHOLDER}</Text>
       </View>
     </View>
   )

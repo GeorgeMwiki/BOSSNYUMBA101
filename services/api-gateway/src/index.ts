@@ -68,6 +68,13 @@ import { feedbackRouter } from './routes/feedback';
 import { complaintsRouter } from './routes/complaints';
 import { inspectionsRouter } from './routes/inspections';
 import { documentsHonoRouter } from './routes/documents.hono';
+// Module G — document-intelligence service routes (OCR verify, evidence
+// packs, identity badges, fraud, expiry, progress). Previously dead code:
+// `documentIntelligenceRoutes` was never mounted. Mounted additively under
+// `/document-intelligence` so it does NOT collide with the `/documents`
+// CRUD router above (the doc-intel app self-prefixes `/documents/upload`,
+// `/evidence-packs`, `/identity`, `/fraud`, `/expiry`, `/progress`).
+import { documentIntelligenceRoutes } from '@bossnyumba/document-intelligence';
 // Piece C — MD Executive Brief routes (briefs + briefing subscriptions).
 import {
   executiveBriefRouter,
@@ -438,6 +445,7 @@ import { analyticsUsageRouter } from './routes/owner/analytics-usage.hono';
 import { billingRouter } from './routes/owner/billing.hono';
 import { ownerMessagingRouter } from './routes/owner/owner-messaging.hono';
 import { ownerPinnedItemsRouter } from './routes/owner/pinned-items.hono';
+import { ownerPlanRouter } from './routes/owner/plan.hono';
 import { savedSearchesRouter } from './routes/owner/saved-searches.hono';
 import {
   ownerShareLinksRouter,
@@ -1119,6 +1127,10 @@ api.route('/feedback', feedbackRouter);
 api.route('/complaints', complaintsRouter);
 api.route('/inspections', inspectionsRouter);
 api.route('/documents', documentsHonoRouter);
+// Module G — mount the document-intelligence service routes additively.
+// Distinct prefix from `/documents` (the CRUD router above) because the
+// doc-intel app already namespaces its own roots internally.
+api.route('/document-intelligence', documentIntelligenceRoutes);
 // Wave launch-green C10 — Company Brain corpus upload (5-stage ingestion).
 // POST /api/v1/corpus/upload
 api.route('/corpus/upload', corpusUploadRouter);
@@ -1523,6 +1535,9 @@ api.route('/owner/messaging', ownerMessagingRouter);
 // owner-defined saved-search alerts (Roadmap R2). Both tenant-scoped
 // via JWT + RLS FORCE (migrations 0293-0294).
 api.route('/owner/pinned-items', ownerPinnedItemsRouter);
+// MDR plan tree (Phase E.7, schema mdr-plan.schema.ts + migration 0161).
+// Tenant-scoped via JWT + RLS FORCE. Backs apps/owner-portal /plan page.
+api.route('/owner/plan', ownerPlanRouter);
 api.route('/owner/saved-searches', savedSearchesRouter);
 // Wave SUPERPOWERS — chat-as-OS backend (migration 0297). Owner-side
 // share-link CRUD (auth + RLS); the public token resolver is mounted

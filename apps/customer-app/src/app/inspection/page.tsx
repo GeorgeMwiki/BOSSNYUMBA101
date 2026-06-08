@@ -171,11 +171,18 @@ async function submitInspection(
       }),
     });
 
-    if (response.status === 404) {
-      // Endpoint not deployed; surface gracefully.
-      throw new Error(
-        'Inspection submission is not yet available on this server.'
-      );
+    // Best-effort submission: the move-in self-checklist must never trap the
+    // tenant on a gateway-side gap. The server records a real inspection row
+    // when it can resolve the tenant's property (201); when it can't — no
+    // property context (422 PROPERTY_REQUIRED), the endpoint isn't deployed
+    // (404), or the write path is stubbed (501) — we let local progression
+    // continue instead of blocking. Genuine 5xx faults still surface.
+    if (
+      response.status === 404 ||
+      response.status === 422 ||
+      response.status === 501
+    ) {
+      return;
     }
     if (!response.ok) {
       const message =

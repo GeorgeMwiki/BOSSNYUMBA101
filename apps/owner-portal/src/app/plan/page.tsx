@@ -3,6 +3,7 @@ import { useTranslations } from 'next-intl';
 import { Calendar, Plus, MessageSquare, CheckCircle2, XCircle } from 'lucide-react';
 import { PlanTree, type PlanItem, type PlanTreeAction, type MdrPlanHorizon } from '../../components/PlanTree';
 import { MissingBackendNotice } from '../../components/MissingBackendNotice';
+import { api } from '../../lib/api';
 
 /**
  * /plan — MDR plan tree page.
@@ -12,73 +13,39 @@ import { MissingBackendNotice } from '../../components/MissingBackendNotice';
  * items. "Propose new item" opens the Jarvis console with the prompt
  * pre-filled. Bulk accept/reject for the proposed inbox is one click.
  *
- * Until the brain wires the `/api/v1/owner/plan/items` endpoint we show
- * a small sample tree so the route renders end-to-end. When the gateway
- * returns 503 (live-data-required), we surface `MissingBackendNotice`.
+ * Backed by `/api/v1/owner/plan/*` (plan.hono.ts). The base URL +
+ * `/api/v1` prefix + bearer are handled by `lib/api` (VITE_API_URL).
+ * Every action POSTs/PATCHes to the gateway and reconciles the tree from
+ * the returned row — there is no sample fallback. When the gateway is
+ * unreachable / unconfigured (503) we surface `MissingBackendNotice`.
  */
 
-const ENDPOINT = '/api/v1/owner/plan/items';
+const LIST_ENDPOINT = '/owner/plan/items';
+const PUBLIC_ENDPOINT = '/api/v1/owner/plan/items';
 
-const SAMPLE_PLAN: ReadonlyArray<PlanItem> = [
-  {
-    id: 'a1',
-    parentId: null,
-    horizon: 'annual',
-    title: '2026 portfolio NOI target +12%',
-    description: 'Lift portfolio net operating income vs. 2025 baseline.',
-    status: 'active',
-    proposedBy: 'md',
-    startDate: '2026-01-01',
-    dueDate: '2026-12-31',
-  },
-  {
-    id: 'q1',
-    parentId: 'a1',
-    horizon: 'quarterly',
-    title: 'Q2 — reduce arrears under-30d by 35%',
-    status: 'active',
-    proposedBy: 'md',
-    dueDate: '2026-06-30',
-  },
-  {
-    id: 'm1',
-    parentId: 'q1',
-    horizon: 'monthly',
-    title: 'May — call top-10 arrears tenants',
-    status: 'proposed',
-    proposedBy: 'md',
-    dueDate: '2026-05-31',
-  },
-  {
-    id: 'w1',
-    parentId: 'm1',
-    horizon: 'weekly',
-    title: 'Week 21 — KRA filing dry-run',
-    status: 'active',
-    proposedBy: 'md',
-    dueDate: '2026-05-24',
-  },
-  {
-    id: 'd1',
-    parentId: 'w1',
-    horizon: 'daily',
-    title: 'Today — review Mwikila digest',
-    status: 'done',
-    proposedBy: 'owner',
-  },
-  {
-    id: 'a2',
-    parentId: null,
-    horizon: 'annual',
-    title: 'Onboard 3 new estates',
-    status: 'proposed',
-    proposedBy: 'md',
-    dueDate: '2026-12-31',
-  },
-];
+const ACTION_PATH: Record<
+  Exclude<PlanTreeAction['kind'], 'propose-child'>,
+  string
+> = {
+  accept: 'accept',
+  reject: 'reject',
+  pause: 'pause',
+  resume: 'resume',
+  complete: 'complete',
+};
+
+interface PlanListResponse {
+  readonly success?: boolean;
+  readonly items?: ReadonlyArray<PlanItem>;
+}
+
+interface PlanItemResponse {
+  readonly success?: boolean;
+  readonly item?: PlanItem;
+}
 
 interface PlanApiState {
-  readonly status: 'loading' | 'ok' | 'missing' | 'fallback';
+  readonly status: 'loading' | 'ok' | 'missing';
   readonly items: ReadonlyArray<PlanItem>;
 }
 
@@ -91,20 +58,12 @@ export default function PlanPage(): JSX.Element {
     let cancelled = false;
     async function load(): Promise<void> {
       try {
-        const res = await fetch(ENDPOINT, { credentials: 'include' });
+        const res = (await api.get<unknown>(LIST_ENDPOINT)) as PlanListResponse;
         if (cancelled) return;
-        if (res.status === 503) {
-          setState({ status: 'missing', items: [] });
-          return;
-        }
-        if (!res.ok) {
-          setState({ status: 'fallback', items: SAMPLE_PLAN });
-          return;
-        }
-        const body = (await res.json()) as { items?: ReadonlyArray<PlanItem> };
-        setState({ status: 'ok', items: body.items ?? [] });
+        setState({ status: 'ok', items: res.items ?? [] });
       } catch {
-        if (!cancelled) setState({ status: 'fallback', items: SAMPLE_PLAN });
+        // Gateway unreachable / 503 / unconfigured — no sample fallback.
+        if (!cancelled) setState({ status: 'missing', items: [] });
       }
     }
     void load();
@@ -118,34 +77,27 @@ export default function PlanPage(): JSX.Element {
     [state.items],
   );
 
-  function dispatchAction(a: PlanTreeAction): void {
-    // Stub: in the live path this POSTs to a per-action endpoint and
-    // optimistically updates the tree. Locally we just log and update.
+  function replaceItem(updated: PlanItem): void {
     setState((prev) => ({
       ...prev,
-      items: prev.items.map((it) => {
-        if (it.id !== a.itemId) return it;
-        switch (a.kind) {
-          case 'accept':
-            return { ...it, status: 'active' as const };
-          case 'reject':
-            return { ...it, status: 'cancelled' as const };
-          case 'pause':
-            return { ...it, status: 'paused' as const };
-          case 'resume':
-            return { ...it, status: 'active' as const };
-          case 'complete':
-            return { ...it, status: 'done' as const };
-          case 'propose-child':
-            return it;
-          default:
-            return it;
-        }
-      }),
+      items: prev.items.map((it) => (it.id === updated.id ? updated : it)),
     }));
+  }
+
+  async function dispatchAction(a: PlanTreeAction): Promise<void> {
     if (a.kind === 'propose-child') {
-      // Forward to Jarvis with a pre-filled prompt.
       openInJarvis(`Propose a sub-item under plan item ${a.itemId}.`);
+      return;
+    }
+    try {
+      const res = (await api.patch<unknown>(
+        `${LIST_ENDPOINT}/${a.itemId}/${ACTION_PATH[a.kind]}`,
+      )) as PlanItemResponse;
+      if (res.item) replaceItem(res.item);
+    } catch (error) {
+      // Surface the failure without mutating local state so the tree
+      // stays consistent with the server.
+      console.error('Plan action failed:', error);
     }
   }
 
@@ -162,21 +114,23 @@ export default function PlanPage(): JSX.Element {
     }
   }
 
-  function bulkAccept(): void {
+  async function bulkAct(kind: 'accept' | 'reject'): Promise<void> {
+    const targets = state.items.filter((i) => i.status === 'proposed');
+    const results = await Promise.allSettled(
+      targets.map((it) =>
+        api.patch<unknown>(`${LIST_ENDPOINT}/${it.id}/${ACTION_PATH[kind]}`),
+      ),
+    );
     setState((prev) => ({
       ...prev,
-      items: prev.items.map((it) =>
-        it.status === 'proposed' ? { ...it, status: 'active' as const } : it,
-      ),
-    }));
-  }
-
-  function bulkReject(): void {
-    setState((prev) => ({
-      ...prev,
-      items: prev.items.map((it) =>
-        it.status === 'proposed' ? { ...it, status: 'cancelled' as const } : it,
-      ),
+      items: prev.items.map((it) => {
+        const idx = targets.findIndex((t2) => t2.id === it.id);
+        if (idx === -1) return it;
+        const settled = results[idx];
+        if (settled.status !== 'fulfilled') return it;
+        const item = (settled.value as PlanItemResponse).item;
+        return item ?? it;
+      }),
     }));
   }
 
@@ -184,8 +138,8 @@ export default function PlanPage(): JSX.Element {
     return (
       <MissingBackendNotice
         title={t('mdrTitle')}
-        endpoint={ENDPOINT}
-        description="The MDR plan endpoint has not been wired in api-gateway yet."
+        endpoint={PUBLIC_ENDPOINT}
+        description="The MDR plan endpoint is unreachable. Confirm the api-gateway is running and VITE_API_URL is configured."
       />
     );
   }
@@ -202,11 +156,6 @@ export default function PlanPage(): JSX.Element {
             Mr. Mwikila's plan for your portfolio. Annual → quarterly → monthly →
             weekly → daily. Accept, edit, or reject any item — the MD adapts.
           </p>
-          {state.status === 'fallback' ? (
-            <p className="mt-1 text-xs text-amber-700">
-              Plan API not yet wired. Showing a sample plan tree.
-            </p>
-          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -241,14 +190,14 @@ export default function PlanPage(): JSX.Element {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={bulkAccept}
+                onClick={() => void bulkAct('accept')}
                 className="inline-flex items-center gap-1 rounded border border-emerald-400 bg-emerald-100 px-2 py-1 text-xs text-emerald-900"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" /> Accept all
               </button>
               <button
                 type="button"
-                onClick={bulkReject}
+                onClick={() => void bulkAct('reject')}
                 className="inline-flex items-center gap-1 rounded border border-red-400 bg-red-100 px-2 py-1 text-xs text-red-900"
               >
                 <XCircle className="h-3.5 w-3.5" /> Reject all
@@ -278,7 +227,11 @@ export default function PlanPage(): JSX.Element {
             ),
           )}
         </div>
-        <PlanTree items={state.items} horizonFilter={horizonFilter} onAction={dispatchAction} />
+        <PlanTree
+          items={state.items}
+          horizonFilter={horizonFilter}
+          onAction={(a) => void dispatchAction(a)}
+        />
       </section>
     </div>
   );
