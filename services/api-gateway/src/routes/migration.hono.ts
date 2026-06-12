@@ -36,7 +36,7 @@ const progressiveAutoGen =
 type Bindings = Record<string, never>;
 type Variables = {
   tenantId: string;
-  actorId: string;
+  userId: string;
 };
 
 export function createMigrationRouter(deps: {
@@ -64,7 +64,7 @@ export function createMigrationRouter(deps: {
   // ----------------------- POST /upload -----------------------
   app.post('/upload', withSecurityEvents({ action: 'migration.create', resource: 'migration', severity: 'info' }, async (c) => {
     const tenantId = c.get('tenantId');
-    const actorId = c.get('actorId');
+    const actorId = c.get('userId'); // principal: the auth chain sets 'userId' (service-context.middleware), never 'actorId'
     if (!tenantId || !actorId) return c.json({ error: 'unauthenticated' }, 401);
 
     const form = await c.req.formData();
@@ -141,7 +141,7 @@ export function createMigrationRouter(deps: {
   // ----------------------- POST /:runId/commit -----------------------
   app.post('/:runId/commit', withSecurityEvents({ action: 'migration.create', resource: 'migration', severity: 'info' }, async (c) => {
     const tenantId = c.get('tenantId');
-    const actorId = c.get('actorId');
+    const actorId = c.get('userId'); // principal: the auth chain sets 'userId' (service-context.middleware), never 'actorId'
     if (!tenantId || !actorId) return c.json({ error: 'unauthenticated' }, 401);
 
     const runId = c.req.param('runId');
@@ -168,7 +168,7 @@ export function createMigrationRouter(deps: {
   // brain.hono.ts). The handler here is a thin proxy.
   app.post('/:runId/ask', withSecurityEvents({ action: 'migration.create', resource: 'migration', severity: 'info' }, async (c) => {
     const tenantId = c.get('tenantId');
-    const actorId = c.get('actorId');
+    const actorId = c.get('userId'); // principal: the auth chain sets 'userId' (service-context.middleware), never 'actorId'
     if (!tenantId || !actorId) return c.json({ error: 'unauthenticated' }, 401);
 
     const runId = c.req.param('runId');

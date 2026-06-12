@@ -36,10 +36,14 @@ jobs:
         run: npm install -g pnpm@10
 
       - name: Install workspace deps
-        run: pnpm install --frozen-lockfile --filter @bossnyumba/probe-runners
+        # Full install (no --filter) so the root node_modules/@bossnyumba/*
+        # workspace symlinks exist for the `node -e import()` resolution below.
+        run: pnpm install --frozen-lockfile
 
-      - name: Build probe-runners
-        run: pnpm --filter @bossnyumba/probe-runners build
+      - name: Build probe-runners + dependency closure
+        # `...` builds probe-runners AND its workspace deps (dist/ must exist
+        # before the runtime import, else ERR_MODULE_NOT_FOUND).
+        run: pnpm --filter "@bossnyumba/probe-runners..." build
 
       - name: Run sycophancy probe
         env:
