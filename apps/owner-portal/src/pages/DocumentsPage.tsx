@@ -22,7 +22,7 @@ import {
   Wallet,
   Scale,
   BarChart3,
-  IdCard,
+  Contact,
   ClipboardList,
   Receipt,
   ScrollText,
@@ -60,7 +60,7 @@ export function DocumentsPage() {
     { id: 'financial', name: t('catFinancial'), icon: Wallet, count: 0, description: t('catFinancialDesc') },
     { id: 'compliance', name: t('catCompliance'), icon: Scale, count: 0, description: t('catComplianceDesc') },
     { id: 'reports', name: t('catReports'), icon: BarChart3, count: 0, description: t('catReportsDesc') },
-    { id: 'identity', name: t('catIdentity'), icon: IdCard, count: 0, description: t('catIdentityDesc') },
+    { id: 'identity', name: t('catIdentity'), icon: Contact, count: 0, description: t('catIdentityDesc') },
     { id: 'other', name: t('catOther'), icon: FolderOpen, count: 0, description: t('catOtherDesc') },
   ];
 
@@ -112,7 +112,7 @@ export function DocumentsPage() {
   const getTypeIcon = (type: string): LucideIcon => {
     switch (type) {
       case 'LEASE': return FileText;
-      case 'ID_DOCUMENT': return IdCard;
+      case 'ID_DOCUMENT': return Contact;
       case 'INSPECTION_REPORT': return ClipboardList;
       case 'RECEIPT': case 'INVOICE': case 'STATEMENT': return Receipt;
       case 'LICENSE': return ScrollText;

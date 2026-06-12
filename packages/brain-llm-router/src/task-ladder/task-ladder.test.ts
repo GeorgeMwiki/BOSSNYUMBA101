@@ -20,8 +20,8 @@ import {
 } from './task-ladder.js';
 
 describe('TASK_LADDER defaults', () => {
-  it('plan ladder leads with Opus', () => {
-    expect(TASK_LADDER.plan[0]).toBe('anthropic/claude-opus-4-7');
+  it('plan ladder leads with Fable (frontier — growth-core apex)', () => {
+    expect(TASK_LADDER.plan[0]).toBe('anthropic/claude-fable-5');
   });
 
   it('tool-use ladder leads with Sonnet (SWE-bench Pareto frontier)', () => {
@@ -48,8 +48,8 @@ describe('TASK_LADDER defaults', () => {
     expect(TASK_LADDER.longdoc[0]).toBe('google/gemini-3-1-pro');
   });
 
-  it('codegen ladder leads with Sonnet 4.6 (SWE-bench 79.6%)', () => {
-    expect(TASK_LADDER.codegen[0]).toBe('anthropic/claude-sonnet-4-6');
+  it('codegen ladder leads with Opus 4.8 (frontier coding apex)', () => {
+    expect(TASK_LADDER.codegen[0]).toBe('anthropic/claude-opus-4-8');
   });
 
   it('every TaskKind has a non-empty ladder', () => {
@@ -67,7 +67,7 @@ describe('TASK_LADDER defaults', () => {
 describe('resolveLadder', () => {
   it('returns default ladder when no override', () => {
     const ladder = resolveLadder('plan', 'tnt_default');
-    expect(ladder[0]).toBe('anthropic/claude-opus-4-7');
+    expect(ladder[0]).toBe('anthropic/claude-fable-5');
   });
 
   it('uses tenant override when present', () => {
@@ -107,7 +107,7 @@ describe('resolveLadder', () => {
 
 describe('selectAtDepth', () => {
   it('returns the model at the requested depth', () => {
-    expect(selectAtDepth('plan', 'tnt_x', 0)).toBe('anthropic/claude-opus-4-7');
+    expect(selectAtDepth('plan', 'tnt_x', 0)).toBe('anthropic/claude-fable-5');
     expect(selectAtDepth('plan', 'tnt_x', 1)).toBe('anthropic/claude-sonnet-4-6@bedrock');
     expect(selectAtDepth('plan', 'tnt_x', 2)).toBe('openai/gpt-5-pro');
   });
