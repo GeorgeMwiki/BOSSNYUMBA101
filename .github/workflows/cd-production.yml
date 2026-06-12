@@ -85,6 +85,34 @@ jobs:
           echo "Deploying version: $VERSION"
 
   # ============================================
+  # Migration drift gate (KI-001 — fail-closed)
+  # ============================================
+  # The ledger can claim a migration applied while its tables are absent
+  # (prior DB surgery / aborted run). verify-migrations.mjs probes every
+  # expected table on the LIVE prod DB and exits non-zero on drift under
+  # NODE_ENV=production, so a drifted schema can never reach `deploy`.
+  # Safe-skips (exit 0) when PRODUCTION_DATABASE_URL is absent.
+  migration-drift:
+    name: Migration Drift Gate (fail-closed)
+    runs-on: ubuntu-latest
+    needs: [guard, validate]
+    if: needs.guard.outputs.should_run == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Verify no ledger drift against production DB
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          NODE_ENV: production
+        run: node scripts/verify-migrations.mjs --migrations-dir=packages/database/src/migrations --report=.audit/migration-drift.md
+
+  # ============================================
   # Build Production Images
   # ============================================
   build-api:
@@ -262,8 +290,10 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [validate, build-api, build-apps, build-services, deploy-infrastructure]
-    if: always() && needs.build-api.result == 'success'
+    needs: [validate, migration-drift, build-api, build-apps, build-services, deploy-infrastructure]
+    # Hard gate: deploy only proceeds when the migration-drift check passed
+    # (or skipped because no prod DB secret) AND the api image built.
+    if: always() && needs.build-api.result == 'success' && needs.migration-drift.result == 'success'
     environment: production
     steps:
       - name: Checkout
