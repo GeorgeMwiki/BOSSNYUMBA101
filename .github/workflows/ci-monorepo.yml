@@ -142,6 +142,9 @@ jobs:
     env:
       NEXT_PUBLIC_APP_URL: https://ci-build.bossnyumba.invalid
       NEXT_PUBLIC_API_URL: https://ci-build.bossnyumba.invalid/api
+      # admin-platform-portal pages fail-loud without these at build time.
+      NEXT_PUBLIC_OWNER_PORTAL_URL: https://ci-build.bossnyumba.invalid
+      NEXT_PUBLIC_MARKETING_SITE_URL: https://ci-build.bossnyumba.invalid
       NEXT_PUBLIC_TENANT_CURRENCY: USD
       NEXT_PUBLIC_TENANT_LOCALE: en
       NEXT_PUBLIC_TENANT_COUNTRY: TZ
