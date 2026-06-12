@@ -47,6 +47,7 @@ import {
   createModuleHandlerRegistry,
   type EstateHandlerDeps,
 } from '@bossnyumba/module-templates';
+import { createDrizzleDispatchStores } from './drizzle-proposal-store.js';
 
 // ─── Public type ──────────────────────────────────────────────────────────
 
@@ -89,14 +90,24 @@ export interface DispatchRouterWiring {
 export interface DispatchRouterWiringDeps {
   /** Estate handler ports. Required since ESTATE is the only live set. */
   readonly estate: EstateHandlerDeps;
+  /**
+   * Live Drizzle DB handle. When present (prod), the four persistence
+   * ports default to the Drizzle-backed stores so captures + proposals
+   * survive a process restart and the HITL proposals route reads the same
+   * rows the dispatcher wrote. When null/undefined (dev / CI) the wiring
+   * falls back to the in-memory stores. Tagged `unknown` to avoid the
+   * database-package namespace-vs-type ambiguity at this boundary — same
+   * convention as `db-client.ts` / `persistent-stores-wiring.ts`.
+   */
+  readonly db?: unknown;
   /** Optional override registry (e.g. for tests). */
   readonly handlerRegistry?: AcceptHandlerRegistry;
   /** Optional override routing-rules loader (Drizzle-backed in prod). */
   readonly routingRules?: RoutingRulesLoader;
   /**
-   * Optional override of the proposal store — Drizzle-backed adapters
-   * inject here. Defaults to the in-memory store so this wiring stays
-   * dependency-light at CI time.
+   * Optional explicit override of individual stores. Takes precedence over
+   * both the Drizzle-from-`db` path and the in-memory defaults — tests
+   * inject fakes here. Defaults are resolved per-port below.
    */
   readonly stores?: {
     readonly captures?: ConversationCaptureStore;
@@ -120,11 +131,35 @@ export interface DispatchRouterWiringDeps {
 export function createDispatchRouterWiring(
   deps: DispatchRouterWiringDeps,
 ): DispatchRouterWiring {
-  // 1. Persistence stores — default in-memory unless caller injects.
-  const captureStore = deps.stores?.captures ?? createInMemoryCaptureStore();
-  const proposalStore = deps.stores?.proposals ?? createInMemoryProposalStore();
-  const eventLog = deps.stores?.events ?? createInMemoryEventLogStore();
-  const auditSink = deps.stores?.auditSink ?? createInMemoryAuditChainSink();
+  // 1. Persistence stores — resolution order per port:
+  //      explicit override (deps.stores) → Drizzle (when deps.db) → memory.
+  // The Drizzle path is the production default: it persists captures +
+  // proposals to Postgres so they survive a restart and the HITL
+  // proposals route reads the same rows. Returns null when db is absent.
+  const drizzleStores = createDrizzleDispatchStores(deps.db);
+  const captureStore =
+    deps.stores?.captures ??
+    drizzleStores?.captures ??
+    createInMemoryCaptureStore();
+  const proposalStore =
+    deps.stores?.proposals ??
+    drizzleStores?.proposals ??
+    createInMemoryProposalStore();
+  const eventLog =
+    deps.stores?.events ??
+    drizzleStores?.events ??
+    createInMemoryEventLogStore();
+  const auditSink =
+    deps.stores?.auditSink ??
+    drizzleStores?.auditSink ??
+    createInMemoryAuditChainSink();
+
+  if (deps.logger?.info) {
+    deps.logger.info(
+      { mode: drizzleStores ? 'drizzle' : 'memory' },
+      'dispatch_router_wiring.store_mode',
+    );
+  }
 
   // 2. Resolver + intent classifier.
   const { store: resolverStore, resolver } = createInMemoryCanonicalResolver();

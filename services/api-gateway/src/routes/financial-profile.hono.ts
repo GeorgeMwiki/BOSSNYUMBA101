@@ -12,6 +12,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
+import { requireService } from '../middleware/require-service.js';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
 const IncomeSourceSchema = z.object({
@@ -108,6 +109,7 @@ financialProfileRouter.get('/', async (c) => {
 
 financialProfileRouter.post(
   '/statements',
+  requireService('financialProfileService'),
   zValidator('json', SubmitStatementSchema),
   withSecurityEvents({ action: 'financial-profile.create', resource: 'financial-profile', severity: 'info' }, async (c) => {
     const body = c.req.valid('json');
@@ -127,6 +129,7 @@ financialProfileRouter.post(
 
 financialProfileRouter.post(
   '/statements/:id/bank-ref',
+  requireService('financialProfileService'),
   zValidator('json', BankReferenceSchema),
   withSecurityEvents({ action: 'financial-profile.create', resource: 'financial-profile', severity: 'info' }, async (c) => {
     const id = c.req.param('id');
@@ -147,6 +150,7 @@ financialProfileRouter.post(
 
 financialProfileRouter.post(
   '/litigation',
+  requireService('financialProfileService'),
   zValidator('json', LitigationSchema),
   withSecurityEvents({ action: 'financial-profile.create', resource: 'financial-profile', severity: 'info' }, async (c) => {
     const body = c.req.valid('json');

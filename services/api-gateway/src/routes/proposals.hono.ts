@@ -351,4 +351,5 @@ app.get('/:id/audit', async (c) => {
   );
 });
 
+export { app as proposalsRouter };
 export default app;

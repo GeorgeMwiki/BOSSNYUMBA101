@@ -9,11 +9,18 @@
  *                                     raw data URL payload in-row via
  *                                     storageKey placeholder when no
  *                                     object-storage backend is wired)
- *   POST /bundles/:id/ocr           — queue OCR across pages. When the OCR
- *                                     provider is not wired we still move
- *                                     the bundle to `processing` and record
- *                                     a processing_log entry so the client
- *                                     can poll.
+ *   POST /bundles/:id/ocr           — queue OCR across pages. Moves the bundle
+ *                                     to `processing` and emits
+ *                                     `ScanBundleOcrRequested`, which the
+ *                                     scan-ocr-worker consumes (see
+ *                                     `workers/scan-ocr-worker.ts`). The worker
+ *                                     ALWAYS drives the bundle to a terminal
+ *                                     state — `ready` once pages are OCR'd, or
+ *                                     `failed` when no OCR provider / page-byte
+ *                                     store is wired. The response surfaces
+ *                                     `ocrProviderConfigured` so the client
+ *                                     knows whether to expect text or a
+ *                                     truthful failure (audit #22).
  *   POST /bundles/:id/submit        — finalize bundle + emit submit event.
  *
  * Graceful degradation: the router operates purely against Postgres +
@@ -364,8 +371,14 @@ app.post('/bundles/:id/ocr', withSecurityEvents({ action: 'scan.create', resourc
         success: true,
         data: {
           bundle: updated,
+          // True (not aspirational): the scan-ocr-worker subscribes to
+          // ScanBundleOcrRequested and always lands the bundle in a terminal
+          // state — `ready` if OCR runs, `failed` otherwise (audit #22).
           workerWillProcess: true,
           ocrProviderConfigured: ocrConfigured,
+          // Honest signal to the client: when no provider is wired the worker
+          // will transition the bundle to `failed`, not leave text null.
+          expectedOutcome: ocrConfigured ? 'ready' : 'failed',
         },
       },
       202

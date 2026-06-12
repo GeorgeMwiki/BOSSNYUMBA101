@@ -46,6 +46,7 @@ import { sql } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { authMiddleware } from '../../middleware/hono-auth';
+import { requireRole } from '../../middleware/authorization';
 import { databaseMiddleware } from '../../middleware/database';
 import { withSecurityEvents } from '@bossnyumba/observability';
 import {
@@ -65,6 +66,21 @@ import {
  * flow first. Currency-neutral magnitude (not a jurisdiction amount).
  */
 const FOUR_EYE_NET_THRESHOLD = 5_000_000;
+
+/**
+ * Cooperative settlement is a MONEY workflow (create / calculate / approve /
+ * distribute touch the collected pool and the ledger). It must be limited to
+ * officer-grade roles — never any authenticated tenant member. The gateway's
+ * UserRole set has no dedicated `cooperative-officer`, so the officer-
+ * equivalent set is OWNER + TENANT_ADMIN + the finance operators
+ * (PROPERTY_MANAGER, ACCOUNTANT). RESIDENT / MAINTENANCE_STAFF are excluded.
+ */
+const SETTLEMENT_OFFICER_ROLES = [
+  'OWNER',
+  'TENANT_ADMIN',
+  'PROPERTY_MANAGER',
+  'ACCOUNTANT',
+] as const;
 
 const CreatePeriodSchema = z.object({
   cooperativePartyId: z.string().uuid(),
@@ -166,6 +182,7 @@ app.use('*', databaseMiddleware);
 
 app.post(
   '/settlement-periods',
+  requireRole(...SETTLEMENT_OFFICER_ROLES),
   zValidator('json', CreatePeriodSchema),
   withSecurityEvents(
     {
@@ -341,6 +358,7 @@ app.get('/settlement-periods/:id/members', async (c) => {
 
 app.post(
   '/settlement-periods/:id/calculate',
+  requireRole(...SETTLEMENT_OFFICER_ROLES),
   zValidator('json', CalculateSchema),
   withSecurityEvents(
     {
@@ -448,6 +466,7 @@ app.post(
 
 app.post(
   '/settlement-periods/:id/approve',
+  requireRole(...SETTLEMENT_OFFICER_ROLES),
   zValidator('json', ApproveSchema),
   withSecurityEvents(
     {
@@ -462,7 +481,8 @@ app.post(
       const id = c.req.param('id');
 
       const periodRows = await db.execute(sql`
-        SELECT net_distributable, status, four_eye_request_id
+        SELECT net_distributable, status, four_eye_request_id,
+               provenance->>'actorId' AS created_by_id
           FROM cooperative_settlement_periods
          WHERE id = ${id}::uuid AND tenant_id = ${auth.tenantId}::uuid
          LIMIT 1
@@ -477,6 +497,29 @@ app.post(
           404,
         );
       }
+
+      // True four-eye (CLAUDE.md four-eye hard rule): the approver MUST be a
+      // different identity from the period creator, regardless of amount. The
+      // creator is recorded in `provenance.actorId` at draft time. The
+      // amount-based FOUR_EYE_NET_THRESHOLD gate below is additive, not a
+      // replacement — self-approval is rejected even for small pools.
+      const createdById = period.created_by_id
+        ? String(period.created_by_id)
+        : null;
+      if (createdById && createdById === auth.userId) {
+        return c.json(
+          {
+            success: false,
+            error: {
+              code: 'FOUR_EYE_SELF_APPROVAL',
+              message:
+                'four-eye: the approver must differ from the period creator',
+            },
+          },
+          403,
+        );
+      }
+
       if (period.status !== 'calculated') {
         return c.json(
           {
@@ -533,6 +576,7 @@ app.post(
 
 app.post(
   '/settlement-periods/:id/distribute',
+  requireRole(...SETTLEMENT_OFFICER_ROLES),
   zValidator('json', DistributeSchema),
   withSecurityEvents(
     {

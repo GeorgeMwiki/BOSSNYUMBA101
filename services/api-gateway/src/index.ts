@@ -130,6 +130,7 @@ import occupancyTimelineRouter from './routes/occupancy-timeline.hono';
 import renewalsRouter from './routes/renewals.hono';
 import riskReportsRouter from './routes/risk-reports.hono';
 import scansRouter from './routes/scans.hono';
+import { proposalsRouter } from './routes/proposals.hono';
 import stationMasterCoverageRouter from './routes/station-master-coverage.hono';
 import { tendersRouter } from './routes/tenders.hono';
 import { waitlistRouter } from './routes/waitlist.hono';
@@ -382,6 +383,7 @@ import {
   type OutboxRunnerLike,
 } from './workers/outbox-worker';
 import { createCaseSLASupervisor } from './workers/cases-sla-supervisor';
+import { registerScanOcrSubscriber } from './workers/scan-ocr-worker';
 import { createLeaseExpiryAlertCron } from './workers/lease-expiry-alert-cron';
 import type {
   NotificationSender as LeaseExpiryNotificationSender,
@@ -821,6 +823,10 @@ const heartbeatSupervisor = createHeartbeatSupervisor(
 // Piece M work-assignments port.
 // ----------------------------------------------------------------------------
 const dispatchRouterWiring = createDispatchRouterWiring({
+  // #1 cortex parity: route Brain↔Tab captures/proposals/events/audit to
+  // Postgres so accepted proposals survive restart. Falls back to in-memory
+  // when getDb() is null (no DATABASE_URL).
+  db: getDb(),
   estate: createStubEstateHandlerDeps(),
   logger: {
     info: (meta, msg) => logger.info(meta, msg),
@@ -1460,6 +1466,10 @@ api.route('/far', farRouter);
 // Wave 26 Z3 — Move-out checklist + Approval workflow.
 api.route('/move-out', moveOutRouter);
 api.route('/approvals', approvalsRouter);
+// #2 — HITL proposal review (approve/decline/edit/audit over
+// module_update_proposals). Distinct table+surface from /approvals
+// (approval_requests) and /workflow (workflow-engine runs).
+api.route('/proposals', proposalsRouter);
 // Wave 27 PhA1 — Vacancy-to-Lease orchestrator (state machine + pipeline runs)
 api.route('/vacancy-pipeline', vacancyPipelineRouter);
 // Personal Jarvis-style AI for every BossNyumba user — each surface
@@ -1904,7 +1914,7 @@ const leaseExpiryCron = serviceRegistry.db
       logger,
       clusterLock: makeClusterLockGate(CLUSTER_LOCK_IDS.LEASE_EXPIRY, clusterLockDeps),
     })
-  : { start() {}, stop() {}, async tickOnce() { return { scanned: 0, dispatched: 0, skippedAlreadySent: 0, failed: 0, byWindow: {} }; } };
+  : { start() {}, stop() {}, async tickOnce() { return { scanned: 0, dispatched: 0, skippedAlreadySent: 0, suppressedNoConsent: 0, failed: 0, byWindow: {} }; } };
 
 // Piece C — executive brief cron. Scans `briefing_subscriptions` every
 // EXECUTIVE_BRIEF_CRON_INTERVAL_MS (default 5 min) and generates briefs
@@ -2445,6 +2455,21 @@ if (require.main === module) {
         logger,
         arrearsService: serviceRegistry.arrears?.service ?? null,
       });
+
+      // #22 — consume ScanBundleOcrRequested so /ocr is not a dead promise.
+      // ocr/pageBytes are null (OCR providers live in document-intelligence,
+      // page bytes are not persisted here) so the worker transitions bundles
+      // to a truthful terminal state instead of leaving them stuck.
+      if (serviceRegistry.db) {
+        registerScanOcrSubscriber({
+          bus: subscribableBus,
+          db: serviceRegistry.db as unknown as { execute(q: unknown): Promise<unknown> },
+          logger,
+          ocr: null,
+          pageBytes: null,
+        });
+        logger.info('scan-ocr-consumer: registered (ocr/pageBytes unwired — bundles fail honestly until a provider + byte store are injected)');
+      }
 
       // Wave 19 — bridge the domain bus onto the observability bus.
       // Domain services publish through `InMemoryEventBus` (the
