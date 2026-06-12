@@ -772,37 +772,383 @@ function buildExtensionTasks(
   return tasks;
 }
 
+// ---------------------------------------------------------------------------
+// buildTaskData — proactive-intel data provider (tenant-scoped reads)
+//
+// The background scheduler's catalogue (portfolio-health, arrears-ladder,
+// renewal, inspection, compliance, vendor) only emits insights when these
+// list methods return real rows. Previously every method returned `[]`, so
+// the proactive brain was mute in prod. Each method below is a bounded,
+// tenant-scoped read against the existing tables via `registry.db` — the
+// same `db.execute(sql\`…\`)` pattern already used by `listActiveTenantIds`
+// and the Postgres insight store. No new repository is introduced; these
+// are straight reads of tables the domain services already own.
+//
+// Tenant isolation: every query carries `WHERE tenant_id = ${tenantId}`.
+// Bounding: every query carries a `LIMIT` so a large tenant cannot make a
+// single tick unbounded. Failures degrade to `[]` (the scheduler logs the
+// tick; a transient read error must never crash the supervisor loop).
+// ---------------------------------------------------------------------------
+
+type DbExecutor = { execute(q: unknown): Promise<unknown> };
+
+/** Drizzle postgres-js returns either a raw array or `{ rows }`. */
+function rowsOf(res: unknown): readonly Record<string, unknown>[] {
+  if (Array.isArray(res)) return res as Record<string, unknown>[];
+  const r = (res as { rows?: unknown }).rows;
+  return Array.isArray(r) ? (r as Record<string, unknown>[]) : [];
+}
+
+function num(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function str(v: unknown): string {
+  return v === null || v === undefined ? '' : String(v);
+}
+
+/** Per-method cap so one tenant can't make a tick unbounded. */
+const TASK_DATA_LIMIT = 200;
+
+/**
+ * Maximum age (days) for arrears cases / leases / inspections / compliance
+ * notices we surface. Each detector applies its own severity thresholds
+ * downstream; these windows only bound the candidate set.
+ */
+const LEASE_EXPIRY_DEFAULT_WINDOW_DAYS = 90;
+
+/** Derive a coarse arrears ladder step from days overdue (display only). */
+function ladderStepFromDays(daysOverdue: number): number {
+  if (daysOverdue >= 90) return 4;
+  if (daysOverdue >= 60) return 3;
+  if (daysOverdue >= 30) return 2;
+  if (daysOverdue >= 7) return 1;
+  return 0;
+}
+
+/** Map the DB inspection enum to the proactive engine's narrower union. */
+function inspectionTypeFor(
+  dbType: string,
+): import('@bossnyumba/ai-copilot/background-intelligence').InspectionDue['type'] {
+  switch (dbType) {
+    case 'move_in':
+      return 'MOVE_IN';
+    case 'move_out':
+      return 'MOVE_OUT';
+    default:
+      // No FAR inspection type exists in `inspections.type`; routine /
+      // periodic / preventive / complaint / other all map to ROUTINE.
+      return 'ROUTINE';
+  }
+}
+
+async function queryArrearsCases(
+  db: DbExecutor,
+  tenantId: string,
+): Promise<readonly import('@bossnyumba/ai-copilot/background-intelligence').ArrearsCase[]> {
+  // `arrears_cases` is present only in deployments that ran the richer
+  // case migration (the PostgresArrearsRepository writes to it when it
+  // exists). Tolerate its absence the same way the repo does — a failed
+  // read degrades to no candidates rather than crashing the tick.
+  try {
+    const res = await db.execute(sql`
+      SELECT ac.id            AS id,
+             ac.unit_id        AS unit_id,
+             ac.current_balance AS balance,
+             ac.days_past_due  AS days_overdue,
+             c.first_name      AS first_name,
+             c.last_name       AS last_name
+        FROM arrears_cases ac
+        LEFT JOIN customers c
+          ON c.id = ac.customer_id AND c.tenant_id = ac.tenant_id
+       WHERE ac.tenant_id = ${tenantId}
+         AND ac.status = 'active'
+       ORDER BY ac.days_past_due DESC
+       LIMIT ${TASK_DATA_LIMIT}
+    `);
+    return rowsOf(res).map((r) => {
+      const daysOverdue = num(r.days_overdue);
+      const name = `${str(r.first_name)} ${str(r.last_name)}`.trim();
+      return {
+        id: str(r.id),
+        tenantName: name || str(r.id),
+        unitId: str(r.unit_id),
+        daysOverdue,
+        balance: num(r.balance),
+        ladderStep: ladderStepFromDays(daysOverdue),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function queryLeasesNearExpiry(
+  db: DbExecutor,
+  tenantId: string,
+  windowDays: number,
+): Promise<
+  readonly import('@bossnyumba/ai-copilot/background-intelligence').LeaseNearExpiry[]
+> {
+  const windowDaysBounded = Math.max(
+    1,
+    Math.min(365, Math.trunc(windowDays) || LEASE_EXPIRY_DEFAULT_WINDOW_DAYS),
+  );
+  try {
+    const res = await db.execute(sql`
+      SELECT l.id          AS lease_id,
+             l.unit_id      AS unit_id,
+             l.rent_amount  AS rent,
+             l.end_date     AS end_date,
+             c.first_name   AS first_name,
+             c.last_name    AS last_name
+        FROM leases l
+        LEFT JOIN customers c
+          ON c.id = l.customer_id AND c.tenant_id = l.tenant_id
+       WHERE l.tenant_id = ${tenantId}
+         AND l.status IN ('active', 'expiring_soon')
+         AND l.end_date >= NOW()
+         AND l.end_date <= NOW() + (${windowDaysBounded} * INTERVAL '1 day')
+       ORDER BY l.end_date ASC
+       LIMIT ${TASK_DATA_LIMIT}
+    `);
+    return rowsOf(res).map((r) => {
+      const end = new Date(str(r.end_date));
+      const daysToExpiry = Math.max(
+        0,
+        Math.ceil((end.getTime() - Date.now()) / (24 * 60 * 60 * 1000)),
+      );
+      const name = `${str(r.first_name)} ${str(r.last_name)}`.trim();
+      return {
+        leaseId: str(r.lease_id),
+        tenantName: name || str(r.lease_id),
+        unitId: str(r.unit_id),
+        daysToExpiry,
+        rent: num(r.rent),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function queryInspectionsDue(
+  db: DbExecutor,
+  tenantId: string,
+): Promise<
+  readonly import('@bossnyumba/ai-copilot/background-intelligence').InspectionDue[]
+> {
+  try {
+    const res = await db.execute(sql`
+      SELECT id, property_id, type, scheduled_date
+        FROM inspections
+       WHERE tenant_id = ${tenantId}
+         AND status = 'scheduled'
+         AND scheduled_date IS NOT NULL
+         AND scheduled_date <= NOW()
+         AND deleted_at IS NULL
+       ORDER BY scheduled_date ASC
+       LIMIT ${TASK_DATA_LIMIT}
+    `);
+    return rowsOf(res).map((r) => {
+      const scheduled = new Date(str(r.scheduled_date));
+      const daysOverdue = Math.max(
+        0,
+        Math.floor((Date.now() - scheduled.getTime()) / (24 * 60 * 60 * 1000)),
+      );
+      return {
+        id: str(r.id),
+        propertyId: str(r.property_id),
+        daysOverdue,
+        type: inspectionTypeFor(str(r.type)),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function queryComplianceNotices(
+  db: DbExecutor,
+  tenantId: string,
+): Promise<
+  readonly import('@bossnyumba/ai-copilot/background-intelligence').ComplianceNotice[]
+> {
+  try {
+    const res = await db.execute(sql`
+      SELECT id, type, due_date
+        FROM compliance_items
+       WHERE tenant_id = ${tenantId}
+         AND status IN ('pending', 'in_progress', 'overdue')
+         AND deleted_at IS NULL
+       ORDER BY due_date ASC
+       LIMIT ${TASK_DATA_LIMIT}
+    `);
+    return rowsOf(res).map((r) => {
+      const due = new Date(str(r.due_date));
+      const expiresInDays = Math.ceil(
+        (due.getTime() - Date.now()) / (24 * 60 * 60 * 1000),
+      );
+      return {
+        id: str(r.id),
+        kind: str(r.type),
+        expiresInDays,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function queryPropertiesForHealthScan(
+  db: DbExecutor,
+  tenantId: string,
+): Promise<
+  readonly import('@bossnyumba/ai-copilot/background-intelligence').PortfolioProperty[]
+> {
+  try {
+    const res = await db.execute(sql`
+      SELECT p.id            AS id,
+             p.name          AS name,
+             p.total_units    AS total_units,
+             p.occupied_units AS occupied_units,
+             COALESCE(wo.open_tickets, 0)      AS open_tickets,
+             insp.last_inspection_at           AS last_inspection_at
+        FROM properties p
+        LEFT JOIN (
+          SELECT property_id, COUNT(*)::int AS open_tickets
+            FROM work_orders
+           WHERE tenant_id = ${tenantId}
+             AND status NOT IN ('completed', 'verified', 'cancelled')
+             AND deleted_at IS NULL
+           GROUP BY property_id
+        ) wo ON wo.property_id = p.id
+        LEFT JOIN (
+          SELECT property_id, MAX(completed_date) AS last_inspection_at
+            FROM inspections
+           WHERE tenant_id = ${tenantId}
+             AND status = 'completed'
+           GROUP BY property_id
+        ) insp ON insp.property_id = p.id
+       WHERE p.tenant_id = ${tenantId}
+         AND p.deleted_at IS NULL
+       ORDER BY p.name ASC
+       LIMIT ${TASK_DATA_LIMIT}
+    `);
+    return rowsOf(res).map((r) => {
+      const total = num(r.total_units);
+      const occupied = num(r.occupied_units);
+      const occupancyRate = total > 0 ? occupied / total : 0;
+      const lastInspectionDaysAgo = r.last_inspection_at
+        ? Math.max(
+            0,
+            Math.floor(
+              (Date.now() - new Date(str(r.last_inspection_at)).getTime()) /
+                (24 * 60 * 60 * 1000),
+            ),
+          )
+        : Number.MAX_SAFE_INTEGER;
+      return {
+        id: str(r.id),
+        name: str(r.name) || str(r.id),
+        occupancyRate,
+        openTickets: num(r.open_tickets),
+        lastInspectionDaysAgo,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function queryVendorPerformance(
+  db: DbExecutor,
+  tenantId: string,
+): Promise<
+  readonly import('@bossnyumba/ai-copilot/background-intelligence').VendorPerformance[]
+> {
+  try {
+    const res = await db.execute(sql`
+      SELECT v.id          AS vendor_id,
+             v.company_name AS vendor_name,
+             COUNT(wo.id) FILTER (
+               WHERE wo.status IN ('completed', 'verified')
+             )::int                                          AS completed_tickets,
+             AVG(
+               EXTRACT(EPOCH FROM (wo.completed_at - wo.created_at)) / 3600.0
+             ) FILTER (WHERE wo.completed_at IS NOT NULL)    AS avg_resolution_hours,
+             AVG(wo.rating) FILTER (WHERE wo.rating IS NOT NULL) AS avg_rating
+        FROM vendors v
+        LEFT JOIN work_orders wo
+          ON wo.vendor_id = v.id
+         AND wo.tenant_id = v.tenant_id
+         AND wo.deleted_at IS NULL
+       WHERE v.tenant_id = ${tenantId}
+         AND v.status = 'active'
+         AND v.deleted_at IS NULL
+       GROUP BY v.id, v.company_name
+       ORDER BY completed_tickets DESC
+       LIMIT ${TASK_DATA_LIMIT}
+    `);
+    return rowsOf(res).map((r) => ({
+      vendorId: str(r.vendor_id),
+      vendorName: str(r.vendor_name) || str(r.vendor_id),
+      completedTickets: num(r.completed_tickets),
+      avgResolutionHours: Math.round(num(r.avg_resolution_hours) * 10) / 10,
+      // DB ratings are 1-5; the engine expects a 0-1 satisfaction score.
+      satisfactionScore: r.avg_rating != null ? num(r.avg_rating) / 5 : 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 function buildTaskData(registry: ServiceRegistry): BackgroundTaskData {
-  // Minimal data provider: each list method returns an empty array so the
-  // catalogue runs without crashing. Real data wiring is a follow-up —
-  // this is the shape expected by `buildTaskCatalogue`.
-  //
+  // `createBackgroundSupervisor` only constructs this provider when
+  // `registry.db` is present, but we guard defensively so a degraded
+  // registry still yields a shaped (empty) provider rather than throwing.
+  const db = registry.db
+    ? (registry.db as unknown as DbExecutor)
+    : null;
+
   // Wave 18 — wire the `renewalProposal` port to the real RenewalService
   // so the scheduled `renewal_proposal_generator` actually dispatches
   // proposals instead of only writing reminder insights.
   return {
-    async listPropertiesForHealthScan() {
-      return [];
+    async listPropertiesForHealthScan(tenantId) {
+      return db ? queryPropertiesForHealthScan(db, tenantId) : [];
     },
-    async listArrearsCases() {
-      return [];
+    async listArrearsCases(tenantId) {
+      return db ? queryArrearsCases(db, tenantId) : [];
     },
-    async listLeasesNearExpiry() {
-      return [];
+    async listLeasesNearExpiry(tenantId, windowDays) {
+      return db ? queryLeasesNearExpiry(db, tenantId, windowDays) : [];
     },
-    async listInspectionsDue() {
-      return [];
+    async listInspectionsDue(tenantId) {
+      return db ? queryInspectionsDue(db, tenantId) : [];
     },
-    async listComplianceNotices() {
-      return [];
+    async listComplianceNotices(tenantId) {
+      return db ? queryComplianceNotices(db, tenantId) : [];
     },
     async summariseMonthlyCosts() {
+      // No tenant-scoped monthly cost-summary table is owned by any
+      // current repo (cost data is split across transactions + the AI
+      // cost ledger with different granularity). Genuinely missing —
+      // returns null so `cost_ledger_rollup` no-ops rather than
+      // fabricating a figure. Wire when a cost-rollup repo lands.
       return null;
     },
-    async listVendorPerformance() {
-      return [];
+    async listVendorPerformance(tenantId) {
+      return db ? queryVendorPerformance(db, tenantId) : [];
     },
     async recomputeTenantHealth() {
+      // No backing repo produces the 5Ps tenant-health shape
+      // (payment/property/people/paperwork/presence per unit). The
+      // `intelligence_history` worker writes payment-risk / churn /
+      // sentiment per customer but not this five-dimension scorecard.
+      // Kept returning [] (do not invent a repo); `tenant_health_5ps_
+      // recompute` no-ops until a 5Ps source is plumbed.
       return [];
     },
     renewalProposal: registry.renewal

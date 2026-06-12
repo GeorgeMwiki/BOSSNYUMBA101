@@ -53,6 +53,9 @@ export interface AnthropicProviderConfig {
 // alias would miss the cost lookup and mis-bill. Dynamic call sites should
 // prefer `getModelLatest(...)`; these remain for typed defaults + price keys.
 export const ANTHROPIC_MODELS = {
+  FABLE_5: 'claude-fable-5',
+  OPUS_4_8: 'claude-opus-4-8',
+  OPUS_4_7: 'claude-opus-4-7',
   OPUS_4_6: 'claude-opus-4-6',
   SONNET_4_6: 'claude-sonnet-4-6',
   HAIKU_4_5: 'claude-haiku-4-5',
@@ -66,6 +69,9 @@ const DEFAULT_API_VERSION = '2023-06-01';
 export class AnthropicProvider implements AIProvider {
   readonly providerId = 'anthropic';
   readonly supportedModels: string[] = [
+    ANTHROPIC_MODELS.FABLE_5,
+    ANTHROPIC_MODELS.OPUS_4_8,
+    ANTHROPIC_MODELS.OPUS_4_7,
     ANTHROPIC_MODELS.OPUS_4_6,
     ANTHROPIC_MODELS.SONNET_4_6,
     ANTHROPIC_MODELS.HAIKU_4_5,
@@ -85,6 +91,51 @@ export class AnthropicProvider implements AIProvider {
     }
     this.config = config;
     this.modelInfoMap = new Map([
+      [
+        ANTHROPIC_MODELS.FABLE_5,
+        {
+          id: ANTHROPIC_MODELS.FABLE_5,
+          displayName: 'Claude Fable 5',
+          contextWindow: 1_000_000,
+          maxOutputTokens: 128_000,
+          supportsJson: true,
+          supportsVision: true,
+          // $10 / $50 per Mtok input/output → per-1k.
+          costPer1kPromptTokens: 0.01,
+          costPer1kCompletionTokens: 0.05,
+          tier: 'advanced',
+        },
+      ],
+      [
+        ANTHROPIC_MODELS.OPUS_4_8,
+        {
+          id: ANTHROPIC_MODELS.OPUS_4_8,
+          displayName: 'Claude Opus 4.8',
+          contextWindow: 1_000_000,
+          maxOutputTokens: 128_000,
+          supportsJson: true,
+          supportsVision: true,
+          // $5 / $25 per Mtok input/output → per-1k.
+          costPer1kPromptTokens: 0.005,
+          costPer1kCompletionTokens: 0.025,
+          tier: 'advanced',
+        },
+      ],
+      [
+        ANTHROPIC_MODELS.OPUS_4_7,
+        {
+          id: ANTHROPIC_MODELS.OPUS_4_7,
+          displayName: 'Claude Opus 4.7',
+          contextWindow: 1_000_000,
+          maxOutputTokens: 128_000,
+          supportsJson: true,
+          supportsVision: true,
+          // $5 / $25 per Mtok input/output → per-1k.
+          costPer1kPromptTokens: 0.005,
+          costPer1kCompletionTokens: 0.025,
+          tier: 'advanced',
+        },
+      ],
       [
         ANTHROPIC_MODELS.OPUS_4_6,
         {

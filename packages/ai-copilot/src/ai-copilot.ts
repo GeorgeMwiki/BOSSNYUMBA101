@@ -123,7 +123,15 @@ export interface CopilotHealthStatus {
 }
 
 /**
- * Main AI Copilot orchestrator class
+ * Main AI Copilot orchestrator class.
+ *
+ * @deprecated Born-dark parallel brain entrypoint — no `src/`, `apps/`, or
+ * `services/` caller constructs this facade; it is superseded by the kernel
+ * (`packages/central-intelligence/src/kernel/`) and the multi-LLM brain
+ * adapter (`packages/ai-copilot/src/brain.ts`). Do not wire new code to it.
+ * Retained only because the barrel (`./index.ts`) and `__tests__/` still
+ * import it; remove those re-exports + tests, then delete this class. Route
+ * all new orchestration through the kernel.
  */
 export class AICopilot {
   private promptRegistry: PromptRegistry;
@@ -592,14 +600,24 @@ export class AICopilot {
 }
 
 /**
- * Create an AI Copilot instance
+ * Create an AI Copilot instance.
+ *
+ * @deprecated Factory for the born-dark {@link AICopilot} facade — superseded
+ * by the kernel (`packages/central-intelligence/src/kernel/`) and the
+ * multi-LLM brain adapter (`packages/ai-copilot/src/brain.ts`). Do not call
+ * from new code.
  */
 export function createAICopilot(config?: AICopilotConfig): AICopilot {
   return new AICopilot(config);
 }
 
 /**
- * Create a mock AI Copilot for testing
+ * Create a mock AI Copilot for testing.
+ *
+ * @deprecated Test-only factory for the born-dark {@link AICopilot} facade.
+ * New tests should target the kernel
+ * (`packages/central-intelligence/src/kernel/`) or the brain adapter
+ * (`packages/ai-copilot/src/brain.ts`).
  */
 export function createMockAICopilot(): AICopilot {
   return new AICopilot({
