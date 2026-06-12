@@ -19,6 +19,15 @@ import {
   User,
   Calendar,
   ExternalLink,
+  Wallet,
+  Scale,
+  BarChart3,
+  IdCard,
+  ClipboardList,
+  Receipt,
+  ScrollText,
+  Image as ImageIcon,
+  type LucideIcon,
 } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
@@ -29,7 +38,7 @@ import { ROUTES } from '../lib/routes';
 interface DocumentCategory {
   id: string;
   name: string;
-  icon: string;
+  icon: LucideIcon;
   count: number;
   description: string;
 }
@@ -47,12 +56,12 @@ export function DocumentsPage() {
   const [showESignModal, setShowESignModal] = useState(false);
 
   const categories: DocumentCategory[] = [
-    { id: 'leases', name: t('catLeases'), icon: '📄', count: 0, description: t('catLeasesDesc') },
-    { id: 'financial', name: t('catFinancial'), icon: '💰', count: 0, description: t('catFinancialDesc') },
-    { id: 'compliance', name: t('catCompliance'), icon: '⚖️', count: 0, description: t('catComplianceDesc') },
-    { id: 'reports', name: t('catReports'), icon: '📊', count: 0, description: t('catReportsDesc') },
-    { id: 'identity', name: t('catIdentity'), icon: '🪪', count: 0, description: t('catIdentityDesc') },
-    { id: 'other', name: t('catOther'), icon: '📁', count: 0, description: t('catOtherDesc') },
+    { id: 'leases', name: t('catLeases'), icon: FileText, count: 0, description: t('catLeasesDesc') },
+    { id: 'financial', name: t('catFinancial'), icon: Wallet, count: 0, description: t('catFinancialDesc') },
+    { id: 'compliance', name: t('catCompliance'), icon: Scale, count: 0, description: t('catComplianceDesc') },
+    { id: 'reports', name: t('catReports'), icon: BarChart3, count: 0, description: t('catReportsDesc') },
+    { id: 'identity', name: t('catIdentity'), icon: IdCard, count: 0, description: t('catIdentityDesc') },
+    { id: 'other', name: t('catOther'), icon: FolderOpen, count: 0, description: t('catOtherDesc') },
   ];
 
   const getCategoryCount = (categoryId: string) => {
@@ -100,15 +109,15 @@ export function DocumentsPage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: string): LucideIcon => {
     switch (type) {
-      case 'LEASE': return '📄';
-      case 'ID_DOCUMENT': return '🪪';
-      case 'INSPECTION_REPORT': return '📋';
-      case 'RECEIPT': case 'INVOICE': case 'STATEMENT': return '🧾';
-      case 'LICENSE': return '📜';
-      case 'PHOTO': return '📷';
-      default: return '📁';
+      case 'LEASE': return FileText;
+      case 'ID_DOCUMENT': return IdCard;
+      case 'INSPECTION_REPORT': return ClipboardList;
+      case 'RECEIPT': case 'INVOICE': case 'STATEMENT': return Receipt;
+      case 'LICENSE': return ScrollText;
+      case 'PHOTO': return ImageIcon;
+      default: return FolderOpen;
     }
   };
 
@@ -154,7 +163,9 @@ export function DocumentsPage() {
 
       {/* Document Categories */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {categories.map((category) => (
+        {categories.map((category) => {
+          const CategoryIcon = category.icon;
+          return (
           <button
             key={category.id}
             onClick={() => setCategoryFilter(categoryFilter === category.id ? 'all' : category.id)}
@@ -164,11 +175,12 @@ export function DocumentsPage() {
                 : 'border-gray-200 bg-white hover:border-gray-300'
             }`}
           >
-            <div className="text-2xl mb-2">{category.icon}</div>
+            <CategoryIcon className="h-6 w-6 mb-2 text-gray-700" aria-hidden="true" />
             <p className="font-medium text-gray-900 text-sm">{category.name}</p>
             <p className="text-xs text-gray-500">{t('documentsCount', { count: getCategoryCount(category.id) })}</p>
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* Filters */}
@@ -237,7 +249,12 @@ export function DocumentsPage() {
                 <tr key={doc.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="text-2xl">{getTypeIcon(doc.type)}</div>
+                      <div className="text-gray-600">
+                        {(() => {
+                          const TypeIcon = getTypeIcon(doc.type);
+                          return <TypeIcon className="h-6 w-6" aria-hidden="true" />;
+                        })()}
+                      </div>
                       <div className="min-w-0">
                         <p className="font-medium text-gray-900 truncate max-w-xs">{doc.name}</p>
                         <p className="text-xs text-gray-500">{formatFileSize(doc.size)}</p>
@@ -408,7 +425,12 @@ export function DocumentsPage() {
                   {documents.filter(d => d.signatureStatus === 'PENDING').map((doc) => (
                     <div key={doc.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                       <div className="flex items-center gap-3">
-                        <div className="text-2xl">{getTypeIcon(doc.type)}</div>
+                        <div className="text-gray-600">
+                        {(() => {
+                          const TypeIcon = getTypeIcon(doc.type);
+                          return <TypeIcon className="h-6 w-6" aria-hidden="true" />;
+                        })()}
+                      </div>
                         <div>
                           <p className="font-medium text-gray-900">{doc.name}</p>
                           <p className="text-sm text-gray-500">

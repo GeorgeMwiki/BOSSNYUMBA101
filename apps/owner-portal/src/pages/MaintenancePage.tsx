@@ -18,6 +18,10 @@ import {
   MessageSquare,
   RefreshCw,
   ThumbsUp,
+  Zap,
+  Snowflake,
+  HardHat,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -159,13 +163,13 @@ export function MaintenancePage() {
     }
   };
 
-  const getCategoryIcon = (category: string) => {
+  const getCategoryIcon = (category: string): LucideIcon => {
     switch (category) {
-      case 'PLUMBING': return '🔧';
-      case 'ELECTRICAL': return '⚡';
-      case 'HVAC': return '❄️';
-      case 'STRUCTURAL': return '🏗️';
-      default: return '🛠️';
+      case 'PLUMBING': return Wrench;
+      case 'ELECTRICAL': return Zap;
+      case 'HVAC': return Snowflake;
+      case 'STRUCTURAL': return HardHat;
+      default: return Wrench;
     }
   };
 
@@ -347,7 +351,10 @@ export function MaintenancePage() {
                   className="flex items-center justify-between p-3 bg-white rounded-lg border border-orange-100"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-lg">{getCategoryIcon(wo.category)}</span>
+                    {(() => {
+                      const CategoryIcon = getCategoryIcon(wo.category);
+                      return <CategoryIcon className="h-5 w-5 text-gray-600" aria-hidden="true" />;
+                    })()}
                     <div>
                       <p className="text-sm font-medium text-gray-900">{wo.title}</p>
                       <p className="text-xs text-gray-500">
@@ -424,7 +431,12 @@ export function MaintenancePage() {
             className={`bg-white rounded-xl border ${wo.status === 'PENDING_APPROVAL' ? 'border-orange-300 shadow-sm' : 'border-gray-200'} p-4 hover:shadow-md transition-shadow`}
           >
             <div className="flex items-start gap-4">
-              <div className="p-2 bg-gray-100 rounded-lg text-2xl">{getCategoryIcon(wo.category)}</div>
+              <div className="p-2 bg-gray-100 rounded-lg text-gray-600">
+                {(() => {
+                  const CategoryIcon = getCategoryIcon(wo.category);
+                  return <CategoryIcon className="h-6 w-6" aria-hidden="true" />;
+                })()}
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-4">
                   <div>

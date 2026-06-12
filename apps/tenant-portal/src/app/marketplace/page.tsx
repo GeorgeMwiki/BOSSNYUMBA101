@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { marketplaceClient } from '@/lib/marketplace/api-client';
 import type {
   MarketplaceListing,
@@ -15,6 +16,7 @@ import { ListingCard } from '@/components/marketplace/ListingCard';
  * recent searches. Mobile-first stack; desktop renders a wider grid.
  */
 export default function MarketplaceLandingPage(): JSX.Element {
+  const t = useTranslations('marketplace');
   const [orgs, setOrgs] = useState<ReadonlyArray<OrgSummary>>([]);
   const [featured, setFeatured] = useState<ReadonlyArray<MarketplaceListing>>([]);
   const [loading, setLoading] = useState(true);
@@ -41,29 +43,26 @@ export default function MarketplaceLandingPage(): JSX.Element {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8 p-4">
       <section className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold text-ink">Find a place. Across every org.</h1>
-        <p className="text-sm text-ink-muted">
-          One profile. Many organisations. Browse plots, units, and tenders —
-          and bring your tenancies along when you move.
-        </p>
+        <h1 className="text-2xl font-semibold text-ink">{t('landingTitle')}</h1>
+        <p className="text-sm text-ink-muted">{t('landingSubtitle')}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <Link
             href="/marketplace/listings"
             className="rounded-chat bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
           >
-            Browse listings
+            {t('browseListings')}
           </Link>
           <Link
             href="/marketplace/orgs"
             className="rounded-chat border border-brand bg-brand-light px-4 py-2 text-sm font-medium text-brand-dark hover:bg-brand hover:text-white"
           >
-            Browse organisations
+            {t('browseOrgs')}
           </Link>
           <Link
             href="/marketplace/join"
             className="rounded-chat border border-ink-muted/20 bg-surface px-4 py-2 text-sm font-medium text-ink hover:border-brand hover:text-brand"
           >
-            Join with a code
+            {t('joinWithCode')}
           </Link>
         </div>
       </section>
@@ -76,15 +75,15 @@ export default function MarketplaceLandingPage(): JSX.Element {
 
       <section className="flex flex-col gap-3">
         <header className="flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold text-ink">Organisations</h2>
+          <h2 className="text-lg font-semibold text-ink">{t('organisations')}</h2>
           <Link href="/marketplace/orgs" className="text-sm text-brand hover:text-brand-dark">
-            View all →
+            {t('viewAll')}
           </Link>
         </header>
         {loading ? (
-          <p className="text-sm text-ink-muted">Loading…</p>
+          <p className="text-sm text-ink-muted">{t('loading')}</p>
         ) : orgs.length === 0 ? (
-          <p className="text-sm text-ink-muted">No organisations yet.</p>
+          <p className="text-sm text-ink-muted">{t('noOrganisations')}</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {orgs.slice(0, 6).map((o) => (
@@ -96,18 +95,18 @@ export default function MarketplaceLandingPage(): JSX.Element {
 
       <section className="flex flex-col gap-3">
         <header className="flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold text-ink">Featured listings</h2>
+          <h2 className="text-lg font-semibold text-ink">{t('featuredListings')}</h2>
           <Link
             href="/marketplace/listings"
             className="text-sm text-brand hover:text-brand-dark"
           >
-            Browse all →
+            {t('browseAll')}
           </Link>
         </header>
         {loading ? (
-          <p className="text-sm text-ink-muted">Loading…</p>
+          <p className="text-sm text-ink-muted">{t('loading')}</p>
         ) : featured.length === 0 ? (
-          <p className="text-sm text-ink-muted">No listings yet.</p>
+          <p className="text-sm text-ink-muted">{t('noListings')}</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {featured.map((l) => (

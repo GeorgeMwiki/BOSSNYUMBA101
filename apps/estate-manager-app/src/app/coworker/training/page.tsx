@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ROUTES } from '@/lib/routes';
 import {
   AdaptiveRenderer,
@@ -31,7 +31,7 @@ import {
   type DiscussionModeData,
   type ClassroomModeData,
 } from '@bossnyumba/chat-ui';
-import { TrainingNav } from '@/features/training';
+import { TrainingNav, toTrainingLanguage } from '@/features/training';
 
 interface ChatMessage {
   readonly id: string;
@@ -41,12 +41,44 @@ interface ChatMessage {
   readonly isStreaming?: boolean;
 }
 
+interface QuizAnswerRecord {
+  readonly questionId: string;
+  readonly optionId: string;
+  readonly answeredAt: string;
+}
+
 export default function CoworkerTrainingPage() {
   const t = useTranslations('coworkerTraining');
+  // AI co-worker training surfaces follow the active locale — hardcoding 'en'
+  // would leak English to Swahili operators (the banned mixed-locale state).
+  const locale = useLocale();
+  const language = toTrainingLanguage(locale);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [modeState, setModeState] = useState<ChatModeState>(INITIAL_CHAT_MODE_STATE);
   const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<readonly QuizAnswerRecord[]>([]);
+
+  // Record the operator's quiz selection into training state instead of
+  // discarding it, reflecting the durable record's length onto the live
+  // overlay (immutable updates — no mutation of prior state).
+  const recordQuizAnswer = useCallback(
+    (optionId: string) => {
+      const record: QuizAnswerRecord = {
+        questionId: modeState.quizData?.questionId ?? 'unknown',
+        optionId,
+        answeredAt: new Date().toISOString(),
+      };
+      const nextAnswered = [...quizAnswers, record];
+      setQuizAnswers(nextAnswered);
+      setModeState((mode) =>
+        mode.quizData
+          ? { ...mode, quizData: { ...mode.quizData, answeredCount: nextAnswered.length } }
+          : mode,
+      );
+    },
+    [modeState.quizData?.questionId, quizAnswers],
+  );
 
   const classroom: ClassroomModeData = useMemo(
     () => ({
@@ -124,13 +156,13 @@ export default function CoworkerTrainingPage() {
   const chat = (
     <div>
       {modeState.mode === 'teaching' && modeState.teachingData && (
-        <TeachingModeLayout data={modeState.teachingData} language="en" />
+        <TeachingModeLayout data={modeState.teachingData} language={language} />
       )}
       {modeState.mode === 'review' && modeState.reviewData && (
-        <ReviewModeSummary data={modeState.reviewData} language="en" />
+        <ReviewModeSummary data={modeState.reviewData} language={language} />
       )}
       {modeState.mode === 'discussion' && modeState.discussionData && (
-        <DiscussionModeLayout data={modeState.discussionData} language="en" />
+        <DiscussionModeLayout data={modeState.discussionData} language={language} />
       )}
       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
         {messages.map((m) => (
@@ -144,7 +176,7 @@ export default function CoworkerTrainingPage() {
               {m.isStreaming && <span style={{ color: '#64748b' }}> …</span>}
             </div>
             {m.metadata && (
-              <AdaptiveRenderer metadata={m.metadata} language="en" onSendMessage={sendMessage} />
+              <AdaptiveRenderer metadata={m.metadata} language={language} onSendMessage={sendMessage} />
             )}
           </li>
         ))}
@@ -193,8 +225,8 @@ export default function CoworkerTrainingPage() {
       {modeState.mode === 'quiz' && modeState.quizData && (
         <QuizLockdownOverlay
           data={modeState.quizData}
-          language="en"
-          onAnswer={() => undefined}
+          language={language}
+          onAnswer={recordQuizAnswer}
           onTimeUp={() => setModeState((prev) => applyMode(prev, 'teaching', 'time up'))}
           onModeRevert={(m) => setModeState((prev) => applyMode(prev, m, 'quiz answered'))}
         />
@@ -257,7 +289,7 @@ export default function CoworkerTrainingPage() {
           <TrainingNav />
         </div>
         {modeState.mode === 'classroom' ? (
-          <ClassroomChatAdapter data={classroom} mode={modeState.mode} language="en">
+          <ClassroomChatAdapter data={classroom} mode={modeState.mode} language={language}>
             {chat}
           </ClassroomChatAdapter>
         ) : (
@@ -265,9 +297,9 @@ export default function CoworkerTrainingPage() {
         )}
       </div>
       <aside>
-        <Blackboard language="en" conceptTitle={modeState.teachingData?.conceptName}>
+        <Blackboard language={language} conceptTitle={modeState.teachingData?.conceptName}>
           {lastAssistant?.metadata?.uiBlocks && lastAssistant.metadata.uiBlocks.length > 0 && (
-            <AdaptiveRenderer metadata={lastAssistant.metadata} language="en" />
+            <AdaptiveRenderer metadata={lastAssistant.metadata} language={language} />
           )}
         </Blackboard>
       </aside>

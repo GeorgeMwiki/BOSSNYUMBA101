@@ -14,7 +14,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   AdaptiveRenderer,
   Blackboard,
@@ -46,6 +46,10 @@ const INITIAL_GREETING =
 
 export default function HomePage() {
   const t = useTranslations('homeLanding');
+  // Mr. Mwikila AI surfaces must speak the active locale — never hardcode 'en',
+  // or Swahili users get mixed-locale output (the banned state).
+  const locale = useLocale();
+  const language: 'en' | 'sw' = locale === 'sw' ? 'sw' : 'en';
   // Ephemeral session id — persisted in sessionStorage so demo data stays
   // isolated across refreshes but never leaks to another tab.
   const [sessionId, setSessionId] = useState<string>('');
@@ -279,7 +283,7 @@ export default function HomePage() {
                       <div className="mt-2">
                         <AdaptiveRenderer
                           metadata={t.metadata}
-                          language="en"
+                          language={language}
                           onSendMessage={(msg) => void send(msg)}
                         />
                       </div>
@@ -344,9 +348,9 @@ export default function HomePage() {
         </div>
 
         <aside className="hidden lg:block">
-          <Blackboard language="en" conceptTitle={t('blackboardConceptTitle')}>
+          <Blackboard language={language} conceptTitle={t('blackboardConceptTitle')}>
             {lastAssistant?.metadata?.uiBlocks && lastAssistant.metadata.uiBlocks.length > 0 && (
-              <AdaptiveRenderer metadata={lastAssistant.metadata} language="en" />
+              <AdaptiveRenderer metadata={lastAssistant.metadata} language={language} />
             )}
             {!lastAssistant && (
               <div className="text-sm text-slate-500">

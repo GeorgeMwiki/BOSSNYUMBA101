@@ -741,6 +741,7 @@
   },
   "conductInspection": {
     "title": "Fanya Ukaguzi",
+    "unavailableDescription": "Data halisi ya ukaguzi haijapatikana bado. Ukurasa huu utakuwa tayari pindi ukaguzi utakapounganishwa na data yako halisi. Tafadhali angalia tena hivi karibuni.",
     "overallProgress": "Maendeleo ya Jumla",
     "tipsTitle": "Vidokezo vya Ukaguzi",
     "tipPhotos": "Piga picha wazi za uharibifu au kasoro",

@@ -1,1 +1,30 @@
-{}
+{
+  "marketplace": {
+    "landingTitle": "Pata mahali. Katika kila shirika.",
+    "landingSubtitle": "Wasifu mmoja. Mashirika mengi. Vinjari viwanja, vyumba, na zabuni — na ubebe upangaji wako unapohama.",
+    "browseListings": "Vinjari matangazo",
+    "browseOrgs": "Vinjari mashirika",
+    "joinWithCode": "Jiunge kwa msimbo",
+    "organisations": "Mashirika",
+    "viewAll": "Tazama yote →",
+    "featuredListings": "Matangazo maalum",
+    "browseAll": "Vinjari yote →",
+    "loading": "Inapakia…",
+    "noOrganisations": "Hakuna mashirika bado.",
+    "noListings": "Hakuna matangazo bado.",
+    "backToChat": "← Rudi kwenye gumzo"
+  },
+  "error": {
+    "title": "Hitilafu imetokea",
+    "fallbackMessage": "Hitilafu isiyotarajiwa imetokea wakati wa kupakia ukurasa huu.",
+    "reference": "Marejeo: {digest}",
+    "tryAgain": "Jaribu tena",
+    "backToStart": "Rudi mwanzo"
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Ukurasa haukupatikana",
+    "description": "Ukurasa uliokuwa unautafuta umehamishwa au haupo tena.",
+    "backToStart": "Rudi mwanzo"
+  }
+}

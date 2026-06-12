@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { Zap, Package } from 'lucide-react';
 import { createBossnyumbaClient, createJarvisClient } from '@bossnyumba/api-sdk';
 import {
   MicButton,
@@ -213,10 +214,18 @@ export default function Jarvis(): JSX.Element {
                   </div>
                 ) : null}
                 <span
-                  className="rounded-full border border-border bg-surface-sunken px-2 py-1 text-xs text-muted-foreground"
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-sunken px-2 py-1 text-xs text-muted-foreground"
                   aria-label={isStreaming ? 'Streaming mode active' : 'Single-shot mode active'}
                 >
-                  {isStreaming ? '⚡ Live' : '📦 Single-shot'}
+                  {isStreaming ? (
+                    <>
+                      <Zap className="h-3 w-3" aria-hidden="true" /> Live
+                    </>
+                  ) : (
+                    <>
+                      <Package className="h-3 w-3" aria-hidden="true" /> Single-shot
+                    </>
+                  )}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">

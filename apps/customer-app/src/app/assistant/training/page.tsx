@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   AdaptiveRenderer,
   Blackboard,
@@ -37,12 +37,47 @@ interface ChatMessage {
   readonly isStreaming?: boolean;
 }
 
+interface QuizAnswerRecord {
+  readonly questionId: string;
+  readonly optionId: string;
+  readonly answeredAt: string;
+}
+
 export default function TenantTrainingPage() {
   const t = useTranslations('assistantTraining');
+  // AI teaching surfaces follow the active locale — hardcoding 'en' would leak
+  // English to Swahili learners (the banned mixed-locale state).
+  const locale = useLocale();
+  const language: 'en' | 'sw' = locale === 'sw' ? 'sw' : 'en';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [modeState, setModeState] = useState<ChatModeState>(INITIAL_CHAT_MODE_STATE);
   const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<readonly QuizAnswerRecord[]>([]);
+
+  // Record the learner's quiz selection into training state instead of
+  // discarding it, so mastery review can read what was answered. We also
+  // reflect the response in the live quiz data's answeredCount so the overlay
+  // shows the selection landed (immutable updates — no mutation of prior state).
+  const recordQuizAnswer = useCallback(
+    (optionId: string) => {
+      const record: QuizAnswerRecord = {
+        questionId: modeState.quizData?.questionId ?? 'unknown',
+        optionId,
+        answeredAt: new Date().toISOString(),
+      };
+      const nextAnswered = [...quizAnswers, record];
+      setQuizAnswers(nextAnswered);
+      // Reflect the durable record's length onto the live overlay so the
+      // "answered" affordance stays the single source of truth.
+      setModeState((mode) =>
+        mode.quizData
+          ? { ...mode, quizData: { ...mode.quizData, answeredCount: nextAnswered.length } }
+          : mode,
+      );
+    },
+    [modeState.quizData?.questionId, quizAnswers],
+  );
 
   const { state, sendMessage: sendStream, cancel, approveAction, rejectAction } = useChatStream(
     'tenant-assistant',
@@ -109,10 +144,10 @@ export default function TenantTrainingPage() {
       <div>
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{t('title')}</h1>
         {modeState.mode === 'teaching' && modeState.teachingData && (
-          <TeachingModeLayout data={modeState.teachingData} language="en" />
+          <TeachingModeLayout data={modeState.teachingData} language={language} />
         )}
         {modeState.mode === 'review' && modeState.reviewData && (
-          <ReviewModeSummary data={modeState.reviewData} language="en" />
+          <ReviewModeSummary data={modeState.reviewData} language={language} />
         )}
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {messages.map((m) => (
@@ -126,11 +161,11 @@ export default function TenantTrainingPage() {
                 {m.isStreaming && <span style={{ color: '#64748b' }}> …</span>}
               </div>
               {m.metadata && (
-                <AdaptiveRenderer metadata={m.metadata} language="en" onSendMessage={sendMessage} />
+                <AdaptiveRenderer metadata={m.metadata} language={language} onSendMessage={sendMessage} />
               )}
             </li>
           ))}
-          {state.isStreaming && <li style={{ color: '#64748b', fontSize: 12 }}>{t('typing')}</li>}
+          {state.isStreaming && <li className="text-xs text-muted-foreground">{t('typing')}</li>}
           {state.toolCalls.length > 0 && (
             <li style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {state.toolCalls.map((t, i) => (
@@ -170,13 +205,13 @@ export default function TenantTrainingPage() {
               </div>
             </li>
           )}
-          {state.error && <li style={{ color: '#991b1b', fontSize: 12 }}>{t('errorLabel')}: {state.error}</li>}
+          {state.error && <li className="text-xs text-destructive">{t('errorLabel')}: {state.error}</li>}
         </ul>
         {modeState.mode === 'quiz' && modeState.quizData && (
           <QuizLockdownOverlay
             data={modeState.quizData}
-            language="en"
-            onAnswer={() => undefined}
+            language={language}
+            onAnswer={recordQuizAnswer}
             onTimeUp={() => setModeState((prev) => applyMode(prev, 'teaching', 'time up'))}
             onModeRevert={(m) => setModeState((prev) => applyMode(prev, m, 'quiz answered'))}
           />
@@ -214,9 +249,9 @@ export default function TenantTrainingPage() {
       </div>
 
       <aside>
-        <Blackboard language="en" conceptTitle={modeState.teachingData?.conceptName}>
+        <Blackboard language={language} conceptTitle={modeState.teachingData?.conceptName}>
           {lastAssistant?.metadata?.uiBlocks && lastAssistant.metadata.uiBlocks.length > 0 && (
-            <AdaptiveRenderer metadata={lastAssistant.metadata} language="en" />
+            <AdaptiveRenderer metadata={lastAssistant.metadata} language={language} />
           )}
         </Blackboard>
       </aside>

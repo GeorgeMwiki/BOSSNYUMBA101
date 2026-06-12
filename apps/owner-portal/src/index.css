@@ -45,3 +45,19 @@ body {
 .skip-link:focus {
   left: 0;
 }
+
+/* a11y: honour prefers-reduced-motion. The owner-portal is a standalone
+   Vite SPA that does not @import the design-system globals, so the
+   shared reset never reaches it — yet 26 motion utilities run here.
+   Mirror the design-system reset block (globals.css) so vestibular
+   users get a near-static experience. WCAG 2.2 SC 2.3.3. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -5,11 +5,15 @@ import { LiveDataRequiredPage } from '@/components/LiveDataRequiredPage';
 
 export default function ConductInspectionPage() {
   const t = useTranslations('conductInspection');
+  // ENGINEERING NOTE (not user-facing): the previous workflow used hardcoded
+  // inspection areas and posted to /api/inspections/{id}/complete, whose
+  // gateway equivalent currently returns notImplemented. Wire to the live
+  // inspection submission endpoint before re-enabling this surface.
   return (
     <LiveDataRequiredPage
       title={t('title')}
-      feature="conduct inspection"
-      description="The previous workflow used hardcoded inspection areas and posted to /api/inspections/{id}/complete (the gateway equivalent currently returns notImplemented). Wire to the live inspection submission endpoint before re-enabling."
+      feature={t('title')}
+      description={t('unavailableDescription')}
       showBack
     />
   );
