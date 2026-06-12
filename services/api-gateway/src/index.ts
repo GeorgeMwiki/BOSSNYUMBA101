@@ -131,6 +131,16 @@ import renewalsRouter from './routes/renewals.hono';
 import riskReportsRouter from './routes/risk-reports.hono';
 import scansRouter from './routes/scans.hono';
 import { proposalsRouter } from './routes/proposals.hono';
+// Born-dark routers reclaimed (real handlers, never mounted) — "nothing dark".
+import { createUsersMeRouter } from './routes/users-me.hono';
+import personaRegistryRouter from './routes/persona-registry.hono';
+import approvalGrantsRouter from './routes/approval-grants.hono';
+import memoryDeclareRouter from './routes/memory-declare.hono';
+import { createCotQueryRouter } from './routes/cot-query.hono';
+import { createAdminAuditRouter } from './routes/admin-audit.hono';
+import { createTenantsAdminRouter } from './routes/tenants-admin.hono';
+import strategicReportsRouter from './routes/reports/reports.hono';
+import portalGenUIRouter from './routes/portal-genui/portal-genui.hono';
 import stationMasterCoverageRouter from './routes/station-master-coverage.hono';
 import { tendersRouter } from './routes/tenders.hono';
 import { waitlistRouter } from './routes/waitlist.hono';
@@ -1128,7 +1138,9 @@ if (typeof securityEventsMiddleware === 'function') {
 api.route('/auth', authRouter);
 api.route('/auth/mfa', authMfaRouter);
 api.route('/tenants', tenantsRouter);
+api.route('/tenants', createTenantsAdminRouter()); // adds DELETE /tenants/:id (tenant erasure) — method-disjoint from tenantsRouter
 api.route('/users', usersRouter);
+api.route('/users/me', createUsersMeRouter()); // GDPR Art.20 export + Art.17 erasure; static /users/me out-prioritises usersRouter /:id
 api.route('/properties', propertiesRouter);
 api.route('/units', unitsRouter);
 api.route('/customers', customersRouter);
@@ -1139,6 +1151,8 @@ api.route('/work-orders', workOrdersRouter);
 api.route('/vendors', vendorsRouter);
 api.route('/notifications', notificationsRouter);
 api.route('/reports', reportsHonoRouter);
+api.route('/strategic-reports', strategicReportsRouter); // distinct from the legacy /reports/financial surface
+api.route('/portal-genui', portalGenUIRouter); // detect/generate/tabs CRUD off services.portalGenUIEngine
 api.route('/dashboard', dashboardRouter);
 // Phase F.5 tenant-signup flow mounts FIRST so specific paths
 // (/signup, /first-property, /first-tenant-import, /first-md-chat,
@@ -1470,6 +1484,7 @@ api.route('/approvals', approvalsRouter);
 // module_update_proposals). Distinct table+surface from /approvals
 // (approval_requests) and /workflow (workflow-engine runs).
 api.route('/proposals', proposalsRouter);
+api.route('/approval-grants', approvalGrantsRouter); // human-authorization grant primitive for autonomous task-agents
 // Wave 27 PhA1 — Vacancy-to-Lease orchestrator (state machine + pipeline runs)
 api.route('/vacancy-pipeline', vacancyPipelineRouter);
 // Personal Jarvis-style AI for every BossNyumba user — each surface
@@ -1503,6 +1518,7 @@ api.route('/platform/jarvis', platformHqJarvisRouter);  // BossNyumba HQ (Nyumba
 api.route('/platform/overview', platformOverviewRouter);
 // Phase B Wave 30 — Task-Agents (narrow-scope single-job agents + manual runs)
 api.route('/task-agents', taskAgentsRouter);
+api.route('/persona-registry', personaRegistryRouter); // admin-gated internally via services.personaRegistry
 // Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity)
 api.route('/tenant-branding', tenantBrandingRouter);
 // Wave 27 Agent C — Audit Trail v2 (record / verify / bundle / entries)
@@ -1513,6 +1529,8 @@ api.route('/admin/sovereign-ledger', sovereignLedgerRouter);
 api.route('/head/briefing', headBriefingRouter);
 // Wave 28 — Junior-AI factory (team-lead self-service provisioning)
 api.route('/junior-ai', juniorAIRouter);
+api.route('/memory', memoryDeclareRouter); // POST/GET/DELETE /memory/declare
+api.route('/cot', createCotQueryRouter()); // GET /cot/query — DSAR chain-of-thought inspection
 // Canonical Property Graph — relationship-explorer + named-query surface
 api.route('/graph', graphRouter);
 // Wave 29 — Forecasting surface (TGN + conformal). Returns 503
@@ -1604,6 +1622,7 @@ api.route('/owner/superpowers/prefill', ownerSuperpowersPrefillRouter);
 api.route('/admin/superpowers', adminSuperpowersRouter);
 api.route('/support', supportRouter);
 api.route('/admin', adminUsersRouter);
+api.route('/admin', createAdminAuditRouter()); // GET /admin/audit/log + POST /admin/tenants/:id/purge-now (SUPER_ADMIN, internal auth)
 // Unit subdivision + components — Manager-app dependency. Hono mounts
 // path-param prefixes correctly: `:id` is parsed and exposed via
 // `c.req.param('id')` inside the sub-router.
