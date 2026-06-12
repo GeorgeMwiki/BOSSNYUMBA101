@@ -120,7 +120,10 @@ export class DisbursementJob {
         const result = await this.disbursementService.processDisbursement({
           tenantId,
           ownerId: owner.ownerId,
-          destination
+          destination,
+          // Deterministic per owner+day: a re-run or overlapping tick returns the
+          // original disbursement (atomic-claim) instead of double-paying the owner.
+          idempotencyKey: `sched:${tenantId}:${owner.ownerId}:${new Date().toISOString().slice(0, 10)}`,
         });
 
         results.push(result);
@@ -198,7 +201,9 @@ export class DisbursementJob {
     return this.disbursementService.processDisbursement({
       tenantId,
       ownerId,
-      destination
+      destination,
+      // Deterministic per owner+day; a replay returns the original row, not a 2nd payout.
+      idempotencyKey: `single:${tenantId}:${ownerId}:${new Date().toISOString().slice(0, 10)}`,
     });
   }
 

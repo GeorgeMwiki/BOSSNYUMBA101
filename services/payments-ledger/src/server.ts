@@ -96,7 +96,12 @@ const CreateDisbursementSchema = z.object({
   }).optional(),
   destination: z.string(),
   description: z.string().optional(),
-  idempotencyKey: z.string().optional()
+  // BLOCKER #13(a): idempotencyKey is REQUIRED. A caller-supplied,
+  // deterministic key is the only thing that lets a replayed disbursement
+  // request collapse onto the original instead of firing a second owner
+  // payout. The service rejects an absent key; making it required here
+  // turns the client failure into a clean 400 instead of a 500.
+  idempotencyKey: z.string().min(1)
 }).strict();
 
 // M-PESA STK Callback Schema
@@ -171,12 +176,17 @@ function getTenantId(req: Request): TenantId {
  *     required field surfaces as a real type error.
  */
 function getTenantAggregate(tenantId: TenantId): TenantAggregate {
-  // resolvePlatformFeeBps returns basis points (e.g. 500 = 5.0%).
+  // A-BUG #14: basis points are the CANONICAL fee unit. We surface bps
+  // directly (`getPlatformFeeBps`) so fee math can stay integer
+  // end-to-end via `calculatePlatformFeeMinor`. `getPlatformFeePercent`
+  // is a derived convenience view; the fee formula itself no longer
+  // depends on the bps→percent→fee float round-trip (the percent is only
+  // re-expanded to bps losslessly inside `calculatePlatformFee`).
   const platformFeeBps = resolvePlatformFeeBps(process.env);
-  const platformFeePercent = platformFeeBps / 100;
   const aggregate: TenantAggregate = {
     id: tenantId,
-    getPlatformFeePercent: () => platformFeePercent,
+    getPlatformFeeBps: () => platformFeeBps,
+    getPlatformFeePercent: () => platformFeeBps / 100,
     paymentSettings: {
       stripeAccountId: process.env.STRIPE_CONNECTED_ACCOUNT_ID || undefined,
       mpesaShortCode: process.env.MPESA_SHORTCODE || undefined,

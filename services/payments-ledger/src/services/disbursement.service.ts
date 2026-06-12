@@ -105,8 +105,18 @@ export class DisbursementService {
    * Process a disbursement to an owner
    */
   async processDisbursement(request: DisbursementRequest): Promise<DisbursementResult> {
+    // BLOCKER #13(a): the idempotency key MUST be caller-supplied. Minting
+    // a random uuid here silently defeats replay protection — two
+    // deliveries of the "same" disbursement would each get a fresh key and
+    // both fire a transfer. Reject when absent so every caller (route,
+    // scheduled job) commits to a deterministic key.
+    if (!request.idempotencyKey) {
+      throw new Error(
+        'processDisbursement: idempotencyKey is required (a deterministic, caller-supplied key — never minted here)',
+      );
+    }
+    const idempotencyKey = request.idempotencyKey;
     const disbursementId = uuidv4();
-    const idempotencyKey = request.idempotencyKey || disbursementId;
 
     this.logger.info('Processing disbursement', {
       disbursementId,
@@ -155,30 +165,60 @@ export class DisbursementService {
     const provider = this.getProvider();
     const now = new Date();
 
-    // Create disbursement record for persistence
+    // Create disbursement record for persistence. We claim it as
+    // PROCESSING up front (not PENDING) so the row's existence under the
+    // unique (tenant_id, idempotency_key) index IS the claim.
     const disbursementRecord: Disbursement = {
       id: disbursementId,
       tenantId: request.tenantId,
       ownerId: request.ownerId,
       amountMinorUnits: amount.amountMinorUnits,
       currency: amount.currency,
-      status: 'PENDING',
+      status: 'PROCESSING',
       destination: request.destination,
       destinationType: 'BANK_ACCOUNT',
       description: request.description,
       idempotencyKey,
+      initiatedAt: now,
       createdAt: now,
       updatedAt: now,
       createdBy: 'system'
     };
 
-    // Persist disbursement record
+    // BLOCKER #13(b): atomically claim BEFORE transferring. The first
+    // writer wins; a concurrent replica / replay collides on the unique
+    // index and we return the ORIGINAL row without firing a second
+    // transfer. When no repository is wired (legacy in-memory paths) we
+    // proceed un-guarded — production always wires the repository.
     if (this.disbursementRepository) {
-      await this.disbursementRepository.create(disbursementRecord);
+      const { claimed, disbursement: claimedRow } =
+        await this.disbursementRepository.claimForProcessing(disbursementRecord);
+      if (!claimed) {
+        this.logger.info('Disbursement already claimed — returning original', {
+          disbursementId: claimedRow.id,
+          idempotencyKey,
+          ownerId: request.ownerId
+        });
+        return this.toResult(claimedRow);
+      }
     }
 
     try {
-      // Create transfer with provider
+      // BLOCKER #13(c): post the ledger debit BEFORE the provider transfer
+      // so a successful transfer can never exist without a backing ledger
+      // row. If the ledger post throws, no money has moved yet — the catch
+      // marks the claim FAILED and nothing is disbursed.
+      await this.ledgerService.postJournalEntry(
+        JournalTemplates.ownerDisbursement(
+          request.tenantId,
+          platformHoldingAccount.id,
+          operatingAccount.id,
+          amount,
+          'system'
+        )
+      );
+
+      // Create transfer with provider (after the ledger is booked).
       const transferResult = await provider.createTransfer({
         amount,
         destination: request.destination,
@@ -190,17 +230,6 @@ export class DisbursementService {
         },
         idempotencyKey
       });
-
-      // Record in ledger
-      await this.ledgerService.postJournalEntry(
-        JournalTemplates.ownerDisbursement(
-          request.tenantId,
-          platformHoldingAccount.id,
-          operatingAccount.id,
-          amount,
-          'system'
-        )
-      );
 
       // Update disbursement record with transfer details
       const updatedStatus: DisbursementStatus = transferResult.status === 'PAID'
@@ -394,11 +423,17 @@ export class DisbursementService {
       try {
         // Get owner's connected account (would come from owner profile in real impl)
         const destination = `acct_${owner.ownerId}`; // Placeholder
-        
+
+        // Deterministic, date-bucketed idempotency key (#13): a retried or
+        // double-fired scheduled run for the same owner on the same UTC day
+        // claims the same key, so the unique index collapses it to a single
+        // payout instead of minting a fresh key per attempt.
+        const dayBucket = new Date().toISOString().slice(0, 10);
         const result = await this.processDisbursement({
           tenantId,
           ownerId: owner.ownerId,
-          destination
+          destination,
+          idempotencyKey: `sched:${tenantId}:${owner.ownerId}:${dayBucket}`
         });
 
         results.push(result);
@@ -497,6 +532,26 @@ export class DisbursementService {
       throw new Error(`Payment provider ${this.defaultProvider} not found`);
     }
     return provider;
+  }
+
+  /**
+   * Map a persisted disbursement row to the external `DisbursementResult`
+   * shape. Used by the replay path (#13) to return the ORIGINAL claim
+   * verbatim. The result's status union has no 'PROCESSING'; an in-flight
+   * claim surfaces as the closest external state, 'IN_TRANSIT'.
+   */
+  private toResult(d: Disbursement): DisbursementResult {
+    const status: DisbursementResult['status'] =
+      d.status === 'PROCESSING' ? 'IN_TRANSIT' : d.status;
+    return {
+      disbursementId: d.id,
+      ownerId: d.ownerId,
+      amount: Money.fromMinorUnits(d.amountMinorUnits, d.currency),
+      status,
+      transferId: d.transferId ?? '',
+      estimatedArrival: d.estimatedArrival,
+      failureReason: d.failureReason
+    };
   }
 
   // ==========================================================================

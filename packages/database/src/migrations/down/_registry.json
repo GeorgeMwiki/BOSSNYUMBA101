@@ -233,6 +233,14 @@
       "dataLoss": true,
       "envs": ["dev", "staging"],
       "notes": "Drops the crash-resilient backing store for the orchestrator's schedule_wake / monitor Decisions. Any armed-but-not-yet-fired wakes/monitors are lost; the supervisor degrades to the storeless in-process fallback (arms lost on restart again). No money/audit data here."
+    },
+    {
+      "up": "0316_person_links_rls.sql",
+      "down": "down/0316_down_person_links_rls.sql",
+      "reverses": "ENABLE/FORCE RLS + tenant_isolation_select/modify + service_role_bypass policies on person_links + REVOKE anon; non-partial unique index disbursements_tenant_idempotency_uq (tenant_id, idempotency_key)",
+      "dataLoss": false,
+      "envs": ["dev", "staging"],
+      "notes": "No table/row data is destroyed — person_links rows survive. The down only removes the RLS posture (re-opening the cross-tenant identity-linkage leak) and the redundant atomic-claim arbiter index; the 0174 partial idempotency index is left intact. MUST NOT run in production: disabling RLS re-exposes person→tenant→user PII linkage across tenants."
     }
   ]
 }

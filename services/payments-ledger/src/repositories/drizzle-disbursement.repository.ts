@@ -131,6 +131,47 @@ export class DrizzleDisbursementRepository implements IDisbursementRepository {
     return rowToDisbursement(inserted[0]);
   }
 
+  async claimForProcessing(
+    disbursement: Disbursement,
+  ): Promise<{ claimed: boolean; disbursement: Disbursement }> {
+    // BLOCKER #13: atomically claim BEFORE any provider transfer. The
+    // partial unique index `disbursements_idempotency_idx` on
+    // (tenant_id, idempotency_key) WHERE idempotency_key IS NOT NULL
+    // (migration 0174) is the serialisation point. `onConflictDoNothing`
+    // emits a bare `ON CONFLICT DO NOTHING`, so a colliding replica /
+    // replay inserts NOTHING and `.returning()` comes back empty — we
+    // then re-read the original row and report it as not-claimed.
+    if (!disbursement.idempotencyKey) {
+      throw new Error(
+        'DrizzleDisbursementRepository.claimForProcessing: idempotencyKey is required',
+      );
+    }
+
+    const inserted = await this.db
+      .insert(disbursements)
+      .values(disbursementToInsert(disbursement))
+      .onConflictDoNothing()
+      .returning();
+
+    if (inserted[0]) {
+      return { claimed: true, disbursement: rowToDisbursement(inserted[0]) };
+    }
+
+    const existing = await this.findByIdempotencyKey(
+      disbursement.idempotencyKey,
+      disbursement.tenantId,
+    );
+    if (!existing) {
+      // The insert conflicted on a unique index OTHER than the
+      // idempotency one (e.g. a duplicate primary key). Surface it rather
+      // than silently treating an unrelated collision as a replay.
+      throw new Error(
+        `DrizzleDisbursementRepository.claimForProcessing: insert conflicted but no existing row found for idempotencyKey=${disbursement.idempotencyKey}`,
+      );
+    }
+    return { claimed: false, disbursement: existing };
+  }
+
   async findById(
     id: string,
     tenantId: TenantId,
@@ -291,7 +332,13 @@ export class DrizzleDisbursementRepository implements IDisbursementRepository {
     return this.find({ tenantId, ownerId }, page, pageSize);
   }
 
-  async findPending(tenantId: TenantId): Promise<Disbursement[]> {
+  async findPending(
+    tenantId: TenantId,
+    limit: number = 500,
+  ): Promise<Disbursement[]> {
+    // #low: bound the result so a large pending backlog can never load an
+    // unbounded set into memory. Clamp to [1, 500].
+    const safeLimit = Math.max(1, Math.min(500, Math.floor(limit)));
     const rows = await this.db
       .select()
       .from(disbursements)
@@ -301,7 +348,8 @@ export class DrizzleDisbursementRepository implements IDisbursementRepository {
           inArray(disbursements.status, ['PENDING', 'PROCESSING', 'IN_TRANSIT']),
         ),
       )
-      .orderBy(desc(disbursements.createdAt));
+      .orderBy(desc(disbursements.createdAt))
+      .limit(safeLimit);
     return rows.map(rowToDisbursement);
   }
 

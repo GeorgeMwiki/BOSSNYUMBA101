@@ -8,12 +8,21 @@
  * events) lives in the `persons` table; each `person_links` row is one
  * "hat" she wears at one tenant under one Supabase auth principal.
  *
- * RLS posture: NEITHER table has Row Level Security enabled. They are
- * platform-level identity registries (mirroring the precedent of
- * `platform_memory_cells`). Access is gated above this layer by the
- * api-gateway middleware — typically via the service-role connection
- * for identity-resolution lookups, or by a future `app.current_person_id`
- * GUC predicate.
+ * RLS posture (split as of migration 0316):
+ *   • `persons` — NO Row Level Security. It is a tenant-orthogonal,
+ *     platform-level identity registry with no `tenant_id` column
+ *     (mirroring the precedent of `platform_memory_cells`); there is no
+ *     tenant boundary to enforce. Access is gated above this layer by the
+ *     api-gateway middleware — typically via the service-role connection
+ *     for identity-resolution lookups, or by a future `app.current_person_id`
+ *     GUC predicate.
+ *   • `person_links` — RLS ENABLED + FORCED with the canonical
+ *     tenant_isolation (SELECT + modify) and service_role_bypass policies
+ *     in migration 0316_person_links_rls.sql. It carries `tenant_id` plus
+ *     the person→tenant→supabase_user PII linkage, so it is tenant-scoped
+ *     and the RLS-coverage scanner requires real policies (not an
+ *     allowlist entry). Cross-tenant identity-resolution jobs run under the
+ *     service-role connection (app.is_service_role = 'true').
  *
  * No `tenant_id` column on `persons` by design — a person exists
  * orthogonally to any tenant. `person_links.tenant_id` is the join key
