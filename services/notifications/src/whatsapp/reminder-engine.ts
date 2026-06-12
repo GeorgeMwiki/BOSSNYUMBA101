@@ -34,6 +34,55 @@ export interface ReminderQueue {
 }
 
 // ============================================================================
+// Failure sinks (Round-3 audit #medium reminder-engine.ts:466)
+// ============================================================================
+//
+// A failed WhatsApp reminder was previously dropped log-only: no DLQ/retry,
+// no staff visibility. These optional sinks let the composition wire a
+// dead-letter/retry marker AND a staff in-app alert. Both default to no-ops
+// (see DEFAULT_*) so the existing public constructor signature keeps working
+// for callers that haven't wired them yet.
+
+/**
+ * Dead-letter / retry marker for a reminder whose send failed. The
+ * composition wires this to the shared notifications DLQ so the reminder
+ * is re-attempted rather than silently lost.
+ */
+export interface ReminderDeadLetterSink {
+  markFailed(args: {
+    readonly reminderId: string;
+    readonly tenantId: string;
+    readonly type: ReminderType;
+    readonly error: string;
+  }): Promise<void>;
+}
+
+/**
+ * Staff in-app alert sink. Carries COUNTS + IDS only — never recipient PII
+ * (phone numbers, names) — so the alert is safe to render in an operator
+ * inbox without leaking customer identifiers.
+ */
+export interface ReminderStaffAlertSink {
+  raise(args: {
+    readonly tenantId: string;
+    readonly failedCount: number;
+    readonly reminderIds: readonly string[];
+  }): Promise<void>;
+}
+
+const NOOP_DEAD_LETTER_SINK: ReminderDeadLetterSink = {
+  async markFailed() {
+    /* no-op until a DLQ is wired */
+  },
+};
+
+const NOOP_STAFF_ALERT_SINK: ReminderStaffAlertSink = {
+  async raise() {
+    /* no-op until a staff-alert sink is wired */
+  },
+};
+
+// ============================================================================
 // In-Memory Reminder Queue (for development)
 // ============================================================================
 
@@ -107,6 +156,8 @@ export class ReminderEngine {
   private reminderQueue: ReminderQueue;
   private tenantDataProvider: TenantDataProvider;
   private defaultCurrency: string;
+  private deadLetterSink: ReminderDeadLetterSink;
+  private staffAlertSink: ReminderStaffAlertSink;
 
   constructor(options: {
     whatsappClient: MetaWhatsAppClient;
@@ -118,6 +169,10 @@ export class ReminderEngine {
      * wrong currency when the tenant country was misconfigured.
      */
     defaultCurrency: string;
+    /** #medium — DLQ/retry marker for failed reminders (default: no-op). */
+    deadLetterSink?: ReminderDeadLetterSink;
+    /** #medium — staff in-app alert sink, counts/ids only (default: no-op). */
+    staffAlertSink?: ReminderStaffAlertSink;
   }) {
     this.whatsappClient = options.whatsappClient;
     this.reminderQueue = options.reminderQueue || new InMemoryReminderQueue();
@@ -128,6 +183,8 @@ export class ReminderEngine {
       );
     }
     this.defaultCurrency = options.defaultCurrency;
+    this.deadLetterSink = options.deadLetterSink ?? NOOP_DEAD_LETTER_SINK;
+    this.staffAlertSink = options.staffAlertSink ?? NOOP_STAFF_ALERT_SINK;
   }
 
   // ============================================================================
@@ -457,6 +514,10 @@ export class ReminderEngine {
   async processPendingReminders(): Promise<number> {
     const pending = await this.reminderQueue.getPending();
     let processed = 0;
+    // #medium — collect failed reminder ids per tenant so a single staff
+    // alert (counts/ids only) surfaces them, instead of each failure being
+    // dropped log-only.
+    const failedIdsByTenant = new Map<string, string[]>();
 
     for (const reminder of pending) {
       try {
@@ -464,11 +525,23 @@ export class ReminderEngine {
         await this.reminderQueue.markSent(reminder.id);
         processed++;
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         logger.error('Failed to send reminder', {
           reminderId: reminder.id,
-          error,
+          error: message,
         });
+        const ids = failedIdsByTenant.get(reminder.tenantId) ?? [];
+        failedIdsByTenant.set(reminder.tenantId, [...ids, reminder.id]);
+        // #medium — DLQ/retry marker so the reminder is re-attempted
+        // rather than silently lost. The sink owns retry policy.
+        await this.markReminderDeadLettered(reminder, message);
       }
+    }
+
+    if (failedIdsByTenant.size > 0) {
+      // #medium — staff in-app alert per tenant: counts + ids only, never
+      // recipient PII.
+      await this.raiseStaffAlerts(failedIdsByTenant);
     }
 
     if (processed > 0) {
@@ -476,6 +549,55 @@ export class ReminderEngine {
     }
 
     return processed;
+  }
+
+  /**
+   * #medium — push a failed reminder to the DLQ/retry sink. Best-effort:
+   * a sink error must not abort the remaining reminder batch, so it is
+   * caught + logged rather than rethrown.
+   */
+  private async markReminderDeadLettered(
+    reminder: ReminderSchedule,
+    error: string
+  ): Promise<void> {
+    try {
+      await this.deadLetterSink.markFailed({
+        reminderId: reminder.id,
+        tenantId: reminder.tenantId,
+        type: reminder.type,
+        error,
+      });
+    } catch (sinkError) {
+      logger.error('Failed to dead-letter reminder', {
+        reminderId: reminder.id,
+        error: sinkError instanceof Error ? sinkError.message : String(sinkError),
+      });
+    }
+  }
+
+  /**
+   * #medium — raise ONE staff in-app alert per tenant summarising that
+   * tenant's failed reminders. Carries counts + reminder ids only (no phone
+   * numbers / names), so the operator inbox never leaks recipient PII.
+   * Best-effort: a sink error for one tenant must not block the others.
+   */
+  private async raiseStaffAlerts(
+    failedIdsByTenant: ReadonlyMap<string, readonly string[]>
+  ): Promise<void> {
+    for (const [tenantId, reminderIds] of failedIdsByTenant) {
+      try {
+        await this.staffAlertSink.raise({
+          tenantId,
+          failedCount: reminderIds.length,
+          reminderIds,
+        });
+      } catch (sinkError) {
+        logger.error('Failed to raise staff reminder-failure alert', {
+          failedCount: reminderIds.length,
+          error: sinkError instanceof Error ? sinkError.message : String(sinkError),
+        });
+      }
+    }
   }
 
   /**
@@ -660,6 +782,10 @@ export function createReminderEngine(options: {
   tenantDataProvider: TenantDataProvider;
   /** Tenant currency from region-config; required to avoid currency drift. */
   defaultCurrency: string;
+  /** #medium — DLQ/retry marker for failed reminders (default: no-op). */
+  deadLetterSink?: ReminderDeadLetterSink;
+  /** #medium — staff in-app alert sink, counts/ids only (default: no-op). */
+  staffAlertSink?: ReminderStaffAlertSink;
 }): ReminderEngine {
   return new ReminderEngine(options);
 }

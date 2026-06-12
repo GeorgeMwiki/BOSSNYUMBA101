@@ -47,6 +47,15 @@ export class EmergencyProtocolHandler {
   private emergencyService: EmergencyService;
   private emergencyKeywords: Record<SupportedLanguage, string[]>;
   private defaultEmergencyContacts: EmergencyContact[];
+  /**
+   * Round-3 audit #23 — map a live session to the durable incident id
+   * returned by `createIncident`. We keep it OUT of the shared
+   * `EmergencyContext` type (owned elsewhere) so timeline events can be
+   * persisted via `emergencyService.addTimelineEvent(incidentId, event)`
+   * instead of vanishing into the in-memory session on restart. The
+   * entry is cleared on resolution so the map never grows unbounded.
+   */
+  private sessionIncidentIds = new Map<string, string>();
 
   constructor(options: {
     whatsappClient: MetaWhatsAppClient;
@@ -300,7 +309,13 @@ export class EmergencyProtocolHandler {
     };
 
     try {
-      await this.emergencyService.createIncident(incident);
+      // #23: capture the durable incident id so subsequent timeline
+      // events (contacts-notified, tenant updates, resolution) attach to
+      // the persisted incident rather than only the volatile session.
+      const { incidentId } = await this.emergencyService.createIncident(incident);
+      if (incidentId) {
+        this.sessionIncidentIds.set(session.id, incidentId);
+      }
     } catch (error) {
       logger.error('Failed to create emergency incident', { error });
     }
@@ -510,11 +525,21 @@ export class EmergencyProtocolHandler {
 
     ctx.timelineEvents.push(event);
 
+    // #23: durably attach the event to the persisted incident. Without
+    // this, escalation / contacts-notified / tenant-update / resolution
+    // events lived ONLY in the in-memory session and were lost on restart.
+    const incidentId = this.sessionIncidentIds.get(session.id);
+    if (!incidentId) {
+      logger.warn('emergency timeline event — no incident id for session', {
+        sessionId: session.id,
+        event: event.event,
+      });
+      return;
+    }
     try {
-      // In production, update the incident record
-      // await this.emergencyService.addTimelineEvent(incidentId, event);
+      await this.emergencyService.addTimelineEvent(incidentId, event);
     } catch (error) {
-      logger.error('Failed to add timeline event', { error });
+      logger.error('Failed to add timeline event', { error, incidentId });
     }
   }
 
@@ -554,6 +579,18 @@ export class EmergencyProtocolHandler {
       actor: 'system',
       details: resolutionNotes,
     });
+
+    // #23: mark the durable incident resolved, then drop the session→
+    // incident mapping so the map never grows unbounded across incidents.
+    const incidentId = this.sessionIncidentIds.get(session.id);
+    if (incidentId) {
+      try {
+        await this.emergencyService.resolveIncident(incidentId, resolutionNotes);
+      } catch (error) {
+        logger.error('Failed to resolve emergency incident', { error, incidentId });
+      }
+      this.sessionIncidentIds.delete(session.id);
+    }
 
     // Reset session state
     session.state = 'idle';

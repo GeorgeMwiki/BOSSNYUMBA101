@@ -44,6 +44,7 @@ import {
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
 import { getSovereignBrain } from '../composition/sovereign';
+import { logger } from '../utils/logger';
 import { trace, type Attributes } from '@opentelemetry/api';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
@@ -216,6 +217,14 @@ adminJarvisStreamRouter.post('/', withSecurityEvents({ action: 'admin.create', r
       role: 'sovereign',
     });
   } catch (err) {
+    // #low — keep the membrane: log the real kernel/sovereign error
+    // internally but forward only a GENERIC message to the client so we
+    // don't leak kernel/sovereign internals over the SSE wire.
+    logger.error('admin-jarvis-stream: sovereign brain unavailable', {
+      runId,
+      threadId: parsed.data.threadId,
+      error: err instanceof Error ? err.message : String(err),
+    });
     // Without a brain we still respect AG-UI framing — open the run,
     // emit a RUN_ERROR, and let the client downgrade.
     queueMicrotask(() => {
@@ -228,7 +237,7 @@ adminJarvisStreamRouter.post('/', withSecurityEvents({ action: 'admin.create', r
       emitter.emit({
         type: 'RUN_ERROR',
         runId,
-        error: err instanceof Error ? err.message : 'sovereign-unavailable',
+        error: 'Assistant is temporarily unavailable. Please try again.',
       });
     });
     return c.body(emitter.stream, 200, agUiSseHeaders());
@@ -260,10 +269,20 @@ adminJarvisStreamRouter.post('/', withSecurityEvents({ action: 'admin.create', r
       });
     } catch (err) {
       // Defensive — kernel iterables can throw on sensor failover.
-      const message = err instanceof Error ? err.message : 'kernel-error';
+      // #low — keep the membrane: log the real error internally, forward
+      // only a generic message to the client over the SSE wire.
+      logger.error('admin-jarvis-stream: kernel stream failed', {
+        runId,
+        threadId: parsed.data.threadId,
+        error: err instanceof Error ? err.message : String(err),
+      });
       // pumpKernelToAgUi may already have emitted RUN_FINISHED — the
       // emitter is no-op-after-terminal so this is safe.
-      emitter.emit({ type: 'RUN_ERROR', runId, error: message });
+      emitter.emit({
+        type: 'RUN_ERROR',
+        runId,
+        error: 'Assistant encountered an error. Please try again.',
+      });
     }
   });
 
