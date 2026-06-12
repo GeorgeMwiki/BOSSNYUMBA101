@@ -75,6 +75,12 @@ function deepSeekAuth(): Record<string, string> {
 
 export const FAMILY_PATTERNS: Readonly<Record<ModelFamily, FamilyPattern>> =
   Object.freeze({
+    fable: {
+      provider: 'anthropic',
+      url: 'https://api.anthropic.com/v1/models',
+      matcher: /^claude-fable-/,
+      authHeader: anthropicAuth,
+    },
     opus: {
       provider: 'anthropic',
       url: 'https://api.anthropic.com/v1/models',

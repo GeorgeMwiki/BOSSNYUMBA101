@@ -27,6 +27,7 @@
  */
 
 export const MODEL_FAMILIES = [
+  'fable',
   'opus',
   'sonnet',
   'haiku',
@@ -58,8 +59,13 @@ export type ModelFamily = (typeof MODEL_FAMILIES)[number];
  *   `cohere-embed`   → `BOSSNYUMBA_MODEL_BASELINE_COHERE_EMBED`
  */
 export const MODELS: Readonly<Record<ModelFamily, string>> = Object.freeze({
+  // Frontier family — the compounding-growth carve-out runs the most powerful
+  // model and is NEVER cost-downgraded. L2 promotes a newer claude-fable-*
+  // minor live from /v1/models when ANTHROPIC_API_KEY is present.
+  fable:
+    process.env.BOSSNYUMBA_MODEL_BASELINE_FABLE ?? 'claude-fable-5',
   opus:
-    process.env.BOSSNYUMBA_MODEL_BASELINE_OPUS ?? 'claude-opus-4-7',
+    process.env.BOSSNYUMBA_MODEL_BASELINE_OPUS ?? 'claude-opus-4-8',
   sonnet:
     process.env.BOSSNYUMBA_MODEL_BASELINE_SONNET ?? 'claude-sonnet-4-6',
   haiku:

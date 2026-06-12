@@ -129,9 +129,12 @@ export function wireMultiLLMBrain(opts: WireMultiLLMBrainOpts = {}): BrainPort |
   }
 
   const synthesizer: SynthesizerProposerRegistration = {
-    id: 'anthropic-opus',
+    // Growth core (apex merge LLM) runs the frontier model and is never
+    // cost-downgraded — the compounding-growth carve-out. Proposers stay on
+    // their per-category bests below.
+    id: 'anthropic-fable',
     provider: new AnthropicProvider({ apiKey: anthropicKey }),
-    model: getModelLatest('opus'),
+    model: getModelLatest('fable'),
   };
 
   const synth = createMultiLLMSynthesizer({
