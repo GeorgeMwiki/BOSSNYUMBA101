@@ -88,3 +88,18 @@ CVE-2026-25223 # package=fastify, severity=HIGH
 #                 handler signature changes) deferred to its own PR.
 #   tracked_in:   Docs/DEP_HYGIENE.md (fastify 5.x migration)
 #   next_review:  2026-Q3
+
+CVE-2026-34077 # package=turbo-stream, severity=HIGH
+#   GHSA-rxv8-25v2-qmq8
+#   reason:       React Router single-fetch DoS. turbo-stream@2.4.1 is a
+#                 transitive dep via expo-router > @expo/server > @remix-run
+#                 in staff-mobile + tenant-mobile (Expo RN apps, not Remix
+#                 SSR — no app drives Remix loader-streaming through it). The
+#                 only fix is turbo-stream >=3.0.0, a breaking major the
+#                 Remix-v2 host runtime is not written against (force-bumping
+#                 it broke the build — see the deps-parity reconcile). Accept-
+#                 deferred; mirrors the turbo-stream entry in
+#                 scripts/audit-with-allowlist.mjs. BossNyumba-specific —
+#                 Borjie has no turbo-stream in its tree (no expo mobile apps).
+#   tracked_in:   Docs/DEP_HYGIENE.md (expo-router @remix-run turbo-stream)
+#   next_review:  2026-Q3
