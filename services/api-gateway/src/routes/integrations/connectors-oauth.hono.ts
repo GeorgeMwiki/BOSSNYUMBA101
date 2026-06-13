@@ -503,15 +503,19 @@ export function createConnectorsOAuthRouter(
       fetchImpl,
     });
     if (!exchanged.ok) {
+      // strict:false won't narrow ConnectorTokenExchangeResult to the
+      // false-variant here, so read `reason` through its shape (guarded by
+      // `!exchanged.ok`). token-free by construction.
+      const exchangeReason = (exchanged as { reason: string }).reason;
       moduleLogger.error('connectors-oauth: code exchange failed', {
         tenantId: state.tenantId,
         connectorId: state.connectorId,
-        reason: exchanged.reason, // token-free by construction
+        reason: exchangeReason,
       });
       return c.json(
         {
           success: false as const,
-          error: { code: 'OAUTH_EXCHANGE_FAILED', message: exchanged.reason },
+          error: { code: 'OAUTH_EXCHANGE_FAILED', message: exchangeReason },
         },
         502,
       );

@@ -46,13 +46,20 @@ import {
   createWidgetDataResolver,
   UnknownBindingError,
   type WidgetQueryPort,
+  type ResolvableBinding,
 } from '../../composition/portal-genui/widget-data-resolver.js';
 import { escalateToInternalAdmin } from '../../composition/portal-genui/internal-admin-sink.js';
 import {
   subscribeCockpitEvents,
   type CockpitEvent,
 } from '../../services/cockpit-events/index.js';
-import { logger } from '../../utils/logger.js';
+// pino-SHIM logger (object-first `logger.info({…}, 'msg')`) — the structured
+// calls below pass a context object first AND the widget-data resolver expects
+// the `(meta, message)` order, which the console-style utils/logger
+// (message-first signature) does not satisfy.
+import { createPinoLikeLogger } from '../../utils/pino-shim.js';
+
+const logger = createPinoLikeLogger('portal-genui-router');
 
 /**
  * The four chat-driven tab-CRUD events broadcast on the cockpit bus. The
@@ -1089,7 +1096,10 @@ router.post('/tabs/:id/widget-data', async (c: AnyCtx) => {
     onBlocker: escalateToInternalAdmin,
   });
   try {
-    const data = await resolver.resolve(parsed.data.binding, {
+    // zod already validated the discriminated union at runtime; cast bridges the
+    // strict:false `z.infer` degradation (it widens the parsed fields to optional)
+    // back to the resolver's `ResolvableBinding` (required kind + resource/toolId).
+    const data = await resolver.resolve(parsed.data.binding as ResolvableBinding, {
       tenantId: auth.tenantId,
       tabId: id,
     });

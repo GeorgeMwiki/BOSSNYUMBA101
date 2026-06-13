@@ -7,8 +7,8 @@
     "unlisted": 234,
     "binaries": 2,
     "unresolved": 2,
-    "exports": 1828,
-    "types": 2833,
+    "exports": 1827,
+    "types": 2835,
     "nsExports": 0,
     "nsTypes": 0,
     "enumMembers": 0,
@@ -26,5 +26,5 @@
     "no-deprecated-core": 0,
     "not-to-test": 0
   },
-  "generatedAt": "2026-06-13T11:38:35.132Z"
+  "generatedAt": "2026-06-13T15:33:00.000Z"
 }

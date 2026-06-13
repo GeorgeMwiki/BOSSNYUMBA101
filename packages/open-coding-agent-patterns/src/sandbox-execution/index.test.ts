@@ -51,7 +51,13 @@ describe('sandbox-execution :: createLocalSubprocessSandbox', () => {
       allowedCommands: ['printf'],
     });
     const res = await sandbox.exec({
-      cmd: 'printf "%s" "$(printf %.s. {1..200})"',
+      // 80 literal dots — exceeds the 50-byte cap. Built as a literal string
+      // (no bash brace expansion `{1..200}`): the sandbox runs via
+      // `spawn(cmd, { shell: true })`, and on Linux CI that shell is /bin/sh
+      // (dash), which does NOT expand braces — so the old command produced 1
+      // byte → truncated:false → a false CI failure. A literal string is
+      // POSIX-portable across sh/dash/bash.
+      cmd: `printf '%s' '${'.'.repeat(80)}'`,
       outputCapBytes: 50,
     });
     expect(res.truncated).toBe(true);
