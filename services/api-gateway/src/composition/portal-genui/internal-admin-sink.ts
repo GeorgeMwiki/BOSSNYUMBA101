@@ -20,7 +20,12 @@
  */
 
 import type { RepairOutcome, BlockerSignal } from '@bossnyumba/portal-genui';
-import { logger } from '../../utils/logger.js';
+// pino-SHIM logger (object-first `logger.warn({…}, 'msg')`) — the structured
+// calls below pass a context object first, which the console-style utils/logger
+// (message-first signature) would reject at type-check.
+import { createPinoLikeLogger } from '../../utils/pino-shim.js';
+
+const logger = createPinoLikeLogger('internal-admin-sink');
 
 /** The narrow persist port the composition root registers at boot. */
 export type SelfHealingRecordPort = (

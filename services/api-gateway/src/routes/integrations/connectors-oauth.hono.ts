@@ -39,6 +39,7 @@ import { sql } from 'drizzle-orm';
 
 import { authMiddleware } from '../../middleware/hono-auth.js';
 import { databaseMiddleware } from '../../middleware/database.js';
+import { rateLimitMiddleware } from '../../middleware/rate-limiter.js';
 import { createLogger } from '../../utils/logger';
 import { getConnectorDescriptor } from '../../composition/connector-catalog.js';
 import {
@@ -213,6 +214,13 @@ export function createConnectorsOAuthRouter(
 
   const app = new Hono();
 
+  // Rate-limit EVERY OAuth endpoint (start mints an external authorize URL +
+  // writes a durable nonce; callback exchanges a code with the provider;
+  // disconnect deletes credentials) — all security-sensitive and abusable, the
+  // callback even unauthenticated. The shared limiter keys per request (IP
+  // fallback pre-auth), bounding floods/replay attempts before any work runs.
+  app.use('*', rateLimitMiddleware);
+
   // Per-path middleware: the callback gets db only (no JWT exists there).
   app.use('/:connectorId/connect/start', authMiddleware);
   app.use('/:connectorId/disconnect', authMiddleware, databaseMiddleware);
@@ -265,7 +273,10 @@ export function createConnectorsOAuthRouter(
     }
     const provider = readConnectorOAuthProviderConfig(descriptor, env);
     if (!provider.ok) {
-      return notProvisioned(provider.reason);
+      // strict:false fails to narrow the discriminated union here (even via the
+      // positive-discriminant form), so read `reason` through the false-variant
+      // shape — guarded by the `!provider.ok` check above.
+      return notProvisioned((provider as { reason: string }).reason);
     }
     if (!isStateSigningProvisioned(env)) {
       return notProvisioned(
@@ -406,7 +417,10 @@ export function createConnectorsOAuthRouter(
       return c.json(
         {
           success: false as const,
-          error: { code: 'PROVIDER_OAUTH_NOT_CONFIGURED', message: provider.reason },
+          error: {
+            code: 'PROVIDER_OAUTH_NOT_CONFIGURED',
+            message: (provider as { reason: string }).reason,
+          },
         },
         503,
       );

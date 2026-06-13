@@ -63,7 +63,12 @@ import {
 import { createSupabaseAdminClient } from '@bossnyumba/supabase-client';
 
 import { getDb } from '../db-client.js';
-import { logger } from '../../utils/logger.js';
+// Use the pino-SHIM logger (object-first `logger.info({…}, 'msg')`), not the
+// console-style `utils/logger` (whose typed signature is message-first
+// `info(msg: string)`) — every structured call below passes a context object as
+// the first arg, so the shim's signature is the one that type-checks. Mirrors
+// the sibling composition wirings (e.g. connector-invokers-wiring.ts).
+import { createPinoLikeLogger } from '../../utils/pino-shim.js';
 import portalGenUIRouter from '../../routes/portal-genui/portal-genui.router.js';
 import {
   createLocaleImpurityDetector,
@@ -75,6 +80,9 @@ import {
 } from './internal-admin-sink.js';
 import { createSelfHealingStore } from './self-healing-store.js';
 import type { WidgetQueryPort } from './widget-data-resolver.js';
+
+/** Structured (object-first) logger for this wiring's boot-proof lines. */
+const logger = createPinoLikeLogger('portal-genui');
 
 // ────────────────────────────────────────────────────────────────────
 // DbExecutor adapter — postgres-js `$client.unsafe(sql, params)` returns

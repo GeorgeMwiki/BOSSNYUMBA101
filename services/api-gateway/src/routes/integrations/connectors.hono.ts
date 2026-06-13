@@ -31,6 +31,7 @@ import { z } from 'zod';
 
 import { authMiddleware } from '../../middleware/hono-auth.js';
 import { databaseMiddleware } from '../../middleware/database.js';
+import { rateLimitMiddleware } from '../../middleware/rate-limiter.js';
 import {
   createConnectorFabric,
   type ConnectorInvokerMap,
@@ -69,6 +70,11 @@ export function createConnectorsRouter(): Hono {
   // applies auth itself on /:id/connect/start and /:id/disconnect.
   app.route('/', createConnectorsOAuthRouter());
 
+  // Mutating surface (POST /:id/invoke runs an external connector action) — gate
+  // it behind the shared per-request rate limiter (same store as the rest of the
+  // gateway). The OAuth sub-router above applies its own limiter so the
+  // unauthenticated provider callback is bounded regardless of mount order.
+  app.use('*', rateLimitMiddleware);
   app.use('*', authMiddleware);
   app.use('*', databaseMiddleware);
 

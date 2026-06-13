@@ -496,10 +496,12 @@ export async function exchangeConnectorAuthorizationCode(args: {
     return { ok: false, reason: 'token endpoint returned a non-JSON body' };
   }
   const mapped = descriptor.mapTokenResponse(payload);
-  // Positive-discriminant check narrows reliably even under `strict:false`
-  // (where the negated `!mapped.ok` form fails to narrow the union).
+  // Under `strict:false`, neither `!mapped.ok` NOR the positive-discriminant
+  // `if (mapped.ok) return` form reliably narrows the fall-through to the
+  // false-variant (tsc still sees the full union here), so read `reason`
+  // through the false-variant shape — guarded by the `mapped.ok` early-return.
   if (mapped.ok) {
     return { ok: true, tokens: mapped.tokens };
   }
-  return { ok: false, reason: mapped.reason };
+  return { ok: false, reason: (mapped as { reason: string }).reason };
 }

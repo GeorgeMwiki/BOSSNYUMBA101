@@ -176,6 +176,10 @@ export const HARDCODED_CURRENCY_ALLOWLIST = new Map([
     'packages/marketing-brain/src/demo-data-generator.ts',
     'Demo-data generator seeds initial currency mapping per country for sandbox runs.',
   ],
+  [
+    'packages/portal-genui/src/totality/spec-generator.ts',
+    'Property-based-test spec generator for the renderer exhaustiveness proof: rng.pick([TZS,USD,KES,UGX,NGN]) is fuzz-fixture data varying the currencyCode field across seeds — not a business currency path (no money render, no jurisdiction assumption). Deliberately a fixed sample so the proof exercises multiple codes; coupling it to the live currency list would shrink fuzz coverage.',
+  ],
 
   // ─── Mpesa / regional connector schemas ────────────────────────────
   [
