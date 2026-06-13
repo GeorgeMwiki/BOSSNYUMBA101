@@ -3114,6 +3114,9 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.41.1
         version: 1.41.1
+      '@opentelemetry/winston-transport':
+        specifier: ^0.29.0
+        version: 0.29.0
       '@sentry/node':
         specifier: ^10.53.1
         version: 10.53.1(@opentelemetry/exporter-trace-otlp-http@0.218.0)
@@ -10813,6 +10816,13 @@ packages:
       '@opentelemetry/api': 1.9.1
     dev: false
 
+  /@opentelemetry/api-logs@0.219.0:
+    resolution: {integrity: sha512-FFx7YnaYJlIjqWW/AG/yAZ0L/NEY724PipXXXQLdtZPbLwBGbUMTGL1i/esI56TWfTUXxhLfpgrnWJCG8aUJyg==}
+    engines: {node: '>=8.0.0'}
+    dependencies:
+      '@opentelemetry/api': 1.9.1
+    dev: false
+
   /@opentelemetry/api@1.9.1:
     resolution: {integrity: sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q==}
     engines: {node: '>=8.0.0'}
@@ -12168,6 +12178,14 @@ packages:
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/core': 2.7.1(@opentelemetry/api@1.9.1)
+    dev: false
+
+  /@opentelemetry/winston-transport@0.29.0:
+    resolution: {integrity: sha512-/VX3xYkWZIFWLasxqPSj/3JFu8Ea8zP22zFsiiSlM8cHQ9ciqmbuX8k2N2CTTezBknteCMeOxt255s59RN3Wkg==}
+    engines: {node: ^18.19.0 || >=20.6.0}
+    dependencies:
+      '@opentelemetry/api-logs': 0.219.0
+      winston-transport: 4.9.0
     dev: false
 
   /@oxc-parser/binding-android-arm-eabi@0.127.0:
