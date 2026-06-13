@@ -753,3 +753,19 @@ export * as autonomy from './autonomy/index.js';
  * never writes. Phase-3 composition wires the counter-model port.
  */
 export * as auditor from './auditor/index.js';
+
+/**
+ * Model tiering — the PURE (route, stakes) → capability-tier policy plus the
+ * tier→model-id resolver the gateway composition root binds. Provider-
+ * agnostic: this layer never hard-codes a model string; the composition root
+ * (`model-tier-map.ts`) maps the tier label onto a concrete id via the
+ * dynamic registry. Default OFF (`BOSSNYUMBA_MODEL_TIERING`) ⇒ unchanged
+ * behaviour.
+ */
+export {
+  selectModelTier,
+  resolveModelIdForTier,
+  resolveModelTieringEnabled,
+  type ModelTier,
+  type ModelTierDecision,
+} from './model-tiering.js';
