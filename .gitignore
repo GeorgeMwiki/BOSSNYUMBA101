@@ -74,3 +74,4 @@ override.tf.json
 .research/
 .semgrep/
 .claude/worktrees/
+.vercel
