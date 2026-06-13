@@ -592,7 +592,9 @@ export function redactBrands(
     // Word-boundary on each side when both sides are word chars; fall
     // back to substring match when the term contains spaces or symbols.
     const pattern = /^[\w]+$/.test(term)
+      // eslint-disable-next-line security/detect-non-literal-regexp -- reason: `escaped` is produced by escapeRegex() which escapes all regex metacharacters; not raw user input
       ? new RegExp(`\\b${escaped}\\b`, 'gi')
+      // eslint-disable-next-line security/detect-non-literal-regexp -- reason: `escaped` is produced by escapeRegex() which escapes all regex metacharacters; not raw user input
       : new RegExp(escaped, 'gi');
     const matches = working.match(pattern);
     if (matches && matches.length > 0) {

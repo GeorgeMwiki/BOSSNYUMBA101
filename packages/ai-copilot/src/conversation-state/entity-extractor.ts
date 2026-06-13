@@ -9,8 +9,10 @@
 import type { ExtractedEntity } from './types.js';
 
 const PROPERTY_ID_RE = /\b(prop|property)[_-]?([A-Z0-9]{4,12})\b/gi;
+// eslint-disable-next-line security/detect-unsafe-regex -- reason: no nested repetition; the outer alternation and inner [A-Z0-9]+ with optional (-[A-Z0-9]+)? have disjoint branches, no catastrophic backtracking
 const UNIT_ID_RE = /\b(unit|apt|apartment|flat)[_\- ]?([A-Z0-9]+(?:-[A-Z0-9]+)?)\b/gi;
 const AMOUNT_TZS_RE =
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: outer alternation (\d{1,3}(?:[, ]\d{3})+|\d+) has no nested overlapping quantifiers; each branch is independent and linearly bounded
   /\b(\d{1,3}(?:[, ]\d{3})+|\d+)\s*(?:tzs|tsh|shillings|sh)\b/gi;
 const DATE_ISO_RE = /\b(\d{4}-\d{2}-\d{2})\b/g;
 const DATE_LONG_RE = /\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{4})\b/gi;
@@ -68,6 +70,7 @@ export function extractEntities(text: string): readonly ExtractedEntity[] {
     });
   }
   for (const district of DISTRICTS) {
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: pattern built from the hardcoded DISTRICTS constant array, not user input
     const re = new RegExp(`\\b${district}\\b`, 'i');
     if (re.test(text)) {
       entities.push({

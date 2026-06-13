@@ -67,7 +67,7 @@ function readStoredMode(): JarvisMode {
 export function JarvisConsole(): JSX.Element {
   const t = useTranslations('chatComposer');
   const [draft, setDraft] = useState('');
-  const [threadId] = useState(() => `cust_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+  const [threadId] = useState(() => `cust_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`);
   const [pendingImages, setPendingImages] = useState<ReadonlyArray<File>>([]);
   // Mobile-first: streaming is the default so first-token latency is
   // visible immediately on a phone connection. Preference is restored

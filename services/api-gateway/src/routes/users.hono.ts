@@ -12,7 +12,6 @@ type RoleInfo = { role: string; permissions: string[] };
 // any — Drizzle select builder chain type widens through generics in a
 // way that adds no safety when only structurally accessed. Rows are
 // narrowed below via the `.select({…})` projection which TS infers.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DrizzleDb = any;
 
 async function getRoleMap(db: DrizzleDb, tenantId: string, userIds: string[]): Promise<Map<string, RoleInfo>> {

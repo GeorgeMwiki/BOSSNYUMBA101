@@ -65,16 +65,14 @@ export const RLS_ALLOWLIST = new Map([
   ['feedback_submissions', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['field_encryption_audit', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   // gdpr_deletion_requests — RLS landed in migration 0166. Removed from allowlist.
-  ['geo_assignments', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
-  ['geo_label_types', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
-  ['geo_nodes', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
+  // geo_assignments / geo_label_types / geo_nodes — RLS landed in migration 0317 (organization_id → tenant FK-subquery isolation). Removed from allowlist.
   ['gepg_control_numbers', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['gepg_reconciliation_events', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['implicit_feedback_signals', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['improvement_snapshots', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['interactive_report_action_acks', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['interactive_report_versions', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
-  ['invite_codes', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
+  // invite_codes — RLS landed in migration 0317 (platform_tenant_id → GUC isolation). Removed from allowlist.
   ['iot_anomalies', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['iot_observations', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['iot_sensors', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
@@ -95,13 +93,14 @@ export const RLS_ALLOWLIST = new Map([
   ['migration_runs', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['monthly_close_run_steps', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['monthly_close_runs', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
+  ['muzima_parcels', 'TRACKED GAP — Muzima spatial parcel table (renamed from `parcels` by migration 0252b); RLS migration pending. parcel-service already enforces tenant scope at the route layer via TenantResolver.'],
   ['negotiation_policies', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['negotiation_turns', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['negotiations', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['notices', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['notification_dispatch_log', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['occupancies', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
-  ['org_memberships', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
+  // org_memberships — RLS landed in migration 0317 (platform_tenant_id → GUC isolation). Removed from allowlist.
   ['owner_statements', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   // payment_intents — RLS landed in migration 0166. Removed from allowlist.
   ['payment_plan_agreements', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],

@@ -133,7 +133,7 @@ function parseRowBody(body: string): string[] {
 function unquote(token: string): string {
   let t = token.trim();
   // Strip cast suffix.
-  t = t.replace(/::[A-Za-z_\[\]]+$/g, '').trim();
+  t = t.replace(/::[A-Za-z_[\]]+$/g, '').trim();
   // Strip ARRAY[…]::… prefix already handled — fall through for plain strings.
   if (t.startsWith('ARRAY[')) {
     return t.slice('ARRAY['.length, t.lastIndexOf(']'));

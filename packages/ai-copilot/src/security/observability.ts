@@ -9,6 +9,8 @@
  * Zero-cost when no collectors are registered.
  */
 
+import { randomUUID } from 'node:crypto';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -59,7 +61,8 @@ export function createSecurityObservability(
 ): SecurityObservability {
   const genId =
     deps.idGenerator ??
-    (() => `trace_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`);
+    (() =>
+      `trace_${Date.now().toString(36)}_${randomUUID().replace(/-/g, '').slice(0, 8)}`);
   const now = deps.now ?? (() => new Date());
   const collectors: SecurityEventCollector[] = [];
 

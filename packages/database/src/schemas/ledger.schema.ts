@@ -11,6 +11,7 @@ import {
   jsonb,
   index,
   uniqueIndex,
+  primaryKey,
   pgEnum,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
@@ -96,6 +97,12 @@ export const disbursementStatusEnum = pgEnum('disbursement_status', [
   'PAID',
   'FAILED',
   'CANCELLED',
+  // NEEDS_REVERSAL: the ledger debit posted but the outbound transfer FAILED
+  // after it. Money debited, undelivered — retryable. The disbursement
+  // reconciliation job (services/payments-ledger) re-drives the transfer under
+  // the same idempotency key or posts a compensating reversal; never a blind
+  // re-transfer. Added by migration 0317.
+  'NEEDS_REVERSAL',
 ]);
 
 // ============================================================================
@@ -208,6 +215,41 @@ export const ledgerEntries = pgTable(
     leaseIdx: index('ledger_entries_lease_idx').on(table.leaseId),
     accountSequenceIdx: uniqueIndex('ledger_entries_account_sequence_idx').on(table.accountId, table.sequenceNumber),
     postedAtIdx: index('ledger_entries_posted_at_idx').on(table.postedAt),
+  })
+);
+
+// ============================================================================
+// Journal Idempotency Table — post-once dedupe (durability defect #2)
+// ============================================================================
+//
+// Post-once idempotency for LedgerService.post(): one (tenant_id,
+// idempotency_key) maps to ONE balanced journal (which is N ledger_entries
+// posted together). A retried post with a seen key returns the EXISTING
+// journal instead of double-posting.
+//
+// SEPARATE table (NOT a ledger_entries.idempotency_key column): idempotency is
+// per-POST, not per-ENTRY. A balanced journal shares ONE key across its N
+// entries, so a UNIQUE(tenant_id, idempotency_key) on ledger_entries would
+// reject the 2nd..Nth entry of a single journal. The correct grain is one row
+// per (tenant, key) -> journal_id — the composite PK below.
+//
+// Physical table + FORCE RLS on app.current_tenant_id created in migration
+// 0318_journal_idempotency.sql. Column layout is byte-for-byte the
+// payments-ledger service's repository declaration.
+export const journalIdempotency = pgTable(
+  'journal_idempotency',
+  {
+    tenantId: text('tenant_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    journalId: text('journal_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    // Composite PK supplies the UNIQUE (tenant_id, idempotency_key) guarantee
+    // the duplicate-detection relies on.
+    pk: primaryKey({ columns: [table.tenantId, table.idempotencyKey] }),
+    // Reverse lookup: "which key minted this journal?" (ops / audit).
+    journalIdx: index('journal_idempotency_journal_idx').on(table.journalId),
   })
 );
 

@@ -67,7 +67,7 @@ jobs:
           --health-retries 10
 
     env:
-      NODE_VERSION: '20'
+      NODE_VERSION: '22'
       # Live-test specific.
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.LIVE_TEST_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.LIVE_TEST_SUPABASE_ANON_KEY }}

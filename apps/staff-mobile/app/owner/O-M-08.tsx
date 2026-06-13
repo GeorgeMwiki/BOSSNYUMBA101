@@ -169,7 +169,7 @@ function DocumentChatView(): JSX.Element {
     }
   })
 
-  const docs = docsQuery.data ?? []
+  const docs = useMemo(() => docsQuery.data ?? [], [docsQuery.data])
   const docLookup = useMemo<Record<string, DocRow>>(() => {
     const acc: Record<string, DocRow> = {}
     for (const doc of docs) {

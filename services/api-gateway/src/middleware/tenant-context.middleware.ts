@@ -52,7 +52,6 @@ function resolveCountryPluginWithDefault(rawCode: string | null): CountryPlugin 
     if (error instanceof UnknownJurisdictionError) {
       if (!defaultFallbackWarned) {
         defaultFallbackWarned = true;
-        // eslint-disable-next-line no-console -- one-shot operator visibility
         logger.warn(`[tenant-context] unknown / missing countryCode (${JSON.stringify(rawCode)}); ` +
             `falling back to DEFAULT_COUNTRY_ID=${DEFAULT_COUNTRY_ID}. ` +
             `Update tenants.countryCode to silence this warning.`);

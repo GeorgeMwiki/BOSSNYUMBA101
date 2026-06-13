@@ -12,6 +12,7 @@
  *   P3 — this month
  */
 
+import { randomUUID } from 'node:crypto';
 import type { AutonomyDomain } from './types.js';
 
 export type ExceptionPriority = 'P1' | 'P2' | 'P3';
@@ -212,7 +213,8 @@ function normaliseDue(value: Date | string | null): Date | null {
 }
 
 function randomSuffix(): string {
-  return Math.random().toString(36).slice(2, 8);
+  // CSPRNG-backed suffix (not Math.random) for collision-resistant IDs.
+  return randomUUID().replace(/-/g, '').slice(0, 6);
 }
 
 /** In-memory repo for tests + degraded mode. */

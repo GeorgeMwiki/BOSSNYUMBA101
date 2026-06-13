@@ -316,6 +316,12 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
     tier: tierEnum.default(config.defaultTier as any),
     stakes: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
     requireJudge: z.boolean().optional(),
+    // BN-EXE-04 — opt a high-stakes turn into the multi-LLM
+    // (mixture-of-agents) deep-reasoning fan-out. Defaults OFF for cost;
+    // `'critical'` stakes auto-enable it below even when the flag is omitted.
+    // The kernel only fans out when its synthesizer port was wired at boot;
+    // otherwise the flag is a no-op and the single-shot path runs.
+    requireSynthesis: z.boolean().optional(),
     attachments: z
       .array(AttachmentSchema)
       .max(MAX_ATTACHMENTS_PER_TURN, {
@@ -341,6 +347,9 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
       stakes: body.stakes,
       surface: config.surface,
       requireJudge: body.requireJudge,
+      // BN-EXE-04 — deep-reasoning fan-out. Explicit opt-in OR auto-enable
+      // on `critical` stakes. No-op unless a synthesizer port was wired.
+      requireSynthesis: body.requireSynthesis === true || body.stakes === 'critical',
       ...(body.attachments && body.attachments.length > 0
         ? { attachments: body.attachments }
         : {}),
@@ -436,6 +445,9 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
       stakes: body.stakes,
       surface: config.surface,
       requireJudge: body.requireJudge,
+      // BN-EXE-04 — deep-reasoning fan-out. Explicit opt-in OR auto-enable
+      // on `critical` stakes. No-op unless a synthesizer port was wired.
+      requireSynthesis: body.requireSynthesis === true || body.stakes === 'critical',
       ...(body.attachments && body.attachments.length > 0
         ? { attachments: body.attachments }
         : {}),

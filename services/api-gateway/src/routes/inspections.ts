@@ -4,15 +4,15 @@
  *
  * GET  /                — list inspections, tenant-scoped
  * GET  /:id             — single inspection
- * POST /                — 501 (schedule needs domain service; tracked)
+ * POST /                — REAL: records a completed move-in self-inspection
  * PUT  /:id/start       — 501
  * POST /:id/items       — 501
  * PUT  /:id/complete    — REAL: validates body, updates row to 'completed'
  * POST /:id/sign        — 501
  *
- * Reads come from the `inspections` table via `services.db`. Write
- * endpoints return 501 NOT_IMPLEMENTED rather than 503 so clients can
- * distinguish "feature coming" from "service degraded".
+ * Reads come from the `inspections` table via `services.db`. Remaining
+ * write endpoints return 501 NOT_IMPLEMENTED rather than 503 so clients
+ * can distinguish "feature coming" from "service degraded".
  *
  * /:id/complete handler design:
  *   - Body validated by zod (areaResults, overallNotes?, photoCount?)
@@ -27,11 +27,12 @@
  *   - Returns { id, status: 'completed', completedAt }
  */
 
+import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { and, desc, eq, sql } from 'drizzle-orm';
-import { inspections } from '@bossnyumba/database';
+import { inspections, properties } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
@@ -114,7 +115,150 @@ app.get('/:id', async (c) => {
   }
 });
 
-app.post('/', withSecurityEvents({ action: 'inspection.create', resource: 'inspection', severity: 'info' }, (c) => notImplemented(c, 'Scheduling')));
+// ============================================================================
+// POST / — record a completed move-in self-inspection.
+//
+// The customer-app move-in checklist (`/inspection`) submits a finished
+// self-attestation: a flat list of pass/fail checklist items plus an
+// optional signature. It carries no inspection id (there is no pre-scheduled
+// row to complete) and may omit propertyId, so this handler resolves the
+// tenant's property server-side rather than trusting the client.
+//
+// propertyId resolution (in order):
+//   1. body.propertyId, if supplied (verified to belong to the tenant)
+//   2. the tenant's sole property, when exactly one exists
+//   3. otherwise → 422 PROPERTY_REQUIRED (a clean, non-5xx signal the
+//      client can degrade on; we never invent an FK target)
+//
+// The row is inserted already `status='completed'` with `completedDate`
+// set server-side via NOW(). Item results + optional signature are
+// persisted through the `notes` column as a JSON blob until dedicated
+// columns land (mirrors the PUT /:id/complete persistence strategy).
+// ============================================================================
+
+const SubmitItemSchema = z.object({
+  id: z.string().min(1).max(200),
+  label: z.string().max(500).optional(),
+  passed: z.boolean().optional(),
+  notes: z.string().max(2000).optional(),
+  // The client may include an inline data-URL preview; we never persist
+  // raw image bytes through `notes`, only whether a photo was attached.
+  photoDataUrl: z.string().max(5_000_000).optional(),
+});
+
+const CreateInspectionSchema = z.object({
+  type: z
+    .enum(['move_in', 'move_out', 'routine', 'periodic', 'preventive', 'complaint', 'other'])
+    .default('move_in'),
+  propertyId: z.string().min(1).optional(),
+  unitId: z.string().min(1).optional(),
+  signature: z.string().max(5_000_000).nullable().optional(),
+  items: z.array(SubmitItemSchema).min(1).max(200),
+});
+
+app.post(
+  '/',
+  zValidator('json', CreateInspectionSchema),
+  withSecurityEvents({ action: 'inspection.create', resource: 'inspection', severity: 'info' }, async (c) => {
+    const db = (c.get('services') ?? {}).db;
+    if (!db) return dbUnavailable(c);
+    const tenantId = c.get('tenantId');
+    const userId = c.get('userId') ?? null;
+    const body = c.req.valid('json');
+
+    try {
+      // Resolve a tenant-scoped propertyId for the NOT-NULL FK.
+      let propertyId = null;
+      if (body.propertyId) {
+        const [owned] = await db
+          .select({ id: properties.id })
+          .from(properties)
+          .where(and(eq(properties.tenantId, tenantId), eq(properties.id, body.propertyId)))
+          .limit(1);
+        if (!owned) {
+          return c.json(
+            {
+              success: false,
+              error: { code: 'NOT_FOUND', message: 'Property not found in this tenant.' },
+            },
+            404,
+          );
+        }
+        propertyId = owned.id;
+      } else {
+        // Fall back to the tenant's sole property when unambiguous.
+        const candidates = await db
+          .select({ id: properties.id })
+          .from(properties)
+          .where(eq(properties.tenantId, tenantId))
+          .limit(2);
+        if (candidates.length === 1) {
+          propertyId = candidates[0].id;
+        }
+      }
+
+      if (!propertyId) {
+        return c.json(
+          {
+            success: false,
+            error: {
+              code: 'PROPERTY_REQUIRED',
+              message:
+                'A propertyId is required to record this inspection — the tenant has zero or multiple properties.',
+            },
+          },
+          422,
+        );
+      }
+
+      const id = `insp_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 8)}`;
+      const notesPayload = JSON.stringify({
+        items: body.items.map((item) => ({
+          id: item.id,
+          label: item.label ?? null,
+          passed: item.passed ?? null,
+          notes: item.notes ?? null,
+          hasPhoto: Boolean(item.photoDataUrl),
+        })),
+        hasSignature: Boolean(body.signature),
+      });
+
+      const [inserted] = await db
+        .insert(inspections)
+        .values({
+          id,
+          tenantId,
+          propertyId,
+          unitId: body.unitId ?? null,
+          type: body.type,
+          status: 'completed',
+          completedDate: sql`NOW()`,
+          notes: notesPayload,
+          createdBy: userId,
+          updatedBy: userId,
+        })
+        .returning();
+
+      const completedAt = inserted?.completedDate
+        ? new Date(inserted.completedDate as unknown as string).toISOString()
+        : new Date().toISOString();
+
+      return c.json(
+        {
+          success: true,
+          data: { id, status: 'completed', completedAt },
+        },
+        201,
+      );
+    } catch (err) {
+      return routeCatch(c, err, {
+        code: 'INSPECTION_CREATE_FAILED',
+        status: 503,
+        fallback: 'Inspection create failed',
+      });
+    }
+  }),
+);
 app.put('/:id/start', withSecurityEvents({ action: 'inspection.update', resource: 'inspection', severity: 'info' }, (c) => notImplemented(c, 'Starting')));
 app.post('/:id/items', withSecurityEvents({ action: 'inspection.create', resource: 'inspection', severity: 'info' }, (c) => notImplemented(c, 'Adding items to')));
 app.post('/:id/sign', withSecurityEvents({ action: 'inspection.create', resource: 'inspection', severity: 'info' }, (c) => notImplemented(c, 'Signing')));

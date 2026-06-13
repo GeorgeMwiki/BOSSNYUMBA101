@@ -18,7 +18,6 @@
  *
  * Per-chunk timeout: 5 s (per task spec).
  */
-/* eslint-disable no-console */
 
 import {
   AsyncQueue,

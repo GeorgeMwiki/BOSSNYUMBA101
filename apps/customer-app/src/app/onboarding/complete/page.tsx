@@ -4,20 +4,18 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
 import {
-  PartyPopper,
   Home,
   Key,
   Calendar,
   Phone,
   FileText,
   MapPin,
-  Clock,
   CheckCircle,
   ArrowRight,
   MessageCircle,
   Star,
-  Shield,
   Award,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,12 +28,39 @@ interface MoveInDetail {
   value: string;
 }
 
-function useMoveInDetails(): MoveInDetail[] {
-  const t = useTranslations('p89.onboardingComplete');
+/**
+ * The resident's REAL lease, fetched the same way `/lease` does. Used to
+ * fill the move-in details (move-in date + property/location) with the
+ * tenant's own record. A fresh resident with no lease yet sees honest
+ * "to be confirmed" placeholders, never a fabricated property name or
+ * move-in date.
+ */
+interface CompleteLeaseDto {
+  readonly property?: { readonly name?: string };
+  readonly unit?: { readonly unitNumber?: string };
+  readonly startDate?: string;
+}
+
+function useMoveInDetails(lease: CompleteLeaseDto | undefined): MoveInDetail[] {
+  const t = useTranslations('onboardingComplete');
+  const tbc = t('toBeConfirmed');
+
+  const moveInDate = lease?.startDate
+    ? new Date(lease.startDate).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : tbc;
+
+  const location =
+    [lease?.property?.name, lease?.unit?.unitNumber ? `Unit ${lease.unit.unitNumber}` : null]
+      .filter(Boolean)
+      .join(', ') || tbc;
+
   return [
-    { icon: Calendar, label: 'Move-in Date', value: 'June 1, 2024' },
-    { icon: Clock, label: t('keyCollection'), value: '10:00 AM - 12:00 PM' },
-    { icon: MapPin, label: 'Location', value: 'Sunset Apartments, Management Office' },
+    { icon: Calendar, label: t('moveInDateLabel'), value: moveInDate },
+    { icon: MapPin, label: t('locationLabel'), value: location },
   ];
 }
 
@@ -80,7 +105,14 @@ const TIME_SLOTS = [
 
 export default function OnboardingCompletePage() {
   const t = useTranslations('onboardingComplete');
-  const MOVE_IN_DETAILS = useMoveInDetails();
+  const leaseQuery = useQuery({
+    queryKey: ['customer-current-lease'],
+    queryFn: () => api.lease.getCurrent(),
+    // A fresh resident may have no lease yet — that's an honest empty
+    // state, not an error worth retrying loudly.
+    retry: false,
+  });
+  const MOVE_IN_DETAILS = useMoveInDetails(leaseQuery.data as CompleteLeaseDto | undefined);
   const router = useRouter();
   const { user } = useAuth();
   const [welcomeItems, setWelcomeItems] = useState(WELCOME_ITEMS);
@@ -395,17 +427,22 @@ export default function OnboardingCompletePage() {
           </div>
         </div>
 
-        {/* Contact Manager */}
+        {/* Property management contact. We do NOT fabricate a named
+            manager — there is no per-tenant manager source wired yet, so
+            we show the honest support contact (real config). The phone
+            row only renders when a real support number is configured. */}
         <div className="card p-4">
           <h3 className="font-medium mb-3">{t('yourPropertyManager')}</h3>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                <span className="text-primary-700 font-semibold">JM</span>
+                <Home className="w-5 h-5 text-primary-700" />
               </div>
               <div>
-                <div className="font-medium">{t('sampleManagerName')}</div>
-                <div className="text-sm text-gray-500">{SUPPORT_PHONE || '—'}</div>
+                <div className="font-medium">{t('propertyManagement')}</div>
+                <div className="text-sm text-gray-500">
+                  {SUPPORT_PHONE || t('contactSupport')}
+                </div>
               </div>
             </div>
             {SUPPORT_PHONE && (

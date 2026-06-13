@@ -21,7 +21,6 @@
  * registry). When the key is missing we fall back to the deterministic stub so
  * unit tests stay hermetic.
  */
-/* eslint-disable no-console */
 
 import { Buffer } from 'node:buffer';
 
@@ -93,7 +92,6 @@ export function createGptRealtime2Provider(): GptRealtime2Provider {
       // Node 22 ships native WebSocket. Headers go through the second arg as
       // an options object in node:undici-style; the `Authorization` header is
       // never logged because we never serialise it.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const ws = new (globalThis as any).WebSocket(wsUrl, {
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -256,7 +254,6 @@ function handleRealtimeEvent(
 
 function waitForOpen(ws: unknown, signal: AbortSignal): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sock = ws as any;
     if (sock.readyState === 1) {
       resolve();

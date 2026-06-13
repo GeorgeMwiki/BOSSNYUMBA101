@@ -13,6 +13,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import { getSharedPerTenantRateBudget } from '../middleware/per-tenant-rate-budget';
 
 const JoinSchema = z.object({
   customerId: z.string().min(1),
@@ -49,6 +50,9 @@ const TriggerOutreachSchema = z.object({
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
+// Tenant-scoped outreach + join mutations — bound the per-tenant request
+// budget so a single tenant cannot flood waitlist writes / vacancy outreach.
+app.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 
 function waitlistService(c: any) {
   const services = c.get('services') ?? {};

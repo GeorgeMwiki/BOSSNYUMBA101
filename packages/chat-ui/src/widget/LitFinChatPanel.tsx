@@ -68,6 +68,7 @@ function makeId(prefix: string): string {
   if (cryptoApi && typeof cryptoApi.randomUUID === 'function') {
     return `${prefix}-${cryptoApi.randomUUID()}`;
   }
+  // eslint-disable-next-line no-restricted-syntax -- last-resort fallback only when crypto.randomUUID above is unavailable
   return `${prefix}-${Date.now().toString(36)}-${Math.random()
     .toString(36)
     .slice(2, 8)}`;

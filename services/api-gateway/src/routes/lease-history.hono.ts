@@ -21,6 +21,7 @@ import { z } from 'zod';
 
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import { getSharedPerTenantRateBudget } from '../middleware/per-tenant-rate-budget';
 import { createLogger } from '../utils/logger.js';
 import {
   LeaseHistoryService,
@@ -47,6 +48,7 @@ const AppendStepSchema = z.object({
 
 const app = new Hono();
 app.use('*', authMiddleware, databaseMiddleware);
+app.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 
 app.post('/:leaseId/history/steps', async (c) => {
   const auth = c.get('auth') as

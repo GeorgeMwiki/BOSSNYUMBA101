@@ -64,7 +64,6 @@ function resolveTrace(): OtelLikeTrace | null {
   if (_resolved) return _cachedTrace;
   _resolved = true;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
     const mod = _syncRequire('@opentelemetry/api') as {
       trace?: OtelLikeTrace;
     };
@@ -92,7 +91,7 @@ let _syncRequire: (spec: string) => unknown = (spec: string) => {
   if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
     throw new Error('OpenTelemetry resolution is server-only');
   }
-  // eslint-disable-next-line no-eval, @typescript-eslint/no-implied-eval
+  // eslint-disable-next-line no-eval
   const dyn = eval('require') as (m: string) => unknown;
   return dyn(spec);
 };
@@ -251,7 +250,7 @@ export function _restoreSyncRequireForTests(): void {
     if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
       throw new Error('OpenTelemetry resolution is server-only');
     }
-    // eslint-disable-next-line no-eval, @typescript-eslint/no-implied-eval
+    // eslint-disable-next-line no-eval
     const dyn = eval('require') as (m: string) => unknown;
     return dyn(spec);
   };

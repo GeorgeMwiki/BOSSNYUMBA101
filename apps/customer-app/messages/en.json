@@ -380,7 +380,23 @@
   "onboardingESign": {
     "title": "Sign Documents",
     "allSigned": "All Signed",
-    "drawSignature": "Draw Your Signature"
+    "drawSignature": "Draw Your Signature",
+    "loading": "Loading your documents…",
+    "errorLoad": "We couldn't load your documents. Please try again.",
+    "retry": "Retry",
+    "emptyTitle": "Nothing to sign yet",
+    "emptyDesc": "Once your lease is ready, your documents will appear here for signing.",
+    "documentsToSign": "Documents to Sign",
+    "of": "of",
+    "signedCount": "signed",
+    "signedOn": "Signed on",
+    "viewFullDocument": "View Full Document",
+    "signed": "Signed",
+    "signDocument": "Sign Document",
+    "confirmTerms": "I confirm that I have read and understood all documents, and I agree to be bound by the terms and conditions outlined in the lease agreement.",
+    "legalNotice": "Your electronic signature has the same legal effect as a handwritten signature. Please review all documents carefully before signing.",
+    "finalizing": "Finalizing…",
+    "completeSigning": "Complete Signing"
   },
   "myCredit": {
     "title": "My credit rating",
@@ -550,6 +566,22 @@
     "empty": "No messages yet.",
     "retry": "Retry",
     "untitled": "Conversation"
+  },
+  "messageThread": {
+    "loading": "Loading conversation…",
+    "errorLoad": "Failed to load this conversation.",
+    "notFound": "Conversation not found.",
+    "empty": "No messages in this conversation yet.",
+    "retry": "Retry",
+    "back": "Back to messages",
+    "composerPlaceholder": "Write a message…",
+    "send": "Send",
+    "sending": "Sending…",
+    "sendUnavailable": "Sending messages isn't available yet. You can still read this conversation.",
+    "sendFailed": "Couldn't send your message. Please try again.",
+    "you": "You",
+    "manager": "Property manager",
+    "system": "System"
   },
   "feedbackPage": {
     "title": "Submit Feedback",
@@ -989,7 +1021,12 @@
     "viewLease": "View Lease",
     "getSupport": "Get Support",
     "yourPropertyManager": "Your Property Manager",
-    "sampleManagerName": "Jane Mwangi"
+    "moveInDateLabel": "Move-in Date",
+    "locationLabel": "Location",
+    "propertyManagement": "Property Management",
+    "toBeConfirmed": "To be confirmed",
+    "supportTeam": "Support team",
+    "contactSupport": "Contact support through the in-app channel"
   },
   "inspectionPage": {
     "title": "Move-in Inspection",
@@ -1183,7 +1220,37 @@
       "keyCollection": "Key Collection"
     },
     "onboardingUtilities": {
-      "copyMeterNumber": "Copy Meter Number"
+      "copyMeterNumber": "Copy Meter Number",
+      "copyAccountNumber": "Copy Account Number",
+      "loading": "Loading your utility accounts…",
+      "errorLoad": "We couldn't load your utility accounts. Please try again.",
+      "retry": "Retry",
+      "emptyTitle": "No meters assigned yet",
+      "emptyDesc": "Once your unit's utility accounts are set up, your meter details and instructions will appear here.",
+      "intro": "Review the utility setup for your unit. You'll need these details to manage your electricity, water, and gas.",
+      "reviewProgress": "Utilities Review",
+      "reviewed": "reviewed",
+      "of": "of",
+      "meterNumberLabel": "Meter Number",
+      "accountNumberLabel": "Account Number",
+      "provider": "Provider",
+      "iReviewed": "I've reviewed this",
+      "reviewedDone": "Reviewed",
+      "continue": "Continue",
+      "saving": "Saving…",
+      "type": {
+        "electricity": "Electricity",
+        "water": "Water Supply",
+        "gas": "Gas Supply",
+        "internet": "Internet",
+        "other": "Utility"
+      },
+      "instructions": {
+        "electricity": "This unit uses a pre-paid LUKU electricity meter. Buy LUKU tokens via M-Pesa: dial *150*00# and choose \"Buy Electricity/LUKU\", then enter the meter number above. You'll receive a 20-digit token by SMS to key into the meter. Press the blue button on the meter to check remaining units.",
+        "water": "Water for this unit is metered against the account above. Readings are taken monthly and billed as part of your utilities. Report leaks, low pressure, or discoloured water through the Maintenance section of the app.",
+        "gas": "Order LPG cooking gas from approved suppliers listed in the Community section. Always close gas valves when not in use. If you smell gas, open windows, do not switch on any electrical appliances, and contact security immediately.",
+        "generic": "Use the account and meter details above to manage this utility. Report any issues through the Maintenance section of the app."
+      }
     },
     "onboardingWelcome": {
       "pushNotifications": "Push Notifications"

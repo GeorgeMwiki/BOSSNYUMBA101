@@ -72,6 +72,7 @@ export function abstractLease(
     'rentKes'
   );
   const depositMatch = match(
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: filler [^\n]{0,200}? is explicitly bounded at 200 chars; negated class [^\n] cannot overlap with surrounding anchors; no catastrophic backtracking
     /\b(?:security\s+)?deposit[^\n]{0,200}?(?:KES|KSh|Ksh)\s*([0-9][0-9,.]{0,20})/i,
     'depositKes'
   );
@@ -80,6 +81,7 @@ export function abstractLease(
     'serviceChargeKes'
   );
   const escalationMatch = match(
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: filler [^\n]{0,200}? bounded at 200; decimal suffix (?:\.[0-9]{1,4})? is a single optional bounded group; no nested overlapping quantifiers
     /\b(?:escalation|increment|increase)[^\n]{0,200}?([0-9]{1,6}(?:\.[0-9]{1,4})?)\s*%/i,
     'escalationPct'
   );
@@ -100,6 +102,7 @@ export function abstractLease(
     'landlord'
   );
   const unitMatch = match(
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: all quantifiers are bounded (\s*, ?, {1,12}); optional groups are single-occurrence non-overlapping; no nested repetition
     /\b(?:unit|apartment|house|plot)\s*(?:no\.?|number|#|:)?\s*([A-Z0-9\-/]{1,12})/i,
     'unit'
   );

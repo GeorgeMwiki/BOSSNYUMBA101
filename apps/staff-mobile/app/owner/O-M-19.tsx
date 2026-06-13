@@ -74,7 +74,7 @@ export default function Screen(): JSX.Element {
     }
   })
 
-  const reports = query.data ?? []
+  const reports = useMemo(() => query.data ?? [], [query.data])
 
   const renderKinds = useMemo<ReadonlyArray<string>>(() => {
     const unique = new Set<string>()

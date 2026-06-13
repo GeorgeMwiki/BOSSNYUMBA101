@@ -578,9 +578,7 @@ export async function runFromEnv(): Promise<WakeLoopCronTickResult | null> {
     logger: {
       // eslint-disable-next-line no-console
       info: (obj, msg) => console.info('wake-loop-cron:', msg ?? '', obj),
-      // eslint-disable-next-line no-console
       warn: (obj, msg) => console.warn('wake-loop-cron:', msg ?? '', obj),
-      // eslint-disable-next-line no-console
       error: (obj, msg) => console.error('wake-loop-cron:', msg ?? '', obj),
     },
   });

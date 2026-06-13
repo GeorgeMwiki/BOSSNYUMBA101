@@ -66,7 +66,7 @@ function readStoredMode(): JarvisMode {
 export function JarvisConsole(): JSX.Element {
   const t = useTranslations('p89.jarvis');
   const [draft, setDraft] = useState('');
-  const [threadId] = useState(() => `mgr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+  const [threadId] = useState(() => `mgr_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`);
   const [pendingImages, setPendingImages] = useState<ReadonlyArray<File>>([]);
   // Default to streaming so managers see token deltas the moment the
   // model commits to a direction. Preference is restored from

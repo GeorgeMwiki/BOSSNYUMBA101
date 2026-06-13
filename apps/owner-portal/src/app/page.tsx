@@ -1,8 +1,10 @@
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
+import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
 
 export default function OwnerPortalHome() {
   const t = useTranslations('ownerHome');
+  const { format } = useTenantCurrencyFormatter();
   return (
     <main className="min-h-screen bg-background p-8">
       <div className="mx-auto max-w-7xl">
@@ -26,7 +28,7 @@ export default function OwnerPortalHome() {
               <CardDescription>{t('monthlyIncomeDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">KES 0</p>
+              <p className="text-2xl font-bold">{format(0)}</p>
               <p className="text-sm text-muted-foreground">{t('collected')}</p>
             </CardContent>
           </Card>

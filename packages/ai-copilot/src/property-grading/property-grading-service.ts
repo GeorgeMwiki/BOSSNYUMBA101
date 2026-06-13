@@ -17,6 +17,8 @@
  * clear reason.
  */
 
+import { randomUUID } from 'node:crypto';
+
 import {
   DEFAULT_GRADING_WEIGHTS,
   GRADE_DIMENSIONS,
@@ -136,7 +138,8 @@ export class PropertyGradingService {
     this.snapshotRepo = config.snapshotRepo;
     this.now = config.now ?? (() => new Date());
     this.generateId =
-      config.generateId ?? (() => `pg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
+      config.generateId ??
+      (() => `pg_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 8)}`);
   }
 
   /** Grade one property. Fetches live inputs + current weights, persists a snapshot. */

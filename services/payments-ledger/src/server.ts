@@ -52,6 +52,7 @@ import { createRepositories } from './repositories/factory';
 import { ReconciliationJob } from './jobs/reconciliation.job';
 import { StatementGenerationJob } from './jobs/statement-generation.job';
 import { DisbursementJob } from './jobs/disbursement.job';
+import { DisbursementReconciliationJob } from './jobs/disbursement-reconciliation.job';
 
 // =============================================================================
 // Request Validation Schemas
@@ -96,7 +97,12 @@ const CreateDisbursementSchema = z.object({
   }).optional(),
   destination: z.string(),
   description: z.string().optional(),
-  idempotencyKey: z.string().optional()
+  // BLOCKER #13(a): idempotencyKey is REQUIRED. A caller-supplied,
+  // deterministic key is the only thing that lets a replayed disbursement
+  // request collapse onto the original instead of firing a second owner
+  // payout. The service rejects an absent key; making it required here
+  // turns the client failure into a clean 400 instead of a 500.
+  idempotencyKey: z.string().min(1)
 }).strict();
 
 // M-PESA STK Callback Schema
@@ -171,12 +177,17 @@ function getTenantId(req: Request): TenantId {
  *     required field surfaces as a real type error.
  */
 function getTenantAggregate(tenantId: TenantId): TenantAggregate {
-  // resolvePlatformFeeBps returns basis points (e.g. 500 = 5.0%).
+  // A-BUG #14: basis points are the CANONICAL fee unit. We surface bps
+  // directly (`getPlatformFeeBps`) so fee math can stay integer
+  // end-to-end via `calculatePlatformFeeMinor`. `getPlatformFeePercent`
+  // is a derived convenience view; the fee formula itself no longer
+  // depends on the bps→percent→fee float round-trip (the percent is only
+  // re-expanded to bps losslessly inside `calculatePlatformFee`).
   const platformFeeBps = resolvePlatformFeeBps(process.env);
-  const platformFeePercent = platformFeeBps / 100;
   const aggregate: TenantAggregate = {
     id: tenantId,
-    getPlatformFeePercent: () => platformFeePercent,
+    getPlatformFeeBps: () => platformFeeBps,
+    getPlatformFeePercent: () => platformFeeBps / 100,
     paymentSettings: {
       stripeAccountId: process.env.STRIPE_CONNECTED_ACCOUNT_ID || undefined,
       mpesaShortCode: process.env.MPESA_SHORTCODE || undefined,
@@ -478,6 +489,56 @@ const disbursementJob = new DisbursementJob(
     error: (msg, ctx) => logger.error(ctx, msg)
   }
 );
+
+/**
+ * Resolve the two accounts a non-delivery reversal touches: the tenant's
+ * platform-holding account and the owner's operating account. The reversal
+ * posts DR holding / CR owner-operating (mirror of the original disbursement)
+ * so the money returns to holding. Mirror of Borjie server.ts:1508-1528.
+ */
+async function resolveDisbursementReversalAccounts(input: {
+  tenantId: TenantId;
+  ownerId: OwnerId;
+}): Promise<{
+  platformHoldingAccountId: AccountId | null;
+  ownerOperatingAccountId: AccountId | null;
+}> {
+  const holding = await accountRepository.findPlatformAccounts(
+    input.tenantId,
+    'PLATFORM_HOLDING',
+  );
+  const operating = await accountRepository.findByOwnerAndType(
+    input.tenantId,
+    input.ownerId,
+    'OWNER_OPERATING',
+  );
+  return {
+    platformHoldingAccountId: holding?.id ?? null,
+    ownerOperatingAccountId: operating?.id ?? null,
+  };
+}
+
+// The NEEDS_REVERSAL consumer. Sweeps debited-but-undelivered disbursements and
+// drives each to terminal (re-drive / compensating reversal) or flags it LOUD
+// so money can never sit silently lost. Reuses the reversal-account resolver
+// above and resolves the provider by name for re-drive / status. Triggered on a
+// cadence by POST /api/v1/admin/jobs/disbursement-reconciliation. Mirror of
+// Borjie server.ts:484-498.
+const disbursementReconciliationJob = new DisbursementReconciliationJob({
+  disbursementRepository,
+  ledgerService,
+  resolveReversalAccounts: (input) => resolveDisbursementReversalAccounts(input),
+  getProvider: (name) => {
+    if (mpesaProvider && name === mpesaProvider.name) return mpesaProvider;
+    if (stripeProvider && name === stripeProvider.name) return stripeProvider;
+    return null;
+  },
+  logger: {
+    info: (ctx, msg) => logger.info(ctx, msg),
+    warn: (ctx, msg) => logger.warn(ctx, msg),
+    error: (ctx, msg) => logger.error(ctx, msg),
+  },
+});
 
 // =============================================================================
 // Middleware
@@ -1869,6 +1930,29 @@ app.post('/api/v1/admin/jobs/disbursements', async (req: Request, res: Response,
     next(error);
   }
 });
+
+/**
+ * POST /api/v1/admin/jobs/disbursement-reconciliation - Sweep NEEDS_REVERSAL
+ *
+ * Drives debited-but-undelivered disbursements to terminal (re-drive /
+ * compensating reversal) or surfaces them LOUD. Scoped to the caller's tenant
+ * (the GUC the auth middleware binds); a scheduler hits this per tenant on a
+ * cadence. The response carries the queryable NEEDS_REVERSAL count so an
+ * external monitor can alert on debited-but-undelivered money. Mirror of Borjie
+ * server.ts:1967-1978.
+ */
+app.post(
+  '/api/v1/admin/jobs/disbursement-reconciliation',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantId = getTenantId(req);
+      const [result] = await disbursementReconciliationJob.run([tenantId]);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // =============================================================================
 // Additional API Routes (aliases and convenience endpoints)

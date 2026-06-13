@@ -143,6 +143,7 @@ export function parseProposedAction(text: string): ProposedAction | null {
   // Bounded non-greedy body ([^\n\r]{1,500}?) prevents catastrophic
   // backtracking while still covering any realistic action line.
   const m = text.match(
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: [^\n\r]{1,500}? is explicitly bounded at 500 chars to prevent catastrophic backtracking; the preceding comment documents this design decision
     /PROPOSED_ACTION:\s*(\S+)\s+([^\n\r]{1,500}?)(?:\s*\[risk:(LOW|MEDIUM|HIGH|CRITICAL)\])?\s*(?:\r?\n|$)/i
   );
   if (!m) return null;

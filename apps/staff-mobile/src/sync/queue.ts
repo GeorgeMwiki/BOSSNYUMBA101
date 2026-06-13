@@ -44,6 +44,7 @@ export function subscribeQueue(listener: Listener): () => void {
 }
 
 function newId(): string {
+  // eslint-disable-next-line no-restricted-syntax -- React Native offline-queue local id (no Web Crypto); uniqueness suffices, not security-sensitive
   const rand = Math.random().toString(36).slice(2, 10)
   return `q_${Date.now()}_${rand}`
 }

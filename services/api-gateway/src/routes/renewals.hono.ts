@@ -17,6 +17,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
+import { requireService } from '../middleware/require-service.js';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
 const idParam = z.object({
@@ -78,6 +79,7 @@ renewalsRouter.get('/', async (c) => {
 
 renewalsRouter.post(
   '/:leaseId/window',
+  requireService('renewalService'),
   zValidator('param', idParam),
   withSecurityEvents({ action: 'renewal.create', resource: 'renewal', severity: 'info' }, async (c) => {
     const { leaseId } = c.req.valid('param');
@@ -98,6 +100,7 @@ renewalsRouter.post(
 
 renewalsRouter.post(
   '/:leaseId/propose',
+  requireService('renewalService'),
   zValidator('param', idParam),
   zValidator('json', ProposeSchema),
   withSecurityEvents({ action: 'renewal.create', resource: 'renewal', severity: 'info' }, async (c) => {
@@ -120,6 +123,7 @@ renewalsRouter.post(
 
 renewalsRouter.post(
   '/:leaseId/accept',
+  requireService('renewalService'),
   zValidator('param', idParam),
   zValidator('json', AcceptSchema),
   withSecurityEvents({ action: 'renewal.create', resource: 'renewal', severity: 'info' }, async (c) => {
@@ -142,6 +146,7 @@ renewalsRouter.post(
 
 renewalsRouter.post(
   '/:leaseId/decline',
+  requireService('renewalService'),
   zValidator('param', idParam),
   zValidator('json', DeclineSchema),
   withSecurityEvents({ action: 'renewal.create', resource: 'renewal', severity: 'info' }, async (c) => {
@@ -164,6 +169,7 @@ renewalsRouter.post(
 
 renewalsRouter.post(
   '/:leaseId/terminate',
+  requireService('renewalService'),
   zValidator('param', idParam),
   zValidator('json', TerminateSchema),
   withSecurityEvents({ action: 'renewal.create', resource: 'renewal', severity: 'info' }, async (c) => {

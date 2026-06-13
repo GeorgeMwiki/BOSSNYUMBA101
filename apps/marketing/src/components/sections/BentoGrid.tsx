@@ -208,7 +208,8 @@ function BentoFlourish({ tileId }: { readonly tileId: string }) {
     case 'wallet':
       return (
         <div className="grid grid-cols-3 gap-2">
-          {['M-Pesa', 'Tigo Pesa', 'Airtel'].map((rail) => (
+          {/* eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: static marketing copy listing supported payment rails, not a tenant business-logic binding */}
+          {(['M-Pesa', 'Tigo Pesa', 'Airtel'] as const).map((rail) => (
             <div
               key={rail}
               className="rounded-md border border-border bg-background/50 px-2 py-1.5 text-center text-tiny"

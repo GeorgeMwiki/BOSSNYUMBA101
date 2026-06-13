@@ -152,6 +152,39 @@ function applyOne(dbUrl, file) {
   };
 }
 
+function isAlreadyApplied(dbUrl, file) {
+  // Mirror the production runner's per-file skip EXACTLY
+  // (packages/database/src/run-migrations.ts ~L284-293): the runner keys
+  // the skip on `hash = <filename-without-.sql>` in
+  // drizzle.__drizzle_migrations and `continue`s past any file already
+  // recorded there. The preempt migrations (0186b / 0226b) deliberately
+  // INSERT the hashes of their UNPARSEABLE successors (0187 / 0227 / 0228)
+  // into that ledger so the runner NEVER executes those file bodies in
+  // production. Honoring the same skip here makes the apply-check faithful:
+  // it stops force-applying files that production skips, which is the repo's
+  // documented strategy for parse-time-broken immutable migrations (see the
+  // 0186b / 0226b / 0216 / 0240 headers) rather than editing the shipped
+  // files in violation of the immutability rule.
+  const name = file.name.replace(/\.sql$/, '');
+  const result = spawnSync(
+    'psql',
+    [
+      dbUrl,
+      '-X',
+      '-q',
+      '-tA',
+      '-c',
+      `SELECT 1 FROM drizzle.__drizzle_migrations WHERE hash = '${name}' LIMIT 1`,
+    ],
+    { encoding: 'utf8' },
+  );
+  // status !== 0 means the probe itself failed (e.g. ledger table missing);
+  // treat that as "not applied" so the file is attempted and any real error
+  // surfaces — never silently skip on a probe failure.
+  if (result.status !== 0) return false;
+  return (result.stdout || '').trim() === '1';
+}
+
 function maybeResetDb(dbUrl) {
   // Parse out the dbname from a postgres://user:pass@host:port/dbname URL.
   const m = /^(postgres(?:ql)?:\/\/[^/]+)\/([^?]+)/.exec(dbUrl);
@@ -190,6 +223,83 @@ function maybeEnableVector(dbUrl) {
     { encoding: 'utf8' },
   );
   return result.status === 0;
+}
+
+function bootstrapDrizzleLedger(dbUrl) {
+  // Faithfully mirror the production runner's pre-apply bootstrap in
+  // packages/database/src/run-migrations.ts (~L270-277). The runner
+  // ALWAYS creates schema "drizzle" + table "drizzle.__drizzle_migrations"
+  // BEFORE applying any migration, so the preempt migrations
+  // (0159b / 0164c9 / 0186b / 0210b / 0226b) can INSERT their hash
+  // into that ledger. Without this bootstrap the apply-check is
+  // unfaithful: those migrations fail with
+  //   relation "drizzle.__drizzle_migrations" does not exist
+  // even though they apply cleanly under the real runner.
+  //
+  // The column shape (id / hash / created_at) is copied EXACTLY from
+  // the runner; do not drift it. ON_ERROR_STOP=1 so a bootstrap
+  // failure surfaces loudly rather than masking later ledger errors.
+  const bootstrapSql = [
+    'CREATE SCHEMA IF NOT EXISTS drizzle;',
+    'CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (',
+    '  id SERIAL PRIMARY KEY,',
+    '  hash TEXT NOT NULL,',
+    '  created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT',
+    ');',
+  ].join('\n');
+  const result = spawnSync(
+    'psql',
+    [dbUrl, '-v', 'ON_ERROR_STOP=1', '-X', '-q', '-c', bootstrapSql],
+    { encoding: 'utf8' },
+  );
+  if (result.status !== 0) {
+    throw new Error(
+      `drizzle ledger bootstrap failed (CREATE SCHEMA / __drizzle_migrations): ${result.stderr || result.error}`,
+    );
+  }
+}
+
+function bootstrapSupabaseRoles(dbUrl) {
+  // Faithfully mirror the roles that ALWAYS exist on a real Supabase
+  // Postgres cluster (the project bootstrap provisions them via the
+  // roles migration that ships with every Supabase database):
+  //
+  //   anon          — unauthenticated PostgREST role
+  //   authenticated — logged-in JWT role (BossNyumba's canonical app role)
+  //   service_role  — privileged backend role that bypasses RLS
+  //
+  // Many shipped migrations REVOKE/GRANT to these roles inside their RLS
+  // sections (e.g. `GRANT SELECT ... TO authenticated`,
+  // `REVOKE ALL ... FROM anon`). On a vanilla fresh Postgres the roles do
+  // not exist, so psql aborts the WHOLE file transaction with
+  //   role "authenticated" does not exist
+  // even though the migration applies cleanly on real Supabase. Worse, the
+  // per-file rollback cascades: a table created earlier in the same file is
+  // discarded, so a LATER migration's FK to that table also fails (e.g.
+  // 0224's FK to module_templates seeded in the rolled-back 0221).
+  //
+  // Postgres has no `CREATE ROLE IF NOT EXISTS`, so each role is created in
+  // an idempotent DO block guarded by a pg_roles existence check. The role
+  // attributes match Supabase: NOLOGIN (these are GRANT targets, not login
+  // roles) + NOINHERIT. ON_ERROR_STOP=1 so a genuine bootstrap failure
+  // surfaces loudly rather than masking later role errors.
+  const roles = ['anon', 'authenticated', 'service_role'];
+  const rolesSql = roles
+    .map(
+      (role) =>
+        `DO $$\nBEGIN\n  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${role}') THEN\n    CREATE ROLE ${role} NOLOGIN NOINHERIT;\n  END IF;\nEND\n$$;`,
+    )
+    .join('\n');
+  const result = spawnSync(
+    'psql',
+    [dbUrl, '-v', 'ON_ERROR_STOP=1', '-X', '-q', '-c', rolesSql],
+    { encoding: 'utf8' },
+  );
+  if (result.status !== 0) {
+    throw new Error(
+      `Supabase role bootstrap failed (anon / authenticated / service_role): ${result.stderr || result.error}`,
+    );
+  }
 }
 
 function renderMarkdown(results) {
@@ -284,12 +394,43 @@ async function main() {
       console.log(`  pgvector available: ${ok}`);
     }
 
+    // Mirror real Supabase: provision the anon / authenticated /
+    // service_role roles BEFORE applying any migration, so the RLS sections
+    // that GRANT/REVOKE to them apply faithfully instead of aborting the
+    // file transaction with `role "authenticated" does not exist`. Without
+    // this the apply-check is unfaithful to production (Supabase always has
+    // these roles) and the per-file rollback cascades into downstream FK
+    // failures.
+    // eslint-disable-next-line no-console
+    console.log('Bootstrapping Supabase roles (anon / authenticated / service_role)...');
+    bootstrapSupabaseRoles(args.dbUrl);
+
+    // Mirror the production runner: create the drizzle schema + ledger
+    // table BEFORE applying any migration, so the preempt migrations can
+    // INSERT into drizzle.__drizzle_migrations (see run-migrations.ts
+    // ~L270-277). This does not change apply order or which dirs apply.
+    // eslint-disable-next-line no-console
+    console.log('Bootstrapping drizzle.__drizzle_migrations ledger (mirrors run-migrations.ts)...');
+    bootstrapDrizzleLedger(args.dbUrl);
+
     const files = findMigrationFiles(args.migrationsDir);
     // eslint-disable-next-line no-console
     console.log(`Applying ${files.length} migrations from ${args.migrationsDir}...`);
 
     const results = [];
+    let skippedCount = 0;
     for (const f of files) {
+      // Faithful to production: if a preempt migration already recorded this
+      // file's hash in the ledger, the runner skips it — so do we. This is
+      // how 0187 / 0227 / 0228 (parse-time-broken, immutable) are handled in
+      // production: 0186b / 0226b record their hashes and the runner never
+      // executes their bodies. See isAlreadyApplied().
+      if (isAlreadyApplied(args.dbUrl, f)) {
+        skippedCount += 1;
+        // eslint-disable-next-line no-console
+        console.log(`  SKIP  ${f.name} (already recorded in ledger by a preempt migration)`);
+        continue;
+      }
       const r = applyOne(args.dbUrl, f);
       results.push(r);
       let tag;
@@ -304,6 +445,10 @@ async function main() {
       console.log(
         `  ${tag}  ${r.file}${r.passed ? '' : ` — ${r.errorLines[0] || 'exit ' + r.exitCode}`}${r.allowlisted ? ' [ALLOWLISTED]' : ''}`,
       );
+    }
+    if (skippedCount > 0) {
+      // eslint-disable-next-line no-console
+      console.log(`Skipped ${skippedCount} migration(s) already recorded in the ledger (mirrors run-migrations.ts).`);
     }
 
     const md = renderMarkdown(results);

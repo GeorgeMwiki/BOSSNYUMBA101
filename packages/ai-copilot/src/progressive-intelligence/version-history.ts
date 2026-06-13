@@ -7,6 +7,7 @@
  * @module progressive-intelligence/version-history
  */
 
+import { randomUUID } from 'node:crypto';
 import type { AccumulatedEstateContext } from './types.js';
 
 export interface ContextSnapshot {
@@ -75,7 +76,7 @@ export class VersionHistoryService {
   async snapshot(context: AccumulatedEstateContext): Promise<ContextSnapshot> {
     assertTenant(context.tenantId);
     const snap: ContextSnapshot = {
-      id: `vh-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: `vh-${Date.now()}-${randomUUID().replace(/-/g, '').slice(0, 6)}`,
       tenantId: context.tenantId,
       sessionId: context.sessionId,
       version: context.version,

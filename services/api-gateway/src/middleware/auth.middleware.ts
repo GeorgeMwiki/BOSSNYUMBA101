@@ -15,6 +15,7 @@ import jwt from 'jsonwebtoken';
 import { UserRole } from '../types/user-role';
 import { resolveApiKeyLegacyOrRegistry } from './api-key-registry';
 import { tokenBlocklist } from './token-blocklist';
+import { logger } from '../utils/logger';
 import {
   verifySupabaseJwt,
   SupabaseAuthError,
@@ -117,19 +118,23 @@ function auditAuthResolution(args: {
   tenantId?: string;
   reason?: string;
 }): void {
-  const line = JSON.stringify({
+  // #medium — route through the gateway's structured Pino logger (which
+  // applies the classification scrubber / redaction) instead of raw
+  // `console.*`. Writing principal identifiers via console bypassed the
+  // "Pino logger only" rule and the package's PII redaction path.
+  const meta = {
     event: 'auth_principal_resolved',
     auth_path: args.authPath,
     outcome: args.outcome,
     user_id: args.userId,
     tenant_id: args.tenantId,
     reason: args.reason,
-    ts: new Date().toISOString(),
-  });
-  // eslint-disable-next-line no-console
-  if (args.outcome === 'allow') console.info(line);
-  // eslint-disable-next-line no-console
-  else console.warn(line);
+  };
+  if (args.outcome === 'allow') {
+    logger.info('auth_principal_resolved', meta);
+  } else {
+    logger.warn('auth_principal_resolved', meta);
+  }
 }
 
 // ============================================================================

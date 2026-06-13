@@ -127,7 +127,6 @@ export default function PropertyGradesPage(): JSX.Element {
     if (!reports.length) return;
     setRefreshing(true);
     for (const r of reports) {
-      // eslint-disable-next-line no-await-in-loop
       await api.post(
         `/property-grading/recompute/${encodeURIComponent(r.propertyId)}`,
         {},

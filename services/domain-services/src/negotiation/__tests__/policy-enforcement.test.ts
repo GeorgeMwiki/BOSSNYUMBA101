@@ -178,6 +178,7 @@ describe('policy-enforcement.checkPolicy', () => {
     // Pad with random boundary tries to approximate the 100-prompt
     // adversarial requirement without spamming the test runner.
     for (let o = 0; o < 100; o++) {
+      // eslint-disable-next-line no-restricted-syntax -- test data generation; not security-sensitive
       offers.push(Math.max(1, Math.floor(Math.random() * 79_999)));
     }
     for (const offer of offers) {

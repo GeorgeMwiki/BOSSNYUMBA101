@@ -18,6 +18,7 @@ function normaliseE164(raw: string): string {
   const digits = raw.replace(/[^0-9+]/g, '')
   if (digits.startsWith('+')) return digits
   if (digits.startsWith('255')) return `+${digits}`
+  // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: TZ-launch default dial code in signup UI; locale selection handles expansion markets
   if (digits.startsWith('0')) return `+255${digits.slice(1)}`
   return `+${digits}`
 }

@@ -11,7 +11,6 @@ import { __clearLazyCacheForTesting } from '../components/SectionMount.js';
 import type { Section } from '../contracts/section.js';
 
 declare global {
-  // eslint-disable-next-line no-var
   var __setMatchMedia: ((matches: boolean) => void) | undefined;
 }
 

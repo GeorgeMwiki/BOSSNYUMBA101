@@ -144,15 +144,33 @@ function parseJsonDoc(doc: IncomingDoc): ParsedDoc {
   });
 }
 
+/**
+ * Stable warning + fact emitted when a source kind is accepted but its real
+ * content was NOT extracted (only a size hint was produced). The ingest
+ * orchestrator MUST key off these to mark the upload `'parsing'`/`'pending'`
+ * rather than `'indexed'` — claiming an un-extracted PDF/photo/audio is
+ * "indexed" is the #20 dishonesty. A real extraction worker (pdf-parse /
+ * mammoth / OCR / STT) consumes the warning and re-ingests with real text.
+ */
+export const EXTRACTION_DEFERRED_WARNING = 'extraction_deferred';
+export const EXTRACTION_DEFERRED_FACT_KIND = 'extraction.deferred';
+
+function deferredExtractionFact(sourceKind: string): ExtractedFact {
+  return { kind: EXTRACTION_DEFERRED_FACT_KIND, value: sourceKind, confidence: 1 };
+}
+
 function parsePdfDoc(doc: IncomingDoc): ParsedDoc {
   const bytes = doc.bytes ?? new Uint8Array();
   const sizeKb = Math.round(bytes.byteLength / 1024);
   const hint = `[pdf upload accepted - ${sizeKb}KB. Deep text extraction queued.]`;
   return Object.freeze({
     text: hint,
-    warnings: Object.freeze(['pdf_deep_extraction_pending']),
+    warnings: Object.freeze(['pdf_deep_extraction_pending', EXTRACTION_DEFERRED_WARNING]),
     detectedLanguage: 'unknown',
-    extractedFacts: Object.freeze([{ kind: 'pdf.size_kb', value: String(sizeKb), confidence: 1 }]),
+    extractedFacts: Object.freeze([
+      { kind: 'pdf.size_kb', value: String(sizeKb), confidence: 1 },
+      deferredExtractionFact('pdf'),
+    ]),
   });
 }
 
@@ -162,9 +180,12 @@ function parsePhotoDoc(doc: IncomingDoc): ParsedDoc {
   const hint = `[photo upload accepted - ${sizeKb}KB. Vision + EXIF + OCR analysis queued.]`;
   return Object.freeze({
     text: hint,
-    warnings: Object.freeze(['photo_vision_pending']),
+    warnings: Object.freeze(['photo_vision_pending', EXTRACTION_DEFERRED_WARNING]),
     detectedLanguage: 'unknown',
-    extractedFacts: Object.freeze([{ kind: 'photo.size_kb', value: String(sizeKb), confidence: 1 }]),
+    extractedFacts: Object.freeze([
+      { kind: 'photo.size_kb', value: String(sizeKb), confidence: 1 },
+      deferredExtractionFact('photo'),
+    ]),
   });
 }
 
@@ -174,10 +195,22 @@ function parseAudioDoc(doc: IncomingDoc): ParsedDoc {
   const hint = `[audio upload accepted - ${sizeKb}KB. Whisper STT (sw+en) queued.]`;
   return Object.freeze({
     text: hint,
-    warnings: Object.freeze(['audio_stt_pending']),
+    warnings: Object.freeze(['audio_stt_pending', EXTRACTION_DEFERRED_WARNING]),
     detectedLanguage: doc.languageHint === 'sw' ? 'sw' : 'unknown',
-    extractedFacts: Object.freeze([{ kind: 'audio.size_kb', value: String(sizeKb), confidence: 1 }]),
+    extractedFacts: Object.freeze([
+      { kind: 'audio.size_kb', value: String(sizeKb), confidence: 1 },
+      deferredExtractionFact('audio'),
+    ]),
   });
+}
+
+/**
+ * True when a parsed doc only produced a size-hint placeholder (no real
+ * content extraction). The orchestrator uses this to choose `'parsing'` over
+ * `'indexed'` so corpus status never claims extraction that did not happen.
+ */
+export function isDeferredExtraction(parsed: ParsedDoc): boolean {
+  return parsed.warnings.includes(EXTRACTION_DEFERRED_WARNING);
 }
 
 export async function parseIncomingDoc(doc: IncomingDoc): Promise<ParsedDoc> {

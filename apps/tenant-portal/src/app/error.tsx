@@ -14,6 +14,7 @@
  */
 
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 
 export default function SegmentError({
   error,
@@ -22,11 +23,11 @@ export default function SegmentError({
   error: Error & { digest?: string };
   reset: () => void;
 }): JSX.Element {
+  const t = useTranslations('error');
   useEffect(() => {
     // Surface the failure in the browser console so we can correlate with
     // Sentry / server logs; the digest is server-side to avoid leaking
     // sensitive details to the client UI.
-    // eslint-disable-next-line no-console
     console.error('[tenant-portal] segment error', error);
   }, [error]);
 
@@ -37,12 +38,12 @@ export default function SegmentError({
       className="min-h-screen flex items-center justify-center p-6 bg-surface-subtle text-ink"
     >
       <div className="max-w-md text-center space-y-4">
-        <h1 className="text-2xl font-semibold">Something went wrong</h1>
+        <h1 className="text-2xl font-semibold">{t('title')}</h1>
         <p className="text-sm text-ink-muted">
-          {error.message || 'An unexpected error occurred while loading this page.'}
+          {error.message || t('fallbackMessage')}
         </p>
         {error.digest && (
-          <p className="text-xs text-ink-muted/70">Reference: {error.digest}</p>
+          <p className="text-xs text-ink-muted/70">{t('reference', { digest: error.digest })}</p>
         )}
         <div className="flex items-center justify-center gap-3 pt-2">
           <button
@@ -50,13 +51,13 @@ export default function SegmentError({
             onClick={reset}
             className="px-4 py-2 rounded-md bg-brand text-white text-sm font-medium hover:bg-brand/90"
           >
-            Try again
+            {t('tryAgain')}
           </button>
           <a
             href="/"
             className="px-4 py-2 rounded-md border border-ink-muted/20 text-sm font-medium text-ink hover:bg-ink-muted/5"
           >
-            Back to start
+            {t('backToStart')}
           </a>
         </div>
       </div>

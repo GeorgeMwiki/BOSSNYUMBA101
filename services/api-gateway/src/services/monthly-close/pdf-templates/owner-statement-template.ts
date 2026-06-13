@@ -96,10 +96,8 @@ export function formatMinorAmount(
   const absMinor = Math.abs(Math.trunc(minorUnits));
   const major = Math.trunc(absMinor / 100);
   const cents = absMinor % 100;
-  const majorWithSeparators = String(major).replace(
-    /\B(?=(\d{3})+(?!\d))/g,
-    ',',
-  );
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: lookahead-only pattern on a numericly-bounded string (Math.trunc result); no exponential backtracking possible on digit-only input
+  const majorWithSeparators = String(major).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const sign = isNegative ? '-' : '';
   const padded = String(cents).padStart(2, '0');
   return `${safeCode} ${sign}${majorWithSeparators}.${padded}`;

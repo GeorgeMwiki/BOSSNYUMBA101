@@ -93,7 +93,6 @@ export function getDbReadonly(): DrizzleClient | null {
     return cachedReadonlyClient;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    // eslint-disable-next-line no-console -- HA visibility: surfaces replica
     // misconfiguration on boot so operators see it in the deploy logs.
     logger.warn(`db-client: read-replica init failed (${message}); falling back to primary`);
     cachedReadonlyClient = getDb();

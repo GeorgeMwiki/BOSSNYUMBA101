@@ -187,7 +187,6 @@ async function loadRouters(): Promise<MountedRouter[]> {
     const app = pick(mod as RouterModule, preferred);
     if (app) mounted.push({ prefix, app, defaultTag });
     else {
-      // eslint-disable-next-line no-console
       console.warn(`openapi-export: could not resolve a Hono app for prefix ${prefix}`);
     }
   }
@@ -226,7 +225,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error('openapi-export failed:', err);
   process.exit(1);
 });

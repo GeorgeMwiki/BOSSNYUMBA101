@@ -74,6 +74,7 @@ export interface SettledTurn {
 }
 
 export function newTurnId(now: number = Date.now()): string {
+  // eslint-disable-next-line no-restricted-syntax -- React Native client-local id (no Web Crypto); uniqueness suffices, not security-sensitive
   return `t_${now}_${Math.random().toString(36).slice(2, 8)}`
 }
 

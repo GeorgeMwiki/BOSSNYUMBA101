@@ -7,13 +7,13 @@
  * model or escalate earlier.
  *
  * Source of truth — research §8 + §6 (Pareto frontier):
- *   plan      -> Opus / Sonnet@Bedrock / GPT-5 Pro
+ *   plan      -> Fable / Sonnet@Bedrock / GPT-5 Pro
  *   tool-use  -> Sonnet / Sonnet@Bedrock / GPT-5
  *   critic    -> Haiku / GPT-5-mini / Qwen-3-6+
  *   classify  -> Haiku / GPT-5-nano / MiniMax M2-7
  *   chat      -> Haiku / Sonnet / GPT-5            (cost-cascade target)
  *   longdoc   -> Gemini 3.1 Pro / Sonnet / GPT-5   (long-context strength)
- *   codegen   -> Sonnet / Opus / GPT-5             (Sonnet on SWE-bench frontier)
+ *   codegen   -> Opus / Sonnet / GPT-5             (Opus apex on SWE-bench frontier)
  *
  * Pure module: no I/O, no mutation. All exports are `Readonly<...>`.
  */
@@ -23,7 +23,7 @@ import type { ModelTier, TaskKind } from '../types.js';
 /** Default ladder. Tenant overrides supersede per-task. */
 export const TASK_LADDER: Readonly<Record<TaskKind, readonly ModelTier[]>> = Object.freeze({
   plan: Object.freeze([
-    'anthropic/claude-opus-4-7',
+    'anthropic/claude-fable-5',
     'anthropic/claude-sonnet-4-6@bedrock',
     'openai/gpt-5-pro',
   ]),
@@ -53,8 +53,8 @@ export const TASK_LADDER: Readonly<Record<TaskKind, readonly ModelTier[]>> = Obj
     'openai/gpt-5',
   ]),
   codegen: Object.freeze([
+    'anthropic/claude-opus-4-8',
     'anthropic/claude-sonnet-4-6',
-    'anthropic/claude-opus-4-7',
     'openai/gpt-5',
   ]),
 });

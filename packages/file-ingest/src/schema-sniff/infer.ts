@@ -20,13 +20,16 @@ const EMAIL_RX = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
 const PHONE_RX =
   /^(?:\+[0-9][0-9\s()-]{6,}|[0-9]{3,}[\s()-]+[0-9][0-9\s()-]{4,})$/;
 const INTEGER_RX = /^-?\d+$/;
+// eslint-disable-next-line security/detect-unsafe-regex -- reason: (\.\d+)? is a bounded optional group; fully anchored ^...$; input is a short schema cell value from a parsed table; linear backtracking
 const DECIMAL_RX = /^-?\d+(\.\d+)?$/;
 const CURRENCY_RX =
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: (\.\d+)? is a bounded optional group; fully anchored ^...$; input is a short schema cell value from a parsed table; linear backtracking
   /^(KSh|TZS|USD|EUR|GBP|KES|UGX|RWF|ZAR|\$|£|€)\s?-?[\d,]+(\.\d+)?$/i;
 const BOOLEAN_RX = /^(true|false|yes|no|y|n)$/i;
 const DATE_RX =
   /^(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}|\d{2}-\d{2}-\d{4}|\d{1,2}-[A-Za-z]{3}-\d{2,4})$/;
 const DATETIME_RX =
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: nested optional groups (:\d{2}(\.\d+)?)? each contain only bounded quantifiers; fully anchored ^...$; input is a short schema cell value from a parsed table; linear backtracking
   /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
 
 type TypeMatcher = (value: string) => boolean;

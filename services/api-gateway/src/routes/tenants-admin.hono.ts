@@ -26,6 +26,7 @@
  */
 
 
+import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -98,7 +99,7 @@ async function emitAudit(
     if (!bus || typeof bus.publish !== 'function') return;
     await bus.publish({
       event: {
-        eventId: `tnt_del_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        eventId: `tnt_del_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 6)}`,
         eventType,
         timestamp: new Date().toISOString(),
         tenantId: payload.tenantId ?? 'unknown',

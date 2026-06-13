@@ -388,7 +388,6 @@ export async function createCrossPortalBus(
     return createInMemoryCrossPortalBus();
   }
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const ioredis = await import('ioredis');
     const RedisCtor =
       (ioredis as unknown as { default?: new (url: string) => unknown })

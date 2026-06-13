@@ -20,6 +20,17 @@ concurrency:
   group: strict-ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # NEXT_PUBLIC_* base URLs are inlined at build; admin-platform-portal pages
+  # resolve them through a fail-loud env-guard that THROWS in production builds
+  # when unset. Provide non-resolving CI placeholders so verification builds
+  # pass — a real deploy injects the true values and the guard still catches a
+  # genuinely-missing one there.
+  NEXT_PUBLIC_API_URL: https://ci-build.bossnyumba.invalid/api
+  NEXT_PUBLIC_APP_URL: https://ci-build.bossnyumba.invalid
+  NEXT_PUBLIC_OWNER_PORTAL_URL: https://ci-build.bossnyumba.invalid
+  NEXT_PUBLIC_MARKETING_SITE_URL: https://ci-build.bossnyumba.invalid
+
 jobs:
   # ============================================
   # Lint (blocking)
@@ -29,7 +40,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: ['20', '22']
+        # Node 20 dropped: isolated-vm@6.1.2 declares engines.node >=22,
+        # so the optional V8-isolate sandbox dep is skipped on 20 and the
+        # type-only import fails TS2307. 22 is the supported floor.
+        node-version: ['22']
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
@@ -51,7 +65,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: ['20', '22']
+        # Node 20 dropped: isolated-vm@6.1.2 declares engines.node >=22,
+        # so the optional V8-isolate sandbox dep is skipped on 20 and the
+        # type-only import fails TS2307. 22 is the supported floor.
+        node-version: ['22']
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
@@ -75,7 +92,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: ['20', '22']
+        # Node 20 dropped: isolated-vm@6.1.2 declares engines.node >=22,
+        # so the optional V8-isolate sandbox dep is skipped on 20 and the
+        # type-only import fails TS2307. 22 is the supported floor.
+        node-version: ['22']
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
@@ -109,7 +129,10 @@ jobs:
     needs: [lint, typecheck]
     strategy:
       matrix:
-        node-version: ['20', '22']
+        # Node 20 dropped: isolated-vm@6.1.2 declares engines.node >=22,
+        # so the optional V8-isolate sandbox dep is skipped on 20 and the
+        # type-only import fails TS2307. 22 is the supported floor.
+        node-version: ['22']
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
@@ -147,7 +170,8 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          # isolated-vm@6.1.2 requires Node >=22 (see matrix note above).
+          node-version: '22'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - name: Start E2E stack (postgres + api-gateway + all 4 portal apps)

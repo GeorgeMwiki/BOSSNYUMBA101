@@ -47,6 +47,7 @@ import pino from 'pino';
 
 import { authMiddleware } from '../../middleware/hono-auth.js';
 import { databaseMiddleware } from '../../middleware/database.js';
+import { getSharedPerTenantRateBudget } from '../../middleware/per-tenant-rate-budget.js';
 import {
   createDrizzleCorpusSearch,
   createDrizzleDiscoveryCache,
@@ -81,6 +82,7 @@ const NOOP_WEB_SEARCH: BrainWebSearchAdapter = {
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
+app.use('*', getSharedPerTenantRateBudget({ surface: 'brain' }).handler);
 
 /**
  * Role guard — only the loopback service token (PLATFORM_ADMIN) or

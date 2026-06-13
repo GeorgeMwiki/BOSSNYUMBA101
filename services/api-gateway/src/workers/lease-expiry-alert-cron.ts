@@ -75,6 +75,46 @@ export interface NotificationSender {
   }): Promise<{ readonly delivered: boolean; readonly providerMessageId?: string; readonly error?: string }>;
 }
 
+/**
+ * Round-3 audit #24 — consent / preference gate for automated lease-expiry
+ * alerts. The cron previously dispatched to customers WITHOUT consulting the
+ * per-recipient notification preferences (the same gate `services/
+ * notifications` enforces via `prefs.checkAllowed`) NOR a per-tenant
+ * automated-reminders switch. That bypassed an opt-out and could spam a
+ * customer who disabled the channel/template.
+ *
+ * The gate is injected so the gateway composition wires the real
+ * notifications preferences service + the tenant automated-reminders flag.
+ * It is FAIL-CLOSED by default (see `defaultConsentGate`): when no gate is
+ * wired, automated alerts are suppressed rather than sent, because consent
+ * is a hard precondition for unsolicited outbound messaging.
+ */
+export interface ConsentGate {
+  /**
+   * Returns whether an automated lease-expiry alert may be sent to this
+   * (tenant, customer, channel). MUST consult BOTH the per-recipient
+   * notification preferences AND the per-tenant automated-reminders switch
+   * (default off/gated). `false` ⇒ the cron skips the send and records
+   * `suppressed_no_consent`.
+   */
+  isAutomatedReminderAllowed(args: {
+    readonly tenantId: string;
+    readonly customerId: string;
+    readonly channel: 'whatsapp' | 'sms' | 'email' | 'in_app';
+  }): Promise<{ readonly allowed: boolean; readonly reason?: string }>;
+}
+
+/**
+ * Default gate when none is injected: fail-closed. An automated alert
+ * without an explicit consent decision is suppressed — never sent — so a
+ * misconfigured composition can't silently spam customers.
+ */
+export const defaultConsentGate: ConsentGate = {
+  async isAutomatedReminderAllowed() {
+    return { allowed: false, reason: 'no_consent_gate_wired' };
+  },
+};
+
 /** DB execute shim — accepts either a Drizzle client or a postgres.js sql tag. */
 export interface DbLike {
   execute(query: unknown): Promise<unknown>;
@@ -100,6 +140,12 @@ export interface LeaseExpiryAlertCronOptions {
    * (see `insertPendingDispatch`). `tickOnce()` always bypasses the gate.
    */
   readonly clusterLock?: (fn: () => Promise<void>) => Promise<void>;
+  /**
+   * #24 — per-recipient consent + per-tenant automated-reminders gate.
+   * Defaults to `defaultConsentGate` (fail-closed) when omitted so the
+   * cron never sends an unsolicited automated alert without consent.
+   */
+  readonly consentGate?: ConsentGate;
 }
 
 export interface LeaseExpiryAlertCronHandle {
@@ -113,6 +159,8 @@ export interface TickResult {
   readonly scanned: number;
   readonly dispatched: number;
   readonly skippedAlreadySent: number;
+  /** #24 — alerts suppressed because consent/preferences disallowed them. */
+  readonly suppressedNoConsent: number;
   readonly failed: number;
   readonly byWindow: Record<number, number>;
 }
@@ -345,6 +393,59 @@ export async function insertPendingDispatch(
   return { inserted: rows.length > 0, id };
 }
 
+/**
+ * #24 — durably record that a (lease, window) alert was SUPPRESSED because
+ * the consent/preference gate disallowed it. We write the dispatch-log row
+ * keyed by the same idempotency key (so the cron does not re-evaluate the
+ * same suppressed alert every day) with a terminal status and an explicit
+ * `suppressed_no_consent` marker in the payload + error column. The
+ * `notification_delivery_status` enum has no `suppressed` member (migrations
+ * are immutable), so we use the terminal `failed` status purely as the row's
+ * lifecycle state while `provider_error_message` carries the audit reason.
+ *
+ * Returns whether THIS call inserted the row (it may already exist from a
+ * prior tick — `ON CONFLICT DO NOTHING`).
+ */
+export async function recordSuppressedDispatch(
+  db: DbLike,
+  args: {
+    readonly tenantId: string;
+    readonly idempotencyKey: string;
+    readonly lease: ExpiringLeaseRow;
+    readonly channel: string;
+    readonly recipientAddress: string;
+    readonly reason: string;
+  },
+): Promise<{ readonly inserted: boolean }> {
+  const id = `ndl_${randomUUID()}`;
+  const res = await db.execute(sql`
+    INSERT INTO notification_dispatch_log (
+      id, tenant_id, customer_id, channel, recipient_address,
+      template_key, locale, payload, correlation_id, idempotency_key,
+      attempt_count, delivery_status, provider_error_message, created_at, updated_at
+    ) VALUES (
+      ${id}, ${args.tenantId}, ${args.lease.customerId}, ${args.channel}, ${args.recipientAddress},
+      ${'lease.expiry.alert'}, ${'sw'},
+      ${JSON.stringify({
+        leaseId: args.lease.id,
+        leaseNumber: args.lease.leaseNumber,
+        windowDays: args.lease.windowDays,
+        suppressed: true,
+        suppressedReason: 'suppressed_no_consent',
+        gateReason: args.reason,
+      })}::jsonb,
+      ${`lease-expiry-${args.lease.id}`}, ${args.idempotencyKey},
+      0, 'failed', ${`suppressed_no_consent:${args.reason}`}, NOW(), NOW()
+    )
+    ON CONFLICT (tenant_id, idempotency_key) DO NOTHING
+    RETURNING id
+  `);
+  const rows = Array.isArray(res)
+    ? (res as unknown[])
+    : ((res as { rows?: unknown[] }).rows ?? []);
+  return { inserted: rows.length > 0 };
+}
+
 /** Mark a dispatched row as sent or failed after the provider call. */
 export async function updateDispatchOutcome(
   db: DbLike,
@@ -402,6 +503,8 @@ export function createLeaseExpiryAlertCron(
   const windowsDays = options.windowsDays ?? DEFAULT_EXPIRY_WINDOWS_DAYS;
   const channelOrder = options.channelOrder ?? DEFAULT_CHANNEL_ORDER;
   const nowFn = options.now ?? (() => new Date());
+  // #24 — fail-closed when no consent gate is wired.
+  const consentGate = options.consentGate ?? defaultConsentGate;
 
   let timer: NodeJS.Timeout | null = null;
   let running = false;
@@ -423,6 +526,7 @@ export function createLeaseExpiryAlertCron(
       scanned: 0,
       dispatched: 0,
       skippedAlreadySent: 0,
+      suppressedNoConsent: 0,
       failed: 0,
       byWindow: {},
     };
@@ -459,6 +563,39 @@ export function createLeaseExpiryAlertCron(
               : channel === 'in_app'
                 ? lease.customerId
                 : (lease.customerPhone ?? '');
+
+          // #24 — consult the per-recipient consent/preferences gate AND
+          // the per-tenant automated-reminders switch BEFORE claiming a
+          // dispatch slot. If disallowed, durably record
+          // `suppressed_no_consent` (idempotency-keyed so it isn't
+          // re-evaluated every day) and skip the send entirely.
+          const consent = await consentGate.isAutomatedReminderAllowed({
+            tenantId: lease.tenantId,
+            customerId: lease.customerId,
+            channel,
+          });
+          if (!consent.allowed) {
+            await recordSuppressedDispatch(options.db, {
+              tenantId: lease.tenantId,
+              idempotencyKey,
+              lease,
+              channel,
+              recipientAddress,
+              reason: consent.reason ?? 'no_consent',
+            });
+            options.logger.info(
+              {
+                tenantId: lease.tenantId,
+                leaseId: lease.id,
+                window,
+                reason: consent.reason ?? 'no_consent',
+              },
+              'lease-expiry-cron: suppressed_no_consent',
+            );
+            (result as { suppressedNoConsent: number }).suppressedNoConsent += 1;
+            continue;
+          }
+
           const claim = await insertPendingDispatch(options.db, {
             tenantId: lease.tenantId,
             idempotencyKey,

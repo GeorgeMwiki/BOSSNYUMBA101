@@ -208,7 +208,9 @@ function extractLegalFramework(
   texts: ReadonlyArray<string>,
 ): string | undefined {
   const patterns = [
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: bounded alternation with fixed-length suffixes (0,60)/(0,40); applied to trusted LLM-synthesised text, not raw user input
     /\b((?:Landlord|Tenant|Tenancy|Rental|Rent|Housing|Property|Real\s+Estate)\s+(?:and\s+\w+\s+)?(?:Act|Law|Code|Regulation|Ordinance|Bill|Statute)[\s\w-]{0,60})\b/iu,
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: bounded suffix quantifier {0,40}; applied to trusted LLM-synthesised text, not raw user input
     /\b(Code\s+(?:de\s+)?(?:Logement|Loyer|Immobilier)[\s\w-]{0,40})\b/iu,
     /\b(Ley\s+(?:de|del)\s+(?:Arrendamientos?|Vivienda)[\s\w-]{0,40})\b/iu,
   ];

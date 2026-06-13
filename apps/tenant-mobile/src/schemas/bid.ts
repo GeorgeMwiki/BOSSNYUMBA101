@@ -4,6 +4,7 @@ export const placeBidSchema = z.object({
   bidPrice: z
     .string()
     .min(1, 'required')
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: bounded anchored pattern, no nested repetition, linear-time
     .regex(/^\d+(?:[.,]\d+)?$/, 'numeric'),
   paymentTerms: z.enum(['instant', '30d', '60d']),
   notes: z.string().max(500).optional().default(''),

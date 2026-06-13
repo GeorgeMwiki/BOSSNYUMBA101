@@ -409,6 +409,7 @@ export function stampProposal(
   try {
     proposalId = `prop_${randomUUID()}`;
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- last-resort fallback only when the CSPRNG (randomUUID) above is unavailable
     proposalId = `prop_${now.getTime()}_${Math.random().toString(36).slice(2, 10)}`;
   }
   return {

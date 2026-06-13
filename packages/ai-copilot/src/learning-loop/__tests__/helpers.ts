@@ -79,6 +79,7 @@ export function createMemory(): SemanticMemory {
 /** Build a canonical OutcomeEvent for pattern tests. */
 export function buildOutcome(overrides: Partial<OutcomeEvent> = {}): OutcomeEvent {
   return {
+    // eslint-disable-next-line no-restricted-syntax -- test fixture id; uniqueness suffices, not security-sensitive
     actionId: overrides.actionId ?? `act_${Math.random().toString(36).slice(2, 10)}`,
     tenantId: 't1',
     domain: 'finance',

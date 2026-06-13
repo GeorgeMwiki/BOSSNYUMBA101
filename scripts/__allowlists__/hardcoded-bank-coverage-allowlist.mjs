@@ -111,11 +111,6 @@ export const HARDCODED_BANK_ALLOWLIST = new Map([
     'services/api-gateway/src/openapi/mounted-routers.ts',
     'Mounted-routers table pins router subtrees to /gepg, /mpesa URL prefixes for the OpenAPI registry.',
   ],
-  [
-    'services/api-gateway/src/routes/parity-capability-dashboard.router.ts',
-    'Parity-capability dashboard enumerates per-rail status rows by canonical slug (mpesa, gepg, kra).',
-  ],
-
   // ─── Document-intelligence + payments-ledger provider modules ─────
   [
     'services/document-intelligence/src/utils/name-matcher.ts',
@@ -181,8 +176,37 @@ export const HARDCODED_BANK_ALLOWLIST = new Map([
     'packages/tab-need-detector/src/scoring-matrix.ts',
     'Tab-need-detector scoring matrix uses kra/tra as compliance-keyword detection tokens (e.g. detect "kra-filing" tab need); UI-tab-need detection patterns, not provider routing.',
   ],
+
+  // ─── WZ-CI-GREEN 2026-06-13: non-gateway domain / NLP / UI flows ───
   [
-    'services/api-gateway/src/routes/gepg.router.ts',
-    'GePG router IS the GePG-specific sub-router — provider literal in withSecurityEvents action/resource is the route identity, mounted at /gepg prefix.',
+    'packages/document-reconciliation/src/types.ts',
+    'PROPERTY_DOC_TYPES tuple (backing a zod enum) lists nida as the canonical TZ national-ID document-type slug; doc-type taxonomy, not provider routing.',
   ],
+  [
+    'packages/swahili-intelligence/src/noun-roots.ts',
+    'Swahili noun-root lexicon: "huduma" is the Swahili common noun for "service" in the linguistic dictionary — NLP false-positive, not the Huduma ID provider.',
+  ],
+  [
+    'apps/estate-manager-app/src/lib/collections-api.ts',
+    'Collections API client forwards the user-selected payment channel; the mpesa guard only decides whether to attach phoneNumber for an STK push — channel set mirrors the gateway PaymentProcessSchema enum.',
+  ],
+  [
+    'apps/estate-manager-app/src/screens/payments/RecordPayment.tsx',
+    'Record-payment form: mpesa is one member of the PAYMENT_CHANNELS zod enum mirroring the gateway schema; the refine enforces the intrinsic M-Pesa STK phone-number requirement — UI form contract, not provider routing.',
+  ],
+  [
+    'apps/tenant-mobile/app/(tabs)/kyc/index.tsx',
+    'KYC wizard renders the nida step; literal is the KycStepKey step identity (TZ national-ID capture step), not provider routing.',
+  ],
+  [
+    'apps/tenant-mobile/src/kyc/state.ts',
+    'KYC wizard state machine: nida is a KycStepKey in the typed stepOrder for the national-ID capture step; step-key identity, not provider routing.',
+  ],
+  // ─── api-gateway payment-rail / jurisdiction bank literals (Mode-C grind, Borjie-parity) ───
+  ['services/api-gateway/src/routes/gepg.hono.ts', 'GePG is the Tanzania government payment-gateway rail this dedicated route integrates; jurisdiction-pinned rail identity, not generic provider routing.'],
+  ['services/api-gateway/src/routes/parity-capability-dashboard.hono.ts', 'Capability dashboard lists supported payment-rail names (mpesa/gepg) as capability labels; display registry, not a routing decision.'],
+  ['services/api-gateway/src/routes/payments.ts', 'Payment channel literals (mpesa/...) are members of the PaymentProcessSchema zod enum mirroring the supported-rail set; schema contract, not hardcoded routing.'],
+  ['services/api-gateway/src/services/cockpit-events/types.ts', 'Cockpit event type references a payment-rail name as an event discriminant; schema-level event identity.'],
+  ['services/api-gateway/src/services/ingestion-intent-inferrer/heuristic.ts', 'Ingestion NLP heuristic matches rail keywords (mpesa/bank) in uploaded text to infer document intent; lexical matcher, not provider routing.'],
+  ['services/api-gateway/src/services/jurisdiction-discovery/synthesizer.ts', 'Jurisdiction-discovery synthesizer maps a discovered country to its bank/mobile-money rails; the literals ARE the jurisdiction rail registry, not routing.'],
 ]);

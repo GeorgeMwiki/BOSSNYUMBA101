@@ -31,14 +31,18 @@ export interface ExtractedField {
  * is the digits + thousands/decimal separators.
  */
 const CURRENCY_AMOUNT_RX =
-  /\b(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9](?:[0-9.,\s]*[0-9])?)/gi;
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: each (?:[.,\s][0-9]+) iteration anchored by a mandatory single-char separator distinct from [0-9]; separator and digit group cannot overlap; linear backtracking
+  /\b(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9]+(?:[.,\s][0-9]+)*)/gi;
 
 /** Tanzania NIDA format: 20 digits with optional dashes. */
 const NIDA_RX = /\b((?:\d{8}-\d{5}-\d{5}-\d{2})|(?:\d{20}))\b/g;
 /** Kenya KRA PIN: A123456789Z. */
 const KRA_PIN_RX = /\b([A-Z]\d{9}[A-Z])\b/g;
 /** Kenya national ID: 7-8 digit number. */
-const KENYA_ID_RX = /\bID\s*(?:no\.?|number)?\s*[:\s]+(\d{7,8})\b/i;
+// Separator: [\s:]+ — a single non-overlapping character class handles both
+// colon-prefixed ("ID: 1234567") and space-only ("ID no 1234567") forms.
+// eslint-disable-next-line security/detect-unsafe-regex -- reason: (?:\s+(?:no\.?|number))? is a bounded optional group; [\s:]+ is a single non-nested character class; \d{7,8} is bounded; linear backtracking on typical ID label strings
+const KENYA_ID_RX = /\bID(?:\s+(?:no\.?|number))?[\s:]+(\d{7,8})\b/i;
 /**
  * GePG receipt reference: control numbers are numeric (often start 99).
  * We capture only when the label is one of the canonical GePG markers
@@ -50,9 +54,12 @@ const GEPG_REF_RX =
 /** M-Pesa transaction reference: e.g. RFD9KL2P3M (10 alphanumeric). */
 const MPESA_REF_RX = /\b(?:m[-\s]?pesa|mpesa)[^A-Za-z0-9]+([A-Z0-9]{9,12})\b/i;
 /** Plot number: e.g. PLOT 123, PLOT NO. 45/B, PROP-DAR-0001. */
-const PLOT_RX = /\b(?:plot|prop|property)\s*(?:no\.?|number|reference|ref)?[:\s]+([A-Z0-9][A-Z0-9\-/]{2,32})\b/i;
+// Separator: [\s:]+ — single character class handles colon and/or space separators.
+// eslint-disable-next-line security/detect-unsafe-regex -- reason: (?:\s+(?:no\.?|...))? is a bounded optional group; [\s:]+ is a single non-nested character class; [A-Z0-9\-/]{2,32} is bounded; linear backtracking on typical document label strings
+const PLOT_RX = /\b(?:plot|prop|property)(?:\s+(?:no\.?|number|reference|ref))?[\s:]+([A-Z0-9][A-Z0-9\-/]{2,32})\b/i;
 /** Address: at least two of street/road/area + town. Best-effort. */
 const ADDRESS_RX =
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: (?:\s+[A-Z][a-z]+)* each iteration anchored by mandatory \s+ so no overlap between iterations; (?:...[,\s]+)? is a bounded optional group; {0,20} is bounded; linear backtracking
   /\b((?:plot|house|apt|apartment|unit)\s+[\dA-Z][\dA-Z\-/]{0,20}[,\s]+(?:[A-Z][a-z]+\s+(?:road|street|avenue|drive|lane)[,\s]+)?[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g;
 /** Phone: E.164-ish or local Tanzania/Kenya. */
 const PHONE_RX = /(\+?255\d{9}|\+?254\d{9}|\+?2557\d{8}|0[67]\d{8})/g;
@@ -88,6 +95,7 @@ function labelLookup(
   const out: Array<{ value: string; confidence: number; matchedText: string }> = [];
   const norm = text;
   for (const label of labels) {
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: label is a hardcoded internal document field keyword (e.g. 'lessor', 'landlord', 'mwenye nyumba'); captureRx is a module-level literal regex; never user input
     const rx = new RegExp(`${label}[:\\s]+${captureRx.source}`, 'i');
     const m = rx.exec(norm);
     if (m && m[1]) {
@@ -212,7 +220,8 @@ const LEASE_FIELDS: ReadonlyArray<FieldSpec> = [
       const amounts = extractAllAmounts(t);
       if (amounts.length === 0) return [];
       // Cheapest heuristic: the first labelled rent amount.
-      const labelled = /(?:monthly\s+rent|kodi\s+ya\s+mwezi|rent\s*[:=])[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9](?:[0-9.,\s]*[0-9])?)/i.exec(
+      // eslint-disable-next-line security/detect-unsafe-regex -- reason: each (?:[.,\s][0-9]+) iteration anchored by mandatory single-char separator distinct from [0-9]; [^\n]{0,80} bounded; linear backtracking
+      const labelled = /(?:monthly\s+rent|kodi\s+ya\s+mwezi|rent\s*[:=])[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9]+(?:[.,\s][0-9]+)*)/i.exec(
         t,
       );
       if (labelled && labelled[1] && labelled[2]) {
@@ -239,7 +248,7 @@ const LEASE_FIELDS: ReadonlyArray<FieldSpec> = [
       labelLookup(
         t,
         ['lease start date', 'start date', 'commencement date', 'tarehe ya kuanza'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       ),
   },
   {
@@ -249,7 +258,7 @@ const LEASE_FIELDS: ReadonlyArray<FieldSpec> = [
       labelLookup(
         t,
         ['lease end date', 'end date', 'expiry date', 'tarehe ya kumalizika'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       ),
   },
 ];
@@ -293,7 +302,8 @@ const LEASE_APPLICATION_FIELDS: ReadonlyArray<FieldSpec> = [
     key: 'requested_rent',
     kind: 'amount',
     extract: (t) => {
-      const labelled = /(?:requested\s+rent|proposed\s+rent|offered\s+rent|kodi\s+ninayotaka)[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9](?:[0-9.,\s]*[0-9])?)/i.exec(
+      // eslint-disable-next-line security/detect-unsafe-regex -- reason: each (?:[.,\s][0-9]+) iteration anchored by mandatory single-char separator distinct from [0-9]; [^\n]{0,80} bounded; linear backtracking
+      const labelled = /(?:requested\s+rent|proposed\s+rent|offered\s+rent|kodi\s+ninayotaka)[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9]+(?:[.,\s][0-9]+)*)/i.exec(
         t,
       );
       if (labelled && labelled[1] && labelled[2]) {
@@ -331,7 +341,8 @@ const PAYMENT_FIELDS: ReadonlyArray<FieldSpec> = [
     key: 'amount',
     kind: 'amount',
     extract: (t) => {
-      const labelled = /(?:amount\s+paid|kiasi\s+kilicholipwa|kiasi)[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9](?:[0-9.,\s]*[0-9])?)/i.exec(
+      // eslint-disable-next-line security/detect-unsafe-regex -- reason: each (?:[.,\s][0-9]+) iteration anchored by mandatory single-char separator distinct from [0-9]; [^\n]{0,80} bounded; linear backtracking
+      const labelled = /(?:amount\s+paid|kiasi\s+kilicholipwa|kiasi)[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9]+(?:[.,\s][0-9]+)*)/i.exec(
         t,
       );
       if (labelled && labelled[1] && labelled[2]) {
@@ -374,7 +385,7 @@ const PAYMENT_FIELDS: ReadonlyArray<FieldSpec> = [
       const labelled = labelLookup(
         t,
         ['payment date', 'date of payment', 'tarehe ya malipo'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       );
       if (labelled.length > 0) return labelled;
       const all = extractAllDates(t);
@@ -415,7 +426,7 @@ const NIDA_FIELDS: ReadonlyArray<FieldSpec> = [
       labelLookup(
         t,
         ['date of birth', 'dob', 'tarehe ya kuzaliwa'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       ),
   },
 ];
@@ -438,7 +449,7 @@ const SURVEY_FIELDS: ReadonlyArray<FieldSpec> = [
       labelLookup(
         t,
         ['inspection date', 'date of inspection', 'tarehe ya ukaguzi'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       ),
   },
   {
@@ -504,7 +515,7 @@ const RENEWAL_FIELDS: ReadonlyArray<FieldSpec> = [
       labelLookup(
         t,
         ['renewal date', 'requested renewal', 'tarehe ya kuomba upya'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       ),
   },
 ];
@@ -532,7 +543,7 @@ const TERMINATION_FIELDS: ReadonlyArray<FieldSpec> = [
       labelLookup(
         t,
         ['effective date', 'vacating date', 'tarehe ya kuondoka'],
-        /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\w{1,10}[\/\-.]\d{2,4})/,
+        /(\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\w{1,10}[/\-.]\d{2,4})/,
       ),
   },
 ];
@@ -547,7 +558,9 @@ const VENDOR_INVOICE_FIELDS: ReadonlyArray<FieldSpec> = [
     key: 'invoice_number',
     kind: 'entity',
     extract: (t) => {
-      const m = /\binvoice\s*(?:no\.?|number)?[:\s]+([A-Z0-9\-]{3,24})\b/i.exec(t);
+      // Separator: [\s:]+ — single character class handles colon and/or space separators.
+      // eslint-disable-next-line security/detect-unsafe-regex -- reason: (?:\s+(?:no\.?|number))? is a bounded optional group; [\s:]+ is a single non-nested character class; [A-Z0-9-]{3,24} is bounded; linear backtracking on typical invoice label strings
+      const m = /\binvoice(?:\s+(?:no\.?|number))?[\s:]+([A-Z0-9-]{3,24})\b/i.exec(t);
       return m && m[1] ? [{ value: m[1], confidence: 0.95, matchedText: m[0] }] : [];
     },
   },
@@ -558,12 +571,16 @@ const VENDOR_INVOICE_FIELDS: ReadonlyArray<FieldSpec> = [
       // Prefer the canonical labels in this order: "grand total" > "total
       // payable" > "amount due" > standalone "total" (word-boundary, to
       // avoid matching "subtotal"). The first hit wins.
+      // Each pattern: [0-9]+(?:[.,\s][0-9]+)* — each iteration anchored by a mandatory
+      // single-char separator distinct from [0-9]; [^\n]{0,80} bounded; linear.
+      /* eslint-disable security/detect-unsafe-regex -- reason: all four patterns use [0-9]+(?:[.,\s][0-9]+)* where each iteration is anchored by a mandatory single-char separator; [^\n]{0,80} bounded; linear backtracking */
       const labels: ReadonlyArray<RegExp> = [
-        /grand\s+total[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9](?:[0-9.,\s]*[0-9])?)/i,
-        /total\s+payable[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9](?:[0-9.,\s]*[0-9])?)/i,
-        /amount\s+due[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9](?:[0-9.,\s]*[0-9])?)/i,
-        /\btotal\b[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9](?:[0-9.,\s]*[0-9])?)/i,
+        /grand\s+total[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9]+(?:[.,\s][0-9]+)*)/i,
+        /total\s+payable[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9]+(?:[.,\s][0-9]+)*)/i,
+        /amount\s+due[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9]+(?:[.,\s][0-9]+)*)/i,
+        /\btotal\b[^\n]{0,80}?(KES|TZS|UGX|RWF|NGN|GHS|USD)\s*([0-9]+(?:[.,\s][0-9]+)*)/i,
       ];
+      /* eslint-enable security/detect-unsafe-regex */
       for (const rx of labels) {
         const m = rx.exec(t);
         if (m && m[1] && m[2]) {

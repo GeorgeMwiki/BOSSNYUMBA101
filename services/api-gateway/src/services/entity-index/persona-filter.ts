@@ -33,16 +33,22 @@ export const ENTITY_INDEX_PERSONAS = [
 export type EntityIndexPersona = (typeof ENTITY_INDEX_PERSONAS)[number];
 
 const SENSITIVE_PATTERNS_EN: ReadonlyArray<RegExp> = Object.freeze([
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: all quantifiers are bounded/non-overlapping; applied to internal display strings, not raw user input
   /\$\s*[\d,]+(\.\d+)?\s*(M|K|million|thousand)?/gi,
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: all quantifiers are bounded/non-overlapping; applied to internal display strings, not raw user input
   /TZS\s*[\d,]+(\.\d+)?\s*(M|K|million|thousand)?/gi,
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: all quantifiers are bounded/non-overlapping; applied to internal display strings, not raw user input
   /KES\s*[\d,]+(\.\d+)?/gi,
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: all quantifiers are bounded/non-overlapping; applied to internal display strings, not raw user input
   /USD\s*[\d,]+(\.\d+)?/gi,
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: mandatory comma separator prevents overlap; linear matching; applied to internal strings
   /\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/g,
   /arrears\s+\d/gi,
   /rent\s+\$?\d/gi,
 ]);
 
 const SENSITIVE_PATTERNS_SW: ReadonlyArray<RegExp> = Object.freeze([
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: bounded/non-overlapping quantifiers; applied to internal display strings
   /TZS\s*[\d,]+(\.\d+)?/gi,
   /madeni\s+\d/gi,
   /kodi\s+\d/gi,

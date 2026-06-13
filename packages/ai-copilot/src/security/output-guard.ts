@@ -58,7 +58,9 @@ export interface OutputGuardOptions {
 
 const SYSTEM_PROMPT_RX: readonly RegExp[] = [
   /you\s+are\s+BOSSNYUMBA\s+AI.*?system\s+prompt/i,
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: alternation groups have disjoint fixed-word options with no nested repetition; no catastrophic backtracking possible
   /my\s+(system\s+)?instructions\s+(are|say|tell)/i,
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: optional (system\s+)? is a single bounded group; flat alternation (?:are|is); no nested overlapping quantifiers; LLM output security scanner
   /here\s+(?:are|is)\s+my\s+(system\s+)?prompt/i,
   /SYSTEM_INSTRUCTIONS_/i,
   /UNTRUSTED_USER_INPUT_/i,
@@ -84,6 +86,7 @@ const INTERNAL_PATH_RX: readonly RegExp[] = [
   /C:\\Users\\/i,
   /packages\/ai-copilot\/src\//,
   /services\/domain-services\//,
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: (\.\w+)? is a single optional group with no nested quantifier; used as a security scanner on LLM output, not on attacker-supplied regex patterns
   /\.env(\.\w+)?/,
 ];
 
@@ -161,6 +164,7 @@ export function scanOutput(
         sample: `sha256:${digest}…`,
       });
       sanitized = sanitized.replace(
+        // eslint-disable-next-line security/detect-non-literal-regexp -- reason: rx.source comes from the hardcoded SECRET_RX array defined in this module, not user input; global flag is added programmatically for full-string redaction
         new RegExp(rx.source, rx.flags.includes('g') ? rx.flags : `${rx.flags}g`),
         '[REDACTED]',
       );
@@ -178,6 +182,7 @@ export function scanOutput(
         sample: match[0],
       });
       sanitized = sanitized.replace(
+        // eslint-disable-next-line security/detect-non-literal-regexp -- reason: rx.source comes from the hardcoded INTERNAL_PATH_RX array defined in this module, not user input; global flag is added programmatically for full-string redaction
         new RegExp(rx.source, rx.flags.includes('g') ? rx.flags : `${rx.flags}g`),
         '[internal path]',
       );

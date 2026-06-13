@@ -77,4 +77,60 @@ export const HARDCODED_ROLES_ALLOWLIST = new Map([
     'services/api-gateway/src/composition/user-context-data-port-adapter.ts',
     'composition root adapter picks owner-vs-tenant data port at wire-time; role string IS the composition key.',
   ],
+
+  // ─── staff-mobile (Expo): role-access registry + render-time seams ─
+  // The staff-mobile app ships every screen and gates visibility via the
+  // canonical SCREEN_ROLE_ACCESS table + <RoleGuard> (src/roles/access.ts).
+  // The role-string comparisons below are render-time persona/dispatch
+  // selectors (which dashboard component, which greeting copy, which
+  // screen id, which event-stream role) — NOT the authorization boundary,
+  // which RoleGuard/SCREEN_ROLE_ACCESS enforces.
+  [
+    'apps/staff-mobile/src/roles/access.ts',
+    'staff-mobile roles/access IS the role-access registry — SCREEN_ROLE_ACCESS table + canSee()/isOwnerArea()/isWorkerArea(); role literals are the lookup keys, not business logic.',
+  ],
+  [
+    'apps/staff-mobile/app/(tabs)/ask.tsx',
+    'role IS the screen-id dispatch key (owner → O-M-02, else W-M-16); access enforced by RoleGuard via SCREEN_ROLE_ACCESS, not this selector.',
+  ],
+  [
+    'apps/staff-mobile/app/(tabs)/dashboard.tsx',
+    'role selects the render-time dashboard component + greeting copy (owner/manager/employee); the screen itself is RoleGuard-gated via SCREEN_ROLE_ACCESS.',
+  ],
+  [
+    'apps/staff-mobile/app/(tabs)/sites.tsx',
+    'role IS the screen-id dispatch key (owner → O-M-04, else W-M-19); access enforced by RoleGuard via SCREEN_ROLE_ACCESS.',
+  ],
+  [
+    'apps/staff-mobile/app/onboarding/certifications.tsx',
+    'role selects which onboarding-step copy to render (owner branch); onboarding flow, not an authorization boundary.',
+  ],
+  [
+    'apps/staff-mobile/app/onboarding/done.tsx',
+    'role selects the onboarding completion summary variant (owner vs worker); render-time copy selector.',
+  ],
+  [
+    'apps/staff-mobile/app/onboarding/site.tsx',
+    'role selects owner-vs-worker onboarding site-binding copy/branch; render-time onboarding selector, not authz.',
+  ],
+  [
+    'apps/staff-mobile/app/owner/O-M-23.tsx',
+    'role drives the people-table row label dispatch (Mmiliki/Meneja) + membership-row classification; presentation seam, screen is RoleGuard-gated.',
+  ],
+  [
+    'apps/staff-mobile/app/owner/cockpit/index.tsx',
+    'owner-cockpit screen-local owner-only guard mirroring SCREEN_ROLE_ACCESS; defence-in-depth render guard, canonical access lives in roles/access.ts.',
+  ],
+  [
+    'apps/staff-mobile/src/chat/HomeChat.tsx',
+    'role maps to the chat persona key (owner/manager/field_technician) for greeting + suggestions; persona-routing seam, not an authorization gate.',
+  ],
+  [
+    'apps/staff-mobile/src/lib/notifications/EventStreamMount.tsx',
+    'role maps the user to an event-stream subscription role (owner/manager/worker); subscription-routing seam, not authz.',
+  ],
+  [
+    'apps/staff-mobile/src/onboarding/intelligence.ts',
+    'role filters the onboarding role-fit scores (finds the employee-tie entry); scoring/ranking over the role vocabulary, not a permission check.',
+  ],
 ]);

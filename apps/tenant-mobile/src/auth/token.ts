@@ -27,6 +27,7 @@ export async function getAuthToken(): Promise<string | null> {
 }
 
 export async function setAuthToken(token: string | null): Promise<void> {
+  // eslint-disable-next-line security/detect-possible-timing-attacks -- reason: comparing to literal null (not a secret); no timing oracle possible
   if (token === null) {
     memoryToken = null
     try {

@@ -41,6 +41,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { authMiddleware } from '../../middleware/hono-auth.js';
+import { getSharedPerTenantRateBudget } from '../../middleware/per-tenant-rate-budget.js';
 import {
   correlate,
   trace,
@@ -78,6 +79,7 @@ function resolveTenantId(authTenantId: string | undefined, bodyTenantId: string)
 export const mdRouter = new Hono();
 
 mdRouter.use('*', authMiddleware);
+mdRouter.use('*', getSharedPerTenantRateBudget({ surface: 'brain' }).handler);
 
 // ─────────────────────────────────────────────────────────────────────
 // POST /md/correlations

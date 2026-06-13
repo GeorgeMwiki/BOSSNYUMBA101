@@ -180,6 +180,7 @@ export class InMemoryCacheStore implements CacheStore {
     const allKeys = Array.from(this.cache.keys());
     if (!pattern) return allKeys;
     
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: pattern is an internal cache key pattern (glob with only * wildcard), not user-supplied input; * is replaced with .* before construction
     const regex = new RegExp(pattern.replace(/\*/g, '.*'));
     return allKeys.filter(k => regex.test(k));
   }

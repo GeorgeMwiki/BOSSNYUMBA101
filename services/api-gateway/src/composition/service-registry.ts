@@ -234,6 +234,10 @@ import {
   createBrainKernelWiring,
   type BrainKernelWiring as BrainKernelWiringSlot,
 } from './brain-kernel-wiring.js';
+// BN-EXE-04 — multi-LLM (mixture-of-agents) deep-reasoning fan-out. The
+// factory returns null when fewer than 2 vendors / no Anthropic key are
+// configured, so the kernel keeps its single-shot sensor path unchanged.
+import { createMultiLLMSynthesizerWiring } from './multi-llm-synthesizer-wiring.js';
 // ProdFix-1 wires 4 + 5 — NIDA + e-Ardhi adapters + lazy Temporal
 // dispatchers + HQ tool registry composition. Encapsulated so the
 // service-registry stays thin.
@@ -276,6 +280,12 @@ import {
   createMonitorPredicateChecker,
   type MonitorAnthropicClient,
 } from './monitor-predicate-source.js';
+// BN-EXE-08 — Postgres-backed durable wake/monitor store. Persists every
+// armed `schedule_wake` / `monitor` so an arm made before a process restart is
+// REHYDRATED on boot (survives redeploy) instead of being lost by the in-memory
+// supervisor. Bound below as the in-process supervisor's `store`, which makes
+// durable scheduling the DEFAULT whenever this backing table is configured.
+import { createPgDurableWakeStore } from './durable-wake-store.js';
 import {
   createSecuritySuite,
   type SecuritySuite,
@@ -1422,7 +1432,7 @@ function degradedRegistry(
     llmBudgetGovernor: createLLMBudgetGovernor({
       store: wireBudgetStore({
         db: null,
-        logger: { warn: (meta, msg) => console.warn('llm-budget:', msg ?? '', meta) },
+        logger: { warn: (meta, msg) => logger.warn(`llm-budget: ${msg ?? ''}`, meta as Record<string, unknown>) },
       }),
     }),
     arrears: {
@@ -1512,7 +1522,7 @@ function degradedRegistry(
     // discovery (slash + sub-agents + skills) keep working.
     agentStack: createAgentStackBundle({
       buildBudgetGuardedAnthropicClient: null,
-      logger: { warn: (meta, msg) => console.warn('agent-stack:', msg ?? '', meta) },
+      logger: { warn: (meta, msg) => logger.warn(`agent-stack: ${msg ?? ''}`, meta as Record<string, unknown>) },
     }),
     // Central Intelligence — no concrete LLM adapter ships here (it
     // lives in a separate service). In degraded mode we still wire the
@@ -2072,8 +2082,8 @@ function buildServicesInner(
   const killswitchFanoutPublisher = createKillswitchFanoutPublisher({
     crossPortalBus: liveCrossPortalBus,
     logger: {
-      info: (obj, msg) => console.info('killswitch-fanout:', msg ?? '', obj),
-      warn: (obj, msg) => console.warn('killswitch-fanout:', msg ?? '', obj),
+      info: (obj, msg) => logger.info(`killswitch-fanout: ${msg ?? ''}`, obj as Record<string, unknown>),
+      warn: (obj, msg) => logger.warn(`killswitch-fanout: ${msg ?? ''}`, obj as Record<string, unknown>),
     },
   });
   const notificationDispatcherAdapter = createNotificationDispatcherAdapter({
@@ -2272,7 +2282,7 @@ function buildServicesInner(
     agentStack: createAgentStackBundle({
       buildBudgetGuardedAnthropicClient:
         (buildBudgetGuardedAnthropicClient as AgentStackBudgetGuardedAnthropicFactory | null),
-      logger: { warn: (meta, msg) => console.warn('agent-stack:', msg ?? '', meta) },
+      logger: { warn: (meta, msg) => logger.warn(`agent-stack: ${msg ?? ''}`, meta as Record<string, unknown>) },
     }),
     // Central Intelligence — `agent` is the in-tree streaming agent loop
     // backed by the per-tenant budget-guarded Anthropic client (wired via
@@ -2517,12 +2527,33 @@ function buildServicesInner(
       // from honest-degrade into FIRE-on-condition.
       const monitorPredicateSourceAvailable = true;
 
-      // PRIMARY — in-process wake/monitor supervisor. This is the DEFAULT
-      // actuator the registry dispatcher uses for `schedule_wake` / `monitor`:
-      // it arms a real process-local resume that fires on a tick with NO
-      // Inngest dependency. `index.ts` calls `.start()` (self-drive interval)
+      // BN-EXE-08 — durable backing store. With `db` configured (this branch
+      // only runs when it is) the supervisor PERSISTS every armed wake/monitor
+      // to Postgres and rehydrates the pending set on boot, so a `schedule_wake`
+      // / `monitor` armed before a restart SURVIVES the redeploy. This is what
+      // makes durable scheduling the DEFAULT; the storeless in-process mode
+      // (lost on restart) is now the explicit fallback only — used solely in
+      // the degraded (no-db) registry path where this whole branch is skipped.
+      const durableWakeStore = createPgDurableWakeStore({
+        db,
+        logger: {
+          info: (obj, msg) =>
+            logger.info('durable-wake-store', { arg0: msg ?? '', obj }),
+          warn: (obj, msg) =>
+            logger.warn('durable-wake-store', { arg0: msg ?? '', obj }),
+          error: (obj, msg) =>
+            logger.error('durable-wake-store', { arg0: msg ?? '', obj }),
+        },
+      });
+
+      // PRIMARY — in-process wake/monitor supervisor. The DEFAULT actuator the
+      // registry dispatcher uses for `schedule_wake` / `monitor`: it arms a
+      // real resume that fires on a tick with NO Inngest dependency. With the
+      // durable `store` bound (above) the arm is PERSISTED + REHYDRATED on boot
+      // (crash-resilient; handle mode upgrades to 'durable' / 'registered').
+      // `index.ts` calls `.rehydrate()` then `.start()` (self-drive interval)
       // and the gateway heartbeat also drives `.tick()`. Lifecycle is exposed
-      // on the registry so boot can start it + shutdown can stop it.
+      // on the registry so boot can rehydrate + start it and shutdown can stop.
       const inProcessWakeSupervisor = createInProcessWakeScheduler({
         resumeTurnRunner,
         monitorResumeRunner,
@@ -2530,6 +2561,8 @@ function buildServicesInner(
         // Honest: only arm in-process monitor polls once a real predicate
         // source is bound (see RESIDUAL note above).
         monitorAvailable: monitorPredicateSourceAvailable,
+        // Durable-by-default: armed wakes/monitors persist + survive restart.
+        store: durableWakeStore,
         logger: {
           info: (obj, msg) =>
             logger.info('in-process-wake-scheduler', { arg0: msg ?? '', obj }),
@@ -2590,13 +2623,15 @@ function buildServicesInner(
       // and per-turn breadth cap default inside the kernel/dispatcher.
       const inFlightSpawnSemaphore = orchestrator.createInFlightSpawnSemaphore();
       // PRIMARY — port selection. `schedule_wake` / `monitor` route to the
-      // IN-PROCESS supervisor by default so they EXECUTE with no Inngest
-      // deploy gate. Only when the durable path is genuinely active
+      // IN-PROCESS supervisor by default — which is now ITSELF crash-resilient:
+      // its Postgres `store` (bound above) persists every arm and rehydrates it
+      // on boot, so a wake survives a restart with no Inngest deploy gate. Only
+      // when the Inngest durable path is genuinely active
       // (`durableLoopActuators.durable === true`: DURABLE_EXEC_ENABLED=true +
-      // an attested consumer + a real Inngest worker) do we prefer the
-      // crash-resilient durable ports instead. `subAgentSpawner` always uses
-      // the durable actuator — its own in-process fallback already runs the
-      // child turn without Inngest, so spawn executes on either path.
+      // an attested consumer + a real Inngest worker) do we prefer those ports
+      // instead (true control-plane suspend). `subAgentSpawner` always uses the
+      // durable actuator — its own in-process fallback already runs the child
+      // turn without Inngest, so spawn executes on either path.
       const wakeScheduler: orchestrator.WakeScheduler = durableLoopActuators.durable
         ? durableLoopActuators.actuators.scheduler!
         : inProcessWakeSupervisor.scheduler;
@@ -2641,6 +2676,28 @@ function buildServicesInner(
       cnsLoopActuatorHolder.supervisor = inProcessWakeSupervisor;
       cnsLoopActuatorHolder.runtime = inProcessInngestRuntime;
 
+      // BN-EXE-04 — deep-reasoning mixture-of-agents fan-out. Build the
+      // multi-LLM synthesizer port (Anthropic + OpenAI + DeepSeek proposers
+      // in parallel, Claude-Opus serial merge). Returns null when the wire
+      // is unviable (no Anthropic key, or only one vendor configured) so the
+      // kernel transparently keeps its single-shot sensor path. Threaded into
+      // `createBrainKernelWiring({ synthesizer })` below; `req.requireSynthesis`
+      // set per high-stakes turn by the jarvis router is what actually fires it.
+      const synthesizerWiring = createMultiLLMSynthesizerWiring({
+        logger: {
+          info: (meta, msg) =>
+            logger.info(
+              `multi-llm-synthesizer: ${msg ?? ''}`,
+              meta as Record<string, unknown>,
+            ),
+          warn: (meta, msg) =>
+            logger.warn(
+              `multi-llm-synthesizer: ${msg ?? ''}`,
+              meta as Record<string, unknown>,
+            ),
+        },
+      });
+
       // Wave-K T1 — brain-kernel wiring with env-driven killswitch,
       // always-on decision-trace recorder, seeded tool registry, and
       // env-flagged uncertainty policy. Null when no Anthropic key
@@ -2652,6 +2709,9 @@ function buildServicesInner(
       // call telemetry to `sensor_call_log`.
       const brainKernel = createBrainKernelWiring({
         buildBudgetGuardedAnthropicClient,
+        // BN-EXE-04 — deep-reasoning fan-out. Null when unviable; the
+        // kernel keeps the single-shot path with no behavioural change.
+        synthesizer: synthesizerWiring?.port ?? null,
         approvalPolicyResolver: createApprovalPolicyService(db),
         sensorRoutingService: createSensorRoutingService(db),
         hqToolRegistry: hqPortBindings.hqToolRegistry,
@@ -2861,9 +2921,9 @@ function buildServicesInner(
     wakeLoopCron: createWakeLoopCronSupervisor({
       db,
       logger: {
-        info: (obj, msg) => console.info('wake-loop-cron:', msg ?? '', obj),
-        warn: (obj, msg) => console.warn('wake-loop-cron:', msg ?? '', obj),
-        error: (obj, msg) => console.error('wake-loop-cron:', msg ?? '', obj),
+        info: (obj, msg) => logger.info(`wake-loop-cron: ${msg ?? ''}`, obj as Record<string, unknown>),
+        warn: (obj, msg) => logger.warn(`wake-loop-cron: ${msg ?? ''}`, obj as Record<string, unknown>),
+        error: (obj, msg) => logger.error(`wake-loop-cron: ${msg ?? ''}`, obj as Record<string, unknown>),
       },
       // Wave-K Tier-3 follow-up — bind the Drizzle-backed kernel-goals
       // service as the wake-loop's stall-scan repo. The service already
@@ -2914,8 +2974,8 @@ function buildServicesInner(
       source: createSensoriumActiveSessionSource(db),
       reflexionWriter: createReflexionBufferService(db),
       logger: {
-        info: (obj, msg) => console.info('idle-session-emitter:', msg ?? '', obj),
-        warn: (obj, msg) => console.warn('idle-session-emitter:', msg ?? '', obj),
+        info: (obj, msg) => logger.info(`idle-session-emitter: ${msg ?? ''}`, obj as Record<string, unknown>),
+        warn: (obj, msg) => logger.warn(`idle-session-emitter: ${msg ?? ''}`, obj as Record<string, unknown>),
       },
     }),
     // A2b-2 wires #8 + #9 — bind the AI audit-chain HMAC verifier
@@ -2939,9 +2999,9 @@ function buildServicesInner(
         db,
         eventBus,
         logger: {
-          info: (obj, msg) => console.info('audit-verify-cron:', msg ?? '', obj),
-          warn: (obj, msg) => console.warn('audit-verify-cron:', msg ?? '', obj),
-          error: (obj, msg) => console.error('audit-verify-cron:', msg ?? '', obj),
+          info: (obj, msg) => logger.info(`audit-verify-cron: ${msg ?? ''}`, obj as Record<string, unknown>),
+          warn: (obj, msg) => logger.warn(`audit-verify-cron: ${msg ?? ''}`, obj as Record<string, unknown>),
+          error: (obj, msg) => logger.error(`audit-verify-cron: ${msg ?? ''}`, obj as Record<string, unknown>),
         },
       });
     })(),

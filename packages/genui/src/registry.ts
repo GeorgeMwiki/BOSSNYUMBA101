@@ -55,7 +55,6 @@ import { DecisionTrace } from './components/DecisionTrace';
 import { CodeBlock } from './components/CodeBlock';
 import { DataflowDiagram } from './components/DataflowDiagram';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const GENUI_REGISTRY: Record<AgUiUiPart['kind'], ComponentType<any>> = {
   'chart-vega': VegaChart,
   'data-table': DataTable,

@@ -118,6 +118,15 @@ export interface AIProviderError extends AIError {
 }
 
 /**
+ * Token sink for genuine streaming. The provider invokes this synchronously
+ * for every assistant text fragment as it arrives off the wire (NOT a post-hoc
+ * replay of a finished response). Tool-use / non-text blocks are NOT forwarded
+ * here — they are assembled and returned on the resolved `AICompletionResponse`
+ * exactly as `complete()` does, so the caller's tool-loop is unchanged.
+ */
+export type StreamTokenSink = (delta: string) => void;
+
+/**
  * AI Provider interface
  */
 export interface AIProvider {
@@ -125,12 +134,27 @@ export interface AIProvider {
   readonly providerId: string;
   /** Supported model IDs */
   readonly supportedModels: string[];
-  
+
   /**
    * Generate a completion
    */
   complete(request: AICompletionRequest): Promise<AIResult<AICompletionResponse, AIProviderError>>;
-  
+
+  /**
+   * Generate a completion with GENUINE token streaming.
+   *
+   * Optional capability — providers that cannot stream omit it and callers
+   * fall back to `complete()`. When present, the provider opens the upstream
+   * SSE stream and calls `onToken(delta)` for each text fragment as it is
+   * produced, then resolves with the SAME `AICompletionResponse` shape
+   * `complete()` returns (full text, tool calls, usage, raw blocks) so the
+   * orchestrator's tool-loop / governance / review plumbing is identical.
+   */
+  completeStream?(
+    request: AICompletionRequest,
+    onToken: StreamTokenSink,
+  ): Promise<AIResult<AICompletionResponse, AIProviderError>>;
+
   /**
    * Check if a model is supported
    */

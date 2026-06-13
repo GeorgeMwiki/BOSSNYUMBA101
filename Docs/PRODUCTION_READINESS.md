@@ -5,14 +5,20 @@ This document tracks production readiness and deployment requirements for the BO
 ## Pre-deployment checklist
 
 ### Build & quality
-- [x] Monorepo build passes: `pnpm build`
-- [x] TypeScript check passes: `pnpm typecheck`
-- [x] Lint passes: `pnpm lint`
-- [x] Tests pass: `pnpm test` (db, gateway, apps, logic, brain suites green)
+- [ ] Monorepo build passes: `pnpm build`
+- [ ] TypeScript check passes: `pnpm typecheck`
+- [ ] Lint passes: `pnpm lint`
+- [ ] Tests pass: `pnpm test` (db, gateway, apps, logic, brain suites)
 - [ ] E2E tests (optional for first release): `pnpm test:e2e` with target URLs configured
 
-> Typecheck, build and lint are green across the monorepo as of this readiness
-> pass. Keep them green — the gateway also fails fast at boot on env-var
+> **CI status: RED — wave-1 remediation in progress.** Typecheck, build, lint,
+> and the unit-test suites are **not** currently green across the monorepo. Do
+> not treat this readiness pass as a green build. The boxes above are gates that
+> must turn green before a production cut, not claims that they already are.
+> Track remediation against CI on the integration branch and re-tick each box
+> only after the corresponding job passes on a clean checkout.
+>
+> Independent of CI, the gateway still fails fast at boot on env-var
 > misconfiguration (see `services/api-gateway/src/config/validate-env.ts`), so a
 > bad env is caught before the first request.
 
@@ -78,9 +84,20 @@ Apps (build-time / prerender — inlined into client bundles):
       set before bundling staff-mobile / tenant-mobile
 
 ### Database
-- [ ] Migrations applied: `make db-migrate` or `pnpm --filter @bossnyumba/database run db:migrate`
+- [ ] Migrations applied with the **single supported command**:
+      `pnpm --filter @bossnyumba/database run db:migrate`
+      (equivalently `make db-migrate`, or `pnpm migrate` from the repo root —
+      all three invoke the same `packages/database/src/run-migrations.ts`).
 - [ ] Seed (if needed): `make db-seed` only in non-production or with guarded scripts
 - [ ] (Optional) `DATABASE_URL_READONLY` set if routing read-heavy queries to a replica
+
+> **One canonical migration runner.** `packages/database/src/run-migrations.ts`
+> is the single source of truth; it is hash-keyed against the
+> `drizzle.__drizzle_migrations` ledger and is what CI, container boot, and the
+> Helm migration job all run. `scripts/migrate-prod.sh` /
+> `scripts/migrate-prod.ts` is a thin wrapper that delegates to the same runner
+> and the same ledger — it does **not** maintain a second `_migrations` table.
+> Never run two different migration tools against the same database.
 
 ### Infrastructure
 - [ ] Docker images build: `make docker-build` or equivalent
@@ -117,7 +134,7 @@ Apps (build-time / prerender — inlined into client bundles):
 | Build all      | `pnpm build` |
 | Typecheck      | `pnpm typecheck` |
 | Lint           | `pnpm lint` |
-| Run migrations | `make db-migrate` |
+| Run migrations | `pnpm --filter @bossnyumba/database run db:migrate` (a.k.a. `make db-migrate`) |
 | Seed DB        | `make db-seed` |
 | Start stack    | `make docker-up` or `pnpm exec turbo dev` |
 | Run tests      | `pnpm test` |

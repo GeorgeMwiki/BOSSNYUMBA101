@@ -12,6 +12,7 @@
  * the orchestrator. This adapter only exposes the outbound half.
  */
 
+import { randomUUID } from 'node:crypto';
 import type {
   AvailabilityWindow,
   DateRange,
@@ -67,7 +68,7 @@ export class GenericWebhookAdapter implements VendorApiAdapter {
     this.now = config.now ?? (() => new Date());
     this.randomToken =
       config.randomToken ??
-      (() => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
+      (() => `${Date.now().toString(36)}-${randomUUID().replace(/-/g, '').slice(0, 8)}`);
   }
 
   async scheduleDispatch(input: DispatchInput): Promise<DispatchResult> {

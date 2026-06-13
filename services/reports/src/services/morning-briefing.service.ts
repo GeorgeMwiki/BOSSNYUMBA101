@@ -419,10 +419,12 @@ export class MorningBriefingService {
   }
 
   private getRandomTip(): string {
+    // eslint-disable-next-line no-restricted-syntax -- cosmetic tip rotation, not an ID/secret; unguessability is irrelevant
     return this.tips[Math.floor(Math.random() * this.tips.length)] ?? this.tips[0] ?? '';
   }
 
   private getRandomQuote(): string {
+    // eslint-disable-next-line no-restricted-syntax -- cosmetic quote rotation, not an ID/secret; unguessability is irrelevant
     return this.quotes[Math.floor(Math.random() * this.quotes.length)] ?? this.quotes[0] ?? '';
   }
 

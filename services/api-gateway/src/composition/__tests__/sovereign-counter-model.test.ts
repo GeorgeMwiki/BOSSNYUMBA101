@@ -121,6 +121,7 @@ describe('createProductionCounterModel — null-safety contract', () => {
 
 function matchAll(source: string, pattern: RegExp): number[] {
   const out: number[] = [];
+  // eslint-disable-next-line security/detect-non-literal-regexp -- reason: pattern.source is derived from a RegExp literal passed by test fixtures, not user input
   const re = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`);
   let m: RegExpExecArray | null;
   while ((m = re.exec(source)) !== null) {

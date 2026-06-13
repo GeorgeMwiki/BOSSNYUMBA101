@@ -137,6 +137,7 @@ export class LegacyPortalDriver {
     const re =
       namePattern instanceof RegExp
         ? namePattern
+        // eslint-disable-next-line security/detect-non-literal-regexp -- reason: namePattern is an internal driver parameter supplied by trusted automation code, not user input
         : new RegExp(namePattern, 'i');
     return (
       flattenAxNodes(snap.root).find(

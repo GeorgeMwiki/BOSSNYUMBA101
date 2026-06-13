@@ -348,4 +348,78 @@ export const HARDCODED_LOCALE_ALLOWLIST = new Map([
     'packages/disclosure-layer/src/eu-ai-act-art-50/types.ts',
     'EU-AI-Act Article 50 disclosure-locale union type; enumerates the legally-required locale set per regulation.',
   ],
+
+  // ─── WZ-CI-GREEN 2026-06-13: chat-ui Web-Speech recognition lang ───
+  [
+    'packages/chat-ui/src/widget/LitFinChatPanel.tsx',
+    'Web-Speech recognition lang maps active user language (sw|en) to its BCP-47 ASR tag (sw-TZ/en-US); same render-time mapping as the allowlisted web-speech-adapter.',
+  ],
+
+  // ─── WZ-CI-GREEN 2026-06-13: database seeds (fixture/registry data) ─
+  [
+    'packages/database/src/seeds/bossnyumba-test-users.seed.ts',
+    'Seed file: sw-KE appears only inside the preferredLanguage TYPE union of the BossNyumba test-user fixture; seed/registry data, not flowing business logic.',
+  ],
+  [
+    'packages/database/src/seeds/scale-tier-fixtures.seed.ts',
+    'Scale-tier fixture seed declares defaultLanguage per demo-tenant (sw-KE for the Nairobi T2 fixture); seed/registry data only.',
+  ],
+
+  // ─── WZ-CI-GREEN 2026-06-13: deterministic number grouping ─────────
+  [
+    'packages/language-intelligence/src/swahili-voice-boost.ts',
+    'Post-ASR number normaliser uses en-US toLocaleString for DETERMINISTIC comma-grouped formatting (Tanzanian convention uses commas); locale-stability required, not user-facing.',
+  ],
+
+  // ─── WZ-CI-GREEN 2026-06-13: marketing-app TZ-audience formatters ──
+  [
+    'apps/marketing/src/components/animations/CountUp.tsx',
+    'Marketing CountUp animation formats its counter with en-US toLocaleString for stable thousands-grouping; TZ-audience marketing surface, render-only.',
+  ],
+  [
+    'apps/marketing/src/lib/format.ts',
+    'Marketing currency/number formatter defaults to en-TZ grouping for the TZS-first marketing audience; currency code is parameterised, never the symbol — TZ-audience marketing copy.',
+  ],
+
+  // ─── WZ-CI-GREEN 2026-06-13: staff/tenant mobile number+time format
+  [
+    'apps/staff-mobile/app/notifications/index.tsx',
+    'Notification inbox formats amounts via toLocaleString bound to active language (sw-TZ|en-US) for stable thousands-grouping; render-time number formatting only.',
+  ],
+  [
+    'apps/staff-mobile/app/owner/O-M-07.tsx',
+    'Owner cash-runway screen formats amounts with en-US toLocaleString for stable thousands-grouping; currency code is parameterised — render-only.',
+  ],
+  [
+    'apps/staff-mobile/app/owner/O-M-10.tsx',
+    'Owner payroll screen formats TZS/USD amounts with en-US toLocaleString for stable thousands-grouping; render-only number formatting.',
+  ],
+  [
+    'apps/staff-mobile/app/owner/O-M-18.tsx',
+    'Owner screen formats USD amount with en-US toLocaleString for stable thousands-grouping; render-only number formatting.',
+  ],
+  [
+    'apps/staff-mobile/app/owner/O-M-20.tsx',
+    'Owner screen formats amount with en-US toLocaleString for stable thousands-grouping; currency code is parameterised — render-only.',
+  ],
+  [
+    'apps/tenant-mobile/app/notifications.tsx',
+    'Tenant notification inbox formats amount + time bound to active language (sw-TZ|en-US) for stable grouping; render-time formatting only.',
+  ],
+  [
+    'apps/tenant-mobile/app/rfb/[id]/sign-delivery.tsx',
+    'Sign-delivery screen builds an Intl.NumberFormat bound to active language (sw-TZ|en-US) for stable amount grouping; render-time formatting only.',
+  ],
+  [
+    'apps/tenant-mobile/src/components/formatters.ts',
+    'Shared mobile date formatter uses en-GB DD-MMM-YYYY for stable presentation; tracked-gap pending tenant-locale resolution, render-only.',
+  ],
+  [
+    'apps/tenant-mobile/src/marketplace/distance.ts',
+    'Marketplace distance formatter uses en-GB toLocaleString for stable km thousands-grouping; render-only number formatting.',
+  ],
+  // ─── api-gateway dedicated-resolver / render-time locale literals (Mode-C grind, Borjie-parity) ───
+  ['services/api-gateway/src/services/jurisdiction-resolver/index.ts', 'The dedicated jurisdiction->locale resolver; the locale tags ARE the resolver source-of-truth mapping (TZ->sw-TZ etc.), not hardcoded UI locale.'],
+  ['services/api-gateway/src/services/document-drafter/renderers/pptx-renderer.ts', 'PPTX renderer Intl locale formatting bound to the draft document language; render-time number/date formatting only.'],
+  ['services/api-gateway/src/workers/decision-retrospective-worker.ts', 'Retrospective worker formats reviewed timestamps with a stable Intl locale for the report; render-time formatting only. Tracked-gap: bind to tenant locale.'],
 ]);

@@ -14,6 +14,7 @@
  * makes the rules independently testable.
  */
 
+import { randomUUID } from 'node:crypto';
 import type {
   AutonomyDomain,
   AutonomyPolicy,
@@ -412,7 +413,8 @@ function checkWelfare(sub: Partial<TenantWelfarePolicy>, t: TenantWelfarePolicy,
 type _EnforceDomain = AutonomyDomain;
 
 function randomSuffix(): string {
-  return Math.random().toString(36).slice(2, 8);
+  // CSPRNG-backed suffix (not Math.random) for collision-resistant IDs.
+  return randomUUID().replace(/-/g, '').slice(0, 6);
 }
 
 // ---------------------------------------------------------------------------

@@ -53,7 +53,6 @@ export function createRedisFromUrl(
 ): RedisLike | null {
   if (!redisUrl) return null;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const IORedis = require('ioredis') as {
       default?: new (url: string, opts?: object) => RedisLike;
       new (url: string, opts?: object): RedisLike;

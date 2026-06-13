@@ -86,10 +86,10 @@ aws ecs update-service --cluster prod --service api-gateway \
 **Migrations are forward-only by default.** If a recently-applied migration
 is the cause, follow this procedure:
 
-1. Check the `_migrations` audit table for the offending version + timestamp.
+1. Check the `drizzle.__drizzle_migrations` ledger for the offending migration + timestamp.
 2. Write a *compensating* migration (e.g. `0099_revert_0098.sql`) that undoes the schema change.
 3. Apply with `scripts/migrate-prod.sh`.
-4. **Never** drop rows from `_migrations` — the audit trail is sacrosanct.
+4. **Never** drop rows from `drizzle.__drizzle_migrations` — the ledger is sacrosanct.
 
 ### 2.2.1 Kubernetes migration Job (Helm pre-upgrade hook)
 
@@ -145,7 +145,7 @@ get replayed.
 | KNOWN-02 | Anthropic probe `degraded` | Upstream rate limit or key rotation | `ANTHROPIC_API_KEY` env var check; tier bump via console |
 | KNOWN-03 | GePG webhook replays | Deliveries retried when receipt signature fails | Inspect `webhook_deliveries` DLQ via `/api/v1/webhooks/dlq` |
 | KNOWN-04 | Outbox backlog > 1000 | Event bus runner not draining | `OUTBOX_INTERVAL_MS` too high OR DB pressure; rerun with `OUTBOX_BATCH_SIZE=200` |
-| KNOWN-05 | `_migrations` count mismatch | Deployment shipped files without running migrator | `scripts/migrate-prod.sh --dry-run` then rerun without flag |
+| KNOWN-05 | `drizzle.__drizzle_migrations` count mismatch | Deployment shipped files without running migrator | `scripts/migrate-prod.sh --dry-run` then rerun without flag |
 | KNOWN-06 | SSE chat stalls mid-stream | Load-balancer idle timeout < 60 s | Verify ALB/NLB `idle_timeout` ≥ 120 s |
 | KNOWN-07 | Autonomy actions missing audit rows | Policy evaluator crashed before persist | Check `autonomous_action_audit` — re-run via `/api/v1/autonomous-actions-audit/replay` |
 | KNOWN-08 | Redis `MOVED` errors | Cluster rebalance mid-request | Retry idempotent reads; writes route via gateway middleware |

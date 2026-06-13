@@ -62,12 +62,10 @@ export function ConfigurationPage() {
                 {t('general.defaultTimezone')}
               </label>
               <select
-                // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- user-facing timezone dropdown option
                 defaultValue="Africa/Nairobi"
                 onChange={() => setHasChanges(true)}
                 className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
-                {/* eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- user-facing timezone dropdown option */}
                 <option value="Africa/Nairobi">Africa/Nairobi (EAT)</option>
                 <option value="Africa/Lagos">Africa/Lagos (WAT)</option>
                 <option value="Africa/Cairo">Africa/Cairo (EET)</option>

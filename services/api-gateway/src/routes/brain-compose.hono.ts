@@ -31,6 +31,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { authMiddleware } from '../middleware/hono-auth';
+import { getSharedPerTenantRateBudget } from '../middleware/per-tenant-rate-budget';
 
 const SuggestRequest = z.object({
   text: z.string().min(1).max(2000),
@@ -121,6 +122,7 @@ export function lookupSuggestion(
 
 export const brainComposeRouter = new Hono();
 brainComposeRouter.use('*', authMiddleware);
+brainComposeRouter.use('*', getSharedPerTenantRateBudget({ surface: 'brain' }).handler);
 
 brainComposeRouter.post(
   '/compose/suggest',

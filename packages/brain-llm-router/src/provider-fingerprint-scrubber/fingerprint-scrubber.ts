@@ -57,11 +57,13 @@ export const PROVIDER_FINGERPRINT_PATTERNS: ReadonlyArray<FingerprintPattern> =
     // 3. Generic "I'm an AI assistant" / "I am a language model".
     {
       pattern:
+        // eslint-disable-next-line security/detect-unsafe-regex -- reason: (?:an?\s+)? is a bounded optional group; alternation branches are fixed phrases with no shared prefixes that cause catastrophic backtracking; no nested unbounded quantifiers; linear backtracking
         /\bI(?:'m| am)\s+(?:an?\s+)?(?:AI\s+(?:assistant|model)|language\s+model|AI)\b[.,!]?/gi,
       replacement: "I'm the BossNyumba brain.",
     },
     // 4. Sentence-initial "As an AI language model, ...".
     {
+      // eslint-disable-next-line security/detect-unsafe-regex -- reason: (?:\s+(?:language\s+model|assistant))? is a bounded optional group with fixed alternation; no nested unbounded quantifiers; linear backtracking
       pattern: /\bAs an AI(?:\s+(?:language\s+model|assistant))?[,.]?/gi,
       replacement: 'As the BossNyumba brain,',
     },

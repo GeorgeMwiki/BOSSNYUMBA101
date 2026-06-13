@@ -51,11 +51,6 @@
  * `pnpm install` step to compile the binding.
  */
 
-// Type-only import: pulls the .d.ts but emits no runtime require, so
-// downstream bundler static analysis does not bundle `isolated-vm`
-// (which has a native binding via node-gyp-build). The runtime value
-// is loaded by `loadIvm()` below, hidden from the analyzer.
-import type ivm from 'isolated-vm';
 // `createRequire` gives us a CommonJS-style `require` inside this ESM
 // module without `eval` (replaces the old `eval('require')` trick). The
 // `isolated-vm` specifier is still hidden from bundler static analysis
@@ -64,7 +59,54 @@ import { createRequire } from 'node:module';
 
 const nodeRequire = createRequire(import.meta.url);
 
-type IvmModule = typeof ivm;
+// `isolated-vm` is an OPTIONAL dependency — it's a native module that may
+// not build on every platform (and on Node < 22 npm/pnpm skip it because
+// its `engines.node` is `>=22`, so the package directory is absent). We
+// therefore declare a minimal structural type for the subset of the API
+// we touch, rather than `import type ivm from 'isolated-vm'` which fails
+// TypeScript resolution (TS2307) whenever the package directory is gone.
+//
+// The actual runtime module is loaded by `loadIvm()` via `createRequire`;
+// if loading fails we surface a sanitized init error to the caller.
+declare namespace ivm {
+  // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+  class Isolate {
+    constructor(opts?: { memoryLimit?: number });
+    createContextSync(): Context;
+    getHeapStatisticsSync(): { used_heap_size: number };
+    dispose(): void;
+    isDisposed: boolean;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+  class Context {
+    global: Reference;
+    eval(code: string, opts?: { timeout?: number; copy?: boolean }): Promise<unknown>;
+    evalSync(code: string, opts?: { timeout?: number; copy?: boolean }): unknown;
+    release(): void;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+  class Reference<T = unknown> {
+    set(key: string, value: unknown, opts?: { copy?: boolean }): Promise<void>;
+    setSync(key: string, value: unknown, opts?: { copy?: boolean; release?: boolean }): void;
+    get(key: string, opts?: { copy?: boolean }): Promise<T>;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+  class ExternalCopy<T = unknown> {
+    constructor(value: T);
+    copyInto(opts?: { transferIn?: boolean; release?: boolean }): T;
+    release(): void;
+  }
+}
+
+// `IvmModule` is the shape `require('isolated-vm')` returns — i.e. the
+// namespace itself, callable via `new Module.Isolate(...)`. We match the
+// upstream API surface enough for the operations in this file.
+interface IvmModule {
+  Isolate: typeof ivm.Isolate;
+  Context: typeof ivm.Context;
+  Reference: typeof ivm.Reference;
+  ExternalCopy: typeof ivm.ExternalCopy;
+}
 
 let _ivmCache: IvmModule | null = null;
 let _ivmInitErrorMessage: string | null = null;
@@ -102,6 +144,7 @@ function loadIvm(): IvmModule {
   } catch (err) {
     const rawMsg = err instanceof Error ? err.message : String(err);
     // Strip any absolute filesystem path (information disclosure).
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: (?:\/[^\s/]+){2,} repeats a fixed negated-class token, no nested overlapping quantifiers; applied only to an error message string, not user-controllable input
     const safeMsg = rawMsg.replace(/(?:\/[^\s/]+){2,}/g, '<path>');
     _ivmInitErrorMessage = `isolated-vm load failed: ${safeMsg}`;
     throw new Error(_ivmInitErrorMessage);

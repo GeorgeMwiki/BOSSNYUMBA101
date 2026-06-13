@@ -29,7 +29,7 @@ export function LiveConsultantDemo() {
     if (existing) {
       setSessionId(existing);
     } else {
-      const sid = `mk_${Math.random().toString(36).slice(2, 10)}`;
+      const sid = `mk_${crypto.randomUUID().slice(0, 8)}`;
       window.sessionStorage.setItem('bossnyumba_consultant_demo', sid);
       setSessionId(sid);
     }

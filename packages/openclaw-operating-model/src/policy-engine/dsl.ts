@@ -54,6 +54,7 @@ function parseComparison(part: string): ParsedComparison {
     const opPattern =
       op === ' in ' || op === ' contains '
         ? op
+        // eslint-disable-next-line security/detect-non-literal-regexp -- reason: trimmedOp is from the OPS constant tuple ('=='|'!='|'>='|'<='|'>'|'<') run through escapeRegex(); never user input
         : new RegExp(`\\s*${escapeRegex(trimmedOp)}\\s*`);
     let parts: string[];
     if (typeof opPattern === 'string') {
@@ -80,6 +81,7 @@ function parseLiteral(raw: string): DslValue {
   if (s === 'true') return true;
   if (s === 'false') return false;
   // Number
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: (\.\d+)? is a bounded optional group; fully anchored ^...$; input is a short DSL literal token from a policy rule file; linear backtracking
   if (/^-?\d+(\.\d+)?$/.test(s)) {
     return Number(s);
   }
@@ -92,6 +94,7 @@ function parseLiteral(raw: string): DslValue {
       if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
         return trimmed.slice(1, -1);
       }
+      // eslint-disable-next-line security/detect-unsafe-regex -- reason: (\.\d+)? is a bounded optional group; fully anchored ^...$; input is a short comma-separated DSL literal token; linear backtracking
       if (/^-?\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
       return trimmed;
     });

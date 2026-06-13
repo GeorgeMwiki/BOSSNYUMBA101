@@ -44,6 +44,7 @@ import { sql } from 'drizzle-orm';
 
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import { getSharedPerTenantRateBudget } from '../middleware/per-tenant-rate-budget';
 import { createLogger } from '../utils/logger.js';
 import { isTenantAdmin } from '../types/user-role';
 import type { UserRole } from '../types/user-role';
@@ -207,6 +208,7 @@ export function createIdentityRouter(): Hono {
   const app = new Hono();
 
   app.use('*', authMiddleware, databaseMiddleware);
+  app.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 
   // ── POST /invites — generate ──────────────────────────────────────────
   app.post('/invites', async (c) => {

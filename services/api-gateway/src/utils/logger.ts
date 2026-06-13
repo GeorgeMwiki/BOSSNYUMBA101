@@ -84,7 +84,6 @@ function scrubMeta(meta: Record<string, unknown> | undefined): Record<string, un
   if (!meta) return meta;
   if (!cachedScrubFn) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const mod = require('../middleware/classification-scrubber');
       cachedScrubFn = typeof mod.scrubPayload === 'function'
         ? (mod.scrubPayload as (p: unknown) => unknown)
@@ -118,6 +117,7 @@ function log(level: LogLevel, service: string, message: string, meta?: Record<st
   } else if (level === 'warn') {
     console.warn(output);
   } else {
+    // eslint-disable-next-line no-console -- reason: logger bootstrap last-resort sink for non-error/non-warn levels; no structured logger available here
     console.log(output);
   }
 }

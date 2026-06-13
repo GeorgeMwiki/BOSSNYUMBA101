@@ -45,6 +45,7 @@ import {
 } from '@bossnyumba/domain-models';
 import {
   ledgerEntries,
+  journalIdempotency,
   type DatabaseClient,
   type LedgerEntryRow,
 } from '@bossnyumba/database';
@@ -186,6 +187,46 @@ export class DrizzleLedgerRepository implements ILedgerRepository {
       )
       .orderBy(asc(ledgerEntries.sequenceNumber));
     return rows.map(rowToLedgerEntry);
+  }
+
+  // Post-once idempotency (durability defect #2). Backed by the
+  // `journal_idempotency` table (migration 0318) at the per-JOURNAL grain.
+  async findJournalIdByIdempotencyKey(
+    tenantId: TenantId,
+    idempotencyKey: string,
+    tx?: RepoTx,
+  ): Promise<string | null> {
+    const conn = tx ?? this.db;
+    const rows = await conn
+      .select({ journalId: journalIdempotency.journalId })
+      .from(journalIdempotency)
+      .where(
+        and(
+          eq(journalIdempotency.tenantId, tenantId),
+          eq(journalIdempotency.idempotencyKey, idempotencyKey),
+        ),
+      )
+      .limit(1);
+    return rows.length > 0 ? rows[0].journalId : null;
+  }
+
+  // Persists the (tenant_id, idempotency_key) -> journal_id mapping. The
+  // composite PK is the UNIQUE guarantee; a racing duplicate is rejected by
+  // the constraint and the caller resolves the original via
+  // findJournalIdByIdempotencyKey. Enlisted on `tx` so it commits/rolls back
+  // together with the journal's entries + balances.
+  async insertJournalIdempotency(
+    tenantId: TenantId,
+    idempotencyKey: string,
+    journalId: string,
+    tx?: RepoTx,
+  ): Promise<void> {
+    const conn = tx ?? this.db;
+    await conn.insert(journalIdempotency).values({
+      tenantId,
+      idempotencyKey,
+      journalId,
+    });
   }
 
   async findByAccount(

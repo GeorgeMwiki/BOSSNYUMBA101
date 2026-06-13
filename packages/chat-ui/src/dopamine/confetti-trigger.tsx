@@ -64,7 +64,9 @@ export function ConfettiTrigger(props: ConfettiTriggerProps): JSX.Element | null
     if (!active || prefersReduced) return [];
     return Array.from({ length: particleCount }, (_, i) => ({
       id: i,
+      // eslint-disable-next-line no-restricted-syntax -- cosmetic confetti placement, not an ID/secret; unguessability is irrelevant
       leftPct: Math.random() * 100,
+      // eslint-disable-next-line no-restricted-syntax -- cosmetic confetti timing, not an ID/secret; unguessability is irrelevant
       delayMs: Math.random() * 500,
       color: PALETTE[i % PALETTE.length] ?? '#3b82f6',
     }));

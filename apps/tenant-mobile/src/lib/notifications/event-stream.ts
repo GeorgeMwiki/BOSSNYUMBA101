@@ -14,7 +14,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppState, type AppStateStatus } from 'react-native'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import EventSourceImpl from 'react-native-sse'
 
 import { apiConfig } from '@/api/config'

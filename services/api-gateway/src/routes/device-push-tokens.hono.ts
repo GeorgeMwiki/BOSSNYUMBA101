@@ -22,6 +22,7 @@ import { sql } from 'drizzle-orm';
 
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import { getSharedPerTenantRateBudget } from '../middleware/per-tenant-rate-budget';
 import { createLogger } from '../utils/logger.js';
 
 const moduleLogger = createLogger('device-push-tokens');
@@ -67,6 +68,7 @@ function rowsOf(raw: unknown): ReadonlyArray<DbRow> {
 const app = new Hono();
 
 app.use('*', authMiddleware, databaseMiddleware);
+app.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 
 app.post('/', async (c) => {
   const auth = c.get('auth') as

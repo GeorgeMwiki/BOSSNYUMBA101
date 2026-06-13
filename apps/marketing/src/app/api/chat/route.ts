@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { checkRateLimit, clientIp, rateLimitHeaders } from '@/lib/rate-limit';
 
 /**
  * /api/chat — BossNyumba public marketing chat (hardened dual-mode).
@@ -22,6 +23,7 @@ export const runtime = 'nodejs';
 // Module-local (not exported): Next App Router route files may only export
 // HTTP-method handlers + framework keys; a non-standard export fails the
 // generated route-type check and `next build`.
+// eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: static marketing copy / AI persona system prompt, not a tenant business-logic binding
 const SYSTEM_PROMPT_EN = `## LOCALE LOCK — ENGLISH ONLY (OUTRANKS EVERY OTHER RULE)
 
 Respond ONLY in English. ZERO Swahili words anywhere in your reply, not even in greetings, not even one. The visitor's interface language is English. The following Swahili words are FORBIDDEN: Habari, Karibu, Asante, Tafadhali, Mwenye, Mfanyabiashara, Mwenye nyumba, Mpangaji, Wapangaji, Kampuni, ndugu, Bw., Bibi, Bwana, Mama, Baba, ulipo, Pole, Hujambo, Salama, Mambo, Mzee, kuhusu, jinsi, nini, wapi, lini, nani, kodi, mali, mkataba, mpangaji, mwenye-nyumba, kupanga.
@@ -61,6 +63,7 @@ BossNyumba differentiators to mention when relevant: M-Pesa auto-reconciliation,
 
 NEVER reference any other product, platform, or parent brand - BossNyumba is its own product. Speak only as BossNyumba.`;
 
+// eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: static marketing copy / AI persona system prompt in Swahili locale, not a tenant business-logic binding
 const SYSTEM_PROMPT_SW = `## KIFUNGO CHA LUGHA — KISWAHILI PEKEE (KINASHINDA SHERIA NYINGINE ZOTE)
 
 Jibu kwa KISWAHILI pekee. SIFURI ya maneno ya Kiingereza popote katika jibu lako, hata kwenye salamu, hata neno moja. Lugha ya kiolesura cha mgeni ni Kiswahili. Maneno yafuatayo ya Kiingereza ni MARUFUKU katika jibu lako: Hello, Hi, Good morning, Good afternoon, Good evening, Welcome, Thanks, Thank you, Please, Landlord, Tenant, Property, Real estate, Rent, Lease, Manager, Owner, Sorry, How, What, Where, When, Who, Why, About, portfolio (tumia "kapu la mali"), estate (tumia "mali"). Maneno kama "BossNyumba" ni jina la bidhaa na yanaruhusiwa.
@@ -281,6 +284,20 @@ async function callAnthropic(message: string, language: 'en' | 'sw'): Promise<st
 }
 
 export async function POST(req: Request): Promise<Response> {
+  // Per-IP throttle — public LLM proxy is a cost + prompt-injection
+  // abuse vector. 20 turns/min/IP is generous for a real visitor.
+  const limit = checkRateLimit(clientIp(req), {
+    key: 'marketing:chat',
+    max: 20,
+    windowMs: 60_000,
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', detail: 'Too many requests. Try again shortly.' },
+      { status: 429, headers: rateLimitHeaders(limit) },
+    );
+  }
+
   const ct = req.headers.get('content-type') ?? '';
   if (!ct.includes('application/json')) {
     return NextResponse.json({ error: 'unsupported_media_type' }, { status: 415 });

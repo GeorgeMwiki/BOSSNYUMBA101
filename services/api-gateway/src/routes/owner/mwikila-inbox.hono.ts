@@ -36,6 +36,7 @@ import { sovereignApprovals } from '@bossnyumba/database';
 
 import { authMiddleware } from '../../middleware/hono-auth';
 import { databaseMiddleware } from '../../middleware/database';
+import { getSharedPerTenantRateBudget } from '../../middleware/per-tenant-rate-budget';
 import { createLogger } from '../../utils/logger';
 
 const moduleLogger = createLogger('owner-mwikila-inbox');
@@ -237,6 +238,7 @@ export function createMwikilaInboxRouter(): Hono {
   const app = new Hono();
   app.use('*', authMiddleware);
   app.use('*', databaseMiddleware);
+  app.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 
   // -------------------------------------------------------------------------
   // GET / — paginated inbox.

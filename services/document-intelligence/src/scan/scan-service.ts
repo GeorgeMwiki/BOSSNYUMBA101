@@ -14,6 +14,8 @@
  * Native image processing bits (deskew) are stubbed — see KI-011.
  */
 
+import { randomUUID } from 'node:crypto';
+
 export type ScanBundleStatus =
   | 'draft'
   | 'processing'
@@ -116,7 +118,7 @@ export interface ScanServiceOptions {
 }
 
 function randomId(prefix: string): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return `${prefix}_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 6)}`;
 }
 
 function decodeDataUrl(dataUrl: string): { mime: string; buffer: Buffer } {

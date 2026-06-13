@@ -86,6 +86,12 @@ import {
   type MarketDataPort,
 } from '@bossnyumba/market-intelligence';
 import { logger } from '../utils/logger.js';
+// BN-EXE-04 — multi-LLM (mixture-of-agents) deep-reasoning fan-out. This is
+// the composition root the jarvis kernel actually consumes (the route-facing
+// `getSovereignBrain` builds its kernel here), so the synthesizer MUST be
+// threaded into this `composeSovereign` call — wiring it only into the
+// service-registry brain-kernel slot would never reach the jarvis path.
+import { createMultiLLMSynthesizerWiring } from './multi-llm-synthesizer-wiring.js';
 
 // Visibility role — mirrored locally so this composition root doesn't
 // need a type-only barrel export from `@bossnyumba/database` (TS
@@ -503,6 +509,31 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
     // factory returns a richer `BehaviorSignalSource` that satisfies it;
     // assign-by-key keeps the type-narrowing happy.
     mutable.behaviorSignalSource = behaviorSignalSource;
+  }
+
+  // BN-EXE-04 — deep-reasoning mixture-of-agents fan-out. Build the
+  // multi-LLM synthesizer port (Anthropic + OpenAI + DeepSeek proposers in
+  // parallel, Claude-Opus serial merge). Returns null when unviable (no
+  // Anthropic key, or only one vendor configured) — the kernel then keeps
+  // its single-shot sensor path unchanged. The kernel only fans out when a
+  // turn carries `req.requireSynthesis === true`, which the jarvis router
+  // sets on high-stakes (and `critical`-stakes) turns.
+  const synthesizerWiring = createMultiLLMSynthesizerWiring({
+    logger: {
+      info: (meta, msg) =>
+        logger.info(
+          `multi-llm-synthesizer: ${msg ?? ''}`,
+          meta as Record<string, unknown>,
+        ),
+      warn: (meta, msg) =>
+        logger.warn(
+          `multi-llm-synthesizer: ${msg ?? ''}`,
+          meta as Record<string, unknown>,
+        ),
+    },
+  });
+  if (synthesizerWiring) {
+    mutable.synthesizer = synthesizerWiring.port;
   }
   // autoHaikuJudge defaults to true in compose; we leave it unset.
 

@@ -29,12 +29,16 @@ export const PII_PATTERNS: ReadonlyArray<PiiPattern> = Object.freeze([
     pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
     replacement: '[REDACTED_EMAIL]',
   },
-  // Credit cards (basic 13-19 digits, optional separators; Luhn check
-  // done by `redactCreditCards` to avoid false positives on e.g.
-  // M-Pesa transaction IDs).
+  // Credit cards (basic 13-19 digits, optional single-char separators;
+  // Luhn check done by `redactCreditCards` to avoid false positives on
+  // e.g. M-Pesa transaction IDs).
+  // Rewritten from /(?:\d[ -]*?){13,19}/ (nested quantifier → ReDoS) to
+  // a linear form: first digit, then up to 18 repetitions of [optional
+  // separator + digit], bounded total length 13-19 digits.
   {
     name: 'credit_card',
-    pattern: /\b(?:\d[ -]*?){13,19}\b/g,
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: each (?:[ -]?\d) iteration must consume exactly one mandatory \d so no iteration overlap is possible; {12,18} is bounded; Luhn post-validation prevents false positives; linear backtracking
+    pattern: /\b\d(?:[ -]?\d){12,18}\b/g,
     replacement: '[REDACTED_CARD]',
   },
   // TZ NIDA — 20 digits, often in groups of 5 (e.g. 19900101-12345-12345-12)

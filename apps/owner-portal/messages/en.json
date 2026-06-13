@@ -12,7 +12,11 @@
     "closeModal": "Close dialog",
     "evidencePhoto": "Work order evidence photo",
     "messageAttachment": "Message attachment",
-    "signaturePreview": "Signature preview"
+    "signaturePreview": "Signature preview",
+    "adaptiveSections": "Adaptive sections",
+    "openTabs": "Open tabs",
+    "tabUpdates": "{count} updates",
+    "closeTab": "Close {title}"
   },
   "chat": {
     "typingIndicator": "Advisor is typing…",

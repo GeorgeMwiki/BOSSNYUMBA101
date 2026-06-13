@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import jwt, { JwtPayload, SignOptions, VerifyOptions } from 'jsonwebtoken';
 
 export interface TokenPayload {
@@ -47,9 +48,9 @@ export class JwtService {
     // Per-process random fallback for tests — rotated every process start
     // so a leaked test secret can't be reused across CI runs.
     const testFallbackAccess =
-      accessSecret ?? `test-access-${Math.random().toString(36).slice(2)}`;
+      accessSecret ?? `test-access-${randomUUID()}`;
     const testFallbackRefresh =
-      refreshSecret ?? `test-refresh-${Math.random().toString(36).slice(2)}`;
+      refreshSecret ?? `test-refresh-${randomUUID()}`;
     // A short secret is almost as bad as a known one — reject <32 chars in prod.
     if (env === 'production') {
       if ((accessSecret ?? '').length < 32) {

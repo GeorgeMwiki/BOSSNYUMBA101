@@ -229,7 +229,7 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
       if (kickoffTimeout !== null) clearTimeout(kickoffTimeout);
       timers.forEach(window.clearTimeout);
     };
-  }, []);
+  }, [choreo]);
 
   return (
     <section className="relative isolate overflow-hidden">
@@ -239,7 +239,7 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
         className="pointer-events-none absolute -top-40 -left-40 -z-10 h-[560px] w-[560px] rounded-full blur-3xl opacity-30"
         style={{
           background:
-            'radial-gradient(circle, hsl(24 82% 58% / 0.4) 0%, hsl(24 70% 48% / 0.12) 40%, transparent 72%)',
+            'radial-gradient(circle, hsl(var(--signal-500) / 0.4) 0%, hsl(var(--signal-600) / 0.12) 40%, transparent 72%)',
         }}
       />
       <div
@@ -247,7 +247,7 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
         className="pointer-events-none absolute -bottom-40 -right-40 -z-10 h-[620px] w-[620px] rounded-full blur-3xl opacity-25"
         style={{
           background:
-            'radial-gradient(circle, hsl(14 70% 48% / 0.35) 0%, hsl(14 60% 35% / 0.1) 44%, transparent 75%)',
+            'radial-gradient(circle, hsl(var(--signal-800) / 0.35) 0%, hsl(var(--signal-900) / 0.1) 44%, transparent 75%)',
         }}
       />
 
@@ -267,7 +267,7 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
               <>
                 Mfumo wa kwanza duniani wa{' '}
                 <span className="relative inline-block">
-                  <span className="bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)] bg-clip-text text-transparent">
+                  <span className="text-gradient-brand">
                     Mshirika wa AI wa Usimamizi wa Mali
                   </span>
                 </span>{' '}
@@ -277,7 +277,7 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
               <>
                 The world&rsquo;s first{' '}
                 <span className="relative inline-block">
-                  <span className="bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)] bg-clip-text text-transparent">
+                  <span className="text-gradient-brand">
                     AI Estate-Management Partner
                   </span>
                 </span>{' '}
@@ -298,7 +298,7 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <Link
               href="/sign-up"
-              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)] px-6 py-3.5 text-base font-semibold text-primary-foreground shadow-[0_8px_24px_-4px_hsl(24_72%_50%/0.45),0_2px_6px_hsl(14_62%_30%/0.2)] transition-all hover:scale-[1.03] hover:shadow-[0_12px_32px_-4px_hsl(24_72%_50%/0.55),0_4px_10px_hsl(14_62%_30%/0.25)] active:scale-[0.97]"
+              className="bg-gradient-brand inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-base font-semibold text-primary-foreground shadow-glow transition-all hover:scale-[1.03] hover:shadow-glow-lg active:scale-[0.97]"
             >
               {t.ctaPilot}
               <ArrowRight className="h-5 w-5" />
@@ -394,7 +394,7 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
             <div className="absolute inset-x-0 bottom-[88px] flex items-center justify-center gap-2 bg-[hsl(36_45%_97%)] dark:bg-white/[0.03] px-4 py-2 text-center backdrop-blur-sm before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-[hsl(24_72%_50%/0.4)] before:to-transparent">
               <ShieldCheck
                 size={12}
-                className="shrink-0 text-[hsl(24_72%_50%)] dark:text-[hsl(36_70%_64%)]"
+                className="shrink-0 text-primary"
                 aria-hidden
               />
               <p className="text-[11px] font-medium leading-snug tracking-[-0.005em] text-[hsl(14_40%_30%)] dark:text-[hsl(36_20%_72%)]">
@@ -427,7 +427,7 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
                 </Link>
                 <Link
                   href="/sign-up"
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_78%_54%)_50%,hsl(14_62%_36%)_100%)] text-primary-foreground shadow-[0_8px_20px_-4px_hsl(24_72%_50%/0.45),0_2px_6px_hsl(14_62%_30%/0.2)] transition-all hover:scale-[1.04] hover:shadow-[0_10px_24px_-4px_hsl(24_72%_50%/0.55),0_3px_8px_hsl(14_62%_30%/0.25)] active:scale-[0.96]"
+                  className="bg-gradient-brand inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-primary-foreground shadow-glow transition-all hover:scale-[1.04] hover:shadow-glow-lg active:scale-[0.96]"
                   aria-label={chat.send}
                 >
                   <ArrowUp className="h-4 w-4" strokeWidth={2.5} />

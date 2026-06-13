@@ -503,7 +503,7 @@ export function MainNav({ locale }: MainNavProps) {
           </Link>
           <Link
             href={pageCTA?.href ?? '/sign-up'}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)] px-4 py-2 text-sm font-semibold text-primary-foreground shadow-[0_8px_20px_-4px_hsl(24_72%_50%/0.45),0_2px_6px_hsl(14_62%_30%/0.2)] transition-all hover:scale-[1.03] hover:shadow-[0_10px_24px_-4px_hsl(24_72%_50%/0.55),0_3px_8px_hsl(14_62%_30%/0.25)] active:scale-[0.97]"
+            className="bg-gradient-brand inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-all hover:scale-[1.03] hover:shadow-glow-lg active:scale-[0.97]"
           >
             {pageCTA?.label ?? labels.getStarted}
             <ArrowRight className="h-3.5 w-3.5" />
@@ -592,7 +592,7 @@ export function MainNav({ locale }: MainNavProps) {
                 <Link
                   href={pageCTA?.href ?? '/sign-up'}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 text-center py-2 text-sm font-semibold text-primary-foreground rounded-lg bg-[linear-gradient(135deg,hsl(36_86%_64%)_0%,hsl(24_72%_50%)_50%,hsl(14_62%_28%)_100%)]"
+                  className="bg-gradient-brand flex-1 text-center py-2 text-sm font-semibold text-primary-foreground rounded-lg"
                 >
                   {pageCTA?.label ?? labels.getStarted}
                 </Link>

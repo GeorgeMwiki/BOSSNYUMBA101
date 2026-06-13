@@ -136,7 +136,7 @@ function StoreIssueReturn(): JSX.Element {
     }
   })
 
-  const itemRows = items.data?.data ?? []
+  const itemRows = useMemo(() => items.data?.data ?? [], [items.data])
   const itemOptions = useMemo(
     () => itemRows.map((row) => ({ value: row.id, label: `${row.name} · ${row.sku}` })),
     [itemRows]

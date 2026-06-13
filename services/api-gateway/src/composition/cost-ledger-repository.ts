@@ -25,7 +25,6 @@ import type {
  * `ReturnType<typeof createDatabaseClient>` in service-registry.ts);
  * nothing about this repository does mock-mode fallback.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DrizzleLike = any;
 
 export class DrizzleCostLedgerRepository implements CostLedgerRepository {

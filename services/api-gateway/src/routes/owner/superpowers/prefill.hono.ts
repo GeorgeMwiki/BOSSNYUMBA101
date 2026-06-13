@@ -39,6 +39,7 @@ import { z } from 'zod';
 import { undoJournal } from '@bossnyumba/database';
 import { authMiddleware } from '../../../middleware/hono-auth';
 import { databaseMiddleware } from '../../../middleware/database';
+import { getSharedPerTenantRateBudget } from '../../../middleware/per-tenant-rate-budget';
 import { createLogger } from '../../../utils/logger';
 
 const moduleLogger = createLogger('owner-superpowers-prefill');
@@ -74,6 +75,7 @@ const prefillUndoFieldSchema = z.object({
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
+app.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 
 // POST / — ack a prefill emission (audit-only, no DB write).
 //

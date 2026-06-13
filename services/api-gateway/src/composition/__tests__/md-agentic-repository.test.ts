@@ -343,3 +343,72 @@ describe('MdAgenticRepository.rejectSandboxWrite', () => {
     if (!res.ok) expect(res.code).toBe('CONFLICT');
   });
 });
+
+describe('MdAgenticRepository — executor claim + finalize', () => {
+  it('claims pending members and decodes the folded team brief', async () => {
+    // The UPDATE … RETURNING returns the just-claimed rows. The stored brief
+    // carries the team objective via the SAFE_MARKER envelope, split back here.
+    const execute = vi.fn().mockResolvedValueOnce([
+      {
+        id: 'm-1',
+        team_run_id: TEAM,
+        role: 'explorer',
+        brief: 'find arrears\n\n[[md-team-objective]]\nDraft a collections plan.',
+        allowed_tools: ['ledger.read'],
+        token_budget: 8000,
+        aggregation: 'merge_all',
+        origin_session_id: 'sess-1',
+      },
+    ]);
+    const repo = new MdAgenticRepository({ execute });
+    const members = await repo.claimPendingTeamMembers(TENANT, TEAM);
+
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(members).toHaveLength(1);
+    expect(members[0]!.brief).toBe('find arrears');
+    expect(members[0]!.teamBrief).toBe('Draft a collections plan.');
+    expect(members[0]!.allowedTools).toEqual(['ledger.read']);
+    expect(members[0]!.tokenBudget).toBe(8000);
+    expect(members[0]!.originSessionId).toBe('sess-1');
+  });
+
+  it('decodes a legacy brief with no marker into an empty teamBrief', async () => {
+    const execute = vi.fn().mockResolvedValueOnce([
+      {
+        id: 'm-2',
+        team_run_id: TEAM,
+        role: 'reviewer',
+        brief: 'plain brief, no marker',
+        allowed_tools: [],
+        token_budget: 12000,
+        aggregation: 'merge_all',
+        origin_session_id: null,
+      },
+    ]);
+    const repo = new MdAgenticRepository({ execute });
+    const members = await repo.claimPendingTeamMembers(TENANT, TEAM);
+    expect(members[0]!.brief).toBe('plain brief, no marker');
+    expect(members[0]!.teamBrief).toBe('');
+  });
+
+  it('completeSubagentRun returns true when a running row is finalized', async () => {
+    const execute = vi.fn().mockResolvedValueOnce([{ id: 'm-1' }]);
+    const repo = new MdAgenticRepository({ execute });
+    const ok = await repo.completeSubagentRun(TENANT, 'm-1', { text: 'done' });
+    expect(ok).toBe(true);
+  });
+
+  it('completeSubagentRun returns false when the row is no longer running', async () => {
+    const execute = vi.fn().mockResolvedValueOnce([]); // status guard matched 0
+    const repo = new MdAgenticRepository({ execute });
+    const ok = await repo.completeSubagentRun(TENANT, 'm-1', { text: 'late' });
+    expect(ok).toBe(false);
+  });
+
+  it('failSubagentRun records an error and returns true on a running row', async () => {
+    const execute = vi.fn().mockResolvedValueOnce([{ id: 'm-1' }]);
+    const repo = new MdAgenticRepository({ execute });
+    const ok = await repo.failSubagentRun(TENANT, 'm-1', 'provider down');
+    expect(ok).toBe(true);
+  });
+});

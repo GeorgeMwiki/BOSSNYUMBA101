@@ -54,7 +54,6 @@ const OUTCOME_BADGE_CLASS: Record<string, string> = {
 
 function outcomeBadge(outcome: string): string {
   return (
-    // eslint-disable-next-line security/detect-object-injection -- OUTCOME_BADGE_CLASS is a closed const map, ?? guards unknown keys
     OUTCOME_BADGE_CLASS[outcome] ??
     'bg-neutral-800 text-neutral-300 border-neutral-700'
   );

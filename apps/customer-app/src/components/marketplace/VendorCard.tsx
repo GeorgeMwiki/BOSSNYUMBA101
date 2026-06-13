@@ -21,7 +21,7 @@ export function VendorCard({ name, category, image, rating, price }: VendorCardP
           <img src={image} alt={name ? `${name} — ${tA11y('vendorImage')}` : tA11y('vendorImage')} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <span className="text-3xl font-bold text-spotify-green opacity-50">
+            <span className="text-3xl font-bold text-signal-500 opacity-50">
               {name.charAt(0)}
             </span>
           </div>
@@ -36,7 +36,7 @@ export function VendorCard({ name, category, image, rating, price }: VendorCardP
         <p className="font-semibold text-sm truncate">{name}</p>
         <p className="text-xs text-gray-500 truncate">{category}</p>
         {rating !== undefined && (
-          <p className="text-xs text-spotify-green mt-0.5">★ {rating}</p>
+          <p className="text-xs text-signal-500 mt-0.5">★ {rating}</p>
         )}
       </div>
     </Link>

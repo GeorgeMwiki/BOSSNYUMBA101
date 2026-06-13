@@ -194,6 +194,7 @@ export class MetaWhatsAppClient {
         const attempt = (cfg._retryCount ?? 0) + 1;
         if (retryable && attempt <= max) {
           cfg._retryCount = attempt;
+          // eslint-disable-next-line no-restricted-syntax -- reason: jitter/backoff, not an ID or secret; adds up to 500ms random jitter to prevent retry storms on 429/5xx responses
           const backoff = 500 * 2 ** (attempt - 1) + Math.floor(Math.random() * 500);
           await new Promise((resolve) => setTimeout(resolve, backoff));
           return this.client.request(cfg);

@@ -32,6 +32,7 @@
  * the legacy router is retired.
  */
 
+import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { withSecurityEvents } from '@bossnyumba/observability';
@@ -100,7 +101,7 @@ function engineNotConfigured(c: AnyCtx) {
 }
 
 function newJobId(): string {
-  return `job_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  return `job_${Date.now().toString(36)}_${randomUUID().replace(/-/g, '').slice(0, 8)}`;
 }
 
 /**

@@ -29,11 +29,14 @@ interface WizardState {
   readonly serverError: string | null;
 }
 
+// eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: TZ-launch default dial code in marketing signup wizard; locale selection handles expansion markets
+const TZ_DIAL_PREFIX = '+255';
+
 const INITIAL_INDIVIDUAL: IndividualTenantDraft = {
   kind: 'individual',
   country: 'TZ',
   fullName: '',
-  phoneE164: '+255',
+  phoneE164: TZ_DIAL_PREFIX,
   email: '',
   preferredCurrency: 'TZS',
   preferredLanguage: 'sw',
@@ -48,7 +51,7 @@ const INITIAL_BUSINESS: CorporateTenantDraft = {
   businessRegistrationNumber: '',
   taxId: '',
   contactFullName: '',
-  contactPhoneE164: '+255',
+  contactPhoneE164: TZ_DIAL_PREFIX,
   contactEmail: '',
   preferredCurrency: 'TZS',
   preferredLanguage: 'sw',

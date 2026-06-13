@@ -630,7 +630,7 @@ export function CapabilitiesSection({
         className="pointer-events-none absolute -top-32 -left-32 -z-10 h-[480px] w-[480px] rounded-full blur-3xl opacity-20"
         style={{
           background:
-            'radial-gradient(circle, hsl(24 82% 58% / 0.35) 0%, hsl(24 70% 48% / 0.08) 45%, transparent 75%)',
+            'radial-gradient(circle, hsl(var(--signal-500) / 0.35) 0%, hsl(var(--signal-600) / 0.08) 45%, transparent 75%)',
         }}
       />
 
@@ -672,7 +672,7 @@ export function CapabilitiesSection({
                   )}
                   style={{
                     background:
-                      'radial-gradient(circle, hsl(24 82% 60% / 0.5) 0%, transparent 70%)',
+                      'radial-gradient(circle, hsl(var(--signal-500) / 0.5) 0%, transparent 70%)',
                   }}
                 />
                 <div

@@ -38,16 +38,41 @@ export interface DisbursementRequest {
 }
 
 /**
- * Disbursement result
+ * Disbursement result.
+ *
+ * `NEEDS_REVERSAL` is a DISTINCT result status. A clean `FAILED` connotes
+ * "no money moved, retry-safe"; `NEEDS_REVERSAL` means the ledger debit was
+ * posted but the outbound transfer failed AFTER it — money WAS moved and the
+ * outcome is in-flight-needs-attention, not a clean retryable failure. Masking
+ * it as FAILED would let callers (and the disbursement job's
+ * `status !== 'FAILED'` accounting) treat a debited-but-undelivered payout as a
+ * clean retry. Mirror of Borjie disbursement.service.ts:50-58.
  */
 export interface DisbursementResult {
   disbursementId: string;
   ownerId: OwnerId;
   amount: Money;
-  status: 'PENDING' | 'IN_TRANSIT' | 'PAID' | 'FAILED' | 'CANCELLED';
+  status: 'PENDING' | 'IN_TRANSIT' | 'PAID' | 'FAILED' | 'CANCELLED' | 'NEEDS_REVERSAL';
   transferId: string;
   estimatedArrival?: Date;
   failureReason?: string;
+}
+
+/**
+ * Classify a {@link DisbursementResult} status as a CLEAN success (the payout
+ * is en route or delivered) vs an outcome that needs attention.
+ *
+ * `NEEDS_REVERSAL` (money debited, transfer failed after the ledger post) and
+ * `FAILED` / `CANCELLED` are NOT clean successes; batch accounting must count
+ * them as failed/attention so a debited-but-undelivered payout is never tallied
+ * as succeeded. Mirror of Borjie disbursement.service.ts:88-94.
+ */
+export function isCleanDisbursementSuccess(
+  status: DisbursementResult['status'],
+): boolean {
+  return (
+    status === 'PAID' || status === 'IN_TRANSIT' || status === 'PENDING'
+  );
 }
 
 /**
@@ -105,8 +130,18 @@ export class DisbursementService {
    * Process a disbursement to an owner
    */
   async processDisbursement(request: DisbursementRequest): Promise<DisbursementResult> {
+    // BLOCKER #13(a): the idempotency key MUST be caller-supplied. Minting
+    // a random uuid here silently defeats replay protection — two
+    // deliveries of the "same" disbursement would each get a fresh key and
+    // both fire a transfer. Reject when absent so every caller (route,
+    // scheduled job) commits to a deterministic key.
+    if (!request.idempotencyKey) {
+      throw new Error(
+        'processDisbursement: idempotencyKey is required (a deterministic, caller-supplied key — never minted here)',
+      );
+    }
+    const idempotencyKey = request.idempotencyKey;
     const disbursementId = uuidv4();
-    const idempotencyKey = request.idempotencyKey || disbursementId;
 
     this.logger.info('Processing disbursement', {
       disbursementId,
@@ -155,30 +190,72 @@ export class DisbursementService {
     const provider = this.getProvider();
     const now = new Date();
 
-    // Create disbursement record for persistence
+    // Create disbursement record for persistence. We claim it as
+    // PROCESSING up front (not PENDING) so the row's existence under the
+    // unique (tenant_id, idempotency_key) index IS the claim.
     const disbursementRecord: Disbursement = {
       id: disbursementId,
       tenantId: request.tenantId,
       ownerId: request.ownerId,
       amountMinorUnits: amount.amountMinorUnits,
       currency: amount.currency,
-      status: 'PENDING',
+      status: 'PROCESSING',
       destination: request.destination,
       destinationType: 'BANK_ACCOUNT',
       description: request.description,
       idempotencyKey,
+      initiatedAt: now,
       createdAt: now,
       updatedAt: now,
       createdBy: 'system'
     };
 
-    // Persist disbursement record
+    // BLOCKER #13(b): atomically claim BEFORE transferring. The first
+    // writer wins; a concurrent replica / replay collides on the unique
+    // index and we return the ORIGINAL row without firing a second
+    // transfer. When no repository is wired (legacy in-memory paths) we
+    // proceed un-guarded — production always wires the repository.
     if (this.disbursementRepository) {
-      await this.disbursementRepository.create(disbursementRecord);
+      const { claimed, disbursement: claimedRow } =
+        await this.disbursementRepository.claimForProcessing(disbursementRecord);
+      if (!claimed) {
+        this.logger.info('Disbursement already claimed — returning original', {
+          disbursementId: claimedRow.id,
+          idempotencyKey,
+          ownerId: request.ownerId
+        });
+        return this.toResult(claimedRow);
+      }
     }
 
+    // Track whether the ledger debit committed so the catch can distinguish a
+    // clean FAILED (no money moved) from NEEDS_REVERSAL (debited, transfer
+    // failed after — handed to the reconciliation job, never reversed inline).
+    let ledgerPosted = false;
+
     try {
-      // Create transfer with provider
+      // BLOCKER #13(c): post the ledger debit BEFORE the provider transfer
+      // so a successful transfer can never exist without a backing ledger
+      // row. If the ledger post throws, no money has moved yet — the catch
+      // marks the claim FAILED and nothing is disbursed.
+      await this.ledgerService.postJournalEntry(
+        JournalTemplates.ownerDisbursement(
+          request.tenantId,
+          platformHoldingAccount.id,
+          operatingAccount.id,
+          amount,
+          'system'
+        ),
+        // Borjie-parity (disbursement.service.ts:259-267): the owner-disbursement
+        // DEBIT is idempotent on a deterministic per-disbursement key — a claim
+        // retry or a post-claim crash re-drive returns the ORIGINAL journal
+        // instead of booking a second debit. Defense-in-depth atop the atomic
+        // (tenant_id, idempotency_key) claim arbiter.
+        { idempotencyKey: `disbursement:${disbursementId}` }
+      );
+      ledgerPosted = true;
+
+      // Create transfer with provider (after the ledger is booked).
       const transferResult = await provider.createTransfer({
         amount,
         destination: request.destination,
@@ -190,17 +267,6 @@ export class DisbursementService {
         },
         idempotencyKey
       });
-
-      // Record in ledger
-      await this.ledgerService.postJournalEntry(
-        JournalTemplates.ownerDisbursement(
-          request.tenantId,
-          platformHoldingAccount.id,
-          operatingAccount.id,
-          amount,
-          'system'
-        )
-      );
 
       // Update disbursement record with transfer details
       const updatedStatus: DisbursementStatus = transferResult.status === 'PAID'
@@ -275,11 +341,51 @@ export class DisbursementService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-      // Update disbursement record as failed
+      // Two distinct failure shapes, keyed on whether the ledger debit committed:
+      //
+      //   - ledger NOT posted (the post itself threw) → NO money moved. Clean
+      //     FAILED, retry-safe.
+      //   - ledger posted, then the transfer (or a later step) threw → the
+      //     ledger already recorded the debit. We do NOT reverse inline and we
+      //     NEVER blind-re-transfer: leave the disbursement RETRYABLE in a
+      //     NEEDS_REVERSAL state. The disbursement reconciliation job is the
+      //     consumer — it queries the provider's ACTUAL transfer status and only
+      //     posts the compensating reversal if the transfer TRULY failed (and
+      //     re-drives under the same idempotency key, or marks PAID, otherwise).
+      //
+      // Inline reversal got the lost-response case WRONG: a transfer that
+      // actually SUCCEEDED but threw on the response would have been blindly
+      // reversed, double-paying / mis-booking. Parking NEEDS_REVERSAL hands that
+      // disambiguation to provider-status reconciliation. Mirror of Borjie
+      // disbursement.service.ts:390-437.
+      const failureStatus: DisbursementStatus = ledgerPosted
+        ? 'NEEDS_REVERSAL'
+        : 'FAILED';
+
+      if (ledgerPosted) {
+        this.logger.error(
+          'Disbursement transfer FAILED after ledger post — leaving NEEDS_REVERSAL (no inline reversal, no blind re-transfer)',
+          {
+            disbursementId,
+            ownerId: request.ownerId,
+            amount: amount.toString(),
+            error: errorMessage,
+          }
+        );
+      } else {
+        this.logger.error('Disbursement ledger post failed — NO transfer attempted', {
+          disbursementId,
+          ownerId: request.ownerId,
+          error: errorMessage,
+        });
+      }
+
+      // Update disbursement record with the resolved failure state.
       if (this.disbursementRepository) {
         await this.disbursementRepository.update({
           ...disbursementRecord,
-          status: 'FAILED',
+          status: failureStatus,
+          provider: ledgerPosted ? provider.name : disbursementRecord.provider,
           failedAt: new Date(),
           failureReason: errorMessage,
           updatedAt: new Date(),
@@ -301,17 +407,14 @@ export class DisbursementService {
         )
       );
 
-      this.logger.error('Disbursement failed', {
-        disbursementId,
-        ownerId: request.ownerId,
-        error: errorMessage
-      });
-
+      // Surface NEEDS_REVERSAL (not FAILED) when money WAS debited so the
+      // reconciliation sweep + the disbursement job's success/fail accounting
+      // treat a debited-but-undelivered payout correctly.
       return {
         disbursementId,
         ownerId: request.ownerId,
         amount,
-        status: 'FAILED',
+        status: failureStatus,
         transferId: '',
         failureReason: errorMessage
       };
@@ -394,16 +497,24 @@ export class DisbursementService {
       try {
         // Get owner's connected account (would come from owner profile in real impl)
         const destination = `acct_${owner.ownerId}`; // Placeholder
-        
+
+        // Deterministic, date-bucketed idempotency key (#13): a retried or
+        // double-fired scheduled run for the same owner on the same UTC day
+        // claims the same key, so the unique index collapses it to a single
+        // payout instead of minting a fresh key per attempt.
+        const dayBucket = new Date().toISOString().slice(0, 10);
         const result = await this.processDisbursement({
           tenantId,
           ownerId: owner.ownerId,
-          destination
+          destination,
+          idempotencyKey: `sched:${tenantId}:${owner.ownerId}:${dayBucket}`
         });
 
         results.push(result);
-        
-        if (result.status !== 'FAILED') {
+
+        // NEEDS_REVERSAL is NOT a clean success (money debited but not
+        // delivered); it counts toward `failed`/attention, never `succeeded`.
+        if (isCleanDisbursementSuccess(result.status)) {
           succeeded++;
         } else {
           failed++;
@@ -497,6 +608,29 @@ export class DisbursementService {
       throw new Error(`Payment provider ${this.defaultProvider} not found`);
     }
     return provider;
+  }
+
+  /**
+   * Map a persisted disbursement row to the external `DisbursementResult`
+   * shape. Used by the replay path (#13) to return the ORIGINAL claim
+   * verbatim. The result's status union has no 'PROCESSING'; an in-flight
+   * claim surfaces as the closest external state, 'IN_TRANSIT'.
+   *
+   * `NEEDS_REVERSAL` surfaces AS `NEEDS_REVERSAL` (never masked as FAILED) so a
+   * replay of a debited-but-undelivered payout reports in-flight-needs-attention.
+   */
+  private toResult(d: Disbursement): DisbursementResult {
+    const status: DisbursementResult['status'] =
+      d.status === 'PROCESSING' ? 'IN_TRANSIT' : d.status;
+    return {
+      disbursementId: d.id,
+      ownerId: d.ownerId,
+      amount: Money.fromMinorUnits(d.amountMinorUnits, d.currency),
+      status,
+      transferId: d.transferId ?? '',
+      estimatedArrival: d.estimatedArrival,
+      failureReason: d.failureReason
+    };
   }
 
   // ==========================================================================

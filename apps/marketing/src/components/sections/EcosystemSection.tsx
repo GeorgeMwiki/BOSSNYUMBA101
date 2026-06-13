@@ -37,6 +37,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   GST: Network,
   Vetted: Coins,
   'ICA Brussels': Gem,
+  // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: static marketing copy listing TZ ecosystem partners/rails as icon-map keys, not a tenant business-logic binding
   'M-Pesa': Smartphone,
   'Tigo Pesa': Smartphone,
   'Airtel Money': Wallet,

@@ -144,7 +144,7 @@ function resolveLocalPath(rootDir: string, chunkIdOrUri: string): string {
 /** A chunkId must be a UUID-like opaque token. Path-traversal characters
  *  reject the request before any FS call. */
 function isSafeChunkId(id: string): boolean {
-  return /^[A-Za-z0-9_\-]{4,128}$/.test(id);
+  return /^[A-Za-z0-9_-]{4,128}$/.test(id);
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -328,7 +328,6 @@ export interface StorageSelectionLogger {
 const defaultLogger: StorageSelectionLogger = {
   // eslint-disable-next-line no-console
   info: (m, c) => console.info(`[session-replay] ${m}`, c ?? {}),
-  // eslint-disable-next-line no-console
   warn: (m, c) => console.warn(`[session-replay] ${m}`, c ?? {}),
 };
 

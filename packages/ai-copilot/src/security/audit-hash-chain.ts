@@ -20,7 +20,7 @@
  * — everything is injectable.
  */
 
-import { createHash, createHmac, timingSafeEqual } from 'crypto';
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'crypto';
 // Wave-K Tier-3 — defer key-rotation verification to the canonical
 // `verifyWithRotation` primitive from @bossnyumba/observability. The
 // local rowHashMatches() helper retained below now delegates so the
@@ -296,7 +296,6 @@ function rowHashRole(
  *
  * @internal — not exported from the package barrel.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function rowHashMatches(
   entry: HashedAuditEntry,
   secrets: ResolvedSecrets,
@@ -448,7 +447,8 @@ export function createAuditHashChain(deps: AuditHashChainDeps): AuditHashChain {
   const now = deps.now ?? (() => new Date());
   const genId =
     deps.idGenerator ??
-    (() => `aud_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`);
+    (() =>
+      `aud_${Date.now().toString(36)}_${randomUUID().replace(/-/g, '').slice(0, 8)}`);
   const batchSize = deps.streamBatchSize ?? DEFAULT_STREAM_BATCH_SIZE;
   const rng = deps.rng ?? Math.random;
 

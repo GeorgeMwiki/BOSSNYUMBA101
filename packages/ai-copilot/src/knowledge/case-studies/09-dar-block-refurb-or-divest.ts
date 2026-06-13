@@ -23,7 +23,7 @@ Scenario E — divest. Sell the block as-is. Indicative valuation at 8.2% cap on
 
 The trust has Tsh 650 M of liquid reserves, moderate appetite for debt (max 45 percent LTV on any refurb), and no appetite for project finance. Three of five trustees are over 70 and want income now. Two are in their 40s and want growth + legacy. The chairman, Mr. Mkapa Jr., has called a decision meeting in 10 days.
 
-Abdul\'s job is to rank the scenarios with explicit NPV, IRR, and narrative, honouring both the financial case and the family\'s internal tensions.`,
+Abdul's job is to rank the scenarios with explicit NPV, IRR, and narrative, honouring both the financial case and the family's internal tensions.`,
   dataTable: {
     title: 'Upanga Heights — 5 scenarios',
     rows: [

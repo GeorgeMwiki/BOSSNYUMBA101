@@ -157,6 +157,7 @@ function makeFakeRedis(): RedisLike & { store: Map<string, string> } {
       // Compare-and-delete: only remove when stored value matches token.
       const key = String(args[0]);
       const token = String(args[1]);
+      // eslint-disable-next-line security/detect-possible-timing-attacks -- reason: test assertion in an in-memory mock, not a production secret comparison
       if (store.get(key) === token) {
         store.delete(key);
         return 1;

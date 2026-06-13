@@ -40,7 +40,6 @@ if (typeof window !== 'undefined' && typeof (window as { PointerEvent?: unknown 
  * `__setMatchMedia` helper lets tests force a specific breakpoint.
  */
 declare global {
-  // eslint-disable-next-line no-var
   var __setMatchMedia: ((matches: boolean) => void) | undefined;
 }
 

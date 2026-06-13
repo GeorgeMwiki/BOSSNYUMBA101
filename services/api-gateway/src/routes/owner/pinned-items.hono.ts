@@ -26,6 +26,7 @@ import { and, asc, eq, isNull } from 'drizzle-orm';
 import { pinnedItems, PIN_ENTITY_TYPES } from '@bossnyumba/database';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { databaseMiddleware } from '../../middleware/database';
+import { getSharedPerTenantRateBudget } from '../../middleware/per-tenant-rate-budget';
 import { createLogger } from '../../utils/logger';
 
 const moduleLogger = createLogger('owner-pinned-items');
@@ -71,6 +72,7 @@ const folderRenameSchema = z.object({
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
+app.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 
 function defaultLabel(entityType: string, entityId: string): string {
   return `${entityType}:${entityId.slice(0, 12)}`;

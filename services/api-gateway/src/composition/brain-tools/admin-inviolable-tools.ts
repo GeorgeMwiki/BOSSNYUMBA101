@@ -82,6 +82,7 @@ const ADMIN_ONLY: ReadonlyArray<'T2_admin_strategist'> = [
  * `Date.now()` so the id is stable across runs.
  */
 function chipId(prefix: string): string {
+  // eslint-disable-next-line no-restricted-syntax -- reason: UI chip correlation ID, not a secret or security token
   return `${prefix}_${Date.now().toString(36)}_${Math.random()
     .toString(36)
     .slice(2, 8)}`;

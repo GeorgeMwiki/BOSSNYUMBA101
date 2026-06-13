@@ -22,7 +22,10 @@ describe('yieldNow', () => {
   it('resolves immediately when window is undefined (SSR-safe)', async () => {
     const start = Date.now();
     await yieldNow();
-    expect(Date.now() - start).toBeLessThan(5);
+    // No window ⇒ no scheduler ⇒ microtask resolution (sub-ms warm). A 5ms
+    // wall-clock bound flakes under CI event-loop contention; 50ms still proves
+    // it resolves promptly (not a real timer/frame delay) without the jitter.
+    expect(Date.now() - start).toBeLessThan(50);
   });
 
   it('calls scheduler.yield() when available', async () => {

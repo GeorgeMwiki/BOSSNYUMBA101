@@ -32,6 +32,10 @@ import {
   BrainThreadRepository,
   MigrationWriterService,
 } from '@bossnyumba/database';
+// Auditor rejection copy — the canonical, bilingual evidence-required
+// rejection strings. We render these in place of an unevidenced junior
+// response so the hard rule is ENFORCED, not merely observed.
+import { auditor } from '@bossnyumba/central-intelligence';
 import { sql } from 'drizzle-orm';
 import {
   createNeo4jClient,
@@ -105,7 +109,6 @@ function registry() {
       return createGraphAgentToolkit(queryService);
     } catch (err) {
       // Use the gateway's pino logger if exposed, else fall back to console.
-      // eslint-disable-next-line no-console
       console.error('brain.hono: failed to construct graph toolkit', err);
       return undefined;
     }
@@ -225,6 +228,88 @@ function checkRate(key: string): boolean {
   return sharedRateLimiter.check(`perUser:brain:${key}`, BRAIN_RATE_CONFIG).allowed;
 }
 
+// ---------------------------------------------------------------------------
+// Evidence-required AI output — ENFORCEMENT (CLAUDE.md hard rule).
+//
+// `auditChatResponse` (chat-response-gate) computes verdict=reject when the
+// junior response cites zero evidence_ids. Historically the /turn handler
+// returned that verdict alongside the unevidenced text verbatim — an
+// OBSERVE-ONLY posture that violates the hard rule "the Auditor Agent
+// rejects responses with empty evidence chains."
+//
+// We now FAIL CLOSED (mirroring Borjie): when the verdict is `reject` the
+// unevidenced `responseText` is replaced with the canonical, single-language
+// `AUDITOR_REJECTION_COPY` (locale-correct per the absolute EN/SW toggle) and
+// an explicit remediation hint. The audit envelope carries `enforced: true`
+// so clients and dashboards can distinguish an enforced rejection from a
+// soft observation.
+//
+// SOFT escape hatch: SSE/stream surfaces have already flushed tokens to the
+// wire before the verdict exists, so they cannot rewrite the body — they pass
+// `{ soft: true }` to keep the OBSERVE-ONLY behaviour there. The /turn JSON
+// surface assembles the body fully before sending, so it enforces.
+// ---------------------------------------------------------------------------
+
+type EnforcedAuditEnvelope = {
+  verdict: 'approve' | 'reject' | 'needs_human';
+  evidenceCount: number;
+  auditLogId: string;
+  evidenceWarning: 'no_evidence_cited' | null;
+  enforced: boolean;
+};
+
+interface AuditVerdictLike {
+  verdict: 'approve' | 'reject' | 'needs_human';
+  evidenceCount: number;
+  auditLogId: string;
+  evidenceWarning: 'no_evidence_cited' | null;
+}
+
+/**
+ * Build the single-language rejection text the owner sees when the Auditor
+ * rejects an unevidenced response. Strictly one language per the active
+ * locale — no EN/SW mixing (CLAUDE.md).
+ */
+function buildAuditorRejectionText(language: 'en' | 'sw'): string {
+  const copy = auditor.AUDITOR_REJECTION_COPY.empty_evidence;
+  return language === 'sw'
+    ? `${copy.sw}\n\n${copy.remediation_sw}`
+    : `${copy.en}\n\n${copy.remediation_en}`;
+}
+
+/**
+ * Apply the evidence-required hard rule to a finished turn. Returns the
+ * (possibly rewritten) response text plus the audit envelope to return.
+ *
+ * - verdict !== 'reject' → pass the original text through unchanged.
+ * - verdict === 'reject' && soft → OBSERVE-ONLY: keep original text,
+ *   envelope reports `enforced: false` (used by SSE callers).
+ * - verdict === 'reject' && !soft → ENFORCE: swap in the localized
+ *   rejection copy + remediation, envelope reports `enforced: true`.
+ */
+function enforceEvidenceRule(args: {
+  verdict: AuditVerdictLike;
+  responseText: string;
+  language: 'en' | 'sw';
+  soft?: boolean;
+}): { responseText: string; audit: EnforcedAuditEnvelope } {
+  const { verdict, responseText, language, soft = false } = args;
+  const reject = verdict.verdict === 'reject';
+  const enforced = reject && !soft;
+  return {
+    responseText: enforced
+      ? buildAuditorRejectionText(language)
+      : responseText,
+    audit: {
+      verdict: verdict.verdict,
+      evidenceCount: verdict.evidenceCount,
+      auditLogId: verdict.auditLogId,
+      evidenceWarning: verdict.evidenceWarning,
+      enforced,
+    },
+  };
+}
+
 const brainRouter = new Hono();
 
 // ----- Health -----------------------------------------------------------
@@ -315,7 +400,6 @@ brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource:
           429,
         );
       }
-      // eslint-disable-next-line no-console
       console.warn('brain.hono: budget pre-flight check failed (non-fatal)', e?.message ?? e);
     }
   }
@@ -347,21 +431,24 @@ brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource:
         responseText: turn.responseText,
         tokensUsed: turn.tokensUsed,
       });
+      // ENFORCE the evidence-required hard rule: an unevidenced (reject)
+      // response is replaced with the localized Auditor rejection copy
+      // rather than leaking the original text. Fail-closed.
+      const enforced = enforceEvidenceRule({
+        verdict: auditVerdict,
+        responseText: turn.responseText,
+        language: userLanguage,
+      });
       return c.json({
         threadId: newThreadId,
         finalPersonaId: turn.finalPersonaId,
-        responseText: turn.responseText,
+        responseText: enforced.responseText,
         handoffs: turn.handoffs,
         toolCalls: turn.toolCalls,
         advisorConsulted: turn.advisorConsulted,
         proposedAction: turn.proposedAction,
         tokensUsed: turn.tokensUsed,
-        audit: {
-          verdict: auditVerdict.verdict,
-          evidenceCount: auditVerdict.evidenceCount,
-          auditLogId: auditVerdict.auditLogId,
-          evidenceWarning: auditVerdict.evidenceWarning,
-        },
+        audit: enforced.audit,
       });
     }
     const result = await brain.orchestrator.handleTurn({
@@ -384,21 +471,24 @@ brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource:
       responseText: result.data.responseText,
       tokensUsed: result.data.tokensUsed,
     });
+    // ENFORCE the evidence-required hard rule on the continued-thread turn
+    // exactly as on thread start: reject → localized rejection copy,
+    // fail-closed.
+    const enforced = enforceEvidenceRule({
+      verdict: auditVerdict,
+      responseText: result.data.responseText,
+      language: userLanguage,
+    });
     return c.json({
       threadId: result.data.threadId,
       finalPersonaId: result.data.finalPersonaId,
-      responseText: result.data.responseText,
+      responseText: enforced.responseText,
       handoffs: result.data.handoffs,
       toolCalls: result.data.toolCalls,
       advisorConsulted: result.data.advisorConsulted,
       proposedAction: result.data.proposedAction,
       tokensUsed: result.data.tokensUsed,
-      audit: {
-        verdict: auditVerdict.verdict,
-        evidenceCount: auditVerdict.evidenceCount,
-        auditLogId: auditVerdict.auditLogId,
-        evidenceWarning: auditVerdict.evidenceWarning,
-      },
+      audit: enforced.audit,
     });
   } catch (err) {
     return handleError(c, err);

@@ -13,7 +13,7 @@
 # -----------------------------------------------------------------------------
 FROM node:22-alpine AS deps
 # python3 + build-base for node-gyp optional native deps on musl.
-RUN apk add --no-cache libc6-compat python3 make g++
+RUN apk add --no-cache libc6-compat python3 py3-setuptools make g++
 RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 WORKDIR /app

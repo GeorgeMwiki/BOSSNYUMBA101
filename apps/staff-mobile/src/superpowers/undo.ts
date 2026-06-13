@@ -9,6 +9,7 @@ interface UndoApiResponse {
 }
 
 export function enqueueUndoToast(input: Omit<UndoToastEvent, 'id'>): void {
+  // eslint-disable-next-line no-restricted-syntax -- React Native client-local toast id (no Web Crypto); uniqueness suffices, not security-sensitive
   undoToastBus.publish({ ...input, id: `undo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` })
 }
 

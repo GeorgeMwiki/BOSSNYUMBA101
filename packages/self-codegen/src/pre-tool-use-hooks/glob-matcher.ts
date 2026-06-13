@@ -19,6 +19,7 @@ export function globToMatcher(glob: string): (path: string) => boolean {
     .replace(/\*/g, '[^/]*')
     .replace(/__DOUBLESTAR__/g, '.*')
     .replace(/__SLASHDOUBLE__/g, '(?:/.*)?/');
+  // eslint-disable-next-line security/detect-non-literal-regexp -- reason: pattern is produced by escaping a trusted internal deny-glob with all regex metacharacters escaped before construction
   const re = new RegExp(`^${pattern}$`);
   return (p): boolean => re.test(normalizePath(p));
 }

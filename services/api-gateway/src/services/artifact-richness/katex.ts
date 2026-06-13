@@ -81,7 +81,6 @@ function renderOne(
 ): string {
   if (katex && typeof (katex as { renderToString?: unknown }).renderToString === 'function') {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = (katex as any).renderToString(source, {
         displayMode,
         throwOnError: false,

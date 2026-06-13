@@ -19,6 +19,7 @@
  * reads. Case numbers are generated as `CASE-YYMMDD-XXXX`.
  */
 
+import { randomInt } from 'node:crypto';
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -176,7 +177,7 @@ function caseNumber() {
   const y = String(date.getUTCFullYear()).slice(-2);
   const m = String(date.getUTCMonth() + 1).padStart(2, '0');
   const d = String(date.getUTCDate()).padStart(2, '0');
-  const rand = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  const rand = randomInt(0, 10000).toString().padStart(4, '0');
   return `CASE-${y}${m}${d}-${rand}`;
 }
 

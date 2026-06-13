@@ -136,13 +136,16 @@ function errResp(
 }
 
 describe('Phase D D7 — tenant-tier-aware pick() (Anthropic leg)', () => {
-  it('enterprise tier picks Opus 4.7 when registered', () => {
+  it('enterprise tier picks Opus 4.8 when registered', () => {
     const { repo } = makeRepo();
     const ledger = createCostLedger({ repo });
+    // Enterprise resolves to getModelLatest('opus') which is the
+    // post-elasticity baseline claude-opus-4-8 (was 4-7). The stub must
+    // advertise 4-8 so the tier pick is supported and selected.
     const ant = stubProvider(
       'anthropic',
-      ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
-      () => okResp('claude-opus-4-7'),
+      ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
+      () => okResp('claude-opus-4-8'),
     );
     const router = createMultiLLMRouter({
       providers: {
@@ -155,7 +158,7 @@ describe('Phase D D7 — tenant-tier-aware pick() (Anthropic leg)', () => {
     });
     const pick = router.pick({ taskType: 'analysis', tenantTier: 'enterprise' });
     expect(pick?.providerId).toBe('anthropic');
-    expect(pick?.modelId).toBe('claude-opus-4-7');
+    expect(pick?.modelId).toBe('claude-opus-4-8');
   });
 
   it('growth/standard tier picks Sonnet 4.6', () => {

@@ -51,7 +51,10 @@ export const ROUTES = {
     eSignature: '/documents/e-signature',
   },
 
-  settings: '/settings',
+  settings: {
+    root: '/settings',
+    connectedAgents: '/settings/connected-agents',
+  },
   configuration: '/configuration',
 } as const;
 

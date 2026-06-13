@@ -8,6 +8,7 @@ import { leasesService } from '@bossnyumba/api-client';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ROUTES } from '@/lib/routes';
+import { formatMoney } from '@/lib/currency';
 
 export function LeasesList() {
   const t = useTranslations('lists');
@@ -58,7 +59,7 @@ export function LeasesList() {
               </div>
               <div className="text-right">
                 <div className="badge-info text-xs">{lease.status}</div>
-                <div className="mt-1 text-sm text-gray-500">KES {Number(lease.rentAmount).toLocaleString()}</div>
+                <div className="mt-1 text-sm text-gray-500">{formatMoney(Number(lease.rentAmount))}</div>
               </div>
             </div>
           </Link>

@@ -9,6 +9,7 @@
  * formatter is display-only for the tenant's own wallet.
  */
 
+// eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: supported-currency-code allowlist/union type for the marketplace wallet formatter, not a hard-coded business currency
 export type WalletCurrency = 'TZS' | 'USD' | 'KES'
 
 export function formatWalletAmount(amount: number, currency: WalletCurrency): string {

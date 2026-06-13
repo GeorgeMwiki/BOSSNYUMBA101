@@ -11,10 +11,16 @@
  * Spec: `.audit/litfin-sota-2026-05-23/17-spatial-parcel-engine.md` §8.
  */
 import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import type { GeocoderChain } from '../geocoder/chain.js';
 import type { TenantResolver } from './parcels.js';
 
 import { withSecurityEventsFastify } from '@bossnyumba/observability';
+
+const GeocodeBodySchema = z.object({
+  address: z.string().trim().min(1).max(512),
+  countryCode: z.string().trim().min(2).max(3).optional(),
+});
 export interface GeocodeRouteDeps {
   readonly chain: GeocoderChain;
   /**
@@ -24,11 +30,6 @@ export interface GeocodeRouteDeps {
    * the same JWT-derived resolver across every parcel-service route.
    */
   readonly tenantResolver?: TenantResolver;
-}
-
-interface GeocodeBody {
-  readonly address?: unknown;
-  readonly countryCode?: unknown;
 }
 
 /**
@@ -69,16 +70,15 @@ export async function registerGeocodeRoutes(
       reply.code(401);
       return { error: 'unauthorised: no resolver wired' };
     }
-    const body = (request.body ?? {}) as GeocodeBody;
-    if (typeof body.address !== 'string' || body.address.trim().length === 0) {
+    const parsed = GeocodeBodySchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
       reply.code(400);
-      return { error: 'body.address required (string)' };
+      return { error: 'body.address required (string)', details: parsed.error.flatten() };
     }
+    const { address, countryCode } = parsed.data;
     const result = await deps.chain.geocode({
-      address: body.address,
-      ...(typeof body.countryCode === 'string'
-        ? { countryCode: body.countryCode }
-        : {}),
+      address,
+      ...(countryCode !== undefined ? { countryCode } : {}),
     });
     if (!result) {
       reply.code(404);

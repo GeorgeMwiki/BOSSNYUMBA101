@@ -9,16 +9,21 @@
 # pgvector unavailable, etc.).
 #
 # Strategy
-#   1. Spin up Postgres 16 + pgvector (paradedb/pg-vector official image
-#      OR ankane/pgvector — pgvector is bundled).
+#   1. Runner-install PostgreSQL 17 + PostGIS + pgvector from PGDG (mirrors
+#      Supabase prod = PG17.6 + pgvector + postgis). The previous
+#      `pgvector/pgvector:pg16` service container shipped pgvector but NOT
+#      postgis and was on the wrong PG major, so the postgis baseline and
+#      vector-typed migrations (0285/0286/0288/0313) failed.
 #   2. Apply every *.sql under packages/database/src/migrations/ in lex
 #      order via scripts/migration-apply-check.mjs.
 #   3. Each migration runs with ON_ERROR_STOP=1 inside its own transaction.
-#   4. PR-block on any ERROR/FATAL across all 156+ files.
+#   4. PR-block on any ERROR/FATAL across all migration files.
 #   5. Post the markdown report as a PR comment.
 #
 # This complements migration-safety-check.yml: that one statically scans
 # for NOT-NULL backfill hazards, THIS one runtime-applies the whole chain.
+# It is kept in lockstep (same DB image + PG major) with the sibling
+# migration-apply-check.yml.
 # =============================================================================
 
 name: Migration Apply (Fresh DB)
@@ -52,23 +57,6 @@ jobs:
     name: Apply all migrations on a fresh DB
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    services:
-      postgres:
-        # pgvector/pgvector:pg16 is the official upstream image with the
-        # vector extension preinstalled. Falls back to ankane/pgvector
-        # if upstream is unavailable.
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: bossnyumba
-          POSTGRES_PASSWORD: bossnyumba
-          POSTGRES_DB: bossnyumba_apply_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U bossnyumba"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
     env:
       DATABASE_URL: postgres://bossnyumba:bossnyumba@localhost:5432/bossnyumba_apply_test
     steps:
@@ -78,40 +66,46 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: Install psql client
+      # Runner-installed Postgres 17 with BOTH PostGIS and pgvector. The
+      # previous `pgvector/pgvector:pg16` service container shipped pgvector
+      # but NOT postgis, so the postgis baseline (CREATE EXTENSION postgis)
+      # failed and every downstream migration cascaded; it was also on the
+      # wrong PG major (16). This mirrors the sibling migration-apply-check.yml
+      # (and Supabase, which ships both extensions natively at PG17).
+      - name: Install + start PostgreSQL 17 + PostGIS + pgvector (PGDG)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          set -e
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-17 postgresql-17-postgis-3 postgresql-17-pgvector
+          sudo systemctl stop postgresql 2>/dev/null || true
+          for v in 16 17; do sudo pg_dropcluster --stop "$v" main 2>/dev/null || true; done
+          sudo pg_createcluster 17 main -p 5432 -- --auth-local=trust --auth-host=trust
+          sudo pg_ctlcluster 17 main start
+          for i in $(seq 1 30); do sudo -u postgres pg_isready -p 5432 >/dev/null 2>&1 && break; sleep 1; done
+          sudo -u postgres psql -p 5432 -v ON_ERROR_STOP=1 -c "CREATE ROLE bossnyumba LOGIN SUPERUSER PASSWORD 'bossnyumba'"
+          sudo -u postgres psql -p 5432 -v ON_ERROR_STOP=1 -c "CREATE DATABASE bossnyumba_apply_test OWNER bossnyumba"
+          echo "PostgreSQL 17 + PostGIS + pgvector ready on :5432"
 
-      - name: Wait for Postgres
+      - name: Try CREATE EXTENSION vector + postgis (best-effort)
         run: |
-          for i in $(seq 1 30); do
-            pg_isready -h localhost -p 5432 -U bossnyumba && exit 0
-            sleep 1
+          for ext in vector postgis postgis_topology pgcrypto "uuid-ossp" pg_trgm citext btree_gist; do
+            PGPASSWORD=bossnyumba psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_apply_test \
+              -c "CREATE EXTENSION IF NOT EXISTS \"${ext}\"" 2>&1 | tail -1 || \
+              echo "::warning::extension ${ext} not available"
           done
-          echo "Postgres did not become ready in 30s"
-          exit 1
-
-      - name: Verify pgvector is available
-        run: |
-          PGPASSWORD=bossnyumba psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_apply_test \
-            -c "CREATE EXTENSION IF NOT EXISTS vector"
-          # NOTE: pg_extension has `extversion` (not `installed_version`).
-          # `installed_version` lives in the `pg_available_extensions` view.
-          # Use extversion against the catalog for the actual-installed check.
-          PGPASSWORD=bossnyumba psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_apply_test \
-            -c "SELECT extversion FROM pg_extension WHERE extname='vector'"
 
       - name: Seed Supabase roles (authenticated, anon, service_role)
         # Supabase Postgres provisions these roles at cluster init time. CI's
-        # vanilla pgvector image has none of them — so every RLS migration
-        # since 0155 (CREATE POLICY ... TO authenticated, GRANT ... TO anon)
-        # explodes with `role "authenticated" does not exist`. Create them
-        # idempotently before applying any migration so the fresh-DB run
-        # mirrors production. NOLOGIN matches the Supabase convention — these
-        # are JWT-claim aliases, never login users.
+        # fresh cluster has none of them — so every RLS migration since 0155
+        # (CREATE POLICY ... TO authenticated, GRANT ... TO anon) explodes
+        # with `role "authenticated" does not exist`. Create them idempotently
+        # before applying any migration so the fresh-DB run mirrors production.
+        # NOLOGIN matches the Supabase convention — these are JWT-claim
+        # aliases, never login users.
         env:
           PGPASSWORD: bossnyumba
         run: |

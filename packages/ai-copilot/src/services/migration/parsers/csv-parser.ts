@@ -77,7 +77,7 @@ function splitCsvLine(line: string): string[] {
   return out;
 }
 
-// Anchored, unambiguous numeric regex — no nested quantifiers.
+// eslint-disable-next-line security/detect-unsafe-regex -- reason: fully anchored (^...$) with flat non-overlapping alternation (?:0|[1-9][0-9]*) and a bounded optional decimal; no catastrophic backtracking possible
 const NUMERIC_LITERAL = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/;
 
 function coerce(v: string | undefined): string | number | null {

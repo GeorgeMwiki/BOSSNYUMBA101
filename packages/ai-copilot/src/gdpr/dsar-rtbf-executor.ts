@@ -897,7 +897,6 @@ function defaultRtbfSqlBuilder(): RtbfSqlTemplateFn {
   return (strings, ...values) => {
     if (!cached) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const drizzle = require('drizzle-orm');
         const sqlFn = drizzle?.sql;
         const rawFn = drizzle?.sql?.raw;

@@ -289,6 +289,40 @@ export const JournalTemplates = {
   }),
 
   /**
+   * Reverse an owner disbursement whose provider transfer FAILED after the
+   * ledger debit was already posted. Mirror of ownerDisbursement with the two
+   * legs' directions swapped, so a failed payout never leaves a phantom
+   * OWNER_DISBURSEMENT on the books (keeps the double-entry invariant honest).
+   */
+  disbursementReversal: (
+    tenantId: TenantId,
+    platformHoldingAccountId: AccountId,
+    ownerOperatingAccountId: AccountId,
+    amount: Money,
+    createdBy: string
+  ): CreateJournalEntryRequest => ({
+    tenantId,
+    effectiveDate: new Date(),
+    lines: [
+      {
+        accountId: platformHoldingAccountId,
+        type: 'OWNER_DISBURSEMENT',
+        direction: 'DEBIT',
+        amount,
+        description: 'Disbursement reversal — provider transfer failed'
+      },
+      {
+        accountId: ownerOperatingAccountId,
+        type: 'OWNER_DISBURSEMENT',
+        direction: 'CREDIT',
+        amount,
+        description: 'Disbursement reversal — owner not paid'
+      }
+    ],
+    createdBy
+  }),
+
+  /**
    * Record late fee charge
    */
   lateFeeCharge: (

@@ -136,6 +136,7 @@ function maskPhone(raw: string): string {
   if (tail.length > 0) parts.push(tail.slice(0, 3))
   if (tail.length > 3) parts.push(tail.slice(3, 6))
   if (tail.length > 6) parts.push(tail.slice(6, 9))
+  // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: TZ-launch default dial code in signup UI; locale selection handles expansion markets
   return `+255 ${parts.join(' ')}`.trim()
 }
 

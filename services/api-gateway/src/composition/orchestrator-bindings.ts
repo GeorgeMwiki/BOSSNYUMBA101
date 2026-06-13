@@ -110,7 +110,6 @@ type HookChain = orchestrator.HookChain;
 // before use so the rest of this file stays typed.
 // ─────────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DrizzleLike = any;
 
 // ─────────────────────────────────────────────────────────────────────

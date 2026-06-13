@@ -179,7 +179,7 @@ function VennView({
       viewBox="0 0 240 140"
       className="h-32 w-full"
       role="img"
-      aria-label="Venn diagram"
+      aria-label={lang === 'sw' ? 'Mchoro wa Venn' : 'Venn diagram'}
     >
       <circle
         cx="92"

@@ -104,7 +104,7 @@ export function OwnerJarvisShell({
   const t = useTranslations('p89.jarvisShell');
   const [draft, setDraft] = useState('');
   const [threadId] = useState(
-    () => `own_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    () => `own_${Date.now()}_${crypto.randomUUID().slice(0, 6)}`,
   );
 
   const client = useMemo(

@@ -148,7 +148,6 @@ const pinoRoot: PinoLogger = (() => {
     // failed to construct, so it cannot report its own failure. This is the
     // ONLY permitted console.* in the service. Once Pino is up, every log
     // goes through it (and the PII scrubber above).
-    // eslint-disable-next-line no-console
     console.error('[notifications] Pino logger construction failed; falling back to silent logger', err);
     return pino({ level: 'silent' });
   }

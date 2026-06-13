@@ -61,6 +61,7 @@ export {
   disbursementStatusEnum,
   accounts,
   ledgerEntries,
+  journalIdempotency,
   statements,
   disbursements,
   paymentIntents,
@@ -422,6 +423,38 @@ export * from './owner-skills.schema.js';
 // JSONB layout blob + composite uniqueness on (tenant, persona, user).
 export * from './portal-layouts.schema.js';
 
+// Portal-genui dynamic tabs (migration 0319) — the MD-authored "infinite
+// dynamic tabs" store. One row per zod-validated `PortalTab` document; sibling
+// of portal_layouts (the frame). Backs the portal-genui engine's tab repo.
+// Tenant-scoped, RLS FORCE on `app.current_tenant_id`; UNIQUE(tenant_id,
+// tab_key). NO money columns — UI/forms document only.
+export * from './portal-tabs.schema.js';
+
+// Portal-genui generic record store (migration 0320) — `portal_tab_records`:
+// the schema-on-read store that makes a GENERATED tab ACT. Every record from
+// every generated tab lands here as a JSONB `payload`, keyed by tab_id/tab_key.
+// Tenant-scoped, RLS FORCE on `app.current_tenant_id` + service-role bypass.
+export * from './portal-tab-records.schema.js';
+
+// Self-healing proposals (migration 0321) — the INTERNAL-ADMIN self-healing
+// console queue. Every UI/wiring blocker the MAPE-K loop processes is recorded
+// for the platform team. PLATFORM-INTERNAL: FORCE RLS + SERVICE-ROLE-ONLY
+// bypass (owners never see it); tenant_id is nullable triage context only.
+export * from './self-healing-proposals.schema.js';
+
+// Connector credentials (migration 0322) — per-tenant per-account OAuth state
+// for the connector fabric. Token columns are AES-GCM ciphertext (bytea); the
+// DB never sees plaintext. Tenant-scoped, RLS FORCE on `app.current_tenant_id`
+// + service-role bypass. connector_kind validated against the app catalogue.
+export * from './connector-credentials.schema.js';
+
+// OAuth state nonces (migration 0323) — DURABLE single-use consumption of the
+// connector-OAuth `state` nonce (multi-replica replay protection). Consumed via
+// INSERT ... ON CONFLICT (nonce) DO NOTHING RETURNING. Platform-scoped
+// (tenant_id nullable); RLS FORCE on `app.current_tenant_id` + service-role
+// bypass for cross-tenant cleanup.
+export * from './oauth-state-nonces.schema.js';
+
 // WORM audit log (migration 0165) — append-only hash-chained audit
 // substrate for every document leaving `@bossnyumba/document-studio`.
 // Persistent backing for the `WormAuditStore` port in
@@ -578,6 +611,17 @@ export * from './undo-journal.schema.js';
 //                        Closes H2 deferral: prior Redis cache could
 //                        not enforce uniqueness under split-brain.
 export * from './idempotency-keys.schema.js';
+
+//   - durable_scheduled_wakes / durable_armed_monitors : crash-resilient
+//                        backing store for the orchestrator's schedule_wake /
+//                        monitor Decisions (mig 0315). The in-process wake
+//                        supervisor (central-intelligence) persists every
+//                        armed entry here and rehydrates the pending set on
+//                        boot so a "wake me when X" armed before a restart
+//                        survives the redeploy. PG impl of the pure
+//                        DurableWakeStore port: services/api-gateway/src/
+//                        composition/durable-wake-store.ts.
+export * from './durable-scheduled-wakes.schema.js';
 
 // ─── Wave OWNER-OS — server-side tab persistence (migration 0300) ────
 //   - owner_tabs : per-(tenant, user) tab strip ledger. Closes commit

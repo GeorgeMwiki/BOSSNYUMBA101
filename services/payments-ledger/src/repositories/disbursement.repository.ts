@@ -5,9 +5,22 @@
 import { TenantId, OwnerId, Money, CurrencyCode } from '@bossnyumba/domain-models';
 
 /**
- * Disbursement status
+ * Disbursement status.
+ *
+ * NEEDS_REVERSAL: the ledger journal was posted but the outbound transfer
+ * FAILED afterwards. The disbursement is retryable — the reconciliation job
+ * either re-drives the transfer under the SAME idempotency key (on confirmed
+ * non-delivery) or posts a compensating reversal. NEVER a blind re-transfer.
+ * Mirror of Borjie disbursement.repository.ts:16-23.
  */
-export type DisbursementStatus = 'PENDING' | 'PROCESSING' | 'IN_TRANSIT' | 'PAID' | 'FAILED' | 'CANCELLED';
+export type DisbursementStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'IN_TRANSIT'
+  | 'PAID'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'NEEDS_REVERSAL';
 
 /**
  * Disbursement entity
@@ -72,6 +85,25 @@ export interface IDisbursementRepository {
   create(disbursement: Disbursement): Promise<Disbursement>;
 
   /**
+   * Atomically claim a disbursement for processing.
+   *
+   * Inserts `disbursement` (expected status 'PROCESSING') guarded by the
+   * unique index on (tenant_id, idempotency_key). The first writer wins
+   * and gets `{ claimed: true, disbursement: <inserted row> }`. A
+   * concurrent replica / replay collides on the unique index and gets
+   * back `{ claimed: false, disbursement: <existing row> }` WITHOUT
+   * inserting a second row — the caller returns the original result and
+   * fires no transfer. This is the row-lock-free guard against the
+   * double-fire described in the audit (BLOCKER #13).
+   *
+   * `disbursement.idempotencyKey` MUST be set; the partial unique index
+   * only covers non-null keys.
+   */
+  claimForProcessing(
+    disbursement: Disbursement,
+  ): Promise<{ claimed: boolean; disbursement: Disbursement }>;
+
+  /**
    * Get disbursement by ID
    */
   findById(id: string, tenantId: TenantId): Promise<Disbursement | null>;
@@ -102,9 +134,11 @@ export interface IDisbursementRepository {
   findByOwner(tenantId: TenantId, ownerId: OwnerId, page?: number, pageSize?: number): Promise<DisbursementPaginatedResult>;
 
   /**
-   * Get pending disbursements
+   * Get pending disbursements. Bounded by `limit` (default 500) so a
+   * tenant with a large pending backlog can never load an unbounded set
+   * into memory.
    */
-  findPending(tenantId: TenantId): Promise<Disbursement[]>;
+  findPending(tenantId: TenantId, limit?: number): Promise<Disbursement[]>;
 
   /**
    * Get last disbursement for owner
@@ -121,6 +155,24 @@ export class InMemoryDisbursementRepository implements IDisbursementRepository {
   async create(disbursement: Disbursement): Promise<Disbursement> {
     this.disbursements.set(disbursement.id, { ...disbursement });
     return disbursement;
+  }
+
+  async claimForProcessing(
+    disbursement: Disbursement,
+  ): Promise<{ claimed: boolean; disbursement: Disbursement }> {
+    // Mirror the DB's (tenant_id, idempotency_key) unique index: an
+    // existing row with the same key means a concurrent claim already won.
+    if (disbursement.idempotencyKey) {
+      const existing = await this.findByIdempotencyKey(
+        disbursement.idempotencyKey,
+        disbursement.tenantId,
+      );
+      if (existing) {
+        return { claimed: false, disbursement: existing };
+      }
+    }
+    const created = await this.create(disbursement);
+    return { claimed: true, disbursement: created };
   }
 
   async findById(id: string, tenantId: TenantId): Promise<Disbursement | null> {
@@ -200,12 +252,16 @@ export class InMemoryDisbursementRepository implements IDisbursementRepository {
     return this.find({ tenantId, ownerId }, page, pageSize);
   }
 
-  async findPending(tenantId: TenantId): Promise<Disbursement[]> {
+  async findPending(tenantId: TenantId, limit: number = 500): Promise<Disbursement[]> {
+    const safeLimit = Math.max(1, Math.min(500, Math.floor(limit)));
     return Array.from(this.disbursements.values())
-      .filter(d => 
-        d.tenantId === tenantId && 
-        ['PENDING', 'PROCESSING', 'IN_TRANSIT'].includes(d.status)
+      .filter(d =>
+        d.tenantId === tenantId &&
+        // NEEDS_REVERSAL is retryable — surfaced to the reconciliation job.
+        ['PENDING', 'PROCESSING', 'IN_TRANSIT', 'NEEDS_REVERSAL'].includes(d.status)
       )
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, safeLimit)
       .map(d => ({ ...d }));
   }
 

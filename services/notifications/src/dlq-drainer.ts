@@ -101,6 +101,7 @@ const DEFAULT_INTERVAL_MS = 30_000;
 
 function computeBackoffMs(attempt: number, base: number): number {
   const exp = base * Math.pow(2, Math.max(0, attempt - 1));
+  // eslint-disable-next-line no-restricted-syntax -- reason: jitter/backoff, not an ID or secret; ±25% randomisation prevents thundering-herd on DLQ redrain
   const jitter = exp * 0.25 * (Math.random() * 2 - 1); // ±25%
   return Math.max(0, Math.round(exp + jitter));
 }

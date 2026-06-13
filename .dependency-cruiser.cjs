@@ -47,6 +47,12 @@ module.exports = {
           '\\.test\\.(t|j)sx?$',
           '\\.spec\\.(t|j)sx?$',
           'scripts/',
+          // Framework/tooling config files (next/postcss/babel/metro/eslint/
+          // tailwind.config.*) are loaded by their toolchain, never imported by
+          // app code — inherently "orphans", not dead code.
+          '(^|/)[^/]+\\.config\\.(js|cjs|mjs|ts)$',
+          // PWA service worker is registered at runtime, not imported.
+          '(^|/)public/sw\\.js$',
         ],
       },
       to: {},

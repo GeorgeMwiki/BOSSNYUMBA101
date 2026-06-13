@@ -189,11 +189,57 @@ export const SSRF_ALLOWLIST = new Map([
     'services/api-gateway/src/composition/executive-brief.composition.ts',
     'compile-time api.anthropic.com — Haiku 3.5 fallback wiring; host is not tenant-influenced.',
   ],
+  [
+    'services/api-gateway/src/composition/litfin-platform-wiring.ts',
+    'compile-time api.anthropic.com/v1/messages — Document-AI BrainPort fallback (same posture as executive-brief.composition.ts); host is a string literal, not tenant-influenced.',
+  ],
+  [
+    'services/api-gateway/src/composition/research/research-adapters.ts',
+    'compile-time vendor search hosts (api.search.brave.com, api.tavily.com, google.serper.dev) — all string-literal URLs; only the API key is env-read, never the host.',
+  ],
+  [
+    'services/api-gateway/src/services/brain-ingestion/embedder.ts',
+    'compile-time `${baseUrl}/v1/embeddings` where baseUrl defaults to the api.openai.com vendor host; baseUrl is a composition-config constant (deploy-controlled), never tenant input.',
+  ],
 
   // ─── Verra registry client (compile-time vendor host) ──────────────
   [
     'packages/carbon-market/src/verra/client.ts',
     'compile-time registry.verra.org/uiapi — VCS carbon-credit registry; URL built from VERRA_REGISTRY_BASE_URL constant + path.',
+  ],
+
+  // ─── Embedding / corpus workers (compile-time vendor host) ─────────
+  [
+    'services/consolidation-worker/src/tasks/bossnyumba-corpus-adapters.ts',
+    'compile-time `${baseUrl}/v1/embeddings` where baseUrl defaults to the api.openai.com vendor host; baseUrl is a composition-config constant (deploy-controlled), never tenant input — same posture as services/api-gateway/src/services/brain-ingestion/embedder.ts.',
+  ],
+
+  // ─── Language-intelligence translation providers (compile-time hosts) ─
+  [
+    'packages/language-intelligence/src/decomposition/gap-filler.ts',
+    'compile-time translation.googleapis.com vendor host (api key is env-read, host is a string literal) + same-origin /api/language/* internal paths; host is not tenant-influenced.',
+  ],
+  [
+    'packages/language-intelligence/src/external-dictionary-service.ts',
+    'compile-time vendor hosts — AZURE_TRANSLATOR_URL (api.cognitive.microsofttranslator.com) + GOOGLE_TRANSLATE_URL (translation.googleapis.com); both string-literal constants, only the API key is env-read, never the host.',
+  ],
+  [
+    'packages/language-intelligence/src/nllb-translation-service.ts',
+    'compile-time api-inference.huggingface.co/models/facebook/nllb-200-distilled-600M vendor host — string literal, gated by a PDPC permit check; host is not tenant-influenced.',
+  ],
+
+  // ─── Browser-side same-origin chat hooks / widgets ─────────────────
+  [
+    'packages/chat-ui/src/bossnyumba/useBossNyumbaChat.ts',
+    'browser-side React hook — default fetchImpl wraps globalThis.fetch; translateEndpoint defaults to the same-origin /api/v1/translate path. Browser same-origin policy + CORS guard SSRF (same posture as packages/chat-ui/src/hooks/useChatStream.ts).',
+  ],
+  [
+    'packages/chat-ui/src/widget/LitFinChatPanel.tsx',
+    'browser-side React widget — fetch(endpoint) where endpoint is a same-origin route prop; browser same-origin policy + CORS guard SSRF.',
+  ],
+  [
+    'packages/performance-toolkit/src/streaming/streaming-fetch.ts',
+    'browser-side SSE consumer utility — caller passes a same-origin endpoint URL; runs in the client, browser same-origin policy + CORS guard SSRF (same posture as packages/chat-ui/src/hooks/useChatStream.ts).',
   ],
 
   // ─── Scanner false positives — function signatures, not fetch() ────
@@ -221,5 +267,21 @@ export const SSRF_ALLOWLIST = new Map([
   [
     'packages/timezone-detection/src/detect/detect-from-ip.ts',
     'reference stub — `fetch("https://ipapi.co/...")` and `fetch("https://api.ipgeolocation.io/...")` live inside throw-message strings of `createIpapiAdapterStub()` + `createIpgeolocationAdapterStub()` instructing operators what to wire at composition time; no runtime fetch executed.',
+  ],
+  [
+    'services/api-gateway/src/services/onboarding-jumpstart/persistence.ts',
+    'false positive — `fetch(tenantId)` is the OnboardingPersistence interface method (a Drizzle DB read), not globalThis.fetch; no outbound HTTP in this file.',
+  ],
+  [
+    'packages/channel-gateway/src/ports.ts',
+    'false positive — `fetch(url, options?)` is the SafeFetchPort interface method signature; the file comment states this package NEVER calls bare fetch (the host injects a DNS-resolving SSRF validator). No outbound HTTP here.',
+  ],
+  [
+    'packages/ai-copilot/src/personas/owner-style/persistence-port.ts',
+    'false positive — `fetch({ tenantId })` is the OwnerStylePersistence store-port method (a Drizzle DB read), not globalThis.fetch; no outbound HTTP in this file.',
+  ],
+  [
+    'packages/database/src/repositories/owner-style.repository.ts',
+    'false positive — `fetch({ tenantId })` is the OwnerStylePersistence repository method (a Drizzle DB read), not globalThis.fetch; no outbound HTTP in this file.',
   ],
 ]);

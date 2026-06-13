@@ -192,7 +192,10 @@ app.post('/:id/approve', zValidator('json', ApproveSchema), async (c) => {
     );
   }
 
-  await db.execute(sql`
+  // Atomic guard: re-assert the precondition IN the UPDATE so a concurrent
+  // approve/decline/edit cannot flip an already-resolved proposal (TOCTOU —
+  // the SELECT above is a fast-path 404/409, this WHERE is the real gate).
+  const approved = await db.execute(sql`
     UPDATE module_update_proposals
     SET status = 'accepted',
         approver_user_id = ${auth.userId},
@@ -200,7 +203,15 @@ app.post('/:id/approve', zValidator('json', ApproveSchema), async (c) => {
         resolved_at = NOW(),
         updated_at = NOW()
     WHERE tenant_id = ${auth.tenantId} AND id = ${id}
+      AND status IN ('pending_hitl', 'edited')
+    RETURNING id
   `);
+  if (!(approved as { rows?: unknown[] }).rows?.length) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_STATE', message: 'Proposal already resolved' } },
+      409
+    );
+  }
 
   // The actual handler invocation is wired in the composition root —
   // this route writes the state transition; a downstream worker (see
@@ -261,15 +272,24 @@ app.post('/:id/edit', zValidator('json', EditSchema), async (c) => {
     );
   }
 
-  // Close original.
-  await db.execute(sql`
+  // Close original — atomic guard so a concurrent approve/decline/edit cannot
+  // double-close it (which would otherwise insert duplicate edit-children).
+  const closed = await db.execute(sql`
     UPDATE module_update_proposals
     SET status = 'edited',
         approver_user_id = ${auth.userId},
         resolved_at = NOW(),
         updated_at = NOW()
     WHERE tenant_id = ${auth.tenantId} AND id = ${id}
+      AND status = 'pending_hitl'
+    RETURNING id
   `);
+  if (!(closed as { rows?: unknown[] }).rows?.length) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_STATE', message: 'Proposal already resolved' } },
+      409
+    );
+  }
 
   // Insert new pending row referencing the original via edited_from_id.
   const newId = `prop_edit_${id}_${Date.now()}`;
@@ -351,4 +371,5 @@ app.get('/:id/audit', async (c) => {
   );
 });
 
+export { app as proposalsRouter };
 export default app;

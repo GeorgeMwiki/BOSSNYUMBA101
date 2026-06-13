@@ -103,6 +103,7 @@ function countOccurrences(haystack: string, needles: readonly string[]): number 
     // Word-boundary match so short markers like 'yo' don't falsely
     // fire on 'your', 'pal' on 'palace', etc. Multi-word phrases still
     // match because \b sits between alphanumerics and non-alphanumerics.
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: n is escaped by escapeRegExp() before interpolation; pattern operates on already-lowercased internal strings, not raw user-supplied regex
     const pattern = new RegExp(`(^|[^a-z0-9])${escapeRegExp(n)}(?=$|[^a-z0-9])`, 'g');
     const matches = normalized.match(pattern);
     return acc + (matches ? matches.length : 0);

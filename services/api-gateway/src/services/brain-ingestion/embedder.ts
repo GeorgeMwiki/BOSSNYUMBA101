@@ -3,8 +3,33 @@ import type { EmbeddedChunk, TextChunk } from './types.js';
 
 export interface Embedder {
   readonly dimensions: number;
+  /**
+   * Stable identifier for the model that produced these vectors. Retrieval
+   * quality is only auditable when the persisted chunk records which model
+   * embedded them — a real OpenAI model id vs. the degraded hash stub are NOT
+   * interchangeable in pgvector cosine space. Optional so existing test doubles
+   * keep compiling; the concrete factories always populate it.
+   */
+  readonly modelId?: string;
+  /**
+   * True when this embedder produces non-semantic placeholder vectors (the
+   * sha256 hash stub). Degraded vectors corrupt cosine search, so callers MUST
+   * either fail the ingest or stamp the upload/chunk row so retrieval results
+   * are flagged untrustworthy. Real providers leave this `false`. Optional +
+   * treated as `true` (untrusted) when absent — fail safe, not fail open.
+   */
+  readonly degraded?: boolean;
   embed(texts: ReadonlyArray<string>): Promise<ReadonlyArray<ReadonlyArray<number>>>;
 }
+
+/** True when an embedder must be treated as producing untrustworthy vectors. */
+export function isDegradedEmbedder(embedder: Embedder): boolean {
+  // Absent flag => unknown provenance => treat as degraded (fail safe).
+  return embedder.degraded !== false;
+}
+
+/** Model id stamped on hash-stub vectors so degraded retrieval is auditable. */
+export const STUB_EMBEDDER_MODEL_ID = 'stub-sha256-hash@1024';
 
 export interface OpenAIEmbedderConfig {
   readonly apiKey: string;
@@ -19,6 +44,8 @@ export function createOpenAIEmbedder(config: OpenAIEmbedderConfig): Embedder {
   const batchSize = Math.max(1, Math.min(config.batchSize ?? 32, 256));
   return {
     dimensions: 1024,
+    modelId: model,
+    degraded: false,
     async embed(texts) {
       if (texts.length === 0) return Object.freeze([]);
       const out: number[][] = [];
@@ -56,6 +83,8 @@ export function createOpenAIEmbedder(config: OpenAIEmbedderConfig): Embedder {
 export function createStubEmbedder(): Embedder {
   return {
     dimensions: 1024,
+    modelId: STUB_EMBEDDER_MODEL_ID,
+    degraded: true,
     async embed(texts) {
       return Object.freeze(
         texts.map((text) => {
@@ -85,10 +114,66 @@ export async function embedChunks(
   );
 }
 
-export function resolveEmbedder(env: NodeJS.ProcessEnv = process.env): Embedder {
+/** Minimal logger surface — matches the pino-shaped logger ingest.ts injects. */
+export interface EmbedderResolverLogger {
+  warn(obj: Record<string, unknown>, msg?: string): void;
+}
+
+/**
+ * Raised when no real embedding provider is configured and degraded
+ * hash-stub vectors are NOT permitted. Carries a stable `code` so callers can
+ * surface an honest failure instead of silently indexing hash noise.
+ */
+export class EmbedderUnavailableError extends Error {
+  readonly code = 'EMBEDDER_UNAVAILABLE';
+  constructor(message: string) {
+    super(message);
+    this.name = 'EmbedderUnavailableError';
+  }
+}
+
+/**
+ * Resolve the embedder for an ingest run.
+ *
+ * When `OPENAI_API_KEY` is present we return the real OpenAI embedder. When it
+ * is ABSENT we must never silently substitute the sha256 hash stub as if it
+ * were real — hash vectors are non-semantic noise that corrupt pgvector cosine
+ * search while reporting success (#21). Instead:
+ *
+ *   - In production (`NODE_ENV=production`), and anywhere the
+ *     `BRAIN_EMBEDDER_FAIL_CLOSED` flag is not explicitly `'false'`, we FAIL the
+ *     ingest by throwing `EmbedderUnavailableError`.
+ *   - Otherwise (dev/test, or explicit `BRAIN_EMBEDDER_FAIL_CLOSED=false`) we
+ *     emit a `warn` carrying the degraded `modelId` and return the stub
+ *     embedder, whose `degraded` flag the caller stamps onto the upload/chunk
+ *     row so retrieval quality stays auditable.
+ */
+export function resolveEmbedder(
+  env: NodeJS.ProcessEnv = process.env,
+  logger?: EmbedderResolverLogger,
+): Embedder {
   const key = env.OPENAI_API_KEY?.trim();
   if (key) {
     return createOpenAIEmbedder({ apiKey: key });
   }
+
+  const failClosed =
+    env.BRAIN_EMBEDDER_FAIL_CLOSED === 'false'
+      ? false
+      : env.NODE_ENV === 'production' || env.BRAIN_EMBEDDER_FAIL_CLOSED === 'true';
+
+  if (failClosed) {
+    throw new EmbedderUnavailableError(
+      'OPENAI_API_KEY not configured — refusing to index hash-stub vectors as ' +
+        'real embeddings. Set OPENAI_API_KEY, or set ' +
+        'BRAIN_EMBEDDER_FAIL_CLOSED=false to ingest in explicit degraded mode.',
+    );
+  }
+
+  logger?.warn(
+    { modelId: STUB_EMBEDDER_MODEL_ID, degraded: true },
+    'brain-embedder: OPENAI_API_KEY unset — using DEGRADED hash-stub embedder; ' +
+      'cosine retrieval over these chunks is not trustworthy',
+  );
   return createStubEmbedder();
 }

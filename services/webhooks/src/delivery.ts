@@ -200,6 +200,7 @@ export async function deliver(
     if (r.success) return r;
     last = r;
     if (!isRetryable(r.statusCode) || attempt === maxAttempts - 1) return r;
+    // eslint-disable-next-line no-restricted-syntax -- retry-jitter timing, not an ID/secret; unguessability is irrelevant here
     const backoff = baseMs * 2 ** attempt + Math.floor(Math.random() * baseMs);
     await new Promise((resolve) => setTimeout(resolve, backoff));
   }

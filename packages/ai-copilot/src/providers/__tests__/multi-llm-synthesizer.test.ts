@@ -285,6 +285,11 @@ describe('multi-llm-synthesizer', () => {
     const result = await synth.synthesize(makeRequest());
     expect(result.success).toBe(true);
     if (!result.success) return;
-    expect(result.data.proposerOutcomes[0]!.latencyMs).toBeGreaterThanOrEqual(20);
+    // The proposer sleeps ~20ms; assert the latency reflects a REAL measured
+    // delay without pinning the exact floor. `setTimeout(20)` + a performance.now
+    // bracket can read 18–19ms (timer rounding / when the bracket starts), so a
+    // tight `>= 20` flakes on CI (observed 19). `>= 10` still proves latency was
+    // measured (not 0/instant) with ample margin below the 20ms sleep.
+    expect(result.data.proposerOutcomes[0]!.latencyMs).toBeGreaterThanOrEqual(10);
   });
 });

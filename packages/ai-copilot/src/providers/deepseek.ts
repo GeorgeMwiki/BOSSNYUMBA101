@@ -212,6 +212,7 @@ export class DeepSeekProvider implements AIProvider {
       const err = (r as { success: false; error: AIProviderError }).error;
       last = err;
       if (!err.retryable || attempt === maxRetries) return aiErr(err);
+      // eslint-disable-next-line no-restricted-syntax -- retry-jitter timing, not an ID/secret; unguessability is irrelevant here
       const wait = baseMs * 2 ** attempt + Math.floor(Math.random() * baseMs);
       await new Promise((res) => setTimeout(res, wait));
     }

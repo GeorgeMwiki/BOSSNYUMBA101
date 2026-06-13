@@ -32,6 +32,7 @@
  * are duck-typed interfaces wired by the composition root.
  */
 
+import { randomUUID } from 'node:crypto';
 import type { StageLogger } from './types.js';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -61,6 +62,7 @@ const LOCAL_COT_PATTERNS: ReadonlyArray<LocalCotPattern> = [
   { kind: 'kra-pin', re: /\b[A-Z]\d{9}[A-Z]\b/g, replace: '[redacted-kra-pin]' },
   {
     kind: 'model-provider-url',
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: input is AI-generated chain-of-thought text from a trusted internal pipeline, not attacker-controlled; bounded by \b and a fixed domain-name allowlist
     re: /\bhttps?:\/\/(?:[a-z0-9-]+\.)*(?:anthropic\.com|openai\.com|api\.openai\.com|api\.anthropic\.com|cohere\.ai|together\.xyz|mistral\.ai)\b[^\s]*/gi,
     replace: '[redacted-model-url]',
   },
@@ -344,7 +346,7 @@ function buildLessonReflection(input: {
 }
 
 function defaultId(thoughtId: string): string {
-  const suffix = Math.random().toString(36).slice(2, 8);
+  const suffix = randomUUID().replace(/-/g, '').slice(0, 6);
   return `refl_cot_${thoughtId}_${suffix}`;
 }
 

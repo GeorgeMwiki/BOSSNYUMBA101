@@ -248,7 +248,6 @@ function VerdictPill({
 }: {
   readonly verdict: 'healthy' | 'monitor' | 'service' | 'urgent';
 }): JSX.Element {
-  // eslint-disable-next-line security/detect-object-injection -- compile-time literal object with TS-narrowed key
   const tone = {
     healthy: 'border-success/40 text-success',
     monitor: 'border-signal-500/40 text-signal-500',

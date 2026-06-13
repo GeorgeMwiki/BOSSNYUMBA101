@@ -21,7 +21,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
+  # isolated-vm@6.1.2 (V8-isolate sandbox in ai-copilot +
+  # central-intelligence) declares engines.node >=22; on Node 20 the
+  # optional dep is skipped and the type-only import fails TS2307.
+  NODE_VERSION: '22'
   PNPM_VERSION: '8.15.0'
 
 jobs:
@@ -139,6 +142,9 @@ jobs:
     env:
       NEXT_PUBLIC_APP_URL: https://ci-build.bossnyumba.invalid
       NEXT_PUBLIC_API_URL: https://ci-build.bossnyumba.invalid/api
+      # admin-platform-portal pages fail-loud without these at build time.
+      NEXT_PUBLIC_OWNER_PORTAL_URL: https://ci-build.bossnyumba.invalid
+      NEXT_PUBLIC_MARKETING_SITE_URL: https://ci-build.bossnyumba.invalid
       NEXT_PUBLIC_TENANT_CURRENCY: USD
       NEXT_PUBLIC_TENANT_LOCALE: en
       NEXT_PUBLIC_TENANT_COUNTRY: TZ

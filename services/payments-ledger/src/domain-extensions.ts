@@ -8,6 +8,7 @@
  * the service layer.
  */
 import { Money, CurrencyCode, TenantId } from '@bossnyumba/domain-models';
+import { calculatePlatformFeeMinor } from './lib/platform-fee';
 
 // =============================================================================
 // Missing Branded Types
@@ -35,7 +36,16 @@ export type MoneyData = { amount: number; currency: CurrencyCode };
  */
 export interface TenantAggregate {
   id: TenantId;
-  /** Platform fee as a percentage (e.g. 5.0 for 5%) */
+  /**
+   * Platform fee in basis points (e.g. 500 for 5%). CANONICAL fee unit —
+   * integer end-to-end, no float round-trip. Prefer this over
+   * `getPlatformFeePercent()` for any fee arithmetic (#14).
+   */
+  getPlatformFeeBps(): number;
+  /**
+   * Platform fee as a percentage (e.g. 5.0 for 5%). DERIVED view of
+   * `getPlatformFeeBps()` kept for callers that still speak percent.
+   */
   getPlatformFeePercent(): number;
   paymentSettings: {
     stripeAccountId?: string;
@@ -50,12 +60,24 @@ export interface TenantAggregate {
 /**
  * Calculate the platform fee for a given amount.
  *
+ * A-BUG #14: this used to floor-vs-round DIFFERENTLY from the canonical
+ * integer-basis-point lib (`lib/platform-fee.ts`) — it `Math.round`ed
+ * while the lib `Math.floor`s. Two formulas on the live money path meant
+ * the fee a payment was charged could differ by one minor unit from what
+ * the ledger/statement math expected. This now REDIRECTS to the single
+ * canonical `calculatePlatformFeeMinor(amountMinor, bps)` so there is
+ * exactly one fee formula in the service (floor, integer end-to-end).
+ *
  * @param amount  The gross payment amount
  * @param feePercent  Fee percentage (e.g. 5.0 for 5%)
  * @returns  The fee as a Money value in the same currency
  */
 export function calculatePlatformFee(amount: Money, feePercent: number): Money {
-  const feeMinorUnits = Math.round(amount.amountMinorUnits * feePercent / 100);
+  // Percent → basis points is the lib's native unit. `getTenantAggregate`
+  // derives `feePercent` as `bps / 100`, so `round(feePercent * 100)`
+  // recovers the original integer bps exactly.
+  const bps = Math.round(feePercent * 100);
+  const feeMinorUnits = calculatePlatformFeeMinor(amount.amountMinorUnits, bps);
   return Money.fromMinorUnits(feeMinorUnits, amount.currency);
 }
 

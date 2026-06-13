@@ -25,6 +25,7 @@ import { sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { databaseMiddleware } from '../../middleware/database';
+import { getSharedPerTenantRateBudget } from '../../middleware/per-tenant-rate-budget';
 
 export const SAVED_SEARCH_FREQUENCIES = [
   'hourly',
@@ -66,6 +67,7 @@ function rowToSavedSearch(row: Record<string, unknown> | null) {
 export const savedSearchesRouter = new Hono();
 savedSearchesRouter.use('*', authMiddleware);
 savedSearchesRouter.use('*', databaseMiddleware);
+savedSearchesRouter.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 
 savedSearchesRouter.get('/', async (c) => {
   const auth = c.get('auth');

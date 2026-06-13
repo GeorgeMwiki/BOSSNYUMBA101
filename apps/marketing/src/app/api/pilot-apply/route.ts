@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { checkRateLimit, clientIp, rateLimitHeaders } from '@/lib/rate-limit';
 
 /**
  * /api/pilot-apply — Next route handler that forwards a validated
@@ -35,6 +36,23 @@ const GATEWAY_URL =
   process.env.BOSSNYUMBA_API_GATEWAY_URL ?? process.env.NEXT_PUBLIC_API_GATEWAY_URL ?? 'http://localhost:3000';
 
 export async function POST(req: Request): Promise<NextResponse> {
+  // Per-IP throttle — public lead-capture form is a spam / enumeration
+  // abuse vector. 5 submissions/min/IP is ample for a genuine applicant.
+  const limit = checkRateLimit(clientIp(req), {
+    key: 'marketing:pilot-apply',
+    max: 5,
+    windowMs: 60_000,
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: 'RATE_LIMITED', message: 'Too many requests. Try again shortly.' },
+      },
+      { status: 429, headers: rateLimitHeaders(limit) },
+    );
+  }
+
   try {
     const body = await req.json();
     const parsed = ApplicationSchema.safeParse(body);

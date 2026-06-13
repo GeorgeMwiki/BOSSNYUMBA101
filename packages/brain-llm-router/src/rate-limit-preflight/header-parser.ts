@@ -74,6 +74,7 @@ function coerceHeaders(input: HeadersLike | Headers | Record<string, string> | u
  * Returns ms; null on failure.
  */
 function parseOpenAIDuration(value: string): number | null {
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: (?:\.\d+)? is a bounded optional group; input is a short provider-header duration string (e.g. "300ms", "1s"); linear backtracking
   const m = /^(\d+(?:\.\d+)?)\s*(ms|s|m)?$/i.exec(value.trim());
   if (!m) return null;
   const n = Number.parseFloat(m[1]!);

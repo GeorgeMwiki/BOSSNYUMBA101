@@ -75,7 +75,6 @@ export class PdfRealRenderer implements IDocumentRenderer {
   ): Promise<RenderResult> {
     let pdf: unknown;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       pdf = await import('@react-pdf/renderer');
     } catch (err) {
       throw new RendererError(

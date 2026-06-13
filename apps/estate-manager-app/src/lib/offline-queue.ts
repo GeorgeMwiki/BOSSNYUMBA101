@@ -39,7 +39,6 @@ function readQueue(): readonly QueuedJob[] {
     if (!Array.isArray(parsed)) return [];
     return parsed as readonly QueuedJob[];
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('offline-queue: failed to parse stored queue', error);
     return [];
   }
@@ -51,10 +50,7 @@ function writeQueue(jobs: readonly QueuedJob[]): void {
 }
 
 function makeClientJobId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return `job_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return crypto.randomUUID();
 }
 
 /**

@@ -26,12 +26,14 @@ export interface RawEntity {
 }
 
 const HONORIFIC_RE =
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: {0,3} is a bounded quantifier; no nested unbounded repetition; the outer group cannot overlap with the inner \s+ separator; linear backtracking
   /\b(?:Mr|Mrs|Ms|Mme|Bw|Bibi|Mama|Baba|Mama|Dr)\.?\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,3})\b/g;
 // Standalone capitalised names (two-word fallback) — lower confidence
 const NAMEPAIR_RE = /\b([A-Z][a-z]{2,}\s+[A-Z][a-z]{2,})\b/g;
 
 const PROPERTY_ID_RE = /\b(prop|property)[_-]?([A-Z0-9]{4,12})\b/gi;
 const UNIT_ID_RE =
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: (?:-[A-Z0-9]+)? is a bounded optional group; alternation over fixed unit-type keywords; no nested unbounded quantifiers; linear backtracking
   /\b(?:unit|apt|apartment|flat|godown|shop|stall|office)\s+([A-Z0-9]+(?:-[A-Z0-9]+)?)\b/gi;
 const LEASE_ID_RE = /\b(?:le[_-])([A-Za-z0-9_]{4,20})\b/g;
 const INVOICE_ID_RE = /\b(?:inv[_-])([A-Za-z0-9_]{4,20})\b/g;
@@ -41,6 +43,7 @@ const DOCUMENT_ID_RE = /\b(?:doc[_-])([A-Za-z0-9_]{4,20})\b/g;
 // Amount: digit-grouped or plain digits, optional unit suffix or currency
 // (k/m/M for thousand/million; tzs/tsh/sh/kes/ksh/ngn/usd/eur).
 const AMOUNT_RE =
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: (?:[,\s]\d{3})+ each iteration anchored by mandatory separator char; (?:\.\d+)? is bounded optional; no nested unbounded quantifiers; linear backtracking
   /(\d{1,3}(?:[,\s]\d{3})+|\d+(?:\.\d+)?)\s*(k|m|M|tzs|tsh|sh|kes|ksh|ngn|usd|eur|shillings)?\b/gi;
 
 const DATE_ISO_RE = /\b(\d{4}-\d{2}-\d{2})\b/g;
@@ -48,6 +51,7 @@ const DATE_LONG_RE =
   /\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{4})\b/gi;
 // Month-only: "from Jan" / "starting January 2026" / "in Feb"
 const DATE_MONTH_RE =
+  // eslint-disable-next-line security/detect-unsafe-regex -- reason: (?:\s+\d{4})? is a bounded optional group; [a-z]* suffix is a simple greedy star on a single character class after a fixed month abbreviation; no nested unbounded quantifiers; linear backtracking
   /\b(?:from|starting|in|by|until)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*(?:\s+\d{4})?\b/gi;
 
 const DISTRICTS = [
@@ -204,6 +208,7 @@ export function extractRawEntities(text: string): ReadonlyArray<RawEntity> {
   }
 
   for (const district of DISTRICTS) {
+    // eslint-disable-next-line security/detect-non-literal-regexp -- reason: district is a hardcoded constant from the DISTRICTS array above (e.g. "Kinondoni"), never user input
     const re = new RegExp(`\\b${district}\\b`, 'i');
     if (re.test(text)) {
       out.push({ raw_type: 'district', value: district, confidence: 0.9 });

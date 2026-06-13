@@ -296,7 +296,6 @@ export function withSecurityEvents<C extends HonoContextLike, R>(
  * decorated the request; falls back to header-derived values.
  */
 export function withSecurityEventsFastify<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   H extends (request: any, reply: any) => any,
 >(binding: SecurityEventBinding, handler: H): H {
   const wrapped = async (
@@ -491,7 +490,6 @@ async function emitMiddlewareEvent(
       metadata: { statusCode: status },
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn('securityEventsMiddleware: audit emit failed', err);
   }
 }

@@ -15,6 +15,7 @@
  * @module intelligence-orchestrator/portfolio-early-warning
  */
 
+import { randomUUID } from 'node:crypto';
 import type {
   PaymentsSnapshot,
   MaintenanceSnapshot,
@@ -171,7 +172,7 @@ function computeAlerts(
 ): readonly PortfolioAlert[] {
   const alerts: PortfolioAlert[] = [];
   const ts = Date.now();
-  const id = (): string => `pw-${ts}-${Math.random().toString(36).slice(2, 6)}`;
+  const id = (): string => `pw-${ts}-${randomUUID().replace(/-/g, '').slice(0, 4)}`;
 
   if (m.totalArrearsCents >= config.arrearsTotalRedCents) {
     alerts.push({

@@ -17,7 +17,11 @@ FROM node:20-alpine AS deps
 # (canvas via pdfkit, etc.) fall back to source compilation on musl.
 # Without them, `gyp ERR! find Python` aborts the install and the E2E
 # portal-app containers exit 1 — chronic flake fixed in flaky-CI-closure.
-RUN apk add --no-cache libc6-compat python3 make g++
+# py3-setuptools is REQUIRED too: node:20-alpine ships Python 3.12, which
+# removed the stdlib `distutils` module node-gyp imports. setuptools restores
+# it via distutils-precedence.pth — without it the canvas build fails with
+# `ModuleNotFoundError: No module named 'distutils'` → gyp exit 1.
+RUN apk add --no-cache libc6-compat python3 py3-setuptools make g++
 RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 WORKDIR /app
@@ -37,6 +41,20 @@ RUN pnpm install --frozen-lockfile
 FROM node:20-alpine AS builder
 ARG APP_NAME
 ARG APP_PATH
+
+# NEXT_PUBLIC_* base URLs are inlined into the client bundle at `next build`
+# time; several admin-platform-portal pages resolve them through a fail-loud
+# env-guard that throws in production builds when unset. Accept them as
+# build-args so the image build never crashes. The defaults are non-resolving
+# CI placeholders — cd-production.yml passes the REAL values via --build-arg.
+ARG NEXT_PUBLIC_API_URL=https://ci-build.bossnyumba.invalid/api
+ARG NEXT_PUBLIC_APP_URL=https://ci-build.bossnyumba.invalid
+ARG NEXT_PUBLIC_OWNER_PORTAL_URL=https://ci-build.bossnyumba.invalid
+ARG NEXT_PUBLIC_MARKETING_SITE_URL=https://ci-build.bossnyumba.invalid
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
+    NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL} \
+    NEXT_PUBLIC_OWNER_PORTAL_URL=${NEXT_PUBLIC_OWNER_PORTAL_URL} \
+    NEXT_PUBLIC_MARKETING_SITE_URL=${NEXT_PUBLIC_MARKETING_SITE_URL}
 
 RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 

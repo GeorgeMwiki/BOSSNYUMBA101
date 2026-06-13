@@ -11,6 +11,7 @@
  * the service refuses to create assignments and throws TrainingDisabledError.
  */
 
+import { randomUUID } from 'node:crypto';
 import type { TrainingRepository } from './training-repository.js';
 import type {
   AssignTrainingInput,
@@ -45,7 +46,7 @@ export interface TrainingAssignmentDeps {
 const DEFAULT_FLAG = 'training.enabled';
 
 function defaultId(prefix: string): string {
-  const rand = Math.random().toString(36).slice(2, 10);
+  const rand = randomUUID().replace(/-/g, '').slice(0, 8);
   return `${prefix}_${Date.now()}_${rand}`;
 }
 

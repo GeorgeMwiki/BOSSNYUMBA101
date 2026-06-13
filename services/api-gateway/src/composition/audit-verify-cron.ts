@@ -194,6 +194,7 @@ async function emitTampered(
   try {
     await bus.publish({
       event: {
+        // eslint-disable-next-line no-restricted-syntax -- reason: correlation/tracing eventId, not a secret or security token
         eventId: `audit_tampered_${mode}_${Date.now()}_${Math.random()
           .toString(36)
           .slice(2, 8)}`,

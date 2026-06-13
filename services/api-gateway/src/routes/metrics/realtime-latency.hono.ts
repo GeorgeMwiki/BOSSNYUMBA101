@@ -26,6 +26,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 
 import { authMiddleware } from '../../middleware/hono-auth';
+import { getSharedPerTenantRateBudget } from '../../middleware/per-tenant-rate-budget';
 import { recordLatency } from '../../services/realtime-latency';
 
 const MAX_SAMPLES = 50;
@@ -41,6 +42,7 @@ const BodySchema = z.object({
 
 export const realtimeLatencyRouter = new Hono();
 realtimeLatencyRouter.use('*', authMiddleware);
+realtimeLatencyRouter.use('*', getSharedPerTenantRateBudget({ surface: 'realtime' }).handler);
 
 realtimeLatencyRouter.post(
   '/realtime-latency',

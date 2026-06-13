@@ -20,6 +20,7 @@ import {
   AICompletionRequest,
   AICompletionResponse,
   AIProviderError,
+  StreamTokenSink,
 } from './ai-provider.js';
 import { ANTHROPIC_MODELS } from './anthropic.js';
 
@@ -47,6 +48,36 @@ export interface AdvisorInvocationContext {
   advisorThreshold?: number;
   /** Short reason string that will be written to the trace. */
   reason?: string;
+  /**
+   * GENUINE token streaming sink. When provided AND the underlying provider
+   * supports `completeStream`, the model that produces `finalContent` is
+   * streamed token-by-token to this sink as the answer is generated — NOT
+   * replayed after the fact.
+   *
+   * We stream the model that becomes the user-visible answer:
+   *   - hard category  → advisor is always consulted → stream the ADVISOR.
+   *   - otherwise      → executor is the answer       → stream the EXECUTOR.
+   * The non-streamed model in each case runs via plain `complete()`. This
+   * guarantees the user never sees an executor draft that the advisor later
+   * overwrites.
+   */
+  onToken?: StreamTokenSink;
+}
+
+/**
+ * Stream a completion when the provider supports it; otherwise fall back to a
+ * non-streaming `complete()`. The returned response shape is identical either
+ * way so callers are agnostic to which path ran.
+ */
+async function completeMaybeStream(
+  provider: AIProvider,
+  request: AICompletionRequest,
+  onToken: StreamTokenSink | undefined,
+): Promise<AIResult<AICompletionResponse, AIProviderError>> {
+  if (onToken && typeof provider.completeStream === 'function') {
+    return provider.completeStream(request, onToken);
+  }
+  return provider.complete(request);
 }
 
 export interface AdvisorOutcome {
@@ -102,11 +133,21 @@ export class AdvisorExecutor {
     const threshold =
       ctx.advisorThreshold ?? this.cfg.defaultThreshold ?? 0.7;
 
-    // 1. Executor turn
-    const execResult = await this.cfg.executorProvider.complete({
-      ...request,
-      modelOverride: executorModel,
-    });
+    // A hard category ALWAYS consults the advisor, whose output becomes the
+    // user-visible answer. To avoid streaming an executor draft the advisor
+    // would overwrite, we stream the EXECUTOR only when this is NOT a hard
+    // category; for hard categories we stream the ADVISOR instead (below).
+    const hardCategoryUpfront = ctx.category
+      ? (ADVISOR_HARD_CATEGORIES as readonly string[]).includes(ctx.category)
+      : false;
+    const streamExecutor = !hardCategoryUpfront ? ctx.onToken : undefined;
+
+    // 1. Executor turn (streamed when it is the user-visible answer)
+    const execResult = await completeMaybeStream(
+      this.cfg.executorProvider,
+      { ...request, modelOverride: executorModel },
+      streamExecutor,
+    );
     if (!execResult.success) {
       const e = (execResult as { success: false; error: AIProviderError }).error;
       return aiErr(e);
@@ -155,7 +196,15 @@ export class AdvisorExecutor {
         .join('\n'),
     };
 
-    const advResult = await this.cfg.advisorProvider.complete(advisorRequest);
+    // The advisor's output IS the user-visible answer when consulted, so stream
+    // it. (For the non-hard executor-empty / low-confidence path the executor
+    // produced little or no streamed text, so streaming the advisor here is the
+    // correct first genuine output the user sees.)
+    const advResult = await completeMaybeStream(
+      this.cfg.advisorProvider,
+      advisorRequest,
+      ctx.onToken,
+    );
     if (!advResult.success) {
       // Advisor failure: gracefully degrade to executor output.
       const failCode = (advResult as { success: false; error: AIProviderError }).error.code;

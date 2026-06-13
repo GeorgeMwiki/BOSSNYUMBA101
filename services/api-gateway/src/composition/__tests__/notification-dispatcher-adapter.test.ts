@@ -338,7 +338,6 @@ describe('createRecipientResolverAdapter', () => {
     // `tenant:` with no id following is a malformed scope. The adapter
     // bails before issuing the query.
     const c = await resolver.count({
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       scope: 'tenant:' as 'tenant:any',
       channel: 'banner',
     });

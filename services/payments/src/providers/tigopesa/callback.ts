@@ -13,6 +13,7 @@ export interface TigoPesaCallbackResult {
 }
 
 function parseXmlValue(xml: string, tag: string): string | undefined {
+  // eslint-disable-next-line security/detect-non-literal-regexp -- reason: tag is an internal XML element name from the known TigoPesa callback schema, not user-supplied input; character class [^<]* prevents injection
   const match = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`, 'i'));
   return match?.[1]?.trim();
 }

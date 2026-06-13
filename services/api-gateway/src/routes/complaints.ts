@@ -12,6 +12,7 @@
  *   PUT  /:id/resolve        — mark resolved
  */
 
+import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -54,7 +55,7 @@ function dbUnavailable(c) {
 }
 
 function newId(): string {
-  return `cmp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return `cmp_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 8)}`;
 }
 
 app.post('/', zValidator('json', createComplaintSchema), withSecurityEvents({ action: 'complaint.create', resource: 'complaint', severity: 'info' }, async (c) => {

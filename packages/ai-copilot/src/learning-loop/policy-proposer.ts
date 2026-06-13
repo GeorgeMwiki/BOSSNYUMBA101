@@ -11,6 +11,7 @@
  * reviewer move it through the lifecycle.
  */
 
+import { randomUUID } from 'node:crypto';
 import type { AutonomyPolicy, FinancePolicy, MaintenancePolicy } from '../autonomy/types.js';
 import type { PatternEvidence, PolicyProposal } from './types.js';
 
@@ -33,7 +34,7 @@ const DEFAULT_TIGHTEN_DROP = 0.1; // -10pp success rate vs baseline
 const DEFAULT_NUDGE_FRACTION = 0.2;
 
 function defaultIdGenerator(): string {
-  return `prop_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  return `prop_${Date.now().toString(36)}_${randomUUID().replace(/-/g, '').slice(0, 8)}`;
 }
 
 function clamp01(v: number): number {

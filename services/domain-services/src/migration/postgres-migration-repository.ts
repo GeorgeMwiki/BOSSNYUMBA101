@@ -41,7 +41,6 @@ export interface DrizzleLike {
   insert: (...args: unknown[]) => any;
   update: (...args: unknown[]) => any;
   delete?: (...args: unknown[]) => any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [k: string]: any;
 }
 

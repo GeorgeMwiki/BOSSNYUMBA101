@@ -2,8 +2,11 @@
  * Worker safety-incident report — chain L-C (issue #193).
  *
  * One-button SOS for low/medium reports + a "tap if critical" CTA that
- * escalates severity. Backend: POST /api/v1/cases — the
- * severity-escalator service decides the manager/owner/admin fan-out.
+ * escalates severity. Locale resolves from the signed-in user (`useI18n`
+ * → `useAuth`) so the screen renders strictly single-language per the
+ * active toggle — no hardcoded `lang`, no EN/SW mixing. Backend: POST
+ * /api/v1/cases — the severity-escalator service decides the
+ * manager/owner/admin fan-out.
  */
 
 import { useState } from 'react'
@@ -12,6 +15,8 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { Button } from '../../src/forms/Button'
+import { useI18n } from '../../src/i18n/useI18n'
+import type { Lang } from '../../src/auth/types'
 import { colors } from '../../src/theme/colors'
 import { fontSize, spacing } from '../../src/theme/spacing'
 
@@ -19,18 +24,56 @@ const SCREEN_ID = 'W-INC'
 
 type Severity = 'low' | 'medium' | 'high' | 'critical'
 
+type Copy = {
+  readonly receivedTitle: string
+  readonly receivedSubtitle: string
+  readonly title: string
+  readonly subtitle: string
+  readonly severityLabel: string
+  readonly low: string
+  readonly medium: string
+  readonly high: string
+  readonly critical: string
+}
+
+const STRINGS: Record<Lang, Copy> = {
+  en: {
+    receivedTitle: 'Received',
+    receivedSubtitle: 'Your manager will see this report immediately.',
+    title: 'Report an incident',
+    subtitle: 'Tap the severity. Your manager sees it instantly.',
+    severityLabel: 'Severity',
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High',
+    critical: 'CRITICAL',
+  },
+  sw: {
+    receivedTitle: 'Imepokelewa',
+    receivedSubtitle: 'Meneja wako ataona ripoti yako mara moja.',
+    title: 'Ripoti tukio',
+    subtitle: 'Bonyeza kiwango cha hatari. Meneja ataona haraka.',
+    severityLabel: 'Kiwango cha hatari',
+    low: 'Chini',
+    medium: 'Wastani',
+    high: 'Juu',
+    critical: 'HATARI',
+  },
+}
+
 export default function IncidentReportScreen(): JSX.Element {
   return (
     <RoleGuard screenId={SCREEN_ID}>
       <ScreenShell screenId={SCREEN_ID}>
-        <ReportView lang="sw" />
+        <ReportView />
       </ScreenShell>
     </RoleGuard>
   )
 }
 
-function ReportView({ lang }: { lang: 'sw' | 'en' }): JSX.Element {
-  const isSw = lang === 'sw'
+function ReportView(): JSX.Element {
+  const { lang } = useI18n()
+  const copy = STRINGS[lang]
   const [submitted, setSubmitted] = useState<Severity | null>(null)
 
   const onPress = (severity: Severity): void => {
@@ -41,33 +84,23 @@ function ReportView({ lang }: { lang: 'sw' | 'en' }): JSX.Element {
   if (submitted) {
     return (
       <View style={styles.root}>
-        <Text style={styles.title}>{isSw ? 'Imepokelewa' : 'Received'}</Text>
-        <Text style={styles.subtitle}>
-          {isSw
-            ? 'Meneja wako ataona ripoti yako mara moja.'
-            : 'Your manager will see this report immediately.'}
-        </Text>
+        <Text style={styles.title}>{copy.receivedTitle}</Text>
+        <Text style={styles.subtitle}>{copy.receivedSubtitle}</Text>
       </View>
     )
   }
 
   return (
     <View style={styles.root}>
-      <Text style={styles.title}>
-        {isSw ? 'Ripoti tukio' : 'Report an incident'}
-      </Text>
-      <Text style={styles.subtitle}>
-        {isSw
-          ? 'Bonyeza kiwango cha hatari. Meneja ataona haraka.'
-          : 'Tap the severity. Your manager sees it instantly.'}
-      </Text>
+      <Text style={styles.title}>{copy.title}</Text>
+      <Text style={styles.subtitle}>{copy.subtitle}</Text>
 
-      <Section title={isSw ? 'Kiwango cha hatari' : 'Severity'}>
+      <Section title={copy.severityLabel}>
         <View style={styles.grid}>
-          <Button label={isSw ? 'Chini' : 'Low'} onPress={() => onPress('low')} variant="ghost" />
-          <Button label={isSw ? 'Wastani' : 'Medium'} onPress={() => onPress('medium')} variant="ghost" />
-          <Button label={isSw ? 'Juu' : 'High'} onPress={() => onPress('high')} />
-          <Button label={isSw ? 'HATARI' : 'CRITICAL'} onPress={() => onPress('critical')} variant="danger" />
+          <Button label={copy.low} onPress={() => onPress('low')} variant="ghost" />
+          <Button label={copy.medium} onPress={() => onPress('medium')} variant="ghost" />
+          <Button label={copy.high} onPress={() => onPress('high')} />
+          <Button label={copy.critical} onPress={() => onPress('critical')} variant="danger" />
         </View>
       </Section>
     </View>

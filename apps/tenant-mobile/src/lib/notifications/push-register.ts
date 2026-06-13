@@ -54,7 +54,7 @@ let lastRegisteredToken: string | null = null
 
 function devWarn(message: string, error?: unknown): void {
   if (__DEV__) {
-    console.warn(`[push-register] ${message}`, error ?? '') // eslint-disable-line no-console -- reason: DEV-only diagnostic per CLAUDE.md mobile-console rule.
+    console.warn(`[push-register] ${message}`, error ?? '')
   }
 }
 

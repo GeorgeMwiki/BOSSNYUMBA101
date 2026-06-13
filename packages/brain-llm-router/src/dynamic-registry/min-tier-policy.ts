@@ -150,6 +150,9 @@ const FAMILY_RANK: Readonly<Partial<Record<ModelFamily, number>>> = Object.freez
   'gemini-pro': 3,
   'deepseek-coder': 3,
   opus: 5,
+  // Frontier tier — above opus so it satisfies every min-tier floor and is the
+  // rank-driven pick for the growth core. (Floors only ever rise.)
+  fable: 7,
 });
 
 /** Returns the numeric rank for a family, or `0` if unranked. */

@@ -14,6 +14,7 @@
  * `liveDataRequired`, which forced every GET to 503.
  */
 
+import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -102,7 +103,7 @@ function dbUnavailable(c) {
 }
 
 function newId(prefix: string): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 8)}`;
 }
 
 // --- Feedback endpoints -----------------------------------------------------

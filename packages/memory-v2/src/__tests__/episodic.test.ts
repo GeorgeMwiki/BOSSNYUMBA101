@@ -135,10 +135,21 @@ describe('episodic store — upsert + retrieval', () => {
   it('boosts score when queryText matches title/summary', async () => {
     const store = createInMemoryEpisodicStore();
     await store.upsertEpisode(
-      buildEpisode({ id: 'match', title: 'lease renewal request' }),
+      buildEpisode({
+        id: 'match',
+        title: 'lease renewal request',
+        summary: 'Owner wants to renew the lease.',
+      }),
     );
     await store.upsertEpisode(
-      buildEpisode({ id: 'nomatch', title: 'water bill question' }),
+      // Override the DEFAULT summary too — it reads "…lease renewal terms…",
+      // which would otherwise also match the query and defeat this test (then
+      // recency, not the text boost, decides ordering).
+      buildEpisode({
+        id: 'nomatch',
+        title: 'water bill question',
+        summary: 'Tenant asked about the water bill amount.',
+      }),
     );
     const results = await store.retrieveByRelevance({
       tenantId: TENANT,

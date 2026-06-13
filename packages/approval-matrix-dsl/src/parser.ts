@@ -104,6 +104,7 @@ function preprocess(input: string): ReadonlyArray<{ line: string; lineNumber: nu
 // ─────────────────────────────────────────────────────────────────────
 
 function extractQuoted(input: string, key: string): string {
+  // eslint-disable-next-line security/detect-non-literal-regexp -- reason: key is an internal DSL keyword constant (role_group, notify_role_group), never user input
   const re = new RegExp(`${key}\\s*=\\s*'([^']+)'`, 'i');
   const match = re.exec(input);
   if (!match || !match[1]) {
@@ -115,6 +116,7 @@ function extractQuoted(input: string, key: string): string {
 }
 
 function extractInt(input: string, key: string): number {
+  // eslint-disable-next-line security/detect-non-literal-regexp -- reason: key is an internal DSL keyword constant (min, priority), never user input
   const re = new RegExp(`${key}\\s*=\\s*(-?\\d+)`, 'i');
   const match = re.exec(input);
   if (!match || !match[1]) {

@@ -6,7 +6,7 @@
 #   1. Gateway responds to /health within 30s.
 #   2. /api/v1 version endpoint returns JSON.
 #   3. Every migration in packages/database/src/migrations is applied
-#      (COUNT matches file count in _migrations table).
+#      (COUNT matches file count in drizzle.__drizzle_migrations ledger).
 #   4. Demo tenant tenant-001 exists and is active.
 #   5. Marketing landing page renders (contains known heading).
 #   6. UAT walkthrough passes.
@@ -44,12 +44,10 @@ MIG_DIR="$REPO_ROOT/packages/database/src/migrations"
 if [ -d "$MIG_DIR" ] && command -v psql >/dev/null 2>&1; then
   FILE_COUNT="$(ls -1 "$MIG_DIR"/*.sql 2>/dev/null | wc -l | tr -d ' ')"
   ROW_COUNT="$(psql "$DATABASE_URL" -tAc \
-    "SELECT COUNT(*)::int FROM _migrations" 2>/dev/null \
-    || psql "$DATABASE_URL" -tAc \
-    "SELECT COUNT(*)::int FROM drizzle.__drizzle_migrations" 2>/dev/null \
+    "SELECT CASE WHEN to_regclass('drizzle.__drizzle_migrations') IS NULL THEN 0 ELSE (SELECT COUNT(*)::int FROM drizzle.__drizzle_migrations) END" 2>/dev/null \
     || echo 0)"
   if [ -z "$ROW_COUNT" ] || [ "$ROW_COUNT" -eq 0 ]; then
-    printf '! migrations table not populated yet (COUNT=0) — run scripts/migrate-prod.sh\n'
+    printf '! migrations table not populated yet (COUNT=0) — run pnpm --filter @bossnyumba/database run db:migrate\n'
   elif [ "$ROW_COUNT" -lt "$FILE_COUNT" ]; then
     fail "migrations not fully applied (files=$FILE_COUNT, rows=$ROW_COUNT)"
   else

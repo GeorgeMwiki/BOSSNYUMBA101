@@ -25,6 +25,7 @@
  *     failed rows".
  */
 
+import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 
 import {
@@ -63,7 +64,7 @@ export interface DispatchContext {
 
 function genId(prefix: string): string {
   // Match the rest of the codebase's text-id convention.
-  const slug = Math.random().toString(36).slice(2, 10);
+  const slug = randomUUID().replace(/-/g, '').slice(0, 8);
   return `${prefix}_${Date.now()}_${slug}`;
 }
 

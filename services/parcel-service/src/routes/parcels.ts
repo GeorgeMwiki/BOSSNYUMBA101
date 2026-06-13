@@ -10,6 +10,7 @@
  */
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import { areaSqm, centroid } from '@bossnyumba/spatial-engine';
 import type {
   Parcel,
@@ -18,6 +19,56 @@ import type {
 } from '@bossnyumba/spatial-engine';
 
 import { withSecurityEventsFastify } from '@bossnyumba/observability';
+
+// ---------------------------------------------------------------------------
+// Boundary-payload Zod schemas (route-boundary validation).
+//
+// `boundary` is a GeoJSON MultiPolygon: coordinates are an array of
+// polygons, each an array of linear rings, each a ring of [lng, lat]
+// position pairs. We validate the structural shape here; the spatial
+// engine (areaSqm/centroid) performs the geometric semantics downstream.
+// ---------------------------------------------------------------------------
+
+const PositionSchema = z.array(z.number().finite()).min(2);
+const LinearRingSchema = z.array(PositionSchema).min(1);
+const PolygonCoordsSchema = z.array(LinearRingSchema).min(1);
+
+const MultiPolygonSchema = z.object({
+  type: z.literal('MultiPolygon'),
+  coordinates: z.array(PolygonCoordsSchema),
+});
+
+// Mirrors the `AuthoritativeSource` union in
+// packages/spatial-engine/src/types.ts (SQL CHECK in migration 0164).
+const AuthoritativeSourceSchema = z.enum([
+  'user_traced',
+  'overture',
+  'google_open_buildings',
+  'osm',
+  'sam_assisted',
+  'gps_walk',
+  'cadastral_authority',
+  'microsoft_ml_footprints',
+  'unknown',
+]);
+
+const CreateParcelBodySchema = z.object({
+  name: z.string().trim().min(1).max(256),
+  boundary: MultiPolygonSchema,
+  propertyId: z.string().trim().min(1).max(128).optional(),
+  authoritativeSource: AuthoritativeSourceSchema.optional(),
+  accuracyM: z.number().finite().nonnegative().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+const PatchParcelBodySchema = z.object({
+  name: z.string().trim().min(1).max(256).optional(),
+  boundary: MultiPolygonSchema.optional(),
+  propertyId: z.string().trim().min(1).max(128).optional(),
+  authoritativeSource: AuthoritativeSourceSchema.optional(),
+  accuracyM: z.number().finite().nonnegative().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
 // ---------------------------------------------------------------------------
 // In-memory store (Phase E.5 default; swapped by composition root).
 // ---------------------------------------------------------------------------
@@ -277,21 +328,32 @@ export async function registerParcelsRoutes(
   app.post('/parcels', withSecurityEventsFastify({ action: 'parcel.create', resource: 'parcel', severity: 'info' }, async (request, reply) => {
     const tenantId = await tenantOrFail(request, reply);
     if (!tenantId) return { error: 'unauthorised: tenant could not be resolved' };
-    const body = (request.body ?? {}) as Partial<CreateParcelInput>;
-    if (!body.name || !isMultiPolygon(body.boundary)) {
+    const parsed = CreateParcelBodySchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      reply.code(400);
+      return {
+        error: 'name + boundary(MultiPolygon) required',
+        details: parsed.error.flatten(),
+      };
+    }
+    const { name, boundary, propertyId, authoritativeSource, accuracyM, metadata } =
+      parsed.data;
+    // The zod schema validates structure; `isMultiPolygon` re-narrows
+    // `boundary` to the exact `GeoJsonMultiPolygon` tuple-position type
+    // the store expects (zod infers `number[]`; the domain type is a
+    // `[lng, lat]` tuple — the guard bridges that gap).
+    if (!isMultiPolygon(boundary)) {
       reply.code(400);
       return { error: 'name + boundary(MultiPolygon) required' };
     }
     const parcel = await store.create({
       tenantId,
-      name: body.name,
-      boundary: body.boundary,
-      ...(body.propertyId ? { propertyId: body.propertyId } : {}),
-      ...(body.authoritativeSource
-        ? { authoritativeSource: body.authoritativeSource }
-        : {}),
-      ...(body.accuracyM !== undefined ? { accuracyM: body.accuracyM } : {}),
-      ...(body.metadata ? { metadata: body.metadata } : {}),
+      name,
+      boundary,
+      ...(propertyId ? { propertyId } : {}),
+      ...(authoritativeSource ? { authoritativeSource } : {}),
+      ...(accuracyM !== undefined ? { accuracyM } : {}),
+      ...(metadata ? { metadata } : {}),
     });
     reply.code(201);
     return { parcel };
@@ -301,12 +363,30 @@ export async function registerParcelsRoutes(
     const tenantId = await tenantOrFail(request, reply);
     if (!tenantId) return { error: 'unauthorised: tenant could not be resolved' };
     const { id } = request.params as { id: string };
-    const body = (request.body ?? {}) as PatchParcelInput;
-    if (body.boundary !== undefined && !isMultiPolygon(body.boundary)) {
+    const parsed = PatchParcelBodySchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      reply.code(400);
+      return {
+        error: 'invalid parcel patch payload',
+        details: parsed.error.flatten(),
+      };
+    }
+    const { name, boundary, propertyId, authoritativeSource, accuracyM, metadata } =
+      parsed.data;
+    // Re-narrow boundary (when present) to the exact domain tuple type.
+    if (boundary !== undefined && !isMultiPolygon(boundary)) {
       reply.code(400);
       return { error: 'boundary, if provided, must be a MultiPolygon' };
     }
-    const updated = await store.update(tenantId, id, body);
+    const patch: PatchParcelInput = {
+      ...(name !== undefined ? { name } : {}),
+      ...(boundary !== undefined ? { boundary } : {}),
+      ...(propertyId !== undefined ? { propertyId } : {}),
+      ...(authoritativeSource !== undefined ? { authoritativeSource } : {}),
+      ...(accuracyM !== undefined ? { accuracyM } : {}),
+      ...(metadata !== undefined ? { metadata } : {}),
+    };
+    const updated = await store.update(tenantId, id, patch);
     if (!updated) {
       reply.code(404);
       return { error: 'parcel not found' };

@@ -56,6 +56,7 @@ import { z } from 'zod';
 
 import { authMiddleware } from '../../middleware/hono-auth';
 import { databaseMiddleware } from '../../middleware/database';
+import { getSharedPerTenantRateBudget } from '../../middleware/per-tenant-rate-budget';
 import { createLogger } from '../../utils/logger';
 import {
   ingest,
@@ -121,6 +122,7 @@ const optionalMetadataSchema = z
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
+app.use('*', getSharedPerTenantRateBudget({ surface: 'brain' }).handler);
 
 /**
  * POST / — accept a single document upload, drive it through the

@@ -39,9 +39,7 @@ export class DocxtemplaterRenderer implements IDocumentRenderer {
         // Dynamic imports so the module loads even if the optional deps
         // are hoisted out at runtime; docxtemplater + pizzip are declared
         // in domain-services/package.json.
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
         PizZipCtor = (await import('pizzip')).default;
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
         DocxtemplaterCtor = (await import('docxtemplater')).default;
       } catch (err) {
         throw new RendererError(

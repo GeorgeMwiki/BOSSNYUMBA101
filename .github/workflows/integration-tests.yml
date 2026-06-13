@@ -40,28 +40,16 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
   PNPM_VERSION: '8.15.0'
 
 jobs:
   database-integration:
     name: Database integration tests (real Postgres)
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: bossnyumba
-          POSTGRES_PASSWORD: bossnyumba
-          POSTGRES_DB: bossnyumba_integration
-        ports:
-          - 5432:5432
-        # Block until the server accepts connections before any step runs.
-        options: >-
-          --health-cmd "pg_isready -U bossnyumba"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 30
+    # No docker postgres image ships BOTH postgis and pgvector, and the
+    # migration chain needs both — so we install a runner-local PG17 cluster
+    # with both extensions (mirrors migration-apply-check.yml) below.
     env:
       # Canonical connection string consumed by createDatabaseClient and
       # run-migrations (db:migrate). Setting it here flips RUN=true in the
@@ -88,29 +76,36 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Wait for Postgres to be ready
+      - name: Install + start PostgreSQL 17 + PostGIS + pgvector (PGDG)
+        # The migration chain needs vector (15x), postgis (7x), postgis_topology
+        # and btree_gist. The vanilla postgres docker image ships none of them,
+        # which is why the old service-image run failed on `type "vector" does
+        # not exist`. Install the runner cluster with both extensions instead.
         run: |
           set -e
-          for i in $(seq 1 30); do
-            if pg_isready -h localhost -p 5432 -U bossnyumba >/dev/null 2>&1; then
-              echo "Postgres ready after ${i}s"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "::error::Postgres did not become ready within 30s"
-          exit 1
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-17 postgresql-17-postgis-3 postgresql-17-pgvector
+          sudo systemctl stop postgresql 2>/dev/null || true
+          for v in 16 17; do sudo pg_dropcluster --stop "$v" main 2>/dev/null || true; done
+          sudo pg_createcluster 17 main -p 5432 -- --auth-local=trust --auth-host=trust
+          sudo pg_ctlcluster 17 main start
+          for i in $(seq 1 30); do sudo -u postgres pg_isready -p 5432 >/dev/null 2>&1 && break; sleep 1; done
+          sudo -u postgres psql -p 5432 -v ON_ERROR_STOP=1 -c "CREATE ROLE bossnyumba LOGIN SUPERUSER PASSWORD 'bossnyumba'"
+          sudo -u postgres psql -p 5432 -v ON_ERROR_STOP=1 -c "CREATE DATABASE bossnyumba_integration OWNER bossnyumba"
 
-      - name: Enable pgvector extension
-        # Several migrations (e.g. 0188, 0133, 0026) CREATE EXTENSION vector
-        # or declare vector columns. Provision it up front so db:migrate does
-        # not fail on a fresh DB.
+      - name: Enable required extensions (vector, postgis, btree_gist)
+        # The migrations themselves CREATE EXTENSION IF NOT EXISTS, but provision
+        # the critical pair up front so a failure here is loud, not deep in apply.
         env:
           PGPASSWORD: bossnyumba
         run: |
-          psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_integration \
-            -c "CREATE EXTENSION IF NOT EXISTS vector" 2>&1 | tail -3 || \
-            echo "::warning::pgvector not available — migrations that depend on it may fail"
+          set -e
+          for ext in vector postgis postgis_topology btree_gist; do
+            psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_integration -v ON_ERROR_STOP=1 \
+              -c "CREATE EXTENSION IF NOT EXISTS \"$ext\""
+          done
 
       - name: Seed Supabase roles (authenticated, anon, service_role)
         # Vanilla postgres:16 has none of the Supabase JWT-claim roles the RLS
@@ -141,6 +136,13 @@ jobs:
         # *.sql in migrations/ in order. The DB-integration tests insert into
         # tenants/users directly, so the schema must exist before they run.
         run: pnpm migrate
+
+      - name: Build internal packages (dist/ for workspace imports)
+        # packages/database tests import @bossnyumba/domain-models (and others)
+        # via the `import` condition → dist/index.js. Without a build, vitest
+        # fails 37 suites with "Failed to resolve entry for package
+        # @bossnyumba/domain-models". Mirror the strict-ci unit-test job.
+        run: pnpm -r --filter './packages/*' build || true
 
       - name: Run database integration tests
         # DATABASE_URL + LIVE_DB are inherited from the job env, so the

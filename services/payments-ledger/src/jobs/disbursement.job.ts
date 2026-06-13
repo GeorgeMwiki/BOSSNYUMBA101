@@ -5,7 +5,8 @@
 import { TenantId, OwnerId } from '@bossnyumba/domain-models';
 import {
   DisbursementService,
-  DisbursementResult
+  DisbursementResult,
+  isCleanDisbursementSuccess
 } from '../services/disbursement.service';
 import { ILogger } from '../services/payment-orchestration.service';
 
@@ -120,19 +121,29 @@ export class DisbursementJob {
         const result = await this.disbursementService.processDisbursement({
           tenantId,
           ownerId: owner.ownerId,
-          destination
+          destination,
+          // Deterministic per owner+day: a re-run or overlapping tick returns the
+          // original disbursement (atomic-claim) instead of double-paying the owner.
+          idempotencyKey: `sched:${tenantId}:${owner.ownerId}:${new Date().toISOString().slice(0, 10)}`,
         });
 
         results.push(result);
 
-        if (result.status !== 'FAILED') {
+        // Only a CLEAN success (en route / delivered) tallies as succeeded +
+        // disbursed. NEEDS_REVERSAL (money debited, not delivered) is an
+        // attention/failure outcome, surfaced with its reason + status — never
+        // counted as money that reached an owner. Mirror of Borjie
+        // disbursement.job.ts:129-143.
+        if (isCleanDisbursementSuccess(result.status)) {
           succeededCount++;
           totalDisbursed += result.amount.amountMinorUnits;
           currency = result.amount.currency;
         } else {
           failedCount++;
           if (result.failureReason) {
-            errors.push(`Owner ${owner.ownerId}: ${result.failureReason}`);
+            errors.push(
+              `Owner ${owner.ownerId} [${result.status}]: ${result.failureReason}`,
+            );
           }
         }
 
@@ -198,7 +209,9 @@ export class DisbursementJob {
     return this.disbursementService.processDisbursement({
       tenantId,
       ownerId,
-      destination
+      destination,
+      // Deterministic per owner+day; a replay returns the original row, not a 2nd payout.
+      idempotencyKey: `single:${tenantId}:${ownerId}:${new Date().toISOString().slice(0, 10)}`,
     });
   }
 

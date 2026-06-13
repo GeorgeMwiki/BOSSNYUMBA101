@@ -28,6 +28,9 @@ interface CorporateTenantStepProps {
 
 type FieldErrors = Readonly<Partial<Record<keyof CorporateTenantDraft, string>>>;
 
+// eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: TZ-launch default dial code placeholder in marketing signup form; locale selection handles expansion markets
+const TZ_PHONE_PLACEHOLDER = '+255712345678';
+
 /**
  * Step 2b — business-tenant details form.
  *
@@ -246,7 +249,7 @@ export function CorporateTenantStep({
             data-testid="tenant-business-contact-phone"
             autoComplete="tel"
             inputMode="tel"
-            placeholder="+255712345678"
+            placeholder={TZ_PHONE_PLACEHOLDER}
             value={draft.contactPhoneE164}
             onChange={(e) =>
               update('contactPhoneE164', e.currentTarget.value)

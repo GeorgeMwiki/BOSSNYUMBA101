@@ -4,6 +4,8 @@ import { colors } from '../../theme/colors'
 import { fontSize, radius, spacing } from '../../theme/spacing'
 import { PreviewBanner } from '../../components/PreviewBanner'
 import { enqueueWrite } from '../../sync/queue'
+import { useI18n } from '../../i18n/useI18n'
+import type { Lang } from '../../auth/types'
 import { PRIMARY_CTA_DP, type AttendanceShift } from './types'
 
 export interface ShiftStatusHeroProps {
@@ -12,6 +14,31 @@ export interface ShiftStatusHeroProps {
   readonly error: Error | null
   readonly online: boolean
   readonly userId: string | null
+}
+
+/**
+ * Single-language-per-locale copy for the shift hero. The active locale
+ * (from `useI18n`) selects ONE language — never both — per the CLAUDE.md
+ * hard rule (no "Anza zamu / Start shift" mixing). Mirrors the
+ * `home/manager/copy.ts` bilingual map pattern until the per-screen i18n
+ * catalogue entry lands.
+ */
+const SHIFT_COPY = Object.freeze({
+  loadingShift: { sw: 'Inapakia hali ya zamu…', en: 'Loading shift…' },
+  site: { sw: 'Eneo', en: 'Site' },
+  startShift: { sw: 'Anza zamu', en: 'Start shift' },
+  startShiftAt: { sw: 'Anza zamu', en: 'Start shift' },
+  start: { sw: 'Anza', en: 'Start' },
+  shiftInProgress: { sw: 'Zamu inaendelea', en: 'Shift in progress' },
+  endShift: { sw: 'Maliza zamu', en: 'End shift' },
+  end: { sw: 'Maliza', en: 'End' },
+  shiftEnded: { sw: 'Zamu imeisha leo', en: 'Shift ended for today' },
+  shiftStatus: { sw: 'Hali ya zamu', en: 'Shift status' },
+})
+
+function copy(key: keyof typeof SHIFT_COPY, lang: Lang): string {
+  const entry = SHIFT_COPY[key]
+  return lang === 'sw' ? entry.sw : entry.en
 }
 
 function elapsedLabel(seconds: number): string {
@@ -31,6 +58,7 @@ export function ShiftStatusHero({
   online,
   userId
 }: ShiftStatusHeroProps): JSX.Element {
+  const { lang } = useI18n()
   const onClockIn = useCallback((): void => {
     if (!userId) {
       return
@@ -47,7 +75,7 @@ export function ShiftStatusHero({
 
   const body = useMemo<JSX.Element>(() => {
     if (loading) {
-      return <Text style={styles.lead}>Inapakia hali ya zamu… / Loading shift…</Text>
+      return <Text style={styles.lead}>{copy('loadingShift', lang)}</Text>
     }
     if (error) {
       return <PreviewBanner kind="env-missing" />
@@ -55,19 +83,20 @@ export function ShiftStatusHero({
     if (!shift) {
       return <PreviewBanner kind="no-data" />
     }
+    const siteName = shift.siteName ?? copy('site', lang)
     if (shift.state === 'not-started') {
       return (
         <View>
-          <Text style={styles.headline}>Anza zamu</Text>
-          <Text style={styles.sub}>Start shift · {shift.siteName ?? 'Eneo'}</Text>
+          <Text style={styles.headline}>{copy('startShift', lang)}</Text>
+          <Text style={styles.sub}>{`${copy('startShiftAt', lang)} · ${siteName}`}</Text>
           <Pressable
             onPress={onClockIn}
             accessibilityRole="button"
-            accessibilityLabel="Anza zamu / Start shift"
+            accessibilityLabel={copy('startShift', lang)}
             style={({ pressed }) => [styles.cta, pressed ? styles.ctaPressed : null]}
             testID="employee-home-clock-in"
           >
-            <Text style={styles.ctaText}>Anza / Start</Text>
+            <Text style={styles.ctaText}>{copy('start', lang)}</Text>
           </Pressable>
         </View>
       )
@@ -77,27 +106,27 @@ export function ShiftStatusHero({
         <View>
           <Text style={styles.timer}>{elapsedLabel(shift.elapsedSeconds)}</Text>
           <Text style={styles.sub}>
-            Zamu inaendelea · {shift.siteName ?? 'Eneo'} / Shift in progress
+            {`${copy('shiftInProgress', lang)} · ${siteName}`}
           </Text>
           <Pressable
             onPress={onClockOut}
             accessibilityRole="button"
-            accessibilityLabel="Maliza zamu / End shift"
+            accessibilityLabel={copy('endShift', lang)}
             style={({ pressed }) => [styles.ctaSecondary, pressed ? styles.ctaPressed : null]}
             testID="employee-home-clock-out"
           >
-            <Text style={styles.ctaSecondaryText}>Maliza / End</Text>
+            <Text style={styles.ctaSecondaryText}>{copy('end', lang)}</Text>
           </Pressable>
         </View>
       )
     }
-    return <Text style={styles.lead}>Zamu imeisha leo / Shift ended for today</Text>
-  }, [loading, error, shift, onClockIn, onClockOut])
+    return <Text style={styles.lead}>{copy('shiftEnded', lang)}</Text>
+  }, [loading, error, shift, onClockIn, onClockOut, lang])
 
   return (
     <View
       style={[styles.wrap, online ? null : styles.wrapOffline]}
-      accessibilityLabel="Hali ya zamu / Shift status"
+      accessibilityLabel={copy('shiftStatus', lang)}
     >
       {body}
     </View>

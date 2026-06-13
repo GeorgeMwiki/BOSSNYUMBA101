@@ -41,7 +41,15 @@ import {
   createMultiLLMSynthesizer,
   type SynthesizerProposerRegistration,
 } from '@bossnyumba/ai-copilot/providers';
+// Intelligence-Elasticity: Anthropic proposer/synthesizer models resolve
+// through the composition-root tier map (standard=Sonnet-class proposer,
+// deep=Fable-class growth-core merge LLM); GPT-5 / DeepSeek resolve through
+// the dynamic model registry on their per-category bests. The growth core
+// pins NO model FAMILY at the call site — the `deep` tier maps to the front
+// of the Anthropic capability rank (Fable today, env-overridable), so a
+// superior new family takes core reasoning with zero call-site change.
 import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
+import { resolveTierModel } from './model-tier-map.js';
 import type { BrainPort, BrainRequest, BrainResponse, BrainCitation } from '@bossnyumba/role-aware-advisor';
 
 export interface WireMultiLLMBrainOpts {
@@ -74,7 +82,7 @@ function buildProposers(env: Readonly<Record<string, string | undefined>>): Prop
       registration: {
         id: 'anthropic-sonnet',
         provider: new AnthropicProvider({ apiKey: anthropicKey }),
-        model: getModelLatest('sonnet'),
+        model: resolveTierModel('standard', env),
       },
     });
   }
@@ -129,9 +137,16 @@ export function wireMultiLLMBrain(opts: WireMultiLLMBrainOpts = {}): BrainPort |
   }
 
   const synthesizer: SynthesizerProposerRegistration = {
+    // Growth core (apex merge LLM) runs the frontier model and is never
+    // cost-downgraded — the compounding-growth carve-out. It resolves by TIER
+    // (`deep`), NOT by a family literal: the `deep` tier maps to the front of
+    // the Anthropic capability rank — Fable today (rank-7), env-overridable —
+    // so the growth core stays frontier-on-growth-core without pinning the
+    // fable family at the call site (the doctrine resistor rule). Proposers
+    // stay on their per-category bests below.
     id: 'anthropic-opus',
     provider: new AnthropicProvider({ apiKey: anthropicKey }),
-    model: getModelLatest('opus'),
+    model: resolveTierModel('deep', env),
   };
 
   const synth = createMultiLLMSynthesizer({
@@ -174,8 +189,8 @@ export function wireMultiLLMBrain(opts: WireMultiLLMBrainOpts = {}): BrainPort |
           version: 1,
           modelConfig: {
             // Placeholder only — the synthesizer overrides modelId per
-            // proposer/synthesizer at dispatch. Resolved via the registry.
-            modelId: getModelLatest('sonnet'),
+            // proposer/synthesizer at dispatch. Resolved via the tier map.
+            modelId: resolveTierModel('standard', env),
             maxTokens: Math.min(Math.max(req.maxTokens ?? 600, 64), 4096),
             temperature: 0.2,
           },

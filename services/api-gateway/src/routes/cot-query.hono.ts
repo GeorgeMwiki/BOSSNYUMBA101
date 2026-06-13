@@ -51,6 +51,7 @@
 // dsar.router / head-briefing). The handlers below are typed via the
 // service-context envelope.
 
+import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
@@ -202,7 +203,7 @@ async function emitAudit(
     if (!bus || typeof bus.publish !== 'function') return;
     await bus.publish({
       event: {
-        eventId: `cot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        eventId: `cot_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 6)}`,
         eventType,
         timestamp: new Date().toISOString(),
         tenantId: payload.tenantId ?? 'unknown',

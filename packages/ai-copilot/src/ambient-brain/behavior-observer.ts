@@ -9,6 +9,8 @@
  * is enforced by keying all state on (tenantId, userId).
  */
 
+import { randomUUID } from 'node:crypto';
+
 import {
   DEFAULT_OBSERVER_CONFIG,
   type BehaviorEvent,
@@ -285,9 +287,9 @@ export class BehaviorObserver {
     messages: { en: string; sw: string },
   ): ProactiveIntervention {
     return {
-      id: `int_${event.tenantId}_${Date.now()}_${Math.random()
-        .toString(36)
-        .slice(2, 8)}`,
+      id: `int_${event.tenantId}_${Date.now()}_${randomUUID()
+        .replace(/-/g, '')
+        .slice(0, 6)}`,
       tenantId: event.tenantId,
       userId: event.userId,
       type,

@@ -5,6 +5,7 @@
  * Wave 28 AGENT ORCHESTRATE.
  */
 
+import { randomUUID } from 'node:crypto';
 import {
   MOVE_OUT_STEPS,
   type ApproveStepInput,
@@ -54,7 +55,8 @@ export class MoveOutOrchestrator {
     this.maxRetries = deps.maxRetries ?? DEFAULT_MAX_RETRIES;
     this.clock = deps.clock ?? (() => new Date());
     this.idGen =
-      deps.idGen ?? (() => `mo_${Math.random().toString(36).slice(2)}_${Date.now()}`);
+      deps.idGen ??
+      (() => `mo_${randomUUID().replace(/-/g, '').slice(0, 11)}_${Date.now()}`);
   }
 
   async triggerRun(input: TriggerRunInput): Promise<TriggerRunResult> {

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * HQ-tool registry composition — wires the 12 `platform.*` BrainTools
  * onto a `BrainToolRegistry` at api-gateway boot.
@@ -927,6 +926,7 @@ export function createConsolidationWorkerAdapter(deps: {
         });
         const finishedAt = clock().toISOString();
         return {
+          // eslint-disable-next-line no-restricted-syntax -- reason: telemetry tick correlation ID, not a secret or security token
           tickId: `tick_${startedAt}_${Math.random().toString(36).slice(2, 8)}`,
           tenantId: args.tenantId,
           applied: !args.dryRun,

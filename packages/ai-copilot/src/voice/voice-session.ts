@@ -13,6 +13,7 @@
  * audio refs) is delegated to the classroom `session-recorder.ts`.
  */
 
+import { randomUUID } from 'node:crypto';
 import type { VoiceRouter } from './voice-router.js';
 import type {
   VoiceLanguage,
@@ -72,7 +73,7 @@ export function createVoiceSession(
   config: VoiceSessionConfig
 ): VoiceSessionHandle {
   let session: VoiceSession = {
-    id: `vs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    id: `vs_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 6)}`,
     language: config.language,
     createdAt: new Date().toISOString(),
     turns: [],

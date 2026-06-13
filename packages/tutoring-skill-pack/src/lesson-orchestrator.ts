@@ -317,7 +317,7 @@ export function synthesizePassingReply(pattern: string): string {
   // Take the first alternation branch (no parens, '|' top-level).
   if (cleaned.includes('|')) {
     const first = cleaned.split('|')[0] ?? '';
-    return first.replace(/[\\^$.()+?\[\]{}]/g, '').trim() || 'yes';
+    return first.replace(/[\\^$.()+?[\]{}]/g, '').trim() || 'yes';
   }
-  return cleaned.replace(/[\\^$.()+?\[\]{}]/g, '').trim() || 'yes';
+  return cleaned.replace(/[\\^$.()+?[\]{}]/g, '').trim() || 'yes';
 }

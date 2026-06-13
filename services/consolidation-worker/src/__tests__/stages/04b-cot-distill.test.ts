@@ -221,6 +221,7 @@ describe('runCotDistillStage', () => {
       sink,
       idFactory: () => {
         // Deterministic id that mentions the thoughtId for the throwOnId test.
+        // eslint-disable-next-line no-restricted-syntax -- test fixture id; uniqueness suffices, not security-sensitive
         return `refl_${Math.random().toString(36).slice(2, 6)}`;
       },
     });

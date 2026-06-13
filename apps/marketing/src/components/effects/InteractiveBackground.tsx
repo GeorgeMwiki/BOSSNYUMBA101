@@ -108,17 +108,23 @@ export function InteractiveBackground({
       const mouse = mouseRef.current;
       if (mouse && now - lastSpawnRef.current > 50) {
         if (particlesRef.current.length < maxParticles) {
+          // eslint-disable-next-line no-restricted-syntax -- reason: cosmetic animation value, not an ID or secret
           const angle = Math.random() * Math.PI * 2;
+          // eslint-disable-next-line no-restricted-syntax -- reason: cosmetic animation value, not an ID or secret
           const speed = 0.2 + Math.random() * 0.4;
           particlesRef.current = [
             ...particlesRef.current,
             {
               id: nextId++,
+              // eslint-disable-next-line no-restricted-syntax -- reason: cosmetic animation value, not an ID or secret
               x: mouse.x + (Math.random() - 0.5) * 16,
+              // eslint-disable-next-line no-restricted-syntax -- reason: cosmetic animation value, not an ID or secret
               y: mouse.y + (Math.random() - 0.5) * 16,
               vx: Math.cos(angle) * speed,
               vy: Math.sin(angle) * speed,
+              // eslint-disable-next-line no-restricted-syntax -- reason: cosmetic animation value, not an ID or secret
               radius: 1 + Math.random() * 2,
+              // eslint-disable-next-line no-restricted-syntax -- reason: cosmetic animation value, not an ID or secret
               alpha: 0.4 + Math.random() * 0.4,
             },
           ];

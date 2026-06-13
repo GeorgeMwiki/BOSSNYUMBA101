@@ -33,7 +33,6 @@ import { isPlatformAdmin, type UserRole } from '../types/user-role';
 // any — Drizzle's select-builder generic chain widens through union
 // generics in a way that adds no runtime safety. Rows are narrowed via
 // the `.select({…})` projection below.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DrizzleDb = any;
 
 // ─────────────────────────────────────────────────────────────────────

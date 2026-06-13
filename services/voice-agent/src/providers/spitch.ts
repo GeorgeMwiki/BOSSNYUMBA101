@@ -15,7 +15,6 @@
  *
  * Required env (when implemented): `SPITCH_API_KEY`.
  */
-/* eslint-disable no-console */
 
 import { liveProviderTestsEnabled, readEnv, warnOnce } from './_runtime.js';
 import type {

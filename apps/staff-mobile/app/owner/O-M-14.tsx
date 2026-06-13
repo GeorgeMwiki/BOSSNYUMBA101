@@ -136,7 +136,7 @@ function StoresAndPurchases(): JSX.Element {
     }
   })
 
-  const items = query.data ?? []
+  const items = useMemo(() => query.data ?? [], [query.data])
 
   const counts = useMemo(() => {
     return items.reduce(

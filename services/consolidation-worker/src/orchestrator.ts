@@ -20,6 +20,7 @@
  * line so an operator can verify the cascade without OTel either.
  */
 
+import { randomUUID } from 'node:crypto';
 import { runIngestStage, type IngestSources } from './stages/01-ingest.js';
 import { runClusterStage } from './stages/02-cluster.js';
 import {
@@ -128,7 +129,7 @@ export async function runConsolidationOrchestrator(
   const logger = deps.logger;
   const errors: string[] = [];
   const tracer = deps.tracer ?? createNoopTracer();
-  const tickId = `tick_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
+  const tickId = `tick_${Date.now().toString(36)}_${randomUUID().replace(/-/g, '').slice(0, 8)}`;
 
   return tracer.startTick(tickId, async (runStage) => {
     // STAGE 01 — ingest

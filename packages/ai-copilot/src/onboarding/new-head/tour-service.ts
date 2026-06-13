@@ -12,6 +12,7 @@
  * throw so the UI can route the user back.
  */
 
+import { randomUUID } from 'node:crypto';
 import { buildInitialSteps, composeTour } from './tour-composer.js';
 import type { TourComposerInputs } from './tour-composer.js';
 import type {
@@ -162,7 +163,8 @@ export class NewHeadTourService {
 }
 
 function randomSuffix(): string {
-  return Math.random().toString(36).slice(2, 8);
+  // CSPRNG-backed suffix (not Math.random) for collision-resistant IDs.
+  return randomUUID().replace(/-/g, '').slice(0, 6);
 }
 
 // ---------------------------------------------------------------------------

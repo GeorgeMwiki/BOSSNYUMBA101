@@ -10,17 +10,19 @@
  * `selectedId` URL param state — keeps routing minimal and avoids
  * one-off nested routes.
  *
- * TODO(wave3-int5):
- *   - `useMissions({ status })` -> list
- *   - `useMission(id)` -> detail with step timeline + drift summary
- *   - Wire `applyCheckpoint` mutation for HQ-tier human-in-the-loop.
+ * BN-EXE-09: the `useMissionsStub` dead-end is replaced by a real
+ * `useMissions()` React-Query hook against the `/missions` backend route
+ * (services/api-gateway/src/routes/missions.hono.ts), which drives the
+ * long-horizon-agent step engine.
  */
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
 import { Target, Sparkles, ChevronRight } from 'lucide-react';
 import { Skeleton, EmptyState } from '@bossnyumba/design-system';
 import { useFeatureFlag } from '../../lib/useFeatureFlag';
+import { api } from '../../lib/api';
 
 interface MissionSummary {
   readonly id: string;
@@ -30,8 +32,86 @@ interface MissionSummary {
   readonly driftRisk: 'low' | 'medium' | 'high';
 }
 
-function useMissionsStub(): { data: ReadonlyArray<MissionSummary>; isLoading: boolean } {
-  return useMemo(() => ({ data: [], isLoading: false }), []);
+/** Wire shape returned by GET /api/v1/missions. */
+interface MissionApiSummary {
+  readonly id: string;
+  readonly title: string;
+  readonly status:
+    | 'planning'
+    | 'active'
+    | 'paused'
+    | 'completed'
+    | 'abandoned'
+    | 'escalated';
+  readonly stepCount: number;
+  readonly riskTier: 'LOW' | 'MEDIUM' | 'HIGH' | 'SOVEREIGN';
+}
+
+/**
+ * Map the backend mission status onto the four display states the page +
+ * i18n bundle understand. `planning` reads as `active` (the mission is
+ * live, just decomposing); `abandoned` / `escalated` read as `failed`.
+ */
+function toDisplayStatus(
+  status: MissionApiSummary['status'],
+): MissionSummary['status'] {
+  switch (status) {
+    case 'completed':
+      return 'complete';
+    case 'paused':
+      return 'paused';
+    case 'abandoned':
+    case 'escalated':
+      return 'failed';
+    case 'planning':
+    case 'active':
+    default:
+      return 'active';
+  }
+}
+
+/** Heuristic drift risk from the mission risk tier until checkpoint
+ *  drift-summaries are surfaced on the detail payload. */
+function toDriftRisk(
+  riskTier: MissionApiSummary['riskTier'],
+): MissionSummary['driftRisk'] {
+  if (riskTier === 'HIGH' || riskTier === 'SOVEREIGN') return 'high';
+  if (riskTier === 'MEDIUM') return 'medium';
+  return 'low';
+}
+
+function useMissions(): {
+  data: ReadonlyArray<MissionSummary>;
+  isLoading: boolean;
+} {
+  const query = useQuery({
+    queryKey: ['missions'],
+    queryFn: async () => {
+      const res = await api.get<MissionApiSummary[]>('/missions');
+      if (!res.success || res.data === undefined) {
+        const message =
+          typeof res.error === 'string'
+            ? res.error
+            : res.error?.message ?? 'Missions unavailable';
+        throw new Error(message);
+      }
+      return res.data;
+    },
+  });
+
+  const data = useMemo<ReadonlyArray<MissionSummary>>(
+    () =>
+      (query.data ?? []).map((m) => ({
+        id: m.id,
+        title: m.title,
+        status: toDisplayStatus(m.status),
+        stepCount: m.stepCount,
+        driftRisk: toDriftRisk(m.riskTier),
+      })),
+    [query.data],
+  );
+
+  return { data, isLoading: query.isLoading };
 }
 
 const RISK_COLOR: Record<MissionSummary['driftRisk'], string> = {
@@ -43,7 +123,7 @@ const RISK_COLOR: Record<MissionSummary['driftRisk'], string> = {
 export function MissionsPage(): JSX.Element {
   const t = useTranslations('missions');
   const enabled = useFeatureFlag('missions_enabled');
-  const { data, isLoading } = useMissionsStub();
+  const { data, isLoading } = useMissions();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const selected = useMemo(

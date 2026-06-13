@@ -7,26 +7,28 @@ changes in production. Migrations are **forward-only by default**
 
 ---
 
-## 1. Which runner applies what
+## 1. The canonical runner
 
-Two distinct runners live in the repo. They use different audit tables
-and run in different contexts.
+There is exactly ONE migration runner and ONE ledger in this repo.
 
 | Runner                                   | Audit table                         | Entry point                       | Use                                    |
 | ---------------------------------------- | ----------------------------------- | --------------------------------- | -------------------------------------- |
-| `packages/database/src/run-migrations.ts` | `drizzle.__drizzle_migrations` (hash-keyed) | `pnpm -F @bossnyumba/database db:migrate` | Local dev, CI, container entry scripts |
-| `scripts/migrate-prod.ts` (via `scripts/migrate-prod.sh`) | `_migrations` (version + sha256 + duration + operator_env) | `scripts/migrate-prod.sh [--dry-run]` | Production apply with full audit trail |
+| `packages/database/src/run-migrations.ts` | `drizzle.__drizzle_migrations` (hash-keyed) | `pnpm --filter @bossnyumba/database run db:migrate` | Local dev, CI, container boot, production |
 
-Both read SQL files from `packages/database/src/migrations/` sorted
-lexically (90 files as of 2026-04-18). Both skip anything already
-recorded. Pick `migrate-prod.sh` for any production-facing run — the
-`_migrations` row records duration + sha256 + operator for audit.
+`scripts/migrate-prod.ts` (invoked via `scripts/migrate-prod.sh`) is a
+**thin operator wrapper** around that same runner: it parses
+`--dry-run` / `--json` and prints the pending plan, then delegates the
+apply to `runMigrations()`. It does **not** maintain a second ledger.
+The old `_migrations` table (version + sha256 + duration + operator_env)
+was removed — two ledgers meant a box already migrated via `db:migrate`
+would see an empty `_migrations` table and RE-APPLY the entire chain.
 
-Path safety in the dev runner lives at
-`packages/database/src/run-migrations.ts:21-39` — an allowlist
-(`^[A-Za-z0-9_.-]+\.sql$`) + `resolve`/`relative` check rejects
-traversal. The production runner has equivalent validation (sha256 per
-file).
+The runner reads SQL files from `packages/database/src/migrations/`
+sorted in `localeCompare` order and skips anything already recorded in
+`drizzle.__drizzle_migrations` (idempotent). Path safety lives in
+`packages/database/src/run-migrations.ts` — an allowlist
+(`^[A-Za-z0-9_.-]+\.sql$`) plus a `resolve`/`relative` check rejects
+traversal.
 
 ---
 
@@ -125,9 +127,10 @@ Exit codes (see `scripts/migrate-prod.sh:6-10`): `0` applied, `1` error,
 `2` already up-to-date. CI gating on exit `2` is the "no-pending" fast
 path.
 
-On success you will see one `_migrations` row per applied file with
-`version`, `applied_at`, `duration_ms`, `sha256`, `operator_env`
-(`scripts/migrate-prod.ts:152-157`).
+On success each applied file is recorded as one row in the single
+canonical ledger `drizzle.__drizzle_migrations`. The `--dry-run` plan
+prints the pending file list (with parsed version + sha256), but only
+`runMigrations()` writes the ledger.
 
 ---
 
@@ -139,8 +142,9 @@ is always a hand-crafted counter-migration.
 
 Steps (from `Docs/OPERATIONS.md:86-93`):
 
-1. Identify the offending version in `_migrations` with `applied_at`
-   close to the incident start.
+1. Identify the offending migration in `drizzle.__drizzle_migrations`
+   (cross-reference the filename in `packages/database/src/migrations/`)
+   near the incident start.
 2. **Roll the application first** to a task-definition revision
    compatible with the pre-migration schema (ECS revert procedure at
    `Docs/RUNBOOK.md:346-365`).
@@ -153,10 +157,12 @@ Steps (from `Docs/OPERATIONS.md:86-93`):
    `ALTER TABLE ... ADD COLUMN` / `DROP CONSTRAINT` / `CREATE INDEX
    CONCURRENTLY`. Avoid `DROP TABLE`, `DROP COLUMN`, and destructive
    `UPDATE` without a backup.
-4. Apply via `scripts/migrate-prod.sh`. The forward audit row lands
-   next to the offending one — both stay in `_migrations` for trail.
-5. **Never** delete rows from `_migrations` — the audit trail is
-   sacrosanct (`Docs/OPERATIONS.md:92`).
+4. Apply via the canonical runner — `pnpm --filter @bossnyumba/database
+   run db:migrate` (or `scripts/migrate-prod.sh`, which wraps it). The
+   forward row lands next to the offending one — both stay in
+   `drizzle.__drizzle_migrations` for the trail.
+5. **Never** delete rows from `drizzle.__drizzle_migrations` — the
+   ledger is the migration source of truth.
 
 ### Full snapshot restore
 

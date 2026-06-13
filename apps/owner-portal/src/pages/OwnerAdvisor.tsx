@@ -1,5 +1,11 @@
 /**
- * OwnerAdvisor — streams SSE from /api/v1/ai/chat.
+ * OwnerAdvisor — consumes GENUINE token streaming over SSE from
+ * /api/v1/ai/chat. The gateway's `streamTurn` now feeds an `onToken` sink off
+ * the Anthropic SSE wire, so each `delta` arrives the instant the model
+ * produces it (real-time output, not a typewriter replay of a finished turn).
+ * Locale purity is preserved end-to-end: the persona/estate-mode overlay
+ * constrains the model to a single active language; we only deliver that text
+ * incrementally.
  *
  * Mount point: /owner/advisor
  */

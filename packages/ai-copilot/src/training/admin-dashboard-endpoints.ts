@@ -7,6 +7,7 @@
  * delivery service.
  */
 
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { TrainingGenerator } from './training-generator.js';
 import type { TrainingAssignmentService } from './training-assignment-service.js';
@@ -131,7 +132,7 @@ export interface TrainingEndpointsDeps {
 }
 
 function defaultId(prefix: string): string {
-  const rand = Math.random().toString(36).slice(2, 10);
+  const rand = randomUUID().replace(/-/g, '').slice(0, 8);
   return `${prefix}_${Date.now()}_${rand}`;
 }
 

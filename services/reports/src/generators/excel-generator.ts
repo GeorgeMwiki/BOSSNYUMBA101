@@ -104,6 +104,6 @@ export class ExcelGenerator implements IReportGenerator {
   }
 
   private sanitizeSheetName(name: string): string {
-    return name.replace(/[\\/*?:\[\]]/g, '').slice(0, 31);
+    return name.replace(/[\\/*?:[\]]/g, '').slice(0, 31);
   }
 }

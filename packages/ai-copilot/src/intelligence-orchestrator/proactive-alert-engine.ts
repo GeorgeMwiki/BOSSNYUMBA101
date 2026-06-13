@@ -21,6 +21,7 @@
  * @module intelligence-orchestrator/proactive-alert-engine
  */
 
+import { randomUUID } from 'node:crypto';
 import type {
   PaymentsSnapshot,
   MaintenanceSnapshot,
@@ -51,7 +52,7 @@ export function generateProactiveAlerts(
   const alerts: ProactiveAlert[] = [];
   const ts = Date.now();
   const nextId = (): string =>
-    `pa-${ts}-${Math.random().toString(36).slice(2, 8)}`;
+    `pa-${ts}-${randomUUID().replace(/-/g, '').slice(0, 6)}`;
 
   // P1: 91+ arrears bucket
   if (input.payments && input.payments.arrearsBuckets['91_plus'] > 0) {

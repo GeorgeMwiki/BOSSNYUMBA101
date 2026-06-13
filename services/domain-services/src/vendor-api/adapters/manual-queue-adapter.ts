@@ -12,6 +12,7 @@
  * Postgres-backed store when the table is ready.
  */
 
+import { randomUUID } from 'node:crypto';
 import type {
   AvailabilityWindow,
   DateRange,
@@ -86,7 +87,7 @@ export class ManualQueueAdapter implements VendorApiAdapter {
     this.now = config.now ?? (() => new Date());
     this.randomId =
       config.randomId ??
-      (() => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
+      (() => `${Date.now().toString(36)}-${randomUUID().replace(/-/g, '').slice(0, 8)}`);
   }
 
   async scheduleDispatch(input: DispatchInput): Promise<DispatchResult> {

@@ -68,6 +68,36 @@ export interface ILedgerRepository {
   findByJournalId(journalId: string, tenantId: TenantId): Promise<LedgerEntry[]>;
 
   /**
+   * Post-once idempotency (durability defect #2). Returns the journalId of a
+   * prior post recorded under `(tenantId, idempotencyKey)`, or null if the key
+   * has never been seen. Backed by the `journal_idempotency` table (migration
+   * 0318) at the per-JOURNAL grain — a balanced journal shares ONE key across
+   * its N entries.
+   *
+   * `tx` (optional) reads inside the same transaction as the post so the
+   * find-or-insert is atomic with the entries + balances.
+   */
+  findJournalIdByIdempotencyKey(
+    tenantId: TenantId,
+    idempotencyKey: string,
+    tx?: RepoTx
+  ): Promise<string | null>;
+
+  /**
+   * Persist a `(tenantId, idempotencyKey) -> journalId` mapping in the SAME
+   * transaction as the journal it dedupes (durability defect #2). The composite
+   * PK (tenant_id, idempotency_key) is the UNIQUE guarantee; a racing duplicate
+   * insert is rejected by the constraint and the caller resolves the original
+   * journal via {@link findJournalIdByIdempotencyKey}.
+   */
+  insertJournalIdempotency(
+    tenantId: TenantId,
+    idempotencyKey: string,
+    journalId: string,
+    tx?: RepoTx
+  ): Promise<void>;
+
+  /**
    * Get entries for an account with pagination
    */
   findByAccount(
@@ -152,22 +182,45 @@ export interface ILedgerRepository {
 export class InMemoryLedgerRepository implements ILedgerRepository {
   private entries: Map<string, LedgerEntry> = new Map();
   private sequenceCounters: Map<string, number> = new Map();
+  /**
+   * Post-once idempotency keys → journalId (durability defect #2). Key is
+   * `${tenantId}:${idempotencyKey}` (the composite-PK grain). Mirrors the
+   * `journal_idempotency` table; in prod the UNIQUE constraint enforces this.
+   */
+  private idempotencyKeys: Map<string, string> = new Map();
 
   /**
    * Test/dev support: snapshot the store so a transaction runner can
    * roll back to it on failure. NOT part of ILedgerRepository — the
    * Drizzle adapter gets real ACID rollback from Postgres.
    */
-  __snapshot(): { entries: Map<string, LedgerEntry>; seq: Map<string, number> } {
+  __snapshot(): {
+    entries: Map<string, LedgerEntry>;
+    seq: Map<string, number>;
+    idempotency: Map<string, string>;
+  } {
     const entries = new Map<string, LedgerEntry>();
     for (const [k, v] of this.entries) entries.set(k, { ...v });
-    return { entries, seq: new Map(this.sequenceCounters) };
+    return {
+      entries,
+      seq: new Map(this.sequenceCounters),
+      idempotency: new Map(this.idempotencyKeys),
+    };
   }
 
-  __restore(snapshot: { entries: Map<string, LedgerEntry>; seq: Map<string, number> }): void {
+  __restore(snapshot: {
+    entries: Map<string, LedgerEntry>;
+    seq: Map<string, number>;
+    idempotency?: Map<string, string>;
+  }): void {
     this.entries = new Map();
     for (const [k, v] of snapshot.entries) this.entries.set(k, { ...v });
     this.sequenceCounters = new Map(snapshot.seq);
+    this.idempotencyKeys = new Map(snapshot.idempotency ?? []);
+  }
+
+  private idempotencyMapKey(tenantId: TenantId, key: string): string {
+    return `${tenantId}:${key}`;
   }
 
   // `tx` is accepted to satisfy the interface; the InMemory store is
@@ -202,6 +255,31 @@ export class InMemoryLedgerRepository implements ILedgerRepository {
       .filter(e => e.journalId === journalId && e.tenantId === tenantId)
       .sort((a, b) => a.sequenceNumber - b.sequenceNumber)
       .map(e => ({ ...e }));
+  }
+
+  // `tx` is accepted to satisfy the interface; the InMemory store is
+  // single-threaded so there is no transaction to enlist.
+  async findJournalIdByIdempotencyKey(
+    tenantId: TenantId,
+    idempotencyKey: string,
+    _tx?: RepoTx,
+  ): Promise<string | null> {
+    return (
+      this.idempotencyKeys.get(this.idempotencyMapKey(tenantId, idempotencyKey)) ??
+      null
+    );
+  }
+
+  async insertJournalIdempotency(
+    tenantId: TenantId,
+    idempotencyKey: string,
+    journalId: string,
+    _tx?: RepoTx,
+  ): Promise<void> {
+    this.idempotencyKeys.set(
+      this.idempotencyMapKey(tenantId, idempotencyKey),
+      journalId,
+    );
   }
 
   async findByAccount(

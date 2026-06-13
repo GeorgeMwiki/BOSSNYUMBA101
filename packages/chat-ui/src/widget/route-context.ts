@@ -53,6 +53,7 @@ export function resolveSubPersona(path: string, portal: PortalId): SubPersona {
 export function extractEntityMentions(path: string): readonly string[] {
   const matches: string[] = [];
   let m: RegExpExecArray | null;
+  // eslint-disable-next-line security/detect-non-literal-regexp -- reason: source is a compile-time constant regex literal (ENTITY_PATTERN.source), not user-supplied input
   const re = new RegExp(ENTITY_PATTERN.source, 'gi');
   while ((m = re.exec(path)) !== null) {
     matches.push(`${m[1].toLowerCase()}:${m[2]}`);

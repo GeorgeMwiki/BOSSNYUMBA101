@@ -136,6 +136,7 @@ export function createPersistentStores(
     // here to avoid the package's missing root barrel.
     wormAuditStore = {
       async append(entry) {
+        // eslint-disable-next-line no-restricted-syntax -- reason: in-memory fallback entryId, not a secret or security token
         return { ...entry, entryId: `mem-${Date.now()}-${Math.random().toString(36).slice(2, 10)}` };
       },
       async list() {

@@ -242,7 +242,6 @@ export class InMemoryEntityStoreService implements IEntityStoreService {
       // Sequential keeps the in-memory implementation deterministic; real
       // J1 implementation MAY parallelize, but the contract only requires
       // per-entity atomicity.
-      // eslint-disable-next-line no-await-in-loop
       results.push(await this.upsertEntity(tenantId, input));
     }
     return results;

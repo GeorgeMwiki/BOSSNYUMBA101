@@ -25,7 +25,6 @@ export interface OpsAuditPayload {
 }
 
 export async function appendOpsAuditEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: any,
   payload: OpsAuditPayload,
 ): Promise<string> {

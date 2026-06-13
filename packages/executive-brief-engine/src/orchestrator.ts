@@ -29,6 +29,7 @@ export interface Persona {
   readonly powerTier: number;
   readonly displayName?: string;
 }
+import { randomUUID } from 'node:crypto';
 import { runStakesAwareDebateOnBrief, type DebatePort } from './debate.js';
 import { emitRecommendedActions, type RoutingRulesPort } from './action-emitter.js';
 import { assembleBrief } from './brief-assembler.js';
@@ -377,7 +378,7 @@ function buildDegradedBrief(input: DegradedArgs): GenerateBriefResult {
     note: `Engine degraded: ${reason}`,
   };
   const stub: ExecutiveBrief = {
-    id: `ebr_stub_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    id: `ebr_stub_${Date.now()}_${randomUUID().replace(/-/g, '')}`,
     tenantId: args.tenantId,
     personaId: args.persona.id,
     scope,

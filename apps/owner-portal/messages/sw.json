@@ -12,7 +12,11 @@
     "closeModal": "Funga kidirisha",
     "evidencePhoto": "Picha ya ushahidi wa ombi la kazi",
     "messageAttachment": "Kiambatisho cha ujumbe",
-    "signaturePreview": "Hakiki ya sahihi"
+    "signaturePreview": "Hakiki ya sahihi",
+    "adaptiveSections": "Sehemu zinazojirekebisha",
+    "openTabs": "Vichupo vilivyo wazi",
+    "tabUpdates": "Masasisho {count}",
+    "closeTab": "Funga {title}"
   },
   "chat": {
     "typingIndicator": "Mshauri anaandika…",

@@ -741,6 +741,7 @@
   },
   "conductInspection": {
     "title": "Conduct Inspection",
+    "unavailableDescription": "Live inspection data is not available yet. This screen will be ready once inspections are connected to your live data. Please check back soon.",
     "overallProgress": "Overall Progress",
     "tipsTitle": "Inspection Tips",
     "tipPhotos": "Take clear photos of any damage or defects",
