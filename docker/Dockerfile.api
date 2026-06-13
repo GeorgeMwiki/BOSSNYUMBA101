@@ -16,7 +16,7 @@ FROM node:22-alpine AS deps
 # E2E api-gateway container exits 1 — the chronic E2E flake on PR #84,
 # #90, and every PR before. They're only present in the deps stage and
 # do not bloat the runner image.
-RUN apk add --no-cache libc6-compat python3 make g++
+RUN apk add --no-cache libc6-compat python3 py3-setuptools make g++
 RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 WORKDIR /app

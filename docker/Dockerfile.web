@@ -17,7 +17,11 @@ FROM node:20-alpine AS deps
 # (canvas via pdfkit, etc.) fall back to source compilation on musl.
 # Without them, `gyp ERR! find Python` aborts the install and the E2E
 # portal-app containers exit 1 — chronic flake fixed in flaky-CI-closure.
-RUN apk add --no-cache libc6-compat python3 make g++
+# py3-setuptools is REQUIRED too: node:20-alpine ships Python 3.12, which
+# removed the stdlib `distutils` module node-gyp imports. setuptools restores
+# it via distutils-precedence.pth — without it the canvas build fails with
+# `ModuleNotFoundError: No module named 'distutils'` → gyp exit 1.
+RUN apk add --no-cache libc6-compat python3 py3-setuptools make g++
 RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 WORKDIR /app
