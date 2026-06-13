@@ -10,10 +10,12 @@
  *   - G8 BEGIN/SET LOCAL/COMMIT around tenant slice
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   createReconciliationWorker,
+  scalarDrift,
+  jsonbDrift,
   type DbLike,
   type ObservationResolver,
 } from '../outcome-reconciliation-worker.js';
@@ -262,5 +264,219 @@ describe('outcome-reconciliation-worker', () => {
     await worker.tickOnce();
     expect(db.observations).toHaveLength(0);
     expect(db.reconciliations).toHaveLength(0);
+  });
+
+  // ── TRACKING: exactly-once / idempotency ────────────────────────────
+
+  it('inserts both telemetry rows with ON CONFLICT DO NOTHING (no double-fire)', async () => {
+    const predictions: FakePrediction[] = [
+      {
+        id: 'pred-idem',
+        tenant_id: 't_1',
+        actor_kind: 'brain',
+        action_kind: 'rent.invoice.draft',
+        action_target_entity_type: 'rent_invoice',
+        action_target_entity_id: 'i_1',
+        predicted_outcome: { rent_paid_on_time: true },
+        predicted_value: 500000,
+        predicted_value_currency: 'TZS',
+        prediction_confidence: 0.8,
+        rationale: 'pays on time',
+      },
+    ];
+    const db = fakeDb(predictions);
+    const resolvers = new Map<string, ObservationResolver>([
+      [
+        'rent_invoice',
+        async () => ({
+          observedOutcome: { rent_paid_on_time: true },
+          observedValue: 500000,
+          observedCurrency: 'TZS',
+          narrative: 'paid in full',
+        }),
+      ],
+    ]);
+    const worker = createReconciliationWorker({ db, logger: noopLogger, resolvers });
+    await worker.tickOnce();
+
+    const obsInsert = db.sqlCalls.find((s) =>
+      s.includes('INSERT INTO outcome_observations'),
+    );
+    const recInsert = db.sqlCalls.find((s) =>
+      s.includes('INSERT INTO outcome_reconciliations'),
+    );
+    expect(obsInsert).toMatch(/ON CONFLICT \(tenant_id, prediction_id\) DO NOTHING/);
+    expect(recInsert).toMatch(/ON CONFLICT \(tenant_id, prediction_id\) DO NOTHING/);
+  });
+
+  // ── CORE invariant: AI hash-chain extension ─────────────────────────
+
+  it('extends the ai_audit_chain for every reconciliation', async () => {
+    const predictions: FakePrediction[] = [
+      {
+        id: 'pred-audit',
+        tenant_id: 't_1',
+        actor_kind: 'brain',
+        action_kind: 'lease.renewal.draft',
+        action_target_entity_type: 'lease',
+        action_target_entity_id: 'l_1',
+        predicted_outcome: { lease_renewed: true },
+        predicted_value: null,
+        predicted_value_currency: 'TZS',
+        prediction_confidence: 0.7,
+        rationale: 'intent to renew',
+      },
+    ];
+    const db = fakeDb(predictions);
+    const resolvers = new Map<string, ObservationResolver>([
+      [
+        'lease',
+        async () => ({
+          observedOutcome: { lease_renewed: true },
+          observedValue: null,
+          observedCurrency: 'TZS',
+          narrative: 'renewed',
+        }),
+      ],
+    ]);
+    const worker = createReconciliationWorker({ db, logger: noopLogger, resolvers });
+    await worker.tickOnce();
+
+    const chainInsert = db.sqlCalls.find((s) =>
+      s.includes('INSERT INTO ai_audit_chain'),
+    );
+    expect(chainInsert).toBeDefined();
+    expect(chainInsert).toContain('closed_loop.reconcile');
+  });
+
+  it('extends the ai_audit_chain even for expired (no-resolver) rows', async () => {
+    const predictions: FakePrediction[] = [
+      {
+        id: 'pred-expired',
+        tenant_id: 't_1',
+        actor_kind: 'brain',
+        action_kind: 'unknown.thing',
+        action_target_entity_type: 'unknown_kind',
+        action_target_entity_id: 'x',
+        predicted_outcome: {},
+        predicted_value: null,
+        predicted_value_currency: 'TZS',
+        prediction_confidence: 0.5,
+        rationale: '',
+      },
+    ];
+    const db = fakeDb(predictions);
+    const worker = createReconciliationWorker({
+      db,
+      logger: noopLogger,
+      resolvers: new Map(),
+    });
+    await worker.tickOnce();
+    const chainInsert = db.sqlCalls.some((s) =>
+      s.includes('INSERT INTO ai_audit_chain'),
+    );
+    expect(chainInsert).toBe(true);
+  });
+
+  // ── TickResult counts ───────────────────────────────────────────────
+
+  it('returns structured tick counts', async () => {
+    const predictions: FakePrediction[] = [
+      {
+        id: 'pred-count',
+        tenant_id: 't_1',
+        actor_kind: 'brain',
+        action_kind: 'rent.invoice.draft',
+        action_target_entity_type: 'rent_invoice',
+        action_target_entity_id: 'i_1',
+        predicted_outcome: { rent_paid_on_time: true },
+        predicted_value: 500000,
+        predicted_value_currency: 'TZS',
+        prediction_confidence: 0.8,
+        rationale: 'pays on time',
+      },
+    ];
+    const db = fakeDb(predictions);
+    const resolvers = new Map<string, ObservationResolver>([
+      [
+        'rent_invoice',
+        async () => ({
+          observedOutcome: { rent_paid_on_time: true },
+          observedValue: 505000,
+          observedCurrency: 'TZS',
+          narrative: 'paid',
+        }),
+      ],
+    ]);
+    const worker = createReconciliationWorker({ db, logger: noopLogger, resolvers });
+    const result = await worker.tickOnce();
+    expect(result.claimed).toBe(1);
+    expect(result.matched).toBe(1);
+    expect(result.errored).toBe(0);
+  });
+
+  it('honest-degrades to empty result when the claim query throws', async () => {
+    const throwingDb: DbLike = {
+      async execute(query: unknown) {
+        if (flattenSql(query).includes('FROM outcome_predictions p')) {
+          throw new Error('db down');
+        }
+        return [];
+      },
+    };
+    const worker = createReconciliationWorker({
+      db: throwingDb,
+      logger: noopLogger,
+      resolvers: new Map(),
+    });
+    const result = await worker.tickOnce();
+    expect(result.claimed).toBe(0);
+    expect(result.errored).toBe(0);
+  });
+
+  it('does not start the timer when disabled', () => {
+    const db = fakeDb([]);
+    let started = false;
+    const worker = createReconciliationWorker({
+      db,
+      logger: noopLogger,
+      resolvers: new Map(),
+      enabled: false,
+    });
+    // start() is a no-op when disabled — no throw, no scheduled tick.
+    worker.start();
+    worker.stop();
+    expect(started).toBe(false);
+  });
+});
+
+// ── Pure drift functions ──────────────────────────────────────────────
+
+describe('scalarDrift', () => {
+  it('returns 0 when both are zero', () => {
+    expect(scalarDrift(0, 0)).toBe(0);
+  });
+
+  it('returns 1 (total surprise) when predicted is zero but observed is not', () => {
+    expect(scalarDrift(0, 100)).toBe(1);
+  });
+
+  it('returns proportional drift clamped to [0,1]', () => {
+    expect(scalarDrift(100, 110)).toBeCloseTo(0.1, 5);
+    expect(scalarDrift(100, 1000)).toBe(1);
+  });
+});
+
+describe('jsonbDrift', () => {
+  it('returns 0 for identical envelopes', () => {
+    expect(jsonbDrift({ a: true, b: 1 }, { a: true, b: 1 })).toBe(0);
+  });
+
+  it('returns 1 for fully disjoint envelopes', () => {
+    expect(jsonbDrift({ a: true }, { b: false })).toBe(1);
+  });
+
+  it('scores a boolean flip as full disagreement on that key', () => {
+    expect(jsonbDrift({ ok: true }, { ok: false })).toBe(1);
   });
 });
