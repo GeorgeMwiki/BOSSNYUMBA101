@@ -43,6 +43,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { oauthAgentTokens, oauthDeviceCodes } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import { getSharedPublicAiRateLimit } from '../middleware/public-ai-rate-limit';
 import { createLogger } from '../utils/logger';
 import { appendOpsAuditEntry } from './ops/audit-helper';
 
@@ -144,6 +145,12 @@ const revokeSchema = z.object({
 // ============================================================================
 
 const publicApp = new Hono();
+// Public, unauthenticated device-flow init + token endpoints — wrap with the
+// shared per-IP public limiter so an attacker cannot brute-force device codes
+// or exhaust the token endpoint. Bucket is process-wide (shared with the other
+// /public surfaces) so origins cannot dodge the cap by hopping endpoints.
+const publicAiRateLimit = getSharedPublicAiRateLimit();
+publicApp.use('*', publicAiRateLimit.handler);
 publicApp.use('*', databaseMiddleware);
 
 // ─── POST /oauth/device/code ────────────────────────────────────────────────

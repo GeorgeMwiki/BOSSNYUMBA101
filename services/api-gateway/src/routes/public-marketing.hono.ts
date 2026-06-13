@@ -40,6 +40,7 @@ import type {
   BrainLLMResponse,
 } from '@bossnyumba/brain-llm-router';
 import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
+import { getSharedPublicAiRateLimit } from '../middleware/public-ai-rate-limit';
 
 const logger = pino({ name: 'public-marketing' });
 
@@ -197,6 +198,11 @@ async function runMarketingLLM(
 }
 
 const app = new Hono();
+
+// Unauthenticated marketing surface — guard the shared ANTHROPIC budget with
+// the per-IP public limiter (process-wide bucket shared across /public/*).
+const publicAiRateLimit = getSharedPublicAiRateLimit();
+app.use('*', publicAiRateLimit.handler);
 
 app.post('/chat', zValidator('json', ChatTurnSchema), async (c) => {
   const body = c.req.valid('json');

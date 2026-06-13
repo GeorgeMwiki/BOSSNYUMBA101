@@ -505,4 +505,104 @@ export const HARDCODED_CURRENCY_ALLOWLIST = new Map([
     'apps/admin-platform-portal/src/app/advisor/acquisition/AcquisitionAdvisorClient.tsx',
     'Admin acquisition-advisor demo client uses USD as the platform-default currency for sample-acquisition deal inputs.',
   ],
+
+  // ─── WZ-CI-GREEN 2026-06-13: kernel + chat-ui tracked-gap defaults ─
+  [
+    'packages/central-intelligence/src/kernel/autonomy/types.ts',
+    'Delegation envelope-threshold currency defaults to TZS (launch jurisdiction) when no DelegationPref supplied; tracked-gap pending currency_preferences wire.',
+  ],
+  [
+    'packages/chat-ui/src/widget/InlineLearningBlocks.tsx',
+    'Rent-reminder inline block falls back to TZS when the LLM-emitted payload omits a currency; render-time fallback only.',
+  ],
+
+  // ─── WZ-CI-GREEN 2026-06-13: KE-scoped skill + seed/registry data ──
+  [
+    'packages/skill-library/src/builtin-skills/prepare-kra-filing/prepare-kra-filing.skill.ts',
+    'prepare-kra-filing skill pins KES because KRA (Kenya Revenue Authority) MRI filings are denominated in KES by law; the skill is Kenya-only by definition (rejects non-KES payments).',
+  ],
+  [
+    'packages/truth-engine/src/seeds/credit-domain-seeds.ts',
+    'Credit-domain fact seeds carry unit:"TZS" on TZ-jurisdiction-scoped regulatory facts (TRA VAT threshold etc.); seed/registry data, the unit is the fact identity.',
+  ],
+  [
+    'packages/database/src/seeds/scale-tier-fixtures.seed.ts',
+    'Scale-tier fixture seed declares primaryCurrency per demo-tenant (TZS/KES/ZAR matched to each fixture country); seed/registry data only.',
+  ],
+
+  // ─── WZ-CI-GREEN 2026-06-13: estate-manager tenant-currency wrapper
+  [
+    'apps/estate-manager-app/src/lib/currency.ts',
+    'TENANT_CURRENCY reads NEXT_PUBLIC_TENANT_CURRENCY env with USD as the ultimate platform-default tip of the resolution chain; per-entity currency is always threaded first.',
+  ],
+
+  // ─── WZ-CI-GREEN 2026-06-13: marketing app (TZ-audience copy) ──────
+  [
+    'apps/marketing/src/app/api/chat/route.ts',
+    'Marketing chat route: TZS appears in the AI persona system-prompt acronym list and in a demo rent-reminder UI-block fixture; static marketing copy, not a tenant business-logic binding.',
+  ],
+  [
+    'apps/marketing/src/components/Pricing.tsx',
+    'Marketing pricing page renders TZS-denominated tier prices (fields are priceMonthlyTzs/perUnitTzs) for the TZ-launch audience; currency code threaded into formatCurrency, TZ-audience marketing copy.',
+  ],
+  [
+    'apps/marketing/src/components/sections/MwikilaModesSection.tsx',
+    'Marketing modes section displays TZS/USD demo stat tiles; static TZ-audience marketing copy, not business logic.',
+  ],
+  [
+    'apps/marketing/src/components/tenant/TenantSignupWizard.tsx',
+    'Marketing tenant-signup wizard pre-fills preferredCurrency=TZS for the TZ-first audience; user-changeable (dropdown backed by TENANT_CURRENCY_CODES), tracked-gap default.',
+  ],
+  [
+    'apps/marketing/src/components/tenant/types.ts',
+    'TENANT_CURRENCY_CODES is the as-const supported-currency enumeration for the marketing signup wizard; schema-level registry, not a routing decision.',
+  ],
+  [
+    'apps/marketing/src/lib/format.ts',
+    'Marketing currency formatter defaults currencyCode=TZS for the TZS-first marketing audience; code is parameterised, never the symbol — TZ-audience marketing copy.',
+  ],
+
+  // ─── WZ-CI-GREEN 2026-06-13: owner-portal delegation default ───────
+  [
+    'apps/owner-portal/src/pages/MwikilaDelegation.tsx',
+    'Delegation envelope-threshold currency falls back to TZS (launch jurisdiction) when pref omits it, mirroring the kernel autonomy default; tracked-gap pending currency_preferences wire.',
+  ],
+
+  // ─── WZ-CI-GREEN 2026-06-13: staff/tenant mobile defaults + wallet ─
+  [
+    'apps/staff-mobile/app/owner/O-M-07.tsx',
+    'Owner cash-runway screen falls back to TZS when the entity row carries no currency code; tracked-gap pending currency_preferences wire.',
+  ],
+  [
+    'apps/staff-mobile/app/owner/O-M-20.tsx',
+    'Owner screen falls back to TZS when the lease attribute carries no currency; tracked-gap pending currency_preferences wire.',
+  ],
+  [
+    'apps/staff-mobile/app/owner/O-M-23.tsx',
+    'Owner branding screen toggles primaryCurrency between TZS and USD; the literals ARE the user-selectable toggle options, not a routing decision.',
+  ],
+  [
+    'apps/staff-mobile/src/home/owner/KpiStrip.tsx',
+    'KpiStrip defaults currencyCode=TZS (launch jurisdiction) when the brief omits one; render-time default, code is parameterised.',
+  ],
+  [
+    'apps/staff-mobile/src/home/owner/format.ts',
+    'Owner-home formatCurrency helper defaults currencyCode=TZS when caller omits one; UI render helper, code is parameterised.',
+  ],
+  [
+    'apps/tenant-mobile/app/(tabs)/marketplace/index.tsx',
+    'Marketplace wallet secondary-currency toggle cycles USD↔KES; the literals ARE the WalletCurrency toggle options, not a routing decision.',
+  ],
+  [
+    'apps/tenant-mobile/src/applicant-signup/state.ts',
+    'Applicant-signup initial state defaults preferredCurrency=USD as the ultimate fallback before the user picks one; tracked-gap default.',
+  ],
+  [
+    'apps/tenant-mobile/src/marketplace/WalletBar.tsx',
+    'WalletBar renders TZS primary + USD/KES secondary; the literals are the wallet WalletCurrency display set, render-only.',
+  ],
+  [
+    'apps/tenant-mobile/src/marketplace/walletFormat.ts',
+    'walletFormat switch enumerates the WalletCurrency union (TZS/USD/KES) the marketplace wallet supports; schema-level registry, not a routing decision.',
+  ],
 ]);

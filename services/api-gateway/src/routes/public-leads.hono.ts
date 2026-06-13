@@ -17,6 +17,7 @@ import { z } from 'zod';
 import {
   LeadCapture,
 } from '@bossnyumba/marketing-brain';
+import { getSharedPublicAiRateLimit } from '../middleware/public-ai-rate-limit';
 
 type LeadSummary = ReturnType<typeof LeadCapture.summariseLead>;
 
@@ -67,6 +68,12 @@ function gc(now: number): void {
 }
 
 const app = new Hono();
+
+// Anonymous lead-capture surface — guard with the per-IP public limiter
+// (process-wide bucket shared across /public/*) so the handoff endpoint
+// cannot be flooded with synthetic sessions.
+const publicAiRateLimit = getSharedPublicAiRateLimit();
+app.use('*', publicAiRateLimit.handler);
 
 app.post('/handoff', zValidator('json', HandoffSchema), (c) => {
   const body = c.req.valid('json');

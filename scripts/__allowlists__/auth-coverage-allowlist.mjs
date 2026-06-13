@@ -30,32 +30,38 @@
 export const AUTH_ALLOWLIST = new Map([
   // ─── Anonymous marketing / public surfaces ─────────────────────────
   [
-    'services/api-gateway/src/routes/public-marketing.router.ts',
-    'public marketing leads + waitlist. No tenant ctx; throttled at gateway via public-ai-rate-limit.',
+    'services/api-gateway/src/routes/public-marketing.hono.ts',
+    'UNAUTHENTICATED marketing chat — synthetic demo data only, no tenant DB path; all mutations zod-validated; throttled at gateway via public-ai-rate-limit.',
   ],
   [
-    'services/api-gateway/src/routes/public-sandbox.router.ts',
-    'anonymous demo sandbox — synthetic data only, no real tenants reachable.',
+    'services/api-gateway/src/routes/public-sandbox.hono.ts',
+    'anonymous demo sandbox — in-memory SandboxStore only, no code path to tenant DB; mutations zod-validated.',
   ],
   [
-    'services/api-gateway/src/routes/waitlist.router.ts',
-    'public waitlist email capture; captcha + classification-scrubber upstream.',
-  ],
-  [
-    'services/api-gateway/src/routes/public-leads.router.ts',
-    'post-chat marketing lead capture — anonymous by design; idempotent by session_id.',
+    'services/api-gateway/src/routes/public-leads.hono.ts',
+    'post-chat marketing lead capture — anonymous by design; idempotent by session_id; zod-validated; .delete@L65 is Map gc, not an HTTP route.',
   ],
 
   // ─── MCP / Agent Card discovery (public manifest) ──────────────────
   [
-    'services/api-gateway/src/routes/mcp.router.ts',
-    'MCP JSON-RPC entrypoint — auth applied inside the BossnyumbaMcpServer per tools/call; manifest + agent.json are public discovery.',
+    'services/api-gateway/src/routes/mcp.hono.ts',
+    'MCP JSON-RPC entrypoint — auth applied inside the handler via mcp.auth.authenticate() (401 on failure); manifest + agent.json are public discovery.',
   ],
 
   // ─── Internal observability (composition-root admin gate) ──────────
   [
-    'services/api-gateway/src/routes/metrics.router.ts',
-    'admin-only metrics snapshot — composition root applies admin role gate before mounting.',
+    'services/api-gateway/src/routes/metrics.hono.ts',
+    'admin-only metrics snapshot — defensive isAdminRole() check in-handler; composition root applies auth before mounting; reads only.',
+  ],
+
+  // ─── Public discovery docs / stateless utilities ───────────────────
+  [
+    'services/api-gateway/src/routes/well-known-bossnyumba.hono.ts',
+    'public .well-known capability + mcp discovery manifest — static, read-only, no tenant data (mirrors mcp public-manifest exemption).',
+  ],
+  [
+    'services/api-gateway/src/routes/translate.hono.ts',
+    'stateless text→text locale re-translation — no tenant scope on cache key, carries no sensitive context; zod-validated; .delete@L94/L105 are InMemoryCache evictions, not HTTP routes.',
   ],
 
   // ─── Streaming proxies (forward Authorization upstream) ────────────

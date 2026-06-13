@@ -39,6 +39,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
+import { getSharedPublicAiRateLimit } from '../middleware/public-ai-rate-limit';
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -279,6 +280,12 @@ async function resolveCache(deps: TranslateRouterDeps): Promise<CacheBackend> {
  */
 export function createTranslateRouter(deps: TranslateRouterDeps = {}): Hono {
   const app = new Hono();
+
+  // Public (no-auth) endpoint that fans out to the Anthropic translate model —
+  // wrap with the per-IP public limiter (process-wide bucket shared across the
+  // other /public surfaces) so the gateway's LLM budget can't be drained.
+  const publicAiRateLimit = getSharedPublicAiRateLimit();
+  app.use('*', publicAiRateLimit.handler);
 
   app.post('/', zValidator('json', TranslateRequestSchema), async (c) => {
     const body = c.req.valid('json');
