@@ -67,6 +67,17 @@ export default defineConfig({
         find: /^@bossnyumba\/file-ingest\/schema-sniff$/,
         replacement: path.resolve(__dirname, '../../packages/file-ingest/src/schema-sniff/index.ts'),
       },
+      // Portal-GenUI engine — the composition wiring + widget-data resolver
+      // tests must resolve the FRESHLY back-ported engine barrel (admission,
+      // audit, verify, self-healing, migrate, patch, capabilities, security,
+      // record-store) from source. The shipped `dist/` predates the back-port
+      // and lacks `createInMemoryRecordStore` + the admission lane, so tests
+      // need source without a `pnpm build` round-trip. `$` anchor preserves
+      // any future subpath imports through package.json exports.
+      {
+        find: /^@bossnyumba\/portal-genui$/,
+        replacement: path.resolve(__dirname, '../../packages/portal-genui/src/index.ts'),
+      },
     ],
   },
   test: {

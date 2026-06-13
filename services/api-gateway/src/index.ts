@@ -140,7 +140,8 @@ import { createCotQueryRouter } from './routes/cot-query.hono';
 import { createAdminAuditRouter } from './routes/admin-audit.hono';
 import { createTenantsAdminRouter } from './routes/tenants-admin.hono';
 import strategicReportsRouter from './routes/reports/reports.hono';
-import portalGenUIRouter from './routes/portal-genui/portal-genui.hono';
+import { buildPortalGenuiWiring } from './composition/portal-genui/portal-genui-wiring';
+import { createConnectorsRouter } from './routes/integrations/connectors.hono';
 import stationMasterCoverageRouter from './routes/station-master-coverage.hono';
 import { tendersRouter } from './routes/tenders.hono';
 import { waitlistRouter } from './routes/waitlist.hono';
@@ -399,7 +400,18 @@ import { createLeaseExpiryAlertCron } from './workers/lease-expiry-alert-cron';
 // switch + per-recipient notification preferences). Without it the cron
 // fail-closes to `no_consent_gate_wired` and is born-dark.
 import { createLeaseExpiryConsentGate } from './composition/lease-expiry-consent-gate';
-import { createPreferencesService } from '@bossnyumba/notifications-service';
+// bcc670d0 — REAL lease-expiry delivery adapter (kills the Wave-15 stub sender).
+import { createReminderNotificationSender } from './composition/reminder-notification-sender';
+// b99c27c3 — bootstrap loader: register per-tenant provider creds before crons.
+import {
+  readPlatformProviderCredentials,
+  registerTenantNotificationProviders,
+} from './composition/notification-provider-credentials';
+import {
+  createPreferencesService,
+  dispatchNotification,
+  resolveTemplate,
+} from '@bossnyumba/notifications-service';
 import type {
   NotificationSender as LeaseExpiryNotificationSender,
 } from './workers/lease-expiry-alert-cron';
@@ -817,6 +829,27 @@ try {
 }
 
 // ----------------------------------------------------------------------------
+// Portal-GenUI engine (BLOCKERS #10/#11) — CONSTRUCT the back-ported engine and
+// attach it to the SAME serviceRegistry the route reads. Was born-dark: the
+// router 503'd because nothing ever set `services.portalGenUIEngine`. This is
+// the seam that closes it. Honest-degrade (matches every other wiring here):
+// no DATABASE_URL ⇒ in-memory tab registry; no ANTHROPIC_API_KEY ⇒ heuristic
+// intent + deterministic generator. The engine self-logs a boot-proof line.
+// ----------------------------------------------------------------------------
+const portalGenuiWiring = buildPortalGenuiWiring();
+(serviceRegistry as { portalGenUIEngine?: unknown }).portalGenUIEngine =
+  portalGenuiWiring.engine;
+(serviceRegistry as { portalGenUIRecordStore?: unknown }).portalGenUIRecordStore =
+  portalGenuiWiring.recordStore;
+(serviceRegistry as { portalGenUIStorageAdapter?: unknown }).portalGenUIStorageAdapter =
+  portalGenuiWiring.storageAdapter;
+// Live widget read port — lets a generated tab's {kind:'query'} widgets resolve
+// to REAL tenant-scoped rows in prod (the resolver bounds every SELECT itself).
+// Undefined in degraded mode ⇒ query widgets honest-degrade to empty rows.
+(serviceRegistry as { portalGenUIQueryPort?: unknown }).portalGenUIQueryPort =
+  portalGenuiWiring.queryPort;
+
+// ----------------------------------------------------------------------------
 // Identity services (#12) — cross-org identity, invites, memberships, OTP.
 // Built once and memoized as a promise (the OTP factory may resolve a Redis
 // store). The identity context middleware awaits this per request and merges
@@ -1185,7 +1218,12 @@ api.route('/vendors', vendorsRouter);
 api.route('/notifications', notificationsRouter);
 api.route('/reports', reportsHonoRouter);
 api.route('/strategic-reports', strategicReportsRouter); // distinct from the legacy /reports/financial surface
-api.route('/portal-genui', portalGenUIRouter); // detect/generate/tabs CRUD off services.portalGenUIEngine
+api.route('/portal-genui', portalGenuiWiring.router); // detect/generate/tabs CRUD + records + upload off services.portalGenUIEngine
+// Universal integration fabric (#12) — list/status/invoke + the OAuth
+// connect/start · provider callback · disconnect sub-flow. Reads
+// services.connectorInvokers (bound above) and honest-degrades to a typed
+// not_provisioned envelope when a connector/live env is unset.
+api.route('/integrations/connectors', createConnectorsRouter());
 api.route('/dashboard', dashboardRouter);
 // Phase F.5 tenant-signup flow mounts FIRST so specific paths
 // (/signup, /first-property, /first-tenant-import, /first-md-chat,
@@ -1936,28 +1974,22 @@ const casesSlaSupervisor = createCaseSLASupervisor(serviceRegistry, logger, {
 // 60/30/7/1-day warning windows. Dispatches via the existing notifications
 // infrastructure (whatsapp → sms → email → in_app priority). Skipped in
 // degraded mode (no DB) and in tests.
-const leaseExpiryNotificationSender: LeaseExpiryNotificationSender = {
-  // Pino-friendly placeholder sender — once the WhatsApp/SMS providers
-  // have tenant-scoped credentials wired, swap this for a thin adapter
-  // around `notificationService.sendNotification(recipient, channel, ...)`
-  // (services/notifications/src/services/notification.service.ts).
-  // Wave 15 deliberately leaves this stub-shaped so the cron is testable
-  // and the dispatch_log row is written even when no provider is reachable.
-  async send(args) {
-    logger.info(
-      {
-        tenantId: args.tenantId,
-        leaseId: args.lease.id,
-        leaseNumber: args.lease.leaseNumber,
-        window: args.window,
-        channel: args.channel,
-        idempotencyKey: args.idempotencyKey,
-      },
-      'lease-expiry-cron: dispatch (stub provider — Wave 15)',
-    );
-    return { delivered: true, providerMessageId: `stub-${args.idempotencyKey}` };
-  },
-};
+// bcc670d0 — the REAL delivery adapter. Routes lease-expiry alerts through the
+// notifications dispatcher (`dispatchNotification` = `enqueueNotification`): the
+// reliability path with tenant-scoped provider selection + within-channel
+// failover, cross-channel fallback terminating in the in-app inbox, retry with
+// backoff, dispatch-time preference re-check, and DLQ on terminal failure. The
+// HONESTY CONTRACT: `delivered: true` ONLY when the dispatcher accepted a real
+// send — no more fabricated `stub-…` successes. Templates are pre-rendered via
+// the real `resolveTemplate` (English launch default; `sw` per tenant toggle).
+const leaseExpiryNotificationSender: LeaseExpiryNotificationSender =
+  createReminderNotificationSender({
+    dispatch: (input) => dispatchNotification(input),
+    resolveTemplate,
+    logger,
+    defaultLocale: 'en',
+    priority: 'high',
+  });
 
 const leaseExpiryCron = serviceRegistry.db
   ? createLeaseExpiryAlertCron({
@@ -2316,6 +2348,24 @@ if (require.main === module) {
   // Wave 26 — start the Cases SLA supervisor alongside the other
   // background workers. Skipped in tests + when disabled by env.
   casesSlaSupervisor.start();
+  // b99c27c3 — register per-tenant notification provider credentials ONCE at
+  // bootstrap, BEFORE the reminder/alert crons start, so the real delivery
+  // adapter has live providers to route through (else every channel degrades to
+  // the in-app inbox terminal). `readPlatformProviderCredentials` is the ONLY
+  // new env read (bootstrap-only, allowed). Fire-and-forget + honest-degrade:
+  // a db fault or credential-less tenant never throws and never blocks boot.
+  const platformProviderCreds = readPlatformProviderCredentials(process.env);
+  void registerTenantNotificationProviders({
+    db: serviceRegistry.db as unknown as { execute(query: unknown): Promise<unknown> },
+    creds: platformProviderCreds,
+    logger,
+  }).catch((err) => {
+    logger.warn(
+      { err: err instanceof Error ? err.message : String(err) },
+      'notification-providers: bootstrap registration failed — channels degrade to in-app',
+    );
+  });
+
   // Wave 15 — start the lease-expiry alert cron. Ticks daily, scans
   // for leases at 60/30/7/1-day expiry windows, idempotent via
   // notification_dispatch_log.idempotency_key.

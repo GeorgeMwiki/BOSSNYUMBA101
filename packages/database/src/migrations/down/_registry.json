@@ -2,8 +2,8 @@
   "$schema": "./_registry.schema.json",
   "description": "Down-migration registry. Maps up-migrations to their reverse. Used by migration-runner --down to pick the right script. Not every up has a down — gold-standard append-only invariants (audit chain, event store) require explicit dev/staging-only down-flags. See LITFIN-parity item 5.",
   "version": 1,
-  "updatedAt": "2026-05-25",
-  "scope": "10 highest-blast-radius migrations from 0252..0273 (this session). Older migrations get down scripts in follow-up passes.",
+  "updatedAt": "2026-06-13",
+  "scope": "10 highest-blast-radius migrations from 0252..0273, the 0317/0318 Borjie-parity RLS+idempotency ports, and the 0319..0323 parity-final back-port (portal-genui tabs/records/self-healing + connector-OAuth credentials/nonces). Older migrations get down scripts in follow-up passes.",
   "mappings": [
     {
       "up": "0252_land_areas.sql",
@@ -257,6 +257,46 @@
       "dataLoss": true,
       "envs": ["dev", "staging"],
       "notes": "Borjie-parity port of 0162. Dropping the dedupe rows re-opens double-post risk on LedgerService.postJournalEntry. MUST NOT run in production: replay-defense for the money path."
+    },
+    {
+      "up": "0319_portal_tabs.sql",
+      "down": "down/0319_down_portal_tabs.sql",
+      "reverses": "CREATE TABLE portal_tabs + portal_tabs_tenant_user_idx + portal_tabs_parent_idx + portal_tabs_tenant_tab_key_uq (unique) + FORCE RLS portal_tabs_tenant_isolation (app.current_tenant_id GUC) + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Portal-GenUI back-port (#10/#11). The MD-authored dynamic-tabs document store. Tenant-scoped, FORCE RLS. No money/licence/ledger rows live here — a tab is a UI/forms document only. MUST NOT run in production: discards every MD-authored PortalTab document and re-opens cross-tenant exposure of the tab store."
+    },
+    {
+      "up": "0320_tab_records.sql",
+      "down": "down/0320_down_tab_records.sql",
+      "reverses": "CREATE TABLE portal_tab_records + portal_tab_records_tenant_tab_idx + FORCE RLS tenant_isolation_portal_tab_records + portal_tab_records_service_role_bypass + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Portal-GenUI back-port (K1a). The generic schema-on-read record store that makes a generated tab ACT — every record from every generated tab lands here as tenant-scoped JSONB payload. Tenant-isolated, FORCE RLS. Dropping reverts generated tabs to render-only (portal_tabs documents untouched). No money/ledger. MUST NOT run in production: discards every record submitted into a generated tab."
+    },
+    {
+      "up": "0321_self_healing_proposals.sql",
+      "down": "down/0321_down_self_healing_proposals.sql",
+      "reverses": "CREATE TABLE self_healing_proposals + self_healing_proposals_dedupe_key (unique) + self_healing_proposals_status_seen_idx + FORCE RLS self_healing_proposals_service_role_bypass (service-role-only; a tenant request sees ZERO rows) + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Portal-GenUI back-port (Borjie 0349). PLATFORM-INTERNAL self-healing console queue for the MAPE-K loop — NOT tenant-isolated (tenant_id is nullable TRIAGE context, never an access boundary). Service-role-only bypass: an owner can never read or approve the platform healing of its own wiring. Dropping discards the internal-admin repair-proposal queue."
+    },
+    {
+      "up": "0322_connector_credentials.sql",
+      "down": "down/0322_down_connector_credentials.sql",
+      "reverses": "CREATE TABLE connector_credentials + idx_connector_creds_tenant_kind + idx_connector_creds_expiry + FORCE RLS tenant_isolation_connector_credentials + connector_credentials_service_role_bypass + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Connector-OAuth completion (#12, Borjie 0343). Per-tenant per-account OAuth credential store; access/refresh token columns are AES-GCM ciphertext sealed with a tenant-bound DEK (the database NEVER sees plaintext). Tenant-isolated, FORCE RLS. Dropping forces every connector to be reconnected. MUST NOT run in production: discards every tenant's connector OAuth state."
+    },
+    {
+      "up": "0323_oauth_state_nonces.sql",
+      "down": "down/0323_down_oauth_state_nonces.sql",
+      "reverses": "CREATE TABLE oauth_state_nonces + oauth_state_nonces_created_idx + FORCE RLS oauth_state_nonces_tenant_isolation + oauth_state_nonces_service_role_bypass + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Connector-OAuth completion (#12). DURABLE single-use consumption of the connector-OAuth `state` nonce — multi-replica replay protection (a per-process Set cannot defend across replicas). Nonces are opaque random values: no PII, no token material, so the data loss is benign. Dropping re-opens cross-replica OAuth state replay until restored."
     }
   ]
 }

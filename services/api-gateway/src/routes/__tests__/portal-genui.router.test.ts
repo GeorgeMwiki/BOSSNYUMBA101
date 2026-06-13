@@ -19,7 +19,7 @@ process.env.NODE_ENV = process.env.NODE_ENV ?? 'test';
 process.env.BOSSNYUMBA_SKIP_DOTENV = 'true';
 
 import { createGenUIEngine } from '@bossnyumba/portal-genui';
-import portalGenUIRouter from '../portal-genui/portal-genui.hono.js';
+import portalGenUIRouter from '../portal-genui/portal-genui.router.js';
 import { generateToken } from '../../middleware/auth';
 import { UserRole } from '../../types/user-role';
 

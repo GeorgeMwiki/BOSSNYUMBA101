@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createDockerSandbox,
@@ -7,6 +7,14 @@ import {
   runTests,
 } from './index.js';
 import type { E2BFetchInit, E2BHttpResponse } from './index.js';
+
+// These cases spawn REAL OS subprocesses (printf/sleep/false). On a loaded CI
+// runner the spawn+teardown latency pushed the stdout-truncation case to
+// 5128ms — just over vitest's 5000ms default — making it flaky (it passes in
+// ~480ms locally). The logic is sound; only the wall-clock under contention is
+// the issue. Raise the per-test ceiling file-wide so subprocess scheduling
+// jitter can never trip a green run. Not a behavioural change.
+vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 });
 
 describe('sandbox-execution :: createLocalSubprocessSandbox', () => {
   it('rejects commands not on the allowlist', async () => {

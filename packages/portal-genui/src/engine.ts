@@ -39,7 +39,19 @@ import {
   type ListTabsInput,
   type DeleteTabInput,
 } from './persistence/index.js';
+import {
+  applyTabPatch,
+  type PortalTabPatch,
+  type ApplyTabPatchResult,
+  type ApplyTabPatchOptions,
+} from './patch/index.js';
 import type { PortalTab, TabGenerationIntent } from './types.js';
+import type { UrlEgressPolicy } from './security/url-egress.js';
+import {
+  admitTab,
+  PortalGenUiAdmissionError,
+  type AdmissionPolicy,
+} from './admission/admit.js';
 
 export interface GenUIEngineBrainPort {
   /** Intent classification call — `text` is JSON. */
@@ -53,6 +65,37 @@ export interface CreateGenUIEngineDeps {
   readonly persistence?: TabRegistry;
   readonly detector?: Omit<DetectorDeps, 'brain'>;
   readonly generator?: Omit<GeneratorDeps, 'brain'>;
+  /**
+   * Render-egress URL allowlist. When supplied, every tab routed through
+   * `persist`/`patch` is walked for URL-typed values and rejected if any fails
+   * the policy — the membrane that stops a poisoned spec from smuggling an
+   * attacker URL the renderer would auto-fetch. Injected by the composition
+   * root so the package stays `process.env`-free.
+   */
+  readonly urlEgressPolicy?: UrlEgressPolicy;
+  /**
+   * When true, admission requires every section to carry >=1 evidence ref
+   * (the evidence-required law applied to generated UI). Default off for
+   * back-compat with tabs that predate the contract.
+   */
+  readonly requireEvidence?: boolean;
+  /** Active render locale — enables the locale-purity admission rule. */
+  readonly locale?: AdmissionPolicy['locale'];
+  /** Pluggable wrong-language detector for the locale-purity rule. */
+  readonly localeDetector?: AdmissionPolicy['localeDetector'];
+}
+
+/** Input for the incremental-patch path (the MD edits a live surface). */
+export interface PatchTabInput {
+  /** The patch to apply. `patch.tabId` selects the target tab. */
+  readonly patch: PortalTabPatch;
+  /** Audit / clock options forwarded to the reducer. */
+  readonly options: ApplyTabPatchOptions;
+  /**
+   * When true (default) the patched tab is persisted on success. Pass
+   * `false` to compute a preview without writing (proposal-chip flow).
+   */
+  readonly persist?: boolean;
 }
 
 export interface GenUIEngine {
@@ -62,6 +105,13 @@ export interface GenUIEngine {
   list(input: ListTabsInput): Promise<ReadonlyArray<PortalTab>>;
   get(id: string): Promise<PortalTab | null>;
   delete(input: DeleteTabInput): Promise<{ deleted: boolean }>;
+  /**
+   * Apply an A2UI-style incremental patch to a persisted tab. Fetches the
+   * target tab, applies the patch immutably (re-validating the result),
+   * and (when `persist !== false`) writes it back. Returns the reducer
+   * result; a `tab-not-found` reason means `patch.tabId` had no row.
+   */
+  patch(input: PatchTabInput): Promise<ApplyTabPatchResult>;
   /** Direct access to the constructed generator (advanced use). */
   readonly generator: TabGenerator;
   /** Direct access to the persistence layer (advanced use). */
@@ -95,14 +145,55 @@ export function createGenUIEngine(
 
   const generator = createTabGenerator(generatorDeps);
   const persistence = deps.persistence ?? createInMemoryTabRegistry();
+  const admissionPolicy: AdmissionPolicy = {
+    ...(deps.urlEgressPolicy ? { urlEgress: deps.urlEgressPolicy } : {}),
+    ...(deps.requireEvidence !== undefined
+      ? { requireEvidence: deps.requireEvidence }
+      : {}),
+    ...(deps.locale ? { locale: deps.locale } : {}),
+    ...(deps.localeDetector ? { localeDetector: deps.localeDetector } : {}),
+  };
+
+  /**
+   * Persist chokepoint: route every tab through the ONE admission pass
+   * (`admitTab`) — audit-seal + url-egress + evidence + locale-purity +
+   * action-label-binding + render-effect — and reject (`PortalGenUiAdmissionError`,
+   * carrying every violation) before a tab can be stored. Returns the sealed tab
+   * so the stored record always carries chain hashes.
+   */
+  const guardForPersist = (tab: SaveTabInput['tab']): SaveTabInput['tab'] => {
+    const { ok, sealedTab, violations } = admitTab(tab, admissionPolicy);
+    if (!ok) throw new PortalGenUiAdmissionError(violations);
+    return sealedTab;
+  };
 
   return {
     detectIntent: (input) => detectTabGenerationIntent(input, detectorDeps),
     generate: (input) => generator.generate(input),
-    persist: (input) => persistence.save(input),
+    persist: async (input) => {
+      const tab = guardForPersist(input.tab);
+      return persistence.save({ ...input, tab });
+    },
     list: (input) => persistence.list(input),
     get: (id) => persistence.get(id),
     delete: (input) => persistence.delete(input),
+    async patch(input): Promise<ApplyTabPatchResult> {
+      const target = await persistence.get(input.patch.tabId);
+      if (!target) {
+        return {
+          ok: false,
+          reason: 'tab-not-found',
+          message: `tab '${input.patch.tabId}' not found`,
+          opIndex: -1,
+        };
+      }
+      const result = applyTabPatch(target, input.patch, input.options);
+      if (result.ok && input.persist !== false) {
+        const tab = guardForPersist(result.tab);
+        await persistence.save({ tab, parentTabId: target.id });
+      }
+      return result;
+    },
     generator,
     persistence,
   };
