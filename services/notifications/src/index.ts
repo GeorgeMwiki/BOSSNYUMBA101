@@ -291,3 +291,8 @@ export type {
   ProviderConfig,
   NotificationPayload,
 } from './types/index.js';
+
+// Per-tenant provider credential registration. The composition root calls this
+// at gateway bootstrap so external channels (email/SMS/WhatsApp/push) actually
+// send — without it every dispatch falls through to the in-app inbox terminal.
+export { registerProviderConfig } from './config.js';
