@@ -13,7 +13,7 @@
 #   cd k8s && tilt up
 #
 # What this does:
-#   1. Builds the 4 frontend apps + 4 backend services as docker images
+#   1. Builds the frontend apps + backend services as docker images
 #      with `tilt_docker_build` (gets you live-reload + image sync).
 #   2. Renders the Helm chart with dev overrides
 #      (values-dev.yaml + override of image.registry → localhost:5111)
@@ -33,8 +33,6 @@ default_registry('localhost:5111')
 
 # ── Image: each app/service ──────────────────────────────────────────
 SERVICES = [
-    ('customer-app',          'apps/customer-app/Dockerfile',          ['apps/customer-app']),
-    ('estate-manager-app',    'apps/estate-manager-app/Dockerfile',    ['apps/estate-manager-app']),
     ('owner-portal',          'apps/owner-portal/Dockerfile',          ['apps/owner-portal']),
     ('admin-platform-portal', 'apps/admin-platform-portal/Dockerfile', ['apps/admin-platform-portal']),
     ('api-gateway',           'services/api-gateway/Dockerfile',       ['services/api-gateway', 'packages']),
@@ -73,7 +71,7 @@ helm_resource(
         '--set',  'postgres.statefulSet.replicas=1',
         '--set',  'postgres.statefulSet.pdb.enabled=false',
         '--set',  'migrate.enabled=false',
-        '--set',  'replicaCount.customerApp=1',
+        '--set',  'replicaCount.ownerPortal=1',
         '--set',  'replicaCount.apiGateway=1',
         '--set',  'replicaCount.paymentsLedger=1',
         '--set',  'replicaCount.notifications=1',
@@ -84,16 +82,8 @@ helm_resource(
 
 # ── Forward ports so you can hit them on localhost ──────────────────
 k8s_resource(
-    workload   = 'bossnyumba:customer-app',
-    port_forwards = ['3000:3000'],
-)
-k8s_resource(
     workload   = 'bossnyumba:owner-portal',
     port_forwards = ['3001:3000'],
-)
-k8s_resource(
-    workload   = 'bossnyumba:estate-manager-app',
-    port_forwards = ['3002:3000'],
 )
 k8s_resource(
     workload   = 'bossnyumba:admin-platform-portal',

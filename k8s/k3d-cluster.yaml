@@ -75,7 +75,5 @@ volumes:
 hostAliases:
   - ip: 127.0.0.1
     hostnames:
-      - customer.bossnyumba.localhost
-      - manager.bossnyumba.localhost
       - owner.bossnyumba.localhost
       - admin.bossnyumba.localhost

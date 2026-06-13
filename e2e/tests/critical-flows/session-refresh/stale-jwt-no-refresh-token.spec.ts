@@ -4,7 +4,7 @@
  * Stale access token, NO refresh token issued.
  *
  * Scenario: an older session pre-dates the introduction of refresh
- * tokens (e.g. a user installed the customer-app months ago and the
+ * tokens (e.g. a user signed in to a portal months ago and the
  * server-side schema didn't issue refresh tokens at that time). When
  * the cached access token expires, there's nothing to refresh against
  * and the user must be sent cleanly back to /login.

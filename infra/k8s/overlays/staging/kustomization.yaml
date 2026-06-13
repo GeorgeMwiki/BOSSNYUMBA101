@@ -26,10 +26,8 @@ images:
   - { name: ghcr.io/georgemwiki/bossnyumba-payments,              newTag: staging }
   - { name: ghcr.io/georgemwiki/bossnyumba-reports,               newTag: staging }
   - { name: ghcr.io/georgemwiki/bossnyumba-webhooks,              newTag: staging }
-  - { name: ghcr.io/georgemwiki/bossnyumba-customer-app,          newTag: staging }
   - { name: ghcr.io/georgemwiki/bossnyumba-owner-portal,          newTag: staging }
   - { name: ghcr.io/georgemwiki/bossnyumba-admin-platform-portal, newTag: staging }
-  - { name: ghcr.io/georgemwiki/bossnyumba-estate-manager-app,    newTag: staging }
 
 # ---- Replica counts ---------------------------------------------------------
 # Each entry references the shared one-op JSON-Patch in patches/replica-1.yaml
@@ -38,13 +36,9 @@ patches:
   - path: patches/replica-1.yaml
     target: { kind: Deployment, name: api-gateway }
   - path: patches/replica-1.yaml
-    target: { kind: Deployment, name: customer-app }
-  - path: patches/replica-1.yaml
     target: { kind: Deployment, name: owner-portal }
   - path: patches/replica-1.yaml
     target: { kind: Deployment, name: admin-platform-portal }
-  - path: patches/replica-1.yaml
-    target: { kind: Deployment, name: estate-manager-app }
   - path: patches/replica-1.yaml
     target: { kind: Deployment, name: document-intelligence }
   - path: patches/replica-1.yaml
@@ -72,8 +66,8 @@ configMapGenerator:
     literals:
       - SENTRY_ENVIRONMENT=staging
       - API_URL=https://staging-api.bossnyumba.com
-      - FRONTEND_URL=https://staging.bossnyumba.com
-      - CORS_ALLOWED_ORIGINS=https://staging.bossnyumba.com,https://staging-admin.bossnyumba.com,https://staging-owners.bossnyumba.com,https://staging-manage.bossnyumba.com
+      - FRONTEND_URL=https://staging-owners.bossnyumba.com
+      - CORS_ALLOWED_ORIGINS=https://staging-admin.bossnyumba.com,https://staging-owners.bossnyumba.com
   - name: bossnyumba-public-config
     behavior: merge
     literals:

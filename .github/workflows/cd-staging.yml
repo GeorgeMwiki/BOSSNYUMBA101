@@ -37,10 +37,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       api-gateway: ${{ steps.filter.outputs.api-gateway }}
-      customer-app: ${{ steps.filter.outputs.customer-app }}
-      estate-manager: ${{ steps.filter.outputs.estate-manager }}
       owner-portal: ${{ steps.filter.outputs.owner-portal }}
-      admin-portal: ${{ steps.filter.outputs.admin-portal }}
+      admin-platform-portal: ${{ steps.filter.outputs.admin-platform-portal }}
       payments: ${{ steps.filter.outputs.payments }}
       notifications: ${{ steps.filter.outputs.notifications }}
       reports: ${{ steps.filter.outputs.reports }}
@@ -58,17 +56,11 @@ jobs:
               - 'services/api-gateway/**'
               - 'packages/**'
               - 'docker/Dockerfile.api'
-            customer-app:
-              - 'apps/customer-app/**'
-              - 'packages/**'
-            estate-manager:
-              - 'apps/estate-manager-app/**'
-              - 'packages/**'
             owner-portal:
               - 'apps/owner-portal/**'
               - 'packages/**'
-            admin-portal:
-              - 'apps/admin-portal/**'
+            admin-platform-portal:
+              - 'apps/admin-platform-portal/**'
               - 'packages/**'
             payments:
               - 'services/payments/**'
@@ -127,17 +119,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - app: customer-app
-            path: apps/customer-app
-            target: nextjs
-          - app: estate-manager-app
-            path: apps/estate-manager-app
-            target: nextjs
           - app: owner-portal
             path: apps/owner-portal
             target: vite
-          - app: admin-portal
-            path: apps/admin-portal
+          - app: admin-platform-portal
+            path: apps/admin-platform-portal
             target: vite
     steps:
       - name: Checkout

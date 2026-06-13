@@ -29,11 +29,6 @@ export const RATE_LIMIT_ALLOWLIST = new Map([
   ['apps/admin-platform-portal/src/app/api/platform/intelligence/thread/[threadId]/message/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
   ['apps/admin-platform-portal/src/app/api/platform/intelligence/thread/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
   ['apps/admin-platform-portal/src/app/api/platform/login/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['apps/customer-app/src/app/api/brain/turn/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['apps/estate-manager-app/src/app/api/brain/migrate/commit/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['apps/estate-manager-app/src/app/api/brain/migrate/extract/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['apps/estate-manager-app/src/app/api/brain/review/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['apps/estate-manager-app/src/app/api/brain/turn/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
 
   // ─── api-gateway: tracked gaps awaiting an in-handler limiter ───────
   ['services/api-gateway/src/routes/auth-mfa.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],

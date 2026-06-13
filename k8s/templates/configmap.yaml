@@ -9,4 +9,4 @@ data:
   LOG_LEVEL: "info"
   SENTRY_ENVIRONMENT: "production"
   POSTHOG_HOST: "https://eu.posthog.com"
-  CORS_ALLOWED_ORIGINS: "https://bossnyumba.com,https://admin.bossnyumba.com,https://owners.bossnyumba.com,https://manage.bossnyumba.com"
+  CORS_ALLOWED_ORIGINS: "https://bossnyumba.com,https://admin.bossnyumba.com,https://owners.bossnyumba.com"

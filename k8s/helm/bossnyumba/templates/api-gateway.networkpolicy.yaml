@@ -1,7 +1,7 @@
 {{- $w := .Values.services.apiGateway -}}
 {{- if and $w.enabled .Values.networkPolicy.enabled -}}
 # api-gateway:
-#   - INGRESS allowed only from the 4 frontend pods (NOT from ingress-nginx).
+#   - INGRESS allowed only from the frontend pods (NOT from ingress-nginx).
 #   - EGRESS allowed to payments-ledger / reports / notifications / postgres / redis / DNS.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -19,8 +19,6 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
-        - podSelector: { matchLabels: { app.kubernetes.io/component: {{ .Values.apps.customerApp.name }} } }
-        - podSelector: { matchLabels: { app.kubernetes.io/component: {{ .Values.apps.estateManagerApp.name }} } }
         - podSelector: { matchLabels: { app.kubernetes.io/component: {{ .Values.apps.ownerPortal.name }} } }
         - podSelector: { matchLabels: { app.kubernetes.io/component: {{ .Values.apps.adminPlatformPortal.name }} } }
       ports:

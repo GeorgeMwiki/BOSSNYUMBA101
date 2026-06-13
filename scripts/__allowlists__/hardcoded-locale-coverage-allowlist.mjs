@@ -141,34 +141,6 @@ export const HARDCODED_LOCALE_ALLOWLIST = new Map([
 
   // ─── Frontend-app UI date-format fallbacks (tracked-gap) ───────────
   [
-    'apps/customer-app/src/app/onboarding/complete/page.tsx',
-    'Customer onboarding complete page formats dates en-US; tracked-gap pending tenant-locale resolution.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/announcements/[id]/page.tsx',
-    'Estate-manager announcements page formats dates en-US; tracked-gap pending tenant-locale resolution.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/calendar/events/page.tsx',
-    'Estate-manager calendar events page formats dates en-US; tracked-gap pending tenant-locale resolution.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/calendar/page.tsx',
-    'Estate-manager calendar page formats dates en-US; tracked-gap pending tenant-locale resolution.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/inspections/[id]/page.tsx',
-    'Estate-manager inspections page formats dates en-US; tracked-gap pending tenant-locale resolution.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/schedule/page.tsx',
-    'Estate-manager schedule page formats dates en-US; tracked-gap pending tenant-locale resolution.',
-  ],
-  [
-    'apps/estate-manager-app/src/screens/work-orders/WorkOrderDetail.tsx',
-    'Estate-manager work-order-detail formats dates en-US default; tracked-gap pending tenant-locale resolution.',
-  ],
-  [
     'apps/owner-portal/src/pages/DesktopReview.tsx',
     'Owner-portal desktop-review formats dates en-US default; tracked-gap pending tenant-locale resolution.',
   ],
@@ -325,12 +297,6 @@ export const HARDCODED_LOCALE_ALLOWLIST = new Map([
   [
     'services/voice-agent/src/router/language-router.ts',
     'Voice-agent language-router maps each supported locale to its detection pattern; this IS the language-router registry.',
-  ],
-
-  // ─── tenant-portal: marketplace API client locale default ─────────
-  [
-    'apps/tenant-portal/src/lib/marketplace/api-client.ts',
-    'Tenant-portal marketplace API client defaults locale=en-KE for Kenya-first marketplace; tracked-gap pending tenant-locale wire.',
   ],
 
   // ─── WZ-CI-GREEN 2026-05-25: EU-AI-Act Art-50 disclosure locales ───

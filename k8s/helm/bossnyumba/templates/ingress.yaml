@@ -1,6 +1,6 @@
 {{- if .Values.ingress.enabled -}}
-# Per-portal Ingress resources. Each of the 4 frontend portals gets its
-# own public hostname. The 4 backend services are NEVER exposed here.
+# Per-portal Ingress resources. Each frontend portal gets its own public
+# hostname. The backend services are NEVER exposed here.
 #
 # cert-manager auto-provisions a TLS cert per host via the configured
 # ClusterIssuer (see cert-manager-issuer.yaml).

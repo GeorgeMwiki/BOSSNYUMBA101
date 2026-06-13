@@ -183,7 +183,7 @@ ecr-push-all: ecr-login ## Build and push all images to ECR
 	@echo "Building and pushing all images..."
 	docker build -f docker/Dockerfile.api -t $(ECR_REGISTRY)/bossnyumba/api-gateway:latest .
 	docker push $(ECR_REGISTRY)/bossnyumba/api-gateway:latest
-	@for app in customer-app estate-manager-app owner-portal admin-portal; do \
+	@for app in marketing owner-portal admin-platform-portal; do \
 		echo "Building $$app..."; \
 		docker build -f docker/Dockerfile.web \
 			--build-arg APP_NAME=$$app \

@@ -423,31 +423,6 @@ services:
       resources:
         limits: { cpus: "0.5", memory: 512M }
 
-  customer-app:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.web
-      args:
-        APP_NAME: customer-app
-        APP_PATH: apps/customer-app
-      target: nextjs
-    container_name: bossnyumba-prod-customer-app
-    <<: [*common-restart, *common-logging]
-    env_file: .env.production
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-    networks: [control-plane]
-    deploy:
-      resources:
-        limits: { cpus: "1.0", memory: 1G }
-
   owner-portal:
     build:
       context: .
@@ -493,31 +468,6 @@ services:
     deploy:
       resources:
         limits: { cpus: "0.5", memory: 512M }
-
-  estate-manager-app:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.web
-      args:
-        APP_NAME: estate-manager-app
-        APP_PATH: apps/estate-manager-app
-      target: nextjs
-    container_name: bossnyumba-prod-estate-manager
-    <<: [*common-restart, *common-logging]
-    env_file: .env.production
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-    networks: [control-plane]
-    deploy:
-      resources:
-        limits: { cpus: "1.0", memory: 1G }
 
   # ===========================================================================
   # Edge plane — Nginx (TLS termination, host-facing) + Certbot (LE auto-renew)

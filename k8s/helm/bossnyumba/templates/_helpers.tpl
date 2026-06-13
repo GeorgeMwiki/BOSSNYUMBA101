@@ -19,7 +19,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{/*
 Image reference for a workload. Call as:
-  {{ include "bossnyumba.image" (dict "Values" .Values "workload" .Values.apps.customerApp) }}
+  {{ include "bossnyumba.image" (dict "Values" .Values "workload" .Values.apps.ownerPortal) }}
 Resolves per-workload tag fallback to .Values.image.tag.
 */}}
 {{- define "bossnyumba.image" -}}

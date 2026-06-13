@@ -34,12 +34,6 @@ export const MOCK_DATA_ALLOWLIST = new Map([
     'packages/market-intelligence/src/adapters/zillow.ts',
     'X-MOCK-MARKET-DATA HTTP header constant for Zillow sandbox responses; not local data.',
   ],
-
-  // ─── Empty-array bootstrap sentinels ───────────────────────────────
-  [
-    'apps/customer-app/src/lib/payments-data.ts',
-    'MOCK_PAYMENTS export is an empty Payment[] sentinel; pending rename to PAYMENTS_BOOTSTRAP.',
-  ],
 ]);
 
 /**

@@ -160,8 +160,6 @@ const ALLOWLIST_PATTERNS = [
   // WhatsApp / SMS / push copy.
   /services\/notifications\/src\/whatsapp\/templates\.ts$/,
   /services\/notifications\/src\/logger\.ts$/,
-  // Customer-app marketing pages mention "M-Pesa", "KRA returns" etc.
-  /apps\/customer-app\/src\/(app|components)\/[\w\-/[\].]+\.tsx?$/,
   // Owner-portal slash-command palette / settings copy mentions provider
   // names in UI strings.
   /apps\/owner-portal\/src\/(components|pages)\/[A-Za-z-]+\.tsx?$/,
@@ -185,9 +183,8 @@ const ALLOWLIST_PATTERNS = [
   /packages\/ai-copilot\/src\/orchestrators\/[a-z-/]+\.ts$/,
   /packages\/ai-copilot\/src\/intelligence-orchestrator\/[a-z-/]+\.ts$/,
   /packages\/ai-copilot\/src\/knowledge\/[a-z-/0-9]+\.ts$/,
-  // Spotlight action catalog + brain-client describe HQ actions.
+  // Spotlight action catalog describes HQ actions.
   /packages\/spotlight\/src\/action-catalog\.ts$/,
-  /apps\/estate-manager-app\/src\/lib\/brain-client\.ts$/,
   // Payments service inputs / providers / reconciler / webhook middleware
   // mention rails by canonical name (M-Pesa STK, etc.).
   /services\/payments(-ledger)?\/src\/[a-z-/.]+\.ts$/,
@@ -228,7 +225,6 @@ const ALLOWLIST_PATTERNS = [
   // missions + plan steps in UI copy.
   /apps\/admin-platform-portal\/src\/app\/[a-zA-Z-/]+\.(ts|tsx)$/,
   /apps\/owner-portal\/src\/app\/[a-zA-Z-/]+\.(ts|tsx)$/,
-  /apps\/estate-manager-app\/src\/app\/[a-zA-Z-/]+\.(ts|tsx)$/,
   // AI-copilot top-level + skill / workflow registry / rent-credit /
   // learning-engine / background-intelligence files catalog regulator-
   // named skills, workflows, and signals — descriptive metadata.
@@ -346,11 +342,9 @@ const ALLOWLIST_PATTERNS = [
   // Storybook stories enumerate per-jurisdiction sample sections for the
   // component gallery (demo fixtures, not business logic).
   /packages\/.*\/src\/stories\/[A-Za-z.]+\.stories\.tsx?$/,
-  // Mobile app screens (staff/tenant/estate-manager) name M-Pesa / KRA in
+  // Mobile app screens (staff/tenant) name M-Pesa / KRA in
   // user-facing payment copy + bilingual labels for the launch market.
   /apps\/(staff|tenant)-mobile\/app\/[\w\-/[\]()]+\.tsx?$/,
-  /apps\/estate-manager-app\/src\/screens\/[\w\-/]+\.tsx?$/,
-  /apps\/customer-app\/src\/lib\/api\.ts$/,
   // Mobile auth provider + types reference +255 in E.164 JSDoc examples for
   // the TZ launch market.
   /apps\/staff-mobile\/src\/auth\/(AuthProvider|types)\.ts$/,

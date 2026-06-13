@@ -7,7 +7,7 @@ AWS infrastructure for the BOSSNYUMBA Property Management SaaS platform.
 - **VPC** – Public/private subnets, NAT gateway, Internet gateway, route tables
 - **RDS** – PostgreSQL 15 with parameter groups, security groups
 - **Redis** – ElastiCache Redis 7 cluster
-- **ECS** – Fargate cluster with API gateway, ALB, and app services (estate-manager, customer-app, owner-portal, admin-portal)
+- **ECS** – Fargate cluster with API gateway, ALB, and app services (owner-portal, admin-platform-portal)
 
 ## Directory Structure
 

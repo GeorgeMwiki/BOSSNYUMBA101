@@ -142,7 +142,7 @@ variable "enable_container_insights" {
 # App Services
 # -----------------------------------------------------------------------------
 variable "app_services" {
-  description = "Map of app services (estate-manager, customer-app, owner-portal, admin-portal)"
+  description = "Map of app services (owner-portal, admin-platform-portal)"
   type = map(object({
     image         = string
     cpu           = number
@@ -171,10 +171,8 @@ variable "ecr_repository_names" {
   type        = list(string)
   default = [
     "api-gateway",
-    "customer-app",
-    "estate-manager-app",
     "owner-portal",
-    "admin-portal",
+    "admin-platform-portal",
     "payments",
     "notifications",
     "reports"

@@ -1,7 +1,7 @@
 /**
  * Owner Portal — REAL-BACKEND regression net (W-E2E-Portals).
  *
- * Sibling to admin-portal/real-backend-regression.spec.ts. The owner portal
+ * The owner portal
  * dashboard is the most-used surface and hits /api/v1/owner/dashboard (or
  * equivalent aggregator) on every page load. If schema drifts between gw
  * and portal, that one round-trip flushes it out.

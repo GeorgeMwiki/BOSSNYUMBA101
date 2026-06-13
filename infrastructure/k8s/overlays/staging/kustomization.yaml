@@ -16,13 +16,7 @@ commonLabels:
 images:
   - name: bossnyumba/api-gateway
     newTag: staging
-  - name: bossnyumba/estate-manager-app
-    newTag: staging
-  - name: bossnyumba/customer-app
-    newTag: staging
   - name: bossnyumba/owner-portal
-    newTag: staging
-  - name: bossnyumba/admin-portal
     newTag: staging
 
 patches:
@@ -38,11 +32,5 @@ patches:
 replicas:
   - name: api-gateway
     count: 2
-  - name: estate-manager
-    count: 1
-  - name: customer-app
-    count: 1
   - name: owner-portal
-    count: 1
-  - name: admin-portal
     count: 1

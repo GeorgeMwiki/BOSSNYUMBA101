@@ -365,30 +365,6 @@ export const HARDCODED_CURRENCY_ALLOWLIST = new Map([
     'Admin api helper defaults to USD when currency param omitted; UI fetch helper, not business logic.',
   ],
   [
-    'apps/customer-app/src/app/settings/page.tsx',
-    'Customer settings currency-picker enumerates KES/USD as the user-selectable currency options.',
-  ],
-  [
-    'apps/customer-app/src/lib/hooks/useCurrencyPreference.ts',
-    'Customer-app FALLBACK_CURRENCY = USD constant is the platform-default tip of the resolution chain.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/customers/[id]/page.tsx',
-    'Estate-manager page reads NEXT_PUBLIC_TENANT_CURRENCY env var with USD fallback; tracked-gap pending tenant FX.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/utilities/bills/page.tsx',
-    'Estate-manager utilities-bills page reads NEXT_PUBLIC_TENANT_CURRENCY with USD fallback; tracked-gap.',
-  ],
-  [
-    'apps/estate-manager-app/src/screens/payments/PaymentsList.tsx',
-    'Estate-manager payments-list screen reads NEXT_PUBLIC_TENANT_CURRENCY with USD fallback; tracked-gap.',
-  ],
-  [
-    'apps/estate-manager-app/src/screens/work-orders/WorkOrderDetail.tsx',
-    'Estate-manager work-order-detail reads NEXT_PUBLIC_TENANT_CURRENCY with USD fallback; tracked-gap.',
-  ],
-  [
     'apps/owner-portal/src/lib/api.ts',
     'Owner-portal api helper defaults to USD when currency param omitted; UI fetch helper, not business logic.',
   ],
@@ -532,12 +508,6 @@ export const HARDCODED_CURRENCY_ALLOWLIST = new Map([
   [
     'packages/database/src/seeds/scale-tier-fixtures.seed.ts',
     'Scale-tier fixture seed declares primaryCurrency per demo-tenant (TZS/KES/ZAR matched to each fixture country); seed/registry data only.',
-  ],
-
-  // ─── WZ-CI-GREEN 2026-06-13: estate-manager tenant-currency wrapper
-  [
-    'apps/estate-manager-app/src/lib/currency.ts',
-    'TENANT_CURRENCY reads NEXT_PUBLIC_TENANT_CURRENCY env with USD as the ultimate platform-default tip of the resolution chain; per-entity currency is always threaded first.',
   ],
 
   // ─── WZ-CI-GREEN 2026-06-13: marketing app (TZ-audience copy) ──────

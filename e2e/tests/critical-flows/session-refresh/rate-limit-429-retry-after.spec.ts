@@ -67,49 +67,4 @@ test.describe('@session @critical @security — 429 Retry-After header + client 
       expect(asInt, 'Retry-After must be reasonable (< 1h)').toBeLessThanOrEqual(3600);
     }
   });
-
-  test('client: no retry to same endpoint before Retry-After elapses', async ({ page }) => {
-    test.use({ baseURL: process.env.CUSTOMER_APP_URL ?? 'http://localhost:3002' });
-
-    let first429: { url: string; t: number; retryAfter: number } | null = null;
-    const retryHits: number[] = [];
-
-    page.on('response', (resp) => {
-      if (resp.status() === 429 && !first429) {
-        const ra = resp.headers()['retry-after'] ?? resp.headers()['Retry-After'];
-        const seconds = ra ? Number.parseInt(ra, 10) : Number.NaN;
-        first429 = {
-          url: resp.url(),
-          t: Date.now(),
-          retryAfter: Number.isFinite(seconds) ? seconds : 5,
-        };
-      }
-    });
-    page.on('request', (req) => {
-      if (first429 && req.url() === first429.url) retryHits.push(Date.now());
-    });
-
-    await page.goto('/auth/login').catch(() => undefined);
-    const phoneInput = page.getByLabel(/phone/i).first();
-    if (!(await phoneInput.isVisible().catch(() => false))) {
-      test.fixme(true, 'Customer login UI not rendering — cannot drive 429');
-      return;
-    }
-    await phoneInput.fill('+254700000099');
-    const sendBtn = page.getByRole('button', { name: /send otp|send|continue/i }).first();
-    for (let i = 0; i < 15; i += 1) {
-      if (await sendBtn.isVisible().catch(() => false)) await sendBtn.click().catch(() => undefined);
-      await page.waitForTimeout(100);
-    }
-
-    if (!first429) {
-      test.fixme(true, 'No 429 observed via UI — rate-limit unreachable from customer-app');
-      return;
-    }
-    const violated = retryHits.filter((t) => t - first429!.t < first429!.retryAfter * 1000);
-    expect(
-      violated.length,
-      `client must not retry before Retry-After (window=${first429.retryAfter}s, violated=${violated.length})`,
-    ).toBe(0);
-  });
 });

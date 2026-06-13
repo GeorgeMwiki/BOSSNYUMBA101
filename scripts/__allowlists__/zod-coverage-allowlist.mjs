@@ -31,14 +31,6 @@ export const ZOD_ALLOWLIST = new Map([
     'apps/admin-platform-portal/src/app/api/platform/login/route.ts',
     'login proxy — credentials forwarded to identity service which validates.',
   ],
-  [
-    'apps/customer-app/src/app/api/brain/turn/route.ts',
-    'manual type-narrowing on req.json() with explicit guards; pending migration to Zod.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/api/brain/turn/route.ts',
-    'manual type-narrowing on req.json() with explicit guards; pending migration to Zod.',
-  ],
 
   // ─── api-gateway: tracked gaps awaiting a boundary Zod schema ───────
   [

@@ -3,9 +3,6 @@
  */
 
 export { OwnerPortalPage } from './OwnerPortalPage';
-export { AdminPortalPage } from './AdminPortalPage';
-export { CustomerAppPage } from './CustomerAppPage';
-export { EstateManagerAppPage } from './EstateManagerAppPage';
 
 // Re-export existing page objects
 export { LoginPage } from '../pages/LoginPage';

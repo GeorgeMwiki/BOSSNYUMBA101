@@ -15,7 +15,7 @@ data:
   SENTRY_ENVIRONMENT: production
   POSTHOG_HOST: https://eu.posthog.com
   OTEL_SERVICE_NAME: bossnyumba
-  CORS_ALLOWED_ORIGINS: https://bossnyumba.com,https://admin.bossnyumba.com,https://owners.bossnyumba.com,https://manage.bossnyumba.com
+  CORS_ALLOWED_ORIGINS: https://bossnyumba.com,https://admin.bossnyumba.com,https://owners.bossnyumba.com
   API_URL: https://api.bossnyumba.com
   FRONTEND_URL: https://bossnyumba.com
 ---

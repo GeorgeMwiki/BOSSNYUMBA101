@@ -24,8 +24,6 @@ data:
   REPORTS_URL: {{ printf "http://%s.%s.svc.cluster.local:%d" .Values.services.reports.name .Release.Namespace (int .Values.services.reports.port) | quote }}
   NOTIFICATIONS_URL: {{ printf "http://%s.%s.svc.cluster.local:%d" .Values.services.notifications.name .Release.Namespace (int .Values.services.notifications.port) | quote }}
   # Public frontend hosts (used by api-gateway for CORS allowlist).
-  PUBLIC_HOST_CUSTOMER: {{ .Values.hosts.customerApp | quote }}
-  PUBLIC_HOST_MANAGER: {{ .Values.hosts.estateManagerApp | quote }}
   PUBLIC_HOST_OWNER: {{ .Values.hosts.ownerPortal | quote }}
   PUBLIC_HOST_ADMIN: {{ .Values.hosts.adminPlatformPortal | quote }}
   # Postgres / Redis service hints (DATABASE_URL still comes from secret).

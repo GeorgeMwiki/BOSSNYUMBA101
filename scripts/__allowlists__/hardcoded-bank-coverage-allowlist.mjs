@@ -24,7 +24,7 @@
  *   4. Composition / port-binding wires that pass typed adapter handles
  *      (the literal here is the property NAME on a DI container).
  *   5. Frontend UI pages that present a provider-specific flow
- *      (e.g. `apps/customer-app/src/app/payments/mpesa/page.tsx` IS
+ *      (e.g. a provider-specific `/payments/mpesa` page IS
  *      the M-Pesa flow's UI).
  *
  * Adding a new provider literal in business logic → register here with a
@@ -135,20 +135,8 @@ export const HARDCODED_BANK_ALLOWLIST = new Map([
     'PII-mask uses mpesa as a detection keyword for session-replay redaction; observability tool.',
   ],
   [
-    'apps/customer-app/src/app/payments/mpesa/page.tsx',
-    'Customer-app M-Pesa payment page IS the M-Pesa-specific UI flow; literal is the flow identity.',
-  ],
-  [
-    'apps/customer-app/src/app/payments/pay/page.tsx',
-    'Customer-app pay page dispatches by provider slug (mpesa/card) to the matching downstream flow.',
-  ],
-  [
     'packages/file-ingest/src/proposal/heuristic-map.ts',
     'Heuristic mapping of CSV column headers to entity attributes; "nida" is the KE national-ID schema-attribute label, not a routing decision.',
-  ],
-  [
-    'apps/customer-app/src/components/documents/MoveOutNoticeForm.tsx',
-    'Move-out notice form distinguishes refund-method preference (mpesa vs bank_transfer); UI dispatch, not provider routing.',
   ],
   [
     'packages/dynamic-sections/src/lib/adaptive-layout/policies/intent-policy.ts',
@@ -185,14 +173,6 @@ export const HARDCODED_BANK_ALLOWLIST = new Map([
   [
     'packages/swahili-intelligence/src/noun-roots.ts',
     'Swahili noun-root lexicon: "huduma" is the Swahili common noun for "service" in the linguistic dictionary — NLP false-positive, not the Huduma ID provider.',
-  ],
-  [
-    'apps/estate-manager-app/src/lib/collections-api.ts',
-    'Collections API client forwards the user-selected payment channel; the mpesa guard only decides whether to attach phoneNumber for an STK push — channel set mirrors the gateway PaymentProcessSchema enum.',
-  ],
-  [
-    'apps/estate-manager-app/src/screens/payments/RecordPayment.tsx',
-    'Record-payment form: mpesa is one member of the PAYMENT_CHANNELS zod enum mirroring the gateway schema; the refine enforces the intrinsic M-Pesa STK phone-number requirement — UI form contract, not provider routing.',
   ],
   [
     'apps/tenant-mobile/app/(tabs)/kyc/index.tsx',

@@ -58,24 +58,6 @@ gateway:
 # Apps
 # ----------------------------------------------------------------------------
 apps:
-  customer:
-    enabled: true
-    replicaCount: 2
-    image: { name: customer-app, tag: "" }
-    port: 3000
-    host: bossnyumba.com
-    resources:
-      requests: { cpu: 100m, memory: 256Mi }
-      limits:   { cpu: 1000m, memory: 1Gi }
-  estateManager:
-    enabled: true
-    replicaCount: 2
-    image: { name: estate-manager-app, tag: "" }
-    port: 3000
-    host: manage.bossnyumba.com
-    resources:
-      requests: { cpu: 100m, memory: 256Mi }
-      limits:   { cpu: 1000m, memory: 1Gi }
   ownerPortal:
     enabled: true
     replicaCount: 2
@@ -85,10 +67,10 @@ apps:
     resources:
       requests: { cpu: 50m, memory: 64Mi }
       limits:   { cpu: 500m, memory: 256Mi }
-  adminPortal:
+  adminPlatformPortal:
     enabled: true
     replicaCount: 2
-    image: { name: admin-portal, tag: "" }
+    image: { name: admin-platform-portal, tag: "" }
     port: 80
     host: admin.bossnyumba.com
     resources:
