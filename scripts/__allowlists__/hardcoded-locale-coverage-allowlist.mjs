@@ -418,4 +418,8 @@ export const HARDCODED_LOCALE_ALLOWLIST = new Map([
     'apps/tenant-mobile/src/marketplace/distance.ts',
     'Marketplace distance formatter uses en-GB toLocaleString for stable km thousands-grouping; render-only number formatting.',
   ],
+  // ─── api-gateway dedicated-resolver / render-time locale literals (Mode-C grind, Borjie-parity) ───
+  ['services/api-gateway/src/services/jurisdiction-resolver/index.ts', 'The dedicated jurisdiction->locale resolver; the locale tags ARE the resolver source-of-truth mapping (TZ->sw-TZ etc.), not hardcoded UI locale.'],
+  ['services/api-gateway/src/services/document-drafter/renderers/pptx-renderer.ts', 'PPTX renderer Intl locale formatting bound to the draft document language; render-time number/date formatting only.'],
+  ['services/api-gateway/src/workers/decision-retrospective-worker.ts', 'Retrospective worker formats reviewed timestamps with a stable Intl locale for the report; render-time formatting only. Tracked-gap: bind to tenant locale.'],
 ]);

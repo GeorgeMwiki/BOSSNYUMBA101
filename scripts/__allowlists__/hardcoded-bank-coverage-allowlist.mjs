@@ -202,4 +202,11 @@ export const HARDCODED_BANK_ALLOWLIST = new Map([
     'apps/tenant-mobile/src/kyc/state.ts',
     'KYC wizard state machine: nida is a KycStepKey in the typed stepOrder for the national-ID capture step; step-key identity, not provider routing.',
   ],
+  // ─── api-gateway payment-rail / jurisdiction bank literals (Mode-C grind, Borjie-parity) ───
+  ['services/api-gateway/src/routes/gepg.hono.ts', 'GePG is the Tanzania government payment-gateway rail this dedicated route integrates; jurisdiction-pinned rail identity, not generic provider routing.'],
+  ['services/api-gateway/src/routes/parity-capability-dashboard.hono.ts', 'Capability dashboard lists supported payment-rail names (mpesa/gepg) as capability labels; display registry, not a routing decision.'],
+  ['services/api-gateway/src/routes/payments.ts', 'Payment channel literals (mpesa/...) are members of the PaymentProcessSchema zod enum mirroring the supported-rail set; schema contract, not hardcoded routing.'],
+  ['services/api-gateway/src/services/cockpit-events/types.ts', 'Cockpit event type references a payment-rail name as an event discriminant; schema-level event identity.'],
+  ['services/api-gateway/src/services/ingestion-intent-inferrer/heuristic.ts', 'Ingestion NLP heuristic matches rail keywords (mpesa/bank) in uploaded text to infer document intent; lexical matcher, not provider routing.'],
+  ['services/api-gateway/src/services/jurisdiction-discovery/synthesizer.ts', 'Jurisdiction-discovery synthesizer maps a discovered country to its bank/mobile-money rails; the literals ARE the jurisdiction rail registry, not routing.'],
 ]);

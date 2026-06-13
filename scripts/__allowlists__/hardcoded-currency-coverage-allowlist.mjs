@@ -605,4 +605,42 @@ export const HARDCODED_CURRENCY_ALLOWLIST = new Map([
     'apps/tenant-mobile/src/marketplace/walletFormat.ts',
     'walletFormat switch enumerates the WalletCurrency union (TZS/USD/KES) the marketplace wallet supports; schema-level registry, not a routing decision.',
   ],
+  // ─── api-gateway brain/composition/service currency projections (Mode-C grind, Borjie-parity) ───
+  // Internal DB-row currency projections + parse-helper fallbacks to the TZ-first
+  // platform default ('TZS'); the user-facing render still goes through
+  // formatCurrency + the currency_preferences chain (matches Borjie's allowlisted
+  // "parse-helper fallback" category). Tracked-gap: migrate the fallback literal
+  // to a shared platform-default constant.
+  ['services/api-gateway/src/composition/brain-tools/cooperative-tools.ts', 'Brain tool projects a DB-row currency; TZ-first platform-default fallback when the row has none. Tracked-gap: platform-default constant.'],
+  ['services/api-gateway/src/composition/brain-tools/decision-journal-tools.ts', 'Brain tool surfaces a journaled decision amount currency; TZ-first platform-default fallback for a null row value. Tracked-gap.'],
+  ['services/api-gateway/src/composition/brain-tools/opportunity-scanner-tools.ts', 'Brain tool projects an opportunity amount currency; TZ-first platform-default fallback. Tracked-gap.'],
+  ['services/api-gateway/src/composition/brain-tools/outcome-predictor.ts', 'Outcome predictor projects forecast amounts; TZ-first platform-default currency fallback. Tracked-gap.'],
+  ['services/api-gateway/src/composition/brain-tools/owner-estate-tools.ts', 'Owner-estate brain tool projects estate ledger movements; TZ-first platform-default currency fallback for null rows. Tracked-gap.'],
+  ['services/api-gateway/src/composition/brain-tools/owner-property-tools.ts', 'Owner-property brain tool projects rent currency; TZ-first platform-default fallback. Tracked-gap.'],
+  ['services/api-gateway/src/composition/brain-tools/staff-tools.ts', 'Staff brain tool projects payment currency; TZ-first platform-default fallback. Tracked-gap.'],
+  ['services/api-gateway/src/composition/brain-tools/tenant-tools.ts', 'Tenant brain tool projects rent/balance currency; TZ-first platform-default fallback. Tracked-gap.'],
+  ['services/api-gateway/src/composition/mwikila-autonomous-ports.ts', 'Autonomous-ports DB projections fall back to the TZ-first platform-default currency when a row currency is null. Tracked-gap.'],
+  ['services/api-gateway/src/composition/seed-tool-adapters.ts', 'Seed/tool adapter bootstrap default currency; sandbox seed data, TZ-first default. Tracked-gap.'],
+  ['services/api-gateway/src/routes/cooperatives/cooperatives.hono.ts', 'Settlement currencyCode parse-helper fallback (body.currencyCode ?? TZS) to the TZ-first platform default; render uses formatCurrency.'],
+  ['services/api-gateway/src/routes/development-plans.hono.ts', 'Development-plan amount currency parse-helper fallback to the TZ-first platform default. Tracked-gap.'],
+  ['services/api-gateway/src/routes/leases.ts', 'Lease rent currency parse-helper fallback to the TZ-first platform default when unset on the row. Tracked-gap.'],
+  ['services/api-gateway/src/routes/maintenance.hono.ts', 'Maintenance cost currency parse-helper fallback to the TZ-first platform default. Tracked-gap.'],
+  ['services/api-gateway/src/services/cooperative-settlement/types.ts', 'Cooperative-settlement type default currency; schema-level default, TZ-first. Tracked-gap.'],
+  ['services/api-gateway/src/services/decision-journal/recorder.ts', 'Decision-journal recorder default currency for a recorded amount; TZ-first platform-default fallback. Tracked-gap.'],
+  ['services/api-gateway/src/services/jurisdiction-discovery/synthesizer.ts', 'Jurisdiction-discovery synthesizer maps a discovered country to its currency code; the literals ARE the jurisdiction registry mapping, not a routing default.'],
+  ['services/api-gateway/src/services/jurisdiction-resolver/index.ts', 'The dedicated jurisdiction->currency/locale resolver; these ISO codes ARE the resolver source-of-truth mapping, not hardcoded business logic.'],
+  ['services/api-gateway/src/services/knowledge-graph/grower.ts', 'Knowledge-graph grower projects entity amount currency; TZ-first platform-default fallback. Tracked-gap.'],
+  ['services/api-gateway/src/services/mwikila-autonomy/delegation-store.ts', 'Autonomy delegation store default currency for a delegated money cap; TZ-first default. Tracked-gap.'],
+  ['services/api-gateway/src/services/mwikila-autonomy/handler-runtime.ts', 'Autonomy handler-runtime default currency when an action omits one; TZ-first platform default. Tracked-gap.'],
+  ['services/api-gateway/src/services/mwikila-autonomy/handlers/rent-scheduler.ts', 'Rent-scheduler autonomy handler default currency for a scheduled installment; TZ-first default. Tracked-gap.'],
+  ['services/api-gateway/src/services/opportunity-scanner/publish.ts', 'Opportunity-scanner publish default currency for a surfaced opportunity; TZ-first default. Tracked-gap.'],
+  ['services/api-gateway/src/services/opportunity-scanner/resolver.ts', 'Opportunity-scanner resolver default currency; TZ-first platform-default fallback. Tracked-gap.'],
+  ['services/api-gateway/src/services/opportunity-scanner/scan-rules.ts', 'Opportunity scan-rules threshold currency; TZ-first platform-default fallback. Tracked-gap.'],
+  ['services/api-gateway/src/services/risk-scanner/scan-rules.ts', 'Risk scan-rules threshold currency; TZ-first platform-default fallback. Tracked-gap.'],
+  ['services/api-gateway/src/services/risk-scanner/scanner.ts', 'Risk-scanner projects exposure amount currency; TZ-first platform-default fallback. Tracked-gap.'],
+  ['services/api-gateway/src/services/settlement/orchestrator.ts', 'Settlement orchestrator default currency for a settlement leg; TZ-first platform default. Tracked-gap.'],
+  ['services/api-gateway/src/services/settlement/types.ts', 'Settlement type default currency; schema-level default, TZ-first. Tracked-gap.'],
+  ['services/api-gateway/src/workers/decision-retrospective-worker.ts', 'Decision-retrospective worker projects reviewed amounts; TZ-first platform-default currency fallback. Tracked-gap.'],
+  ['services/api-gateway/src/workers/outcome-reconciliation-resolvers.ts', 'Outcome-reconciliation resolvers project settled amounts; TZ-first platform-default currency fallback when a row currency is null. Tracked-gap.'],
+  ['services/api-gateway/src/workers/outcome-reconciliation-worker.ts', 'Outcome-reconciliation worker default currency for a reconciled outcome; TZ-first platform default. Tracked-gap.'],
 ]);
