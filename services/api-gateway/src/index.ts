@@ -497,6 +497,13 @@ import { adminUsersRouter } from './routes/owner/admin-users.hono';
 import { buildServices, type ServiceRegistry } from './composition/service-registry';
 import { getDb } from './composition/db-client';
 import { createServiceContextMiddleware } from './composition/service-context.middleware';
+// LAST outward-reach seam — bind the REAL runtime invokers behind the connector
+// fabric. Honest-degrades (credential / env-gated): connectorInvokers executes a
+// live action only when the tenant HAS connected the account AND the provider env
+// + cipher key are provisioned. Governance unchanged — integration.connector.invoke
+// stays HIGH-gated by its brain tool upstream.
+import { createConnectorInvokers } from './composition/connector-invokers-wiring';
+import { createPinoLikeLogger } from './utils/pino-shim';
 import {
   createHeartbeatSupervisor,
   createBackgroundSupervisor,
@@ -781,6 +788,27 @@ try {
     'service-registry: initialization failed, falling back to degraded mode'
   );
   serviceRegistry = buildServices({ db: null });
+}
+
+// ----------------------------------------------------------------------------
+// Connector invokers (LAST outward-reach seam) — bind the REAL runtime invoker
+// map onto the SAME serviceRegistry the service-context middleware closes over
+// (the connectors route reads `services.connectorInvokers`). Credential/env
+// gated + honest-degrade: an unprovisioned connector / unset live env leaves the
+// slot empty so the route keeps its structured not_provisioned envelope.
+// Borjie also wired createLegacyPortalLiveWiring (legacyPortalFileKra) in the
+// same brace scope — DELIBERATELY OMITTED here: that is a separate seam not owned
+// by this wave and createLegacyPortalLiveWiring does not exist in BossNyumba.
+// ----------------------------------------------------------------------------
+{
+  const connectorInvokersWiring = createConnectorInvokers({
+    db: serviceRegistry.db as unknown as
+      | { execute(q: unknown): Promise<unknown> }
+      | null,
+    logger: createPinoLikeLogger('connector-invokers'),
+  });
+  (serviceRegistry as { connectorInvokers?: unknown }).connectorInvokers =
+    connectorInvokersWiring.connectorInvokers;
 }
 
 // ----------------------------------------------------------------------------
