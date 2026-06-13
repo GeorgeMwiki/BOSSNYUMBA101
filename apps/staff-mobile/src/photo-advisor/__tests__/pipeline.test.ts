@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // Mock the native-only modules pulled in transitively by the pipeline.
 // expo-constants imports react-native (Flow syntax — Rollup/vitest cannot
 // parse it), and @react-native-async-storage/async-storage is the same
-// story. Mocking them here keeps the pipeline pure-Node testable.
+// story. expo-secure-store is the third such module: the pipeline reaches
+// auth/session → api/session → expo-secure-store, whose native entry drags
+// in react-native and breaks collection. Mocking all three (matching the
+// green auth/home-chat suites) keeps the pipeline pure-Node testable.
 vi.mock('expo-constants', () => ({
   default: { expoConfig: { extra: {} } }
 }))
@@ -13,6 +16,11 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
     setItem: vi.fn(async () => undefined),
     removeItem: vi.fn(async () => undefined)
   }
+}))
+vi.mock('expo-secure-store', () => ({
+  getItemAsync: vi.fn(async () => null),
+  setItemAsync: vi.fn(async () => undefined),
+  deleteItemAsync: vi.fn(async () => undefined)
 }))
 
 import { analyzePhoto, VISION_TURN_PATH } from '../pipeline'

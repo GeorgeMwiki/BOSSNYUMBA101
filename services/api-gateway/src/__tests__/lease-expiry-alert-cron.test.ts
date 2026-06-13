@@ -18,7 +18,18 @@ import {
   DEFAULT_EXPIRY_WINDOWS_DAYS,
   type ExpiringLeaseRow,
   type NotificationSender,
+  type ConsentGate,
 } from '../workers/lease-expiry-alert-cron';
+
+// #24 — these dispatch-contract tests exercise the dedupe + send path, NOT
+// the consent gate (which has its own coverage). The cron's consent gate is
+// FAIL-CLOSED by default, so a test that wants a send to happen must wire an
+// allowing gate — otherwise every alert is correctly suppressed.
+const allowAllConsent: ConsentGate = {
+  async isAutomatedReminderAllowed() {
+    return { allowed: true };
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Pure helpers
@@ -233,6 +244,7 @@ describe('createLeaseExpiryAlertCron — tickOnce', () => {
       logger,
       enabled: true,
       now: () => now,
+      consentGate: allowAllConsent,
     });
     const result = await cron.tickOnce();
     expect(result.scanned).toBe(1);
@@ -295,6 +307,7 @@ describe('createLeaseExpiryAlertCron — tickOnce', () => {
       logger,
       enabled: true,
       now: () => now,
+      consentGate: allowAllConsent,
     });
     const result = await cron.tickOnce();
     expect(result.dispatched).toBe(0);
@@ -324,6 +337,7 @@ describe('createLeaseExpiryAlertCron — tickOnce', () => {
       logger,
       enabled: true,
       now: () => now,
+      consentGate: allowAllConsent,
     });
     const result = await cron.tickOnce();
     expect(sendCalled).toBe(false);
@@ -365,6 +379,7 @@ describe('createLeaseExpiryAlertCron — tickOnce', () => {
       logger,
       enabled: true,
       now: () => now,
+      consentGate: allowAllConsent,
     });
     const result = await cron.tickOnce();
     // 4 of 5 leases match a window — the 45-day one drops out.

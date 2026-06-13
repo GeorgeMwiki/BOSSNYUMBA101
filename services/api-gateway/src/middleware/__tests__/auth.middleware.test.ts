@@ -303,9 +303,20 @@ describe('authMiddleware — malformed and missing tokens', () => {
 });
 
 describe('authMiddleware — audit log carries auth_path', () => {
+  // The api-gateway structured logger (src/utils/logger.ts) routes its
+  // info level through `console.log` and its warn level through
+  // `console.warn` — NOT `console.info`. An earlier revision of this
+  // suite spied on `console.info`, which the logger never calls, so the
+  // captured array was empty and every assertion saw `undefined`. Spy on
+  // the level the logger actually uses. In dev mode the formatter
+  // pretty-prints the meta bag with `JSON.stringify(rest, null, 2)`
+  // (a space after each colon), so match with a tolerant regex rather
+  // than the production single-line `"key":"value"` shape — exactly as
+  // the green sibling (Borjie) does for the same contract.
+
   it('logs auth_path=supabase on successful Supabase-token resolution', async () => {
     const app = makeAuthProbeApp();
-    const spy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     try {
       const token = await mintSupabaseToken({
         sub: 'sb-audit-1',
@@ -318,8 +329,8 @@ describe('authMiddleware — audit log carries auth_path', () => {
       const calls = spy.mock.calls.map((c) => String(c[0]));
       const auditLine = calls.find((l) => l.includes('auth_principal_resolved'));
       expect(auditLine).toBeDefined();
-      expect(auditLine).toContain('"auth_path":"supabase"');
-      expect(auditLine).toContain('"outcome":"allow"');
+      expect(auditLine).toMatch(/"auth_path":\s*"supabase"/);
+      expect(auditLine).toMatch(/"outcome":\s*"allow"/);
     } finally {
       spy.mockRestore();
     }
@@ -327,7 +338,7 @@ describe('authMiddleware — audit log carries auth_path', () => {
 
   it('logs auth_path=gateway on successful gateway-token resolution', async () => {
     const app = makeAuthProbeApp();
-    const spy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     try {
       const token = mintGatewayToken({ userId: 'gw-audit-1', tenantId: 'gw-tenant-audit' });
       const res = await app.request('/probe', {
@@ -337,7 +348,7 @@ describe('authMiddleware — audit log carries auth_path', () => {
       const calls = spy.mock.calls.map((c) => String(c[0]));
       const auditLine = calls.find((l) => l.includes('auth_principal_resolved'));
       expect(auditLine).toBeDefined();
-      expect(auditLine).toContain('"auth_path":"gateway"');
+      expect(auditLine).toMatch(/"auth_path":\s*"gateway"/);
     } finally {
       spy.mockRestore();
     }
@@ -358,8 +369,8 @@ describe('authMiddleware — audit log carries auth_path', () => {
       const calls = spy.mock.calls.map((c) => String(c[0]));
       const auditLine = calls.find((l) => l.includes('auth_principal_resolved'));
       expect(auditLine).toBeDefined();
-      expect(auditLine).toContain('"outcome":"reject"');
-      expect(auditLine).toContain('"auth_path":"supabase"');
+      expect(auditLine).toMatch(/"outcome":\s*"reject"/);
+      expect(auditLine).toMatch(/"auth_path":\s*"supabase"/);
     } finally {
       spy.mockRestore();
     }
