@@ -137,6 +137,13 @@ jobs:
         # tenants/users directly, so the schema must exist before they run.
         run: pnpm migrate
 
+      - name: Build internal packages (dist/ for workspace imports)
+        # packages/database tests import @bossnyumba/domain-models (and others)
+        # via the `import` condition → dist/index.js. Without a build, vitest
+        # fails 37 suites with "Failed to resolve entry for package
+        # @bossnyumba/domain-models". Mirror the strict-ci unit-test job.
+        run: pnpm -r --filter './packages/*' build || true
+
       - name: Run database integration tests
         # DATABASE_URL + LIVE_DB are inherited from the job env, so the
         # skipIf-gated suites execute against the real Postgres above.
