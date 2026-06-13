@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
 import {
   Camera,
   ChevronRight,
@@ -70,7 +71,13 @@ interface MeterReading {
   icon: React.ElementType;
   unit: string;
   value: string;
-  meterNumber: string;
+  /**
+   * The REAL meter identifier for this utility, resolved from the
+   * resident's unit `utility_accounts` record. Null when the unit has
+   * no provisioned meter of this type yet — in that case we render no
+   * identifier rather than a fabricated one.
+   */
+  meterNumber: string | null;
   placeholder: string;
   required: boolean;
 }
@@ -103,16 +110,18 @@ const conditionColors = {
   not_inspected: 'bg-gray-100 text-gray-500 border-gray-200',
 };
 
-const INITIAL_METER_READINGS: MeterReading[] = [
+// Generic meter-reading scaffold. The meter IDENTIFIER is intentionally
+// null here and filled at runtime from the resident's REAL utility
+// accounts (see `useMeterReadings`). The reading is only `required` when
+// a real meter of that type actually exists on the unit.
+const METER_TEMPLATES: ReadonlyArray<Omit<MeterReading, 'meterNumber' | 'required'>> = [
   {
     id: 'electricity',
     name: 'Electricity Meter',
     icon: Zap,
     unit: 'kWh',
     value: '',
-    meterNumber: '04-123-4567-890',
     placeholder: 'e.g., 12345.6',
-    required: true,
   },
   {
     id: 'water',
@@ -120,16 +129,38 @@ const INITIAL_METER_READINGS: MeterReading[] = [
     icon: Droplets,
     unit: 'm\u00B3',
     value: '',
-    meterNumber: 'WTR-204-A',
     placeholder: 'e.g., 456.7',
-    required: true,
   },
 ];
+
+/** Map a utility type onto its meter-reading template id. */
+const UTILITY_TYPE_TO_METER_ID: Record<string, string> = {
+  electricity: 'electricity',
+  water: 'water',
+};
 
 export default function OnboardingInspectionPage() {
   const t = useTranslations('inspectionPage');
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Real utility accounts for the resident's unit — supplies the actual
+  // meter identifiers the inspector reads against. A fresh unit with no
+  // meters yet yields no identifiers (rendered honestly as absent).
+  const utilitiesQuery = useQuery({
+    queryKey: ['onboarding-utilities'],
+    queryFn: () => api.onboarding.getUtilities(),
+    retry: false,
+  });
+
+  // Map: meter-template id → real meter number from the unit's accounts.
+  const realMeterNumbers: Record<string, string> = {};
+  for (const account of utilitiesQuery.data?.utilities ?? []) {
+    const meterId = UTILITY_TYPE_TO_METER_ID[account.utilityType];
+    if (meterId && account.meterNumber) {
+      realMeterNumbers[meterId] = account.meterNumber;
+    }
+  }
 
   // Phase: 'rooms' | 'meters' | 'signoff'
   const [phase, setPhase] = useState<'rooms' | 'meters' | 'signoff'>('rooms');
@@ -151,7 +182,20 @@ export default function OnboardingInspectionPage() {
     }))
   );
   const [activeCheckpointId, setActiveCheckpointId] = useState<string | null>(null);
-  const [meterReadings, setMeterReadings] = useState<MeterReading[]>(INITIAL_METER_READINGS);
+  // State holds only the typed values, keyed by meter id. The displayed
+  // rows (with REAL meter numbers + required flag) are derived below so
+  // the real-data merge can never be clobbered by user edits.
+  const [meterValues, setMeterValues] = useState<Record<string, string>>({});
+  const meterReadings: MeterReading[] = METER_TEMPLATES.map((tpl) => {
+    const meterNumber = realMeterNumbers[tpl.id] ?? null;
+    return {
+      ...tpl,
+      meterNumber,
+      // Only require a reading when the unit actually has that meter.
+      required: Boolean(meterNumber),
+      value: meterValues[tpl.id] ?? '',
+    };
+  });
   const [signature, setSignature] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTips, setShowTips] = useState(true);
@@ -250,9 +294,7 @@ export default function OnboardingInspectionPage() {
   const updateMeterReading = (id: string, value: string) => {
     // Only allow numeric input with decimal
     if (value && !/^\d*\.?\d*$/.test(value)) return;
-    setMeterReadings((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, value } : m))
-    );
+    setMeterValues((prev) => ({ ...prev, [id]: value }));
   };
 
   const meterReadingsValid = meterReadings
@@ -325,9 +367,11 @@ export default function OnboardingInspectionPage() {
                     </div>
                     <div>
                       <h3 className="font-medium text-sm">{meter.name}</h3>
-                      <p className="text-xs text-gray-500">
-                        {t('meterLabel')}: <span className="font-mono">{meter.meterNumber}</span>
-                      </p>
+                      {meter.meterNumber && (
+                        <p className="text-xs text-gray-500">
+                          {t('meterLabel')}: <span className="font-mono">{meter.meterNumber}</span>
+                        </p>
+                      )}
                     </div>
                     {isValid && <Check className="w-5 h-5 text-success-500 ml-auto" />}
                   </div>

@@ -380,7 +380,23 @@
   "onboardingESign": {
     "title": "Saini Hati",
     "allSigned": "Zote Zimesainiwa",
-    "drawSignature": "Chora Sahihi Yako"
+    "drawSignature": "Chora Sahihi Yako",
+    "loading": "Inapakia hati zako…",
+    "errorLoad": "Hatukuweza kupakia hati zako. Tafadhali jaribu tena.",
+    "retry": "Jaribu tena",
+    "emptyTitle": "Hakuna cha kusaini bado",
+    "emptyDesc": "Mara tu mkataba wako utakapokuwa tayari, hati zako zitaonekana hapa kwa kusaini.",
+    "documentsToSign": "Hati za Kusaini",
+    "of": "kati ya",
+    "signedCount": "zimesainiwa",
+    "signedOn": "Imesainiwa tarehe",
+    "viewFullDocument": "Tazama Hati Kamili",
+    "signed": "Imesainiwa",
+    "signDocument": "Saini Hati",
+    "confirmTerms": "Nathibitisha kuwa nimesoma na kuelewa hati zote, na ninakubali kufungwa na masharti yaliyoainishwa katika mkataba wa kupanga.",
+    "legalNotice": "Sahihi yako ya kielektroniki ina nguvu sawa ya kisheria na sahihi ya mkono. Tafadhali kagua hati zote kwa makini kabla ya kusaini.",
+    "finalizing": "Inakamilisha…",
+    "completeSigning": "Kamilisha Kusaini"
   },
   "myCredit": {
     "title": "Mkopo wangu",
@@ -1005,7 +1021,12 @@
     "viewLease": "Tazama Mkataba",
     "getSupport": "Pata Msaada",
     "yourPropertyManager": "Meneja wa Mali Yako",
-    "sampleManagerName": "Jane Mwangi"
+    "moveInDateLabel": "Tarehe ya Kuhamia",
+    "locationLabel": "Mahali",
+    "propertyManagement": "Usimamizi wa Mali",
+    "toBeConfirmed": "Itathibitishwa",
+    "supportTeam": "Timu ya msaada",
+    "contactSupport": "Wasiliana na msaada kupitia njia ya ndani ya programu"
   },
   "inspectionPage": {
     "title": "Ukaguzi wa Kuhamia",
@@ -1199,7 +1220,37 @@
       "keyCollection": "Kuchukua Funguo"
     },
     "onboardingUtilities": {
-      "copyMeterNumber": "Nakili Nambari ya Mita"
+      "copyMeterNumber": "Nakili Nambari ya Mita",
+      "copyAccountNumber": "Nakili Nambari ya Akaunti",
+      "loading": "Inapakia akaunti zako za huduma…",
+      "errorLoad": "Hatukuweza kupakia akaunti zako za huduma. Tafadhali jaribu tena.",
+      "retry": "Jaribu tena",
+      "emptyTitle": "Hakuna mita zilizopangwa bado",
+      "emptyDesc": "Mara tu akaunti za huduma za nyumba yako zitakapowekwa, maelezo ya mita yako na maagizo yataonekana hapa.",
+      "intro": "Kagua usanidi wa huduma kwa nyumba yako. Utahitaji maelezo haya kusimamia umeme, maji, na gesi.",
+      "reviewProgress": "Mapitio ya Huduma",
+      "reviewed": "zimekaguliwa",
+      "of": "kati ya",
+      "meterNumberLabel": "Nambari ya Mita",
+      "accountNumberLabel": "Nambari ya Akaunti",
+      "provider": "Mtoa huduma",
+      "iReviewed": "Nimekagua hili",
+      "reviewedDone": "Imekaguliwa",
+      "continue": "Endelea",
+      "saving": "Inahifadhi…",
+      "type": {
+        "electricity": "Umeme",
+        "water": "Maji",
+        "gas": "Gesi",
+        "internet": "Intaneti",
+        "other": "Huduma"
+      },
+      "instructions": {
+        "electricity": "Nyumba hii inatumia mita ya umeme ya kulipia kabla ya LUKU. Nunua tokeni za LUKU kupitia M-Pesa: piga *150*00# kisha chagua \"Nunua Umeme/LUKU\", kisha weka nambari ya mita iliyo hapo juu. Utapokea tokeni ya tarakimu 20 kwa SMS ya kuingiza kwenye mita. Bonyeza kitufe cha bluu kwenye mita kuona vipimo vilivyobaki.",
+        "water": "Maji ya nyumba hii hupimwa dhidi ya akaunti iliyo hapo juu. Vipimo huchukuliwa kila mwezi na kutozwa kama sehemu ya huduma zako. Ripoti uvujaji, shinikizo dogo, au maji yenye rangi kupitia sehemu ya Matengenezo ya programu.",
+        "gas": "Agiza gesi ya kupikia ya LPG kutoka kwa wauzaji walioidhinishwa katika sehemu ya Jamii. Daima funga vali za gesi zisipotumika. Ukinusa gesi, fungua madirisha, usiwashe kifaa chochote cha umeme, na wasiliana na usalama mara moja.",
+        "generic": "Tumia maelezo ya akaunti na mita yaliyo hapo juu kusimamia huduma hii. Ripoti tatizo lolote kupitia sehemu ya Matengenezo ya programu."
+      }
     },
     "onboardingWelcome": {
       "pushNotifications": "Arifa za Push"

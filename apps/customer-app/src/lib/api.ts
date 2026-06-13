@@ -144,6 +144,55 @@ export interface MoneyAmount {
   readonly currency: string;
 }
 
+/**
+ * One section of a real onboarding document. `data` carries the
+ * tenant's actual lease values (dates, money amounts, etc.) keyed by
+ * field; the client formats money via its currency-preference hook and
+ * never trusts a server-side currency symbol.
+ */
+export interface OnboardingDocumentSection {
+  readonly title: string;
+  readonly data: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * A real document the resident must e-sign, built server-side from
+ * their actual lease. No field is fabricated.
+ */
+export interface OnboardingDocument {
+  readonly id: string;
+  readonly name: string;
+  readonly type: string;
+  readonly leaseNumber?: string;
+  readonly where?: string;
+  readonly property?: string;
+  readonly unit?: string;
+  readonly currency?: string;
+  readonly documentUrl?: string | null;
+  readonly sections: ReadonlyArray<OnboardingDocumentSection>;
+  readonly signed: boolean;
+  readonly signedAt?: string;
+}
+
+/** Response of `GET /onboarding/documents`. Empty array = nothing to sign yet. */
+export interface OnboardingDocumentsResponse {
+  readonly documents: ReadonlyArray<OnboardingDocument>;
+}
+
+/** A real utility account/meter provisioned for the resident's unit. */
+export interface OnboardingUtilityAccount {
+  readonly id: string;
+  readonly utilityType: string;
+  readonly provider: string;
+  readonly accountNumber: string;
+  readonly meterNumber: string | null;
+}
+
+/** Response of `GET /onboarding/utilities`. Empty array = no meters assigned yet. */
+export interface OnboardingUtilitiesResponse {
+  readonly utilities: ReadonlyArray<OnboardingUtilityAccount>;
+}
+
 /** Response of `GET /payments/balance`. */
 export interface PaymentBalance {
   readonly totalDue: MoneyAmount;
@@ -338,6 +387,32 @@ export const api = {
   onboarding: {
     async getStatus() {
       return requireLiveData(() => ensureClient().get('/onboarding/status'));
+    },
+
+    /**
+     * Fetch the REAL documents the signed-in resident must e-sign,
+     * derived server-side from their actual lease (unit, rent, deposit,
+     * term dates — all the tenant's own record). A fresh resident with
+     * no lease yet receives `{ documents: [] }` so the UI can render an
+     * honest "nothing to sign yet" pending state. Never fabricated.
+     */
+    async getDocuments(): Promise<OnboardingDocumentsResponse> {
+      return requireLiveData<OnboardingDocumentsResponse>(() =>
+        ensureClient().get('/onboarding/documents'),
+      );
+    },
+
+    /**
+     * Fetch the REAL utility accounts/meters provisioned for the
+     * resident's unit (provider, account number, meter number). A fresh
+     * resident whose unit has no utility accounts yet receives
+     * `{ utilities: [] }` → honest empty/pending state. Meter
+     * identifiers are NEVER fabricated.
+     */
+    async getUtilities(): Promise<OnboardingUtilitiesResponse> {
+      return requireLiveData<OnboardingUtilitiesResponse>(() =>
+        ensureClient().get('/onboarding/utilities'),
+      );
     },
 
     async updateStep(step: string, data: Record<string, unknown>) {

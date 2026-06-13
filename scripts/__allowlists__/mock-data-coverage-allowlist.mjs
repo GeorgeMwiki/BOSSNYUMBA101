@@ -41,3 +41,43 @@ export const MOCK_DATA_ALLOWLIST = new Map([
     'MOCK_PAYMENTS export is an empty Payment[] sentinel; pending rename to PAYMENTS_BOOTSTRAP.',
   ],
 ]);
+
+/**
+ * Fabricated-record structural-pass allow-list (J7.1).
+ *
+ * Genuinely-static config arrays under an `apps/* /src/app/**` surface that
+ * the structural pass would otherwise inspect, and which a maintainer has
+ * confirmed carry NO fabricated business identifiers/figures (option lists,
+ * taxonomies, document-type checklists, i18n-driven copy). Keys are paths
+ * RELATIVE to the repo root; each value is a justification ≥ 8 chars.
+ *
+ * In practice the structural pass is narrow enough (requires a meter/account
+ * number, currency amount, named property, or concrete date) that almost no
+ * legitimate config matches — keep this list empty unless a real false
+ * positive appears, and prefer fixing the heuristic over allowlisting.
+ */
+export const FABRICATED_RECORD_ALLOWLIST = new Map([
+  // (intentionally empty — the heuristic is value-signal-gated and should
+  //  not fire on static config; add a justified entry only on a confirmed
+  //  false positive.)
+]);
+
+/**
+ * Fabricated-record TRACKED list (J7.1) — in-flight fixes owned elsewhere.
+ *
+ * These files DO contain fabricated-record arrays that a fresh real user
+ * would hit, and they are being removed / wired-to-real-data by a parallel
+ * fix. The scanner DETECTS them (proving the class is now enforced) and
+ * reports them as TRACKED, but they do NOT fail the gate while the fix is
+ * in flight. The moment the fabricated array is gone, the entry becomes
+ * STALE and the gate fails until the tracker is deleted — so this can never
+ * silently rot into a permanent exception.
+ *
+ * Keys are paths RELATIVE to repo root; values point at the owning fix.
+ */
+export const FABRICATED_RECORD_TRACKED = new Map([
+  // (empty — the no-mock onboarding fix landed: UTILITY_SETUPS and
+  //  INITIAL_METER_READINGS fabricated-meter arrays are gone, wired to the
+  //  real meter-data path. Trackers removed per the self-cleaning contract
+  //  above — a stale tracker fails the gate, so this list must stay accurate.)
+]);

@@ -27,6 +27,10 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
+import { databaseMiddleware } from '../middleware/database';
+import { utilityAccounts } from '@bossnyumba/database';
+import { and, eq, isNull } from 'drizzle-orm';
+import { mapLeaseRow } from './db-mappers';
 import {
   OnboardingService,
   type OnboardingRepository,
@@ -79,6 +83,12 @@ const service = new OnboardingService(repo, bus);
 
 const app = new Hono();
 app.use('*', authMiddleware);
+// Tenant-bound DB handle + repositories — required by the real-data
+// read endpoints below (GET /documents, GET /utilities). The legacy
+// in-memory session endpoints above do not depend on it, but mounting
+// it for the whole router is harmless and keeps `c.get('repos')` /
+// `c.get('db')` available to every handler.
+app.use('*', databaseMiddleware);
 
 const StartSchema = z.object({
   customerId: z.string().min(1),
@@ -193,5 +203,166 @@ app.post('/:id/complete-step', zValidator('json', CompleteStepSchema), withSecur
   }
   return c.json({ success: true, data: result.value });
 }));
+
+// ---------------------------------------------------------------------------
+// GET /documents — the REAL documents the signed-in resident must e-sign.
+//
+// Built from the resident's actual lease row (same source as
+// `/leases/current`: `repos.leases.findByCustomer(userId, tenantId)`),
+// enriched with the real unit + property. The customer-app e-sign
+// screen renders this list verbatim — every figure (rent, deposit,
+// term dates, unit, property) is the tenant's OWN record.
+//
+// A FRESH resident with no lease yet has NOTHING to sign → we return
+// an empty `documents` array so the client renders an honest
+// "nothing to sign yet" pending state. We NEVER fabricate a lease.
+//
+// `signed`/`signedAt` reflect the lease's persisted signature columns
+// (`signedByTenant` / `tenantSignedAt`) so a resident who already
+// signed sees the truthful state on return.
+// ---------------------------------------------------------------------------
+app.get('/documents', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+
+  const result = await repos.leases.findByCustomer(
+    auth.userId as CustomerId,
+    auth.tenantId as TenantId,
+    { limit: 20, offset: 0 },
+  );
+  const leaseRow =
+    result.items.find((item: { status: unknown }) => String(item.status) === 'active') ||
+    result.items[0];
+
+  // Honest empty/pending state — no lease assigned yet.
+  if (!leaseRow) {
+    return c.json({ success: true, data: { documents: [] } });
+  }
+
+  const lease = mapLeaseRow(leaseRow);
+  const [unit, property] = await Promise.all([
+    lease.unitId ? repos.units.findById(lease.unitId, auth.tenantId as TenantId) : null,
+    lease.propertyId
+      ? repos.properties.findById(lease.propertyId, auth.tenantId as TenantId)
+      : null,
+  ]);
+
+  const unitLabel = unit?.unitCode ?? lease.unitId ?? '';
+  const propertyName = property?.name ?? '';
+  const currency: string = leaseRow.rentCurrency ?? '';
+  const signed = Boolean(leaseRow.signedByTenant);
+  const signedAt: string | undefined = leaseRow.tenantSignedAt
+    ? new Date(leaseRow.tenantSignedAt).toISOString()
+    : undefined;
+
+  // Server returns amounts + currency as raw values; the client renders
+  // money via its currency-preference formatter. We do NOT pre-format or
+  // hard-code a currency symbol here (multi-currency invariant).
+  const money = (amount: number) => ({ amount, currency });
+
+  const where = [propertyName, unitLabel ? `Unit ${unitLabel}` : null]
+    .filter(Boolean)
+    .join(', ');
+
+  const sections = [
+    {
+      title: 'Term of Lease',
+      data: {
+        startDate: lease.startDate ? new Date(lease.startDate).toISOString() : null,
+        endDate: lease.endDate ? new Date(lease.endDate).toISOString() : null,
+        rent: money(Number(lease.rentAmount ?? 0)),
+        paymentDueDay: lease.paymentDueDay ?? null,
+      },
+    },
+    {
+      title: 'Security Deposit',
+      data: {
+        deposit: money(Number(lease.depositAmount ?? 0)),
+        depositPaid: money(Number(lease.depositPaid ?? 0)),
+      },
+    },
+    {
+      title: 'Maintenance & Repairs',
+      data: {
+        utilitiesIncluded: lease.terms?.utilitiesIncluded ?? [],
+      },
+    },
+  ];
+
+  return c.json({
+    success: true,
+    data: {
+      documents: [
+        {
+          id: lease.id,
+          name: 'Lease Agreement',
+          type: 'lease',
+          leaseNumber: lease.leaseNumber,
+          where,
+          property: propertyName,
+          unit: unitLabel,
+          currency,
+          documentUrl: leaseRow.leaseDocumentUrl ?? null,
+          sections,
+          signed,
+          signedAt,
+        },
+      ],
+    },
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /utilities — the REAL utility accounts/meters for the resident's
+// unit. Read straight from the `utility_accounts` table (tenant + unit
+// scoped, soft-delete aware). Each row carries the unit's actual
+// provider, account number, and meter number.
+//
+// A FRESH resident whose unit has no utility accounts provisioned yet
+// gets an empty `utilities` array → honest empty/pending state. We NEVER
+// invent a meter identifier. Generic LUKU / M-Pesa instructional COPY
+// lives client-side; only the IDENTIFIERS come from here.
+// ---------------------------------------------------------------------------
+app.get('/utilities', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const db = c.get('db');
+
+  // Resolve the resident's current lease → unit. No lease → no unit →
+  // honest empty state.
+  const leaseResult = await repos.leases.findByCustomer(
+    auth.userId as CustomerId,
+    auth.tenantId as TenantId,
+    { limit: 20, offset: 0 },
+  );
+  const leaseRow =
+    leaseResult.items.find((item: { status: unknown }) => String(item.status) === 'active') ||
+    leaseResult.items[0];
+
+  if (!leaseRow?.unitId) {
+    return c.json({ success: true, data: { utilities: [] } });
+  }
+
+  const rows = await db
+    .select()
+    .from(utilityAccounts)
+    .where(
+      and(
+        eq(utilityAccounts.tenantId, auth.tenantId as string),
+        eq(utilityAccounts.unitId, leaseRow.unitId),
+        isNull(utilityAccounts.deletedAt),
+      ),
+    );
+
+  const utilities = rows.map((row: typeof utilityAccounts.$inferSelect) => ({
+    id: row.id,
+    utilityType: row.utilityType,
+    provider: row.provider,
+    accountNumber: row.accountNumber,
+    meterNumber: row.meterNumber ?? null,
+  }));
+
+  return c.json({ success: true, data: { utilities } });
+});
 
 export const onboardingRouter = app;
