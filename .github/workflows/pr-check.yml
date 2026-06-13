@@ -17,6 +17,16 @@ env:
   # optional dep is skipped and the type-only import fails TS2307.
   NODE_VERSION: '22'
   PNPM_VERSION: '8'
+  # NEXT_PUBLIC_* base URLs are inlined at build; several admin-platform-portal
+  # pages resolve them through a fail-loud env-guard that THROWS in production
+  # builds when unset (src/lib/env-guard.ts). Provide non-resolving CI
+  # placeholders so the Bundle Size + Code Quality verification builds pass — a
+  # real deploy injects the true values and the guard still catches a
+  # genuinely-missing one there. Mirrors ci.yml / strict-ci.yml.
+  NEXT_PUBLIC_API_URL: https://ci-build.bossnyumba.invalid/api
+  NEXT_PUBLIC_APP_URL: https://ci-build.bossnyumba.invalid
+  NEXT_PUBLIC_OWNER_PORTAL_URL: https://ci-build.bossnyumba.invalid
+  NEXT_PUBLIC_MARKETING_SITE_URL: https://ci-build.bossnyumba.invalid
 
 jobs:
   # ============================================
