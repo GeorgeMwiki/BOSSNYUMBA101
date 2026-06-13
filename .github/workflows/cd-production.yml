@@ -198,6 +198,10 @@ jobs:
           build-args: |
             APP_NAME=${{ matrix.app }}
             APP_PATH=${{ matrix.path }}
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
+            NEXT_PUBLIC_OWNER_PORTAL_URL=${{ vars.NEXT_PUBLIC_OWNER_PORTAL_URL }}
+            NEXT_PUBLIC_MARKETING_SITE_URL=${{ vars.NEXT_PUBLIC_MARKETING_SITE_URL }}
           tags: |
             ${{ env.ECR_REGISTRY }}/bossnyumba/${{ matrix.app }}:${{ needs.validate.outputs.version }}
             ${{ env.ECR_REGISTRY }}/bossnyumba/${{ matrix.app }}:${{ github.sha }}
