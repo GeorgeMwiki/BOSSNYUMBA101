@@ -5,7 +5,8 @@
 import { TenantId, OwnerId } from '@bossnyumba/domain-models';
 import {
   DisbursementService,
-  DisbursementResult
+  DisbursementResult,
+  isCleanDisbursementSuccess
 } from '../services/disbursement.service';
 import { ILogger } from '../services/payment-orchestration.service';
 
@@ -128,14 +129,21 @@ export class DisbursementJob {
 
         results.push(result);
 
-        if (result.status !== 'FAILED') {
+        // Only a CLEAN success (en route / delivered) tallies as succeeded +
+        // disbursed. NEEDS_REVERSAL (money debited, not delivered) is an
+        // attention/failure outcome, surfaced with its reason + status — never
+        // counted as money that reached an owner. Mirror of Borjie
+        // disbursement.job.ts:129-143.
+        if (isCleanDisbursementSuccess(result.status)) {
           succeededCount++;
           totalDisbursed += result.amount.amountMinorUnits;
           currency = result.amount.currency;
         } else {
           failedCount++;
           if (result.failureReason) {
-            errors.push(`Owner ${owner.ownerId}: ${result.failureReason}`);
+            errors.push(
+              `Owner ${owner.ownerId} [${result.status}]: ${result.failureReason}`,
+            );
           }
         }
 

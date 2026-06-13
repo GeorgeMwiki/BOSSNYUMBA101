@@ -96,6 +96,12 @@ export const disbursementStatusEnum = pgEnum('disbursement_status', [
   'PAID',
   'FAILED',
   'CANCELLED',
+  // NEEDS_REVERSAL: the ledger debit posted but the outbound transfer FAILED
+  // after it. Money debited, undelivered — retryable. The disbursement
+  // reconciliation job (services/payments-ledger) re-drives the transfer under
+  // the same idempotency key or posts a compensating reversal; never a blind
+  // re-transfer. Added by migration 0317.
+  'NEEDS_REVERSAL',
 ]);
 
 // ============================================================================

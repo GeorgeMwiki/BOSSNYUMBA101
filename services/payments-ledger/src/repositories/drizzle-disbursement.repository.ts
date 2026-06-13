@@ -345,7 +345,17 @@ export class DrizzleDisbursementRepository implements IDisbursementRepository {
       .where(
         and(
           eq(disbursements.tenantId, tenantId),
-          inArray(disbursements.status, ['PENDING', 'PROCESSING', 'IN_TRANSIT']),
+          // NEEDS_REVERSAL is retryable — surfaced to the reconciliation job
+          // alongside the in-flight statuses (mirror of Borjie
+          // drizzle-disbursement.repository.ts:436-444). The
+          // `disbursement_status` pgEnum gains this member via migration
+          // 0317 + the schema update in packages/database.
+          inArray(disbursements.status, [
+            'PENDING',
+            'PROCESSING',
+            'IN_TRANSIT',
+            'NEEDS_REVERSAL',
+          ]),
         ),
       )
       .orderBy(desc(disbursements.createdAt))

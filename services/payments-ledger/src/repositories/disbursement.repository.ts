@@ -5,9 +5,22 @@
 import { TenantId, OwnerId, Money, CurrencyCode } from '@bossnyumba/domain-models';
 
 /**
- * Disbursement status
+ * Disbursement status.
+ *
+ * NEEDS_REVERSAL: the ledger journal was posted but the outbound transfer
+ * FAILED afterwards. The disbursement is retryable — the reconciliation job
+ * either re-drives the transfer under the SAME idempotency key (on confirmed
+ * non-delivery) or posts a compensating reversal. NEVER a blind re-transfer.
+ * Mirror of Borjie disbursement.repository.ts:16-23.
  */
-export type DisbursementStatus = 'PENDING' | 'PROCESSING' | 'IN_TRANSIT' | 'PAID' | 'FAILED' | 'CANCELLED';
+export type DisbursementStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'IN_TRANSIT'
+  | 'PAID'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'NEEDS_REVERSAL';
 
 /**
  * Disbursement entity
@@ -244,7 +257,8 @@ export class InMemoryDisbursementRepository implements IDisbursementRepository {
     return Array.from(this.disbursements.values())
       .filter(d =>
         d.tenantId === tenantId &&
-        ['PENDING', 'PROCESSING', 'IN_TRANSIT'].includes(d.status)
+        // NEEDS_REVERSAL is retryable — surfaced to the reconciliation job.
+        ['PENDING', 'PROCESSING', 'IN_TRANSIT', 'NEEDS_REVERSAL'].includes(d.status)
       )
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, safeLimit)

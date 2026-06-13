@@ -38,16 +38,41 @@ export interface DisbursementRequest {
 }
 
 /**
- * Disbursement result
+ * Disbursement result.
+ *
+ * `NEEDS_REVERSAL` is a DISTINCT result status. A clean `FAILED` connotes
+ * "no money moved, retry-safe"; `NEEDS_REVERSAL` means the ledger debit was
+ * posted but the outbound transfer failed AFTER it — money WAS moved and the
+ * outcome is in-flight-needs-attention, not a clean retryable failure. Masking
+ * it as FAILED would let callers (and the disbursement job's
+ * `status !== 'FAILED'` accounting) treat a debited-but-undelivered payout as a
+ * clean retry. Mirror of Borjie disbursement.service.ts:50-58.
  */
 export interface DisbursementResult {
   disbursementId: string;
   ownerId: OwnerId;
   amount: Money;
-  status: 'PENDING' | 'IN_TRANSIT' | 'PAID' | 'FAILED' | 'CANCELLED';
+  status: 'PENDING' | 'IN_TRANSIT' | 'PAID' | 'FAILED' | 'CANCELLED' | 'NEEDS_REVERSAL';
   transferId: string;
   estimatedArrival?: Date;
   failureReason?: string;
+}
+
+/**
+ * Classify a {@link DisbursementResult} status as a CLEAN success (the payout
+ * is en route or delivered) vs an outcome that needs attention.
+ *
+ * `NEEDS_REVERSAL` (money debited, transfer failed after the ledger post) and
+ * `FAILED` / `CANCELLED` are NOT clean successes; batch accounting must count
+ * them as failed/attention so a debited-but-undelivered payout is never tallied
+ * as succeeded. Mirror of Borjie disbursement.service.ts:88-94.
+ */
+export function isCleanDisbursementSuccess(
+  status: DisbursementResult['status'],
+): boolean {
+  return (
+    status === 'PAID' || status === 'IN_TRANSIT' || status === 'PENDING'
+  );
 }
 
 /**
@@ -203,8 +228,9 @@ export class DisbursementService {
       }
     }
 
-    // B1: track whether the ledger debit committed so the catch can post a
-    // compensating reversal if the provider transfer (or a later step) throws.
+    // Track whether the ledger debit committed so the catch can distinguish a
+    // clean FAILED (no money moved) from NEEDS_REVERSAL (debited, transfer
+    // failed after — handed to the reconciliation job, never reversed inline).
     let ledgerPosted = false;
 
     try {
@@ -309,49 +335,51 @@ export class DisbursementService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-      // B1: the ledger debit is posted BEFORE the transfer, so if we land here
-      // AFTER it committed, no money moved — post a compensating reversal so the
-      // books never carry a phantom OWNER_DISBURSEMENT (double-entry honesty).
-      // A reversal failure is logged LOUD for manual reconciliation and must not
-      // mask the original error. (Lost-response edge — transfer actually
-      // succeeded but threw — is left to provider-status reconciliation; the
-      // provider idempotencyKey prevents a double-send on retry.)
+      // Two distinct failure shapes, keyed on whether the ledger debit committed:
+      //
+      //   - ledger NOT posted (the post itself threw) → NO money moved. Clean
+      //     FAILED, retry-safe.
+      //   - ledger posted, then the transfer (or a later step) threw → the
+      //     ledger already recorded the debit. We do NOT reverse inline and we
+      //     NEVER blind-re-transfer: leave the disbursement RETRYABLE in a
+      //     NEEDS_REVERSAL state. The disbursement reconciliation job is the
+      //     consumer — it queries the provider's ACTUAL transfer status and only
+      //     posts the compensating reversal if the transfer TRULY failed (and
+      //     re-drives under the same idempotency key, or marks PAID, otherwise).
+      //
+      // Inline reversal got the lost-response case WRONG: a transfer that
+      // actually SUCCEEDED but threw on the response would have been blindly
+      // reversed, double-paying / mis-booking. Parking NEEDS_REVERSAL hands that
+      // disambiguation to provider-status reconciliation. Mirror of Borjie
+      // disbursement.service.ts:390-437.
+      const failureStatus: DisbursementStatus = ledgerPosted
+        ? 'NEEDS_REVERSAL'
+        : 'FAILED';
+
       if (ledgerPosted) {
-        try {
-          await this.ledgerService.postJournalEntry(
-            JournalTemplates.disbursementReversal(
-              request.tenantId,
-              platformHoldingAccount.id,
-              operatingAccount.id,
-              amount,
-              'system'
-            )
-          );
-          this.logger.warn('Disbursement ledger entry reversed after transfer failure', {
+        this.logger.error(
+          'Disbursement transfer FAILED after ledger post — leaving NEEDS_REVERSAL (no inline reversal, no blind re-transfer)',
+          {
             disbursementId,
             ownerId: request.ownerId,
-            amount: amount.toString()
-          });
-        } catch (reversalError) {
-          this.logger.error(
-            'CRITICAL: disbursement ledger reversal FAILED — MANUAL RECONCILIATION REQUIRED (phantom OWNER_DISBURSEMENT on the books)',
-            {
-              disbursementId,
-              ownerId: request.ownerId,
-              amount: amount.toString(),
-              originalError: errorMessage,
-              reversalError:
-                reversalError instanceof Error ? reversalError.message : 'Unknown error'
-            }
-          );
-        }
+            amount: amount.toString(),
+            error: errorMessage,
+          }
+        );
+      } else {
+        this.logger.error('Disbursement ledger post failed — NO transfer attempted', {
+          disbursementId,
+          ownerId: request.ownerId,
+          error: errorMessage,
+        });
       }
 
-      // Update disbursement record as failed
+      // Update disbursement record with the resolved failure state.
       if (this.disbursementRepository) {
         await this.disbursementRepository.update({
           ...disbursementRecord,
-          status: 'FAILED',
+          status: failureStatus,
+          provider: ledgerPosted ? provider.name : disbursementRecord.provider,
           failedAt: new Date(),
           failureReason: errorMessage,
           updatedAt: new Date(),
@@ -373,17 +401,14 @@ export class DisbursementService {
         )
       );
 
-      this.logger.error('Disbursement failed', {
-        disbursementId,
-        ownerId: request.ownerId,
-        error: errorMessage
-      });
-
+      // Surface NEEDS_REVERSAL (not FAILED) when money WAS debited so the
+      // reconciliation sweep + the disbursement job's success/fail accounting
+      // treat a debited-but-undelivered payout correctly.
       return {
         disbursementId,
         ownerId: request.ownerId,
         amount,
-        status: 'FAILED',
+        status: failureStatus,
         transferId: '',
         failureReason: errorMessage
       };
@@ -480,8 +505,10 @@ export class DisbursementService {
         });
 
         results.push(result);
-        
-        if (result.status !== 'FAILED') {
+
+        // NEEDS_REVERSAL is NOT a clean success (money debited but not
+        // delivered); it counts toward `failed`/attention, never `succeeded`.
+        if (isCleanDisbursementSuccess(result.status)) {
           succeeded++;
         } else {
           failed++;
@@ -582,6 +609,9 @@ export class DisbursementService {
    * shape. Used by the replay path (#13) to return the ORIGINAL claim
    * verbatim. The result's status union has no 'PROCESSING'; an in-flight
    * claim surfaces as the closest external state, 'IN_TRANSIT'.
+   *
+   * `NEEDS_REVERSAL` surfaces AS `NEEDS_REVERSAL` (never masked as FAILED) so a
+   * replay of a debited-but-undelivered payout reports in-flight-needs-attention.
    */
   private toResult(d: Disbursement): DisbursementResult {
     const status: DisbursementResult['status'] =
