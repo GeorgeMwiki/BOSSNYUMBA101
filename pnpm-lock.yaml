@@ -3305,6 +3305,9 @@ importers:
 
   packages/portal-genui:
     dependencies:
+      '@noble/hashes':
+        specifier: ^1.8.0
+        version: 1.8.0
       zod:
         specifier: ^3.25.76
         version: 3.25.76
