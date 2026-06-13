@@ -44,6 +44,7 @@ import {
   type DsarClassificationLookup,
 } from '@bossnyumba/ai-copilot';
 import { authMiddleware } from '../middleware/hono-auth';
+import { getSharedPerTenantRateBudget } from '../middleware/per-tenant-rate-budget';
 import { killSwitchGuard } from '../middleware/kill-switch.middleware';
 import { e400, e401, e429, e500 } from '../utils/error-response';
 
@@ -183,6 +184,7 @@ async function emitAudit(
 export function createUsersMeRouter(): Hono {
   const app = new Hono();
   app.use('*', authMiddleware);
+  app.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 
   // ─────────────────────────────────────────────────────────────────────
   // POST /data-export — Art. 20 portability (own data)

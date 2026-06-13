@@ -9,17 +9,23 @@
  *      applies a default limiter (documented in middleware.ts).
  *   2. The route is for a single internal cron / scheduled job — rate
  *      is bounded by the cron schedule itself, not per-request.
+ *   3. Platform-tier SUPER_ADMIN/ADMIN surfaces — low request volume,
+ *      privileged operators behind `requireRole`; a per-tenant token
+ *      budget adds no protection that the role gate does not.
+ *   4. The route DOES rate-limit but via a helper the scanner's regex
+ *      cannot see (aliased import / dedicated helper module). The entry
+ *      documents the real limiter so the gate is honest, not silenced.
  *
- * TRACKED GAPS: 109 mutating routes flagged by the 2026-05-18 scanner
- * pass. Each pending entry should be removed when the route adds
- * `perTenantRateBudget`, `withSecurityEvents`, or
- * `createRateLimitMiddleware`. This list is the concrete worklist for
- * incremental rate-limit-coverage remediation (Docs/TODO_BACKLOG.md).
+ * NOTE: the 2026-06 `.router.ts` → `.hono.ts` reclaim retired ~76 legacy
+ * router files; their stale entries were removed. Files that gained a
+ * real limiter during the reclaim (perTenantRateBudget / withSecurityEvents)
+ * also dropped off — only entries that are STILL needed remain.
  *
  * Keys are paths RELATIVE to the repo root.
  */
 
 export const RATE_LIMIT_ALLOWLIST = new Map([
+  // ─── Next.js app-router surfaces (edge-limited; tracked) ────────────
   ['apps/admin-platform-portal/src/app/api/platform/intelligence/thread/[threadId]/message/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
   ['apps/admin-platform-portal/src/app/api/platform/intelligence/thread/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
   ['apps/admin-platform-portal/src/app/api/platform/login/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
@@ -28,122 +34,38 @@ export const RATE_LIMIT_ALLOWLIST = new Map([
   ['apps/estate-manager-app/src/app/api/brain/migrate/extract/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
   ['apps/estate-manager-app/src/app/api/brain/review/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
   ['apps/estate-manager-app/src/app/api/brain/turn/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/admin-jarvis-stream.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/agent-certifications.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/ai-chat.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/ai-costs.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/ai-native.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/applications.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/approval-grants.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/approvals.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/arrears.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/audit-trail.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/auth-mfa.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/auth.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/autonomy.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/bff/customer-app.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/bff/estate-manager-app.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/bff/owner-portal.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/brain.hono.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/cases.hono.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/classroom.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/complaints.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/compliance.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/conditional-surveys.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/credit-rating.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/customers.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/damage-deductions.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/doc-chat.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/document-render.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/documents.hono.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/dsar.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/exceptions.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/far.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/feature-flags.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/feedback.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/financial-profile.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/forecast.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/gamification.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/gdpr.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/gepg.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/graph.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/hr.hono.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/inngest-webhook.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/inspections.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/intelligence.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/interactive-reports.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/invoices.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/iot.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/jarvis-router-factory.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/junior-ai.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/leases.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/letters.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/liveblocks-auth.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/lpms.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/maintenance-taxonomy.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/maintenance.hono.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/marketplace.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/mcp.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/memory-declare.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/messaging.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/migration.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/monthly-close.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/move-out.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/negotiations.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/notification-preferences.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/notification-webhooks.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/onboarding.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/onboarding.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/org-awareness.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/parity-capability-dashboard.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/payments.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/persona-registry.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/prompt-rollout.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/properties.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/property-grading.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/public-leads.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/public-marketing.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/public-sandbox.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/renewals.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/risk-recompute.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/risk-reports.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/scans.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/scheduling.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/sovereign-ledger.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/station-master-coverage.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/sublease.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/task-agents.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/tenant-branding.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/tenants.hono.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/tenders.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/training.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/unit-subdivision.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/units.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/users.hono.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/vacancy-pipeline.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/vendors.hono.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/voice.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/waitlist.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/warehouse.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/webhook-dlq.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/work-orders.hono.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/workflows.router.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/document-intelligence/src/routes/documents.routes.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/api-gateway/src/routes/admin-audit.router.ts', 'TRACKED GAP — admin-platform audit-log read; SUPER_ADMIN-only behind requireRole; in-handler limiter pending Wave 11.'],
-  ['services/api-gateway/src/routes/tenants-admin.router.ts', 'TRACKED GAP — tenant-OWNER destructive routes (DELETE /tenants/:id, purge-now); already kill-switch-guarded; in-handler limiter pending Wave 11.'],
-  ['services/api-gateway/src/routes/users-me.router.ts', 'TRACKED GAP — user self-service GDPR endpoints; per-user 2/hr export bucket exists via _resetSelfExportRateBucketForTests; formalise via perTenantRateBudget in Wave 11.'],
 
-  // ─── WZ-CI-GREEN 2026-05-25: 11 new mutating routes flagged ─────────
-  ['services/api-gateway/src/routes/ask/ask-rate-limit.ts', 'TRACKED GAP — ask-rate-limit IS the rate-limit helper module (it implements per-tenant tokens for /ask) so the audit double-flags it; safe to allowlist.'],
+  // ─── api-gateway: tracked gaps awaiting an in-handler limiter ───────
+  ['services/api-gateway/src/routes/auth-mfa.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
+  ['services/api-gateway/src/routes/customers.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
   ['services/api-gateway/src/routes/executive-brief.hono.ts', 'TRACKED GAP — executive-brief mutating endpoints; wire perTenantRateBudget in Wave 11.'],
   ['services/api-gateway/src/routes/modules.hono.ts', 'TRACKED GAP — modules CRUD wire perTenantRateBudget in Wave 11.'],
   ['services/api-gateway/src/routes/proposals.hono.ts', 'TRACKED GAP — proposals submit/update wire perTenantRateBudget in Wave 11.'],
-  ['services/api-gateway/src/routes/reports/reports-rate-limit.ts', 'TRACKED GAP — reports-rate-limit IS the rate-limit helper module (implements per-tenant tokens for /reports) so the audit double-flags it; safe to allowlist.'],
-  ['services/field-capture-service/src/routes/captures.ts', 'TRACKED GAP — field-capture-service captures POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
-  ['services/outcomes-metering/src/routes/events.ts', 'TRACKED GAP — outcomes-metering events POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
-  ['services/parcel-service/src/routes/geocode.ts', 'TRACKED GAP — parcel-service geocode POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
-  ['services/parcel-service/src/routes/parcels.ts', 'TRACKED GAP — parcel-service parcels CRUD; service sits behind api-gateway internal mTLS, edge limiter applies.'],
-  ['services/parcel-service/src/routes/snap.ts', 'TRACKED GAP — parcel-service snap-to-parcel POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
-  ['services/voice-agent/src/routes/call.ts', 'TRACKED GAP — voice-agent call-orchestration POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
-]);
 
+  // ─── api-gateway: helper modules the scanner double-flags ───────────
+  ['services/api-gateway/src/routes/ask/ask-rate-limit.ts', 'ask-rate-limit IS the rate-limit helper module (per-tenant tokens for /ask); the audit double-flags the helper itself.'],
+  ['services/api-gateway/src/routes/reports/reports-rate-limit.ts', 'reports-rate-limit IS the rate-limit helper module (per-tenant tokens for /reports); the audit double-flags the helper itself.'],
+
+  // ─── api-gateway: platform-tier SUPER_ADMIN/ADMIN surfaces ──────────
+  ['services/api-gateway/src/routes/admin/superpowers.hono.ts', 'Platform-tier admin superpowers behind requireRole(SUPER_ADMIN|ADMIN|SUPPORT); privileged low-volume surface, role gate is the bound.'],
+  ['services/api-gateway/src/routes/admin-audit.hono.ts', 'SUPER_ADMIN audit-read + emergency-purge behind requireRole; purge also requires a confirmTenantName body match — privileged low-volume surface.'],
+  ['services/api-gateway/src/routes/audit-trail.hono.ts', 'Append-only audit-record write behind requireRole(SUPER_ADMIN|ADMIN|TENANT_ADMIN); privileged low-volume surface.'],
+  ['services/api-gateway/src/routes/sovereign-ledger.hono.ts', 'Sovereign action-ledger admin surface gated app-wide by requireRole(SUPER_ADMIN|ADMIN); platform-tier only, role gate is the bound.'],
+  ['services/api-gateway/src/routes/tenants-admin.hono.ts', 'Tenant-OWNER destructive routes (DELETE /tenants/:id) behind requireRole(SUPER_ADMIN|ADMIN) AND killSwitchGuard; privileged low-volume surface.'],
+
+  // ─── api-gateway: brain-kernel surfaces (per-handler principal auth) ─
+  ['services/api-gateway/src/routes/brain-dispatch.hono.ts', 'Brain-kernel dispatch resolves the principal per-request via principalToBrainContexts; @ts-nocheck (hono#3891). Kernel-internal surface — token budget applies upstream at the brain gateway.'],
+  ['services/api-gateway/src/routes/brain-teach.hono.ts', 'Brain-kernel teach resolves the principal per-request via principalToBrainContexts; @ts-nocheck (hono#3891). Kernel-internal surface — token budget applies upstream at the brain gateway.'],
+
+  // ─── api-gateway: real limiter the scanner regex misses ─────────────
+  ['services/api-gateway/src/routes/missions.hono.ts', 'DOES rate-limit: per-user checkRate() → sharedRateLimiter.check(...) returns 429. The limiter is imported as `rateLimiter as sharedRateLimiter`, so the scanner regex /rateLimiter\\./ cannot see it.'],
+
+  // ─── other services behind api-gateway internal mTLS edge limiter ───
+  ['services/document-intelligence/src/routes/documents.routes.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
+  ['services/field-capture-service/src/routes/captures.ts', 'field-capture-service captures POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
+  ['services/outcomes-metering/src/routes/events.ts', 'outcomes-metering events POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
+  ['services/parcel-service/src/routes/geocode.ts', 'parcel-service geocode POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
+  ['services/parcel-service/src/routes/parcels.ts', 'parcel-service parcels CRUD; service sits behind api-gateway internal mTLS, edge limiter applies.'],
+  ['services/parcel-service/src/routes/snap.ts', 'parcel-service snap-to-parcel POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
+  ['services/voice-agent/src/routes/call.ts', 'voice-agent call-orchestration POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
+]);

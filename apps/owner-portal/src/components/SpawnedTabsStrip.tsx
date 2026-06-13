@@ -15,6 +15,7 @@
  */
 
 import { useNavigate } from 'react-router-dom';
+import { useTranslations } from 'next-intl';
 import { X } from 'lucide-react';
 import { useOwnerTabs } from '../state/OwnerTabsProvider';
 import type { OwnerTabKind } from '../state/useOwnerTabs';
@@ -64,6 +65,7 @@ export function SpawnedTabsStrip(): JSX.Element | null {
   const { tabs, activeTabId, focus, close, acknowledgeAugmentation } =
     useOwnerTabs();
   const navigate = useNavigate();
+  const tA11y = useTranslations('a11y');
 
   // Don't render until at least one non-builtin tab exists — the
   // initial state has the pinned `chat` tab which would render an
@@ -75,7 +77,7 @@ export function SpawnedTabsStrip(): JSX.Element | null {
     <div
       data-testid="spawned-tabs-strip"
       role="tablist"
-      aria-label="Open tabs"
+      aria-label={tA11y('openTabs')}
       className="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2"
     >
       {spawnedTabs.map((tab) => {
@@ -105,7 +107,7 @@ export function SpawnedTabsStrip(): JSX.Element | null {
             {pending > 0 ? (
               <span
                 data-testid={`tab-chip-${tab.id}-pending`}
-                aria-label={`${pending} updates`}
+                aria-label={tA11y('tabUpdates', { count: pending })}
                 className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-xs font-semibold text-white"
               >
                 +{pending}
@@ -116,7 +118,7 @@ export function SpawnedTabsStrip(): JSX.Element | null {
                 role="button"
                 tabIndex={-1}
                 data-testid={`tab-chip-${tab.id}-close`}
-                aria-label={`Close ${tab.title}`}
+                aria-label={tA11y('closeTab', { title: tab.title })}
                 onClick={(e) => {
                   e.stopPropagation();
                   close(tab.id);

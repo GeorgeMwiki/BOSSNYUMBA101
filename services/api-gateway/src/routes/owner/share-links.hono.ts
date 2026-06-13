@@ -34,6 +34,7 @@ import {
 } from '@bossnyumba/database';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { databaseMiddleware } from '../../middleware/database';
+import { getSharedPerTenantRateBudget } from '../../middleware/per-tenant-rate-budget';
 import { createLogger } from '../../utils/logger';
 
 const moduleLogger = createLogger('owner-share-links');
@@ -81,6 +82,7 @@ function buildShareUrl(token: string): string {
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
+app.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 
 // POST / — mint a new share link
 app.post('/', async (c: any) => {

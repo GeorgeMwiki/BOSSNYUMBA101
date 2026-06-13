@@ -23,6 +23,7 @@
  */
 
 import { Suspense } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   SectionContextProvider,
   SectionSkeleton,
@@ -55,6 +56,7 @@ interface InnerProps {
 }
 
 function AdaptiveSectionsList({ tenantId, scope }: InnerProps): JSX.Element {
+  const t = useTranslations('a11y');
   const { sections, isLoading, isError } = useSectionRegistry({
     tenantId,
     scope,
@@ -68,7 +70,7 @@ function AdaptiveSectionsList({ tenantId, scope }: InnerProps): JSX.Element {
         aria-busy="true"
         aria-live="polite"
       >
-        <SectionSkeleton sectionLabel="Adaptive sections" />
+        <SectionSkeleton sectionLabel={t('adaptiveSections')} />
       </div>
     );
   }
@@ -83,7 +85,7 @@ function AdaptiveSectionsList({ tenantId, scope }: InnerProps): JSX.Element {
   return (
     <section
       data-testid="adaptive-sections-panel"
-      aria-label="Adaptive sections"
+      aria-label={t('adaptiveSections')}
       className="grid grid-cols-1 gap-4 lg:grid-cols-2"
     >
       {sections.map((section) => {

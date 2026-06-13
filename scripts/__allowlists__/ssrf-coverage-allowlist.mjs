@@ -189,6 +189,18 @@ export const SSRF_ALLOWLIST = new Map([
     'services/api-gateway/src/composition/executive-brief.composition.ts',
     'compile-time api.anthropic.com — Haiku 3.5 fallback wiring; host is not tenant-influenced.',
   ],
+  [
+    'services/api-gateway/src/composition/litfin-platform-wiring.ts',
+    'compile-time api.anthropic.com/v1/messages — Document-AI BrainPort fallback (same posture as executive-brief.composition.ts); host is a string literal, not tenant-influenced.',
+  ],
+  [
+    'services/api-gateway/src/composition/research/research-adapters.ts',
+    'compile-time vendor search hosts (api.search.brave.com, api.tavily.com, google.serper.dev) — all string-literal URLs; only the API key is env-read, never the host.',
+  ],
+  [
+    'services/api-gateway/src/services/brain-ingestion/embedder.ts',
+    'compile-time `${baseUrl}/v1/embeddings` where baseUrl defaults to the api.openai.com vendor host; baseUrl is a composition-config constant (deploy-controlled), never tenant input.',
+  ],
 
   // ─── Verra registry client (compile-time vendor host) ──────────────
   [
@@ -221,5 +233,9 @@ export const SSRF_ALLOWLIST = new Map([
   [
     'packages/timezone-detection/src/detect/detect-from-ip.ts',
     'reference stub — `fetch("https://ipapi.co/...")` and `fetch("https://api.ipgeolocation.io/...")` live inside throw-message strings of `createIpapiAdapterStub()` + `createIpgeolocationAdapterStub()` instructing operators what to wire at composition time; no runtime fetch executed.',
+  ],
+  [
+    'services/api-gateway/src/services/onboarding-jumpstart/persistence.ts',
+    'false positive — `fetch(tenantId)` is the OnboardingPersistence interface method (a Drizzle DB read), not globalThis.fetch; no outbound HTTP in this file.',
   ],
 ]);

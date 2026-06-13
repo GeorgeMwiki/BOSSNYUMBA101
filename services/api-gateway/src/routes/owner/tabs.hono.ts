@@ -51,6 +51,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { ownerTabs } from '@bossnyumba/database';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { databaseMiddleware } from '../../middleware/database';
+import { getSharedPerTenantRateBudget } from '../../middleware/per-tenant-rate-budget';
 import { createLogger } from '../../utils/logger';
 
 const moduleLogger = createLogger('owner-tabs');
@@ -127,6 +128,7 @@ const putLegacySchema = z.object({
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
+app.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 
 function dbUnavailable(c: any) {
   return c.json(

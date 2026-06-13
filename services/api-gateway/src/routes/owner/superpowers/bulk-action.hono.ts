@@ -46,6 +46,7 @@ import { z } from 'zod';
 import { undoJournal } from '@bossnyumba/database';
 import { authMiddleware } from '../../../middleware/hono-auth';
 import { databaseMiddleware } from '../../../middleware/database';
+import { getSharedPerTenantRateBudget } from '../../../middleware/per-tenant-rate-budget';
 import { createDbIdempotencyMiddleware } from '../../../middleware/db-idempotency.middleware';
 import { createLogger } from '../../../utils/logger';
 import {
@@ -108,6 +109,7 @@ const bulkSchema = z
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
+app.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 app.use(
   '*',
   createDbIdempotencyMiddleware({ resourceKind: 'owner.bulk-action' }),

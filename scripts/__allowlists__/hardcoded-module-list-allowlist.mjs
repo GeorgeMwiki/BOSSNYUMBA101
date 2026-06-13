@@ -37,7 +37,7 @@ export const HARDCODED_MODULE_LIST_ALLOWLIST = new Map([
     'Zod-style domain enum [maintenance, finance, ...] declares the policy-scope vocabulary; schema-level enumeration.',
   ],
   [
-    'services/api-gateway/src/routes/autonomous-actions-audit.router.ts',
-    'Zod enum [finance, leasing, ...] declares the autonomous-actions domain vocabulary; schema-level enumeration.',
+    'services/api-gateway/src/routes/autonomous-actions-audit.hono.ts',
+    'Zod enum [finance, leasing, ...] declares the autonomous-actions domain vocabulary; schema-level enumeration (the z.enum opener wraps to the prior line so SKIP_LINE_RX misses it).',
   ],
 ]);

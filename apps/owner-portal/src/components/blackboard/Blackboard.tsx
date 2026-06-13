@@ -114,7 +114,11 @@ export function Blackboard({
       data-testid="blackboard-root"
       data-replaying={state.replaying || undefined}
       className="flex h-full min-h-[24rem] flex-col overflow-hidden rounded-lg border border-border bg-surface/30 print:bg-white"
-      aria-label="Mr. Mwikila teaching canvas"
+      aria-label={
+        languagePreference === 'sw'
+          ? 'Ubao wa kufundishia wa Mr. Mwikila'
+          : 'Mr. Mwikila teaching canvas'
+      }
     >
       <Header
         languagePreference={languagePreference}

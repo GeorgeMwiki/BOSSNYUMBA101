@@ -52,6 +52,7 @@ import {
 
 import { authMiddleware } from '../../middleware/hono-auth';
 import { databaseMiddleware } from '../../middleware/database';
+import { getSharedPerTenantRateBudget } from '../../middleware/per-tenant-rate-budget';
 import { publishCockpitEvent } from '../../services/cockpit-events';
 import { createLogger } from '../../utils/logger';
 
@@ -228,6 +229,7 @@ export function createFieldStaffRouter(): Hono {
   const app = new Hono();
   app.use('*', authMiddleware);
   app.use('*', databaseMiddleware);
+  app.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 
   // -------------------------------------------------------------------------
   // GET /me — staff identity + current shift state.

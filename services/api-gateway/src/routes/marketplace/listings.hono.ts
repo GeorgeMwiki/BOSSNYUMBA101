@@ -47,6 +47,7 @@ import {
 
 import { authMiddleware } from '../../middleware/hono-auth';
 import { databaseMiddleware } from '../../middleware/database';
+import { getSharedPerTenantRateBudget } from '../../middleware/per-tenant-rate-budget';
 import { createLogger } from '../../utils/logger';
 
 const moduleLogger = createLogger('marketplace-listings');
@@ -208,15 +209,20 @@ function haversineKm(
 
 export function createMarketplaceListingsRouter(): Hono {
   const app = new Hono();
+  const rateBudget = getSharedPerTenantRateBudget({ surface: 'api' }).handler;
   app.use('/nearby', databaseMiddleware);
   app.use('/mine', authMiddleware);
   app.use('/mine', databaseMiddleware);
+  app.use('/mine', rateBudget);
   app.use('/', authMiddleware);
   app.use('/', databaseMiddleware);
+  app.use('/', rateBudget);
   app.use('/:id', authMiddleware);
   app.use('/:id', databaseMiddleware);
+  app.use('/:id', rateBudget);
   app.use('/:id/applications', authMiddleware);
   app.use('/:id/applications', databaseMiddleware);
+  app.use('/:id/applications', rateBudget);
 
   // -------------------------------------------------------------------------
   // POST / — publish a new listing.

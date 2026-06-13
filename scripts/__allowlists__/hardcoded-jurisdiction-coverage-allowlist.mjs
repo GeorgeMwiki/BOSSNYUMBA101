@@ -72,4 +72,14 @@ export const HARDCODED_JURISDICTION_ALLOWLIST = new Map([
     'packages/skill-library/src/builtin-skills/prepare-kra-filing/prepare-kra-filing.skill.ts',
     'prepare-kra-filing skill is Kenya-only by definition (KRA = Kenya Revenue Authority); jurisdiction === KE gate is the skill-eligibility guard.',
   ],
+
+  // ─── Registry-seed dispatch + dedicated per-authority signal mapping ─
+  [
+    'packages/truth-engine/src/seeds/credit-domain-seeds.ts',
+    'Credit-domain seed registry: jurisdiction === TZ selects the Bank of Tanzania / TRA / CRB seed bundle to write. The literal IS the seed-bundle dispatch key, not runtime business routing.',
+  ],
+  [
+    'apps/owner-portal/src/lib/section-context-loader.ts',
+    'Maps backend.jurisdiction to the dedicated kra_vat_filing_window / tra_vat_filing_window section signals (KRA=Kenya, TRA=Tanzania tax authorities); the literal selects which per-authority section signal to populate.',
+  ],
 ]);
