@@ -259,6 +259,44 @@ describe('createLeaseExpiryAlertCron — tickOnce', () => {
     expect(executedSql.some((s) => /UPDATE notification_dispatch_log/.test(s))).toBe(true);
   });
 
+  it('records suppressed_no_consent (no send, no claim) when the consent gate denies', async () => {
+    // #24 — when the wired consent gate denies (tenant opted out OR recipient
+    // preference disallows), the cron must NOT send and must NOT claim a
+    // dispatch slot; it records the suppression and counts it.
+    const { db, executedSql } = buildFakeDb([
+      { pattern: /FROM leases l/, rows: [leaseRow()] },
+    ]);
+    let sendCalled = false;
+    const sender: NotificationSender = {
+      async send() {
+        sendCalled = true;
+        return { delivered: true };
+      },
+    };
+    const denyConsent: ConsentGate = {
+      async isAutomatedReminderAllowed() {
+        return { allowed: false, reason: 'tenant_reminders_disabled' };
+      },
+    };
+    const cron = createLeaseExpiryAlertCron({
+      db,
+      sender,
+      logger,
+      enabled: true,
+      now: () => now,
+      consentGate: denyConsent,
+    });
+    const result = await cron.tickOnce();
+    expect(sendCalled).toBe(false);
+    expect(result.scanned).toBe(1);
+    expect(result.dispatched).toBe(0);
+    expect(result.suppressedNoConsent).toBe(1);
+    // The suppression is durably recorded (an INSERT marker row), and NO
+    // provider-outcome UPDATE fires — we never attempted a send.
+    expect(executedSql.some((s) => /INSERT INTO notification_dispatch_log/.test(s))).toBe(true);
+    expect(executedSql.some((s) => /UPDATE notification_dispatch_log/.test(s))).toBe(false);
+  });
+
   it('skips leases already sent for that (lease, window)', async () => {
     const { db } = buildFakeDb([
       {

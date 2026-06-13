@@ -395,6 +395,11 @@ import {
 import { createCaseSLASupervisor } from './workers/cases-sla-supervisor';
 import { registerScanOcrSubscriber } from './workers/scan-ocr-worker';
 import { createLeaseExpiryAlertCron } from './workers/lease-expiry-alert-cron';
+// #24 — the REAL lease-expiry consent gate (per-tenant automated-reminders
+// switch + per-recipient notification preferences). Without it the cron
+// fail-closes to `no_consent_gate_wired` and is born-dark.
+import { createLeaseExpiryConsentGate } from './composition/lease-expiry-consent-gate';
+import { createPreferencesService } from '@bossnyumba/notifications-service';
 import type {
   NotificationSender as LeaseExpiryNotificationSender,
 } from './workers/lease-expiry-alert-cron';
@@ -1960,6 +1965,16 @@ const leaseExpiryCron = serviceRegistry.db
       sender: leaseExpiryNotificationSender,
       logger,
       clusterLock: makeClusterLockGate(CLUSTER_LOCK_IDS.LEASE_EXPIRY, clusterLockDeps),
+      // #24 — wire the REAL consent gate so the cron is no longer born-dark.
+      // (b) per-tenant automated-reminders switch (tenants.settings) AND
+      // (a) per-recipient notification preferences (the shared prefs store the
+      // notifications dispatcher enforces). Fail-closed only when an upstream
+      // is genuinely unavailable; a reachable opt-out is a normal suppress.
+      consentGate: createLeaseExpiryConsentGate({
+        db: serviceRegistry.db as unknown as { execute(q: unknown): Promise<unknown> },
+        prefs: createPreferencesService(),
+        logger,
+      }),
     })
   : { start() {}, stop() {}, async tickOnce() { return { scanned: 0, dispatched: 0, skippedAlreadySent: 0, suppressedNoConsent: 0, failed: 0, byWindow: {} }; } };
 
