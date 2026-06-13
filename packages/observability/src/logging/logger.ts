@@ -41,15 +41,58 @@ export interface LoggerConfig {
   baseContext?: LoggerContext;
 }
 
+// Scale-hardening: expanded to cover the full set of sensitive headers /
+// fields the BOSSNYUMBA platform handles. Names are de-duplicated by Pino,
+// so adding the snake_case and camelCase variants is safe and
+// belt-and-suspenders against the rapid mix of conventions across the
+// brain / payments / auth services.
+//
+// - `authorization` (header), `cookie` (header) — request headers.
+// - `password`, `passwordHash` — auth flows.
+// - `token`, `tokenHash`, `refreshToken`, `jwt`, `bearer` — auth tokens.
+// - `secret`, `mfaSecret`, `apiKey`, `api_key`, `webhookSecret` — secrets.
+// - `creditCard`, `ssn`, `bankAccount`, `iban`, `nationalId` — PII.
 const DEFAULT_REDACT_FIELDS = [
   'password',
+  'passwordHash',
   'token',
+  'tokenHash',
+  'refreshToken',
+  'jwt',
+  'bearer',
   'secret',
+  'mfaSecret',
   'apiKey',
+  'api_key',
+  'webhookSecret',
   'authorization',
+  'cookie',
   'creditCard',
   'ssn',
   'bankAccount',
+  'iban',
+  'nationalId',
+  // PII log-shape fields (hardening 2026-06-11): the identifiers the
+  // gateway routes actually carry in log meta. Phone is the PRIMARY identity
+  // key in this product (phone-OTP auth, invites, identity resolution) and
+  // must never land in log sinks; activation/invite codes are credentials.
+  'phone',
+  'phoneE164',
+  'phone_e164',
+  'phoneNormalized',
+  'phone_normalized',
+  'email',
+  'nidaId',
+  'nida_id',
+  'biometricTemplateHash',
+  'biometric_template_hash',
+  'activationCode',
+  'activation_code',
+  'inviteCode',
+  'invite_code',
+  'accessToken',
+  'access_token',
+  'refresh_token',
 ];
 
 /**

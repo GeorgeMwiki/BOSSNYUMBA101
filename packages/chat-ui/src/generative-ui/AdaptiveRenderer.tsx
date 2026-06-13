@@ -23,6 +23,7 @@ import { PropertyComparisonTable } from './blocks/property-comparison-table';
 import { LeaseTimelineDiagram } from './blocks/lease-timeline-diagram';
 import { MaintenanceCaseFlowDiagram } from './blocks/maintenance-case-flow-diagram';
 import { FivePsTenancyRiskWheel } from './blocks/5ps-tenancy-risk-wheel';
+import { toSafeSvg } from './sanitize-svg';
 import { logger } from '../logger.js';
 
 interface AdaptiveRendererProps {
@@ -380,8 +381,10 @@ function DynamicVisualRenderer({ block }: { readonly block: DynamicVisualBlock }
       <div
         role="img"
         aria-label={block.alt ?? block.title ?? 'Visual'}
-        // SVG comes from the block generator, not user input.
-        dangerouslySetInnerHTML={{ __html: block.svg }}
+        // `block.svg` is LLM-composed (svg-primitives) → untrusted. DOMPurify
+        // (SVG profile) strips <script>/onload=/javascript: before injection.
+        // CLAUDE.md: "No raw HTML interpolation. DOMPurify wraps required."
+        dangerouslySetInnerHTML={{ __html: toSafeSvg(block.svg) }}
       />
       {block.caption && <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>{block.caption}</div>}
     </div>

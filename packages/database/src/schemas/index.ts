@@ -61,6 +61,7 @@ export {
   disbursementStatusEnum,
   accounts,
   ledgerEntries,
+  journalIdempotency,
   statements,
   disbursements,
   paymentIntents,

@@ -241,6 +241,22 @@
       "dataLoss": false,
       "envs": ["dev", "staging"],
       "notes": "No table/row data is destroyed — person_links rows survive. The down only removes the RLS posture (re-opening the cross-tenant identity-linkage leak) and the redundant atomic-claim arbiter index; the 0174 partial idempotency index is left intact. MUST NOT run in production: disabling RLS re-exposes person→tenant→user PII linkage across tenants."
+    },
+    {
+      "up": "0317_parity_rls_core_identity_geo.sql",
+      "down": "down/0317_down_parity_rls_core_identity_geo.sql",
+      "reverses": "ENABLE/FORCE RLS + tenant_isolation_<tbl> + <tbl>_service_role_bypass policies on org_memberships, invite_codes (platform_tenant_id=GUC), geo_label_types, geo_nodes, geo_assignments (organization_id->organizations.tenant_id FK-subquery) + REVOKE anon",
+      "dataLoss": false,
+      "envs": ["dev", "staging"],
+      "notes": "Borjie-parity port of 0336. No table/row data destroyed — rows survive. The down only removes the RLS posture (re-opening the cross-tenant leak on org_memberships/invite_codes/geo_* identity+geo hierarchy). MUST NOT run in production: disabling RLS re-exposes per-org membership, invite tokens, and geo hierarchy across tenants."
+    },
+    {
+      "up": "0318_journal_idempotency.sql",
+      "down": "down/0318_down_journal_idempotency.sql",
+      "reverses": "CREATE TABLE journal_idempotency + journal_idempotency_journal_idx + FORCE RLS tenant_isolation policy + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Borjie-parity port of 0162. Dropping the dedupe rows re-opens double-post risk on LedgerService.postJournalEntry. MUST NOT run in production: replay-defense for the money path."
     }
   ]
 }

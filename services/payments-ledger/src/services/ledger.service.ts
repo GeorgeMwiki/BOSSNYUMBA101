@@ -71,6 +71,80 @@ export interface JournalPostResult {
   journalId: string;
   entries: LedgerEntry[];
   updatedAccounts: Account[];
+  /**
+   * True when this result was served from a prior post via the
+   * idempotency key (durability defect #2) rather than freshly written.
+   * No second post occurred; balances were not touched again.
+   */
+  idempotentReplay?: boolean;
+}
+
+/**
+ * Optional controls for a journal post.
+ */
+export interface PostJournalOptions {
+  /**
+   * Idempotency key (durability defect #2). When supplied, the post is
+   * recorded under a UNIQUE (tenant_id, idempotency_key) guarantee; a
+   * retry with the same key returns the ORIGINAL journal result instead
+   * of double-posting.
+   */
+  readonly idempotencyKey?: string;
+}
+
+/**
+ * H3 — idempotency replay defense (defense-in-depth). Thrown LOUD when a
+ * post arrives under an idempotency key that already maps to a journal
+ * whose leg amounts/accounts/directions DIFFER from this request's
+ * recomputed legs. Serving the stale journal silently would let a caller
+ * reuse a key for a different transaction and get back the wrong money;
+ * we refuse instead. (The gateway also pins the key to the request body;
+ * this is the engine backstop in case that ever regresses.)
+ */
+export class IdempotencyMismatchError extends Error {
+  readonly code = 'LEDGER_IDEMPOTENCY_MISMATCH';
+  constructor(
+    public readonly idempotencyKey: string,
+    public readonly journalId: string,
+    public readonly tenantId: TenantId,
+  ) {
+    super(
+      `LEDGER_IDEMPOTENCY_MISMATCH: idempotency key '${idempotencyKey}' was already used for journal ` +
+        `${journalId} (tenant ${tenantId}) with different legs. Refusing to serve a stale journal for a ` +
+        `mismatched request.`,
+    );
+    this.name = 'IdempotencyMismatchError';
+  }
+}
+
+/**
+ * H3 — canonical leg signature for idempotency-replay comparison. We
+ * compare the IMMUTABLE financial substance of each leg: account,
+ * direction, type, amount (minor units), and currency. The signature is
+ * a SORTED list (not keyed by account) so it is order-independent AND
+ * correct when two legs touch the SAME account (the same-account fold
+ * case) — a map keyed by account would collapse those and miss a
+ * mismatch.
+ *
+ * `balanceAfter` / sequenceNumber / ids are deliberately excluded: they
+ * are derived per-post state, not part of the caller's request intent.
+ */
+function legSignature(
+  legs: ReadonlyArray<{
+    readonly accountId: string;
+    readonly direction: string;
+    readonly type: string;
+    readonly amountMinorUnits: number;
+    readonly currency: string;
+  }>,
+): string {
+  return legs
+    .map(
+      (l) =>
+        `${l.accountId}|${l.direction}|${l.type}|${l.amountMinorUnits}|${l.currency}`,
+    )
+    .sort()
+    .join(';;');
 }
 
 /**
@@ -93,9 +167,23 @@ export class LedgerService {
   }
 
   /**
-   * Post a journal entry (atomic double-entry operation)
+   * Post a journal entry (atomic double-entry operation).
+   *
+   * Durability guarantees:
+   *   - ATOMICITY: balance writes AND entry inserts commit inside ONE
+   *     transaction. There is no window where balances move without
+   *     matching entries.
+   *   - #2 IDEMPOTENCY: when `options.idempotencyKey` is supplied, a
+   *     retried post returns the ORIGINAL journal (no second post). The
+   *     dedupe row is written on the SAME tx as the entries + balances,
+   *     so a replay can never be served before the journal it points at
+   *     is durable.
+   *   - BALANCE: rejected unless debits == credits (integer minor units).
    */
-  async postJournalEntry(request: CreateJournalEntryRequest): Promise<JournalPostResult> {
+  async postJournalEntry(
+    request: CreateJournalEntryRequest,
+    options: PostJournalOptions = {},
+  ): Promise<JournalPostResult> {
     // Validate that the journal is balanced
     if (!validateJournalBalance(request.lines)) {
       throw new Error('Journal entry is not balanced: debits must equal credits');
@@ -103,6 +191,27 @@ export class LedgerService {
 
     if (request.lines.length === 0) {
       throw new Error('Journal entry must have at least one line');
+    }
+
+    // Durability defect #2 — fast-path idempotency check. A prior post
+    // under this key returns its journal without touching balances. The
+    // in-tx re-check below closes the race between two concurrent first
+    // posts of the same key.
+    if (options.idempotencyKey !== undefined) {
+      const existingJournalId =
+        await this.ledgerRepository.findJournalIdByIdempotencyKey(
+          request.tenantId,
+          options.idempotencyKey,
+        );
+      if (existingJournalId !== null) {
+        // H3 — pass the request so a mismatched replay throws LOUD.
+        return this.loadExistingJournalResult(
+          existingJournalId,
+          request.tenantId,
+          request,
+          options.idempotencyKey,
+        );
+      }
     }
 
     const journalId = createJournalId();
@@ -259,6 +368,24 @@ export class LedgerService {
         // together with the balance updates above.
         const saved = await this.ledgerRepository.createEntries(entries, tx);
 
+        // Durability defect #2 — persist the (tenant, key) -> journalId
+        // dedupe row on the SAME tx as the entries + balances. A retried
+        // post under this key then short-circuits to the original journal
+        // (no second post). Co-committing it means a replay can never be
+        // served before the journal it points at is durable, and a rolled
+        // -back post leaves no orphaned dedupe row. The composite PK
+        // (tenant_id, idempotency_key) rejects a racing concurrent insert;
+        // that unique-violation rolls the WHOLE tx back, and the retry hits
+        // the now-present row via the fast-path check above.
+        if (options.idempotencyKey !== undefined) {
+          await this.ledgerRepository.insertJournalIdempotency(
+            request.tenantId,
+            options.idempotencyKey,
+            journalId,
+            tx,
+          );
+        }
+
         // Build the journal-level event now that entries are persisted,
         // then co-commit EVERY event for this post to the durable outbox
         // ON THIS TX (MUST-FIX 3a). If the tx rolls back, these outbox
@@ -322,6 +449,89 @@ export class LedgerService {
       journalId,
       entries: savedEntries,
       updatedAccounts
+    };
+  }
+
+  /**
+   * Reconstruct a `JournalPostResult` for a previously-posted journal —
+   * used to serve an idempotent replay (durability defect #2) without
+   * re-posting. Returns the persisted entries and the CURRENT account
+   * snapshots for the touched accounts.
+   *
+   * H3 — when `replayedRequest` is supplied, the persisted journal's legs
+   * are compared to that request's recomputed legs BEFORE serving; a
+   * divergence throws `IdempotencyMismatchError` (LOUD) instead of
+   * returning a stale journal for a mismatched request. The
+   * `idempotencyKey` is threaded only for the error message.
+   */
+  private async loadExistingJournalResult(
+    journalId: string,
+    tenantId: TenantId,
+    replayedRequest?: CreateJournalEntryRequest,
+    idempotencyKey?: string,
+  ): Promise<JournalPostResult> {
+    const entries = await this.ledgerRepository.findByJournalId(
+      journalId,
+      tenantId,
+    );
+
+    // H3 — defense-in-depth replay check. Reuse of one idempotency key
+    // for a DIFFERENT transaction must fail loud, not silently return the
+    // first journal. Compare order-independent leg signatures.
+    if (replayedRequest !== undefined) {
+      const existingSig = legSignature(
+        entries.map((e) => ({
+          accountId: String(e.accountId),
+          direction: e.direction,
+          type: e.type,
+          amountMinorUnits: e.amount.amountMinorUnits,
+          currency: e.amount.currency,
+        })),
+      );
+      const incomingSig = legSignature(
+        replayedRequest.lines.map((l) => ({
+          accountId: String(l.accountId),
+          direction: l.direction,
+          type: l.type,
+          amountMinorUnits: l.amount.amountMinorUnits,
+          currency: l.amount.currency,
+        })),
+      );
+      if (existingSig !== incomingSig) {
+        this.logger.error(
+          'ledger: idempotency-key REPLAY MISMATCH — refusing to serve stale journal',
+          {
+            tenantId,
+            journalId,
+            idempotencyKey,
+          },
+        );
+        throw new IdempotencyMismatchError(
+          idempotencyKey ?? '(unknown)',
+          journalId,
+          tenantId,
+        );
+      }
+    }
+
+    const accountIds = Array.from(new Set(entries.map((e) => e.accountId)));
+    const updatedAccounts: Account[] = [];
+    for (const accountId of accountIds) {
+      const account = await this.accountRepository.findById(accountId, tenantId);
+      if (account) {
+        updatedAccounts.push(account);
+      }
+    }
+    this.logger.info('Journal entry idempotent replay (no re-post)', {
+      journalId,
+      tenantId,
+      entryCount: entries.length,
+    });
+    return {
+      journalId,
+      entries,
+      updatedAccounts,
+      idempotentReplay: true,
     };
   }
 

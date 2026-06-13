@@ -53,9 +53,11 @@
  * Ported verbatim from Borjie services/payments-ledger/src/jobs/
  * disbursement-reconciliation.job.ts, adapted to BossNyumba: the compensating
  * reversal uses `JournalTemplates.disbursementReversal` (Borjie inlines a
- * `CreateJournalEntryRequest`) and `postJournalEntry` is the single-arg
- * BossNyumba signature (no idempotencyKey option), matching the service's own
- * ledger post.
+ * `CreateJournalEntryRequest`). The reversal post passes
+ * `{ idempotencyKey: \`disbursement-reversal:${disbursement.id}\` }` so a
+ * re-driven sweep that re-confirms the same non-delivery returns the ORIGINAL
+ * reversal journal and books nothing new (durability defect #2 — no
+ * double-fire / double-credit of holding).
  */
 
 import {
@@ -355,6 +357,12 @@ async function postReversal(
       amount,
       'disbursement-reconciliation',
     ),
+    // Post-once defense (durability defect #2): a re-driven sweep that
+    // re-confirms the SAME non-delivery must NOT double-fire the
+    // compensating reversal (which would double-credit holding). The
+    // key is the disbursement's identity, so a replay returns the
+    // ORIGINAL reversal journal and books nothing new.
+    { idempotencyKey: `disbursement-reversal:${disbursement.id}` },
   );
 
   await deps.disbursementRepository.update({

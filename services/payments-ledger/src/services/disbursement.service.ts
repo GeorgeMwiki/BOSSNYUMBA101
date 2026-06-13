@@ -245,7 +245,13 @@ export class DisbursementService {
           operatingAccount.id,
           amount,
           'system'
-        )
+        ),
+        // Borjie-parity (disbursement.service.ts:259-267): the owner-disbursement
+        // DEBIT is idempotent on a deterministic per-disbursement key — a claim
+        // retry or a post-claim crash re-drive returns the ORIGINAL journal
+        // instead of booking a second debit. Defense-in-depth atop the atomic
+        // (tenant_id, idempotency_key) claim arbiter.
+        { idempotencyKey: `disbursement:${disbursementId}` }
       );
       ledgerPosted = true;
 
