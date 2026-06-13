@@ -9,6 +9,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    // esbuild 0.28 (security-pinned via root pnpm.overrides) refuses to
+    // downlevel some destructuring to Vite's default chrome87/es2020 target.
+    // es2022 is supported by every current browser and lets esbuild treat the
+    // syntax as native (no transform) — unblocks the production build.
+    target: 'es2022',
+  },
   server: {
     port: 3000,
     proxy: {
