@@ -82,4 +82,57 @@ export const HARDCODED_ROUTES_ALLOWLIST = new Map([
     'apps/owner-portal/src/pages/PropertiesPage.tsx',
     'PropertiesPage Create CTA navigates to /properties/new — the literal mirrors the registry route for the create page (zero-deflection on the main listing surface).',
   ],
+
+  // ─── Marketing site: static content pages, no ROUTES registry ─────
+  // The marketing app is a public Next.js content/landing site whose
+  // legal + trust pages cross-link via <Link href="/terms"> etc. It
+  // does not (and need not) share the in-app ROUTES registry pattern —
+  // these are public, SEO-stable URLs that double as the canonical
+  // sitemap. Same posture as the tenant-portal entries above.
+  [
+    'apps/marketing/src/app/sign-up/page.tsx',
+    'Marketing sign-up page links to public /terms + /privacy legal pages — marketing site has no ROUTES registry; these are SEO-stable public URLs.',
+  ],
+  [
+    'apps/marketing/src/app/terms/page.tsx',
+    'Marketing legal page cross-links /pricing + /legal/* + /dpa — public content site, no ROUTES registry; SEO-stable URLs.',
+  ],
+  [
+    'apps/marketing/src/app/trust/page.tsx',
+    'Marketing trust page cross-links /security + /legal/* + /dpa — public content site, no ROUTES registry; SEO-stable URLs.',
+  ],
+  [
+    'apps/marketing/src/components/marketing/MarketingFooter.tsx',
+    'Marketing footer links to /privacy + /legal + /dpa — global public footer, no ROUTES registry; SEO-stable URLs.',
+  ],
+  [
+    'apps/marketing/src/components/tenant/TenantSignupWizard.tsx',
+    'Tenant signup wizard redirects to /tenants/sign-in?from=signup on success — marketing site has no ROUTES registry; structural auth-flow handoff.',
+  ],
+
+  // ─── tenant-mobile (Expo Router): no ROUTES registry yet ──────────
+  // The tenant-mobile app uses Expo Router file-based paths. It does not
+  // yet have a frontend ROUTES registry (parity-pending with the web
+  // apps). The navigate calls below are post-action redirects, most with
+  // an interpolated entity id (`/marketplace/${id}`, `/bids/${id}`).
+  [
+    'apps/tenant-mobile/src/chat/cards/ActiveBidsCard.tsx',
+    'Expo Router push to /bids/${bid.id} — tenant-mobile has no ROUTES registry; id-interpolated post-action redirect.',
+  ],
+  [
+    'apps/tenant-mobile/src/chat/cards/LiveLobbyCard.tsx',
+    'Expo Router push to /marketplace/${listing.id} — tenant-mobile has no ROUTES registry; id-interpolated redirect.',
+  ],
+  [
+    'apps/tenant-mobile/src/chat/cards/RecommendedListingsCard.tsx',
+    'Expo Router push to /marketplace/${listing.id} — tenant-mobile has no ROUTES registry; id-interpolated redirect.',
+  ],
+  [
+    'apps/tenant-mobile/src/components/PlaceBidSheet.tsx',
+    'Expo Router push to /bids/${bid.id} + /kyc — tenant-mobile has no ROUTES registry; post-bid redirects.',
+  ],
+  [
+    'apps/tenant-mobile/src/dashboard/TenantDashboard.tsx',
+    'Expo Router push to /marketplace + /chat + /marketplace/${id} dashboard tiles — tenant-mobile has no ROUTES registry yet.',
+  ],
 ]);

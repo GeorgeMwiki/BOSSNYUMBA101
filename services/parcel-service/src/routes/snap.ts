@@ -15,11 +15,18 @@
  * Part E §3.
  */
 import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import { snapNearest } from '../snap/nearest-building.js';
 import type { SnapCandidateSource } from '../snap/nearest-building.js';
 import type { TenantResolver } from './parcels.js';
 
 import { withSecurityEventsFastify } from '@bossnyumba/observability';
+
+const SnapBodySchema = z.object({
+  lat: z.number().finite().min(-90).max(90),
+  lng: z.number().finite().min(-180).max(180),
+  radiusM: z.number().finite().positive().optional(),
+});
 export interface SnapRouteDeps {
   readonly source: SnapCandidateSource;
   /**
@@ -28,12 +35,6 @@ export interface SnapRouteDeps {
    * JWT-derived resolver across every parcel-service route.
    */
   readonly tenantResolver?: TenantResolver;
-}
-
-interface SnapBody {
-  readonly lat?: unknown;
-  readonly lng?: unknown;
-  readonly radiusM?: unknown;
 }
 
 export async function registerSnapRoutes(
@@ -59,21 +60,15 @@ export async function registerSnapRoutes(
       reply.code(401);
       return { error: 'unauthorised: no resolver wired' };
     }
-    const body = (request.body ?? {}) as SnapBody;
-    const lat = typeof body.lat === 'number' ? body.lat : NaN;
-    const lng = typeof body.lng === 'number' ? body.lng : NaN;
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    const parsed = SnapBodySchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
       reply.code(400);
-      return { error: 'lat + lng required (numbers)' };
+      return {
+        error: 'lat in [-90, 90], lng in [-180, 180] required (numbers)',
+        details: parsed.error.flatten(),
+      };
     }
-    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-      reply.code(400);
-      return { error: 'lat in [-90, 90], lng in [-180, 180]' };
-    }
-    const radiusM =
-      typeof body.radiusM === 'number' && body.radiusM > 0
-        ? body.radiusM
-        : undefined;
+    const { lat, lng, radiusM } = parsed.data;
 
     const result = await snapNearest(
       {

@@ -95,6 +95,7 @@ export const RLS_ALLOWLIST = new Map([
   ['migration_runs', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['monthly_close_run_steps', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['monthly_close_runs', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
+  ['muzima_parcels', 'TRACKED GAP — Muzima spatial parcel table (renamed from `parcels` by migration 0252b); RLS migration pending. parcel-service already enforces tenant scope at the route layer via TenantResolver.'],
   ['negotiation_policies', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['negotiation_turns', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['negotiations', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],

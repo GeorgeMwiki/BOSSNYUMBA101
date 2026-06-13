@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { checkRateLimit, clientIp, rateLimitHeaders } from '@/lib/rate-limit';
 
 /**
  * /api/chat — BossNyumba public marketing chat (hardened dual-mode).
@@ -283,6 +284,20 @@ async function callAnthropic(message: string, language: 'en' | 'sw'): Promise<st
 }
 
 export async function POST(req: Request): Promise<Response> {
+  // Per-IP throttle — public LLM proxy is a cost + prompt-injection
+  // abuse vector. 20 turns/min/IP is generous for a real visitor.
+  const limit = checkRateLimit(clientIp(req), {
+    key: 'marketing:chat',
+    max: 20,
+    windowMs: 60_000,
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', detail: 'Too many requests. Try again shortly.' },
+      { status: 429, headers: rateLimitHeaders(limit) },
+    );
+  }
+
   const ct = req.headers.get('content-type') ?? '';
   if (!ct.includes('application/json')) {
     return NextResponse.json({ error: 'unsupported_media_type' }, { status: 415 });

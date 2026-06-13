@@ -11,6 +11,7 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { checkRateLimit, clientIp, rateLimitHeaders } from '@/lib/rate-limit';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,20 @@ const WebVitalSchema = z.object({
 });
 
 export async function POST(req: Request): Promise<NextResponse> {
+  // Per-IP throttle — anonymous telemetry sink is a flood / cardinality
+  // abuse vector. 60 beacons/min/IP comfortably covers a real session.
+  const limit = checkRateLimit(clientIp(req), {
+    key: 'marketing:web-vitals',
+    max: 60,
+    windowMs: 60_000,
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { ok: false, error: 'rate-limited' },
+      { status: 429, headers: rateLimitHeaders(limit) },
+    );
+  }
+
   try {
     const text = await req.text();
     if (text.length > 16_384) {

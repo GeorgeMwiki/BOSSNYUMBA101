@@ -42,6 +42,19 @@ export const AUTH_ALLOWLIST = new Map([
     'post-chat marketing lead capture — anonymous by design; idempotent by session_id; zod-validated; .delete@L65 is Map gc, not an HTTP route.',
   ],
 
+  [
+    'apps/marketing/src/app/api/chat/route.ts',
+    'public marketing chat — intentionally unauthenticated (anonymous visitor widget); no tenant DB path, body zod-validated, per-IP rate-limited via @/lib/rate-limit checkRateLimit.',
+  ],
+  [
+    'apps/marketing/src/app/api/pilot-apply/route.ts',
+    'public marketing lead-capture form — intentionally unauthenticated by design; body zod-validated, per-IP rate-limited via @/lib/rate-limit checkRateLimit before upstream forward.',
+  ],
+  [
+    'apps/marketing/src/app/api/perf/web-vitals/route.ts',
+    'public marketing web-vitals telemetry sink — intentionally unauthenticated (anonymous sendBeacon); body zod-validated, per-IP rate-limited via @/lib/rate-limit checkRateLimit.',
+  ],
+
   // ─── MCP / Agent Card discovery (public manifest) ──────────────────
   [
     'services/api-gateway/src/routes/mcp.hono.ts',

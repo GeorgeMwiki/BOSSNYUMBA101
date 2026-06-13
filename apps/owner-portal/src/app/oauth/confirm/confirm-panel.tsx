@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCsrfHeaders } from '@/lib/csrf';
 import { requirePublicBaseUrl } from '@/lib/env-guard';
+import { ROUTES } from '@/lib/routes';
 
 type DeviceDetails = {
   readonly client_id: string;
@@ -117,7 +118,7 @@ export function OAuthConfirmPanel() {
 
   useEffect(() => {
     if (phase.kind === 'approved' && phase.countdown <= 0) {
-      router.push('/settings/connected-agents');
+      router.push(ROUTES.settings.connectedAgents);
     }
   }, [phase, router]);
 

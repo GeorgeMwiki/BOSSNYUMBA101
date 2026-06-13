@@ -40,4 +40,10 @@ export const HARDCODED_MODULE_LIST_ALLOWLIST = new Map([
     'services/api-gateway/src/routes/autonomous-actions-audit.hono.ts',
     'Zod enum [finance, leasing, ...] declares the autonomous-actions domain vocabulary; schema-level enumeration (the z.enum opener wraps to the prior line so SKIP_LINE_RX misses it).',
   ],
+
+  // ─── React-query cache keys (NOT tenant module enablement) ─────────
+  [
+    'apps/staff-mobile/app/owner/O-M-13.tsx',
+    "queryKey: ['estate', 'maintenance', 'events'] is a react-query cache key namespacing the maintenance-events query; it is NOT a tenant module-enablement array.",
+  ],
 ]);
