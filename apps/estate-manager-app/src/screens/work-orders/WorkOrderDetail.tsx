@@ -38,6 +38,7 @@ import { PriorityBadge, SLATimer, Timeline, type TimelineEvent } from '@/compone
 import { workOrdersService, vendorsService } from '@bossnyumba/api-client';
 import { Spinner } from '@bossnyumba/design-system';
 import { ROUTES } from '@/lib/routes';
+import { formatMoney } from '@/lib/currency';
 
 interface Material {
   id: string;
@@ -731,7 +732,7 @@ export default function WorkOrderDetail() {
                     <div key={material.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div><span className="font-medium">{material.name}</span><span className="text-sm text-gray-500 ml-2">x{material.quantity}</span></div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">KES {(material.cost * material.quantity).toLocaleString()}</span>
+                        <span className="text-sm font-medium">{formatMoney(material.cost * material.quantity)}</span>
                         <button
                           type="button"
                           onClick={() => removeMaterial(material.id)}
@@ -753,7 +754,7 @@ export default function WorkOrderDetail() {
                 {materials.length > 0 && (
                   <div className="mt-3 p-3 bg-primary-50 rounded-lg flex items-center justify-between">
                     <span className="text-sm text-primary-700">{t('totalMaterialsCost')}</span>
-                    <span className="font-semibold text-primary-900">KES {totalMaterialsCost.toLocaleString()}</span>
+                    <span className="font-semibold text-primary-900">{formatMoney(totalMaterialsCost)}</span>
                   </div>
                 )}
               </div>
