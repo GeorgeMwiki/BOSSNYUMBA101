@@ -203,6 +203,10 @@ export class DisbursementService {
       }
     }
 
+    // B1: track whether the ledger debit committed so the catch can post a
+    // compensating reversal if the provider transfer (or a later step) throws.
+    let ledgerPosted = false;
+
     try {
       // BLOCKER #13(c): post the ledger debit BEFORE the provider transfer
       // so a successful transfer can never exist without a backing ledger
@@ -217,6 +221,7 @@ export class DisbursementService {
           'system'
         )
       );
+      ledgerPosted = true;
 
       // Create transfer with provider (after the ledger is booked).
       const transferResult = await provider.createTransfer({
@@ -303,6 +308,44 @@ export class DisbursementService {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      // B1: the ledger debit is posted BEFORE the transfer, so if we land here
+      // AFTER it committed, no money moved — post a compensating reversal so the
+      // books never carry a phantom OWNER_DISBURSEMENT (double-entry honesty).
+      // A reversal failure is logged LOUD for manual reconciliation and must not
+      // mask the original error. (Lost-response edge — transfer actually
+      // succeeded but threw — is left to provider-status reconciliation; the
+      // provider idempotencyKey prevents a double-send on retry.)
+      if (ledgerPosted) {
+        try {
+          await this.ledgerService.postJournalEntry(
+            JournalTemplates.disbursementReversal(
+              request.tenantId,
+              platformHoldingAccount.id,
+              operatingAccount.id,
+              amount,
+              'system'
+            )
+          );
+          this.logger.warn('Disbursement ledger entry reversed after transfer failure', {
+            disbursementId,
+            ownerId: request.ownerId,
+            amount: amount.toString()
+          });
+        } catch (reversalError) {
+          this.logger.error(
+            'CRITICAL: disbursement ledger reversal FAILED — MANUAL RECONCILIATION REQUIRED (phantom OWNER_DISBURSEMENT on the books)',
+            {
+              disbursementId,
+              ownerId: request.ownerId,
+              amount: amount.toString(),
+              originalError: errorMessage,
+              reversalError:
+                reversalError instanceof Error ? reversalError.message : 'Unknown error'
+            }
+          );
+        }
+      }
 
       // Update disbursement record as failed
       if (this.disbursementRepository) {
