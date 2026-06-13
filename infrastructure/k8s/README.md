@@ -16,10 +16,7 @@ infrastructure/k8s/
 │   ├── hpa.yaml            # Horizontal Pod Autoscaler
 │   └── ingress.yaml        # Ingress rules
 ├── apps/                   # Frontend applications
-│   ├── estate-manager/     # Manager mobile-first app (Next.js)
-│   ├── customer-app/       # Tenant app (Next.js)
-│   ├── owner-portal/       # Owner portal (Vite)
-│   └── admin-portal/       # Admin portal (Vite)
+│   └── owner-portal/       # Owner portal (Vite)
 ├── databases/              # Database resources (dev only)
 │   ├── postgres-statefulset.yaml
 │   └── redis-deployment.yaml
@@ -69,10 +66,7 @@ Build and push images before deploying:
 ```bash
 # Build images (from project root)
 docker build -f docker/Dockerfile.api -t bossnyumba/api-gateway:latest .
-docker build -f docker/Dockerfile.web --build-arg APP_NAME=estate-manager-app --build-arg APP_PATH=apps/estate-manager-app --target nextjs -t bossnyumba/estate-manager-app:latest .
-docker build -f docker/Dockerfile.web --build-arg APP_NAME=customer-app --build-arg APP_PATH=apps/customer-app --target nextjs -t bossnyumba/customer-app:latest .
 docker build -f docker/Dockerfile.web --build-arg APP_NAME=owner-portal --build-arg APP_PATH=apps/owner-portal --target vite -t bossnyumba/owner-portal:latest .
-docker build -f docker/Dockerfile.web --build-arg APP_NAME=admin-portal --build-arg APP_PATH=apps/admin-portal --target vite -t bossnyumba/admin-portal:latest .
 
 # Push to your registry (update tag for staging/production)
 docker push <registry>/bossnyumba/api-gateway:latest

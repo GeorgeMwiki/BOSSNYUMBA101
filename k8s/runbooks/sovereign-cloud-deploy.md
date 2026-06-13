@@ -87,8 +87,6 @@ Create a `values-tz.yaml` that locks down everything:
 ```yaml
 domain: <co-op>.co.tz
 hosts:
-  customerApp: tenant.<co-op>.co.tz
-  estateManagerApp: manager.<co-op>.co.tz
   ownerPortal: owner.<co-op>.co.tz
   adminPlatformPortal: admin.<co-op>.co.tz
 

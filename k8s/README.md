@@ -103,8 +103,6 @@ k8s/
 
 | Tier | Workload | Visibility | Min replicas | Notes |
 |------|----------|------------|--------------|-------|
-| Frontend | `customer-app` | PUBLIC (ingress) | 2 (HPA: 2-30) | Tenant-facing portal; stays warm 24/7 |
-| Frontend | `estate-manager-app` | PUBLIC (ingress) | 1 (KEDA: 0-20) | Manager portal — scale-to-zero on idle |
 | Frontend | `owner-portal` | PUBLIC (ingress) | 1 (KEDA: 0-10) | Property-owner portal |
 | Frontend | `admin-platform-portal` | PUBLIC (ingress) | 1 (KEDA: 0-5) | Platform admin — low traffic |
 | Service | `api-gateway` | INTERNAL only | 3 (HPA: 3-50) | The only route into business logic |
@@ -148,7 +146,7 @@ Expected output: 4/4 PASSED.
 - `test-redis-connectivity` — verifies Redis PINGs back.
 - `test-api-gateway-health` — verifies api-gateway returns 200 on
   `/healthz`.
-- `test-frontend-reaches-gateway` — wears the customer-app pod label
+- `test-frontend-reaches-gateway` — wears the owner-portal pod label
   and confirms NetworkPolicy allows the frontend→gateway hop.
 
 ## Local dev (Tilt + k3d)
@@ -167,9 +165,7 @@ file under `apps/` or `services/` and the corresponding image rebuilds
 
 | Workload                 | URL                       |
 | ------------------------ | ------------------------- |
-| `customer-app`           | http://localhost:3000     |
 | `owner-portal`           | http://localhost:3001     |
-| `estate-manager-app`     | http://localhost:3002     |
 | `admin-platform-portal`  | http://localhost:3003     |
 | `api-gateway`            | http://localhost:4000     |
 

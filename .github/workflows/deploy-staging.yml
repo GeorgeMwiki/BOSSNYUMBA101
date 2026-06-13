@@ -65,7 +65,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [customer-app, estate-manager-app, owner-portal, admin-portal]
+        app: [owner-portal, admin-platform-portal]
     steps:
       - name: Checkout
         uses: actions/checkout@v6

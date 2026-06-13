@@ -39,13 +39,9 @@ images:
     newTag: latest
   - name: ghcr.io/georgemwiki/bossnyumba-webhooks
     newTag: latest
-  - name: ghcr.io/georgemwiki/bossnyumba-customer-app
-    newTag: latest
   - name: ghcr.io/georgemwiki/bossnyumba-owner-portal
     newTag: latest
   - name: ghcr.io/georgemwiki/bossnyumba-admin-platform-portal
-    newTag: latest
-  - name: ghcr.io/georgemwiki/bossnyumba-estate-manager-app
     newTag: latest
 
 patches:

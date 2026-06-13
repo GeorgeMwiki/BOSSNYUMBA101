@@ -59,7 +59,7 @@ jobs:
 
       - name: Lint apps for CSRF header compliance
         run: |
-          for app in apps/customer-app apps/owner-portal apps/admin-platform-portal apps/estate-manager-app; do
+          for app in apps/owner-portal apps/admin-platform-portal; do
             if [ -d "$app" ]; then
               echo "Linting $app"
               pnpm -C "$app" lint || exit 1

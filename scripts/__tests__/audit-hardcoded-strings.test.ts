@@ -19,7 +19,7 @@ let tmp: string;
 
 beforeAll(() => {
   tmp = mkdtempSync(join(tmpdir(), 'hc-strings-'));
-  const srcDir = join(tmp, 'apps', 'customer-app', 'src', 'pages');
+  const srcDir = join(tmp, 'apps', 'owner-portal', 'src', 'pages');
   mkdirSync(srcDir, { recursive: true });
   // Violating file — hardcoded English attribute.
   writeFileSync(

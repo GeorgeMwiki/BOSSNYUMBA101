@@ -15,8 +15,15 @@ import { PLATFORM_SESSION_COOKIE } from './lib/session';
  * When the cookie is missing on a protected path, users are redirected
  * to `/login` with a `next=` param so we can bounce them back after auth.
  *
- * Cookie presence alone is not authentication — the identity service
- * still validates the token on every request (see `src/lib/session.ts`).
+ * ⚠️ SECURITY — READ BEFORE TRUSTING THIS GATE. Cookie PRESENCE is a UX
+ * redirect ONLY; it is NOT authentication. This middleware does NOT validate
+ * the session token (the `/sessions/verify` integration is an open TODO — see
+ * `src/lib/session.ts` + Docs/TODO_BACKLOG.md). A forged non-empty cookie
+ * passes this gate and renders the HQ shell. The ONLY real authorization is the
+ * api-gateway, which independently enforces a verified JWT + `isPlatformAdmin`
+ * on every `/api/platform/*` data route. THEREFORE: every page/route that reads
+ * data MUST go through the JWT-gated gateway — NEVER read tenant/HQ data using
+ * only this cookie, or it will leak to any unauthenticated caller.
  */
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;

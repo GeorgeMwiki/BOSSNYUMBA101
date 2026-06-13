@@ -3,7 +3,7 @@
 -- =============================================================================
 -- Run via `e2e/fixtures/seed-runner.ts` AFTER api-gateway migrations have
 -- created the schema. Inserts a known tenant, customer, property, unit, and
--- lease with STABLE UUIDs so customer-app specs can reference them by id
+-- lease with STABLE UUIDs so specs can reference them by id
 -- without first having to read them back from the API.
 --
 -- IDs match the constants in e2e/fixtures/test-data.ts (testIds.*).
@@ -27,7 +27,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ---------- Users ----------
 -- Test customer with deterministic phone for OTP login flow. Password column
--- only matters for the email-password portals; the customer-app uses phone OTP
+-- only matters for the email-password portals; the mobile client uses phone OTP
 -- and the test environment treats `123456` as the accepted code.
 INSERT INTO users (id, tenant_id, email, phone, full_name, role, status, password_hash, created_at, updated_at)
 VALUES (

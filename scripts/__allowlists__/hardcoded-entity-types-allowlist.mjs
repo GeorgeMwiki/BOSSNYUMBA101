@@ -51,10 +51,4 @@ export const HARDCODED_ENTITY_TYPES_ALLOWLIST = new Map([
     'services/api-gateway/src/routes/properties.ts',
     'properties.ts uses PROPERTY literal as the entity-code namespace prefix for generated short codes.',
   ],
-
-  // ─── Spotlight role-routing (entity-type vs role-type literal) ───
-  [
-    'apps/customer-app/src/components/SpotlightMount.tsx',
-    'SpotlightMount declares userRoles=[TENANT] as the customer-app role-binding; this IS the role-mount config.',
-  ],
 ]);

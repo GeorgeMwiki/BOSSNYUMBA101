@@ -75,7 +75,7 @@ variable "enable_container_insights" {
 }
 
 # -----------------------------------------------------------------------------
-# App Services (estate-manager, customer-app, owner-portal, admin-portal)
+# App Services (owner-portal, admin-platform-portal)
 # -----------------------------------------------------------------------------
 variable "app_services" {
   description = "Map of app services to deploy. Key = service name."

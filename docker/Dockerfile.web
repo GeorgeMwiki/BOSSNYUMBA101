@@ -73,7 +73,7 @@ COPY --from=deps /app/packages ./packages
 COPY --from=deps /app/services ./services
 COPY --from=deps /app/apps ./apps
 
-# customer-app → @bossnyumba/api-sdk's build script reads
+# The Next.js apps → @bossnyumba/api-sdk's build script reads
 # `Docs/api/openapi.generated.json` to emit typed fetch helpers.
 # That file isn't in any package's node_modules — it's tracked in the
 # repo at `Docs/api/`. Copy it explicitly so api-sdk's generate runs.
@@ -121,8 +121,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/.next/static ./a
 # NOTE: previous version had `COPY ... 2>/dev/null || true` which is
 # invalid Dockerfile syntax (shell redirection doesn't work in
 # directives — `2>/dev/null` got treated as a literal source path).
-# customer-app has a `public/` directory committed (icons, manifest.json,
-# sw.js for PWA), so the COPY succeeds. If a future app lacks public/,
+# the Next.js apps have a `public/` directory committed (icons,
+# manifest.json, sw.js for PWA), so the COPY succeeds. If a future app
+# lacks public/,
 # add an empty placeholder file there instead of bringing shell logic
 # back into the directive.
 COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/public ./apps/${APP_NAME}/public

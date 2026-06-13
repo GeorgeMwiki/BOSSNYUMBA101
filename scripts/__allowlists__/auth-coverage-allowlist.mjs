@@ -92,10 +92,6 @@ export const AUTH_ALLOWLIST = new Map([
     'apps/admin-platform-portal/src/app/api/platform/health/route.ts',
     'health probe — k8s liveness / uptime monitors require unauthenticated access.',
   ],
-  [
-    'apps/estate-manager-app/src/app/api/brain/health/route.ts',
-    'health probe for the brain proxy; unauthenticated readiness.',
-  ],
 
   // ─── Internal middleware-export file flagged as a route ────────────
   [

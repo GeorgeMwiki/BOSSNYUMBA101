@@ -16,7 +16,7 @@ let tmp: string;
 
 beforeAll(() => {
   tmp = mkdtempSync(join(tmpdir(), 'hc-routes-'));
-  const dir = join(tmp, 'apps', 'customer-app', 'src', 'pages');
+  const dir = join(tmp, 'apps', 'owner-portal', 'src', 'pages');
   mkdirSync(dir, { recursive: true });
   // Violating: router.push('/onboarding').
   writeFileSync(

@@ -178,34 +178,7 @@ services:
           cpus: "0.1"
           memory: 128M
 
-  estate-manager:
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.bossnyumba.com/api/v1}
-      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
-      NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
-    deploy:
-      resources:
-        limits: { cpus: "1.0", memory: 1G }
-        reservations: { cpus: "0.25", memory: 256M }
-
-  customer-app:
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.bossnyumba.com/api/v1}
-      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
-      NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
-    deploy:
-      resources:
-        limits: { cpus: "1.0", memory: 1G }
-        reservations: { cpus: "0.25", memory: 256M }
-
   owner-portal:
-    deploy:
-      resources:
-        limits: { cpus: "0.5", memory: 256M }
-
-  admin-portal:
     deploy:
       resources:
         limits: { cpus: "0.5", memory: 256M }
@@ -228,13 +201,7 @@ services:
     depends_on:
       api-gateway:
         condition: service_healthy
-      customer-app:
-        condition: service_healthy
-      estate-manager:
-        condition: service_healthy
       owner-portal:
-        condition: service_healthy
-      admin-portal:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "nginx", "-t"]

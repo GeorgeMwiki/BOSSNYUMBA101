@@ -39,13 +39,11 @@ component installs.
 
 ## Step 0 — Configure DNS placeholders
 
-Decide the 4 portal hostnames up-front and put them in
+Decide the portal hostnames up-front and put them in
 `values-<env>.yaml`. Example for staging:
 
 ```yaml
 hosts:
-  customerApp: customer.staging.bossnyumba.dev
-  estateManagerApp: manager.staging.bossnyumba.dev
   ownerPortal: owner.staging.bossnyumba.dev
   adminPlatformPortal: admin.staging.bossnyumba.dev
 ```

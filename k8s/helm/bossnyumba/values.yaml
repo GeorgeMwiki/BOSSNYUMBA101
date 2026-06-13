@@ -24,8 +24,6 @@ image:
 domain: bossnyumba.dev
 hosts:
   # Staging defaults. Override in values-prod.yaml with bossnyumba.com.
-  customerApp: customer.bossnyumba.dev
-  estateManagerApp: manager.bossnyumba.dev
   ownerPortal: owner.bossnyumba.dev
   adminPlatformPortal: admin.bossnyumba.dev
 tls:
@@ -36,12 +34,9 @@ tls:
   secretNamePrefix: bossnyumba-tls
 
 # ── Replica counts ────────────────────────────────────────────────────
-# Frontends: customer-app stays warm (tenant traffic 24/7), the other 3
-# scale to 0 on idle (KEDA HTTP add-on). Services: api-gateway always
-# warm, others can scale aggressively.
+# Frontends scale to 0 on idle (KEDA HTTP add-on). Services: api-gateway
+# always warm, others can scale aggressively.
 replicaCount:
-  customerApp: 2
-  estateManagerApp: 1          # KEDA scales 0..20.
   ownerPortal: 1               # KEDA scales 0..10.
   adminPlatformPortal: 1       # KEDA scales 0..5.
   apiGateway: 3
@@ -49,42 +44,8 @@ replicaCount:
   reports: 1
   notifications: 2
 
-# ── 4 Frontend apps ───────────────────────────────────────────────────
+# ── Frontend apps ─────────────────────────────────────────────────────
 apps:
-  customerApp:
-    enabled: true
-    name: customer-app
-    image:
-      repository: customer-app
-      tag: ""   # falls back to global image.tag
-    port: 3000
-    healthPath: /api/health
-    resources:
-      requests: { cpu: 200m, memory: 512Mi }
-      limits:   { cpu: "1", memory: 1Gi }
-    autoscaling:
-      enabled: true
-      minReplicas: 2
-      maxReplicas: 30
-      targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
-  estateManagerApp:
-    enabled: true
-    name: estate-manager-app
-    image:
-      repository: estate-manager-app
-      tag: ""
-    port: 3000
-    healthPath: /api/health
-    resources:
-      requests: { cpu: 200m, memory: 512Mi }
-      limits:   { cpu: "1", memory: 1Gi }
-    autoscaling:
-      enabled: true
-      minReplicas: 1
-      maxReplicas: 20
-      targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
   ownerPortal:
     enabled: true
     name: owner-portal
@@ -246,19 +207,13 @@ redis:
   persistence:
     enabled: false   # In-memory only by default; flip on for persistent queues.
 
-# ── KEDA HTTP-driven scaling for 3 of the 4 portals ──────────────────
+# ── KEDA HTTP-driven scaling for the portals ─────────────────────────
 keda:
   enabled: true
   # KEDA HTTP add-on must be installed on the cluster. Otherwise the
   # Prometheus fallback trigger is used.
   promServerAddress: http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090
   scalers:
-    customerApp:
-      enabled: false   # customer-app stays warm — no scale-to-zero.
-      targetRps: 30
-    estateManagerApp:
-      enabled: true
-      targetRps: 20
     ownerPortal:
       enabled: true
       targetRps: 15
@@ -339,10 +294,6 @@ serviceAccount:
   # commonAnnotations:
   #   eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/bossnyumba-base
   perService:
-    customerApp:
-      annotations: {}
-    estateManagerApp:
-      annotations: {}
     ownerPortal:
       annotations: {}
     adminPlatformPortal:
