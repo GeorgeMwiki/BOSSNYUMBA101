@@ -236,6 +236,7 @@ export {
   detectRecurringGap,
   proposeNewSubMd,
   compileAndDeploySubMd,
+  authorizeSelfExtension,
   type SelfExtensionDeps,
   type DetectRecurringGapOptions,
   type ActivityLogPort,
@@ -250,6 +251,13 @@ export {
   type SubMdSpec,
   type SubMdProposal,
   type DeploymentReceipt,
+  type AuthorizeSelfExtensionArgs,
+  type SelfExtensionAuthorizationVerdict,
+  type SelfExtensionGovernancePorts,
+  type SelfExtensionControllerPort,
+  type SelfExtensionComposePort,
+  type SelfExtensionAutonomyDecision,
+  type SelfExtensionRailOutcome,
 } from './self-extension.js';
 
 // LATS — Language Agent Tree Search planner (alternative to ToT in
