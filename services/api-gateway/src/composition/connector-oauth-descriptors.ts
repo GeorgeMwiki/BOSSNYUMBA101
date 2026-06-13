@@ -355,7 +355,12 @@ export function decodeConnectorOAuthState(
     );
     if (!parsed.success) return null;
     if (parsed.data.exp <= nowMs) return null;
-    return Object.freeze({ ...parsed.data });
+    // The schema (all fields required, min-length / positive) GUARANTEES every
+    // claim is present once `parsed.success` — but the api-gateway compiles
+    // under `strict:false`, where zod degrades the inferred output to
+    // optional-field shape, so the validated data is asserted to the verified
+    // claim type rather than spread-inferred. Sound: MAC-verified + zod-validated.
+    return Object.freeze({ ...parsed.data }) as VerifiedConnectorOAuthState;
   } catch {
     return null;
   }
@@ -491,8 +496,10 @@ export async function exchangeConnectorAuthorizationCode(args: {
     return { ok: false, reason: 'token endpoint returned a non-JSON body' };
   }
   const mapped = descriptor.mapTokenResponse(payload);
-  if (!mapped.ok) {
-    return { ok: false, reason: mapped.reason };
+  // Positive-discriminant check narrows reliably even under `strict:false`
+  // (where the negated `!mapped.ok` form fails to narrow the union).
+  if (mapped.ok) {
+    return { ok: true, tokens: mapped.tokens };
   }
-  return { ok: true, tokens: mapped.tokens };
+  return { ok: false, reason: mapped.reason };
 }
