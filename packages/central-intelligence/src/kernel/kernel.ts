@@ -33,6 +33,7 @@ import type {
   AgencyKernelPort,
   BrainDecision,
   ConfidenceVector,
+  DegradedDecisionMarker,
   GateOutcome,
   GateVerdict,
   GroundingFact,
@@ -100,6 +101,8 @@ import type { BrainToolRegistry, BrainToolOutcome } from './tool-spec.js';
 import {
   resolveKillswitch,
   renderKillswitchRefusalText,
+  renderKillswitchDegradedRefusalText,
+  isDegradedStakesBlocked,
   type KillswitchPort,
 } from './killswitch.js';
 import {
@@ -622,6 +625,12 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       const memTenantIdEarly =
         req.scope.kind === 'tenant' ? req.scope.tenantId : null;
 
+      // Killswitch DEGRADED marker — set (step 0) when the kernel is in a
+      // reduced mode but the turn is low/medium-stakes and so allowed to
+      // proceed. Merged onto the final answer/softened decision so the
+      // reduced state is SURFACED to the caller, not just trace-logged.
+      let degradedKillswitchMarker: DegradedDecisionMarker | null = null;
+
       // A2b-2 wire #1 — pre-LLM PII scrub. Compute ONCE per turn;
       // reuse for every sensor egress (initial sensor.call, regen
       // pass, debate fallback) and for the episodic-memory write
@@ -715,7 +724,18 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
 
       // 0) killswitch — administrative HALT short-circuit. Runs before
       //    cache, memory, sensor, anything. Per-tenant state wins over
-      //    platform state. DEGRADED is non-fatal (logged via trace).
+      //    platform state.
+      //
+      //    HALT     → hard refusal (no sensor budget spent).
+      //    DEGRADED → the kernel is RUNNING IN A REDUCED MODE. Per the
+      //               killswitch contract ("lower-stakes calls only"),
+      //               a degraded kernel REFUSES high/critical-stakes
+      //               turns — these are the irreversible / sovereign
+      //               side-effects a typo'd or partial HALT must never
+      //               serve (parseLevel fails CLOSED to 'degraded').
+      //               Low/medium-stakes turns proceed, but carry a
+      //               `degraded` marker so the state is surfaced (not
+      //               just a trace line).
       if (deps.killswitch) {
         const ksStart = clock().getTime();
         const ks = resolveKillswitch(deps.killswitch, memTenantIdEarly);
@@ -740,6 +760,47 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
           }
           finaliseTrace('refusal', 'killswitch');
           return decision;
+        }
+        // DEGRADED + high/critical stakes ⇒ REFUSE. Fail-closed: a
+        // degraded kernel must not route sovereign / money-path /
+        // irreversible turns.
+        if (isDegradedStakesBlocked(ks.level, req.stakes)) {
+          traceStep(
+            'killswitch',
+            ksStart,
+            `DEGRADED refuse stakes=${req.stakes} reason=${ks.reasonCode}`,
+          );
+          const decision: BrainDecision = {
+            ...makeRefusal({
+              thoughtId,
+              req,
+              reason: renderKillswitchDegradedRefusalText(ks),
+              gate: 'inviolable',
+              startedAt,
+              clockNow: clock(),
+            }),
+            degraded: {
+              reason: `killswitch_degraded:${ks.reasonCode}`,
+              affected_capabilities: ['high-stakes-actions'],
+              since: clock().toISOString(),
+            },
+          };
+          if (deps.provenanceSink) {
+            void deps.provenanceSink
+              .record(decision.provenance)
+              .catch(() => undefined);
+          }
+          finaliseTrace('refusal', 'killswitch');
+          return decision;
+        }
+        // DEGRADED + low/medium stakes ⇒ proceed, but mark the turn so
+        // the reduced state is surfaced downstream, not just traced.
+        if (ks.level === 'degraded') {
+          degradedKillswitchMarker = {
+            reason: `killswitch_degraded:${ks.reasonCode}`,
+            affected_capabilities: ['high-stakes-actions'],
+            since: clock().toISOString(),
+          };
         }
         traceStep(
           'killswitch',
@@ -1690,7 +1751,7 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         cognitiveLoad: loadOut.verdict,
       };
 
-      const decision: BrainDecision = pickDecisionShape({
+      const baseDecision: BrainDecision = pickDecisionShape({
         gates,
         text: finalText,
         citations,
@@ -1698,6 +1759,12 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         confidence,
         provenance,
       });
+      // Surface a killswitch DEGRADED state (low/medium-stakes turns that
+      // were allowed to proceed) on the final decision so the reduced
+      // mode reaches the caller — not just the decision trace.
+      const decision: BrainDecision = degradedKillswitchMarker
+        ? { ...baseDecision, degraded: degradedKillswitchMarker }
+        : baseDecision;
 
       cache.set(cacheKey, decision);
       if (deps.provenanceSink) {
@@ -1804,6 +1871,12 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       //    callers see turn_start + done(refusal) with no deltas; this
       //    mirrors the non-stream path's "no sensor budget spent"
       //    invariant.
+      //
+      //    DEGRADED is enforced exactly as in the non-stream path: a
+      //    reduced kernel REFUSES high/critical-stakes turns (no deltas)
+      //    and tags low/medium-stakes turns with a `degraded` marker so
+      //    the reduced state reaches the caller on `done`.
+      let degradedKillswitchMarker: DegradedDecisionMarker | null = null;
       if (deps.killswitch) {
         const streamTenantId =
           req.scope.kind === 'tenant' ? req.scope.tenantId : null;
@@ -1829,6 +1902,46 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
           };
           yield { kind: 'done', decision };
           return;
+        }
+        // DEGRADED + high/critical stakes ⇒ REFUSE with no deltas. A
+        // degraded kernel must not stream a sovereign / money-path turn.
+        if (isDegradedStakesBlocked(ks.level, req.stakes)) {
+          const decision: BrainDecision = {
+            ...makeRefusal({
+              thoughtId,
+              req,
+              reason: renderKillswitchDegradedRefusalText(ks),
+              gate: 'inviolable',
+              startedAt,
+              clockNow: clock(),
+            }),
+            degraded: {
+              reason: `killswitch_degraded:${ks.reasonCode}`,
+              affected_capabilities: ['high-stakes-actions'],
+              since: clock().toISOString(),
+            },
+          };
+          if (deps.provenanceSink) {
+            void deps.provenanceSink
+              .record(decision.provenance)
+              .catch(() => undefined);
+          }
+          yield {
+            kind: 'gate_verdict',
+            gate: 'inviolable',
+            verdict: { status: 'block', reason: ks.reasonCode },
+          };
+          yield { kind: 'done', decision };
+          return;
+        }
+        // DEGRADED + low/medium stakes ⇒ proceed, but carry the marker
+        // through to the final `done` decision.
+        if (ks.level === 'degraded') {
+          degradedKillswitchMarker = {
+            reason: `killswitch_degraded:${ks.reasonCode}`,
+            affected_capabilities: ['high-stakes-actions'],
+            since: clock().toISOString(),
+          };
         }
       }
 
@@ -2250,7 +2363,7 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         cognitiveLoad: loadOut.verdict,
       };
 
-      const decision: BrainDecision = pickDecisionShape({
+      const baseDecision: BrainDecision = pickDecisionShape({
         gates,
         text: finalText,
         citations,
@@ -2258,6 +2371,11 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         confidence,
         provenance,
       });
+      // Surface a killswitch DEGRADED state on the final streaming
+      // decision so the reduced mode reaches the caller on `done`.
+      const decision: BrainDecision = degradedKillswitchMarker
+        ? { ...baseDecision, degraded: degradedKillswitchMarker }
+        : baseDecision;
 
       cache.set(cacheKey, decision);
       if (deps.provenanceSink) {

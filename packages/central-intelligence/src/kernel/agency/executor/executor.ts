@@ -24,13 +24,18 @@
  * filings, GePG control-number revocations, market-rate-band overrides,
  * inspection major-damage flags).
  *
- * Ledger-write policy (W-FailClosed, wave-k-final-zero):
- *   - Default (`sovereignLedgerFailClosed === false` or unset):
- *     "fail-open" — ledger errors are logged and swallowed. The tool's
- *     apparent outcome is preserved (back-compat with W-Agency).
- *   - Fail-closed (`sovereignLedgerFailClosed === true`): when the
- *     sovereign-tier audit row cannot be written, the executor flips
- *     the step's outcome to `failed` with `reason:
+ * Ledger-write policy (W-FailClosed, Wave-B owner-approved):
+ *   - Default (`sovereignLedgerFailClosed === true` OR unset/undefined):
+ *     "fail-CLOSED" — when the sovereign-tier audit row cannot be
+ *     written the executor flips the step's outcome to `failed`. This
+ *     is the safe default for irreversible regulator-touching actions.
+ *   - Fail-open (`sovereignLedgerFailClosed === false`, explicit
+ *     opt-out only): ledger errors are logged and swallowed and the
+ *     tool's apparent outcome is preserved (legacy back-compat with
+ *     W-Agency; wired via `SOVEREIGN_LEDGER_FAIL_OPEN=1`).
+ *   - Fail-closed (`sovereignLedgerFailClosed === true` or unset): when
+ *     the sovereign-tier audit row cannot be written, the executor
+ *     flips the step's outcome to `failed` with `reason:
  *     sovereign-audit-write-failed`. The tool's side-effects cannot
  *     be un-executed (e.g. an external API call has already gone out),
  *     so the failure here signals downstream callers that a manual
@@ -148,21 +153,28 @@ export interface ExecutorDeps {
    */
   readonly sovereignLedger?: SovereignActionLedgerPort;
   /**
-   * Fail-closed policy switch for sovereign-tier ledger writes. Default
-   * `false` preserves the legacy log-and-continue (fail-open) behaviour.
+   * Fail-closed policy switch for sovereign-tier ledger writes.
    *
-   * When `true`, a ledger-write failure on a sovereign-tier tool
-   * invocation flips the step's outcome to `failed` with reason
+   * Wave-B (owner-approved): the SAFE default is fail-CLOSED. Both
+   * `true` AND `undefined`/unset behave fail-closed — a ledger-write
+   * failure on a sovereign-tier tool invocation flips the step's
+   * outcome to `failed` with reason
    * {@link SOVEREIGN_AUDIT_WRITE_FAILED_REASON}. Side-effects already
    * committed by the tool (external API calls) are NOT un-executed —
    * the executor cannot do that — but downstream callers see a
    * `failed` outcome and can dispatch a compensating-action workflow.
    *
-   * Regulators require this for tenant eviction, owner payout, KRA
-   * MRI, GePG, market-rate overrides, and inspection-as-major-damage:
-   * the hash-chained audit row is non-negotiable, so an action that
-   * cannot be audited must be treated as failed even if the underlying
-   * call succeeded.
+   * ONLY an explicit `false` opts back into the legacy log-and-continue
+   * (fail-open) behaviour. At the composition root this maps to the
+   * `SOVEREIGN_LEDGER_FAIL_OPEN=1` back-compat env (see
+   * `readSovereignLedgerFailClosedFromEnv` in service-registry.ts);
+   * production leaves it closed.
+   *
+   * Regulators require fail-closed for tenant eviction, owner payout,
+   * KRA MRI, GePG, market-rate overrides, and inspection-as-major-
+   * damage: the hash-chained audit row is non-negotiable, so an action
+   * that cannot be audited must be treated as failed even if the
+   * underlying call succeeded.
    */
   readonly sovereignLedgerFailClosed?: boolean;
   /**
@@ -889,7 +901,7 @@ async function safeAudit(
  *  executor uses this to decide whether to flip the apparent tool
  *  outcome to `failed` in fail-closed mode. `ok: true` covers all the
  *  non-blocking branches (non-sovereign tool, no ledger dep, write
- *  succeeded, write failed but fail-open mode is on). */
+ *  succeeded, write failed but the explicit fail-OPEN opt-out is on). */
 type SovereignLedgerResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly reason: typeof SOVEREIGN_AUDIT_WRITE_FAILED_REASON };
@@ -905,14 +917,15 @@ type SovereignLedgerResult =
  *     should refuse to proceed past.
  *   - no-op for non-sovereign tools (see {@link isSovereignTier}).
  *     Returns `{ok: true}`.
- *   - ledger errors: when `deps.sovereignLedgerFailClosed === true`
- *     the error is logged via `logger.fatal` (falling back to
- *     `logger.error`) and `{ok: false, reason:
- *     'sovereign-audit-write-failed'}` is returned so the caller can
- *     flip the step outcome. When `sovereignLedgerFailClosed` is unset
- *     or false, the error is logged via `logger.error` and
- *     `{ok: true}` is returned — preserving the legacy fail-open
- *     contract (back-compat with W-Agency).
+ *   - ledger errors: when `deps.sovereignLedgerFailClosed !== false`
+ *     (i.e. `true` OR unset — the safe Wave-B default) the error is
+ *     logged via `logger.fatal` (falling back to `logger.error`) and
+ *     `{ok: false, reason: 'sovereign-audit-write-failed'}` is returned
+ *     so the caller can flip the step outcome. ONLY when
+ *     `sovereignLedgerFailClosed === false` (explicit opt-out) is the
+ *     error logged via `logger.error` and `{ok: true}` returned —
+ *     preserving the legacy fail-open contract (back-compat with
+ *     W-Agency).
  */
 async function safeSovereignLedger(
   deps: ExecutorDeps,
@@ -946,7 +959,17 @@ async function safeSovereignLedger(
     });
     return { ok: true };
   } catch (err) {
-    const failClosed = deps.sovereignLedgerFailClosed === true;
+    // Wave-B SOVEREIGN-LEDGER-FAIL-CLOSED (owner-approved). We only
+    // reach this branch for sovereign-tier tools (the `isSovereignTier`
+    // guard at the top of this function already returned for everything
+    // else), so the SAFE default for an UNSET flag is fail-CLOSED: an
+    // irreversible tenant-eviction / owner-payout / KRA-MRI / GePG /
+    // market-rate-override / inspection-major-damage action whose
+    // hash-chained audit row could not be written must NOT report
+    // success. Only an EXPLICIT `false` opts back into the legacy
+    // fail-open contract (set via the `SOVEREIGN_LEDGER_FAIL_OPEN=1`
+    // back-compat env at the composition root). `undefined` → closed.
+    const failClosed = deps.sovereignLedgerFailClosed !== false;
     const logObj = {
       err: err instanceof Error ? err.message : String(err),
       tenantId: args.tenantId,

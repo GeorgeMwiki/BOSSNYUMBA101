@@ -3055,21 +3055,31 @@ function buildServicesInner(
 
 /* eslint-disable-next-line no-secrets/no-secrets */
 /**
- * Env-driven kill-switch for the agency executor's sovereign-tier
- * audit-write policy (W-FailClosed, wave-k-final-zero).
+ * Env-driven policy for the agency executor's sovereign-tier
+ * audit-write behaviour (Wave-B, owner-approved fail-CLOSED).
  *
- * - `SOVEREIGN_LEDGER_FAIL_CLOSED=true|1|yes|on` -> fail-closed.
- *   When the hash-chained sovereign action ledger cannot be written
- *   on a sovereign-tier action (tenant eviction, owner payout, KRA
- *   MRI, GePG control-number revocation, market-rate-band override,
- *   inspection-as-major-damage), the executor flips the step
- *   outcome to `failed` with reason `sovereign-audit-write-failed`.
- *   The tool's external side-effects are NOT un-executed — a
- *   compensating-action workflow (out of scope here; tracked in
- *   Docs/TODO_BACKLOG.md — "Sovereign-ledger reconciliation") must
- *   reconcile them.
- * - Anything else (unset / `false` / `0` / `no` / `off` / empty) →
- *   fail-open (legacy W-Agency behaviour: log-and-continue).
+ * The SAFE DEFAULT is fail-CLOSED. When the hash-chained sovereign
+ * action ledger cannot be written on a sovereign-tier action (tenant
+ * eviction, owner payout, KRA MRI, GePG control-number revocation,
+ * market-rate-band override, inspection-as-major-damage), the executor
+ * flips the step outcome to `failed` with reason
+ * `sovereign-audit-write-failed`. The tool's external side-effects are
+ * NOT un-executed — a compensating-action workflow (out of scope here;
+ * tracked in Docs/TODO_BACKLOG.md — "Sovereign-ledger reconciliation")
+ * must reconcile them.
+ *
+ * Resolution order (first match wins):
+ *   1. `SOVEREIGN_LEDGER_FAIL_OPEN=1|true|yes|on` → fail-OPEN. The
+ *      explicit legacy back-compat opt-out (W-Agency log-and-continue).
+ *      Use ONLY for legacy environments; NEVER in production.
+ *   2. `SOVEREIGN_LEDGER_FAIL_CLOSED=false|0|no|off` → fail-OPEN. Same
+ *      explicit opt-out spelled as the inverse flag (back-compat).
+ *   3. `SOVEREIGN_LEDGER_FAIL_CLOSED=true|1|yes|on` → fail-CLOSED.
+ *   4. Unset / empty / anything else → fail-CLOSED (the safe default).
+ *
+ * Returns `true` for fail-closed, `false` for fail-open — matching the
+ * `sovereignLedgerFailClosed` executor dep (where the executor ALSO
+ * treats unset/undefined as fail-closed as defence-in-depth).
  *
  * Exported so the agency-executor composition root
  * (`./sovereign.ts -> agencyKernel.createExecutor`) can read a
@@ -3080,10 +3090,11 @@ function buildServicesInner(
 export const SOVEREIGN_LEDGER_FAIL_CLOSED_ENV =
   'SOVEREIGN_LEDGER_FAIL_CLOSED';
 
-export function readSovereignLedgerFailClosedFromEnv(
-  env: NodeJS.ProcessEnv = process.env,
-): boolean {
-  const raw = env[SOVEREIGN_LEDGER_FAIL_CLOSED_ENV];
+/* eslint-disable-next-line no-secrets/no-secrets */
+export const SOVEREIGN_LEDGER_FAIL_OPEN_ENV =
+  'SOVEREIGN_LEDGER_FAIL_OPEN';
+
+function isTruthyEnvFlag(raw: string | undefined | null): boolean {
   if (raw === undefined || raw === null) return false;
   const trimmed = raw.trim().toLowerCase();
   if (trimmed === '') return false;
@@ -3093,6 +3104,30 @@ export function readSovereignLedgerFailClosedFromEnv(
     trimmed === 'yes' ||
     trimmed === 'on'
   );
+}
+
+function isFalsyEnvFlag(raw: string | undefined | null): boolean {
+  if (raw === undefined || raw === null) return false;
+  const trimmed = raw.trim().toLowerCase();
+  if (trimmed === '') return false;
+  return (
+    trimmed === 'false' ||
+    trimmed === '0' ||
+    trimmed === 'no' ||
+    trimmed === 'off'
+  );
+}
+
+export function readSovereignLedgerFailClosedFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  // Explicit legacy opt-out wins: SOVEREIGN_LEDGER_FAIL_OPEN=1.
+  if (isTruthyEnvFlag(env[SOVEREIGN_LEDGER_FAIL_OPEN_ENV])) return false;
+  // Inverse spelling of the opt-out: SOVEREIGN_LEDGER_FAIL_CLOSED=false.
+  if (isFalsyEnvFlag(env[SOVEREIGN_LEDGER_FAIL_CLOSED_ENV])) return false;
+  // Everything else — unset, empty, or any truthy spelling — is
+  // fail-CLOSED (the safe Wave-B default for irreversible actions).
+  return true;
 }
 
 /**

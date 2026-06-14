@@ -102,6 +102,11 @@ import { createMultiLLMSynthesizerWiring } from './multi-llm-synthesizer-wiring.
 type SovereignRole = 'tenant' | 'manager' | 'owner' | 'org-admin' | 'sovereign';
 import { getDb } from './db-client';
 import { readSovereignLedgerFailClosedFromEnv } from './service-registry';
+// Wave-B fail-closed ACTIVATION — bind the real hash-chained sovereign
+// action ledger so the executor's fail-closed branch has a ledger to
+// fail. Without this port bound, `safeSovereignLedger` is a no-op and an
+// un-auditable irreversible sovereign action would still report success.
+import { createSovereignLedgerPort } from './sovereign-ledger-port';
 import { wrapAnthropicWithCircuitBreaker } from './anthropic-circuit-breaker';
 import {
   createBoundActionToolDeps,
@@ -360,6 +365,15 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
     // 0080 (`autonomy_policies`) here.
     const goalsService = createKernelGoalsService(db);
     const auditSink = createKernelActionAuditService(db);
+    // Wave-B fail-closed ACTIVATION — the hash-chained sovereign action
+    // ledger, bound over the SAME Drizzle client as the goals/audit
+    // services. Threaded into BOTH executor branches below so a
+    // sovereign-tier action (eviction / owner-payout / KRA-MRI / GePG /
+    // market-rate-override / inspection-major-damage) whose audit row
+    // cannot be written is flipped to `failed` (per
+    // `readSovereignLedgerFailClosedFromEnv` — closed unless
+    // SOVEREIGN_LEDGER_FAIL_OPEN=1).
+    const sovereignLedger = createSovereignLedgerPort(db);
     const toolRegistry = agencyKernel.createActionToolRegistry();
     for (const stub of agencyKernel.DEFAULT_ACTION_TOOL_STUBS) {
       toolRegistry.register(stub);
@@ -377,6 +391,7 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       auditSink,
       autonomyPolicy: agencyKernel.createDefaultAllowLowStakesPolicy(),
       counterModel: createProductionCounterModel(anthropic),
+      sovereignLedger,
       sovereignLedgerFailClosed: readSovereignLedgerFailClosedFromEnv(),
     });
     agencyPort = {
@@ -455,6 +470,7 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       auditSink,
       autonomyPolicy: realAutonomyPolicy,
       counterModel: createProductionCounterModel(anthropic),
+      sovereignLedger,
       sovereignLedgerFailClosed: readSovereignLedgerFailClosedFromEnv(),
     });
     agencyPort = {

@@ -52,6 +52,12 @@ import {
   createBoundWakeReadDeps,
 } from './agency-port-bindings.js';
 import { readSovereignLedgerFailClosedFromEnv } from './service-registry.js';
+// Wave-B fail-closed ACTIVATION — the wake-loop's executor runs
+// sovereign-tier tools on a schedule (arrears escalation can promote to
+// irreversible action), so it MUST carry the same hash-chained ledger as
+// the route-facing sovereign brain. Without it the fail-closed guard is
+// dormant for every autonomously-woken sovereign step.
+import { createSovereignLedgerPort } from './sovereign-ledger-port.js';
 import { logger } from '../utils/logger.js';
 
 type StallDetectorRunArgs = agencyKernel.StallDetectorRunArgs;
@@ -335,11 +341,18 @@ export function createWakeLoopCronSupervisor(
           )) {
             toolRegistry.register(realTool);
           }
+          // Bind the real hash-chained sovereign ledger over the same
+          // Drizzle client this tick already holds (`db`). A scheduled
+          // sovereign-tier action whose audit row cannot be written is
+          // flipped to `failed` (fail-closed unless
+          // SOVEREIGN_LEDGER_FAIL_OPEN=1).
+          const sovereignLedger = createSovereignLedgerPort(db);
           const executor = agencyKernel.createExecutor({
             goals,
             tools: toolRegistry,
             auditSink,
             autonomyPolicy: agencyKernel.createDefaultAllowLowStakesPolicy(),
+            sovereignLedger,
             sovereignLedgerFailClosed: readSovereignLedgerFailClosedFromEnv(),
           });
           const boundWakeReadDeps = createBoundWakeReadDeps(db as never);

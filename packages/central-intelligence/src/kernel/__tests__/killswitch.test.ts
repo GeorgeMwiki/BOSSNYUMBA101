@@ -10,7 +10,11 @@
  *   - refusal copy never leaks the reason code
  *   - kernel `think()` short-circuits on HALT (no sensor call)
  *   - kernel `thinkStream()` short-circuits on HALT (no deltas)
- *   - DEGRADED is non-fatal — the kernel proceeds
+ *   - DEGRADED + low/medium stakes proceeds (with a degraded marker)
+ *   - DEGRADED + high/critical stakes is REFUSED (no sensor call /
+ *     no deltas) — a reduced kernel never serves sovereign / money-path
+ *     turns (the stakes restriction the contract always documented but
+ *     no caller enforced)
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -25,6 +29,13 @@ import {
   type SensorCallResult,
   type ThoughtRequest,
 } from '../../kernel/index.js';
+// The DEGRADED-stakes gate + degraded refusal copy are imported direct
+// from the module under test (not yet re-exported via the kernel barrel,
+// which is owned cross-cuttingly).
+import {
+  isDegradedStakesBlocked,
+  renderKillswitchDegradedRefusalText,
+} from '../../kernel/killswitch.js';
 import type { ScopeContext } from '../../types.js';
 
 const TENANT_SCOPE: ScopeContext = {
@@ -238,16 +249,79 @@ describe('kernel.think() — killswitch short-circuit', () => {
     expect(counted.calls).toBe(0);
   });
 
-  it('proceeds on DEGRADED (non-fatal)', async () => {
+  it('proceeds on DEGRADED + low/medium stakes (non-fatal) and surfaces the degraded marker', async () => {
     const counted = scriptedSensor();
     const port = createEnvKillswitchPort({ KILLSWITCH_STATE: 'degraded' });
     const kernel = createBrainKernel({
       sensors: [counted.sensor],
       killswitch: port,
     });
-    const decision = await kernel.think(makeRequest());
+    // Default request is `stakes: 'medium'` → allowed under DEGRADED.
+    const decision = await kernel.think(makeRequest({ stakes: 'low' }));
     expect(decision.kind).not.toBe('refusal');
     expect(counted.calls).toBe(1);
+    // The reduced state must be SURFACED on the decision, not just traced.
+    expect(decision.degraded?.reason).toMatch(/killswitch_degraded/);
+    expect(decision.degraded?.affected_capabilities).toContain(
+      'high-stakes-actions',
+    );
+  });
+
+  it('REFUSES on DEGRADED + high stakes WITHOUT calling the sensor', async () => {
+    const counted = scriptedSensor();
+    const port = createEnvKillswitchPort({ KILLSWITCH_STATE: 'degraded' });
+    const kernel = createBrainKernel({
+      sensors: [counted.sensor],
+      killswitch: port,
+    });
+    const decision = await kernel.think(makeRequest({ stakes: 'high' }));
+    expect(decision.kind).toBe('refusal');
+    // No sensor budget spent — a degraded kernel must not route a
+    // high-stakes turn at all.
+    expect(counted.calls).toBe(0);
+    expect(decision.degraded?.reason).toMatch(/killswitch_degraded/);
+  });
+
+  it('REFUSES on DEGRADED + critical stakes WITHOUT calling the sensor', async () => {
+    const counted = scriptedSensor();
+    const port = createEnvKillswitchPort({ KILLSWITCH_STATE: 'degraded' });
+    const kernel = createBrainKernel({
+      sensors: [counted.sensor],
+      killswitch: port,
+    });
+    const decision = await kernel.think(makeRequest({ stakes: 'critical' }));
+    expect(decision.kind).toBe('refusal');
+    expect(counted.calls).toBe(0);
+  });
+
+  it('REFUSES on a typo-induced DEGRADED (fail-closed) + critical stakes', async () => {
+    // A fat-fingered KILLSWITCH_STATE fails CLOSED to 'degraded'
+    // (parseLevel). That partial/typo HALT must NOT serve a sovereign,
+    // critical-stakes turn — this is the exact silent-no-op the fix closes.
+    const counted = scriptedSensor();
+    const port = createEnvKillswitchPort({ KILLSWITCH_STATE: 'hatl' });
+    const kernel = createBrainKernel({
+      sensors: [counted.sensor],
+      killswitch: port,
+    });
+    const decision = await kernel.think(makeRequest({ stakes: 'critical' }));
+    expect(decision.kind).toBe('refusal');
+    expect(counted.calls).toBe(0);
+  });
+
+  it('REFUSES on tenant-scoped DEGRADED + high stakes (per-tenant scope)', async () => {
+    const counted = scriptedSensor();
+    const port = createEnvKillswitchPort({
+      KILLSWITCH_TENANT_t_alpha: 'degraded',
+      KILLSWITCH_TENANT_t_alpha_REASON: 'STALE_GROUNDING_FACTS',
+    });
+    const kernel = createBrainKernel({
+      sensors: [counted.sensor],
+      killswitch: port,
+    });
+    const decision = await kernel.think(makeRequest({ stakes: 'high' }));
+    expect(decision.kind).toBe('refusal');
+    expect(counted.calls).toBe(0);
   });
 
   it('does not halt a different tenant on a tenant-scoped HALT', async () => {
@@ -296,5 +370,93 @@ describe('kernel.thinkStream() — killswitch short-circuit', () => {
     }
     expect(events).toEqual(['turn_start', 'gate_verdict', 'done']);
     expect(sensorCallStream).not.toHaveBeenCalled();
+  });
+
+  it('REFUSES on DEGRADED + high stakes with no text deltas (turn_start + gate_verdict + done)', async () => {
+    const sensorCallStream = vi.fn();
+    const counted: Sensor = {
+      id: 'fake',
+      modelId: 'fake-model',
+      priority: 1,
+      capabilities: ['fast'],
+      async call() {
+        return {
+          text: 'should not be called',
+          thought: null,
+          toolCalls: [],
+          latencyMs: 1,
+          modelId: 'fake-model',
+          sensorId: 'fake',
+        };
+      },
+      callStream: sensorCallStream as never,
+    };
+    const port = createEnvKillswitchPort({ KILLSWITCH_STATE: 'degraded' });
+    const kernel = createBrainKernel({
+      sensors: [counted],
+      killswitch: port,
+    });
+    const events: Array<string> = [];
+    let doneDecision: { kind: string } | undefined;
+    for await (const ev of kernel.thinkStream(makeRequest({ stakes: 'high' }))) {
+      events.push(ev.kind);
+      if (ev.kind === 'done') doneDecision = ev.decision;
+    }
+    expect(events).toEqual(['turn_start', 'gate_verdict', 'done']);
+    expect(doneDecision?.kind).toBe('refusal');
+    expect(sensorCallStream).not.toHaveBeenCalled();
+  });
+
+  it('streams normally on DEGRADED + low stakes (sensor is reached)', async () => {
+    const port = createEnvKillswitchPort({ KILLSWITCH_STATE: 'degraded' });
+    const counted = scriptedSensor();
+    const kernel = createBrainKernel({
+      sensors: [counted.sensor],
+      killswitch: port,
+    });
+    const events: Array<string> = [];
+    for await (const ev of kernel.thinkStream(makeRequest({ stakes: 'low' }))) {
+      events.push(ev.kind);
+    }
+    // Reaches the sensor + produces output — NOT a no-delta refusal.
+    expect(events).toContain('text_delta');
+    expect(events).toContain('done');
+  });
+});
+
+describe('isDegradedStakesBlocked — DEGRADED stakes gate', () => {
+  it('blocks high + critical stakes under DEGRADED', () => {
+    expect(isDegradedStakesBlocked('degraded', 'high')).toBe(true);
+    expect(isDegradedStakesBlocked('degraded', 'critical')).toBe(true);
+  });
+
+  it('allows low + medium stakes under DEGRADED', () => {
+    expect(isDegradedStakesBlocked('degraded', 'low')).toBe(false);
+    expect(isDegradedStakesBlocked('degraded', 'medium')).toBe(false);
+  });
+
+  it('never blocks under LIVE (no restriction) or HALT (handled elsewhere)', () => {
+    expect(isDegradedStakesBlocked('live', 'critical')).toBe(false);
+    expect(isDegradedStakesBlocked('halt', 'critical')).toBe(false);
+  });
+});
+
+describe('renderKillswitchDegradedRefusalText', () => {
+  it('returns reduced-mode copy for DEGRADED without leaking the reason code', () => {
+    const text = renderKillswitchDegradedRefusalText({
+      level: 'degraded',
+      reasonCode: 'STALE_GROUNDING_FACTS',
+    });
+    expect(text).toMatch(/degraded/i);
+    expect(text).not.toMatch(/STALE_GROUNDING_FACTS/);
+  });
+
+  it('returns empty string for LIVE / HALT', () => {
+    expect(
+      renderKillswitchDegradedRefusalText({ level: 'live', reasonCode: 'KILLSWITCH_HALT' }),
+    ).toBe('');
+    expect(
+      renderKillswitchDegradedRefusalText({ level: 'halt', reasonCode: 'KILLSWITCH_HALT' }),
+    ).toBe('');
   });
 });

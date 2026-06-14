@@ -297,6 +297,22 @@
       "dataLoss": true,
       "envs": ["dev", "staging"],
       "notes": "Connector-OAuth completion (#12). DURABLE single-use consumption of the connector-OAuth `state` nonce — multi-replica replay protection (a per-process Set cannot defend across replicas). Nonces are opaque random values: no PII, no token material, so the data loss is benign. Dropping re-opens cross-replica OAuth state replay until restored."
+    },
+    {
+      "up": "0324_stripe_payment_intent_unique.sql",
+      "down": "down/0324_down_stripe_payment_intent_unique.sql",
+      "reverses": "DROP partial UNIQUE index ledger_entries_payment_intent_rent_debit_uniq (tenant_id, payment_intent_id) WHERE payment_intent_id IS NOT NULL AND type='RENT_PAYMENT' AND direction='DEBIT'",
+      "dataLoss": false,
+      "envs": ["dev", "staging", "production"],
+      "notes": "Wave-B Stripe-webhook idempotency DB backstop: one rent-payment cash DEBIT leg per (tenant_id, payment_intent_id). Index-only (no table/column drop) so the down is non-destructive and prod-safe. The index build fails LOUD on a populated table that already holds duplicate rent cash legs — reconcile the double-credit before applying."
+    },
+    {
+      "up": "0325_kernel_cot_reservoir_consolidation_cols.sql",
+      "down": "down/0325_down_kernel_cot_reservoir_consolidation_cols.sql",
+      "reverses": "ADD COLUMN kernel_cot_reservoir.user_id (TEXT) + consolidated_at (TIMESTAMPTZ) + partial index idx_kernel_cot_unconsolidated",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Wave-B memory-consolidation cursor columns the consolidation-worker codes against (was a schema-drift silent no-op — every hourly tick errored and was swallowed as []). Down drops the per-row consolidated_at cursor; re-applying 0325 re-consolidates already-consolidated turns. Additive ADD COLUMN IF NOT EXISTS, so forward-apply is prod-safe."
     }
   ]
 }
