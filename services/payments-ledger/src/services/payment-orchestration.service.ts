@@ -14,7 +14,10 @@ import {
   LeaseId,
   CurrencyCode,
   LedgerEntry,
-  CreateJournalEntryRequest
+  CreateJournalEntryRequest,
+  Account,
+  AccountId,
+  createCustomerLiabilityAccount,
 } from '@bossnyumba/domain-models';
 import type { PaymentStatus } from '../types';
 import { TenantAggregate, createId, calculatePlatformFee } from '../domain-extensions';
@@ -501,7 +504,7 @@ export class PaymentOrchestrationService {
       return;
     }
 
-    // Resolve the two accounts for the rent-payment booking.
+    // Resolve the accounts for the rent-payment booking.
     const holding = await this.accountRepository.findPlatformAccounts(
       tenantId,
       'PLATFORM_HOLDING',
@@ -521,38 +524,90 @@ export class PaymentOrchestrationService {
     }
 
     const gross = paymentIntent.amount;
-    // Balanced 2-line journal: cash in (debit holding), receivable down
-    // (credit customer liability). Both legs in the payment's currency —
-    // LedgerService re-validates currency against the locked account row.
+    // Platform fee was computed + frozen on the intent at create time
+    // (createPayment). Book the fee SPLIT on success so the platform-revenue
+    // leg is recorded and DisbursementService's PLATFORM_FEE sum is not
+    // perpetually zero. A zero (or absent) fee falls back to the plain 2-line
+    // receipt — no degenerate zero-amount fee legs.
+    const platformFee = paymentIntent.platformFee;
+    const hasFee = !!platformFee && !platformFee.isZero();
+
+    const lines: CreateJournalEntryRequest['lines'] = [
+      // Cash in (debit holding) — gross. 1-per-intent leg; the migration-0324
+      // partial unique index governs exactly this (RENT_PAYMENT/DEBIT) leg.
+      {
+        accountId: holding.id,
+        type: 'RENT_PAYMENT',
+        direction: 'DEBIT',
+        amount: gross,
+        description: 'Payment received into holding',
+        leaseId: paymentIntent.leaseId,
+      },
+      // Receivable down (credit customer liability) — gross.
+      {
+        accountId: liability.id,
+        type: 'RENT_PAYMENT',
+        direction: 'CREDIT',
+        amount: gross,
+        description: 'Rent payment received',
+        leaseId: paymentIntent.leaseId,
+      },
+    ];
+
+    if (hasFee) {
+      // Fee split (mirror of JournalTemplates.rentPayment's PLATFORM_FEE legs):
+      // CREDIT holding (the fee leaves holding) / DEBIT platform-revenue (the
+      // fee is earned). The journal stays balanced — gross debit/credit plus an
+      // equal-and-opposite PLATFORM_FEE pair.
+      const revenue = await this.accountRepository.findPlatformAccounts(
+        tenantId,
+        'PLATFORM_REVENUE',
+      );
+      if (!revenue) {
+        throw new Error(
+          `Platform revenue account not found for tenant ${tenantId} — cannot book platform fee`,
+        );
+      }
+      lines.push(
+        {
+          accountId: holding.id,
+          type: 'PLATFORM_FEE',
+          direction: 'CREDIT',
+          amount: platformFee!,
+          description: 'Platform fee deducted',
+          leaseId: paymentIntent.leaseId,
+        },
+        {
+          accountId: revenue.id,
+          type: 'PLATFORM_FEE',
+          direction: 'DEBIT',
+          amount: platformFee!,
+          description: 'Platform fee earned',
+          leaseId: paymentIntent.leaseId,
+        },
+      );
+    }
+
     const journal: CreateJournalEntryRequest = {
       tenantId,
       effectiveDate: paymentIntent.paidAt ?? new Date(),
       paymentIntentId: paymentIntent.id,
-      lines: [
-        {
-          accountId: holding.id,
-          type: 'RENT_PAYMENT',
-          direction: 'DEBIT',
-          amount: gross,
-          description: 'Payment received into holding',
-          leaseId: paymentIntent.leaseId,
-        },
-        {
-          accountId: liability.id,
-          type: 'RENT_PAYMENT',
-          direction: 'CREDIT',
-          amount: gross,
-          description: 'Rent payment received',
-          leaseId: paymentIntent.leaseId,
-        },
-      ],
+      lines,
       createdBy: 'system',
     };
 
-    await this.ledgerService.postJournalEntry(journal);
+    // Per-payment idempotency key (defense-in-depth atop the route-level
+    // webhook claim + the application-level findEntriesByPaymentIntent check):
+    // a replayed Stripe `payment_intent.succeeded` that slips past the claim
+    // (released-for-retry race, multi-replica) re-drives the SAME journal under
+    // this key and books nothing extra. Migration 0324 is the final DB backstop.
+    await this.ledgerService.postJournalEntry(journal, {
+      idempotencyKey: `payment:${paymentIntent.id}`,
+    });
     this.logger.info('Payment booked to ledger', {
       paymentIntentId: paymentIntent.id,
       amount: gross.toString(),
+      platformFee: hasFee ? platformFee!.toString() : '0',
     });
   }
 
@@ -611,6 +666,182 @@ export class PaymentOrchestrationService {
     // bookPaymentToLedger is idempotent on paymentIntentId: it no-ops when
     // a journal already exists, and books the gap when none does.
     await this.bookPaymentToLedger(paymentIntent, tenantId);
+  }
+
+  /**
+   * Handle an M-Pesa C2B confirmation (money arrived directly to the paybill).
+   *
+   * Decides between two paths, returning which one it took:
+   *   - MATCHED: a PaymentIntent exists for this TransID (a pre-created C2B
+   *     intent) → the normal success path (mark SUCCEEDED + book the rent
+   *     payment journal). Identical to {@link handleWebhook}'s SUCCEEDED branch.
+   *   - UNALLOCATED: NO intent matches → instead of acking-and-dropping (the
+   *     prior silent-loss bug — the cash arrived but was recorded NOWHERE), book
+   *     an explicit UNALLOCATED RECEIPT: a balanced journal that debits the
+   *     platform-holding (the cash genuinely arrived) and credits a per-tenant
+   *     unallocated-suspense liability (we owe it back to whoever paid, pending
+   *     attribution). The TransID / MSISDN / amount are stamped on the entry so
+   *     an operator can later attribute it.
+   *
+   * Idempotent: the journal is tagged with paymentIntentId `c2b-unalloc:<TransID>`
+   * and posted under the same idempotency key, so a redelivered C2B confirmation
+   * books the unallocated receipt exactly once.
+   */
+  async handleC2bConfirmation(input: {
+    transId: string;
+    tenantId: TenantId;
+    amountMajor: string;
+    msisdn: string;
+    receiptUrl?: string;
+  }): Promise<'matched' | 'unallocated'> {
+    const paymentIntent = await this.repository.findByExternalId(
+      input.transId,
+      'mpesa_c2b',
+      input.tenantId,
+    );
+
+    if (paymentIntent) {
+      const aggregate = new PaymentIntentAggregate(paymentIntent);
+      await this.handlePaymentSuccess(aggregate, paymentIntent.tenantId, input.receiptUrl);
+      return 'matched';
+    }
+
+    // No matching intent → unallocated receipt. NEVER ack-and-drop.
+    await this.bookUnallocatedReceipt(input);
+    return 'unallocated';
+  }
+
+  /**
+   * Book an unallocated C2B receipt as a BALANCED journal so cash that arrived
+   * without a matching invoice is recorded (never silently dropped):
+   *
+   *   DR platform-holding   (the cash physically arrived in our clearing account)
+   *   CR unallocated-suspense liability  (we owe it back to whoever paid)
+   *
+   * The suspense leg lands on a per-tenant CUSTOMER_LIABILITY account for the
+   * sentinel "unallocated" customer, lazily provisioned on first use in the
+   * holding account's currency. Operators later attribute the balance by moving
+   * it from this suspense account to the real customer's liability.
+   *
+   * Idempotent on `c2b-unalloc:<TransID>` (paymentIntentId tag + ledger
+   * idempotency key), so a redelivered confirmation books it exactly once.
+   */
+  private async bookUnallocatedReceipt(input: {
+    transId: string;
+    tenantId: TenantId;
+    amountMajor: string;
+    msisdn: string;
+  }): Promise<void> {
+    if (!this.ledgerService || !this.accountRepository) {
+      this.logger.error(
+        'Unallocated C2B receipt could not be booked — ledger posting is not wired',
+        { transId: input.transId, tenantId: input.tenantId },
+      );
+      throw new Error(
+        'LedgerService/accountRepository not configured: cannot book unallocated C2B receipt',
+      );
+    }
+
+    const holding = await this.accountRepository.findPlatformAccounts(
+      input.tenantId,
+      'PLATFORM_HOLDING',
+    );
+    if (!holding) {
+      throw new Error(
+        `Platform holding account not found for tenant ${input.tenantId} — cannot book unallocated receipt`,
+      );
+    }
+
+    // Book in the holding account's currency (the platform clearing currency
+    // for this tenant). M-Pesa sends amounts in MAJOR units (e.g. "1500.00");
+    // the platform stores minor units at the fixed 2-decimal convention
+    // (minor = round(major × 100), mirroring Money.amountMajorUnits).
+    const currency = holding.currency;
+    const amountMajor = Number(input.amountMajor);
+    if (!Number.isFinite(amountMajor) || amountMajor <= 0) {
+      throw new Error(
+        `Unallocated C2B receipt has a non-positive/invalid amount "${input.amountMajor}" (TransID ${input.transId})`,
+      );
+    }
+    const amount = Money.fromMinorUnits(Math.round(amountMajor * 100), currency);
+
+    const suspense = await this.resolveUnallocatedSuspenseAccount(input.tenantId, currency);
+
+    const journal: CreateJournalEntryRequest = {
+      tenantId: input.tenantId,
+      effectiveDate: new Date(),
+      // Deterministic per-TransID tag → idempotent dedupe + operator lookup.
+      paymentIntentId: createId<PaymentIntentId>(`c2b-unalloc:${input.transId}`),
+      lines: [
+        {
+          accountId: holding.id,
+          type: 'RENT_PAYMENT',
+          direction: 'DEBIT',
+          amount,
+          description: `Unallocated C2B receipt ${input.transId} from ${input.msisdn}`,
+          metadata: {
+            unallocated: true,
+            transId: input.transId,
+            msisdn: input.msisdn,
+          },
+        },
+        {
+          accountId: suspense.id,
+          type: 'RENT_PAYMENT',
+          direction: 'CREDIT',
+          amount,
+          description: `Unallocated C2B receipt ${input.transId} — pending attribution`,
+          metadata: {
+            unallocated: true,
+            transId: input.transId,
+            msisdn: input.msisdn,
+          },
+        },
+      ],
+      createdBy: 'system',
+    };
+
+    await this.ledgerService.postJournalEntry(journal, {
+      idempotencyKey: `c2b-unalloc:${input.transId}`,
+    });
+    this.logger.warn(
+      'Unallocated C2B receipt booked to suspense — operator attribution required',
+      {
+        transId: input.transId,
+        msisdn: input.msisdn,
+        amount: amount.toString(),
+        tenantId: input.tenantId,
+      },
+    );
+  }
+
+  /**
+   * Resolve (lazily provisioning on first use) the per-tenant unallocated
+   * suspense liability account — a CUSTOMER_LIABILITY account owned by the
+   * sentinel "unallocated" customer. Stable account id per tenant so the
+   * suspense balance accumulates in one place for operators to reconcile.
+   */
+  private async resolveUnallocatedSuspenseAccount(
+    tenantId: TenantId,
+    currency: CurrencyCode,
+  ): Promise<Account> {
+    const sentinelCustomerId = createId<CustomerId>('cust_unallocated');
+    const existing = await this.accountRepository!.findByCustomerAndType(
+      tenantId,
+      sentinelCustomerId,
+      'CUSTOMER_LIABILITY',
+    );
+    if (existing) {
+      return existing;
+    }
+    const account = createCustomerLiabilityAccount(
+      createId<AccountId>(`acc_unalloc_${tenantId}`),
+      tenantId,
+      sentinelCustomerId,
+      currency,
+      'system',
+    );
+    return this.accountRepository!.create(account);
   }
 
   /**

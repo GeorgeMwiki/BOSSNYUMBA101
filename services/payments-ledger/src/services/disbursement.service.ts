@@ -13,6 +13,7 @@ import {
   JournalTemplates
 } from '@bossnyumba/domain-models';
 import { createId } from '../domain-extensions';
+import { calculatePlatformFeeMinor } from '../lib/platform-fee';
 import { IPaymentProvider, TransferResult } from '../providers/payment-provider.interface';
 import { IAccountRepository } from '../repositories/account.repository';
 import { IDisbursementRepository, Disbursement, DisbursementStatus } from '../repositories/disbursement.repository';
@@ -73,6 +74,37 @@ export function isCleanDisbursementSuccess(
   return (
     status === 'PAID' || status === 'IN_TRANSIT' || status === 'PENDING'
   );
+}
+
+/**
+ * Currencies whose payouts settle over a mobile-money rail (M-Pesa B2C) rather
+ * than a card/bank rail. East-Africa expansion adds UGX/etc. here. Kept narrow
+ * and explicit — never hard-coded into a business calculation, only used to
+ * pick the correct transfer rail.
+ */
+const MOBILE_MONEY_CURRENCIES: ReadonlySet<CurrencyCode> = new Set<CurrencyCode>([
+  'KES',
+  'TZS',
+]);
+
+export function isMobileMoneyCurrency(currency: CurrencyCode): boolean {
+  return MOBILE_MONEY_CURRENCIES.has(currency);
+}
+
+/**
+ * Heuristic: does a disbursement destination look like a mobile-money phone
+ * number (vs a bank / Stripe connected-account id like `acct_…`)? Used only to
+ * route the payout to the M-Pesa rail. Accepts an optional leading `+`, optional
+ * spaces/dashes, and 9–15 digits (E.164-ish). A destination starting with a
+ * letter (`acct_…`, `ba_…`) is never a phone number.
+ */
+export function looksLikePhoneNumber(destination: string): boolean {
+  if (!destination) return false;
+  const trimmed = destination.trim();
+  // Anything that begins with a letter is an account/connected-account id.
+  if (/^[A-Za-z]/.test(trimmed)) return false;
+  const digits = trimmed.replace(/[^0-9]/g, '');
+  return digits.length >= 9 && digits.length <= 15;
 }
 
 /**
@@ -186,8 +218,9 @@ export class DisbursementService {
       throw new Error('Disbursement amount must be positive');
     }
 
-    // Get payment provider
-    const provider = this.getProvider();
+    // Get payment provider — selected by destination + currency (M-Pesa for
+    // mobile-money / KES / TZS payouts, Stripe otherwise), NOT a single default.
+    const provider = this.getProvider(request.destination, amount.currency);
     const now = new Date();
 
     // Create disbursement record for persistence. We claim it as
@@ -597,11 +630,183 @@ export class DisbursementService {
   }
 
   /**
-   * Get provider for disbursements
+   * Apply an M-Pesa B2C result callback to the disbursement it belongs to,
+   * looked up by its M-Pesa `ConversationID` (stored as the row's `transferId`).
+   *
+   *   - SUCCESS (ResultCode 0): the payout was delivered → mark PAID and publish
+   *     DISBURSEMENT_COMPLETED.
+   *   - FAILURE: the transfer failed AFTER the ledger debit was already posted
+   *     (the debit precedes the provider call) → transition to NEEDS_REVERSAL so
+   *     the disbursement-reconciliation job consumes it (it filters
+   *     status === 'NEEDS_REVERSAL') and posts the compensating reversal. NEVER
+   *     mark a failed-after-debit payout as a clean FAILED — that would let the
+   *     debited-but-undelivered money sit unreversed.
+   *
+   * Idempotent: a redelivered result for an already-terminal row (PAID / FAILED)
+   * is a no-op. Returns the outcome for the caller/tests; never throws on a
+   * missing row (logged + ignored so the callback still acks Safaricom).
    */
-  private getProvider(): IPaymentProvider {
+  async applyB2cResult(input: {
+    conversationId: string;
+    success: boolean;
+    transactionId?: string;
+    failureReason?: string;
+  }): Promise<'paid' | 'needs-reversal' | 'ignored-unknown' | 'ignored-terminal'> {
+    if (!this.disbursementRepository) {
+      throw new Error('Disbursement repository not configured');
+    }
+    const row = await this.disbursementRepository.findByTransferId(
+      'mpesa',
+      input.conversationId,
+    );
+    if (!row) {
+      this.logger.warn('M-PESA B2C result for unknown ConversationID — ignoring', {
+        conversationId: input.conversationId,
+      });
+      return 'ignored-unknown';
+    }
+
+    // Already terminal → idempotent no-op (redelivered callback).
+    if (row.status === 'PAID' || row.status === 'FAILED' || row.status === 'CANCELLED') {
+      this.logger.info('M-PESA B2C result for already-terminal disbursement — no-op', {
+        disbursementId: row.id,
+        status: row.status,
+      });
+      return 'ignored-terminal';
+    }
+
+    if (input.success) {
+      await this.disbursementRepository.update({
+        ...row,
+        status: 'PAID',
+        completedAt: new Date(),
+        failureReason: undefined,
+        failedAt: undefined,
+        updatedAt: new Date(),
+        updatedBy: 'mpesa-b2c-result',
+      });
+      await this.eventPublisher.publish(
+        createEvent<DisbursementCompletedEvent>(
+          'DISBURSEMENT_COMPLETED',
+          'Disbursement',
+          row.id,
+          row.tenantId,
+          {
+            ownerId: row.ownerId,
+            amount: Money.fromMinorUnits(row.amountMinorUnits, row.currency).toData(),
+            completedAt: new Date(),
+          },
+        ),
+      );
+      this.logger.info('M-PESA B2C payout delivered — disbursement marked PAID', {
+        disbursementId: row.id,
+        conversationId: input.conversationId,
+      });
+      return 'paid';
+    }
+
+    // FAILURE after the ledger debit → NEEDS_REVERSAL (consumed by the
+    // reconciliation job), NOT clean FAILED.
+    await this.disbursementRepository.update({
+      ...row,
+      status: 'NEEDS_REVERSAL',
+      failedAt: new Date(),
+      failureReason: input.failureReason ?? 'mpesa-b2c-failed',
+      updatedAt: new Date(),
+      updatedBy: 'mpesa-b2c-result',
+    });
+    this.logger.error(
+      'M-PESA B2C payout FAILED after ledger debit — disbursement set NEEDS_REVERSAL',
+      {
+        disbursementId: row.id,
+        conversationId: input.conversationId,
+        failureReason: input.failureReason,
+      },
+    );
+    return 'needs-reversal';
+  }
+
+  /**
+   * Apply an M-Pesa B2C QUEUE TIMEOUT (the request sat in Safaricom's queue and
+   * was never processed — no result callback will arrive). The ledger debit was
+   * already posted, so flag the row NEEDS_REVERSAL for the reconciliation job;
+   * never leave debited-but-undelivered money silent. Idempotent + tolerant of a
+   * missing/terminal row, like {@link applyB2cResult}.
+   */
+  async applyB2cTimeout(input: {
+    conversationId: string;
+  }): Promise<'needs-reversal' | 'ignored-unknown' | 'ignored-terminal'> {
+    if (!this.disbursementRepository) {
+      throw new Error('Disbursement repository not configured');
+    }
+    const row = await this.disbursementRepository.findByTransferId(
+      'mpesa',
+      input.conversationId,
+    );
+    if (!row) {
+      this.logger.warn('M-PESA B2C timeout for unknown ConversationID — ignoring', {
+        conversationId: input.conversationId,
+      });
+      return 'ignored-unknown';
+    }
+    if (row.status === 'PAID' || row.status === 'FAILED' || row.status === 'CANCELLED') {
+      return 'ignored-terminal';
+    }
+    await this.disbursementRepository.update({
+      ...row,
+      status: 'NEEDS_REVERSAL',
+      failedAt: new Date(),
+      failureReason: 'mpesa-b2c-queue-timeout',
+      updatedAt: new Date(),
+      updatedBy: 'mpesa-b2c-timeout',
+    });
+    this.logger.error(
+      'M-PESA B2C queue timeout — disbursement set NEEDS_REVERSAL (debited, undelivered)',
+      { disbursementId: row.id, conversationId: input.conversationId },
+    );
+    return 'needs-reversal';
+  }
+
+  /**
+   * Select the disbursement provider for a payout by DESTINATION + CURRENCY.
+   *
+   * Previously this always returned the single `defaultProvider` (Stripe), so a
+   * mobile-money payout to a Kenyan/Tanzanian phone number could only ever be
+   * attempted via Stripe — wrong rail, guaranteed failure. Now the DESTINATION
+   * SHAPE is authoritative (it determines the physical rail):
+   *   - a phone-number destination (e.g. 2547…) → the M-Pesa B2C rail (when an
+   *     mpesa provider is registered for that currency);
+   *   - an account-id destination (`acct_…`, `ba_…`) → the default provider
+   *     (Stripe), EVEN for a mobile-money currency like KES — money to a Stripe
+   *     connected account can never go over M-Pesa.
+   * Currency is only a secondary signal: an AMBIGUOUS destination (neither a
+   * clear phone number nor an account id) on a mobile-money currency still
+   * prefers the M-Pesa rail. Falls back to the default when no specific match is
+   * registered, and throws LOUD when nothing can serve the payout (never
+   * silently mis-routes money).
+   */
+  private getProvider(destination: string, currency: CurrencyCode): IPaymentProvider {
+    const isPhone = looksLikePhoneNumber(destination);
+    const isAccountId = /^[A-Za-z]/.test(destination.trim());
+    // A phone destination demands mobile money; an ambiguous destination on a
+    // mobile-money currency prefers it; an account-id destination NEVER does.
+    const wantsMobileMoney =
+      isPhone || (!isAccountId && isMobileMoneyCurrency(currency));
+
+    if (wantsMobileMoney) {
+      // Pick the first registered provider that declares the target currency
+      // (the M-Pesa provider supports KES; TZS/East-Africa rails extend here).
+      for (const provider of this.providers.values()) {
+        if (provider.name === 'mpesa' && provider.supportedCurrencies.includes(currency)) {
+          return provider;
+        }
+      }
+    }
+
     if (!this.defaultProvider) {
-      throw new Error('No payment provider configured for disbursements');
+      throw new Error(
+        `No payment provider configured for disbursement to "${destination}" (${currency})`,
+      );
     }
     const provider = this.providers.get(this.defaultProvider);
     if (!provider) {
@@ -771,28 +976,35 @@ export class DisbursementService {
   }
 
   /**
-   * Calculate platform fees for a given gross amount
-   */
-  calculatePlatformFee(grossAmount: Money, feePercent: number): Money {
-    const feeMinorUnits = Math.round(grossAmount.amountMinorUnits * feePercent / 100);
-    return Money.fromMinorUnits(feeMinorUnits, grossAmount.currency);
-  }
-
-  /**
-   * Calculate net amount after fees
+   * Calculate net amount after fees.
+   *
+   * SINGLE FEE FORMULA: there is exactly ONE platform-fee engine in this
+   * service —`calculatePlatformFeeMinor(amountMinor, bps)` from
+   * `lib/platform-fee`. The previously-divergent `DisbursementService.
+   * calculatePlatformFee` (percent × amount / 100, ROUNDED) was deleted: it
+   * disagreed with the canonical engine (basis points, FLOORED) and would book
+   * a fee a cent off from what the payment path charged. Fees are quoted in
+   * BASIS POINTS (1 bps = 0.01%); a caller still holding a percent multiplies by
+   * 100 before calling (e.g. 5% → 500 bps).
    */
   calculateNetAmount(
     grossAmount: Money,
-    platformFeePercent: number,
-    processingFeePercent: number = 0
+    platformFeeBps: number,
+    processingFeeBps: number = 0
   ): {
     gross: Money;
     platformFee: Money;
     processingFee: Money;
     net: Money;
   } {
-    const platformFee = this.calculatePlatformFee(grossAmount, platformFeePercent);
-    const processingFee = this.calculatePlatformFee(grossAmount, processingFeePercent);
+    const platformFee = Money.fromMinorUnits(
+      calculatePlatformFeeMinor(grossAmount.amountMinorUnits, platformFeeBps),
+      grossAmount.currency,
+    );
+    const processingFee = Money.fromMinorUnits(
+      calculatePlatformFeeMinor(grossAmount.amountMinorUnits, processingFeeBps),
+      grossAmount.currency,
+    );
     const netMinor = grossAmount.amountMinorUnits - platformFee.amountMinorUnits - processingFee.amountMinorUnits;
 
     return {

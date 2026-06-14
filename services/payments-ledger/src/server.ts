@@ -455,6 +455,11 @@ if (process.env.MPESA_CONSUMER_KEY) {
     callbackBaseUrl: process.env.MPESA_CALLBACK_URL || ''
   });
   paymentOrchestrationService.registerProvider(mpesaProvider, { currencies: ['KES'] });
+  // Register M-Pesa as a DISBURSEMENT (B2C payout) provider too. Without this,
+  // DisbursementService only knew Stripe, so a mobile-money payout could never
+  // reach the M-Pesa rail. DisbursementService.getProvider selects M-Pesa for
+  // mobile-money destinations / KES·TZS currencies and Stripe otherwise.
+  disbursementService.registerProvider(mpesaProvider);
   logger.info('M-PESA payment provider registered');
 }
 
@@ -1463,45 +1468,94 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
     }
     const stripeTenant = asTenantId(stripeTenantId);
 
-    // Handle the event
-    switch (event.type) {
-      case 'payment_intent.succeeded': {
-        const paymentIntent = event.data as { id: string; receipt_url?: string };
-        await paymentOrchestrationService.handleWebhook(
-          'stripe',
-          paymentIntent.id,
-          'SUCCEEDED',
-          stripeTenant,
-          paymentIntent.receipt_url
-        );
-        break;
+    // Durable, tenant-scoped idempotency (M3/M7) — PARITY with the M-Pesa STK
+    // (server.ts) and C2B paths, which the Stripe handler previously LACKED.
+    // Stripe delivery is at-least-once: a redelivered `payment_intent.succeeded`
+    // (Stripe's own retry, or a replica race) would otherwise re-enter
+    // bookPaymentToLedger and — because findEntriesByPaymentIntent is a
+    // non-atomic check-then-act over a NON-unique index — could double-credit
+    // the ledger. We `claim` on event.id (Stripe's authoritative event identity)
+    // before processing; a duplicate acks 200 without reprocessing.
+    const stripeIdemKey = buildWebhookIdempotencyKey(stripeTenantId, 'stripe', event.id);
+    const stripeClaimToken = await webhookIdempotencyStore.claim(stripeIdemKey);
+    if (!stripeClaimToken) {
+      // Duplicate. Self-heal the mark→book crash window (MUST-FIX 1) for the
+      // success event: a prior delivery may have marked the intent SUCCEEDED
+      // then crashed before booking. ensurePaymentBooked is idempotent (books
+      // only when SUCCEEDED with zero ledger entries).
+      if (event.type === 'payment_intent.succeeded') {
+        const paymentIntent = event.data as { id: string };
+        try {
+          await paymentOrchestrationService.ensurePaymentBooked(
+            paymentIntent.id,
+            'stripe',
+            stripeTenant,
+          );
+        } catch (err) {
+          logger.error(
+            { err, eventId: event.id, idemKey: stripeIdemKey },
+            'Stripe duplicate self-heal (ensurePaymentBooked) failed — manual reconciliation may be required',
+          );
+        }
       }
-      case 'payment_intent.payment_failed': {
-        const paymentIntent = event.data as { id: string; last_payment_error?: { message?: string } };
-        await paymentOrchestrationService.handleWebhook(
-          'stripe',
-          paymentIntent.id,
-          'FAILED',
-          stripeTenant,
-          undefined,
-          paymentIntent.last_payment_error?.message || 'Payment failed'
-        );
-        break;
+      logger.info(
+        { eventId: event.id, idemKey: stripeIdemKey },
+        'Duplicate Stripe webhook — acking without reprocessing',
+      );
+      return res.json({ received: true, duplicate: true });
+    }
+
+    try {
+      // Handle the event
+      switch (event.type) {
+        case 'payment_intent.succeeded': {
+          const paymentIntent = event.data as { id: string; receipt_url?: string };
+          await paymentOrchestrationService.handleWebhook(
+            'stripe',
+            paymentIntent.id,
+            'SUCCEEDED',
+            stripeTenant,
+            paymentIntent.receipt_url
+          );
+          break;
+        }
+        case 'payment_intent.payment_failed': {
+          const paymentIntent = event.data as { id: string; last_payment_error?: { message?: string } };
+          await paymentOrchestrationService.handleWebhook(
+            'stripe',
+            paymentIntent.id,
+            'FAILED',
+            stripeTenant,
+            undefined,
+            paymentIntent.last_payment_error?.message || 'Payment failed'
+          );
+          break;
+        }
+        case 'payment_intent.canceled': {
+          const paymentIntent = event.data as { id: string; cancellation_reason?: string };
+          await paymentOrchestrationService.handleWebhook(
+            'stripe',
+            paymentIntent.id,
+            'CANCELLED',
+            stripeTenant,
+            undefined,
+            paymentIntent.cancellation_reason || 'Payment cancelled'
+          );
+          break;
+        }
+        default:
+          logger.info({ eventType: event.type }, 'Unhandled Stripe event type');
       }
-      case 'payment_intent.canceled': {
-        const paymentIntent = event.data as { id: string; cancellation_reason?: string };
-        await paymentOrchestrationService.handleWebhook(
-          'stripe',
-          paymentIntent.id,
-          'CANCELLED',
-          stripeTenant,
-          undefined,
-          paymentIntent.cancellation_reason || 'Payment cancelled'
-        );
-        break;
-      }
-      default:
-        logger.info({ eventType: event.type }, 'Unhandled Stripe event type');
+    } catch (err) {
+      // Processing failed — release the claim (compare-and-delete on OUR token)
+      // so Stripe's retry reprocesses instead of being silently deduplicated,
+      // then surface the error to the express handler (non-2xx → Stripe retry).
+      await webhookIdempotencyStore.release(stripeIdemKey, stripeClaimToken);
+      logger.error(
+        { err, eventId: event.id, idemKey: stripeIdemKey },
+        'Stripe webhook processing failed — released idempotency claim for retry',
+      );
+      throw err;
     }
 
     res.json({ received: true });
@@ -1684,8 +1738,28 @@ app.post('/webhooks/mpesa/b2c/result', async (req: Request, res: Response, next:
       resultDesc: result.ResultDesc
     }, `M-PESA B2C ${isSuccess ? 'succeeded' : 'failed'}`);
 
-    // In a full implementation, update the disbursement status in the database
-    // and publish appropriate events
+    // Look up the disbursement by ConversationID (stored as transferId) and
+    // transition it: SUCCESS → PAID; FAILURE → NEEDS_REVERSAL so the
+    // disbursement-reconciliation job posts the compensating reversal (the
+    // ledger debit was posted BEFORE the transfer). Tenancy is enforced by RLS
+    // at the repository. Errors are logged, never bubbled — we always ack so
+    // Safaricom stops retrying; a missed transition is recovered by the
+    // reconciliation sweep, not by a Daraja retry.
+    if (conversationId) {
+      try {
+        await disbursementService.applyB2cResult({
+          conversationId,
+          success: isSuccess,
+          transactionId,
+          failureReason: isSuccess ? undefined : (result.ResultDesc || 'B2C transfer failed'),
+        });
+      } catch (err) {
+        logger.error(
+          { err, conversationId },
+          'M-PESA B2C result transition failed — reconciliation sweep will recover',
+        );
+      }
+    }
 
     res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
   } catch (error) {
@@ -1701,7 +1775,22 @@ app.post('/webhooks/mpesa/b2c/timeout', async (req: Request, res: Response, next
   try {
     logger.warn({ body: req.body }, 'M-PESA B2C timeout received');
 
-    // In a full implementation, mark the disbursement as needing reconciliation
+    // A queue timeout means the B2C request was never processed and NO result
+    // callback will arrive — but the ledger debit was already posted. Flag the
+    // disbursement NEEDS_REVERSAL so the reconciliation job drives it to a
+    // terminal state; never leave debited-but-undelivered money silent.
+    const conversationId: string | undefined =
+      req.body?.Result?.ConversationID ?? req.body?.ConversationID;
+    if (conversationId) {
+      try {
+        await disbursementService.applyB2cTimeout({ conversationId });
+      } catch (err) {
+        logger.error(
+          { err, conversationId },
+          'M-PESA B2C timeout transition failed — reconciliation sweep will recover',
+        );
+      }
+    }
 
     res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
   } catch (error) {
@@ -1825,19 +1914,24 @@ app.post('/webhooks/mpesa/c2b/confirm', async (req: Request, res: Response) => {
       return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
 
-    // Best-effort attribution. If we can't match the invoice here the
-    // payment lands in an "unallocated" bucket for operators to assign
-    // manually. The orchestrator handles both paths.
-    await paymentOrchestrationService.handleWebhook(
-      'mpesa_c2b',
-      c2b.TransID,
-      'SUCCEEDED',
-      c2bTenant,
+    // Attribution. handleC2bConfirmation books one of two BALANCED journals,
+    // never ack-and-drop:
+    //   - MATCHED: a C2B PaymentIntent exists for this TransID → normal
+    //     rent-payment posting (mark SUCCEEDED + book the receipt).
+    //   - UNALLOCATED: NO intent matches → an explicit unallocated-receipt
+    //     journal (DR holding / CR per-tenant unallocated-suspense liability),
+    //     stamped with TransID/MSISDN/amount so operators can attribute it. This
+    //     replaces the prior silent-drop where unmatched cash was recorded
+    //     NOWHERE.
+    await paymentOrchestrationService.handleC2bConfirmation({
+      transId: c2b.TransID,
+      tenantId: c2bTenant,
+      amountMajor: c2b.TransAmount,
+      msisdn: c2b.MSISDN,
       // TransID is M-Pesa's authoritative C2B receipt number; mint a
       // deterministic receipt resource URL from it (see STK path).
-      buildMpesaReceiptUrl(c2b.TransID),
-      undefined
-    ).catch(async (err) => {
+      receiptUrl: buildMpesaReceiptUrl(c2b.TransID),
+    }).catch(async (err) => {
       // M8: release the claim so Daraja's retry reprocesses instead of
       // being deduplicated. Compare-and-delete on the claim token so we
       // only drop OUR claim (MUST-FIX 2). Failures are logged but must
