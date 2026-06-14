@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import { lazySingleton } from '../lazy-singleton.js';
 
 export interface WhatsAppConfig {
   apiUrl: string;
@@ -381,4 +382,4 @@ export class WhatsAppClient {
   }
 }
 
-export const whatsAppClient = new WhatsAppClient();
+export const whatsAppClient = lazySingleton(() => new WhatsAppClient());

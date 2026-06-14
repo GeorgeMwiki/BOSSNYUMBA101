@@ -6,6 +6,7 @@ import * as admin from 'firebase-admin';
 import type { TenantId } from '../../types/index.js';
 import type { INotificationProvider, SendParams } from '../provider.interface.js';
 import type { NotificationChannel, SendResult } from '../../types/index.js';
+import { lazySingleton } from '../../lazy-singleton.js';
 
 export interface FirebaseConfig {
   projectId: string;
@@ -85,4 +86,4 @@ export class FirebasePushProvider implements INotificationProvider {
   }
 }
 
-export const firebasePushProvider = new FirebasePushProvider();
+export const firebasePushProvider = lazySingleton(() => new FirebasePushProvider());

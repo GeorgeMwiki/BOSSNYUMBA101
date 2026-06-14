@@ -6,6 +6,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import crypto from 'crypto';
 import { createLogger } from '../logger.js';
+import { lazySingleton } from '../lazy-singleton.js';
 import type {
   WhatsAppBusinessConfig,
   OutgoingTextMessage,
@@ -932,4 +933,4 @@ export class MetaWhatsAppClient {
 // Singleton Export
 // ============================================================================
 
-export const metaWhatsAppClient = new MetaWhatsAppClient();
+export const metaWhatsAppClient = lazySingleton(() => new MetaWhatsAppClient());
