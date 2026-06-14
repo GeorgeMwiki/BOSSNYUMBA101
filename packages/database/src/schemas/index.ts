@@ -623,6 +623,22 @@ export * from './idempotency-keys.schema.js';
 //                        composition/durable-wake-store.ts.
 export * from './durable-scheduled-wakes.schema.js';
 
+// ─── Drive-to-zero — staff_shifts (migration 0332) ─────────────────────
+//   - staff_shifts : the REAL per-worker shift schedule source. Backs
+//       GET /api/v1/field/shifts/today (field/shifts.hono.ts), polled by
+//       the staff-mobile worker home card (useTodayShift.ts). One row per
+//       (employee, day, kind). Tenant-scoped + RLS FORCE. The shift's task
+//       list is resolved LIVE from maintenance_tasks (never snapshotted).
+export * from './staff-shifts.schema.js';
+
+// ─── Drive-to-zero — service_status_components (migration 0333) ─────────
+//   - service_status_components : maintained PLATFORM status board source
+//       (api-gateway / database / auth / storage / workers / realtime).
+//       Backs the PUBLIC GET /api/v1/public/status (public-status.hono.ts)
+//       polled by the marketing /status page (StatusBoard.tsx). NOT tenant-
+//       scoped — public-read RLS, service-role writes. No money/PII.
+export * from './service-status-components.schema.js';
+
 // ─── Wave OWNER-OS — server-side tab persistence (migration 0300) ────
 //   - owner_tabs : per-(tenant, user) tab strip ledger. Closes commit
 //                  a935776e's deliberate localStorage-only deferral.

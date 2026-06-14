@@ -361,6 +361,38 @@
       "dataLoss": true,
       "envs": ["dev", "staging"],
       "notes": "Wave-C renter request-for-application (#H37). Applicant-scoped, uniform-404 anti-IDOR. Dropping discards open renter requests."
+    },
+    {
+      "up": "0332_staff_shifts.sql",
+      "down": "down/0332_down_staff_shifts.sql",
+      "reverses": "CREATE TABLE staff_shifts + staff_shifts_tenant_user_date_idx + staff_shifts_tenant_employee_date_idx + UNIQUE staff_shifts_unique_employee_day_kind_idx + FORCE RLS tenant_isolation_select/modify + service_role_bypass + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Deferred-batch staff shift schedule backing GET /api/v1/field/shifts/today (staff-mobile Today's Shift — was fabricated, now real-or-honest-empty). Tenant-scoped, FORCE RLS. Dropping discards scheduled shifts; the app shows an honest 'no shift' empty state."
+    },
+    {
+      "up": "0333_service_status_components.sql",
+      "down": "down/0333_down_service_status_components.sql",
+      "reverses": "CREATE TABLE service_status_components + service_status_components_status_idx + seed 6 components + FORCE RLS public_read (USING true) + service_role_write + GRANT SELECT anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Deferred-batch maintained PUBLIC platform status board backing GET /api/v1/public/status (marketing StatusBoard — was hardcoded 'all operational', now real). PUBLIC-READ by design (USING true), service-role write. Dropping discards the maintained status; the page degrades to its honest static catalogue."
+    },
+    {
+      "up": "0334_owner_settings.sql",
+      "down": "down/0334_down_owner_settings.sql",
+      "reverses": "CREATE TABLE owner_settings + UNIQUE(tenant_id,user_id) + idx_owner_settings_tenant_user + FORCE RLS tenant_isolation + service_role_bypass + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Deferred-batch owner-portal per-(tenant,user) display + notification prefs (SettingsPage real Save). Currency also mirrored into currency_preferences (untouched by this down). Dropping discards saved owner preferences; Settings falls back to route defaults (en/USD/Africa/Dar_es_Salaam)."
+    },
+    {
+      "up": "0335_co_owner_invites.sql",
+      "down": "down/0335_down_co_owner_invites.sql",
+      "reverses": "CREATE TABLE co_owner_invites + uniq_co_owner_invites_token + idx_co_owner_invites_tenant_status + FORCE RLS tenant_isolation + service_role_bypass + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Deferred-batch pending owner-portal team invitations (SettingsPage co-owner invite/revoke/resend — was a client-only illusion, now real via notification_dispatch_log). Accepted co-owners are real users rows (untouched). Dropping discards pending invites; owners re-invite."
     }
   ]
 }

@@ -75,10 +75,36 @@ const PresenceSchema = z
   .strict()
   .optional();
 
+// ─────────────────────────────────────────────────────────────────────
+// Slice selector — the operator's chosen population (jurisdiction /
+// property-class / time-window). Forwarded by the admin-portal proxy as
+// a top-level field. We fold it into the user-message envelope so the
+// kernel reasons over the selected slice, and surface it on the audit
+// trail. Each field is a short code (e.g. `KE-30`, `Class-B`, `90d`);
+// capped so a misbehaving client can't balloon the prompt.
+// ─────────────────────────────────────────────────────────────────────
+const SliceSchema = z
+  .object({
+    jurisdiction: z.string().max(64).optional(),
+    propertyClass: z.string().max(64).optional(),
+    timeWindow: z.string().max(64).optional(),
+  })
+  .strict()
+  .optional();
+
 const RequestBodySchema = z.object({
   threadId: z.string().min(1).max(120),
   message: z.string().min(1).max(8_000),
   presence: PresenceSchema,
+  /**
+   * Deep-reasoning toggle from the central-command composer. When `true`
+   * we lift the turn's stakes to `'high'`, which is the kernel's
+   * documented driver for extended thinking + a judge pass
+   * (see kernel-types.ts `stakes` + kernel.ts `wantsThinking`). Absent ⇒
+   * the default `'medium'` single-shot path is preserved.
+   */
+  extendedThinking: z.boolean().optional(),
+  slice: SliceSchema,
 });
 
 // ─────────────────────────────────────────────────────────────────────
@@ -129,6 +155,25 @@ function foldPresence(message: string, presence: unknown): string {
   if (typeof p.lastQuery === 'string') lines.push(`lastQuery=${p.lastQuery}`);
   if (lines.length === 0) return message;
   return `${message}\n\n[presence]\n${lines.join('\n')}`;
+}
+
+/**
+ * Fold the operator's slice selector into the user-message envelope. The
+ * kernel is slice-naive today, so — exactly like presence — we suffix the
+ * chosen population onto the message rather than mutating the system
+ * prompt. This (a) makes the kernel reason over the selected slice and
+ * (b) keeps the audit trail honest about which population the answer
+ * covers. Returns the message unchanged when the slice is empty.
+ */
+function foldSlice(message: string, slice: unknown): string {
+  if (!slice || typeof slice !== 'object') return message;
+  const s = slice as Record<string, unknown>;
+  const lines: string[] = [];
+  if (typeof s.jurisdiction === 'string') lines.push(`jurisdiction=${s.jurisdiction}`);
+  if (typeof s.propertyClass === 'string') lines.push(`propertyClass=${s.propertyClass}`);
+  if (typeof s.timeWindow === 'string') lines.push(`timeWindow=${s.timeWindow}`);
+  if (lines.length === 0) return message;
+  return `${message}\n\n[slice]\n${lines.join('\n')}`;
 }
 
 /**
@@ -204,7 +249,21 @@ adminJarvisStreamRouter.post('/', withSecurityEvents({ action: 'admin.create', r
   const abort = (c.req.raw && c.req.raw.signal) || null;
   if (abort) emitter.attachAbortSignal(abort);
 
-  const folded = foldPresence(parsed.data.message, parsed.data.presence);
+  // Fold presence AND the operator's slice selector into the message so
+  // both are visible to the (presence/slice-naive) kernel and the audit
+  // trail. Order is presence → slice so the population the operator
+  // scoped to lands closest to the question.
+  const folded = foldSlice(
+    foldPresence(parsed.data.message, parsed.data.presence),
+    parsed.data.slice,
+  );
+
+  // The extended-thinking toggle drives stakes: the kernel keys extended
+  // thinking + the judge pass off `stakes >= 'high'`. When the operator
+  // flips the toggle on we lift the default 'medium' to 'high' so the
+  // control actually takes effect; off ⇒ the single-shot 'medium' path.
+  const stakes: ThoughtRequest['stakes'] =
+    parsed.data.extendedThinking === true ? 'high' : 'medium';
 
   // The kernel may be unwired (no Anthropic key) — surface a clean
   // RUN_ERROR rather than a generic 503 so the client renders the
@@ -248,8 +307,12 @@ adminJarvisStreamRouter.post('/', withSecurityEvents({ action: 'admin.create', r
     userMessage: folded,
     scope,
     tier: 'industry',
-    stakes: 'medium',
+    stakes,
     surface: 'platform-hq',
+    // When the operator asked for extended thinking, also request the
+    // self-review judge pass so the deeper reasoning is graded before it
+    // streams back (kernel runs the judge for stakes >= 'high').
+    ...(parsed.data.extendedThinking === true ? { requireJudge: true } : {}),
   };
 
   // Personalise persona so the run's first TEXT_MESSAGE_CONTENT can

@@ -61,6 +61,11 @@ const ChatTurnSchema = z.object({
     .max(40)
     .optional(),
   visitorCountry: z.enum(['KE', 'TZ', 'UG', 'other']).optional(),
+  // The visitor's interface language (EN/SW toggle on the marketing site).
+  // English default per CLAUDE.md; the SW toggle is ABSOLUTE. Threaded into a
+  // locale-lock directive so the gateway path replies single-language exactly
+  // like the marketing Next route's direct-Anthropic fallback. Omitted → 'en'.
+  language: z.enum(['en', 'sw']).optional(),
 });
 
 const DemoEstateSchema = z.object({
@@ -108,6 +113,39 @@ function marketingProviders(): MarketingProviders {
     anthropic: anthropicKey ? new AnthropicAdapter({ apiKey: anthropicKey }) : null,
     openai: openaiKey ? new OpenAIAdapter({ apiKey: openaiKey }) : null,
   };
+}
+
+// ─── Locale lock ────────────────────────────────────────────────────
+//
+// `buildMarketingSystemPrompt` is bilingual-CAPABLE but carries no locale
+// instruction, so the gateway path used to reply in whatever language the
+// model picked — ignoring the marketing site's EN/SW toggle. (The marketing
+// Next route's DIRECT-Anthropic fallback already locks the locale via its own
+// SYSTEM_PROMPT_EN / _SW; the gateway path was the gap.)
+//
+// We PREPEND a single-language lock that outranks every downstream cue so the
+// reply is strictly one language per the active locale (CLAUDE.md absolute
+// toggle — zero mixing, ever). Acronyms (M-Pesa, TRA, KES…) and the product
+// name (BossNyumba) are language-neutral and allowed in both modes.
+const MARKETING_LOCALE_LOCK_EN = `## LOCALE LOCK — ENGLISH ONLY (OUTRANKS EVERY OTHER RULE BELOW)
+Respond ONLY in English. ZERO Swahili words anywhere — not even in greetings (use "Hello"/"Hi", never "Habari"/"Karibu"). The visitor's interface language is English. If the visitor writes in Swahili, still reply in English and note once: "I can switch to Swahili in settings if you prefer." Language-neutral acronyms (M-Pesa, NHC, TRA, BoT, KYC, REIT, KES, TZS, UGX, USD) and the product name "BossNyumba" are allowed. There are zero exceptions.
+
+`;
+
+const MARKETING_LOCALE_LOCK_SW = `## KIFUNGO CHA LUGHA — KISWAHILI PEKEE (KINASHINDA SHERIA NYINGINE ZOTE HAPA CHINI)
+Jibu kwa KISWAHILI pekee. SIFURI ya maneno ya Kiingereza popote — hata kwenye salamu (tumia "Habari"/"Karibu", kamwe "Hello"/"Hi"). Lugha ya kiolesura cha mgeni ni Kiswahili. Mgeni akiandika kwa Kiingereza, bado jibu kwa Kiswahili na useme mara moja: "Naweza kubadili kuwa Kiingereza katika mipangilio ukipenda." Vifupisho visivyo na lugha maalum (M-Pesa, NHC, TRA, BoT, KYC, REIT, KES, TZS, UGX, USD) na jina la bidhaa "BossNyumba" vinaruhusiwa. Hakuna ubaguzi kabisa.
+
+`;
+
+/**
+ * Prepend the single-language locale lock so the marketing reply is strictly
+ * one language per the active EN/SW toggle. Pure string composition — no I/O.
+ *
+ * Exported for unit testing (the route itself needs a live LLM provider).
+ */
+export function applyMarketingLocaleLock(systemPrompt: string, language: 'en' | 'sw'): string {
+  const lock = language === 'sw' ? MARKETING_LOCALE_LOCK_SW : MARKETING_LOCALE_LOCK_EN;
+  return `${lock}${systemPrompt}`;
 }
 
 function extractReplyText(resp: BrainLLMResponse): string {
@@ -215,10 +253,15 @@ app.post('/chat', zValidator('json', ChatTurnSchema), async (c) => {
     body.visitorCountry && body.visitorCountry !== 'other'
       ? (body.visitorCountry as 'KE' | 'TZ' | 'UG')
       : undefined;
-  const systemPrompt = buildMarketingSystemPrompt({
-    ...(countryForPrompt ? { visitorCountry: countryForPrompt } : {}),
-    visitorRole: lead.role,
-  });
+  // Absolute EN/SW toggle from the marketing site. Default 'en' per CLAUDE.md.
+  const language: 'en' | 'sw' = body.language === 'sw' ? 'sw' : 'en';
+  const systemPrompt = applyMarketingLocaleLock(
+    buildMarketingSystemPrompt({
+      ...(countryForPrompt ? { visitorCountry: countryForPrompt } : {}),
+      visitorRole: lead.role,
+    }),
+    language,
+  );
 
   // Real LLM turn. On no-provider / all-failed we 503 — the marketing
   // Next route's tryGateway treats a non-200 as "fall back to the direct

@@ -48,7 +48,7 @@ import {
   createGraphAgentToolkit,
 } from '@bossnyumba/graph-sync';
 import { getBrainExtraSkills } from '../composition/brain-extensions';
-import { auditChatResponse } from '../composition/chat-response-gate';
+import { auditChatResponse, cleanChatResponse } from '../composition/chat-response-gate';
 import { rateLimiter as sharedRateLimiter } from '../middleware/rate-limiter';
 import { bridgeTabTags } from '../lib/chat-tab-bridge';
 import { v4 as uuid } from 'uuid';
@@ -133,6 +133,11 @@ const ChatBodySchema = z.object({
   forcePersonaId: z.string().max(80).optional(),
   threadId: z.string().uuid().optional(),
   message: z.string().min(1).max(10_000),
+  // Active owner/admin language for this turn. English default per CLAUDE.md;
+  // the SW toggle is ABSOLUTE. Threaded into the orchestrator's estate-mode
+  // overlay so the streaming estate-manager persona renders single-language
+  // per the active locale. Any value other than 'sw' falls back to 'en'.
+  language: z.enum(['en', 'sw']).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -198,6 +203,90 @@ export async function pipeStreamTurnToSSE(
 }
 
 // ---------------------------------------------------------------------------
+// Conversation-feel streaming wrapper
+//
+// The anti-call-center guards (`stripChatbotFeel` / `stripTheatreFromUncertainty`,
+// exposed through `cleanChatResponse`) anchor to the START (filler openers /
+// verbose preambles) and END (filler closers) of the WHOLE reply, plus strip
+// theatrical apologies anywhere. They therefore cannot be applied token-by-token
+// — a leading "Sure! " or trailing "Hope this helps!" only becomes strippable
+// once the surrounding text exists.
+//
+// Until now the SSE chat path streamed raw deltas to the wire and ran the guards
+// only in the POST-stream audit tap, so the cleaned text was computed and then
+// discarded — the guards were a NO-OP on the user-visible streaming surface.
+//
+// This wrapper makes them LAND: it buffers the bridged prose deltas, and right
+// before the first non-text event (tool_call / tool_result / handoff /
+// proposed_action / turn_end) — or at stream end — it cleans the accumulated
+// text once and emits it as a single cleaned `delta`. Event ordering with the
+// chat-ui `useChatStream` contract is preserved (all text precedes tool/handoff/
+// turn_end). The tradeoff mirrors the public/marketing surface (full reply then
+// chunk): the body settles slightly later but is FILLER-FREE when it lands.
+//
+// `onAccumulated` reports the RAW prose so the post-stream audit re-derives the
+// same cleaned text deterministically and logs the canonical evidence verdict.
+// ---------------------------------------------------------------------------
+
+// Events that may legitimately appear DURING the text phase and must pass
+// through WITHOUT triggering a body flush: the turn opener and the five
+// owner-portal tab-control events that the brain emits inline (lifted out of
+// the deltas by `bridgeTabTags`). These are order-independent relative to the
+// cleaned body — the tab store keys by tabId, not text position — so emitting
+// them ahead of the flushed body is safe. Every OTHER non-delta event
+// (tool_call / tool_result / handoff / proposed_action / turn_end / error)
+// marks the end of the text phase and flushes the cleaned body first.
+const FEEL_PASSTHROUGH_EVENTS = new Set([
+  'turn_start',
+  'spawn_tabs',
+  'tab_spawn',
+  'tab_update',
+  'tab_remove',
+  'tab_proposal',
+]);
+
+export async function* streamWithConversationFeel(
+  source: AsyncGenerator<{ type: string; [k: string]: unknown }>,
+  onAccumulated: (raw: string) => void,
+): AsyncGenerator<{ type: string; [k: string]: unknown }> {
+  let buffer = '';
+  let flushed = false;
+
+  const flush = (): { type: string; content: string } | null => {
+    if (flushed) return null;
+    flushed = true;
+    onAccumulated(buffer);
+    if (buffer.length === 0) return null;
+    // FAIL-OPEN: `cleanChatResponse` returns the original text on any guard
+    // failure, so the body always survives. Removal-only + locale-pure, so the
+    // EN/SW absolute toggle is never mixed by stripping.
+    const cleaned = cleanChatResponse(buffer).cleaned;
+    return { type: 'delta', content: cleaned };
+  };
+
+  for await (const evt of source) {
+    const type = typeof evt.type === 'string' ? evt.type : '';
+    if (type === 'delta' && typeof evt.content === 'string') {
+      buffer += evt.content;
+      continue;
+    }
+    if (FEEL_PASSTHROUGH_EVENTS.has(type)) {
+      // turn_start / inline tab-control events — emit without flushing so
+      // later deltas keep accumulating into the same buffer.
+      yield evt;
+      continue;
+    }
+    // Text-phase terminator — flush the cleaned body, then re-emit `evt`.
+    const cleanedDelta = flush();
+    if (cleanedDelta) yield cleanedDelta;
+    yield evt;
+  }
+  // Stream ended without a trailing terminator (no turn_end): flush tail.
+  const tail = flush();
+  if (tail) yield tail;
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
@@ -214,6 +303,10 @@ router.post('/chat', withSecurityEvents({ action: 'ai-chat.create', resource: 'a
   if (!parsed.success) {
     return c.json({ error: parsed.error.message }, 400);
   }
+
+  // Active EN/SW locale for this turn. English default per CLAUDE.md; the SW
+  // toggle is ABSOLUTE. Anything other than 'sw' falls back to 'en'.
+  const userLanguage: 'en' | 'sw' = parsed.data.language === 'sw' ? 'sw' : 'en';
 
   let ctx;
   try {
@@ -296,6 +389,10 @@ router.post('/chat', withSecurityEvents({ action: 'ai-chat.create', resource: 'a
       viewer: ctx.viewer,
       userText: parsed.data.message,
       forcePersonaId: parsed.data.forcePersonaId ?? parsed.data.personaId,
+      // Thread the active EN/SW locale into the estate-mode overlay so the
+      // streaming estate-manager persona answers single-language per the
+      // absolute toggle. Defaults to 'en' when the client omits it.
+      userLanguage,
       signal: abort.signal,
     });
 
@@ -305,27 +402,33 @@ router.post('/chat', withSecurityEvents({ action: 'ai-chat.create', resource: 'a
     // can consume. Non-tab events pass through unchanged.
     const bridged = bridgeTabTags(iter);
 
-    // Wave-AC1: SOFT-mode auditor tap — accumulate `delta` text and
-    // final turn metadata so the post-stream audit log captures the
-    // evidence-chain verdict on every chat turn. Fires AFTER the
-    // pipe drains so it can never block the user-visible stream.
+    // Wave-AC1: SOFT-mode auditor tap — capture final turn metadata
+    // (persona + tokens) for the post-stream audit log. The raw reply text
+    // is captured separately by `streamWithConversationFeel` below.
     let accumulatedText = '';
     let lastPersonaId: string | null = null;
     let lastTokens = 0;
-    const auditingIter = (async function* () {
+    const metadataTap = (async function* () {
       for await (const evt of bridged) {
-        const e = evt as { type?: unknown; content?: unknown; finalPersonaId?: unknown; totalTokens?: unknown };
-        if (e.type === 'delta' && typeof e.content === 'string') {
-          accumulatedText += e.content;
-        } else if (e.type === 'turn_end') {
+        const e = evt as { type?: unknown; finalPersonaId?: unknown; totalTokens?: unknown };
+        if (e.type === 'turn_end') {
           if (typeof e.finalPersonaId === 'string') lastPersonaId = e.finalPersonaId;
           if (typeof e.totalTokens === 'number') lastTokens = e.totalTokens;
         }
-        yield evt;
+        yield evt as { type: string; [k: string]: unknown };
       }
     })();
 
-    await pipeStreamTurnToSSE(stream, auditingIter);
+    // Conversation-feel: buffer the prose deltas and emit the chatbot-feel
+    // filler-STRIPPED body to the wire (anti-call-center guards LAND here on
+    // the user-visible streaming path). `onAccumulated` hands us the RAW
+    // prose so the post-stream audit re-derives the same cleaned text and
+    // logs the canonical evidence verdict.
+    const feelIter = streamWithConversationFeel(metadataTap, (raw) => {
+      accumulatedText = raw;
+    });
+
+    await pipeStreamTurnToSSE(stream, feelIter);
 
     try {
       const verdict = await auditChatResponse({

@@ -47,6 +47,17 @@ const DocumentUpdateSchema = z.object({
   relatedEntityId: z.string().optional(),
 });
 
+// Optional text parts that may accompany a multipart /upload. The binary `file`
+// part is validated separately (mime allowlist + size cap). Every field is
+// optional so a bare `file` upload still succeeds.
+const UploadMetaSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  type: z.string().max(50).optional(),
+  customerId: z.string().max(128).optional(),
+  relatedEntityType: z.string().max(50).optional(),
+  relatedEntityId: z.string().max(128).optional(),
+});
+
 // E-sign capture. The renter's mobile client posts an opaque attestation
 // (a biometric token, a drawn-signature blob reference, or a typed/otp/click
 // confirmation). We accept either `signaturePayload` (canonical) or the
@@ -214,6 +225,320 @@ app.get('/:id', async (c) => {
   }
 
   return c.json({ success: true, data: mapDocumentRow(row) });
+});
+
+// ----------------------------------------------------------------------------
+// Structural type of the StorageProvider slice this router consumes. We avoid
+// importing the StorageProvider interface from the domain-services `dist`
+// subpath (keeps this router free of a build-order coupling — same pattern as
+// cases.hono.ts). The composition root wires `services.documentStorage.provider`
+// (Supabase Storage in prod, local disk in dev).
+// ----------------------------------------------------------------------------
+type DocumentStorage = {
+  upload(input: {
+    tenantId: string;
+    key: string;
+    content: Buffer;
+    contentType: string;
+    metadata?: Record<string, string>;
+  }): Promise<{ key: string; url: string }>;
+  getSignedUrl(
+    tenantId: string,
+    key: string,
+    options: { expiresIn: number; responseContentDisposition?: string },
+  ): Promise<string>;
+};
+
+function resolveStorage(c): DocumentStorage | null {
+  const services = (c.get('services') ?? {}) as {
+    documentStorage?: { provider?: DocumentStorage };
+  };
+  return services.documentStorage?.provider ?? null;
+}
+
+// Signed-download TTL — short-lived so a leaked URL cannot be replayed for long.
+const DOWNLOAD_URL_TTL_SECONDS = 5 * 60;
+
+// ----------------------------------------------------------------------------
+// POST /upload — multipart binary upload. The blob is streamed to tenant-scoped
+// object storage via the composition-root storage provider (Supabase Storage in
+// prod, local disk in dev — `tenantScopedPath(tenantId, key)` enforces tenant
+// isolation INSIDE the provider, so the storage key can never traverse to
+// another tenant). A durable `document_uploads` row is then created through the
+// existing RLS-scoped repo. The original (un-scoped) storage key is persisted in
+// `metadata.storageKey` so GET /:id/download can re-sign it later.
+//
+// tenantId/userId come from the JWT (auth), NEVER the body. Mime allowlist +
+// size cap are enforced server-side so the client can't sneak executables past
+// the UI. Honest-degrades to 503 when no storage provider is wired (mock mode).
+// ----------------------------------------------------------------------------
+app.post(
+  '/upload',
+  withSecurityEvents(
+    { action: 'document.create', resource: 'document', severity: 'info' },
+    async (c) => {
+      const auth = c.get('auth');
+      const repos = c.get('repos');
+      const storage = resolveStorage(c);
+
+      // Honest degradation — no live storage / repo wired (mock mode / tests):
+      // surface 503 rather than faking a stored document.
+      if (!storage || !repos) {
+        return c.json(
+          {
+            success: false,
+            error: {
+              code: 'STORAGE_UNAVAILABLE',
+              message: 'Object storage is not configured.',
+            },
+          },
+          503,
+        );
+      }
+
+      // ── Parse multipart body ──────────────────────────────────────────
+      let body: Record<string, unknown>;
+      try {
+        body = await c.req.parseBody({ all: false });
+      } catch {
+        return c.json(
+          { success: false, error: { code: 'INVALID_FILE', message: 'Could not parse multipart body' } },
+          400,
+        );
+      }
+
+      const fileField = body.file;
+      if (!(fileField instanceof File)) {
+        return c.json(
+          { success: false, error: { code: 'INVALID_FILE', message: 'Missing required field: file' } },
+          400,
+        );
+      }
+      const file: File = fileField;
+
+      // ── Mime allowlist (server-side) ──────────────────────────────────
+      const mimeType = (file.type || '').toLowerCase();
+      if (!ALLOWED_MIMES.includes(mimeType)) {
+        return c.json(
+          {
+            success: false,
+            error: {
+              code: 'UNSUPPORTED_MIME',
+              message: `Unsupported file type. Allowed: ${ALLOWED_MIMES.join(', ')}`,
+            },
+          },
+          400,
+        );
+      }
+
+      // ── Size guard (pre-read) ─────────────────────────────────────────
+      if (file.size > MAX_DOC_SIZE_BYTES) {
+        return c.json(
+          { success: false, error: { code: 'FILE_TOO_LARGE', message: `File exceeds ${MAX_DOC_SIZE_BYTES} byte limit` } },
+          413,
+        );
+      }
+
+      // ── Optional metadata fields (multipart text parts) ───────────────
+      const uploadMeta = UploadMetaSchema.safeParse({
+        type: typeof body.type === 'string' ? body.type : undefined,
+        customerId: typeof body.customerId === 'string' ? body.customerId : undefined,
+        relatedEntityType:
+          typeof body.relatedEntityType === 'string' ? body.relatedEntityType : undefined,
+        relatedEntityId:
+          typeof body.relatedEntityId === 'string' ? body.relatedEntityId : undefined,
+        name: typeof body.name === 'string' ? body.name : undefined,
+      });
+      if (!uploadMeta.success) {
+        return c.json(
+          {
+            success: false,
+            error: { code: 'INVALID_METADATA', message: 'metadata failed schema validation', issues: uploadMeta.error.issues },
+          },
+          400,
+        );
+      }
+      const meta = uploadMeta.data;
+
+      // ── Read bytes + re-check the real byte length ────────────────────
+      let buffer: Buffer;
+      try {
+        buffer = Buffer.from(await file.arrayBuffer());
+      } catch {
+        return c.json(
+          { success: false, error: { code: 'INVALID_FILE', message: 'Could not read uploaded bytes' } },
+          400,
+        );
+      }
+      if (buffer.byteLength > MAX_DOC_SIZE_BYTES) {
+        return c.json(
+          { success: false, error: { code: 'FILE_TOO_LARGE', message: `File exceeds ${MAX_DOC_SIZE_BYTES} byte limit` } },
+          413,
+        );
+      }
+
+      const documentId = crypto.randomUUID();
+      const fileName = (meta.name ?? file.name ?? 'document').toString();
+      // Tenant isolation in the storage key is enforced INSIDE the provider
+      // (`tenantScopedPath`); the per-document prefix + id guarantees
+      // uniqueness. The filename is sanitised to a flat token so it can never
+      // traverse the storage hierarchy.
+      const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 200);
+      const storageKey = `documents/${documentId}-${safeName}`;
+
+      // ── Persist the blob ──────────────────────────────────────────────
+      let storedUrl: string;
+      try {
+        const uploaded = await storage.upload({
+          tenantId: auth.tenantId,
+          key: storageKey,
+          content: buffer,
+          contentType: mimeType,
+          metadata: { documentId, uploadedBy: auth.userId },
+        });
+        storedUrl = uploaded.url;
+      } catch (err) {
+        return c.json(
+          {
+            success: false,
+            error: {
+              code: 'STORAGE_WRITE_FAILED',
+              message: err instanceof Error ? err.message : 'Failed to store the uploaded file',
+            },
+          },
+          502,
+        );
+      }
+
+      // ── Insert the durable document row (RLS-scoped repo) ─────────────
+      const documentType =
+        meta.type === 'LEASE'
+          ? 'lease_agreement'
+          : meta.type === 'ID_DOCUMENT'
+          ? 'national_id'
+          : String(meta.type || 'other').toLowerCase();
+
+      const row = await repos.documents.create({
+        id: documentId,
+        tenantId: auth.tenantId,
+        customerId: meta.customerId,
+        documentType,
+        status: 'uploaded',
+        source: 'app_upload',
+        fileName,
+        fileSize: buffer.byteLength,
+        mimeType,
+        fileUrl: storedUrl,
+        entityType: meta.relatedEntityType,
+        entityId: meta.relatedEntityId,
+        tags: [],
+        // storageKey is the re-signable handle GET /:id/download keys off.
+        metadata: { storageKey },
+        createdBy: auth.userId,
+        updatedBy: auth.userId,
+      });
+
+      return c.json({ success: true, data: mapDocumentRow(row) }, 201);
+    },
+  ),
+);
+
+// ----------------------------------------------------------------------------
+// GET /:id/download — mint a short-lived signed download URL for a document the
+// caller owns. Anti-IDOR: findById is RLS + tenant scoped, so a document that is
+// not the caller's (or does not exist) returns null → uniform 404; we never leak
+// another tenant's document existence. The signed URL is re-derived from the
+// `metadata.storageKey` persisted at upload time; documents created before the
+// storageKey was tracked (or external-URL metadata records) fall back to the
+// stored `fileUrl` so legacy rows remain downloadable.
+// ----------------------------------------------------------------------------
+app.get('/:id/download', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  if (!repos) {
+    return c.json(
+      {
+        success: false,
+        error: { code: 'STORAGE_UNAVAILABLE', message: 'Object storage is not configured.' },
+      },
+      503,
+    );
+  }
+
+  const row = await repos.documents.findById(c.req.param('id'), auth.tenantId);
+  if (!row) {
+    return c.json(
+      { success: false, error: { code: 'NOT_FOUND', message: 'Document not found' } },
+      404,
+    );
+  }
+
+  const metadata =
+    row.metadata && typeof row.metadata === 'object'
+      ? (row.metadata as Record<string, unknown>)
+      : {};
+  const storageKey =
+    typeof metadata.storageKey === 'string' ? metadata.storageKey : null;
+  const storage = resolveStorage(c);
+
+  // Preferred path: re-sign the tenant-scoped storage key for a fresh,
+  // short-lived URL with a download disposition.
+  if (storageKey && storage) {
+    try {
+      const downloadUrl = await storage.getSignedUrl(auth.tenantId, storageKey, {
+        expiresIn: DOWNLOAD_URL_TTL_SECONDS,
+        responseContentDisposition: `attachment; filename="${String(row.fileName || 'document').replace(/"/g, '')}"`,
+      });
+      return c.json({
+        success: true,
+        data: {
+          downloadUrl,
+          fileName: row.fileName,
+          mimeType: row.mimeType,
+          expiresInSeconds: DOWNLOAD_URL_TTL_SECONDS,
+        },
+      });
+    } catch (err) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'SIGN_URL_FAILED',
+            message: err instanceof Error ? err.message : 'Could not mint a download URL.',
+          },
+        },
+        502,
+      );
+    }
+  }
+
+  // Fallback: a metadata-only record (uploaded via the legacy JSON POST that
+  // references an already-hosted blob) carries an absolute `fileUrl`. Hand that
+  // back directly so the document remains downloadable.
+  if (typeof row.fileUrl === 'string' && /^https?:\/\//i.test(row.fileUrl)) {
+    return c.json({
+      success: true,
+      data: {
+        downloadUrl: row.fileUrl,
+        fileName: row.fileName,
+        mimeType: row.mimeType,
+        expiresInSeconds: null,
+      },
+    });
+  }
+
+  // No re-signable key and no absolute URL — surface honestly rather than
+  // handing back a non-resolvable internal path.
+  return c.json(
+    {
+      success: false,
+      error: {
+        code: 'DOWNLOAD_UNAVAILABLE',
+        message: 'No downloadable blob is associated with this document.',
+      },
+    },
+    503,
+  );
 });
 
 app.post('/', zValidator('json', DocumentCreateSchema), withSecurityEvents({ action: 'document.create', resource: 'document', severity: 'info' }, async (c) => {

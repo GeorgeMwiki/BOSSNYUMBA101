@@ -10,12 +10,16 @@
  *     the AG-UI envelope still framed: RUN_STARTED → RUN_ERROR.
  *   - presence packet is accepted (no 400) even when fully populated
  *   - oversized message rejected (400)
+ *   - extendedThinking + slice accepted (no 400) and THREADED into the
+ *     ThoughtRequest: extendedThinking lifts stakes→'high' + requireJudge,
+ *     slice is folded into the userMessage envelope.
  *
  * The mock SovereignBrain swap lets us assert the kernel iterable path
- * end-to-end without requiring an ANTHROPIC_API_KEY.
+ * end-to-end without requiring an ANTHROPIC_API_KEY, and lets us capture
+ * the exact ThoughtRequest the router builds.
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { Hono } from 'hono';
 
 // Pin JWT secret + skip dotenv BEFORE any router import so module-init
@@ -25,6 +29,22 @@ process.env.JWT_SECRET =
   'test-secret-jwt-0123456789abcdef0123456789abcdef';
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 process.env.BOSSNYUMBA_SKIP_DOTENV = 'true';
+
+// Capture the ThoughtRequest the router hands to the kernel. The mock
+// kernel records it and returns an immediately-finishing async iterable
+// so the SSE stream completes cleanly (no ANTHROPIC_API_KEY needed).
+const capturedRequests: any[] = [];
+vi.mock('../../composition/sovereign', () => ({
+  getSovereignBrain: vi.fn(async () => ({
+    kernel: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      async *thinkStream(req: any) {
+        capturedRequests.push(req);
+        // Yield nothing — pumpKernelToAgUi frames RUN_STARTED/RUN_FINISHED.
+      },
+    },
+  })),
+}));
 
 import adminJarvisStreamRouter from '../admin-jarvis-stream.hono';
 import { generateToken } from '../../middleware/auth';
@@ -226,5 +246,86 @@ describe('admin-jarvis-stream router — AG-UI envelope', () => {
     expect(types[0]).toBe('RUN_STARTED');
     const last = types[types.length - 1];
     expect(['RUN_FINISHED', 'RUN_ERROR']).toContain(last);
+  });
+});
+
+describe('admin-jarvis-stream router — extendedThinking + slice threading', () => {
+  /**
+   * Drive one request to completion and return the ThoughtRequest the
+   * router built. Draining the SSE body guarantees the queued kernel
+   * microtask (which calls thinkStream) has run.
+   */
+  async function captureRequest(body: Record<string, unknown>): Promise<any> {
+    const before = capturedRequests.length;
+    const app = mount();
+    const res = await app.request('/admin/jarvis/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: bearer(UserRole.SUPER_ADMIN),
+      },
+      body: JSON.stringify(body),
+    });
+    expect(res.status).toBe(200);
+    await collectAgUiEventTypes(res.body, 6_000);
+    expect(capturedRequests.length).toBeGreaterThan(before);
+    return capturedRequests[capturedRequests.length - 1];
+  }
+
+  it('accepts extendedThinking + slice without a 400', async () => {
+    const app = mount();
+    const res = await app.request('/admin/jarvis/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: bearer(UserRole.SUPER_ADMIN),
+      },
+      body: JSON.stringify({
+        threadId: 't-et',
+        message: 'how are arrears trending?',
+        extendedThinking: true,
+        slice: { jurisdiction: 'TZ', propertyClass: 'Class-B', timeWindow: '90d' },
+      }),
+    });
+    expect(res.status).not.toBe(400);
+  });
+
+  it('lifts stakes to "high" and requests a judge when extendedThinking is on', async () => {
+    const req = await captureRequest({
+      threadId: 't-et2',
+      message: 'deep dive please',
+      extendedThinking: true,
+    });
+    expect(req.stakes).toBe('high');
+    expect(req.requireJudge).toBe(true);
+  });
+
+  it('keeps the default "medium" stakes when extendedThinking is absent/false', async () => {
+    const req = await captureRequest({
+      threadId: 't-et3',
+      message: 'quick question',
+    });
+    expect(req.stakes).toBe('medium');
+    expect(req.requireJudge).toBeUndefined();
+  });
+
+  it('folds the slice selector into the userMessage envelope', async () => {
+    const req = await captureRequest({
+      threadId: 't-sl',
+      message: 'occupancy?',
+      slice: { jurisdiction: 'KE', propertyClass: 'Class-A', timeWindow: '30d' },
+    });
+    expect(req.userMessage).toContain('[slice]');
+    expect(req.userMessage).toContain('jurisdiction=KE');
+    expect(req.userMessage).toContain('propertyClass=Class-A');
+    expect(req.userMessage).toContain('timeWindow=30d');
+  });
+
+  it('does not append a [slice] block when no slice is supplied', async () => {
+    const req = await captureRequest({
+      threadId: 't-noslice',
+      message: 'plain message',
+    });
+    expect(req.userMessage).not.toContain('[slice]');
   });
 });

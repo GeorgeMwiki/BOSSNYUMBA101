@@ -186,6 +186,9 @@ import { observabilityRealtimeRouter } from './routes/observability/realtime.hon
 //   POST   /api/v1/field/staff/tasks/:id/complete
 //   POST   /api/v1/field/staff/help-requests
 import { fieldStaffRouter } from './routes/field/staff.hono';
+import { fieldShiftsRouter } from './routes/field/shifts.hono';
+import { publicStatusRouter } from './routes/public-status.hono';
+import { ownerAccountRouter } from './routes/owner/owner-account.hono';
 // G1-A (2026-05-29) regulator DSR flow — jurisdiction-aware DSR intake
 // across regulator_jurisdictions catalogue rows.
 //   GET    /api/v1/regulator/dsr/jurisdictions
@@ -1455,6 +1458,8 @@ api.route('/observability', observabilityRealtimeRouter);
 // officers. All four endpoints are auth + tenant scoped via the
 // router's internal authMiddleware + databaseMiddleware.
 api.route('/field/staff', fieldStaffRouter);
+// Today's shift for the staff-mobile worker home (GET /api/v1/field/shifts/today).
+api.route('/field/shifts', fieldShiftsRouter);
 // G1-A — regulator DSR flow. Jurisdiction-aware Data Subject Request
 // intake + dispatch. Reads/writes against regulator_jurisdictions
 // catalogue and audits via ai_audit_chain. The actual export pipeline
@@ -1550,6 +1555,8 @@ api.route('/public', publicMarketingRouter);
 api.route('/translate', translateRouter);
 api.route('/public/sandbox', publicSandboxRouter);
 api.route('/public/leads', publicLeadsRouter);
+// Public platform status board (GET /api/v1/public/status) — marketing StatusBoard polls this.
+api.route('/public/status', publicStatusRouter);
 // Streaming AI chat — POST /api/v1/ai/chat with SSE response
 api.route('/ai', aiChatRouter);
 // Universal role-aware advisor — POST /api/v1/ask, GET /api/v1/ask/starting-points,
@@ -1717,6 +1724,8 @@ api.route('/owner/pinned-items', ownerPinnedItemsRouter);
 // Tenant-scoped via JWT + RLS FORCE. Backs apps/owner-portal /plan page.
 api.route('/owner/plan', ownerPlanRouter);
 api.route('/owner/saved-searches', savedSearchesRouter);
+// Owner account — settings, co-owner invites, skills, password/2FA (SettingsPage + /skills controls).
+api.route('/owner/account', ownerAccountRouter);
 // Wave SUPERPOWERS — chat-as-OS backend (migration 0297). Owner-side
 // share-link CRUD (auth + RLS); the public token resolver is mounted
 // separately under /public/share so it stays outside the auth gate.

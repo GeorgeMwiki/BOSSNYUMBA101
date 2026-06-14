@@ -30,11 +30,19 @@
  */
 
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { requireRole } from '../../middleware/authorization';
 import { databaseMiddleware } from '../../middleware/database';
-import { UserRole } from '../../types/user-role';
+import { UserRole, isPlatformAdmin } from '../../types/user-role';
 import { routeCatch } from '../../utils/safe-error';
+import { getDb } from '../../composition/db-client';
+import {
+  computeAllIndustrySlots,
+  computeIndustrySlot,
+  isIndustrySlotKey,
+  INDUSTRY_SLOT_KEYS,
+} from './industry-metrics';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -214,6 +222,148 @@ app.get('/roles/audit', async (c) => {
     );
   }
   return c.json({ success: true, data: [] });
+});
+
+// ----------------------------------------------------------------------------
+// Industry dashboard — HQ-tier, cross-tenant KPI rollup.
+//
+// Backs admin-platform-portal `/industry`. The router-level gate above
+// admits TENANT_ADMIN for the tenant-scoped admin cards, but the
+// industry surface is a BossNyumba-HQ rollup that reads ACROSS tenants
+// via the service-role db handle — so each industry handler additionally
+// asserts `isPlatformAdmin(role)` and rejects tenant-scoped admins with
+// a uniform 403. This mirrors `platform-overview.hono.ts`.
+//
+// No new table / migration: every metric is computed from canonical
+// tables that already exist with FORCE RLS (arrears_cases, units,
+// work_orders, leases, friction_fingerprints). Cross-tenant reads use
+// `getDb()` (service-role) exactly like platform-overview.
+// ----------------------------------------------------------------------------
+
+const IndustrySlotParamSchema = z.object({
+  slot: z
+    .string()
+    .min(1)
+    .max(64)
+    .refine(isIndustrySlotKey, {
+      message: `slot must be one of: ${INDUSTRY_SLOT_KEYS.join(', ')}`,
+    }),
+});
+
+/**
+ * Guard: industry endpoints are platform-HQ only. Returns a 403
+ * Response when the caller is not a platform admin, else `null`.
+ */
+function requirePlatformHq(c: any): Response | null {
+  const auth = c.get('auth') ?? {};
+  const role = auth.role as UserRole | undefined;
+  if (!role || !isPlatformAdmin(role)) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message:
+            'industry KPIs require a platform-tier role (SUPER_ADMIN / ADMIN / SUPPORT)',
+        },
+      },
+      403,
+    );
+  }
+  return null;
+}
+
+// GET /industry — all six KPI slots in one cross-tenant rollup. Returns
+// `{ success: true, data: { [slot]: SlotPayload | null } }`; a null slot
+// means that single metric's query failed and the page should degrade
+// just that card.
+app.get('/industry', async (c) => {
+  const denied = requirePlatformHq(c);
+  if (denied) return denied;
+
+  const db = getDb();
+  if (!db) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'Industry KPIs require a database connection — DATABASE_URL unset',
+        },
+      },
+      503,
+    );
+  }
+
+  try {
+    const slots = await computeAllIndustrySlots(db);
+    return c.json({ success: true, data: slots });
+  } catch (error) {
+    return routeCatch(c, error, {
+      code: 'INDUSTRY_UNAVAILABLE',
+      status: 503,
+      fallback: 'Industry aggregation failed',
+    });
+  }
+});
+
+// GET /industry/:slot — one KPI slot. The page fetches these per-card so
+// a single slow/failed metric never blocks the others. The success body
+// is the bare SlotPayload under `data`; an unknown slot is a uniform 404,
+// a DB failure a 503 (→ honest DegradedCard, never a fabricated value).
+app.get('/industry/:slot', async (c) => {
+  const denied = requirePlatformHq(c);
+  if (denied) return denied;
+
+  const parsed = IndustrySlotParamSchema.safeParse({ slot: c.req.param('slot') });
+  if (!parsed.success) {
+    // Uniform 404 (anti-enumeration) — we do not echo the valid-slot list
+    // to an unauthenticated probe path; the gate above already ran.
+    return c.json(
+      {
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Unknown industry slot' },
+      },
+      404,
+    );
+  }
+
+  const db = getDb();
+  if (!db) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'Industry KPIs require a database connection — DATABASE_URL unset',
+        },
+      },
+      503,
+    );
+  }
+
+  try {
+    const payload = await computeIndustrySlot(db, parsed.data.slot);
+    if (payload === null) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'SLOT_UNAVAILABLE',
+            message: 'This metric could not be computed right now.',
+          },
+        },
+        503,
+      );
+    }
+    return c.json({ success: true, data: payload });
+  } catch (error) {
+    return routeCatch(c, error, {
+      code: 'INDUSTRY_UNAVAILABLE',
+      status: 503,
+      fallback: 'Industry aggregation failed',
+    });
+  }
 });
 
 export const adminPortalRouter = app;
