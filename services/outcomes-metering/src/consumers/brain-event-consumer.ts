@@ -43,6 +43,7 @@ import type {
   BrainEventSubscriber,
   BrainEventSubscription,
 } from '@bossnyumba/ai-copilot/brain-event-bus';
+import { recordSecurityEvent } from '@bossnyumba/observability';
 import type { BillingStore } from '../store/billing-store.js';
 
 // ---------------------------------------------------------------------------
@@ -198,7 +199,7 @@ async function handleEvent(args: HandleEventArgs): Promise<void> {
       {
         eventType: event.type,
         tenantId: event.tenantId,
-        err: err instanceof Error ? err.message : String(err),
+        err: asMessage(err),
       },
       'outcomes-metering: failed to translate brain event → outcome event',
     );
@@ -211,19 +212,45 @@ async function handleEvent(args: HandleEventArgs): Promise<void> {
     return;
   }
 
-  // 1. Idempotency anchor.
+  // 1. Score (PURE) FIRST — before any DB claim. A scorer throw here
+  //    leaves NO row written, so it can never orphan an idempotency
+  //    anchor (finding ANCHOR-BEFORE-BILLING).
+  let metering: MeteringRecord;
+  try {
+    metering = scoreFn(outcome, newRecordId(), clock().toISOString());
+  } catch (err) {
+    logger?.warn?.(
+      {
+        eventType: event.type,
+        tenantId: event.tenantId,
+        eventId: outcome.eventId,
+        err: asMessage(err),
+      },
+      'outcomes-metering: scorer threw; no anchor taken, no billing line written',
+    );
+    return;
+  }
+
+  // 2. Commit the anchor + billing line ATOMICALLY (one transaction).
+  //    The idempotency claim is taken ONLY when the billing line lands
+  //    too. A commit failure leaves the anchor UNCLAIMED so the bus's
+  //    at-least-once re-delivery reprocesses cleanly — we surface a
+  //    staff alert instead of swallowing a lost-revenue case.
   let inserted: boolean;
   try {
-    const result = await deps.store.recordEvent({
-      tenantId: event.tenantId,
-      eventId: outcome.eventId,
-      outcomeKind: outcome.kind,
-      propertyId: outcome.propertyId,
-      agentId: outcome.agentId,
-      occurredAtIso: outcome.occurredAt,
-      payload: outcome,
-      sourceEventType: event.type,
-    });
+    const result = await deps.store.commitOutcome(
+      {
+        tenantId: event.tenantId,
+        eventId: outcome.eventId,
+        outcomeKind: outcome.kind,
+        propertyId: outcome.propertyId,
+        agentId: outcome.agentId,
+        occurredAtIso: outcome.occurredAt,
+        payload: outcome,
+        sourceEventType: event.type,
+      },
+      metering,
+    );
     inserted = result.inserted;
   } catch (err) {
     logger?.error?.(
@@ -231,11 +258,23 @@ async function handleEvent(args: HandleEventArgs): Promise<void> {
         eventType: event.type,
         tenantId: event.tenantId,
         eventId: outcome.eventId,
-        err: err instanceof Error ? err.message : String(err),
+        recordId: metering.recordId,
+        err: asMessage(err),
       },
-      'outcomes-metering: failed to persist event',
+      'outcomes-metering: billing commit failed — revenue at risk, bus retry expected',
     );
-    return;
+    await emitConsumerCommitFailureAlert({
+      eventType: event.type,
+      tenantId: event.tenantId,
+      eventId: outcome.eventId,
+      recordId: metering.recordId,
+      err,
+    });
+    // Re-throw so an at-least-once bus can redeliver. The bus catches
+    // handler errors per-subscription (a malformed sibling event never
+    // blocks the stream); re-throwing keeps the failed event eligible
+    // for retry rather than silently dropping billable revenue.
+    throw err instanceof Error ? err : new Error(asMessage(err));
   }
 
   if (!inserted) {
@@ -250,47 +289,51 @@ async function handleEvent(args: HandleEventArgs): Promise<void> {
     return;
   }
 
-  // 2. Score (pure) → persist billing line.
-  let metering: MeteringRecord;
-  try {
-    metering = scoreFn(outcome, newRecordId(), clock().toISOString());
-  } catch (err) {
-    logger?.warn?.(
-      {
-        eventType: event.type,
-        tenantId: event.tenantId,
-        eventId: outcome.eventId,
-        err: err instanceof Error ? err.message : String(err),
-      },
-      'outcomes-metering: scorer threw; no billing line written',
-    );
-    return;
-  }
+  logger?.info?.(
+    {
+      eventType: event.type,
+      tenantId: event.tenantId,
+      eventId: outcome.eventId,
+      recordId: metering.recordId,
+      qualified: metering.qualified,
+      billableAmountMinor: metering.billableAmountMinor,
+    },
+    'outcomes-metering: outcome committed (anchor + billing line)',
+  );
+}
 
-  try {
-    await deps.store.recordBillingLine(metering);
-    logger?.info?.(
-      {
-        eventType: event.type,
-        tenantId: event.tenantId,
-        eventId: outcome.eventId,
-        recordId: metering.recordId,
-        qualified: metering.qualified,
-        billableAmountMinor: metering.billableAmountMinor,
-      },
-      'outcomes-metering: billing line recorded',
-    );
-  } catch (err) {
-    logger?.error?.(
-      {
-        eventType: event.type,
-        tenantId: event.tenantId,
-        recordId: metering.recordId,
-        err: err instanceof Error ? err.message : String(err),
-      },
-      'outcomes-metering: failed to persist billing line',
-    );
-  }
+function asMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * Staff alert for a consumer-side money-path commit failure. Fires a
+ * `critical` security event (routes to SRE per `recordSecurityEvent`
+ * semantics) so a dropped billable outcome on the bus path is visible,
+ * not silent. Best effort — `recordSecurityEvent` never throws.
+ */
+async function emitConsumerCommitFailureAlert(args: {
+  readonly eventType: string;
+  readonly tenantId: string;
+  readonly eventId: string;
+  readonly recordId: string;
+  readonly err: unknown;
+}): Promise<void> {
+  await recordSecurityEvent({
+    action: 'outcomes.consumer.billing_commit_failed',
+    resource: 'events',
+    severity: 'critical',
+    method: 'BUS',
+    route: args.eventType,
+    tenantId: args.tenantId,
+    actorId: null,
+    detail: {
+      eventId: args.eventId,
+      recordId: args.recordId,
+      err: asMessage(args.err),
+      note: 'anchor + billing line commit failed on the bus path; no anchor claimed; redelivery expected',
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------

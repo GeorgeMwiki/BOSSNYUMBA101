@@ -96,6 +96,51 @@ describe('createInMemoryBillingStore', () => {
     expect(second.inserted).toBe(false);
   });
 
+  it('commitOutcome writes anchor + billing line atomically and is idempotent on (tenantId, eventId)', async () => {
+    const store = createInMemoryBillingStore();
+    const input = {
+      tenantId: 't_demo',
+      eventId: 'evt_commit',
+      outcomeKind: 'vacancy_filled' as const,
+      propertyId: 'p_a',
+      agentId: 'a_x',
+      occurredAtIso: '2026-05-15T08:00:00.000Z',
+      payload: { kind: 'vacancy_filled' } as never,
+      sourceEventType: 'http.outcome.event',
+    };
+    const record = meteringRecord({
+      recordId: 'rec_commit',
+      tenantId: 't_demo',
+      outcomeKind: 'vacancy_filled',
+      eventId: 'evt_commit',
+      billableAmountMinor: 250_000,
+      currency: 'USD',
+      scoredAt: '2026-05-15T08:00:00.000Z',
+    });
+
+    const first = await store.commitOutcome(input, record);
+    expect(first.inserted).toBe(true);
+
+    // The billing line landed in the SAME call as the anchor.
+    const agg = await store.getMonthlyBilling('t_demo', '2026-05');
+    expect(agg.byOutcome.vacancy_filled.totalBillableMinor).toBe(250_000);
+
+    // Re-commit of the same (tenantId, eventId) is a true replay.
+    const second = await store.commitOutcome(input, meteringRecord({
+      recordId: 'rec_commit_other',
+      tenantId: 't_demo',
+      outcomeKind: 'vacancy_filled',
+      eventId: 'evt_commit',
+      billableAmountMinor: 999_999,
+      scoredAt: '2026-05-15T08:00:00.000Z',
+    }));
+    expect(second.inserted).toBe(false);
+    const agg2 = await store.getMonthlyBilling('t_demo', '2026-05');
+    // No second line — the replay added nothing.
+    expect(agg2.byOutcome.vacancy_filled.qualifiedCount).toBe(1);
+    expect(agg2.byOutcome.vacancy_filled.totalBillableMinor).toBe(250_000);
+  });
+
   it('getMonthlyBilling aggregates qualified records per outcome', async () => {
     const store = createInMemoryBillingStore();
     await store.recordBillingLine(

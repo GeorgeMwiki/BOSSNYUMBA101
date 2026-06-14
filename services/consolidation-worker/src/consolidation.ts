@@ -102,6 +102,29 @@ export interface WorkerLogger {
   error?(obj: Record<string, unknown>, msg?: string): void;
 }
 
+/**
+ * Staff-alert sink. A genuine query / infrastructure error inside the
+ * worker (e.g. a schema-drift `column "consolidated_at" does not exist`)
+ * must be LOUD: it raises an operator-visible alert so a permanent silent
+ * no-op can never hide again. Distinct from a benign empty queue, which
+ * raises nothing.
+ *
+ * Injected at the composition root. The default implementation logs at
+ * `error` level (the Pino log line is the alert signal scraped by the
+ * platform's log-based alerting); production may swap a richer sink
+ * (PagerDuty / Slack / staff-alert table) over this same port.
+ */
+export interface AlertSink {
+  raise(args: {
+    /** Stable machine code, e.g. `consolidation.reservoir_fetch_failed`. */
+    readonly code: string;
+    /** Human-readable description of what failed. */
+    readonly message: string;
+    /** Structured context (never include secrets). */
+    readonly context?: Record<string, unknown>;
+  }): Promise<void> | void;
+}
+
 export interface ConsolidationDeps {
   readonly source: ReservoirSource;
   readonly sink: SemanticSink;

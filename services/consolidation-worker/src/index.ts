@@ -32,6 +32,7 @@ import {
 import {
   createConsolidationLoop,
   createStubConsolidator,
+  type AlertSink,
   type ReservoirEntry,
   type ReservoirSource,
   type SemanticSink,
@@ -61,28 +62,58 @@ function consoleLogger(): WorkerLogger {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Default staff-alert sink. Emits a single Pino `error` line carrying a
+// stable `alert: true` + `alertCode` marker — the platform's log-based
+// alerting matches on it. Production may inject a richer sink (PagerDuty
+// / Slack / staff-alert table) over the same `AlertSink` port. Pino-only
+// per CLAUDE.md (no console.*).
+// ─────────────────────────────────────────────────────────────────────
+
+export function defaultAlertSink(): AlertSink {
+  return {
+    raise({ code, message, context }) {
+      logger.error('[consolidation-worker] STAFF ALERT', {
+        alert: true,
+        alertCode: code,
+        alertMessage: message,
+        ...(context ? { context } : {}),
+      });
+    },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Drizzle-backed reservoir source — reads kernel_cot_reservoir rows
 // captured since `since` whose `consolidated_at IS NULL`. Marks them
 // with NOW() after consumption.
 //
-// The `kernel_cot_reservoir` schema today (migration 0114) does NOT
-// have a `consolidated_at` column or a `user_id` column. This adapter
-// codes against those columns being added by a future migration —
-// when missing, the SELECT returns zero rows and the worker is a
-// benign no-op. Keeping the wiring intent-correct + reservoir schema
-// extension OUT-OF-SCOPE here (task said do not touch packages/database/).
+// The `consolidated_at` and `user_id` columns are created by migration
+// 0325_kernel_cot_reservoir_consolidation_cols.sql.
+//
+// CRITICAL — a query error is NOT an empty queue. Earlier this adapter
+// swallowed EVERY fetch error as `[]`, so when 0325 had not yet shipped
+// the live hourly tick raised `column "consolidated_at" does not exist`
+// and the worker became a PERMANENT SILENT no-op — CoT was never
+// consolidated and nobody knew. We now raise a staff alert and RETHROW
+// so (a) the schema-drift surfaces loudly and (b) the loop's own
+// `fetch:` error path records it. A benign empty result set still
+// returns `[]` and raises nothing.
 // ─────────────────────────────────────────────────────────────────────
 
-interface DrizzleLikeClient {
+export interface DrizzleLikeClient {
   execute(q: unknown): Promise<unknown>;
 }
 
-function createReservoirSource(db: DrizzleLikeClient): ReservoirSource {
+export function createReservoirSource(
+  db: DrizzleLikeClient,
+  alerts: AlertSink,
+): ReservoirSource {
   return {
     async fetchUnconsolidated({ since, limit }) {
+      let result: unknown;
       try {
         const lim = clampLimit(limit, 5000);
-        const result = (await db.execute(
+        result = await db.execute(
           sql`SELECT thought_id, tenant_id, user_id, thread_id,
                      thought_text AS summary, captured_at
               FROM kernel_cot_reservoir
@@ -91,34 +122,52 @@ function createReservoirSource(db: DrizzleLikeClient): ReservoirSource {
                 AND user_id IS NOT NULL
               ORDER BY captured_at DESC
               LIMIT ${lim}`,
-        )) as unknown;
-        const rows = toRows(result) as ReadonlyArray<{
-          thought_id?: unknown;
-          tenant_id?: unknown;
-          user_id?: unknown;
-          thread_id?: unknown;
-          summary?: unknown;
-          captured_at?: unknown;
-        }>;
-        const entries: ReservoirEntry[] = [];
-        for (const row of rows) {
-          const thoughtId = asString(row.thought_id);
-          const userId = asString(row.user_id);
-          if (!thoughtId || !userId) continue;
-          entries.push({
-            thoughtId,
-            tenantId: asNullableString(row.tenant_id),
-            userId,
-            threadId: asString(row.thread_id) ?? '',
-            summary: asString(row.summary) ?? '',
-            capturedAt: asDateString(row.captured_at),
-          });
-        }
-        return entries;
+        );
       } catch (error) {
-        logger.warn('[consolidation-worker] reservoir fetch failed (schema may be pre-migration)', { value: asMessage(error) });
-        return [];
+        // A genuine query / infra error (e.g. schema drift). DO NOT
+        // swallow as `[]` — that is exactly how a silent no-op hid
+        // before. Raise an operator alert, then rethrow so the loop's
+        // `fetch:` path records the error instead of "queue empty".
+        const message = asMessage(error);
+        logger.error(
+          '[consolidation-worker] reservoir fetch query failed',
+          { value: message },
+        );
+        await Promise.resolve(
+          alerts.raise({
+            code: 'consolidation.reservoir_fetch_failed',
+            message: `kernel_cot_reservoir fetch failed: ${message}`,
+            context: { since: since.toISOString() },
+          }),
+        );
+        throw error instanceof Error ? error : new Error(message);
       }
+
+      // Past this point we have a real result set — an empty array here
+      // genuinely means "no pending rows", never a hidden error.
+      const rows = toRows(result) as ReadonlyArray<{
+        thought_id?: unknown;
+        tenant_id?: unknown;
+        user_id?: unknown;
+        thread_id?: unknown;
+        summary?: unknown;
+        captured_at?: unknown;
+      }>;
+      const entries: ReservoirEntry[] = [];
+      for (const row of rows) {
+        const thoughtId = asString(row.thought_id);
+        const userId = asString(row.user_id);
+        if (!thoughtId || !userId) continue;
+        entries.push({
+          thoughtId,
+          tenantId: asNullableString(row.tenant_id),
+          userId,
+          threadId: asString(row.thread_id) ?? '',
+          summary: asString(row.summary) ?? '',
+          capturedAt: asDateString(row.captured_at),
+        });
+      }
+      return entries;
     },
     async markConsolidated(thoughtIds) {
       if (thoughtIds.length === 0) return;
@@ -342,10 +391,17 @@ export interface MainOptions {
   readonly db?: DrizzleLikeClient | null;
   readonly logger?: WorkerLogger;
   readonly intervalMs?: number;
+  /**
+   * Staff-alert sink for genuine query/infra errors (e.g. schema drift).
+   * Defaults to a Pino-error-line sink. Inject in tests / to route to
+   * PagerDuty / Slack / a staff-alert table.
+   */
+  readonly alerts?: AlertSink;
 }
 
 export async function main(options: MainOptions = {}): Promise<void> {
   const logger = options.logger ?? consoleLogger();
+  const alerts = options.alerts ?? defaultAlertSink();
 
   let db: DrizzleLikeClient | null = options.db ?? null;
   if (!db) {
@@ -376,7 +432,7 @@ export async function main(options: MainOptions = {}): Promise<void> {
     }
   }
 
-  const source = createReservoirSource(db);
+  const source = createReservoirSource(db, alerts);
   const sink = createSemanticAdapter(db);
   const consolidator = createStubConsolidator();
   const loop = createConsolidationLoop({
