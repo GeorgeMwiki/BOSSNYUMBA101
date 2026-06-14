@@ -653,22 +653,46 @@ export function LitFinChatPanel({
 }
 
 /**
+ * Token SSE event names that carry running assistant text.
+ *
+ * `delta` is the canonical `StreamTurnEvent` name emitted by the
+ * api-gateway public-marketing route (and every authenticated chat
+ * surface via the orchestrator's `streamTurn`). `message_chunk` is the
+ * older Borjie/CLI public-chat name kept for backward tolerance so this
+ * one parser can drive both producers.
+ */
+const TOKEN_EVENT_NAMES = new Set(['delta', 'message_chunk']);
+
+/**
+ * Terminal SSE event names. On any of these the stream is done — return
+ * cleanly so the bubble stops streaming instead of hanging until the
+ * underlying reader happens to close.
+ */
+const TERMINAL_EVENT_NAMES = new Set(['turn_end', 'done', 'error']);
+
+/**
  * Parse a BossNyumba / Borjie public-chat SSE stream incrementally.
  *
  * Frame shape (one per blank-line separated record):
  *   event: <name>
  *   data: <json>
  *
- * Events we honour:
- *   - message_chunk → emit `data.text` to the bubble
- *   - turn.accepted / suggested_actions / done / error → ignored on the
- *     widget side (the bubble only cares about the running text)
+ * Producer contract (api-gateway `public-marketing.hono.ts` →
+ * `marketingChatStream`) emits `StreamTurnEvent` frames:
+ *   - turn_start            → ignored (establishes the thread)
+ *   - delta { content }     → emit `content` to the bubble
+ *   - handoff               → ignored on the widget side
+ *   - turn_end / error      → terminate the stream cleanly
+ *
+ * Events we honour for running text:
+ *   - delta         → emit `data.content` (canonical StreamTurnEvent)
+ *   - message_chunk → emit `data.text` / `data.delta` (legacy public-chat)
  *
  * The parser also tolerates `data: <json-with-text>` frames that have no
  * `event:` line (Anthropic-style stream) and the OpenAI-style `[DONE]`
  * sentinel for forward compatibility.
  */
-async function readEventStream(
+export async function readEventStream(
   body: ReadableStream<Uint8Array>,
   onChunk: (text: string) => void,
 ): Promise<void> {
@@ -690,16 +714,29 @@ async function readEventStream(
       }
       if (line.startsWith('event:')) {
         currentEvent = line.slice(6).trim();
+        // Terminate cleanly on the producer's done/error events so the
+        // bubble settles even before the transport closes.
+        if (currentEvent && TERMINAL_EVENT_NAMES.has(currentEvent)) return;
         continue;
       }
       if (!line.startsWith('data:')) continue;
       const data = line.slice(5).trim();
       if (data === '[DONE]') return;
       if (!data) continue;
-      if (currentEvent !== null && currentEvent !== 'message_chunk') continue;
+      // A named non-token event (turn_start / handoff / …) carries no
+      // running text — skip its data line.
+      if (currentEvent !== null && !TOKEN_EVENT_NAMES.has(currentEvent)) {
+        continue;
+      }
       try {
-        const parsed = JSON.parse(data) as { text?: string; delta?: string };
-        const text = parsed.text ?? parsed.delta ?? '';
+        const parsed = JSON.parse(data) as {
+          content?: string;
+          text?: string;
+          delta?: string;
+        };
+        // `content` is the canonical StreamTurnEvent field; `text` /
+        // `delta` cover the legacy public-chat + Anthropic shapes.
+        const text = parsed.content ?? parsed.text ?? parsed.delta ?? '';
         if (text) onChunk(text);
       } catch {
         if (currentEvent === null) onChunk(data);

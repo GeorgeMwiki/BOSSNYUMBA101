@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ShieldCheck, Sparkles } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { MwikilaChip } from '@/components/shared/MwikilaChip';
 import { getLocale } from '@/lib/locale';
 import { type Locale } from '@/lib/i18n';
+import { OwnerSignUpForm } from '@/components/auth/OwnerSignUpForm';
 import { TIERS, tierLabel } from '@/lib/pricing';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -114,87 +115,11 @@ export default async function SignUpPage() {
           </header>
 
           <div className="rounded-2xl border border-border bg-surface/60 p-6 shadow-md">
-            <form className="space-y-4" action="/api/v1/auth/sign-up" method="post">
-              <div>
-                <label
-                  htmlFor="signup-name"
-                  className="block text-sm font-semibold text-foreground"
-                >
-                  {copy.fullName}
-                </label>
-                <input
-                  id="signup-name"
-                  name="full_name"
-                  type="text"
-                  autoComplete="name"
-                  required
-                  className="mt-2 block w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:border-signal-500 focus:outline-none focus:ring-1 focus:ring-signal-500"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="signup-phone"
-                  className="block text-sm font-semibold text-foreground"
-                >
-                  {copy.mpesaPhone}
-                </label>
-                <input
-                  id="signup-phone"
-                  name="phone"
-                  type="tel"
-                  autoComplete="tel"
-                  required
-                  inputMode="tel"
-                  placeholder="+255 7XX XXX XXX"
-                  className="mt-2 block w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-neutral-600 focus:border-signal-500 focus:outline-none focus:ring-1 focus:ring-signal-500"
-                />
-                <p className="mt-1 text-xs text-foreground/60">
-                  {copy.mpesaHelp}
-                </p>
-              </div>
-              <div>
-                <label
-                  htmlFor="signup-email"
-                  className="block text-sm font-semibold text-foreground"
-                >
-                  {copy.emailOptional}
-                </label>
-                <input
-                  id="signup-email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  className="mt-2 block w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:border-signal-500 focus:outline-none focus:ring-1 focus:ring-signal-500"
-                />
-              </div>
-              <div className="flex items-start gap-2">
-                <input
-                  id="signup-terms"
-                  name="accept_terms"
-                  type="checkbox"
-                  required
-                  className="mt-1 h-4 w-4 rounded border-border bg-background text-signal-500 focus:ring-signal-500"
-                />
-                <label htmlFor="signup-terms" className="text-xs leading-snug text-foreground/70">
-                  {copy.agreePrefix}{' '}
-                  <Link href="/terms" className="text-signal-500 underline-offset-4 hover:underline">
-                    {copy.agreeTerms}
-                  </Link>{' '}
-                  {copy.agreeAnd}{' '}
-                  <Link href="/privacy" className="text-signal-500 underline-offset-4 hover:underline">
-                    {copy.agreePrivacy}
-                  </Link>
-                  .
-                </label>
-              </div>
-              <button
-                type="submit"
-                className="group inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-signal-500 px-5 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:bg-signal-400 active:scale-[0.98]"
-              >
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
-                {copy.submit}
-              </button>
-            </form>
+            {/* The real owner sign-up funnel. POSTs to /api/v1/orgs/signup
+                (creates the Supabase auth user + tenant/org/owner + a session,
+                sets the bossnyumba-session cookie). Replaced the dead raw
+                <form action="/api/v1/auth/sign-up"> which 404'd. */}
+            <OwnerSignUpForm locale={locale} />
           </div>
 
           <p className="mt-6 text-center text-sm text-foreground/70">

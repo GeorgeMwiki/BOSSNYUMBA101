@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { MwikilaChip } from '@/components/shared/MwikilaChip';
+import { OwnerSignInForm } from '@/components/auth/OwnerSignInForm';
 import { getLocale } from '@/lib/locale';
 import { type Locale } from '@/lib/i18n';
 import { TIERS, tierLabel } from '@/lib/pricing';
@@ -27,10 +29,6 @@ interface SignInCopy {
   readonly kicker: string;
   readonly headline: string;
   readonly sub: string;
-  readonly idLabel: string;
-  readonly passwordLabel: string;
-  readonly forgotLink: string;
-  readonly submit: string;
   readonly noAccount: string;
   readonly signUpFree: (tierName: string) => string;
 }
@@ -40,10 +38,6 @@ const COPY: Record<Locale, SignInCopy> = {
     kicker: 'Welcome back',
     headline: 'Log in to Boss Nyumba.',
     sub: 'Mr. Mwikila will pick up where you left off. Choose how you signed up.',
-    idLabel: 'Phone, NIDA, or email',
-    passwordLabel: 'Password',
-    forgotLink: 'Forgot?',
-    submit: 'Log In',
     noAccount: 'No account yet?',
     signUpFree: (tierName) => `Sign Up — free on ${tierName}`,
   },
@@ -51,10 +45,6 @@ const COPY: Record<Locale, SignInCopy> = {
     kicker: 'Karibu tena',
     headline: 'Ingia kwenye Boss Nyumba.',
     sub: 'Bw. Mwikila ataendelea kutoka pale ulipoachia. Chagua jinsi ulivyojisajili.',
-    idLabel: 'Simu, NIDA, au barua pepe',
-    passwordLabel: 'Nenosiri',
-    forgotLink: 'Umesahau?',
-    submit: 'Ingia',
     noAccount: 'Bado huna akaunti?',
     signUpFree: (tierName) => `Jisajili — bure kwenye ${tierName}`,
   },
@@ -65,10 +55,13 @@ const COPY: Record<Locale, SignInCopy> = {
  * resolves through `getLocale()` so the rendered copy is pure
  * English or pure Swahili (never mixed).
  *
- * Static skeleton only. The actual auth POST lands at the api-gateway
- * (`/api/v1/auth/sign-in`) and the form widget is owned by API agent
- * #226. We surface the entry point + the canonical Mr. Mwikila chip +
- * a clear "no account yet" path to /sign-up.
+ * The real authentication exchange is owned by the mounted
+ * `<OwnerSignInForm>` client component, which calls
+ * `supabase.auth.signInWithPassword` against the configured Supabase
+ * project and hard-redirects into the owner cockpit on success. The
+ * form is wrapped in a `<Suspense>` boundary because it reads
+ * `useSearchParams()` (`?from=signup`) — Next.js App Router requires
+ * the boundary for client components that consume search params.
  *
  * No "trial" language per product discipline — CTAs are Log In and
  * Sign Up only.
@@ -99,56 +92,9 @@ export default async function SignInPage() {
             </div>
           </header>
 
-          <div className="rounded-2xl border border-border bg-surface/60 p-6 shadow-md">
-            <form className="space-y-4" action="/api/v1/auth/sign-in" method="post">
-              <div>
-                <label
-                  htmlFor="signin-id"
-                  className="block text-sm font-semibold text-foreground"
-                >
-                  {copy.idLabel}
-                </label>
-                <input
-                  id="signin-id"
-                  name="identifier"
-                  type="text"
-                  autoComplete="username"
-                  required
-                  inputMode="text"
-                  placeholder="+255 7XX XXX XXX"
-                  className="mt-2 block w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-neutral-600 focus:border-signal-500 focus:outline-none focus:ring-1 focus:ring-signal-500"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="signin-password"
-                  className="flex items-center justify-between text-sm font-semibold text-foreground"
-                >
-                  {copy.passwordLabel}
-                  <Link
-                    href="/sign-in/forgot"
-                    className="text-xs font-medium text-signal-500 hover:underline"
-                  >
-                    {copy.forgotLink}
-                  </Link>
-                </label>
-                <input
-                  id="signin-password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  className="mt-2 block w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-neutral-600 focus:border-signal-500 focus:outline-none focus:ring-1 focus:ring-signal-500"
-                />
-              </div>
-              <button
-                type="submit"
-                className="inline-flex h-11 w-full items-center justify-center rounded-md bg-signal-500 px-5 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:bg-signal-400 active:scale-[0.98]"
-              >
-                {copy.submit}
-              </button>
-            </form>
-          </div>
+          <Suspense fallback={null}>
+            <OwnerSignInForm locale={locale} />
+          </Suspense>
 
           <p className="mt-6 text-center text-sm text-foreground/70">
             {copy.noAccount}{' '}

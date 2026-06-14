@@ -27,6 +27,7 @@ import {
 
 import { Wordmark } from '@bossnyumba/design-system';
 import { type Locale } from '@/lib/i18n';
+import { LanguageToggle } from '@/components/LanguageToggle';
 
 /**
  * BossNyumba MainNav — carbon copy of the upstream fork's MainNav pattern
@@ -495,6 +496,7 @@ export function MainNav({ locale }: MainNavProps) {
 
         {/* Desktop Actions */}
         <div className="hidden lg:flex items-center gap-2">
+          <LanguageToggle current={locale} />
           <Link
             href="/sign-in"
             className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
@@ -580,6 +582,12 @@ export function MainNav({ locale }: MainNavProps) {
                 >
                   {labels.support}
                 </Link>
+              </div>
+              <div className="pt-2 border-t border-border/30 flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {sw ? 'Lugha' : 'Language'}
+                </span>
+                <LanguageToggle current={locale} />
               </div>
               <div className="pt-2 border-t border-border/30 flex gap-2">
                 <Link

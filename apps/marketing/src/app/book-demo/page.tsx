@@ -9,26 +9,36 @@ export const metadata: Metadata = {
     'Twenty minutes with our solutions team. Bring a sample of your portfolio; leave with a cockpit preview tailored to your buildings, currencies, and council.',
 };
 
-const CHANNELS: ReadonlyArray<{
-  icon: typeof Calendar;
-  title: string;
-  body: string;
-  href: string;
-  cta: string;
-}> = [
+interface DemoChannel {
+  readonly icon: typeof Calendar;
+  readonly title: string;
+  readonly body: string;
+  readonly href: string;
+  readonly cta: string;
+  /** Single primary path — the others are secondary so there is real hierarchy. */
+  readonly primary: boolean;
+  /** External (off-site) target — opens a new tab with safe rel. */
+  readonly external: boolean;
+}
+
+const CHANNELS: ReadonlyArray<DemoChannel> = [
   {
     icon: Calendar,
     title: 'Pick a time',
     body: 'Self-serve on the calendar. Twenty-minute slot, every weekday between 09:00 and 17:00 EAT.',
     href: 'https://cal.com/bossnyumba/20-minute-demo',
     cta: 'Open calendar',
+    primary: true,
+    external: true,
   },
   {
     icon: MessageSquare,
     title: 'Ask Mr. Mwikila',
     body: 'Use the in-app chat widget. Mr. Mwikila books the demo for you and adds the prep notes to your account.',
     href: '/sign-up',
-    cta: 'Sign Up + chat',
+    cta: 'Sign up + chat',
+    primary: false,
+    external: false,
   },
   {
     icon: Phone,
@@ -36,8 +46,15 @@ const CHANNELS: ReadonlyArray<{
     body: 'Speak to a person. Our solutions team is in Dar, EAT business hours. Swahili and English.',
     href: 'tel:+255222000000',
     cta: 'Call +255 22 200 0000',
+    primary: false,
+    external: false,
   },
 ];
+
+const PRIMARY_CTA =
+  'bg-signal-500 text-primary-foreground hover:bg-signal-400';
+const SECONDARY_CTA =
+  'border border-border bg-surface text-foreground hover:border-signal-500/60 hover:text-signal-500';
 
 export default function BookDemoPage() {
   return (
@@ -57,26 +74,41 @@ export default function BookDemoPage() {
         </p>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-3">
-          {CHANNELS.map((c) => (
-            <article
-              key={c.title}
-              className="flex h-full flex-col rounded-2xl border border-border bg-surface p-6"
-            >
-              <c.icon className="h-5 w-5 text-signal-500" aria-hidden="true" />
-              <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
-                {c.title}
-              </h2>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-foreground/70">
-                {c.body}
-              </p>
-              <Link
-                href={c.href}
-                className="mt-6 inline-flex h-10 items-center justify-center rounded-md bg-signal-500 px-4 text-sm font-semibold text-primary-foreground transition-all hover:bg-signal-400"
+          {CHANNELS.map((c) => {
+            const ctaClass = `mt-6 inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold transition-all ${
+              c.primary ? PRIMARY_CTA : SECONDARY_CTA
+            }`;
+            return (
+              <article
+                key={c.title}
+                className={`flex h-full flex-col rounded-2xl border bg-surface p-6 ${
+                  c.primary ? 'border-signal-500/50' : 'border-border'
+                }`}
               >
-                {c.cta}
-              </Link>
-            </article>
-          ))}
+                <c.icon className="h-5 w-5 text-signal-500" aria-hidden="true" />
+                <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
+                  {c.title}
+                </h2>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-foreground/70">
+                  {c.body}
+                </p>
+                {c.external ? (
+                  <a
+                    href={c.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={ctaClass}
+                  >
+                    {c.cta}
+                  </a>
+                ) : (
+                  <Link href={c.href} className={ctaClass}>
+                    {c.cta}
+                  </Link>
+                )}
+              </article>
+            );
+          })}
         </div>
       </div>
     </PageShell>

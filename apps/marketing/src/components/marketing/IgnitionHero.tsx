@@ -303,12 +303,12 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
               {t.ctaPilot}
               <ArrowRight className="h-5 w-5" />
             </Link>
-            <Link
-              href="#how-it-works"
+            <a
+              href="#mwikila-live-demo"
               className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-border bg-card/60 px-6 py-3.5 text-base font-semibold text-foreground transition-all hover:bg-card hover:border-primary/40"
             >
               {sw ? 'Onyesha jinsi inavyofanya kazi' : 'See it move'}
-            </Link>
+            </a>
           </div>
 
           <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
@@ -332,7 +332,10 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
         </div>
 
         {/* RIGHT — live chat inset that mirrors the platform widget EXACTLY */}
-        <div className="relative flex items-center">
+        <div
+          id="mwikila-live-demo"
+          className="relative flex items-center scroll-mt-24"
+        >
           <div
             className="relative w-full overflow-hidden rounded-[28px] border border-border/50 bg-background/92 shadow-[0_28px_80px_rgb(15_23_42_/_0.22)] ring-1 ring-border/30 backdrop-blur-2xl"
             style={{ minHeight: '520px' }}
