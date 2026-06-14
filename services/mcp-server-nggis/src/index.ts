@@ -22,7 +22,11 @@ const DEFAULT_NAME = 'bossnyumba-mcp-nggis';
 const DEFAULT_VERSION = '0.1.0';
 
 // CRITICAL #4 — Per-tenant allowlist. See mcp-server-nin/src/index.ts.
+// FAIL-CLOSED in every environment: a missing allowlist denies all
+// tenants (dev/test/CI/staging/prod). Bypass requires the explicit
+// opt-out env `MCP_ALLOWLIST_DISABLED=true`.
 const ALLOWLIST_ENV_VAR = 'MCP_TENANT_ALLOWLIST';
+const ALLOWLIST_DISABLE_ENV_VAR = 'MCP_ALLOWLIST_DISABLED';
 function readEnvAllowlist(key: string): ReadonlyArray<string> | null {
   const raw = process.env[ALLOWLIST_ENV_VAR];
   if (!raw) return null;
@@ -35,11 +39,28 @@ function readEnvAllowlist(key: string): ReadonlyArray<string> | null {
   }
 }
 
+/** Explicit opt-out: only `true`/`1` disables the allowlist gate. */
+function isAllowlistDisabled(): boolean {
+  const raw = process.env[ALLOWLIST_DISABLE_ENV_VAR];
+  return raw === 'true' || raw === '1';
+}
+
+/** Resolve the effective allowlist for the gate, fail-closed. */
+function resolveAllowlistGate(
+  configured: ReadonlyArray<string> | null,
+): ReadonlyArray<string> | null {
+  if (isAllowlistDisabled()) return null;
+  return configured ?? ([] as ReadonlyArray<string>);
+}
+
 export interface NggisServerConfig {
   readonly name?: string;
   readonly version?: string;
   readonly adapter?: NggisAdapter;
-  /** Per-tenant allowlist (CRITICAL #4). */
+  /**
+   * Per-tenant allowlist (CRITICAL #4). Unset → fail-closed (deny all)
+   * in every env; bypass via `MCP_ALLOWLIST_DISABLED=true`.
+   */
   readonly allowlist?: ReadonlyArray<string>;
 }
 
@@ -124,9 +145,7 @@ export function createNggisServer(config: NggisServerConfig = {}): {
         ],
       };
     }
-    const allowlistResolved =
-      allowlist ??
-      (process.env.NODE_ENV === 'production' ? ([] as ReadonlyArray<string>) : null);
+    const allowlistResolved = resolveAllowlistGate(allowlist);
     if (allowlistResolved && !allowlistResolved.includes(tenantId)) {
       return {
         isError: true,

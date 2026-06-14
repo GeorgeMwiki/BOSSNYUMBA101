@@ -23,6 +23,27 @@ type DispatchEventRow = typeof dispatchEvents.$inferSelect;
 type CompletionProofRow = typeof completionProofs.$inferSelect;
 type VendorAssignmentRow = typeof vendorAssignments.$inferSelect;
 
+/**
+ * Hard ceiling for "list everything for an entity" reads.
+ *
+ * `listForWorkOrder` / `listForVendor` / `listForProperty` are reachable
+ * from api-gateway routes and were previously unbounded — a single hot
+ * work order or vendor could stream an arbitrarily large result set into
+ * memory and over the wire. A dispatch / proof / assignment history that
+ * legitimately exceeds this ceiling is pathological; the cap protects the
+ * service while still returning the most recent rows (queries order by
+ * recency). Callers needing deep history must paginate explicitly.
+ */
+const LIST_CEILING = 500;
+
+/** Clamp a caller-supplied limit into (0, LIST_CEILING]. */
+function clampLimit(limit?: number): number {
+  if (limit === undefined || !Number.isFinite(limit) || limit <= 0) {
+    return LIST_CEILING;
+  }
+  return Math.min(Math.floor(limit), LIST_CEILING);
+}
+
 // ---------------------------------------------------------------------------
 // DispatchEventRepository
 // ---------------------------------------------------------------------------
@@ -43,7 +64,8 @@ export class DispatchEventRepository {
 
   async listForWorkOrder(
     workOrderId: string,
-    tenantId: string
+    tenantId: string,
+    limit?: number
   ): Promise<DispatchEventRow[]> {
     return this.db
       .select()
@@ -54,7 +76,8 @@ export class DispatchEventRepository {
           eq(dispatchEvents.workOrderId, workOrderId)
         )
       )
-      .orderBy(desc(dispatchEvents.createdAt));
+      .orderBy(desc(dispatchEvents.createdAt))
+      .limit(clampLimit(limit));
   }
 
   async listForTenant(
@@ -63,12 +86,12 @@ export class DispatchEventRepository {
   ): Promise<DispatchEventRow[]> {
     const conds = [eq(dispatchEvents.tenantId, tenantId)];
     if (opts.status) conds.push(eq(dispatchEvents.status, opts.status));
-    const q = this.db
+    return this.db
       .select()
       .from(dispatchEvents)
       .where(and(...conds))
-      .orderBy(desc(dispatchEvents.createdAt));
-    return opts.limit ? q.limit(opts.limit) : q;
+      .orderBy(desc(dispatchEvents.createdAt))
+      .limit(clampLimit(opts.limit));
   }
 
   async create(
@@ -129,7 +152,8 @@ export class CompletionProofRepository {
 
   async listForWorkOrder(
     workOrderId: string,
-    tenantId: string
+    tenantId: string,
+    limit?: number
   ): Promise<CompletionProofRow[]> {
     return this.db
       .select()
@@ -140,7 +164,8 @@ export class CompletionProofRepository {
           eq(completionProofs.workOrderId, workOrderId)
         )
       )
-      .orderBy(desc(completionProofs.createdAt));
+      .orderBy(desc(completionProofs.createdAt))
+      .limit(clampLimit(limit));
   }
 
   async create(
@@ -215,7 +240,8 @@ export class VendorAssignmentRepository {
 
   async listForVendor(
     vendorId: string,
-    tenantId: string
+    tenantId: string,
+    limit?: number
   ): Promise<VendorAssignmentRow[]> {
     return this.db
       .select()
@@ -226,12 +252,14 @@ export class VendorAssignmentRepository {
           eq(vendorAssignments.vendorId, vendorId)
         )
       )
-      .orderBy(desc(vendorAssignments.createdAt));
+      .orderBy(desc(vendorAssignments.createdAt))
+      .limit(clampLimit(limit));
   }
 
   async listForProperty(
     propertyId: string,
-    tenantId: string
+    tenantId: string,
+    limit?: number
   ): Promise<VendorAssignmentRow[]> {
     return this.db
       .select()
@@ -242,7 +270,8 @@ export class VendorAssignmentRepository {
           eq(vendorAssignments.propertyId, propertyId)
         )
       )
-      .orderBy(desc(vendorAssignments.priority));
+      .orderBy(desc(vendorAssignments.priority))
+      .limit(clampLimit(limit));
   }
 
   async listByIds(

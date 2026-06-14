@@ -32,7 +32,7 @@ All values in `.env.example` are **placeholders**. Use your own keys and secrets
    - `DATABASE_URL` — PostgreSQL connection string (migrations, seed, API).
    - `REDIS_URL` — Redis for BullMQ (notifications, reports). No localhost fallback in production.
    - `API_URL` and `FRONTEND_URL` — API gateway and frontend base URLs (used by `@bossnyumba/config`).
-   - `NEXT_PUBLIC_API_URL` — Set in each frontend app (customer-app, estate-manager-app, etc.) to your API base.
+   - `NEXT_PUBLIC_API_URL` — Set in each Next.js frontend app (marketing, admin-platform-portal) to your API base. The Vite owner-portal uses `VITE_API_URL`; the Expo mobile apps (tenant-mobile, staff-mobile) use `EXPO_PUBLIC_API_GATEWAY_URL`.
 3. **Secrets**
    - Generate strong `JWT_SECRET` and `JWT_REFRESH_SECRET` (e.g. `openssl rand -base64 64`).
    - Set `ENCRYPTION_MASTER_KEY` (and optional previous key for rotation).
@@ -42,12 +42,13 @@ All values in `.env.example` are **placeholders**. Use your own keys and secrets
 5. **AI**
    - Set at least one of: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `DEEPSEEK_API_KEY` (and optional `AI_PROVIDER`) for full intelligence.
 6. **Per-app**
-   - Admin/Owner/Customer/Estate-Manager URLs and `NEXT_PUBLIC_*` should match your deployed URLs.
+   - Owner-portal (`VITE_*`), Marketing + Admin-platform-portal (`NEXT_PUBLIC_*`), and the Expo mobile apps (`EXPO_PUBLIC_*`) URLs should match your deployed URLs.
 
 ## App-specific examples
 
-- **apps/admin-portal**, **apps/owner-portal**: see `apps/*/`.env.example if present; root `.env` is often used via Vite proxy.
-- **apps/customer-app**, **apps/estate-manager-app**: need `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPPORT_PHONE`, `NEXT_PUBLIC_SUPPORT_WHATSAPP`, `NEXT_PUBLIC_TENANT_ID` (estate-manager) where applicable.
+- **apps/owner-portal** (Vite): see `apps/owner-portal/.env.example` if present; uses `VITE_*` vars (`VITE_API_URL`). Root `.env` is often used via the Vite proxy.
+- **apps/marketing**, **apps/admin-platform-portal** (Next.js): need `NEXT_PUBLIC_API_URL` and the relevant `NEXT_PUBLIC_*` keys (Supabase, Sentry, support contacts) where applicable.
+- **apps/tenant-mobile**, **apps/staff-mobile** (Expo): need `EXPO_PUBLIC_API_GATEWAY_URL`, `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, and support-contact keys where applicable.
 
 ## Africa’s Talking
 
@@ -66,35 +67,36 @@ Set one of each pair in `.env`.
 
 Playwright reads target URLs from the environment so **no URLs are hardcoded** in tests:
 
-- `BASE_URL` — default project base (e.g. estate-manager).
-- `CUSTOMER_APP_URL` — customer PWA (e.g. `https://app.example.com`).
-- `OWNER_PORTAL_URL` — owner portal.
-- `ADMIN_PORTAL_URL` — admin portal.
-- `ESTATE_MANAGER_URL` — estate manager app.
+- `OWNER_PORTAL_URL` — owner portal (default `http://localhost:3000`).
+- `ADMIN_PORTAL_URL` — admin platform portal (default `http://localhost:3020`).
+
+(The tenant/workforce surfaces are now Expo mobile — `tenant-mobile`, `staff-mobile` — exercised by their own native test runners, not these web Playwright projects.)
 
 For **local** runs, leave these unset and Playwright uses default `localhost` ports. For **CI or production demo**, set all of them (e.g. in CI env or source `e2e/.env`). See `e2e/.env.example`. Optional **demo credentials** (no hardcoded creds in prod): `E2E_TEST_OWNER_EMAIL`, `E2E_TEST_OWNER_PASSWORD`, `E2E_TEST_ADMIN_EMAIL`, `E2E_TEST_ADMIN_PASSWORD`, `E2E_TEST_MANAGER_EMAIL`, `E2E_TEST_MANAGER_PASSWORD`, `E2E_TEST_CUSTOMER_PHONE`, `E2E_TEST_OTP_CODE` — when set, E2E fixtures use these instead of defaults.
 
 ```bash
 # Example: run E2E against deployed apps
-export CUSTOMER_APP_URL=https://app.yoursite.com
 export OWNER_PORTAL_URL=https://owners.yoursite.com
 export ADMIN_PORTAL_URL=https://admin.yoursite.com
-export ESTATE_MANAGER_URL=https://manage.yoursite.com
 pnpm run test:e2e
 
 # Smoke / live demo only (one spec, all projects)
 pnpm run test:e2e:demo
 ```
 
-## Flutter app (bossnyumba_app)
+## Mobile apps (Expo — tenant-mobile, staff-mobile)
 
-API base URL is set at **build time** via `--dart-define`:
+The mobile surfaces are Expo/React Native. They read public config from
+`EXPO_PUBLIC_*` env vars (inlined at bundle time — never put secrets here):
 
 ```bash
-# Production / release build (no hardcoded URL in binary)
-flutter build apk --dart-define=API_BASE_URL=https://api.yoursite.com/api/v1
-# Or for dev
-flutter run --dart-define=API_BASE_URL=http://localhost:4000/api/v1
+# Point a mobile app at your API gateway + Supabase project
+export EXPO_PUBLIC_API_GATEWAY_URL=https://api.yoursite.com
+export EXPO_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+export EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+pnpm --filter @bossnyumba/tenant-mobile start   # or @bossnyumba/staff-mobile
 ```
 
-If `API_BASE_URL` is not set, the app uses the default in `lib/core/api_config.dart` (localhost) — use only for local development.
+For local development, leave these unset and the app falls back to its
+`localhost` defaults. Because `EXPO_PUBLIC_*` values ship inside the client
+bundle, only browser-safe values (gateway URL, Supabase anon key) belong here.
