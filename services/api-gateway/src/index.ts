@@ -68,6 +68,9 @@ import { feedbackRouter } from './routes/feedback';
 import { complaintsRouter } from './routes/complaints';
 import { inspectionsRouter } from './routes/inspections';
 import { documentsHonoRouter } from './routes/documents.hono';
+import { meRouter } from './routes/me.hono';
+import { createOrgsRouter } from './routes/orgs.hono';
+import { createOrgSignupService } from './composition/org-signup-service';
 // Module G — document-intelligence service routes (OCR verify, evidence
 // packs, identity badges, fraud, expiry, progress). Previously dead code:
 // `documentIntelligenceRoutes` was never mounted. Mounted additively under
@@ -1261,10 +1264,30 @@ api.route('/dashboard', dashboardRouter);
 // /checklist) match before the legacy customer move-in router.
 api.route('/onboarding', onboardingFlowRouter);
 api.route('/onboarding', onboardingRouter);
+// Owner org sign-up — the marketing OwnerSignUpForm POSTs here (pre-auth, like
+// /onboarding): creates the Supabase auth user + tenant/org/owner + a session and
+// sets the bossnyumba-session cookie. Supabase env is `?? ''`-guarded so a missing
+// config fails loud at request time, never crashes boot.
+const orgsRouter = createOrgsRouter({
+  service: createOrgSignupService({
+    db: getDb(),
+    config: {
+      supabaseUrl: (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim(),
+      supabaseServiceRoleKey: (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim(),
+      supabaseAnonKey: (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '').trim(),
+    },
+    logger,
+  }),
+  logger,
+});
+api.route('/orgs', orgsRouter);
 api.route('/feedback', feedbackRouter);
 api.route('/complaints', complaintsRouter);
 api.route('/inspections', inspectionsRouter);
 api.route('/documents', documentsHonoRouter);
+// Per-principal self routes — mobile device push-token registration
+// (POST/DELETE /api/v1/me/device-tokens). authMiddleware is inside the router.
+api.route('/me', meRouter);
 // Module G — mount the document-intelligence service routes additively.
 // Distinct prefix from `/documents` (the CRUD router above) because the
 // doc-intel app already namespaces its own roots internally.

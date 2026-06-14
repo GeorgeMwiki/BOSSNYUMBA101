@@ -313,6 +313,54 @@
       "dataLoss": true,
       "envs": ["dev", "staging"],
       "notes": "Wave-B memory-consolidation cursor columns the consolidation-worker codes against (was a schema-drift silent no-op — every hourly tick errored and was swallowed as []). Down drops the per-row consolidated_at cursor; re-applying 0325 re-consolidates already-consolidated turns. Additive ADD COLUMN IF NOT EXISTS, so forward-apply is prod-safe."
+    },
+    {
+      "up": "0326_field_captures.sql",
+      "down": "down/0326_down_field_captures.sql",
+      "reverses": "CREATE TABLE field_captures + field_captures_tenant_type_idx + field_captures_tenant_property_idx + field_captures_tenant_client_uq (unique) + FORCE RLS tenant_isolation_select/modify + service_role_bypass + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Wave-C staff-mobile offline field-capture sink (#7). Idempotent on (tenant_id, client_id). NO money columns. Dropping discards persisted attendance/incident/shift-report captures; the post-fix staff app RETAINS+retries on the resulting 5xx so an accidental down does not silently destroy in-flight field data."
+    },
+    {
+      "up": "0327_applicant_identity.sql",
+      "down": "down/0327_down_applicant_identity.sql",
+      "reverses": "CREATE TABLE applicant_kyc + applicant_kyc_tenant_applicant_idx + CREATE TABLE applicant_profile + applicant_profile_tenant_applicant_uq (unique) + FORCE RLS tenant_isolation_select/modify + service_role_bypass + REVOKE anon on both",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Wave-C renter-applicant identity surface (#9). KYC submissions + profile/notification prefs; keyed on JWT applicant_id (uniform-404 anti-IDOR); preferred_lang persisted (sw|en). NO money columns. Dropping discards all KYC + applicant profiles."
+    },
+    {
+      "up": "0328_bid_messages.sql",
+      "down": "down/0328_down_bid_messages.sql",
+      "reverses": "CREATE TABLE bid_messages + enum bid_message_sender + append-only trigger + FORCE RLS (tenant_isolation_bid_messages + service_role_bypass) + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Wave-C tenant↔owner bid messaging for the tender-scoped bid loop (#8). Append-only. Dropping discards bid conversation history."
+    },
+    {
+      "up": "0329_document_signatures.sql",
+      "down": "down/0329_down_document_signatures.sql",
+      "reverses": "CREATE TABLE document_signatures + UNIQUE(tenant_id, document_id, signer_id) + idx_document_signatures_tenant_doc + idx_document_signatures_tenant_signer + FORCE RLS tenant_isolation + service_role_bypass + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Wave-C renter e-signature records (#H36). Idempotent on (tenant_id, document_id, signer_id). Dropping discards lease/contract signatures — legal records; MUST NOT run in production."
+    },
+    {
+      "up": "0330_device_tokens.sql",
+      "down": "down/0330_down_device_tokens.sql",
+      "reverses": "CREATE TABLE device_tokens + UNIQUE(user_id, token, platform) + soft-revoke revoked_at + FORCE RLS tenant_isolation + service_role_bypass + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Wave-C mobile push device-token registry (#H35). Re-registered on next app open, so the loss is recoverable. Dropping pauses push fan-out until devices re-register."
+    },
+    {
+      "up": "0331_rfb_requests.sql",
+      "down": "down/0331_down_rfb_requests.sql",
+      "reverses": "CREATE TABLE rfb_requests + idx_rfb_requests_tenant_applicant + idx_rfb_requests_tenant_status + FORCE RLS tenant_isolation + service_role_bypass + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "Wave-C renter request-for-application (#H37). Applicant-scoped, uniform-404 anti-IDOR. Dropping discards open renter requests."
     }
   ]
 }

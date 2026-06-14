@@ -19,15 +19,34 @@
  *   GET /collections       — arrears cases list
  *   GET /sla               — placeholder summary (SLA analytics pending)
  *
- *   All POST/PUT/DELETE surfaces return 501 NOT_IMPLEMENTED pointing at
+ *   Most POST/PUT/DELETE surfaces still return 501 NOT_IMPLEMENTED pointing at
  *   the canonical tenant-scoped routers they should go through
- *   (/api/v1/work-orders, /api/v1/inspections, etc.). The BFF was never
- *   the source of truth for mutations.
+ *   (/api/v1/work-orders, /api/v1/inspections, etc.). The BFF was never the
+ *   source of truth for those mutations.
  *
- * Tenant isolation: every query is scoped by `auth.tenantId`.
+ * TWO write surfaces ARE owned here (they have no canonical router and the
+ * mobile clients have no other home for them):
+ *
+ *   STAFF FIELD CAPTURES (#7) — offline-sync write sink for staff-mobile:
+ *     POST /attendance · /task-acks · /incidents · /shift-reports
+ *     Persists to field_captures (migration 0326), tenant-scoped + FORCE RLS,
+ *     idempotent on a client-supplied id. Fixes the silent data-loss where a
+ *     missing route 404'd and the offline queue dropped the payload.
+ *
+ *   APPLICANT IDENTITY (#9) — renter self-service for tenant-mobile:
+ *     POST /applicants/kyc · GET /applicants/kyc/:id/status
+ *     POST|PUT /applicants/profile · POST|PUT /applicants/profile/notifications
+ *     Persists to applicant_kyc + applicant_profile (migration 0327),
+ *     tenant-scoped + FORCE RLS, keyed on the JWT applicant_id (uniform-404
+ *     anti-IDOR; preferredLang persisted + hydrated, never hard-coded).
+ *
+ * Tenant isolation: every read is scoped by `auth.tenantId`; every write goes
+ * through `withTenantContext` (in the repo) so the RLS GUC is bound and a
+ * cross-tenant write SURFACES rather than fake-succeeding.
  */
 
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { and, count, desc, eq, gte, lte, or, sql } from 'drizzle-orm';
 import {
   workOrders,
@@ -39,23 +58,73 @@ import {
   arrearsCases,
 } from '@bossnyumba/database';
 import { authMiddleware } from '../../middleware/hono-auth';
-import { requireRole } from '../../middleware/authorization';
 import { UserRole } from '../../types/user-role';
 import { routeCatch } from '../../utils/safe-error';
+import {
+  createEstateFieldIdentityRepo,
+  type CaptureType,
+} from '../../repositories/estate-field-identity-repo';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
-app.use(
-  '*',
-  requireRole(
-    UserRole.PROPERTY_MANAGER,
-    UserRole.MAINTENANCE_STAFF,
-    UserRole.TENANT_ADMIN,
-    UserRole.ADMIN,
-    UserRole.SUPER_ADMIN,
-  ),
-);
+
+// Role gates — split because the two surfaces this router serves have
+// different audiences:
+//
+//   * Manager/operator surfaces (home, work-orders, inspections, vendors,
+//     occupancy, collections, field captures) are for staff/operators:
+//     PROPERTY_MANAGER + MAINTENANCE_STAFF + admin roles. A renter must NOT be
+//     able to read another tenant's work-order queue, so RESIDENT is excluded
+//     from these.
+//
+//   * The /applicants/* identity surface is the renter's OWN self-service
+//     (KYC + profile + notification prefs). The tenant-mobile renter
+//     authenticates as RESIDENT (the customer-app default in
+//     auth.middleware mapSupabaseRoleToUserRole). These routes are self-scoped
+//     to the authenticated userId, so RESIDENT is permitted here — and ONLY
+//     here.
+//
+// Single fail-closed gate (deny-by-default). The manager surface is operator-
+// only; the renter self-service identity surface (/applicants/*) is the sole
+// RESIDENT-permitted carve-out. Implemented as ONE `*` middleware rather than a
+// per-path enumeration so a future route added without an explicit gate is
+// still covered (it falls into the operator-only branch — never ungated).
+const MANAGER_ROLES = new Set<string>([
+  UserRole.PROPERTY_MANAGER,
+  UserRole.MAINTENANCE_STAFF,
+  UserRole.TENANT_ADMIN,
+  UserRole.ADMIN,
+  UserRole.SUPER_ADMIN,
+]);
+
+// /applicants/* additionally admits RESIDENT (the tenant-mobile renter's mapped
+// role) — and ONLY that surface. Self-scoping to the JWT userId in each handler
+// guarantees a renter sees only their own record.
+const APPLICANT_EXTRA_ROLES = new Set<string>([UserRole.RESIDENT]);
+
+app.use('*', async (c, next) => {
+  const auth = c.get('auth') as { role?: string } | undefined;
+  const role = auth?.role;
+  if (!role) {
+    return c.json(
+      { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+      401,
+    );
+  }
+  const path = c.req.path; // e.g. /api/v1/manager/applicants/profile
+  const isApplicantSurface = /\/applicants(\/|$)/u.test(path);
+  const allowed =
+    MANAGER_ROLES.has(role) ||
+    (isApplicantSurface && APPLICANT_EXTRA_ROLES.has(role));
+  if (!allowed) {
+    return c.json(
+      { success: false, error: { code: 'FORBIDDEN', message: 'Insufficient permissions' } },
+      403,
+    );
+  }
+  await next();
+});
 
 function dbUnavailable(c) {
   return c.json(
@@ -589,6 +658,334 @@ app.get('/vendors/scorecards', async (c) => {
     });
   }
 });
+
+// ============================================================================
+// STAFF FIELD CAPTURES (#7) — the offline-sync write sink.
+//
+// apps/staff-mobile/src/sync/flush.ts POSTs each queued offline capture to
+// POST /api/v1/manager/<attendance|task-acks|incidents|shift-reports>. These
+// routes did not exist, so every flush 404'd and the queue's shouldDrop()
+// discarded the payload as poisoned — silent, permanent field-data loss. We
+// persist into the tenant-scoped `field_captures` table (migration 0326) via a
+// repo that binds the RLS tenant GUC (withTenantContext) so a cross-tenant
+// write SURFACES rather than fake-succeeding. Idempotent on a client-supplied
+// id so an at-least-once flush re-POST absorbs into the same row.
+//
+// NOTE on what is intentionally NOT built: the staff-app endpoint map also
+// registers mining-residue keys (drill_hole→inspections, fuel_log→
+// materials-logs, excavator_count, ppe_receipt, fingerprint_sign). Those are
+// NOT real-estate entities; only attendance / task_ack / incident /
+// shift_report are wired here. The residue keys remain 404 (their queue entries
+// are not produced by the real-estate staff app).
+// ============================================================================
+
+// Each capture carries a client-supplied id (the offline-queue entry id) used
+// as the idempotency key, plus optional property/unit scoping, an optional
+// device-reported timestamp, and a type-specific body. The body is kept open
+// (passthrough) per type but the envelope is strictly validated.
+const FieldCaptureBodySchema = z.object({
+  clientId: z.string().min(1).max(200),
+  propertyId: z.string().min(1).max(200).optional().nullable(),
+  unitId: z.string().min(1).max(200).optional().nullable(),
+  // Device-reported event time. Kept as a permissive bounded string (NOT a
+  // strict ISO datetime) so a minor client timestamp-format variance never
+  // 422-drops an otherwise-valid offline capture — the DB column is TIMESTAMPTZ
+  // and Postgres parses the common forms; a truly unparseable value surfaces as
+  // a 22P02 → 400 (mapped), still retained-and-fixable rather than silent loss.
+  capturedAt: z.string().min(1).max(64).optional().nullable(),
+  // Some queue payloads nest the typed fields under `body`; others send them
+  // flat. We accept both: an explicit `body` object wins, otherwise the
+  // remaining fields are folded into the body below.
+  body: z.record(z.unknown()).optional(),
+}).passthrough();
+
+function fieldRepo(c) {
+  const db = (c.get('services') ?? {}).db;
+  return db ? createEstateFieldIdentityRepo(db) : null;
+}
+
+function captureHandler(captureType: CaptureType) {
+  return async (c) => {
+    const repo = fieldRepo(c);
+    if (!repo) return dbUnavailable(c);
+    const tenantId = c.get('tenantId');
+    const userId = c.get('userId');
+
+    let raw: unknown;
+    try {
+      raw = await c.req.json();
+    } catch {
+      return c.json(
+        {
+          success: false,
+          error: { code: 'INVALID_JSON', message: 'Request body must be valid JSON.' },
+        },
+        400,
+      );
+    }
+
+    const parsed = FieldCaptureBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Field capture payload failed validation.',
+            details: parsed.error.flatten(),
+          },
+        },
+        422,
+      );
+    }
+
+    const { clientId, propertyId, unitId, capturedAt, body, ...rest } = parsed.data;
+    // Fold flat fields into the body when no explicit `body` object was sent,
+    // so the typed payload is preserved either way. The envelope keys are
+    // stripped from `rest` by the destructure above.
+    const effectiveBody =
+      body && typeof body === 'object'
+        ? (body as Record<string, unknown>)
+        : (rest as Record<string, unknown>);
+
+    try {
+      const record = await repo.saveFieldCapture({
+        tenantId,
+        staffId: userId,
+        clientId,
+        captureType,
+        propertyId: propertyId ?? null,
+        unitId: unitId ?? null,
+        capturedAt: capturedAt ?? null,
+        body: effectiveBody,
+      });
+      // 200 (not 201) on a deduped replay; 201 on a fresh insert. Either way
+      // the client gets the durable record id so the optimistic "synced" badge
+      // is now backed by real persistence.
+      return c.json(
+        { success: true, data: record },
+        record.deduped ? 200 : 201,
+      );
+    } catch (err) {
+      return routeCatch(c, err, {
+        code: 'FIELD_CAPTURE_WRITE_FAILED',
+        status: 503,
+        fallback: 'Field capture write failed',
+      });
+    }
+  };
+}
+
+app.post('/attendance', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('attendance')));
+app.post('/task-acks', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('task_ack')));
+app.post('/incidents', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('incident')));
+app.post('/shift-reports', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('shift_report')));
+
+// ============================================================================
+// TENANT KYC + APPLICANT IDENTITY (#9) — renter-applicant self-service.
+//
+// apps/tenant-mobile/src/api/applicants.ts drives a renter's own identity:
+//   POST /applicants/kyc                    submit KYC
+//   GET  /applicants/kyc/:id/status         poll one KYC record (own only)
+//   PUT/POST /applicants/profile            update profile (preferredLang persisted)
+//   PUT  /applicants/profile/notifications  update notification prefs
+// Backed by applicant_kyc + applicant_profile (migration 0327), tenant-scoped,
+// keyed on the authenticated applicant_id from the JWT (never the body) so a
+// renter can only ever read/write their own record. A KYC poll for a record
+// that is not theirs returns a uniform 404 (anti-IDOR).
+// ============================================================================
+
+const KycSubmissionSchema = z.object({
+  personal: z.object({
+    fullName: z.string().min(1).max(300),
+    phone: z.string().min(1).max(40),
+    email: z.string().email(),
+  }),
+  nida: z.object({
+    frontImageUri: z.string().min(1),
+    backImageUri: z.string().min(1),
+  }),
+  company: z.object({
+    tin: z.string().min(1).max(60),
+    registrationDocUri: z.string().min(1),
+    registrationDocName: z.string().min(1).max(300),
+  }),
+  aml: z.object({
+    sourceOfFunds: z.string().min(1).max(2000),
+    isPep: z.boolean(),
+    sanctionsConsent: z.boolean(),
+  }),
+});
+
+const ProfileUpdateSchema = z.object({
+  companyName: z.string().min(1).max(300).optional(),
+  preferredLang: z.enum(['sw', 'en']).optional(),
+  phone: z.string().min(1).max(40).optional(),
+});
+
+const NotificationPrefsSchema = z.object({
+  newListings: z.boolean(),
+  bidUpdates: z.boolean(),
+  documentReady: z.boolean(),
+  priceAlerts: z.boolean(),
+});
+
+async function parseJsonBody(c): Promise<{ ok: true; value: unknown } | { ok: false; res: Response }> {
+  try {
+    return { ok: true, value: await c.req.json() };
+  } catch {
+    return {
+      ok: false,
+      res: c.json(
+        {
+          success: false,
+          error: { code: 'INVALID_JSON', message: 'Request body must be valid JSON.' },
+        },
+        400,
+      ),
+    };
+  }
+}
+
+function validationError(c, error): Response {
+  return c.json(
+    {
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Request payload failed validation.',
+        details: error.flatten(),
+      },
+    },
+    422,
+  );
+}
+
+app.post('/applicants/kyc', withSecurityEvents({ action: 'estate-manager-app.kyc-submit', resource: 'applicant-kyc', severity: 'info' }, async (c) => {
+  const repo = fieldRepo(c);
+  if (!repo) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const applicantId = c.get('userId');
+
+  const bodyResult = await parseJsonBody(c);
+  if (!bodyResult.ok) return bodyResult.res;
+  const parsed = KycSubmissionSchema.safeParse(bodyResult.value);
+  if (!parsed.success) return validationError(c, parsed.error);
+
+  try {
+    const record = await repo.submitKyc({
+      tenantId,
+      applicantId,
+      personal: parsed.data.personal,
+      nida: parsed.data.nida,
+      company: parsed.data.company,
+      aml: parsed.data.aml,
+    });
+    return c.json({ success: true, data: record }, 201);
+  } catch (err) {
+    return routeCatch(c, err, {
+      code: 'KYC_SUBMIT_FAILED',
+      status: 503,
+      fallback: 'KYC submission failed',
+    });
+  }
+}));
+
+app.get('/applicants/kyc/:id/status', async (c) => {
+  const repo = fieldRepo(c);
+  if (!repo) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const applicantId = c.get('userId');
+  const id = c.req.param('id');
+
+  try {
+    const record = await repo.getKycStatus(tenantId, applicantId, id);
+    if (!record) {
+      // Uniform 404 — a record that exists but belongs to another applicant is
+      // indistinguishable from one that does not exist (anti-IDOR).
+      return c.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'KYC record not found' } },
+        404,
+      );
+    }
+    return c.json({ success: true, data: record });
+  } catch (err) {
+    return routeCatch(c, err, {
+      code: 'KYC_STATUS_FAILED',
+      status: 503,
+      fallback: 'KYC status query failed',
+    });
+  }
+});
+
+const profileUpsertHandler = async (c) => {
+  const repo = fieldRepo(c);
+  if (!repo) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const applicantId = c.get('userId');
+
+  const bodyResult = await parseJsonBody(c);
+  if (!bodyResult.ok) return bodyResult.res;
+  const parsed = ProfileUpdateSchema.safeParse(bodyResult.value);
+  if (!parsed.success) return validationError(c, parsed.error);
+
+  try {
+    const record = await repo.upsertProfile({
+      tenantId,
+      applicantId,
+      companyName: parsed.data.companyName ?? null,
+      phone: parsed.data.phone ?? null,
+      preferredLang: parsed.data.preferredLang,
+    });
+    return c.json({ success: true, data: record });
+  } catch (err) {
+    return routeCatch(c, err, {
+      code: 'PROFILE_UPDATE_FAILED',
+      status: 503,
+      fallback: 'Profile update failed',
+    });
+  }
+};
+
+// The tenant app calls POST today (applicants.ts) but the canonical verb for an
+// idempotent full-object upsert is PUT — both are wired to the same handler.
+app.post('/applicants/profile', withSecurityEvents({ action: 'estate-manager-app.profile-update', resource: 'applicant-profile', severity: 'info' }, profileUpsertHandler));
+app.put('/applicants/profile', withSecurityEvents({ action: 'estate-manager-app.profile-update', resource: 'applicant-profile', severity: 'info' }, profileUpsertHandler));
+
+const notificationPrefsHandler = async (c) => {
+  const repo = fieldRepo(c);
+  if (!repo) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const applicantId = c.get('userId');
+
+  const bodyResult = await parseJsonBody(c);
+  if (!bodyResult.ok) return bodyResult.res;
+  const parsed = NotificationPrefsSchema.safeParse(bodyResult.value);
+  if (!parsed.success) return validationError(c, parsed.error);
+
+  try {
+    const record = await repo.updateNotificationPrefs({
+      tenantId,
+      applicantId,
+      newListings: parsed.data.newListings,
+      bidUpdates: parsed.data.bidUpdates,
+      documentReady: parsed.data.documentReady,
+      priceAlerts: parsed.data.priceAlerts,
+    });
+    // The tenant app's updateNotificationPrefs expects `data` to be the prefs
+    // object; return the hydrated notification block.
+    return c.json({ success: true, data: record.notifications });
+  } catch (err) {
+    return routeCatch(c, err, {
+      code: 'NOTIFICATION_PREFS_FAILED',
+      status: 503,
+      fallback: 'Notification preferences update failed',
+    });
+  }
+};
+
+app.put('/applicants/profile/notifications', withSecurityEvents({ action: 'estate-manager-app.notif-prefs', resource: 'applicant-profile', severity: 'info' }, notificationPrefsHandler));
+app.post('/applicants/profile/notifications', withSecurityEvents({ action: 'estate-manager-app.notif-prefs', resource: 'applicant-profile', severity: 'info' }, notificationPrefsHandler));
 
 // Mutations route through the canonical tenant-scoped routers. The BFF
 // never owned writes; these 501s make that explicit.
