@@ -129,6 +129,24 @@ export const paymentsService = {
   },
 };
 
+/**
+ * paymentMethodsService — DEFERRED BACKEND (born-dark, no consumer).
+ *
+ * Every method below targets `/payment-methods*`, which is NOT mounted in
+ * the api-gateway (no router exists). This service also has ZERO callers
+ * anywhere in the monorepo — the real billing surface in owner-portal hits
+ * `GET /api/v1/billing/payment-methods` instead. It is exported only via
+ * the barrel and never imported.
+ *
+ * Do NOT wire a consumer to these methods until both land:
+ *   1. an api-gateway `/payment-methods` router (server RBAC + RLS), and
+ *   2. a product decision on whether this customer-facing
+ *      add-M-Pesa / set-default / remove flow is in scope (vs. the
+ *      existing `/billing/payment-methods` owner surface).
+ *
+ * Kept as a typed contract for whoever builds that backend. Tracked for
+ * product decision — see the final-sweep register.
+ */
 export const paymentMethodsService = {
   /**
    * List customer's payment methods
