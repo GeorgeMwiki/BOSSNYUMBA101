@@ -12,10 +12,10 @@
  *   blow up at render time without this remediation.
  *
  *   This hook threads the active tenant currency through every screen
- *   that displays money. It mirrors the resolution chain used by the
- *   customer-app `useCurrencyPreference` hook but reads from the
- *   in-process `AuthContext` (owner-portal's tenant identity is already
- *   bound at login) instead of going back to the server.
+ *   that displays money. It follows the platform currency-resolution
+ *   chain (user override → tenant default → undefined) but reads from
+ *   the in-process `AuthContext` (owner-portal's tenant identity is
+ *   already bound at login) instead of going back to the server.
  *
  * Resolution chain
  * ----------------
@@ -53,9 +53,9 @@ import { formatCurrency as sharedFormatCurrency } from '@bossnyumba/api-client';
 import { useAuth } from '../contexts/AuthContext';
 
 /**
- * localStorage key for the per-user owner-portal override. Distinct from
- * the customer-app key so the two apps' preferences don't collide when
- * the same user happens to be both an owner and a tenant.
+ * localStorage key for the per-user owner-portal override. Namespaced
+ * to the owner surface so its preference never collides with another
+ * surface's display-currency override for the same user.
  */
 export const OWNER_CURRENCY_STORAGE_KEY = 'owner_display_currency';
 
@@ -78,7 +78,8 @@ export function readStoredCurrency(): CurrencyCode | undefined {
     return trimmed.length === 0 ? undefined : trimmed;
   } catch {
     // localStorage can throw in private-mode Safari and a few embedded
-    // contexts. Falling back to `undefined` matches the customer-app.
+    // contexts. Falling back to `undefined` keeps render safe (the
+    // caller shows a placeholder rather than guessing a currency).
     return undefined;
   }
 }
@@ -124,8 +125,7 @@ function sanitiseCode(code: CurrencyCode | undefined | null): CurrencyCode | und
  */
 export function useTenantCurrency(): CurrencyCode | undefined {
   const { tenant } = useAuth();
-  // Eager read so first paint already has the override (matches the
-  // customer-app pattern).
+  // Eager read so first paint already has the persisted override.
   const [override, setOverride] = useState<CurrencyCode | undefined>(() =>
     readStoredCurrency(),
   );

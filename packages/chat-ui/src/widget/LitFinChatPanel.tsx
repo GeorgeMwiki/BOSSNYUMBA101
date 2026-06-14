@@ -133,6 +133,12 @@ export function LitFinChatPanel({
   const resolvedDisclaimerSw =
     disclaimerSw ?? ctxDisclaimerSw ?? DEFAULT_DISCLAIMER_SW;
 
+  // The public marketing endpoint (`/api/chat`) accepts only a text turn —
+  // it has no image field, so any staged image is silently dropped. Don't
+  // offer an upload affordance that does nothing. Authenticated portals
+  // that actually forward images keep the control.
+  const imageUploadEnabled = portalId !== 'public';
+
   const [messages, setMessages] = useState<ReadonlyArray<LitFinMessage>>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -204,7 +210,11 @@ export function LitFinChatPanel({
             language,
             portalId,
             currentRoute,
-            ...(pendingImage ? { image: pendingImage } : {}),
+            // Only attach an image when the portal actually forwards it —
+            // never send a payload the endpoint will drop on the floor.
+            ...(imageUploadEnabled && pendingImage
+              ? { image: pendingImage }
+              : {}),
           }),
         });
 
@@ -235,8 +245,12 @@ export function LitFinChatPanel({
           const reply =
             json?.reply ??
             json?.text ??
+            // A structured error (e.g. 503 ai_unavailable) must surface as a
+            // human sentence — never the raw machine code in parentheses.
             (json?.error
-              ? `(${json.error})`
+              ? language === 'sw'
+                ? 'Samahani, msaidizi hapatikani kwa sasa. Tafadhali jaribu tena baada ya muda mfupi.'
+                : "Sorry, the assistant is unavailable right now. Please try again in a moment."
               : language === 'sw'
                 ? 'Samahani, hakuna jibu kwa sasa.'
                 : 'Sorry, no reply right now.');
@@ -258,28 +272,43 @@ export function LitFinChatPanel({
             ];
           });
         }
-      } catch (err) {
+      } catch {
+        // Network / transport failure — show a clean human sentence. The
+        // raw error message is a developer detail, never surfaced to a
+        // public visitor.
         setMessages((prev) => {
           const last = prev[prev.length - 1];
           if (!last || last.role !== 'assistant') return prev;
-          const errText =
-            err instanceof Error ? err.message : 'unknown error';
           return [
             ...prev.slice(0, -1),
             {
               ...last,
               content:
                 language === 'sw'
-                  ? `Samahani, hakuna mawasiliano. (${errText})`
-                  : `Sorry, no network. (${errText})`,
+                  ? 'Samahani, mawasiliano yamekatika. Tafadhali angalia mtandao wako na ujaribu tena.'
+                  : "Sorry, the connection dropped. Please check your network and try again.",
             },
           ];
         });
       } finally {
+        // Always finalize the streaming bubble — on a clean turn_end, an
+        // abnormal stream-end (zero deltas, dropped mid-stream), or a
+        // throw. A bubble that ended with NO content would otherwise sit
+        // blank with a blinking cursor forever; settle it to an honest
+        // sentence instead.
         setMessages((prev) => {
           const last = prev[prev.length - 1];
           if (!last || last.role !== 'assistant') return prev;
-          return [...prev.slice(0, -1), { ...last, isStreaming: false }];
+          const settledContent =
+            last.content.trim().length > 0
+              ? last.content
+              : language === 'sw'
+                ? 'Samahani, jibu halikukamilika. Tafadhali jaribu tena.'
+                : "Sorry, the reply didn't complete. Please try again.";
+          return [
+            ...prev.slice(0, -1),
+            { ...last, content: settledContent, isStreaming: false },
+          ];
         });
         setIsStreaming(false);
       }
@@ -293,6 +322,7 @@ export function LitFinChatPanel({
       portalId,
       currentRoute,
       pendingImage,
+      imageUploadEnabled,
     ],
   );
 
@@ -479,7 +509,7 @@ export function LitFinChatPanel({
       </div>
 
       <AnimatePresence>
-        {pendingImage && (
+        {imageUploadEnabled && pendingImage && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -548,34 +578,38 @@ export function LitFinChatPanel({
               </svg>
             )}
           </button>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isStreaming}
-            aria-label={language === 'sw' ? 'Pakia picha' : 'Upload image'}
-            title={language === 'sw' ? 'Pakia picha' : 'Upload image'}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground disabled:opacity-40"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={onPickImage}
-            className="hidden"
-          />
+          {imageUploadEnabled && (
+            <>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isStreaming}
+                aria-label={language === 'sw' ? 'Pakia picha' : 'Upload image'}
+                title={language === 'sw' ? 'Pakia picha' : 'Upload image'}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground disabled:opacity-40"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={onPickImage}
+                className="hidden"
+              />
+            </>
+          )}
           <textarea
             ref={inputRef}
             value={input}

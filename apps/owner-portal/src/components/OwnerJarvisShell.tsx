@@ -6,8 +6,8 @@
  *   - `tool_output_available` → `uiParts[]` plumbing already lives in
  *     the chat-ui hook; this shell just renders each part through a
  *     minimal AdaptiveRenderer-style dispatcher
- *   - FeedbackThumbs on every assistant turn (gateway wire identical
- *     to the customer-app variant)
+ *   - FeedbackThumbs on every assistant turn (shared gateway feedback
+ *     wire, with a surface-local copy of the widget)
  *
  * The owner-portal is Vite (not Next.js) so this component is plain
  * React with no `use client` directive. The Vite-only Jarvis page

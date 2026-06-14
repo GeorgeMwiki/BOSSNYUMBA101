@@ -14,11 +14,11 @@
  * browsers; we use `fetch()` + a manual SSE parser so the bearer flows
  * the same as on every other authenticated route.
  *
- * Identical bodies live in:
- *   - apps/customer-app/src/lib/cross-portal-listener.ts (this file)
+ * Identical bodies live on the web SPA surfaces:
+ *   - apps/admin-platform-portal/src/lib/cross-portal-listener.ts (this file)
  *   - apps/owner-portal/src/lib/cross-portal-listener.ts
- *   - apps/admin-platform-portal/src/lib/cross-portal-listener.ts
- *   - apps/estate-manager-app/src/lib/cross-portal-listener.ts
+ * The Expo mobile surfaces (tenant-mobile, staff-mobile) carry their
+ * own native SSE consumers.
  *
  * Phase B may extract to a shared `packages/cross-portal-client/`
  * package once a portal wants to override the dispatch surface.

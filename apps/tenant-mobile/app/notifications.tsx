@@ -38,6 +38,10 @@ import {
   markAllRead as markAllLiveRead,
   type InboxItem,
 } from '@/lib/notifications/inbox-store'
+import {
+  resolveNotificationRoute,
+  resolveLiveEventRoute,
+} from '@/lib/notifications/deep-link'
 
 export default function NotificationsScreen(): JSX.Element {
   const router = useRouter()
@@ -65,11 +69,28 @@ export default function NotificationsScreen(): JSX.Element {
       if (!row.read_at) {
         markRead.mutate(row.id)
       }
-      if (row.kind === 'rfb_fulfilled' && row.rfb_id) {
-        router.push(`/rfb/${row.rfb_id}/sign-delivery`)
+      // Every notification kind resolves to a real route or an honest
+      // no-op — a tap never dead-ends on an unmapped/nonexistent screen.
+      const route = resolveNotificationRoute({
+        kind: row.kind,
+        rfbId: row.rfb_id,
+      })
+      if (route) {
+        router.push(route)
       }
     },
     [markRead, router],
+  )
+
+  const onTapLive = useCallback(
+    (item: InboxItem) => {
+      markLiveRead(item.id)
+      const route = resolveLiveEventRoute(item.kind, item.payload)
+      if (route) {
+        router.push(route)
+      }
+    },
+    [router],
   )
 
   const notifications = query.data?.notifications ?? []
@@ -87,7 +108,12 @@ export default function NotificationsScreen(): JSX.Element {
           }
         />
         {inbox.items.length > 0 ? (
-          <LiveEventsRibbon items={inbox.items} unreadCount={inbox.unreadCount} isSw={isSw} />
+          <LiveEventsRibbon
+            items={inbox.items}
+            unreadCount={inbox.unreadCount}
+            isSw={isSw}
+            onTapItem={onTapLive}
+          />
         ) : null}
       </View>
       <FlatList
@@ -172,6 +198,7 @@ interface LiveEventsRibbonProps {
   readonly items: ReadonlyArray<InboxItem>
   readonly unreadCount: number
   readonly isSw: boolean
+  readonly onTapItem: (item: InboxItem) => void
 }
 
 function describeKind(kind: string, isSw: boolean): string {
@@ -191,7 +218,7 @@ function describeKind(kind: string, isSw: boolean): string {
   }
 }
 
-function LiveEventsRibbon({ items, unreadCount, isSw }: LiveEventsRibbonProps): JSX.Element {
+function LiveEventsRibbon({ items, unreadCount, isSw, onTapItem }: LiveEventsRibbonProps): JSX.Element {
   const recent = items.slice(0, 5)
   return (
     <View style={styles.ribbonWrap}>
@@ -209,7 +236,7 @@ function LiveEventsRibbon({ items, unreadCount, isSw }: LiveEventsRibbonProps): 
         <Pressable
           key={item.id}
           accessibilityRole="button"
-          onPress={() => markLiveRead(item.id)}
+          onPress={() => onTapItem(item)}
         >
           <View style={styles.ribbonRow}>
             <Text style={styles.ribbonKind}>{describeKind(item.kind, isSw)}</Text>

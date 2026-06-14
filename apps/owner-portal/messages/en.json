@@ -394,7 +394,10 @@
     "close": "Close",
     "overrideDecision": "Override Decision",
     "retryingWorkflow": "Retrying workflow {id}...",
-    "workflowCancelled": "Workflow {id} cancelled"
+    "workflowCancelled": "Workflow {id} cancelled",
+    "refreshed": "Operations data refreshed",
+    "exportLogEmpty": "No AI decisions to export yet",
+    "exportLogReady": "AI decision log exported"
   },
   "pages": {
     "tenantsTitle": "Tenants",

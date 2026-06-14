@@ -36,6 +36,23 @@ let currentUser: TenantUser | null = null
 let bootstrapped = false
 const listeners = new Set<Listener>()
 
+// Resolves once the Supabase session has been read from storage on cold
+// boot (or the bootstrap has failed and we know there is no session).
+// The splash gate awaits THIS instead of a fixed timer so it never routes
+// to the wrong stack by reading `isAuthenticated()` before the persisted
+// session has hydrated.
+let resolveAuthReady: () => void
+const authReadyPromise: Promise<void> = new Promise<void>((resolve) => {
+  resolveAuthReady = resolve
+})
+let authReadySettled = false
+
+function settleAuthReady(): void {
+  if (authReadySettled) return
+  authReadySettled = true
+  resolveAuthReady()
+}
+
 function emit(): void {
   for (const listener of listeners) {
     listener(currentUser)
@@ -95,7 +112,22 @@ async function ensureBootstrapped(): Promise<void> {
   } catch {
     // Bootstrap failed (e.g. missing env in dev) — leave currentUser null;
     // subscribers will render unauthenticated state.
+  } finally {
+    // Either the persisted session hydrated or we proved there is none —
+    // the routing decision is now safe to make.
+    settleAuthReady()
   }
+}
+
+/**
+ * Resolves once the auth bootstrap has settled (session hydrated from
+ * storage, or confirmed absent). Routing gates MUST await this before
+ * reading `isAuthenticated()` so a cold boot never races the persisted
+ * session and lands on the wrong stack.
+ */
+export function ensureAuthReady(): Promise<void> {
+  void ensureBootstrapped()
+  return authReadyPromise
 }
 
 export function getCurrentUser(): TenantUser {

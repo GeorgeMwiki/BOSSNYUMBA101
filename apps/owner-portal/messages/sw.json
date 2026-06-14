@@ -394,7 +394,10 @@
     "close": "Funga",
     "overrideDecision": "Badilisha Uamuzi",
     "retryingWorkflow": "Inajaribu tena mfumo {id}...",
-    "workflowCancelled": "Mfumo {id} umeghairiwa"
+    "workflowCancelled": "Mfumo {id} umeghairiwa",
+    "refreshed": "Data ya uendeshaji imehuishwa",
+    "exportLogEmpty": "Hakuna maamuzi ya AI ya kuhamisha bado",
+    "exportLogReady": "Kumbukumbu ya maamuzi ya AI imehamishwa"
   },
   "pages": {
     "tenantsTitle": "Wapangaji",

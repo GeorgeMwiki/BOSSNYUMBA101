@@ -1,19 +1,18 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Button,
-  Badge,
-  Alert,
-  AlertDescription,
-  Skeleton,
-  EmptyState,
-} from '@bossnyumba/design-system';
+import React from 'react';
 import { useTranslations } from 'next-intl';
-import { api } from '../../lib/api';
+import { MissingBackendNotice } from '../../components/MissingBackendNotice';
 
+/**
+ * Intended row shape for the owner-facing live-negotiations queue.
+ *
+ * Kept as the documented contract for whoever lands the backend route
+ * (see below). The owner list+decision surface this component renders is
+ * NOT the same as the turn-based negotiation engine mounted at
+ * `/api/v1/negotiations` (which exposes only POST create / turns / accept
+ * / reject / GET :id/audit — no list, no `override`). Until the owner
+ * aggregation surface lands, this component honest-degrades instead of
+ * calling routes that 404.
+ */
 export interface Negotiation {
   readonly id: string;
   readonly unitId: string;
@@ -25,151 +24,29 @@ export interface Negotiation {
   readonly lastMessageAt: string;
 }
 
-type NegotiationAction = 'accept' | 'override' | 'reject';
-type PendingAction = { readonly id: string; readonly action: NegotiationAction };
-
+/**
+ * NegotiationsList — DEFERRED BACKEND (born-dark surface).
+ *
+ * This owner-portal view was wired to `GET /owner/negotiations` plus
+ * `POST /owner/negotiations/:id/{accept|override|reject}`, none of which
+ * are mounted in the api-gateway. The mounted negotiation router lives at
+ * `/api/v1/negotiations` and is turn-based (no owner-facing list, no
+ * `override` action, different row contract), so it cannot back this view
+ * without a net-new aggregation endpoint and an `override` close action.
+ *
+ * Per the honest-degrade policy we render `MissingBackendNotice` (no
+ * fabricated rows, no dead fetches) until the owner negotiations surface
+ * is built. Tracked for product decision — see the final-sweep register.
+ */
 export const NegotiationsList: React.FC = () => {
   const t = useTranslations('negotiationsList');
-  const [items, setItems] = useState<ReadonlyArray<Negotiation>>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [actError, setActError] = useState<string | null>(null);
-  const [pending, setPending] = useState<PendingAction | null>(null);
-
-  const load = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await api.get<ReadonlyArray<Negotiation>>('/owner/negotiations');
-      if (!signal?.aborted) {
-        if (!res.success) {
-          setError(res.error?.message ?? 'Failed to load');
-          setLoading(false);
-          return;
-        }
-        setItems(res.data ?? []);
-        setLoading(false);
-      }
-    } catch (err) {
-      if (!signal?.aborted) {
-        setError(err instanceof Error ? err.message : 'Failed to load');
-        setLoading(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const ctrl = new AbortController();
-    void load(ctrl.signal);
-    return () => ctrl.abort();
-  }, [load]);
-
-  const act = useCallback(async (id: string, action: NegotiationAction): Promise<void> => {
-    setActError(null);
-    setPending({ id, action });
-    try {
-      const res = await api.post(`/owner/negotiations/${id}/${action}`, {});
-      if (!res.success) {
-        setActError(res.error?.message ?? `Failed to ${action} negotiation`);
-        return;
-      }
-      // Immutable removal of resolved row.
-      setItems((prev) => prev.filter((n) => n.id !== id));
-    } catch (err) {
-      setActError(err instanceof Error ? err.message : `Failed to ${action} negotiation`);
-    } finally {
-      setPending(null);
-    }
-  }, []);
-
   return (
-    <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">{t('title')}</h1>
-      {error && (
-        <Alert variant="danger">
-          <AlertDescription>
-            {error}
-            <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              {t('retry')}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-      {actError && (
-        <Alert variant="danger">
-          <AlertDescription>{actError}</AlertDescription>
-        </Alert>
-      )}
-
-      {loading ? (
-        <div className="grid gap-3" aria-live="polite">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-36 w-full" />
-          ))}
-        </div>
-      ) : items.length === 0 ? (
-        <EmptyState
-          title={t('emptyTitle')}
-          description={t('emptyDescription')}
-        />
-      ) : (
-        <div className="grid gap-3">
-          {items.map((n) => {
-            const isPending = pending?.id === n.id;
-            return (
-              <Card key={n.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>{n.unitLabel}</CardTitle>
-                    <Badge>{n.status}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm">{t('prospect')}: <span className="font-medium">{n.customerName}</span></p>
-                  <p className="text-sm">
-                    {t('proposed')}: <strong>{n.proposedRent.toLocaleString()}</strong> {t('vsAsking')}{' '}
-                    {n.askingRent.toLocaleString()}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {t('lastMessage')}: {new Date(n.lastMessageAt).toLocaleString()}
-                  </p>
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      size="sm"
-                      loading={isPending && pending?.action === 'accept'}
-                      disabled={isPending}
-                      onClick={() => act(n.id, 'accept')}
-                      aria-label={t('acceptAriaLabel', { unit: n.unitLabel })}
-                    >
-                      {t('accept')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      loading={isPending && pending?.action === 'override'}
-                      disabled={isPending}
-                      onClick={() => act(n.id, 'override')}
-                      aria-label={t('overrideAriaLabel', { unit: n.unitLabel })}
-                    >
-                      {t('override')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      loading={isPending && pending?.action === 'reject'}
-                      disabled={isPending}
-                      onClick={() => act(n.id, 'reject')}
-                      aria-label={t('rejectAriaLabel', { unit: n.unitLabel })}
-                    >
-                      {t('reject')}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+    <div className="p-6">
+      <MissingBackendNotice
+        title={t('title')}
+        endpoint="GET /api/v1/owner/negotiations"
+        description={t('emptyDescription')}
+      />
     </div>
   );
 };

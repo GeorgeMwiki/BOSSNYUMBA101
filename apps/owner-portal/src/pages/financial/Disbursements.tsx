@@ -34,6 +34,8 @@ import { useTranslations } from 'next-intl';
 import { api, formatDate, formatDateTime } from '../../lib/api';
 import { useTenantCurrencyFormatter } from '../../hooks/useTenantCurrency';
 import { ROUTES } from '../../lib/routes';
+import { useLocaleContext } from '../../contexts/LocaleProvider';
+import { chartLocaleTag } from '../../lib/chart-locale';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface DisbursementBreakdown {
@@ -73,6 +75,7 @@ interface DisbursementStats {
 export function DisbursementsPage() {
   const t = useTranslations('disbursementsPage');
   const navigate = useNavigate();
+  const { locale } = useLocaleContext();
   // Tenant-bound formatter — see `useTenantCurrency` for the resolution
   // chain. Renders `'—'` when the chain is empty rather than crashing.
   const { format: formatCurrency } = useTenantCurrencyFormatter();
@@ -174,7 +177,7 @@ export function DisbursementsPage() {
 
   const chartData = Array.from(
     disbursements.reduce((acc, disbursement) => {
-      const month = new Date(disbursement.date).toLocaleDateString('en-KE', {
+      const month = new Date(disbursement.date).toLocaleDateString(chartLocaleTag(locale), {
         month: 'short',
         year: 'numeric',
       });
@@ -586,7 +589,16 @@ export function DisbursementsPage() {
                       {t('downloadStatement')}
                     </button>
                   )}
-                  <button className="flex items-center gap-1.5 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium">
+                  <button
+                    onClick={() =>
+                      navigate(
+                        `/reports?report=financial&disbursement=${encodeURIComponent(
+                          disbursement.reference || disbursement.id,
+                        )}`,
+                      )
+                    }
+                    className="flex items-center gap-1.5 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium"
+                  >
                     <Eye className="h-4 w-4" />
                     {t('viewFullReport')}
                   </button>
