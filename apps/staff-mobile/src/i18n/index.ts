@@ -7,7 +7,9 @@ const STRINGS = { sw, en } as const
 export type StringDict = typeof sw
 
 export function pickStrings(lang: Lang): StringDict {
-  return STRINGS[lang] ?? STRINGS.sw
+  // English-default (CLAUDE.md): an unexpected/unrecognized locale degrades to
+  // English, never Swahili. screenStrings() inherits this via pickStrings().
+  return STRINGS[lang] ?? STRINGS.en
 }
 
 export interface ScreenStrings {
