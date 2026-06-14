@@ -17,6 +17,7 @@ import type { AgUiUiPartByKind } from '../types';
 import { Frame, GenUiError } from './Frame';
 import { ClientOnly } from './ClientOnly';
 import { FilePreviewPartSchema } from '../schemas';
+import { safeUrl } from '../safe-url';
 
 export type FilePreviewProps = AgUiUiPartByKind<'file-preview'>;
 
@@ -79,7 +80,7 @@ export function FilePreview(props: FilePreviewProps): JSX.Element {
         </ClientOnly>
         <div className="mt-1 text-[11px] text-muted-foreground">
           <a
-            href={props.url}
+            href={safeUrl(props.url)}
             target="_blank"
             rel="noopener noreferrer"
             className="underline hover:text-foreground"

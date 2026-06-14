@@ -19,6 +19,7 @@ import { useMemo } from 'react';
 import type { AgUiUiPartByKind } from '../types';
 import { Frame, GenUiError } from './Frame';
 import { MarkdownCardPartSchema } from '../schemas';
+import { safeUrl } from '../safe-url';
 
 export type MarkdownCardProps = AgUiUiPartByKind<'markdown-card'>;
 
@@ -222,10 +223,10 @@ export function MarkdownCard(props: MarkdownCardProps): JSX.Element {
           <ol className="list-decimal pl-5 text-muted-foreground">
             {props.citations.map((c) => (
               <li key={c.id} id={`cite-${c.id}`}>
-                {c.sourceUri ? (
+                {safeUrl(c.sourceUri) ? (
                   <a
                     className="text-blue-600 underline"
-                    href={c.sourceUri}
+                    href={safeUrl(c.sourceUri)}
                     target="_blank"
                     rel="noreferrer noopener"
                   >

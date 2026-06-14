@@ -11,6 +11,7 @@
 import type { AgUiUiPartByKind } from '../types';
 import { Frame, GenUiError } from './Frame';
 import { DecisionTracePartSchema } from '../schemas';
+import { safeUrl } from '../safe-url';
 
 export type DecisionTraceProps = AgUiUiPartByKind<'decision-trace'>;
 
@@ -79,9 +80,9 @@ export function DecisionTrace(props: DecisionTraceProps): JSX.Element {
               <ul className="mt-1 list-none space-y-0.5 p-0 text-[11px]">
                 {s.evidence.map((e, ei) => (
                   <li key={ei}>
-                    {e.uri ? (
+                    {safeUrl(e.uri) ? (
                       <a
-                        href={e.uri}
+                        href={safeUrl(e.uri)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="underline text-foreground"

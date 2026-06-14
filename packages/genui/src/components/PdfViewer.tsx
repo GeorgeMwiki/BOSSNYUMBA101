@@ -18,6 +18,7 @@ import type { AgUiUiPartByKind } from '../types';
 import { Frame, GenUiError } from './Frame';
 import { ClientOnly } from './ClientOnly';
 import { PdfViewerPartSchema } from '../schemas';
+import { safeUrl } from '../safe-url';
 
 export type PdfViewerProps = AgUiUiPartByKind<'pdf-viewer'>;
 
@@ -80,7 +81,7 @@ export function PdfViewer(props: PdfViewerProps): JSX.Element {
           </button>
         ) : null}
         <a
-          href={props.url}
+          href={safeUrl(props.url)}
           target="_blank"
           rel="noopener noreferrer"
           className="rounded border border-border bg-surface px-2 py-0.5 underline"
