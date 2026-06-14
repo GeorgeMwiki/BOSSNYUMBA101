@@ -9,8 +9,13 @@
  *   - Bilingual summary toggle (sw / en) — defaults to sw
  *   - Filter chips by status + category
  *
- * Reads /api/v1/mwikila/actions/inbox + writes via
- * POST /api/v1/mwikila/actions/:id/{approve,deny,reverse}.
+ * Reads /api/v1/owner/mwikila-inbox (paginated { data, meta }) + writes
+ * via POST /api/v1/owner/mwikila-inbox/:id/{approve,deny,reverse}.
+ *
+ * The gateway backs this surface with `sovereign_approvals`, so the raw
+ * row shape (status enum, field names) differs from this page's view
+ * model. `normaliseRow` maps a gateway row onto InboxRow so the render
+ * path stays stable regardless of the backing store.
  *
  * Built for Vite + the owner-portal's lib/api wrapper.
  */
@@ -63,6 +68,65 @@ interface InboxRow {
   readonly blockedReason: string | null;
 }
 
+/**
+ * Raw row shape the gateway returns from GET /owner/mwikila-inbox. It is
+ * sourced from `sovereign_approvals`, so its status vocabulary and field
+ * names differ from this page's InboxRow view model.
+ */
+interface GatewayInboxRow {
+  readonly id: string;
+  readonly summary: string | null;
+  readonly summarySw: string | null;
+  readonly summaryEn: string | null;
+  readonly category: string | null;
+  readonly delegationTier: 'T0' | 'T1' | 'T2' | 'T3';
+  readonly status: string;
+  readonly toolName: string | null;
+  readonly proposedAt: string | null;
+  readonly expiresAt: string | null;
+  readonly payload: Record<string, unknown> | null;
+}
+
+// Map the gateway's sovereign-approval status onto this page's lifecycle.
+const GATEWAY_STATUS_MAP: Record<string, ActionStatus> = {
+  pending: 'proposed',
+  'one-eye': 'proposed',
+  approved: 'owner_approved',
+  rejected: 'owner_denied',
+  expired: 'expired',
+};
+
+function asString(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
+
+/**
+ * Project a gateway row onto the InboxRow the render path expects. Unknown
+ * categories fall through as-is; missing summaries degrade to empty strings
+ * so the card still renders.
+ */
+function normaliseRow(raw: GatewayInboxRow): InboxRow {
+  const payload = raw.payload ?? {};
+  const status = GATEWAY_STATUS_MAP[raw.status] ?? 'proposed';
+  const reversalToken = asString(payload.reversalToken);
+  const reversalUntil = asString(payload.reversalUntil);
+  return {
+    id: raw.id,
+    actionKind: raw.toolName ?? '',
+    category: (raw.category ?? '') as Category,
+    delegationTier: raw.delegationTier,
+    status,
+    summary: raw.summaryEn ?? raw.summary ?? '',
+    summarySw: raw.summarySw ?? raw.summary ?? '',
+    rationale: asString(payload.rationale) ?? '',
+    reversalToken,
+    reversalUntil,
+    proposedAt: raw.proposedAt ?? '',
+    executedAt: asString(payload.executedAt),
+    blockedReason: asString(payload.blockedReason),
+  };
+}
+
 function formatCountdown(untilIso: string | null, nowMs: number): string {
   if (untilIso === null) return '';
   const remainingMs = Math.max(0, new Date(untilIso).getTime() - nowMs);
@@ -107,11 +171,11 @@ export default function MwikilaInbox({
     setLoading(true);
     setErrorMsg(null);
     try {
-      const res = await api.get<ReadonlyArray<InboxRow>>(
-        '/mwikila/actions/inbox',
+      const res = await api.get<ReadonlyArray<GatewayInboxRow>>(
+        '/owner/mwikila-inbox',
       );
       if (res.success && Array.isArray(res.data)) {
-        setRows(res.data);
+        setRows(res.data.map(normaliseRow));
       } else {
         setErrorMsg(res.error?.message ?? 'Failed to load inbox');
       }
@@ -138,7 +202,7 @@ export default function MwikilaInbox({
 
   const onApprove = useCallback(
     async (id: string) => {
-      await api.post(`/mwikila/actions/${id}/approve`);
+      await api.post(`/owner/mwikila-inbox/${id}/approve`);
       await refresh();
     },
     [refresh],
@@ -146,7 +210,7 @@ export default function MwikilaInbox({
 
   const onDeny = useCallback(
     async (id: string) => {
-      await api.post(`/mwikila/actions/${id}/deny`);
+      await api.post(`/owner/mwikila-inbox/${id}/deny`);
       await refresh();
     },
     [refresh],
@@ -155,7 +219,7 @@ export default function MwikilaInbox({
   const onReverse = useCallback(
     async (row: InboxRow) => {
       if (row.reversalToken === null) return;
-      await api.post(`/mwikila/actions/${row.id}/reverse`, {
+      await api.post(`/owner/mwikila-inbox/${row.id}/reverse`, {
         reversalToken: row.reversalToken,
       });
       await refresh();

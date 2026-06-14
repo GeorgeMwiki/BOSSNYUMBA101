@@ -588,13 +588,25 @@ import {
   gepgProbe,
 } from './health/deep-health';
 import { validateEnv } from './config/validate-env';
-import { securityEventsMiddleware } from '@bossnyumba/observability';
+import {
+  securityEventsMiddleware,
+  setSecurityEventSink,
+} from '@bossnyumba/observability';
 // SOTA perf middleware — Brotli compression + Cache-Control presets.
 // See `packages/performance-toolkit/src/cache/` for the implementation.
 import { expressCacheControl } from '@bossnyumba/performance-toolkit/cache';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
+});
+
+// Security-event sink — route every SecurityEvent through Pino instead of
+// the package default (`defaultStdoutSink` -> raw `console.log`, which
+// bypasses redaction and ships authorization/cookie/clientIp in plaintext
+// on every mutating /api/v1 request). Pino applies the structured-log
+// redaction config, so secrets are censored before they reach stdout.
+setSecurityEventSink((event) => {
+  logger.info({ ...event }, 'security-event');
 });
 
 // Dynamic model registry — bind the SSRF-guarded fetch port and Pino
@@ -686,7 +698,26 @@ app.use((req, res, next) => {
   if (req.path.startsWith('/api/v1')) return next();
   return express.json({ limit: '2mb' })(req, res, next);
 });
-app.use(pinoHttp({ logger }));
+// pino-http's default req/res serializers log `req.headers` (which carry
+// the Authorization bearer, Cookie, and x-api-key), `req.remoteAddress`,
+// and `res.headers` (Set-Cookie) in plaintext on EVERY request. Censor
+// those paths so the access log never ships credentials or PII. `[REDACTED]`
+// matches the censor token used by the @bossnyumba/observability logger.
+app.use(
+  pinoHttp({
+    logger,
+    redact: {
+      paths: [
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'req.headers["x-api-key"]',
+        'req.remoteAddress',
+        'res.headers["set-cookie"]',
+      ],
+      censor: '[REDACTED]',
+    },
+  }),
+);
 // Rate limit — when REDIS_URL is set we use the Redis-backed limiter so
 // the cap is enforced cluster-wide (HPA scales the gateway 3-20 replicas;
 // the in-memory limiter would otherwise allow `max * replicas` requests).

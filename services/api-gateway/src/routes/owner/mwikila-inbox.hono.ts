@@ -9,9 +9,15 @@
  * Routes (all auth + tenant-scoped):
  *   GET    /                          paginated inbox (pending + recent)
  *   GET    /delegation-matrix         12-category × T0-T3 tier matrix
+ *   PATCH  /delegation-matrix/:cat    set one category's delegation tier
  *   POST   /:id/approve               T0/T1 owner one-tap approve
  *   POST   /:id/deny                  T0/T1 owner one-tap deny
  *   POST   /:id/reverse               T2 owner reverses within window
+ *
+ * The delegation matrix is per-tenant: the canonical default tiers live
+ * in DEFAULT_MATRIX and any owner override is persisted in the
+ * `owner_delegation_prefs` table (migration 0290, RLS FORCE). The GET
+ * merges the override over the default; the PATCH upserts the override.
  *
  * Mapping to sovereign_approvals:
  *   - `action_id`  -> inbox row id
@@ -57,19 +63,25 @@ const INBOX_STATUSES = [
 // owner's first-tap consent, T1 is "stay-informed-after-the-fact", T2
 // gives Mwikila pre-approval with a reversal window, T3 is full
 // autonomy (silent execution).
+//
+// The category strings are canonical across the surface — they match the
+// migration-0290 `owner_delegation_prefs` CHECK constraint, the
+// migration-0291 `mwikila_actions_inbox` CHECK constraint, and the owner
+// portal's MwikilaInbox / MwikilaDelegation category enums. Do not drift
+// them apart: the FE binds rows by exact category string.
 const DELEGATION_CATEGORIES = [
-  'rent_collection',
-  'lease_renewal',
-  'maintenance_dispatch',
-  'tenant_screening',
-  'vendor_selection',
-  'unit_listing',
-  'rent_pricing',
-  'eviction_notice',
-  'expense_authorisation',
-  'monthly_close',
-  'tax_filing_prep',
-  'capital_works_proposal',
+  'rent-scheduling',
+  'regulatory-filings',
+  'lease-renewals',
+  'payroll-prep',
+  'listing-counter-offers',
+  'maintenance-approvals-low-value',
+  'tenant-communications',
+  'evictions-initial-notice',
+  'capex',
+  'inventory',
+  'marketplace-listings',
+  'contractor-engagement',
 ] as const;
 
 const ListQuerySchema = z.object({
@@ -90,6 +102,33 @@ const ListQuerySchema = z.object({
 const ReverseBodySchema = z
   .object({
     reversalToken: z.string().uuid(),
+  })
+  .strict();
+
+// PATCH /delegation-matrix/:category — set one category's delegation
+// tier and (optionally) its reversal window, envelope cap, and notes.
+// Bounds mirror the migration-0290 CHECK constraints so a write that
+// passes zod also passes the database guard.
+const DelegationCategoryParamSchema = z.object({
+  category: z.enum(DELEGATION_CATEGORIES),
+});
+
+const DelegationUpdateSchema = z
+  .object({
+    tier: z.enum(['T0', 'T1', 'T2', 'T3']),
+    reversalWindowHours: z
+      .number()
+      .int()
+      .min(1)
+      .max(168)
+      .nullable()
+      .optional(),
+    envelopeThreshold: z.number().min(0).nullable().optional(),
+    envelopeThresholdCurrency: z
+      .string()
+      .regex(/^[A-Z]{3}$/)
+      .optional(),
+    notes: z.string().max(2000).nullable().optional(),
   })
   .strict();
 
@@ -114,6 +153,24 @@ function dbUnavailable(c: any) {
   return c.json(err.body, err.status);
 }
 
+// zValidator short-circuits on a bad request with its OWN default shape
+// (no `error.code`); route this hook through it so every validation failure
+// returns the same `{ success:false, error:{ code, message } }` envelope as
+// the rest of the router.
+function validationHook(
+  result: { success: boolean; error?: z.ZodError },
+  c: any,
+) {
+  if (!result.success) {
+    const first = result.error?.issues?.[0];
+    const message = first
+      ? `${first.path.join('.') || 'request'}: ${first.message}`
+      : 'invalid request';
+    const e = jsonError('VALIDATION_ERROR', message, 400);
+    return c.json(e.body, e.status);
+  }
+}
+
 function tierFromStakes(stakes: string | null | undefined): 'T0' | 'T1' | 'T2' | 'T3' {
   switch (stakes) {
     case 'critical':
@@ -127,6 +184,31 @@ function tierFromStakes(stakes: string | null | undefined): 'T0' | 'T1' | 'T2' |
   }
 }
 
+// Coerce a raw `owner_delegation_prefs` row (snake_case, NUMERIC arrives
+// as a string from pg) into the camelCase MatrixCell the FE consumes.
+function rowToMatrixCell(row: Record<string, unknown>): MatrixCell {
+  const rawThreshold = row.envelope_threshold;
+  const envelopeThreshold =
+    rawThreshold === null || rawThreshold === undefined
+      ? null
+      : Number(rawThreshold);
+  return {
+    category: row.category as (typeof DELEGATION_CATEGORIES)[number],
+    tier: row.tier as Tier,
+    reversalWindowHours:
+      row.reversal_window_hours === null ||
+      row.reversal_window_hours === undefined
+        ? null
+        : Number(row.reversal_window_hours),
+    envelopeThreshold: Number.isNaN(envelopeThreshold)
+      ? null
+      : envelopeThreshold,
+    envelopeThresholdCurrency:
+      (row.envelope_threshold_currency as string | null) ?? 'TZS',
+    notes: (row.notes as string | null) ?? null,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Delegation matrix — 12 categories × 4 tiers default policy.
 //
@@ -135,100 +217,52 @@ function tierFromStakes(stakes: string | null | undefined): 'T0' | 'T1' | 'T2' |
 // screen without a database round-trip.
 // ---------------------------------------------------------------------------
 
+type Tier = 'T0' | 'T1' | 'T2' | 'T3';
+
+// One row of the delegation matrix as the owner portal renders it. The
+// shape matches MwikilaDelegation.tsx's DelegationPref so the FE binds a
+// row by exact category string and reads tier / reversal window /
+// envelope cap directly off the response.
 interface MatrixCell {
   readonly category: (typeof DELEGATION_CATEGORIES)[number];
-  readonly tier: 'T0' | 'T1' | 'T2' | 'T3';
-  readonly description: string;
-  readonly descriptionSw: string;
+  readonly tier: Tier;
+  readonly reversalWindowHours: number | null;
+  readonly envelopeThreshold: number | null;
+  readonly envelopeThresholdCurrency: string;
+  readonly notes: string | null;
 }
 
-const DEFAULT_MATRIX: ReadonlyArray<MatrixCell> = Object.freeze([
-  // rent_collection — fully autonomous (Mwikila collects, owner sees
-  // the running ledger).
-  {
-    category: 'rent_collection',
-    tier: 'T3',
-    description: 'Mwikila collects rent and credits the ledger; owner sees a daily summary.',
-    descriptionSw: 'Mwikila hukusanya kodi na kuingiza kwenye leja; mmiliki anaona muhtasari wa kila siku.',
-  },
-  // lease_renewal — pre-approved within rent-cap band; owner is notified.
-  {
-    category: 'lease_renewal',
-    tier: 'T2',
-    description: 'Mwikila renews within the rent-cap band; owner can reverse within 24h.',
-    descriptionSw: 'Mwikila huongeza muda wa kodi ndani ya bendi ya pango; mmiliki anaweza kubadilisha ndani ya saa 24.',
-  },
-  // maintenance_dispatch — pre-approved up to TZS 500k.
-  {
-    category: 'maintenance_dispatch',
-    tier: 'T2',
-    description: 'Mwikila dispatches up to TZS 500,000; above that owner taps to approve.',
-    descriptionSw: 'Mwikila huagiza matengenezo hadi TZS 500,000; zaidi ya hapo mmiliki anabofya kuidhinisha.',
-  },
-  // tenant_screening — recommends; owner approves.
-  {
-    category: 'tenant_screening',
-    tier: 'T1',
-    description: 'Mwikila scores applicants and recommends; owner accepts the tenant.',
-    descriptionSw: 'Mwikila huchambua waombaji na kupendekeza; mmiliki anakubali mpangaji.',
-  },
-  // vendor_selection — recommends; owner approves.
-  {
-    category: 'vendor_selection',
-    tier: 'T1',
-    description: 'Mwikila scorecards vendors and recommends; owner taps to pick.',
-    descriptionSw: 'Mwikila huchambua wachuuzi na kupendekeza; mmiliki anachagua.',
-  },
-  // unit_listing — fully autonomous.
-  {
-    category: 'unit_listing',
-    tier: 'T3',
-    description: 'Mwikila lists vacant units to the marketplace and edits copy.',
-    descriptionSw: 'Mwikila huongeza vyumba vya wazi sokoni na kuhariri maandishi.',
-  },
-  // rent_pricing — recommends; owner approves.
-  {
-    category: 'rent_pricing',
-    tier: 'T1',
-    description: 'Mwikila proposes new pricing; owner approves before publish.',
-    descriptionSw: 'Mwikila hupendekeza bei mpya; mmiliki anakubali kabla ya kuchapisha.',
-  },
-  // eviction_notice — always T0 (legal high-stakes).
-  {
-    category: 'eviction_notice',
-    tier: 'T0',
-    description: 'Eviction notices require the owner\'s explicit one-tap consent.',
-    descriptionSw: 'Notisi ya kufukuza inahitaji ridhaa wazi ya mmiliki.',
-  },
-  // expense_authorisation — pre-approved within budget envelope.
-  {
-    category: 'expense_authorisation',
-    tier: 'T2',
-    description: 'Mwikila authorises spend within the monthly envelope; owner reviews weekly.',
-    descriptionSw: 'Mwikila huidhinisha matumizi ndani ya bajeti ya mwezi; mmiliki anapitia kila wiki.',
-  },
-  // monthly_close — recommends; owner signs off.
-  {
-    category: 'monthly_close',
-    tier: 'T1',
-    description: 'Mwikila prepares the monthly close; owner signs off the statement.',
-    descriptionSw: 'Mwikila huandaa hesabu za mwisho wa mwezi; mmiliki anasaini taarifa.',
-  },
-  // tax_filing_prep — recommends; owner approves the filing.
-  {
-    category: 'tax_filing_prep',
-    tier: 'T1',
-    description: 'Mwikila prepares TRA/KRA/URA filings; owner approves submission.',
-    descriptionSw: 'Mwikila huandaa rejea za kodi za TRA/KRA/URA; mmiliki anakubali kuwasilisha.',
-  },
-  // capital_works_proposal — always T0.
-  {
-    category: 'capital_works_proposal',
-    tier: 'T0',
-    description: 'Major capital works always require the owner\'s explicit consent.',
-    descriptionSw: 'Kazi kubwa za mtaji kila wakati zinahitaji ridhaa ya mmiliki.',
-  },
-]);
+// Canonical safe defaults. T0 = inform-only is the safest tier; any
+// category not yet overridden by the owner falls back to its default
+// here. Owners persist per-category overrides via PATCH (see below),
+// which the GET merges over these defaults.
+const DEFAULT_TIERS: Readonly<
+  Record<(typeof DELEGATION_CATEGORIES)[number], Tier>
+> = Object.freeze({
+  'rent-scheduling': 'T2',
+  'regulatory-filings': 'T1',
+  'lease-renewals': 'T2',
+  'payroll-prep': 'T1',
+  'listing-counter-offers': 'T1',
+  'maintenance-approvals-low-value': 'T2',
+  'tenant-communications': 'T1',
+  'evictions-initial-notice': 'T0',
+  capex: 'T0',
+  inventory: 'T1',
+  'marketplace-listings': 'T3',
+  'contractor-engagement': 'T1',
+});
+
+const DEFAULT_MATRIX: ReadonlyArray<MatrixCell> = Object.freeze(
+  DELEGATION_CATEGORIES.map((category) => ({
+    category,
+    tier: DEFAULT_TIERS[category],
+    reversalWindowHours: null,
+    envelopeThreshold: null,
+    envelopeThresholdCurrency: 'TZS',
+    notes: null,
+  })),
+);
 
 // ---------------------------------------------------------------------------
 // Router
@@ -337,10 +371,9 @@ export function createMwikilaInboxRouter(): Hono {
   });
 
   // -------------------------------------------------------------------------
-  // GET /delegation-matrix — return the 12-category × T0-T3 matrix.
-  //
-  // Tenant-agnostic by default; future commit can read a per-tenant
-  // override from a settings table without breaking this contract.
+  // GET /delegation-matrix — return the 12-category × T0-T3 matrix for the
+  // tenant: canonical defaults with any persisted per-category override
+  // (owner_delegation_prefs, migration 0290) merged on top.
   // -------------------------------------------------------------------------
   app.get('/delegation-matrix', async (c: any) => {
     const auth = c.get('auth') ?? {};
@@ -349,19 +382,141 @@ export function createMwikilaInboxRouter(): Hono {
       const err = jsonError('UNAUTHORIZED', 'Authentication required', 401);
       return c.json(err.body, err.status);
     }
-    return c.json(
-      {
-        success: true as const,
-        data: DEFAULT_MATRIX,
-        meta: {
-          categories: DELEGATION_CATEGORIES.length,
-          tiers: ['T0', 'T1', 'T2', 'T3'] as const,
-          total: DEFAULT_MATRIX.length,
+    const db = c.get('db');
+    if (!db) return dbUnavailable(c);
+
+    try {
+      const result = await db.execute(sql`
+        SELECT category, tier, reversal_window_hours, envelope_threshold,
+               envelope_threshold_currency, notes
+          FROM owner_delegation_prefs
+         WHERE tenant_id = ${tenantId}
+      `);
+      const overrideRows =
+        (result as unknown as Record<string, unknown>[]) ?? [];
+      const overrides = new Map(
+        overrideRows.map((r) => [String(r.category), rowToMatrixCell(r)]),
+      );
+
+      // Merge: an override fully replaces the default cell for its
+      // category; categories without an override keep the default.
+      const data = DEFAULT_MATRIX.map(
+        (cell) => overrides.get(cell.category) ?? cell,
+      );
+
+      return c.json(
+        {
+          success: true as const,
+          data,
+          meta: {
+            categories: DELEGATION_CATEGORIES.length,
+            tiers: ['T0', 'T1', 'T2', 'T3'] as const,
+            total: data.length,
+            overridden: overrides.size,
+          },
         },
-      },
-      200,
-    );
+        200,
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'delegation matrix read failed';
+      moduleLogger.error('mwikila delegation matrix read failed', {
+        evt: 'mwikila_delegation_matrix_read_failed',
+        tenantId,
+        reason: message,
+      });
+      const e = jsonError('MWIKILA_DELEGATION_READ_FAILED', message, 500);
+      return c.json(e.body, e.status);
+    }
   });
+
+  // -------------------------------------------------------------------------
+  // PATCH /delegation-matrix/:category — set one category's delegation
+  // tier (and optionally reversal window, envelope cap, notes). Upserts
+  // the per-tenant override into owner_delegation_prefs (migration 0290,
+  // RLS FORCE). The unique (tenant_id, category) index makes this
+  // idempotent; ON CONFLICT updates in place. Returns the merged cell.
+  // -------------------------------------------------------------------------
+  app.patch(
+    '/delegation-matrix/:category',
+    zValidator('param', DelegationCategoryParamSchema, validationHook),
+    zValidator('json', DelegationUpdateSchema, validationHook),
+    async (c: any) => {
+      const auth = c.get('auth') ?? {};
+      const { tenantId, userId } = auth as {
+        tenantId?: string;
+        userId?: string;
+      };
+      if (!tenantId || !userId) {
+        const err = jsonError('UNAUTHORIZED', 'Authentication required', 401);
+        return c.json(err.body, err.status);
+      }
+      const db = c.get('db');
+      if (!db) return dbUnavailable(c);
+
+      const { category } = c.req.valid('param') as z.infer<
+        typeof DelegationCategoryParamSchema
+      >;
+      const body = c.req.valid('json') as z.infer<typeof DelegationUpdateSchema>;
+
+      const reversalWindowHours = body.reversalWindowHours ?? null;
+      const envelopeThreshold = body.envelopeThreshold ?? null;
+      const envelopeThresholdCurrency =
+        body.envelopeThresholdCurrency ?? 'TZS';
+      const notes = body.notes ?? null;
+
+      try {
+        const result = await db.execute(sql`
+          INSERT INTO owner_delegation_prefs (
+            tenant_id, category, tier, reversal_window_hours,
+            envelope_threshold, envelope_threshold_currency,
+            set_by_user_id, set_at, notes, created_at, updated_at
+          ) VALUES (
+            ${tenantId}, ${category}, ${body.tier}, ${reversalWindowHours},
+            ${envelopeThreshold}, ${envelopeThresholdCurrency},
+            ${userId}, NOW(), ${notes}, NOW(), NOW()
+          )
+          ON CONFLICT (tenant_id, category) DO UPDATE SET
+            tier                        = EXCLUDED.tier,
+            reversal_window_hours       = EXCLUDED.reversal_window_hours,
+            envelope_threshold          = EXCLUDED.envelope_threshold,
+            envelope_threshold_currency = EXCLUDED.envelope_threshold_currency,
+            set_by_user_id              = EXCLUDED.set_by_user_id,
+            set_at                      = NOW(),
+            notes                       = EXCLUDED.notes,
+            updated_at                  = NOW()
+          RETURNING category, tier, reversal_window_hours, envelope_threshold,
+                    envelope_threshold_currency, notes
+        `);
+        const rows = (result as unknown as Record<string, unknown>[]) ?? [];
+        const saved = rows[0];
+        if (!saved) {
+          const err = jsonError(
+            'MWIKILA_DELEGATION_WRITE_FAILED',
+            'delegation upsert returned no row',
+            500,
+          );
+          return c.json(err.body, err.status);
+        }
+
+        return c.json(
+          { success: true as const, data: rowToMatrixCell(saved) },
+          200,
+        );
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'delegation write failed';
+        moduleLogger.error('mwikila delegation matrix write failed', {
+          evt: 'mwikila_delegation_matrix_write_failed',
+          tenantId,
+          category,
+          reason: message,
+        });
+        const e = jsonError('MWIKILA_DELEGATION_WRITE_FAILED', message, 500);
+        return c.json(e.body, e.status);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // POST /:id/approve — owner approves a pending action.

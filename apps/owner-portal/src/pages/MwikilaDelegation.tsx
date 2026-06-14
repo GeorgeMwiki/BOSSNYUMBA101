@@ -11,8 +11,8 @@
  * envelope-threshold (with currency picker) so the owner caps the
  * money-out per category.
  *
- * Reads /api/v1/mwikila/delegations and writes via
- * PATCH /api/v1/mwikila/delegations/:category.
+ * Reads /api/v1/owner/mwikila-inbox/delegation-matrix and writes via
+ * PATCH /api/v1/owner/mwikila-inbox/delegation-matrix/:category.
  *
  * Built for Vite + real-estate delegation categories (mig 0290 CHECK).
  */
@@ -140,7 +140,7 @@ export default function MwikilaDelegation({
     setErrorMsg(null);
     try {
       const res = await api.get<ReadonlyArray<DelegationPref>>(
-        '/mwikila/delegations',
+        '/owner/mwikila-inbox/delegation-matrix',
       );
       if (res.success && Array.isArray(res.data)) {
         setPrefs(res.data);
@@ -197,7 +197,10 @@ export default function MwikilaDelegation({
         envelopeThresholdCurrency: e.envelopeThresholdCurrency,
         notes: e.notes || null,
       };
-      const res = await api.patch(`/mwikila/delegations/${category}`, body);
+      const res = await api.patch(
+        `/owner/mwikila-inbox/delegation-matrix/${category}`,
+        body,
+      );
       if (!res.success) {
         setErrorMsg(res.error?.message ?? 'Save failed');
         return;
