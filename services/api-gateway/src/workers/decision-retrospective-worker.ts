@@ -217,7 +217,7 @@ export function createDecisionRetrospectiveWorker(
              r.status                  AS reconciliation_status,
              r.drift_score             AS drift_score,
              obs.observed_value        AS observed_value,
-             obs.observed_currency     AS observed_currency,
+             obs.observed_value_currency AS observed_currency,
              obs.observed_outcome::text AS observed_outcome_summary
         FROM decisions d
         LEFT JOIN outcome_reconciliations r

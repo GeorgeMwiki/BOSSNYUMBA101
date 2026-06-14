@@ -34,6 +34,10 @@ import {
 } from '../composition/executive-brief.composition';
 import type { ExecutiveBrief } from '@bossnyumba/executive-brief-engine';
 import { computeNextDueAt } from '../routes/executive-brief.hono';
+import {
+  withWorkerServiceRoleContext,
+  withWorkerTenantContext,
+} from './with-tenant-context.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Types + handle
@@ -143,7 +147,14 @@ export function createExecutiveBriefCron(
         );
         return result;
       }
-      const due = await fetchDueSubscriptions(options.db, nowFn());
+      // Cross-tenant scan (next_due_at across ALL tenants) — bind
+      // service-role so the FORCE-RLS `briefing_subscriptions` rows are
+      // visible under the non-BYPASS prod role (mig 0336 adds the bypass
+      // policy). Without it the scan returns ZERO due subs and no brief is
+      // ever generated for anyone.
+      const due = await withWorkerServiceRoleContext(options.db, () =>
+        fetchDueSubscriptions(options.db, nowFn()),
+      );
       const mutable = result as { scanned: number };
       mutable.scanned = due.length;
 
@@ -151,7 +162,16 @@ export function createExecutiveBriefCron(
         try {
           const periodEnd = nowFn();
           const periodStart = computePeriodStart(sub.cadence, periodEnd);
-          const persona = await loadPersona(options.db, sub.tenantId, sub.personaId);
+          // Per-tenant: bind tenant context so the FORCE-RLS `personas`
+          // read resolves (else it returns null and every due sub is
+          // skipped). The cost-bearing `service.generate` below is left
+          // OUTSIDE any transaction — it does LLM work and must not hold a
+          // DB connection/txn across a network call.
+          const persona = await withWorkerTenantContext(
+            options.db,
+            sub.tenantId,
+            () => loadPersona(options.db, sub.tenantId, sub.personaId),
+          );
           if (!persona) {
             (result as { failed: number }).failed += 1;
             continue;
@@ -172,13 +192,17 @@ export function createExecutiveBriefCron(
             (result as { refused: number }).refused += 1;
             continue;
           }
-          await persistBrief(options.db, outcome.brief);
+          await withWorkerTenantContext(options.db, sub.tenantId, () =>
+            persistBrief(options.db, outcome.brief),
+          );
           if (outcome.status === 'degraded') {
             (result as { degraded: number }).degraded += 1;
           } else {
             (result as { generated: number }).generated += 1;
           }
-          await bumpSubscription(options.db, sub, nowFn());
+          await withWorkerTenantContext(options.db, sub.tenantId, () =>
+            bumpSubscription(options.db, sub, nowFn()),
+          );
         } catch (err) {
           options.logger.error(
             { subId: sub.id, tenantId: sub.tenantId, err: err instanceof Error ? err.message : String(err) },

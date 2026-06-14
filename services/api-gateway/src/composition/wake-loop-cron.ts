@@ -22,7 +22,7 @@
  *     guarantees at-most-one wake cycle in flight cluster-wide.
  *
  *   - Inside the lock we discover active tenants (SELECT id FROM
- *     tenants WHERE is_active = TRUE), build the wake-loop deps from
+ *     tenants WHERE status = 'active' AND deleted_at IS NULL), build the wake-loop deps from
  *     the existing agency-port-bindings, and call `runWakeCycle({
  *     tenantIds })`. Trigger / executor failures are absorbed by the
  *     wake-loop itself; this supervisor only logs the aggregate
@@ -235,7 +235,7 @@ async function defaultListActiveTenantIds(
 ): Promise<ReadonlyArray<string>> {
   try {
     const result = (await db.execute(
-      sql`SELECT id FROM tenants WHERE is_active = TRUE`,
+      sql`SELECT id FROM tenants WHERE status = 'active' AND deleted_at IS NULL`,
     )) as unknown;
     const rows = Array.isArray(result)
       ? (result as ReadonlyArray<{ id?: unknown }>)

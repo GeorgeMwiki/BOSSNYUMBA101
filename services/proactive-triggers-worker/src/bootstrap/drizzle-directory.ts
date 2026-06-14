@@ -20,6 +20,7 @@
  * the api-gateway `background-wiring` directory uses.
  */
 import { sql } from 'drizzle-orm';
+import { withWorkerTenantContext } from '@bossnyumba/database';
 import type { Role } from '@bossnyumba/user-context-store';
 import type { ActiveUser, TenantDirectory, WorkerLogger } from '../types.js';
 
@@ -64,10 +65,15 @@ export function createDrizzleDirectory(
     ): Promise<ReadonlyArray<ActiveUser>> {
       if (!tenantId) return [];
       try {
-        const res = await db.execute(
-          sql`SELECT id, is_owner FROM users
-              WHERE tenant_id = ${tenantId}
-                AND status = 'active'`,
+        // Bind the per-tenant RLS GUC so the `users` `tenant_isolation`
+        // policy lets these rows through under the non-BYPASS prod role.
+        // Without this the query returns ZERO rows and zero hints fire.
+        const res = await withWorkerTenantContext(db, tenantId, () =>
+          db.execute(
+            sql`SELECT id, is_owner FROM users
+                WHERE tenant_id = ${tenantId}
+                  AND status = 'active'`,
+          ),
         );
         const users: ActiveUser[] = [];
         for (const row of toRows(res)) {

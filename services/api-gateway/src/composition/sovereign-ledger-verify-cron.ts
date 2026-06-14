@@ -11,7 +11,7 @@
  *   - Default cadence 1h (override via env `SOVEREIGN_LEDGER_VERIFY_INTERVAL_MS`).
  *     Bounded to [60s, 24h].
  *   - On each tick, discovers active tenants from the `tenants` table
- *     (mirrors `wake-loop-cron.ts` — same `is_active = TRUE` filter)
+ *     (mirrors `wake-loop-cron.ts` — same `status = 'active'` filter)
  *     and calls `verifyLedgerChain(tenantId)` on each.
  *   - Emits `sovereign-ledger.verified` (when `result.ok === true`) or
  *     `sovereign-ledger.tampered` (otherwise) on the shared event bus.
@@ -36,6 +36,8 @@
 
 import { sql } from 'drizzle-orm';
 import { createSovereignActionLedgerService } from '@bossnyumba/database';
+
+import { withWorkerTenantContext } from '../workers/with-tenant-context.js';
 
 const DEFAULT_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const MIN_INTERVAL_MS = 60 * 1000; // 1 minute floor — guard against typos
@@ -109,7 +111,7 @@ async function defaultListActiveTenantIds(
 ): Promise<ReadonlyArray<string>> {
   try {
     const result = (await db.execute(
-      sql`SELECT id FROM tenants WHERE is_active = TRUE`,
+      sql`SELECT id FROM tenants WHERE status = 'active' AND deleted_at IS NULL`,
     )) as unknown;
     const rows = Array.isArray(result)
       ? (result as ReadonlyArray<{ id?: unknown }>)
@@ -219,7 +221,15 @@ export function createSovereignLedgerVerifyCronSupervisor(
       let tamperedCount = 0;
       for (const tenantId of tenantIds) {
         try {
-          const result = await service.verifyLedgerChain(tenantId);
+          // RLS: bind `app.current_tenant_id` for the per-tenant verify so
+          // the FORCE-RLS `sovereign_action_ledger` chain is actually
+          // visible to the forward-walk. Without the context the read
+          // returns ZERO rows under the non-BYPASS prod role and the
+          // verify falsely PASSES (`ok:true,count:0`) — the documented
+          // tamper-evidence control would be silently dark.
+          const result = await withWorkerTenantContext(db, tenantId, () =>
+            service.verifyLedgerChain(tenantId),
+          );
           if (result.ok) {
             okCount += 1;
             verdicts.push({ tenantId, ok: true, count: result.count });

@@ -12,6 +12,7 @@
  */
 
 import { sql } from 'drizzle-orm';
+import { toPgTextArray } from '../../utils/pg-array.js';
 import {
   applyPersonaFilter,
   computePersonaProjection,
@@ -92,7 +93,7 @@ export async function queryEntityIndex(
   const limit = Math.min(Math.max(input.limit ?? 10, 1), 50);
   const kindClause =
     input.kindFilter && input.kindFilter.length > 0
-      ? sql`AND entity_kind = ANY(${input.kindFilter as string[]}::text[])`
+      ? sql`AND entity_kind = ANY(${toPgTextArray(input.kindFilter as string[])}::text[])`
       : sql``;
   const queryClause = input.query
     ? sql`AND (display_name ILIKE ${'%' + input.query + '%'} OR summary ILIKE ${'%' + input.query + '%'})`

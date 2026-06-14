@@ -263,7 +263,7 @@ export async function registerTenantNotificationProviders(
   let rows: ReadonlyArray<Record<string, unknown>>;
   try {
     const { sql } = await import('drizzle-orm');
-    const res = await deps.db.execute(sql`SELECT id FROM tenants WHERE is_active = TRUE`);
+    const res = await deps.db.execute(sql`SELECT id FROM tenants WHERE status = 'active' AND deleted_at IS NULL`);
     rows = activeTenantRows(res);
   } catch (err) {
     deps.logger.warn(

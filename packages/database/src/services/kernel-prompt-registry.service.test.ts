@@ -206,6 +206,24 @@ vi.mock('drizzle-orm', async () => {
         __marker: (r: InMemRow) => r[key] === value,
       };
     },
+    inArray: (col: unknown, values: unknown) => {
+      // readByStatus now composes `inArray(status, statuses)` (drizzle
+      // `status IN (...)`) instead of the old bare `sql\`= ANY(${arr})\``,
+      // which bound the array as N separate params (Postgres 42809).
+      // Model membership over the column the same way `eq` models equality.
+      const name = fieldName(col);
+      const camel: Record<string, keyof InMemRow> = {
+        capability: 'capability',
+        version: 'version',
+        status: 'status',
+        id: 'id',
+      };
+      const key = camel[name] ?? (name as keyof InMemRow);
+      const arr = Array.isArray(values) ? (values as unknown[]) : [values];
+      return {
+        __marker: (r: InMemRow) => arr.includes(r[key]),
+      };
+    },
     desc: (col: unknown) => {
       const name = fieldName(col);
       const camel: Record<string, keyof InMemRow> = {

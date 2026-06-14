@@ -27,6 +27,7 @@ import {
   createSemanticMemoryService,
   createTemporalEntityGraphService,
   createSemanticBulkReEmbedService,
+  withWorkerServiceRoleContext,
   type BulkReEmbedder,
 } from '@bossnyumba/database';
 import {
@@ -113,15 +114,17 @@ export function createReservoirSource(
       let result: unknown;
       try {
         const lim = clampLimit(limit, 5000);
-        result = await db.execute(
-          sql`SELECT thought_id, tenant_id, user_id, thread_id,
-                     thought_text AS summary, captured_at
-              FROM kernel_cot_reservoir
-              WHERE consolidated_at IS NULL
-                AND captured_at >= ${since}
-                AND user_id IS NOT NULL
-              ORDER BY captured_at DESC
-              LIMIT ${lim}`,
+        result = await withWorkerServiceRoleContext(db, () =>
+          db.execute(
+            sql`SELECT thought_id, tenant_id, user_id, thread_id,
+                       thought_text AS summary, captured_at
+                FROM kernel_cot_reservoir
+                WHERE consolidated_at IS NULL
+                  AND captured_at >= ${since}
+                  AND user_id IS NOT NULL
+                ORDER BY captured_at DESC
+                LIMIT ${lim}`,
+          ),
         );
       } catch (error) {
         // A genuine query / infra error (e.g. schema drift). DO NOT
@@ -175,12 +178,14 @@ export function createReservoirSource(
         // Drizzle's `sql` template doesn't safely parameterise IN
         // lists by default — we pass an array literal via JSON.
         const idsJson = JSON.stringify(thoughtIds);
-        await db.execute(
-          sql`UPDATE kernel_cot_reservoir
-              SET consolidated_at = NOW()
-              WHERE thought_id = ANY(
-                SELECT jsonb_array_elements_text(${idsJson}::jsonb)
-              )`,
+        await withWorkerServiceRoleContext(db, () =>
+          db.execute(
+            sql`UPDATE kernel_cot_reservoir
+                SET consolidated_at = NOW()
+                WHERE thought_id = ANY(
+                  SELECT jsonb_array_elements_text(${idsJson}::jsonb)
+                )`,
+          ),
         );
       } catch (error) {
         // Rethrow so the worker logs + reports the error per-group.

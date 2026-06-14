@@ -18,6 +18,8 @@
 
 import { randomBytes } from 'crypto';
 
+import { withWorkerTenantContext } from '@bossnyumba/database';
+
 import { iterateTenants, type TenantIterationSummary } from './tenant-iteration.js';
 import { readDailyTraces, type TraceReader } from '../pipeline/stage-01-read-traces.js';
 import { reflectOnDay, type ReflectionEngine } from '../pipeline/stage-02-reflect.js';
@@ -26,6 +28,7 @@ import { writeApprovedDeltas, type MemoryWriter } from '../pipeline/stage-04-wri
 import { emitEvolutionReport, type ReportSink } from '../pipeline/stage-05-emit-report.js';
 import { generateAutobiographyDeltas } from '../pipeline/stage-06-autobiography.js';
 import { reviewDelta, type ConstitutionVerifierPort } from '../safety/review-gate.js';
+import type { DrizzleLikeClient } from '../composition/shared.js';
 import type {
   BrainWorkerLogger,
   TenantRunResult,
@@ -40,6 +43,14 @@ export interface TenantDirectory {
 }
 
 export interface NightlySweepDeps {
+  /**
+   * The raw Drizzle handle the trace-reader + memory-writer adapters close
+   * over. `runForTenant` binds the per-tenant RLS GUC on THIS same handle
+   * (via `withWorkerTenantContext`) so the episodic read and the
+   * `kernel_memory_*` writes share one tenant-scoped transaction — without
+   * it the non-BYPASS prod role reads zero rows and writes are RLS-rejected.
+   */
+  readonly db: DrizzleLikeClient;
   readonly directory: TenantDirectory;
   readonly traceReader: TraceReader;
   readonly reflectionEngine: ReflectionEngine;
@@ -95,6 +106,14 @@ async function runForTenant(
   deps: NightlySweepDeps,
   tenantId: string,
 ): Promise<TenantRunResult> {
+  // Bind the per-tenant RLS GUC on the SAME raw handle the trace-reader +
+  // memory-writer adapters close over, so the `kernel_memory_episodic` read
+  // and the `kernel_memory_*` writes for THIS tenant run inside one
+  // tenant-scoped transaction. Without it the non-BYPASS prod role sees zero
+  // episodic rows and every write is RLS-rejected — the whole sweep is a
+  // silent no-op. `withWorkerTenantContext` re-throws on failure, which the
+  // `iterateTenants` per-tenant catch already folds into an `error` result.
+  return withWorkerTenantContext(deps.db, tenantId, async () => {
   const now = (deps.clock ?? { now: () => new Date() }).now();
   const windowMs = deps.windowMs ?? DEFAULT_WINDOW_MS;
   const windowEnd = now;
@@ -195,6 +214,7 @@ async function runForTenant(
     errorMessage: null,
     report,
   };
+  });
 }
 
 async function safeListTenants(

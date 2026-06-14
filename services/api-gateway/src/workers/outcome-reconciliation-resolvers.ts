@@ -145,7 +145,7 @@ export function buildRentInvoiceResolver(db: DbLike): ObservationResolver {
           i.id, i.status, i.due_date, i.total_amount, i.currency,
           COALESCE(
             (
-              SELECT SUM(le.amount)
+              SELECT SUM(le.amount_minor_units)
               FROM ledger_entries le
               WHERE le.invoice_id = i.id
                 AND le.tenant_id = i.tenant_id
@@ -224,8 +224,13 @@ export function buildMaintenanceResolver(db: DbLike): ObservationResolver {
     try {
       const result = await db.execute(sql`
         SELECT
-          id, status, sla_breached, completed_at, due_at,
-          cost_amount, cost_currency
+          id,
+          status,
+          (response_breached OR resolution_breached) AS sla_breached,
+          completed_at,
+          resolution_due_at AS due_at,
+          actual_cost AS cost_amount,
+          currency AS cost_currency
         FROM work_orders
         WHERE id = ${input.entityId}
           AND tenant_id = ${input.tenantId}

@@ -68,6 +68,10 @@ export function buildNightlySweepDeps(args: BuildDepsArgs): NightlySweepDeps {
   const verifier = o.verifier ?? createVerifierAdapter();
 
   return {
+    // The SAME raw handle every adapter above closes over. `runForTenant`
+    // binds the per-tenant RLS GUC on it so the episodic read + memory
+    // writes share one tenant-scoped transaction.
+    db: args.db,
     directory,
     traceReader,
     reflectionEngine,

@@ -258,7 +258,7 @@ export function buildRegulatoryFilingPorts(
               0
             )::int AS gross_rent,
             COALESCE(
-              (SELECT currency FROM currency_preferences WHERE tenant_id = ${args.tenantId} LIMIT 1),
+              (SELECT currency FROM currency_preferences WHERE scope_kind = 'tenant' AND scope_id = ${args.tenantId} LIMIT 1),
               'TZS'
             ) AS currency
         `);

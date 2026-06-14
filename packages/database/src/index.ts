@@ -20,7 +20,10 @@ export * from './services/index.js';
 export {
   withTenantContext,
   withServiceRoleContext,
+  withWorkerTenantContext,
+  withWorkerServiceRoleContext,
   type WithTenantContextOpts,
+  type WorkerExecLike,
 } from './rls/index.js';
 export * from './security/data-classification.js';
 // Phase D / A2b-1 — field-level encryption-at-rest composition entry

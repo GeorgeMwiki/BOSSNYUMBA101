@@ -87,3 +87,46 @@ export async function withWorkerTenantContext<T>(
     throw err;
   }
 }
+
+/**
+ * Service-role variant for the cross-tenant system-job path.
+ *
+ * Some background jobs legitimately span tenants in a SINGLE query — e.g.
+ * the notification-dispatch drainer claims `pending` rows across all
+ * tenants with `FOR UPDATE SKIP LOCKED`, so there is no one tenant id to
+ * bind. For those, wrap the DB-touching step in this helper: it binds
+ * `app.is_service_role = 'true'` (transaction-local via `SET LOCAL`),
+ * which activates the 0179 `service_role_bypass` RLS policy so the rows
+ * are actually visible/updatable. A `__system__` placeholder tenant id is
+ * also bound so the tenant GUC is never empty (the bypass short-circuits
+ * before the tenant predicate fires).
+ *
+ * USE ONLY when (a) the work is genuinely cross-tenant AND (b) the target
+ * table carries a `service_role_bypass` policy. For per-tenant work prefer
+ * `withWorkerTenantContext`, which does not grant cross-tenant reach.
+ *
+ * Same BEGIN/COMMIT mechanics + leak-safety as `withWorkerTenantContext`.
+ */
+export async function withWorkerServiceRoleContext<T>(
+  db: TenantContextDbLike,
+  body: () => Promise<T>,
+): Promise<T> {
+  await db.execute(sql`BEGIN`);
+  try {
+    await db.execute(
+      sql`SELECT set_config('app.is_service_role', 'true', true),
+                  set_config('app.current_tenant_id', '__system__', true),
+                  set_config('app.tenant_id', '__system__', true)`,
+    );
+    const result = await body();
+    await db.execute(sql`COMMIT`);
+    return result;
+  } catch (err) {
+    try {
+      await db.execute(sql`ROLLBACK`);
+    } catch {
+      // Ignore — original error takes precedence.
+    }
+    throw err;
+  }
+}

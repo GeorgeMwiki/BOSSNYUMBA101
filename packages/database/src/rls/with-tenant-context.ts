@@ -87,3 +87,84 @@ export async function withServiceRoleContext<T>(
 ): Promise<T> {
   return await withTenantContext(db, '__system__', fn, { serviceRole: true });
 }
+
+// ---------------------------------------------------------------------------
+// Worker-context helpers (raw `execute` surface).
+//
+// Mirror `services/api-gateway/src/workers/with-tenant-context.ts` but live
+// in the shared package so SEPARATE services (consolidation-worker,
+// brain-evolution-worker, proactive-triggers-worker, …) — which hold a raw
+// `execute`-only handle and cannot import the api-gateway-local copy — can
+// bind RLS GUCs transactionally without lifting to `db.transaction` or
+// threading a `tx` through their existing body. The callback runs all its DB
+// calls through the SAME handle so postgres.js keeps every statement on the
+// txn-owned connection (`SET LOCAL` dies at COMMIT/ROLLBACK — no pool leak).
+// ---------------------------------------------------------------------------
+
+/** Minimal raw-execute surface the worker-context helpers touch. */
+export interface WorkerExecLike {
+  execute(query: unknown): Promise<unknown>;
+}
+
+/**
+ * Per-tenant worker binding: `BEGIN; SET LOCAL app.{current_tenant_id,
+ * tenant_id} = $1; <body>; COMMIT`. Activates the `tenant_isolation`
+ * policies for the given tenant. `tenantId` must be non-empty (an empty GUC
+ * would silently zero rows — fail loud instead).
+ */
+export async function withWorkerTenantContext<T>(
+  db: WorkerExecLike,
+  tenantId: string,
+  body: () => Promise<T>,
+): Promise<T> {
+  if (!tenantId || tenantId.trim().length === 0) {
+    throw new Error('withWorkerTenantContext: tenantId must be non-empty');
+  }
+  await db.execute(sql`BEGIN`);
+  try {
+    await db.execute(
+      sql`SELECT set_config('app.current_tenant_id', ${tenantId}, true),
+                  set_config('app.tenant_id', ${tenantId}, true)`,
+    );
+    const result = await body();
+    await db.execute(sql`COMMIT`);
+    return result;
+  } catch (err) {
+    try {
+      await db.execute(sql`ROLLBACK`);
+    } catch {
+      // Ignore — original error takes precedence.
+    }
+    throw err;
+  }
+}
+
+/**
+ * Cross-tenant worker binding: `BEGIN; SET LOCAL app.is_service_role =
+ * 'true'; <body>; COMMIT`. Activates the 0179 `service_role_bypass`
+ * policies. USE ONLY for genuinely cross-tenant work whose target table
+ * carries a `service_role_bypass` policy.
+ */
+export async function withWorkerServiceRoleContext<T>(
+  db: WorkerExecLike,
+  body: () => Promise<T>,
+): Promise<T> {
+  await db.execute(sql`BEGIN`);
+  try {
+    await db.execute(
+      sql`SELECT set_config('app.is_service_role', 'true', true),
+                  set_config('app.current_tenant_id', '__system__', true),
+                  set_config('app.tenant_id', '__system__', true)`,
+    );
+    const result = await body();
+    await db.execute(sql`COMMIT`);
+    return result;
+  } catch (err) {
+    try {
+      await db.execute(sql`ROLLBACK`);
+    } catch {
+      // Ignore — original error takes precedence.
+    }
+    throw err;
+  }
+}

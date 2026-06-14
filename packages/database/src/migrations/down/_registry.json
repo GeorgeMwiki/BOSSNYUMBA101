@@ -393,6 +393,14 @@
       "dataLoss": true,
       "envs": ["dev", "staging"],
       "notes": "Deferred-batch pending owner-portal team invitations (SettingsPage co-owner invite/revoke/resend — was a client-only illusion, now real via notification_dispatch_log). Accepted co-owners are real users rows (untouched). Dropping discards pending invites; owners re-invite."
+    },
+    {
+      "up": "0336_service_role_bypass_cot_briefing.sql",
+      "down": "down/0336_down_service_role_bypass_cot_briefing.sql",
+      "reverses": "CREATE POLICY service_role_bypass on kernel_cot_reservoir + briefing_subscriptions (closes the 0179 bypass gap for two later-created cross-tenant system-job tables)",
+      "dataLoss": false,
+      "envs": ["dev", "staging"],
+      "notes": "R2-supplement RLS-darkness fix: the consolidation-worker (CoT->semantic) and executive-brief cron scan these FORCE-RLS tables cross-tenant; without a service_role_bypass policy they matched ZERO rows under the non-BYPASS prod role (born-dark — no CoT consolidation, no briefs). Additive permissive FOR ALL policy gated solely on app.is_service_role; tenant-scoped access is unchanged. Dropping re-darkens both workers but loses no data."
     }
   ]
 }

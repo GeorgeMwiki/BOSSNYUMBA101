@@ -36,7 +36,12 @@ describe('reapStaleSendingRows', () => {
   it('issues an UPDATE that flips stale sending rows to pending and returns the count', async () => {
     let captured = '';
     const execute = vi.fn(async (q: unknown) => {
-      captured = sqlText(q);
+      const text = sqlText(q);
+      // The reaper now binds service-role transactionally
+      // (withWorkerServiceRoleContext): ignore the BEGIN / SET LOCAL /
+      // COMMIT control statements so `captured` is the real UPDATE.
+      if (/BEGIN|COMMIT|ROLLBACK|set_config/.test(text)) return { rows: [] };
+      captured = text;
       return { rows: [{ id: 'r1' }, { id: 'r2' }] };
     });
 

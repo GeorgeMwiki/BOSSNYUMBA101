@@ -29,6 +29,7 @@
  * sees, not an idle pod that quietly generates zero proactive hints.
  */
 import { sql } from 'drizzle-orm';
+import { withWorkerTenantContext } from '@bossnyumba/database';
 import { InMemoryIdempotencyCache } from '../idempotency/trigger-seen.js';
 import { createDrizzleDirectory, type DrizzleLikeClient } from './drizzle-directory.js';
 import { createNotificationSink } from './notification-sink.js';
@@ -170,11 +171,17 @@ async function listActiveOwnerIds(
 ): Promise<ReadonlyArray<string>> {
   if (!tenantId) return [];
   try {
-    const res = await db.execute(
-      sql`SELECT id FROM users
-          WHERE tenant_id = ${tenantId}
-            AND status = 'active'
-            AND is_owner = TRUE`,
+    // Bind the per-tenant RLS GUC so the `users` `tenant_isolation`
+    // policy lets these rows through under the non-BYPASS prod role.
+    // Without this the query returns ZERO rows and the staff alert has
+    // no recipients.
+    const res = await withWorkerTenantContext(db, tenantId, () =>
+      db.execute(
+        sql`SELECT id FROM users
+            WHERE tenant_id = ${tenantId}
+              AND status = 'active'
+              AND is_owner = TRUE`,
+      ),
     );
     const rows = Array.isArray(res)
       ? (res as ReadonlyArray<Record<string, unknown>>)
