@@ -143,7 +143,19 @@ export function DashboardPage() {
     { name: t('vacantLegend', { count: occupancy.vacantUnits }), value: 100 - occupancy.occupancyRate },
   ];
 
-  const revenueTrendData: Array<{ month: string; revenue: number }> = [];
+  // Revenue trend is wired to the live series the owner-dashboard endpoint
+  // returns under `revenueTrend` ({ month, value }[]). The current
+  // `/dashboard/owner` payload (buildOwnerDashboardPayload) does NOT yet emit
+  // this series — only scalar financial figures — so until that data source
+  // lands this resolves to an empty array and the chart renders its honest
+  // "no revenue data" empty-state below rather than a born-dark chart.
+  const revenueSeries = (data as { revenueTrend?: Array<{ month: string; value: number }> })
+    .revenueTrend;
+  const revenueTrendData: Array<{ month: string; revenue: number }> = Array.isArray(revenueSeries)
+    ? revenueSeries
+        .filter((point) => typeof point?.value === 'number' && Number.isFinite(point.value))
+        .map((point) => ({ month: point.month, revenue: point.value }))
+    : [];
 
   return (
     <div className="space-y-6">

@@ -62,10 +62,14 @@ export function JarvisConsole(): JSX.Element {
       createJarvisClient(
         createBossnyumbaClient({
           baseUrl: DEFAULT_GATEWAY,
-          // Bearer comes from the existing Supabase auth session in the
-          // page wrapper; the gateway middleware also accepts an
-          // X-API-Key for service-to-service in dev.
-          bearerToken: () => readBearerFromCookie(),
+          // Bearer comes from the platform login flow, which stashes the
+          // session JWT in `sessionStorage.platform_token` for non-cookie
+          // callers like this SDK client (the primary platform session is
+          // an httpOnly cookie the SDK can't read). This is the same
+          // source `src/lib/api.ts` forwards as `Authorization: Bearer …`.
+          // The gateway middleware also accepts an X-API-Key for
+          // service-to-service in dev.
+          bearerToken: () => readPlatformBearer(),
         }),
         'platform',
       ),
@@ -389,8 +393,24 @@ export function JarvisConsole(): JSX.Element {
   );
 }
 
-function readBearerFromCookie(): string {
-  if (typeof document === 'undefined') return '';
-  const m = document.cookie.match(/sb-access-token=([^;]+)/);
-  return m ? decodeURIComponent(m[1] ?? '') : '';
+/**
+ * Resolve the bearer the SDK should attach as `Authorization: Bearer …`.
+ *
+ * The platform session itself lives in an httpOnly cookie minted by the
+ * identity service (`bossnyumba_platform_session`) which JS cannot read.
+ * The login flow additionally stashes the session JWT in
+ * `sessionStorage.platform_token` precisely so non-cookie callers — this
+ * SDK client, EventSource, etc. — can authenticate. Returning an empty
+ * string when it's absent makes the SDK omit the header entirely, which
+ * lets the gateway fall back to the forwarded cookie / X-API-Key path
+ * rather than sending a malformed `Bearer `.
+ */
+function readPlatformBearer(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    return window.sessionStorage.getItem('platform_token') ?? '';
+  } catch {
+    // sessionStorage can throw in locked-down / private-mode contexts.
+    return '';
+  }
 }

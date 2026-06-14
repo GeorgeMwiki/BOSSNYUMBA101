@@ -10,9 +10,27 @@ interface LoginState {
   readonly error?: string;
 }
 
+/**
+ * Sanitise the post-login redirect target. Only same-origin relative
+ * paths are allowed — a value must start with a single `/` and must not
+ * be a scheme-relative URL (`//evil.com`), a backslash variant
+ * (`/\evil.com`, which some browsers normalise to `//`), or an absolute
+ * URL with a scheme (`https://evil.com`, `javascript:…`). Anything else
+ * falls back to the dashboard root so a crafted `?next=` link can never
+ * bounce a freshly-authenticated operator off-origin.
+ */
+export function safeNext(raw: string | null): string {
+  if (!raw) return '/';
+  // Must be an absolute path on this origin.
+  if (!raw.startsWith('/')) return '/';
+  // Reject protocol-relative ("//host") and backslash-smuggled variants.
+  if (raw.startsWith('//') || raw.startsWith('/\\')) return '/';
+  return raw;
+}
+
 export function LoginForm() {
   const params = useSearchParams();
-  const next = params.get('next') ?? '/';
+  const next = safeNext(params.get('next'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [state, setState] = useState<LoginState>({ phase: 'idle' });

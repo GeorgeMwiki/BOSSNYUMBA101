@@ -326,7 +326,7 @@
     "viewDetails": "Tazama maelezo",
     "details": "Maelezo",
     "revenueLabel": "Mapato",
-    "revenueTrendUnavailable": "Mwelekeo wa mapato haupatikani hadi data halisi ya wakati itaunganishwa.",
+    "revenueTrendUnavailable": "Hakuna data ya mapato bado.",
     "occupancyRate": "Kiwango cha Ujaaji",
     "occupiedLegend": "Zimejaa ({count})",
     "vacantLegend": "Wazi ({count})",

@@ -326,7 +326,7 @@
     "viewDetails": "View details",
     "details": "Details",
     "revenueLabel": "Revenue",
-    "revenueTrendUnavailable": "Revenue trend is unavailable until live time-series data is wired.",
+    "revenueTrendUnavailable": "No revenue data yet.",
     "occupancyRate": "Occupancy Rate",
     "occupiedLegend": "Occupied ({count})",
     "vacantLegend": "Vacant ({count})",

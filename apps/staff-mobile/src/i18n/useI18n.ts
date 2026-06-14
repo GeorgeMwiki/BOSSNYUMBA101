@@ -11,7 +11,9 @@ export interface I18nHook {
 
 export function useI18n(): I18nHook {
   const { user } = useAuth()
-  const lang: Lang = user?.preferredLang ?? 'sw'
+  // English-default rule: when there is no signed-in user (or no stored
+  // preference) the active locale is English, never Swahili.
+  const lang: Lang = user?.preferredLang ?? 'en'
   return useMemo<I18nHook>(() => ({
     lang,
     t: pickStrings(lang),

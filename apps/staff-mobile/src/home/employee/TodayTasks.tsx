@@ -6,13 +6,27 @@ import { PreviewBanner } from '../../components/PreviewBanner'
 import { enqueueWrite } from '../../sync/queue'
 import { MIN_TAP_DP, type WorkerTask } from './types'
 
+type Lang = 'sw' | 'en'
+
 export interface TodayTasksProps {
   readonly tasks: ReadonlyArray<WorkerTask> | undefined
   readonly loading: boolean
   readonly error: Error | null
   readonly userId: string | null
-  readonly lang: 'sw' | 'en'
+  readonly lang: Lang
 }
+
+/**
+ * Single-locale copy for the worker task list. Each string resolves to ONE
+ * language via the active `lang` — no stacked sw/en renders anywhere on this
+ * surface (absolute toggle rule).
+ */
+const TASK_COPY = Object.freeze({
+  loading: Object.freeze({ sw: 'Inapakia kazi za leo…', en: "Loading today's tasks…" }),
+  parallel: Object.freeze({ sw: 'Sambamba', en: 'Parallel' }),
+  done: Object.freeze({ sw: 'Imekamilika', en: 'Done' }),
+  blocked: Object.freeze({ sw: 'Shida', en: 'Blocked' })
+}) as Readonly<Record<'loading' | 'parallel' | 'done' | 'blocked', Readonly<Record<Lang, string>>>>
 
 function priorityChip(p: WorkerTask['priority']): {
   readonly bg: string
@@ -69,7 +83,7 @@ export function TodayTasks({
   }, [tasks])
 
   if (loading) {
-    return <Text style={styles.lead}>Inapakia kazi za leo… / Loading today's tasks…</Text>
+    return <Text style={styles.lead}>{TASK_COPY.loading[lang]}</Text>
   }
   if (error) {
     return <PreviewBanner kind="env-missing" />
@@ -85,13 +99,14 @@ export function TodayTasks({
         const title = lang === 'sw' ? task.titleSw : task.titleEn
         const location =
           (lang === 'sw' ? task.locationLabelSw : task.locationLabelEn) ?? ''
-        const parallelTag = task.parallelGroupId ? ' · Sambamba / Parallel' : ''
+        const parallelTag = task.parallelGroupId ? ` · ${TASK_COPY.parallel[lang]}` : ''
+        const chipLabel = lang === 'sw' ? chip.sw : chip.en
         return (
           <View key={task.id} style={styles.card} testID={`employee-home-task-${task.id}`}>
             <View style={styles.cardHeader}>
               <View style={[styles.chip, { backgroundColor: chip.bg }]}>
                 <Text style={[styles.chipText, { color: chip.fg }]}>
-                  {chip.sw} / {chip.en}
+                  {chipLabel}
                 </Text>
               </View>
               <Text style={styles.sequence}>#{task.sequence}</Text>
@@ -107,7 +122,7 @@ export function TodayTasks({
               <Pressable
                 onPress={() => onDone(task.id)}
                 accessibilityRole="button"
-                accessibilityLabel="Imekamilika / Done"
+                accessibilityLabel={TASK_COPY.done[lang]}
                 style={({ pressed }) => [
                   styles.action,
                   styles.actionDone,
@@ -115,12 +130,12 @@ export function TodayTasks({
                 ]}
                 testID={`employee-home-task-done-${task.id}`}
               >
-                <Text style={styles.actionDoneText}>Imekamilika / Done</Text>
+                <Text style={styles.actionDoneText}>{TASK_COPY.done[lang]}</Text>
               </Pressable>
               <Pressable
                 onPress={() => onBlocked(task.id)}
                 accessibilityRole="button"
-                accessibilityLabel="Shida / Blocked"
+                accessibilityLabel={TASK_COPY.blocked[lang]}
                 style={({ pressed }) => [
                   styles.action,
                   styles.actionBlock,
@@ -128,7 +143,7 @@ export function TodayTasks({
                 ]}
                 testID={`employee-home-task-block-${task.id}`}
               >
-                <Text style={styles.actionBlockText}>Shida / Blocked</Text>
+                <Text style={styles.actionBlockText}>{TASK_COPY.blocked[lang]}</Text>
               </Pressable>
             </View>
           </View>

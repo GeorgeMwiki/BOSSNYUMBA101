@@ -60,6 +60,11 @@ export default defineConfig({
       // + PII mask. rrweb itself is dynamically imported; tests inject
       // their own factory so they pass without `pnpm install`.
       'src/lib/session-replay/__tests__/**/*.test.ts',
+      // Wave-D FE correctness detectors — login open-redirect guard,
+      // Jarvis bearer source, and the message-proxy field threading.
+      // These are dependency-light (no SDK / chat-ui graph) so they run
+      // on a fresh checkout without an app build.
+      'src/app/**/__tests__/**/*.test.ts',
     ],
     testTimeout: 10000,
   },

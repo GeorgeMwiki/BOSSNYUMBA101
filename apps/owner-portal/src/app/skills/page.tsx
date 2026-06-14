@@ -17,109 +17,11 @@ import { MissingBackendNotice } from '../../components/MissingBackendNotice';
 
 const ENDPOINT = '/api/v1/owner/skills';
 
-const SAMPLE_SKILLS: ReadonlyArray<SkillSummary> = [
-  {
-    id: 'sk-arrears-friday',
-    name: 'Arrears Friday digest',
-    slug: 'arrears-friday-digest',
-    description:
-      "Every Friday 08:30 EAT, email the top 10 arrears tenants with their case state and proposed next step. Owner reviews & approves before send.",
-    author: 'Mr. Mwikila',
-    authorIsMd: true,
-    category: 'arrears',
-    triggerKind: 'cron',
-    triggerLabel: 'Friday 08:30 EAT',
-    installed: true,
-    enabled: true,
-    runCount: 14,
-    lastRunAt: '2026-05-15',
-    rating: 4.8,
-  },
-  {
-    id: 'sk-kra-monthly',
-    name: 'KRA monthly filing compiler',
-    slug: 'kra-monthly-filing',
-    description:
-      'On the 1st of each month, compile the prior month MRI receipts, validate against the rent roll, and produce a draft KRA filing.',
-    author: 'Mr. Mwikila',
-    authorIsMd: true,
-    category: 'compliance',
-    triggerKind: 'cron',
-    triggerLabel: 'Monthly · 1st',
-    installed: true,
-    enabled: false,
-    runCount: 3,
-    lastRunAt: '2026-04-01',
-    rating: 4.6,
-  },
-  {
-    id: 'sk-lease-renewal',
-    name: 'Lease renewal early-warning',
-    slug: 'lease-renewal-90d',
-    description:
-      'Triggers 90 days before each lease end-date. Drafts a renewal letter + a market-rate comparison and pings the owner.',
-    author: 'Mr. Mwikila',
-    authorIsMd: true,
-    category: 'lease',
-    triggerKind: 'event',
-    triggerLabel: 'lease.expires_in.<=90d',
-    installed: false,
-    enabled: false,
-    runCount: 0,
-    rating: 4.7,
-  },
-  {
-    id: 'sk-vendor-callout',
-    name: 'Vendor SLA call-out',
-    slug: 'vendor-sla-callout',
-    description:
-      'If a work-order exceeds vendor SLA by 25%, call the vendor with a scripted reminder and log the response.',
-    author: 'Mr. Mwikila',
-    authorIsMd: true,
-    category: 'maintenance',
-    triggerKind: 'event',
-    triggerLabel: 'workorder.sla.breach',
-    installed: false,
-    enabled: false,
-    runCount: 0,
-    rating: 4.4,
-  },
-  {
-    id: 'sk-owner-newsletter',
-    name: 'Owner monthly newsletter',
-    slug: 'owner-monthly-newsletter',
-    description:
-      'On the 5th of each month, compile a newsletter for co-owners with NOI, occupancy, and the top three operational highlights.',
-    author: 'Estate Operators Co.',
-    authorIsMd: false,
-    category: 'comms',
-    triggerKind: 'cron',
-    triggerLabel: 'Monthly · 5th',
-    installed: false,
-    enabled: false,
-    runCount: 0,
-    rating: 4.2,
-  },
-  {
-    id: 'sk-eviction-checklist',
-    name: 'Eviction checklist runner',
-    slug: 'eviction-checklist',
-    description:
-      'When an arrears case crosses 90 days, run the compliant eviction checklist with HIL approval at every irreversible step.',
-    author: 'Mr. Mwikila',
-    authorIsMd: true,
-    category: 'compliance',
-    triggerKind: 'manual',
-    installed: true,
-    enabled: true,
-    runCount: 1,
-    lastRunAt: '2026-04-22',
-    rating: 4.9,
-  },
-];
-
 interface SkillsApiState {
-  readonly status: 'loading' | 'ok' | 'missing' | 'fallback';
+  // 'missing'  → backend explicitly not wired (503): honest MissingBackendNotice.
+  // 'error'    → request failed (4xx/5xx/network): honest error state, no fake rows.
+  // 'ok'       → real skills loaded (possibly an empty list → honest empty-state).
+  readonly status: 'loading' | 'ok' | 'missing' | 'error';
   readonly skills: ReadonlyArray<SkillSummary>;
 }
 
@@ -152,13 +54,16 @@ export default function SkillsPage(): JSX.Element {
           return;
         }
         if (!res.ok) {
-          setState({ status: 'fallback', skills: SAMPLE_SKILLS });
+          // No fabricated fallback — an API failure is surfaced honestly as an
+          // error state with zero rows, never as a sample catalog.
+          setState({ status: 'error', skills: [] });
           return;
         }
         const body = (await res.json()) as { skills?: ReadonlyArray<SkillSummary> };
+        // Empty list is a legitimate "ok" — rendered as an honest empty-state.
         setState({ status: 'ok', skills: body.skills ?? [] });
       } catch {
-        if (!cancelled) setState({ status: 'fallback', skills: SAMPLE_SKILLS });
+        if (!cancelled) setState({ status: 'error', skills: [] });
       }
     }
     void load();
@@ -183,40 +88,78 @@ export default function SkillsPage(): JSX.Element {
     });
   }, [marketplace, categoryFilter, triggerFilter]);
 
-  function handleToggle(skillId: string, nextEnabled: boolean): void {
+  // Mutations act ONLY on skills that already exist in live state (loaded from
+  // the API). Each one optimistically updates, calls the real route, and
+  // reverts the optimistic edit on failure — never a silent fake-success.
+  async function persistSkillMutation(
+    skillId: string,
+    apply: (skill: SkillSummary) => SkillSummary,
+    request: () => Promise<Response>,
+  ): Promise<boolean> {
+    const previous = state.skills.find((s) => s.id === skillId);
+    if (!previous) return false;
     setState((prev) => ({
       ...prev,
-      skills: prev.skills.map((s) =>
-        s.id === skillId ? { ...s, enabled: nextEnabled } : s,
-      ),
+      skills: prev.skills.map((s) => (s.id === skillId ? apply(s) : s)),
     }));
+    try {
+      const res = await request();
+      if (!res.ok) throw new Error(`skill mutation failed: ${res.status}`);
+      return true;
+    } catch {
+      // Revert the optimistic edit so the UI never shows an un-persisted state.
+      setState((prev) => ({
+        ...prev,
+        skills: prev.skills.map((s) => (s.id === skillId ? previous : s)),
+      }));
+      return false;
+    }
+  }
+
+  function handleToggle(skillId: string, nextEnabled: boolean): void {
+    void persistSkillMutation(
+      skillId,
+      (s) => ({ ...s, enabled: nextEnabled }),
+      () =>
+        fetch(`${ENDPOINT}/${encodeURIComponent(skillId)}/toggle`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: nextEnabled }),
+        }),
+    );
   }
 
   function handleInstall(skillId: string): void {
-    setState((prev) => ({
-      ...prev,
-      skills: prev.skills.map((s) =>
-        s.id === skillId ? { ...s, installed: true, enabled: true } : s,
-      ),
-    }));
+    void persistSkillMutation(
+      skillId,
+      (s) => ({ ...s, installed: true, enabled: true }),
+      () =>
+        fetch(`${ENDPOINT}/${encodeURIComponent(skillId)}/install`, {
+          method: 'POST',
+          credentials: 'include',
+        }),
+    );
   }
 
   function handleRun(skillId: string): void {
     const skill = state.skills.find((s) => s.id === skillId);
     if (!skill) return;
-    setState((prev) => ({
-      ...prev,
-      skills: prev.skills.map((s) =>
-        s.id === skillId
-          ? {
-              ...s,
-              runCount: s.runCount + 1,
-              lastRunAt: new Date().toISOString().slice(0, 10),
-            }
-          : s,
-      ),
-    }));
-    openInJarvis(`Run skill ${skill.slug} now.`);
+    void persistSkillMutation(
+      skillId,
+      (s) => ({
+        ...s,
+        runCount: s.runCount + 1,
+        lastRunAt: new Date().toISOString().slice(0, 10),
+      }),
+      () =>
+        fetch(`${ENDPOINT}/${encodeURIComponent(skillId)}/run`, {
+          method: 'POST',
+          credentials: 'include',
+        }),
+    ).then((ok) => {
+      if (ok) openInJarvis(`Run skill ${skill.slug} now.`);
+    });
   }
 
   function openInJarvis(prompt: string): void {
@@ -248,6 +191,16 @@ export default function SkillsPage(): JSX.Element {
     );
   }
 
+  if (state.status === 'error') {
+    return (
+      <MissingBackendNotice
+        title={t('marketplaceTitle')}
+        endpoint={ENDPOINT}
+        description="The owner-skills API could not be reached. No skills are shown until it responds."
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -260,11 +213,6 @@ export default function SkillsPage(): JSX.Element {
             Install workflows Mr. Mwikila can run on a schedule, on an event, or
             on demand. Toggle them off any time.
           </p>
-          {state.status === 'fallback' ? (
-            <p className="mt-1 text-xs text-amber-700">
-              Skills API not yet wired. Showing a sample catalog.
-            </p>
-          ) : null}
         </div>
         <button
           type="button"
