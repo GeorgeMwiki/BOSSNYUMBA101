@@ -60,6 +60,7 @@ export async function iterateTenants(
           triggersFired: 0,
           triggersSuppressedIdempotent: 0,
           triggersSuppressedLowUrgency: 0,
+          triggersDropped: 0,
           errorMessage: msg,
         });
       }

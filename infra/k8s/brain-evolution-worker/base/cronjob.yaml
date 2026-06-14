@@ -16,6 +16,15 @@ spec:
   # 02:00 UTC daily.
   schedule: "0 2 * * *"
   timeZone: "Etc/UTC"
+  # Active: the entrypoint (services/brain-evolution-worker/src/index.ts)
+  # is a real composition root that runs `runNightlySweep` once and exits
+  # in run-once mode (BRAIN_EVOLUTION_INTERVAL_MS=0). Under NODE_ENV=production
+  # (set below) the entrypoint FAIL-FASTS if DATABASE_URL is missing /
+  # unresolvable — a degraded no-op sweep must NOT pass as a healthy nightly
+  # run, so the job fails visibly (backoffLimit 2) and the operator sees it
+  # rather than brain self-improvement silently going absent. Mirrors the
+  # SLEEP_PASS_PROD_ADAPTERS guard in the sibling sleep-time workers.
+  suspend: false
   # Skip if the previous run hasn't completed yet — overlapping nightly
   # sweeps would re-process the same traces.
   concurrencyPolicy: Forbid

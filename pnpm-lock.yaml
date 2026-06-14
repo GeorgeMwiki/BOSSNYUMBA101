@@ -4702,9 +4702,18 @@ importers:
       '@bossnyumba/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@bossnyumba/notifications-service':
+        specifier: workspace:*
+        version: link:../notifications
       '@bossnyumba/user-context-store':
         specifier: workspace:*
         version: link:../../packages/user-context-store
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(postgres@3.4.9)
+      pino:
+        specifier: ^10.3.1
+        version: 10.3.1
     devDependencies:
       '@types/node':
         specifier: ^25.8.0

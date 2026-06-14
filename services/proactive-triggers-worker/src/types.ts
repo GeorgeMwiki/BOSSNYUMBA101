@@ -36,6 +36,25 @@ export interface TriggerSink {
 }
 
 /**
+ * Staff-alert port — fired when triggers are DROPPED (emit failed) so a
+ * human operator notices that high-urgency advice never reached a user.
+ * Carries counts + ids only (no PII / no trigger payloads), mirroring
+ * `ReminderStaffAlertSink` in `@bossnyumba/notifications-service`.
+ *
+ * Default wiring is a no-op so tests + dev stay quiet; production wires
+ * the in-app operator inbox at the composition root / bootstrap.
+ */
+export interface StaffAlertSink {
+  raise(args: {
+    tenantId: string;
+    /** How many triggers failed to emit in this sweep for this tenant. */
+    droppedCount: number;
+    /** Stable trigger ids that were dropped (for operator triage). */
+    triggerIds: ReadonlyArray<string>;
+  }): Promise<void> | void;
+}
+
+/**
  * A single user the worker should process. The directory yields these.
  */
 export interface ActiveUser {
@@ -75,6 +94,12 @@ export interface TenantSweepResult {
   readonly triggersFired: number;
   readonly triggersSuppressedIdempotent: number;
   readonly triggersSuppressedLowUrgency: number;
+  /**
+   * Triggers that should have fired but whose sink emit FAILED. They are
+   * deliberately NOT marked seen, so the next sweep retries them. A
+   * non-zero value raises a staff alert.
+   */
+  readonly triggersDropped: number;
   readonly errorMessage: string | null;
 }
 
@@ -87,6 +112,8 @@ export interface SweepSummary {
   readonly triggersFired: number;
   readonly triggersSuppressedIdempotent: number;
   readonly triggersSuppressedLowUrgency: number;
+  /** Sum of per-tenant {@link TenantSweepResult.triggersDropped}. */
+  readonly triggersDropped: number;
   readonly errored: number;
   readonly results: ReadonlyArray<TenantSweepResult>;
 }
