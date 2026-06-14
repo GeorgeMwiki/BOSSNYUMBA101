@@ -68,4 +68,15 @@ describe('/sign-in page — real form wiring (blocker #6)', () => {
     const links = screen.getAllByRole('link');
     expect(links.some((a) => a.getAttribute('href') === '/sign-up')).toBe(true);
   });
+
+  it('points the "Forgot?" link at the real /forgot-password route (blocker #H31 — not the dead /sign-in/forgot)', async () => {
+    await renderSignInPage();
+    const forgot = screen.getByTestId('signin-forgot-link');
+    expect(forgot).toHaveAttribute('href', '/forgot-password');
+    // The dead destination must be gone entirely.
+    const links = screen.getAllByRole('link');
+    expect(links.some((a) => a.getAttribute('href') === '/sign-in/forgot')).toBe(
+      false,
+    );
+  });
 });

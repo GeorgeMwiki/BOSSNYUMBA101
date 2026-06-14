@@ -31,6 +31,7 @@ interface SignInCopy {
   readonly sub: string;
   readonly noAccount: string;
   readonly signUpFree: (tierName: string) => string;
+  readonly forgot: string;
 }
 
 const COPY: Record<Locale, SignInCopy> = {
@@ -40,6 +41,7 @@ const COPY: Record<Locale, SignInCopy> = {
     sub: 'Mr. Mwikila will pick up where you left off. Choose how you signed up.',
     noAccount: 'No account yet?',
     signUpFree: (tierName) => `Sign Up — free on ${tierName}`,
+    forgot: 'Forgot your password?',
   },
   sw: {
     kicker: 'Karibu tena',
@@ -47,6 +49,7 @@ const COPY: Record<Locale, SignInCopy> = {
     sub: 'Bw. Mwikila ataendelea kutoka pale ulipoachia. Chagua jinsi ulivyojisajili.',
     noAccount: 'Bado huna akaunti?',
     signUpFree: (tierName) => `Jisajili — bure kwenye ${tierName}`,
+    forgot: 'Umesahau nenosiri lako?',
   },
 };
 
@@ -95,6 +98,16 @@ export default async function SignInPage() {
           <Suspense fallback={null}>
             <OwnerSignInForm locale={locale} />
           </Suspense>
+
+          <p className="mt-4 text-center text-sm text-foreground/70">
+            <Link
+              href="/forgot-password"
+              data-testid="signin-forgot-link"
+              className="font-medium text-signal-500 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 rounded-sm"
+            >
+              {copy.forgot}
+            </Link>
+          </p>
 
           <p className="mt-6 text-center text-sm text-foreground/70">
             {copy.noAccount}{' '}

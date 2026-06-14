@@ -1455,7 +1455,33 @@
     },
     "fromSignup": "Account created. Sign in to enter the cockpit.",
     "noAccountYet": "No account yet?",
-    "signUpLink": "Sign up"
+    "signUpLink": "Sign up",
+    "forgotLink": "Forgot your password?"
+  },
+  "ownerForgotPasswordPage": {
+    "metaTitle": "Reset your password — BossNyumba",
+    "metaDescription": "Reset the password for your BossNyumba owner cockpit. We email you a secure link to set a new one.",
+    "kicker": "Account recovery",
+    "heading": "Reset your password.",
+    "sub": "Enter the email on your account. If it matches, we send a secure link to set a new password.",
+    "fields": {
+      "email": "Email",
+      "emailEn": "Barua pepe"
+    },
+    "actions": {
+      "submit": "Send reset link",
+      "submitting": "Sending",
+      "backToSignIn": "Back to sign in"
+    },
+    "errors": {
+      "emailRequired": "Enter a valid email address",
+      "sendFailed": "Could not send the reset link. Try again."
+    },
+    "sent": {
+      "heading": "Check your email.",
+      "body": "If an account exists for that address, a password-reset link is on its way. The link expires for your security — open it soon.",
+      "resend": "Use a different email"
+    }
   },
   "ownerSignUpPage": {
     "metaTitle": "Create a BossNyumba account",

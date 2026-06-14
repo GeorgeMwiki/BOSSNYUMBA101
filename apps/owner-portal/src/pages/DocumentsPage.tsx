@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   FileText,
   Download,
@@ -29,11 +30,20 @@ import {
   Image as ImageIcon,
   type LucideIcon,
 } from 'lucide-react';
-import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState, Spinner } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
-import { formatDate, formatDateTime } from '../lib/api';
+import { api, formatDate, formatDateTime } from '../lib/api';
+import { uploadDocument } from '../lib/documents-upload';
 import { useDocuments, type OwnerDocument as Document } from '../lib/hooks';
 import { ROUTES } from '../lib/routes';
+
+// Open a resolved download URL in a new tab. Centralised so the View and
+// Download row actions share identical browser behaviour. `rel=noopener` avoids
+// the opened blob URL gaining a handle back to the SPA window.
+function openInNewTab(url: string) {
+  const win = window.open(url, '_blank', 'noopener,noreferrer');
+  if (win) win.opener = null;
+}
 
 interface DocumentCategory {
   id: string;
@@ -46,14 +56,72 @@ interface DocumentCategory {
 export function DocumentsPage() {
   const t = useTranslations('documentsPageFull');
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: documents = [], isLoading: loading, error: queryError, refetch } = useDocuments();
-  const error = queryError instanceof Error ? queryError.message : null;
+  const queryErrorMessage = queryError instanceof Error ? queryError.message : null;
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showESignModal, setShowESignModal] = useState(false);
+
+  // Upload + download wiring. The fetch query owns the list; mutations here
+  // surface their own transient state and invalidate the query on success.
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  // Surface either the list-load error or the last upload/download error.
+  const error = queryErrorMessage ?? actionError;
+
+  const handleUploadClick = () => {
+    setActionError(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset the input so selecting the same file again still fires onChange.
+    e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    setActionError(null);
+    try {
+      await uploadDocument({ file, name: file.name });
+      await queryClient.invalidateQueries({ queryKey: ['documents'] });
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : t('uploadFailed'),
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Resolve a short-lived signed URL from the backend, then open it. We never
+  // embed a raw storage path in the UI — the server mints the URL per click.
+  const handleDownload = async (doc: Document) => {
+    setDownloadingId(doc.id);
+    setActionError(null);
+    try {
+      const response = await api.get<{ downloadUrl?: string }>(
+        `/documents/${doc.id}/download`,
+      );
+      const url = response.success ? response.data?.downloadUrl : undefined;
+      if (!url) {
+        throw new Error(response.error?.message ?? t('downloadFailed'));
+      }
+      openInNewTab(url);
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : t('downloadFailed'),
+      );
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const categories: DocumentCategory[] = [
     { id: 'leases', name: t('catLeases'), icon: FileText, count: 0, description: t('catLeasesDesc') },
@@ -155,10 +223,22 @@ export function DocumentsPage() {
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500">{t('subtitle')}</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
-          <Upload className="h-4 w-4" />
-          {t('uploadDocument')}
+        <button
+          onClick={handleUploadClick}
+          disabled={uploading}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+        >
+          {uploading ? <Spinner size="sm" /> : <Upload className="h-4 w-4" />}
+          {uploading ? t('uploading') : t('uploadDocument')}
         </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          aria-hidden="true"
+          accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,.doc,.docx,.xls,.xlsx,.csv,.txt"
+          onChange={handleFileSelected}
+        />
       </div>
 
       {/* Document Categories */}
@@ -296,11 +376,25 @@ export function DocumentsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1">
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title={t('view')}>
+                      <button
+                        onClick={() => handleDownload(doc)}
+                        disabled={downloadingId === doc.id}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded disabled:opacity-50"
+                        title={t('view')}
+                      >
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title={t('download')}>
-                        <Download className="h-4 w-4" />
+                      <button
+                        onClick={() => handleDownload(doc)}
+                        disabled={downloadingId === doc.id}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded disabled:opacity-50"
+                        title={t('download')}
+                      >
+                        {downloadingId === doc.id ? (
+                          <Spinner size="sm" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
                       </button>
                       {doc.versions && doc.versions.length > 1 && (
                         <button

@@ -15,7 +15,23 @@ import { MissingBackendNotice } from '../../components/MissingBackendNotice';
  * E3 prompt-compiler wire to land; until then we just pre-fill the chat).
  */
 
-const ENDPOINT = '/api/v1/owner/skills';
+const ENDPOINT = '/api/v1/owner/account/skills';
+
+// Owner-portal auth is a Bearer token in localStorage (see src/lib/api.ts). The
+// skills routes are auth + tenant-scoped, so every request MUST carry it.
+// `credentials: 'include'` is kept for cookie-based deployments.
+function authedFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const token =
+    typeof window !== 'undefined' ? window.localStorage.getItem('token') : null;
+  return fetch(url, {
+    ...init,
+    credentials: 'include',
+    headers: {
+      ...(init.headers ?? {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+}
 
 interface SkillsApiState {
   // 'missing'  → backend explicitly not wired (503): honest MissingBackendNotice.
@@ -47,7 +63,7 @@ export default function SkillsPage(): JSX.Element {
     let cancelled = false;
     async function load(): Promise<void> {
       try {
-        const res = await fetch(ENDPOINT, { credentials: 'include' });
+        const res = await authedFetch(ENDPOINT);
         if (cancelled) return;
         if (res.status === 503) {
           setState({ status: 'missing', skills: [] });
@@ -121,9 +137,8 @@ export default function SkillsPage(): JSX.Element {
       skillId,
       (s) => ({ ...s, enabled: nextEnabled }),
       () =>
-        fetch(`${ENDPOINT}/${encodeURIComponent(skillId)}/toggle`, {
-          method: 'PATCH',
-          credentials: 'include',
+        authedFetch(`${ENDPOINT}/${encodeURIComponent(skillId)}/toggle`, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ enabled: nextEnabled }),
         }),
@@ -135,9 +150,8 @@ export default function SkillsPage(): JSX.Element {
       skillId,
       (s) => ({ ...s, installed: true, enabled: true }),
       () =>
-        fetch(`${ENDPOINT}/${encodeURIComponent(skillId)}/install`, {
+        authedFetch(`${ENDPOINT}/${encodeURIComponent(skillId)}/install`, {
           method: 'POST',
-          credentials: 'include',
         }),
     );
   }
@@ -153,9 +167,8 @@ export default function SkillsPage(): JSX.Element {
         lastRunAt: new Date().toISOString().slice(0, 10),
       }),
       () =>
-        fetch(`${ENDPOINT}/${encodeURIComponent(skillId)}/run`, {
+        authedFetch(`${ENDPOINT}/${encodeURIComponent(skillId)}/run`, {
           method: 'POST',
-          credentials: 'include',
         }),
     ).then((ok) => {
       if (ok) openInJarvis(`Run skill ${skill.slug} now.`);

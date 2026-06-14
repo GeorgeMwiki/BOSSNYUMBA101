@@ -62,7 +62,7 @@ describe('SkillsPage — no fabricated fallback', () => {
 
     await waitFor(() => {
       // MissingBackendNotice surfaces the concrete endpoint.
-      expect(screen.getByText('/api/v1/owner/skills')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/owner/account/skills')).toBeInTheDocument();
     });
     expectNoFabricatedSkills();
   });
@@ -76,7 +76,7 @@ describe('SkillsPage — no fabricated fallback', () => {
     render(<SkillsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('/api/v1/owner/skills')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/owner/account/skills')).toBeInTheDocument();
     });
     expectNoFabricatedSkills();
   });
@@ -87,7 +87,7 @@ describe('SkillsPage — no fabricated fallback', () => {
     render(<SkillsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('/api/v1/owner/skills')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/owner/account/skills')).toBeInTheDocument();
     });
     expectNoFabricatedSkills();
   });

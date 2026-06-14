@@ -5,11 +5,13 @@
  * Wires @bossnyumba/chat-ui (mode detector, blackboard, adaptive renderer)
  * against the shared Brain SSE endpoint at /api/v1/ai/chat.
  *
- * Consumes GENUINE token streaming: the gateway's `streamTurn` feeds an
- * `onToken` sink off the Anthropic SSE wire, so `delta` events arrive in
- * real time as the model writes — not a replay of a completed turn. Locale
- * purity is preserved (the active persona stays single-language; we only
- * stream that text incrementally).
+ * Streams off the Brain SSE wire. The gateway buffers the prose deltas and
+ * applies the conversation-feel guards (chatbot-feel filler stripped) before
+ * the body lands, so the visible reply is FILLER-FREE — the body settles
+ * slightly later but reads human, not call-center. Locale purity is preserved:
+ * the active locale is threaded to the gateway (estate-mode overlay keeps the
+ * persona single-language) AND to every teaching/review/discussion/quiz/
+ * blackboard surface so Swahili owners see Swahili scaffolding.
  *
  * Mount point: /admin/manager-chat
  */
@@ -40,6 +42,7 @@ import {
   Blackboard,
   useChatBoardBridge,
 } from '../components/blackboard';
+import { useLocaleContext } from '../contexts/LocaleProvider';
 
 interface ChatMessage {
   readonly id: string;
@@ -51,6 +54,11 @@ interface ChatMessage {
 
 export default function ManagerChat() {
   const t = useTranslations('managerChat');
+  // Active EN/SW locale (absolute toggle). Threaded into the gateway turn so
+  // the estate-manager persona answers single-language, and into every
+  // teaching/review/discussion/quiz/blackboard surface so the Swahili
+  // scaffolding actually renders for Swahili owners (previously hard-coded 'en').
+  const { locale } = useLocaleContext();
   const [searchParams] = useSearchParams();
   // DesktopReview deep-links here with ?context=<kind>:<id>&intent=<action>.
   // We surface `context` as a chip above the input and prefill the input
@@ -66,6 +74,9 @@ export default function ManagerChat() {
     'estate-manager',
     {
       endpoint: '/api/v1/ai/chat',
+      // Absolute EN/SW toggle — sent on every turn so the gateway threads it
+      // into the estate-mode overlay and the persona stays single-language.
+      extraBody: { language: locale },
       onEvent: (evt) => {
         if (evt.type === 'turn_end' && activeAssistantId) {
           // Run mode detection on the finalised text so the Blackboard swaps
@@ -148,13 +159,13 @@ export default function ManagerChat() {
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{t('title')}</h1>
 
         {modeState.mode === 'teaching' && modeState.teachingData && (
-          <TeachingModeLayout data={modeState.teachingData} language="en" />
+          <TeachingModeLayout data={modeState.teachingData} language={locale} />
         )}
         {modeState.mode === 'review' && modeState.reviewData && (
-          <ReviewModeSummary data={modeState.reviewData} language="en" />
+          <ReviewModeSummary data={modeState.reviewData} language={locale} />
         )}
         {modeState.mode === 'discussion' && modeState.discussionData && (
-          <DiscussionModeLayout data={modeState.discussionData} language="en" />
+          <DiscussionModeLayout data={modeState.discussionData} language={locale} />
         )}
 
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -166,7 +177,7 @@ export default function ManagerChat() {
                 {m.isStreaming && <span style={{ color: '#64748b' }}> …</span>}
               </div>
               {m.metadata && (
-                <AdaptiveRenderer metadata={m.metadata} language="en" onSendMessage={sendMessage} />
+                <AdaptiveRenderer metadata={m.metadata} language={locale} onSendMessage={sendMessage} />
               )}
             </li>
           ))}
@@ -227,7 +238,7 @@ export default function ManagerChat() {
         {modeState.mode === 'quiz' && modeState.quizData && (
           <QuizLockdownOverlay
             data={modeState.quizData}
-            language="en"
+            language={locale}
             onAnswer={() => undefined}
             onTimeUp={() => setModeState((prev) => applyMode(prev, 'teaching', 'time up'))}
             onModeRevert={(m) => setModeState((prev) => applyMode(prev, m, 'quiz answered'))}
@@ -284,10 +295,10 @@ export default function ManagerChat() {
       </div>
 
       <aside>
-        <Blackboard languagePreference="en" />
+        <Blackboard languagePreference={locale} />
         {lastAssistant?.metadata?.uiBlocks && lastAssistant.metadata.uiBlocks.length > 0 && (
           <div style={{ marginTop: 12 }}>
-            <AdaptiveRenderer metadata={lastAssistant.metadata} language="en" />
+            <AdaptiveRenderer metadata={lastAssistant.metadata} language={locale} />
           </div>
         )}
       </aside>

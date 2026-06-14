@@ -116,10 +116,25 @@ export function DisbursementsPage() {
   const handleDownloadStatement = async (disbursement: Disbursement) => {
     setDownloading(disbursement.id);
     try {
-      const response = await api.get(`/owner/disbursements/${disbursement.id}/statement`);
-      if (!response.success) {
+      const response = await api.get<{ downloadUrl?: string }>(
+        `/owner/disbursements/${disbursement.id}/statement`,
+      );
+      const downloadUrl = response.success ? response.data?.downloadUrl : undefined;
+      if (!downloadUrl) {
         throw new Error(response.error?.message || 'Statement download is unavailable.');
       }
+      // Actually deliver the file: a temporary anchor triggers the browser's
+      // download for both data: URLs (the BFF returns a base64 data URL today)
+      // and absolute http(s) URLs (when statements move to object storage). The
+      // `download` attribute names the saved file; `rel=noopener` is harmless
+      // for downloads and safe for the http(s) case.
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = `statement-${disbursement.reference || disbursement.id}.csv`;
+      anchor.rel = 'noopener';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Statement download is unavailable.');
     } finally {

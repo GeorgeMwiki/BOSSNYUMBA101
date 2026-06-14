@@ -4,15 +4,20 @@
  * shift-report) screen.
  *
  * NO-FABRICATION: when the endpoint is unavailable (network 0, 404, 501)
+ * OR the worker simply has no shift today (the route returns 200 `null`),
  * the hook resolves to `null` — an HONEST "no shift / unavailable" empty
  * state — instead of inventing a working 06:00–18:00 shift. The W-M-02
  * screen null-guards the data and renders an empty surface. Real errors
  * (auth, 5xx) propagate to the caller's error state.
  *
- * NOTE: the `/api/v1/field/shifts/today` route is NOT yet mounted on the
- * api-gateway (field/staff.hono.ts exposes GET /me + GET /tasks/next but
- * no /shifts/today). Until the backend lands, this hook returns the
- * honest empty state rather than fake data.
+ * BACKEND: the `/api/v1/field/shifts/today` route is now served by the
+ * api-gateway field/shifts router (services/api-gateway/src/routes/field/
+ * shifts.hono.ts), backed by the real `staff_shifts` schedule table
+ * (migration 0332) with the shift's task list resolved live from
+ * `maintenance_tasks`. Auth = staff (MAINTENANCE_STAFF / PROPERTY_MANAGER /
+ * TENANT_ADMIN); the worker resolves THEIR OWN shift from the JWT subject.
+ * When no shift is scheduled the route returns 200 `null` — which this hook
+ * maps to the same honest empty state as an unreachable endpoint.
  */
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { request } from '../../api/client'

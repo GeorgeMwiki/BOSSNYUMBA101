@@ -62,7 +62,8 @@ export function SettingsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    api.get<CoOwner[]>('/owner/co-owners').then((res) => {
+    // Real source of truth: accepted members (users) + pending invites.
+    api.get<CoOwner[]>('/owner/account/co-owners').then((res) => {
       if (cancelled) return;
       if (res.success && res.data) setCoOwners(res.data);
     });
@@ -80,7 +81,88 @@ export function SettingsPage() {
   });
 
   const [saving, setSaving] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // ── Preferences (persisted via /owner/account/settings) ──────────────────
+  // Controlled state, hydrated from the API. No more fake-success Save.
+  const [prefs, setPrefs] = useState({
+    language: 'en' as 'en' | 'sw',
+    currency: 'USD',
+    timezone: 'Africa/Dar_es_Salaam',
+    dateFormat: 'DD/MM/YYYY',
+  });
+  // Notification toggles keyed by the six FE ids. Defaults applied; API overrides.
+  const [notificationPrefs, setNotificationPrefs] = useState<Record<string, boolean>>({
+    payment: true,
+    maintenance: true,
+    approval: true,
+    overdue: true,
+    weekly: false,
+    monthly: true,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{
+        language?: 'en' | 'sw';
+        currency?: string;
+        timezone?: string;
+        dateFormat?: string;
+        notificationPrefs?: Record<string, boolean>;
+      }>('/owner/account/settings')
+      .then((res) => {
+        if (cancelled || !res.success || !res.data) return;
+        const d = res.data;
+        setPrefs({
+          language: d.language ?? 'en',
+          currency: d.currency ?? 'USD',
+          timezone: d.timezone ?? 'Africa/Dar_es_Salaam',
+          dateFormat: d.dateFormat ?? 'DD/MM/YYYY',
+        });
+        if (d.notificationPrefs && Object.keys(d.notificationPrefs).length > 0) {
+          setNotificationPrefs((prev) => ({ ...prev, ...d.notificationPrefs }));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ── Security (2FA capability + password change) ──────────────────────────
+  const [twoFa, setTwoFa] = useState<{ available: boolean; enrolled: boolean }>({
+    available: false,
+    enrolled: false,
+  });
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ available: boolean; enrolled: boolean }>('/owner/account/security/2fa')
+      .then((res) => {
+        if (cancelled || !res.success || !res.data) return;
+        setTwoFa({ available: res.data.available, enrolled: res.data.enrolled });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const flashError = (message: string) => {
+    setNotification({ type: 'error', message });
+    setTimeout(() => setNotification(null), 4000);
+  };
+  const flashSuccess = (message: string) => {
+    setNotification({ type: 'success', message });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   const tabs = [
     { id: 'profile', label: t('tabProfile'), icon: User },
@@ -92,37 +174,138 @@ export function SettingsPage() {
 
   const properties = ['Palm Gardens', 'Ocean View Apartments', 'Sunset Villas', 'Garden Estate'];
 
+  // Real persistence — POST /owner/account/settings upserts the prefs row AND
+  // mirrors the currency into the canonical currency_preferences chain.
   const handleSave = async () => {
     setSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setSaving(false);
-    setNotification({ type: 'success', message: t('savedSuccess') });
-    setTimeout(() => setNotification(null), 3000);
+    try {
+      const res = await api.post('/owner/account/settings', {
+        language: prefs.language,
+        currency: prefs.currency,
+        timezone: prefs.timezone,
+        dateFormat: prefs.dateFormat,
+        notificationPrefs,
+      });
+      if (res.success) {
+        flashSuccess(t('savedSuccess'));
+      } else {
+        flashError(res.error?.message ?? t('savedSuccess'));
+      }
+    } catch {
+      flashError(t('savedSuccess'));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleInviteUser = () => {
-    const newUser: CoOwner = {
-      id: Date.now().toString(),
-      ...inviteForm,
-      status: 'PENDING',
-      invitedAt: new Date().toISOString(),
-    };
-    setCoOwners([...coOwners, newUser]);
-    setShowInviteModal(false);
-    setInviteForm({ email: '', firstName: '', lastName: '', role: 'VIEWER', properties: [] });
-    setNotification({ type: 'success', message: t('invitationSent') });
-    setTimeout(() => setNotification(null), 3000);
+  // Real invite — POST /owner/account/co-owners/invite persists a pending
+  // invite AND enqueues a real email via the notifications engine.
+  const handleInviteUser = async () => {
+    setInviting(true);
+    try {
+      const res = await api.post<CoOwner>('/owner/account/co-owners/invite', {
+        email: inviteForm.email,
+        firstName: inviteForm.firstName,
+        lastName: inviteForm.lastName,
+        role: inviteForm.role,
+        properties: inviteForm.properties,
+      });
+      if (res.success && res.data) {
+        setCoOwners((prev) => [...prev, { ...res.data!, properties: inviteForm.properties }]);
+        setShowInviteModal(false);
+        setInviteForm({ email: '', firstName: '', lastName: '', role: 'VIEWER', properties: [] });
+        flashSuccess(t('invitationSent'));
+      } else {
+        flashError(res.error?.message ?? 'Failed to send invitation');
+      }
+    } catch {
+      flashError('Failed to send invitation');
+    } finally {
+      setInviting(false);
+    }
   };
 
-  const handleRemoveUser = (id: string) => {
-    setCoOwners(coOwners.filter(u => u.id !== id));
-    setNotification({ type: 'success', message: t('userRemoved') });
-    setTimeout(() => setNotification(null), 3000);
+  // Real revoke — DELETE /owner/account/co-owners/:id. Only revertible PENDING
+  // invites are removable here; OWNER rows have no Remove control.
+  const handleRemoveUser = async (id: string) => {
+    const previous = coOwners;
+    setCoOwners((prev) => prev.filter((u) => u.id !== id));
+    try {
+      const res = await api.delete(`/owner/account/co-owners/${encodeURIComponent(id)}`);
+      if (res.success) {
+        flashSuccess(t('userRemoved'));
+      } else {
+        setCoOwners(previous);
+        flashError(res.error?.message ?? t('userRemoved'));
+      }
+    } catch {
+      setCoOwners(previous);
+      flashError(t('userRemoved'));
+    }
   };
 
-  const handleResendInvite = (id: string) => {
-    setNotification({ type: 'success', message: t('invitationResent') });
-    setTimeout(() => setNotification(null), 3000);
+  // Real resend — POST /owner/account/co-owners/:id/resend rotates the token and
+  // re-enqueues a fresh email.
+  const handleResendInvite = async (id: string) => {
+    try {
+      const res = await api.post(`/owner/account/co-owners/${encodeURIComponent(id)}/resend`);
+      if (res.success) {
+        flashSuccess(t('invitationResent'));
+      } else {
+        flashError(res.error?.message ?? t('invitationResent'));
+      }
+    } catch {
+      flashError(t('invitationResent'));
+    }
+  };
+
+  // Real password change — POST /owner/account/security/password (bcrypt-backed).
+  const handleUpdatePassword = async () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      flashError('Passwords do not match');
+      return;
+    }
+    setUpdatingPassword(true);
+    try {
+      const res = await api.post('/owner/account/security/password', passwordForm);
+      if (res.success) {
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        flashSuccess(t('savedSuccess'));
+      } else {
+        flashError(res.error?.message ?? 'Failed to update password');
+      }
+    } catch {
+      flashError('Failed to update password');
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
+  // Real 2FA enrollment — reuse the /auth/mfa/enroll engine. The owner finishes
+  // enrollment by scanning the otpauth QR and confirming via /auth/mfa/confirm
+  // (surfaced in Jarvis / a follow-up modal); this kicks off the real flow.
+  const handleEnable2fa = async () => {
+    try {
+      const res = await api.post<{ otpauth?: string }>('/auth/mfa/enroll', {
+        accountName: user?.email ?? 'owner',
+        issuer: 'BossNyumba',
+      });
+      if (res.success && res.data?.otpauth) {
+        flashSuccess(t('twoFactorDesc'));
+        // Hand the enrollment payload to Jarvis to render the QR + confirm step.
+        try {
+          window.dispatchEvent(
+            new CustomEvent('owner-portal:mfa-enroll', { detail: res.data }),
+          );
+        } catch {
+          /* ignore */
+        }
+      } else {
+        flashError(res.error?.message ?? 'Failed to start 2FA enrollment');
+      }
+    } catch {
+      flashError('Failed to start 2FA enrollment');
+    }
   };
 
   const getRoleColor = (role: string) => {
@@ -250,12 +433,12 @@ export function SettingsPage() {
 
               <div className="space-y-4">
                 {[
-                  { id: 'payment', label: t('notifPayment'), desc: t('notifPaymentDesc'), default: true },
-                  { id: 'maintenance', label: t('notifMaintenance'), desc: t('notifMaintenanceDesc'), default: true },
-                  { id: 'approval', label: t('notifApproval'), desc: t('notifApprovalDesc'), default: true },
-                  { id: 'overdue', label: t('notifOverdue'), desc: t('notifOverdueDesc'), default: true },
-                  { id: 'weekly', label: t('notifWeekly'), desc: t('notifWeeklyDesc'), default: false },
-                  { id: 'monthly', label: t('notifMonthly'), desc: t('notifMonthlyDesc'), default: true },
+                  { id: 'payment', label: t('notifPayment'), desc: t('notifPaymentDesc') },
+                  { id: 'maintenance', label: t('notifMaintenance'), desc: t('notifMaintenanceDesc') },
+                  { id: 'approval', label: t('notifApproval'), desc: t('notifApprovalDesc') },
+                  { id: 'overdue', label: t('notifOverdue'), desc: t('notifOverdueDesc') },
+                  { id: 'weekly', label: t('notifWeekly'), desc: t('notifWeeklyDesc') },
+                  { id: 'monthly', label: t('notifMonthly'), desc: t('notifMonthlyDesc') },
                 ].map((item) => (
                   <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
@@ -263,7 +446,14 @@ export function SettingsPage() {
                       <p className="text-sm text-gray-500">{item.desc}</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" defaultChecked={item.default} className="sr-only peer" />
+                      <input
+                        type="checkbox"
+                        checked={notificationPrefs[item.id] ?? false}
+                        onChange={(e) =>
+                          setNotificationPrefs((prev) => ({ ...prev, [item.id]: e.target.checked }))
+                        }
+                        className="sr-only peer"
+                      />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
                   </div>
@@ -285,18 +475,49 @@ export function SettingsPage() {
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="settings-current-password" className="block text-sm font-medium text-gray-700 mb-1">{t('currentPassword')}</label>
-                    <input id="settings-current-password" type="password" autoComplete="current-password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input
+                      id="settings-current-password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                   <div>
                     <label htmlFor="settings-new-password" className="block text-sm font-medium text-gray-700 mb-1">{t('newPassword')}</label>
-                    <input id="settings-new-password" type="password" autoComplete="new-password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input
+                      id="settings-new-password"
+                      type="password"
+                      autoComplete="new-password"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                   <div>
                     <label htmlFor="settings-confirm-password" className="block text-sm font-medium text-gray-700 mb-1">{t('confirmNewPassword')}</label>
-                    <input id="settings-confirm-password" type="password" autoComplete="new-password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input
+                      id="settings-confirm-password"
+                      type="password"
+                      autoComplete="new-password"
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
-                    {t('updatePassword')}
+                  <button
+                    type="button"
+                    onClick={handleUpdatePassword}
+                    disabled={
+                      updatingPassword ||
+                      !passwordForm.currentPassword ||
+                      passwordForm.newPassword.length < 8 ||
+                      passwordForm.newPassword !== passwordForm.confirmPassword
+                    }
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {updatingPassword ? t('savingLoading') : t('updatePassword')}
                   </button>
                 </div>
               </div>
@@ -306,10 +527,29 @@ export function SettingsPage() {
               <div>
                 <h3 className="font-medium text-gray-900 mb-4">{t('twoFactor')}</h3>
                 <p className="text-sm text-gray-500 mb-4">{t('twoFactorDesc')}</p>
-                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50">
-                  <Key className="h-4 w-4" />
-                  {t('enable2fa')}
-                </button>
+                {twoFa.available ? (
+                  <button
+                    type="button"
+                    onClick={handleEnable2fa}
+                    disabled={twoFa.enrolled}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <Key className="h-4 w-4" />
+                    {twoFa.enrolled ? '2FA enabled' : t('enable2fa')}
+                  </button>
+                ) : (
+                  // Honest disabled affordance — MFA is not configured for this
+                  // deployment. No dead button.
+                  <button
+                    type="button"
+                    disabled
+                    title="Two-factor authentication is not yet available"
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg font-medium text-gray-400 cursor-not-allowed"
+                  >
+                    <Key className="h-4 w-4" />
+                    {t('enable2fa')} — coming soon
+                  </button>
+                )}
               </div>
 
               <hr />
@@ -436,32 +676,55 @@ export function SettingsPage() {
           {activeTab === 'preferences' && (
             <div className="space-y-6 max-w-xl">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('language')}</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label htmlFor="settings-language" className="block text-sm font-medium text-gray-700 mb-1">{t('language')}</label>
+                <select
+                  id="settings-language"
+                  value={prefs.language}
+                  onChange={(e) => setPrefs({ ...prefs, language: e.target.value as 'en' | 'sw' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="en">{t('langEnglish')}</option>
                   <option value="sw">{t('langSwahili')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('timezone')}</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label htmlFor="settings-timezone" className="block text-sm font-medium text-gray-700 mb-1">{t('timezone')}</label>
+                <select
+                  id="settings-timezone"
+                  value={prefs.timezone}
+                  onChange={(e) => setPrefs({ ...prefs, timezone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="Africa/Dar_es_Salaam">{t('tzEat')}</option>
                   <option value="UTC">UTC</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('currency')}</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label htmlFor="settings-currency" className="block text-sm font-medium text-gray-700 mb-1">{t('currency')}</label>
+                <select
+                  id="settings-currency"
+                  value={prefs.currency}
+                  onChange={(e) => setPrefs({ ...prefs, currency: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="TZS">{t('currencyTzs')}</option>
                   <option value="USD">{t('currencyUsd')}</option>
+                  <option value="KES">KES</option>
+                  <option value="UGX">UGX</option>
+                  <option value="NGN">NGN</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('dateFormat')}</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label htmlFor="settings-date-format" className="block text-sm font-medium text-gray-700 mb-1">{t('dateFormat')}</label>
+                <select
+                  id="settings-date-format"
+                  value={prefs.dateFormat}
+                  onChange={(e) => setPrefs({ ...prefs, dateFormat: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                   <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                   <option value="YYYY-MM-DD">YYYY-MM-DD</option>
@@ -550,9 +813,9 @@ export function SettingsPage() {
                 <button onClick={() => setShowInviteModal(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium">
                   {t('cancel')}
                 </button>
-                <button onClick={handleInviteUser} disabled={!inviteForm.email || !inviteForm.firstName || inviteForm.properties.length === 0} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
+                <button onClick={handleInviteUser} disabled={inviting || !inviteForm.email || !inviteForm.firstName} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
                   <Mail className="h-4 w-4" />
-                  {t('sendInvitation')}
+                  {inviting ? t('savingLoading') : t('sendInvitation')}
                 </button>
               </div>
             </div>
