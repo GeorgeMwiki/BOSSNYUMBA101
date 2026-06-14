@@ -106,11 +106,17 @@ export interface IPaymentIntentRepository {
   ): Promise<number>;
 
   /**
-   * Get payment intents needing reconciliation
+   * Get payment intents needing reconciliation.
+   *
+   * `limit` bounds the result set so the reconciliation worker can never
+   * pull an unbounded backlog of PROCESSING intents into memory (or fan
+   * out an unbounded number of external provider calls). Callers should
+   * always pass a cap; implementations MUST honour it.
    */
   findNeedingReconciliation(
     tenantId: TenantId,
-    olderThan: Date
+    olderThan: Date,
+    limit?: number
   ): Promise<PaymentIntent[]>;
 }
 
@@ -253,14 +259,19 @@ export class InMemoryPaymentIntentRepository implements IPaymentIntentRepository
 
   async findNeedingReconciliation(
     tenantId: TenantId,
-    olderThan: Date
+    olderThan: Date,
+    limit?: number
   ): Promise<PaymentIntent[]> {
-    return Array.from(this.paymentIntents.values())
+    const matches = Array.from(this.paymentIntents.values())
       .filter(pi =>
         pi.tenantId === tenantId &&
         pi.status === 'PROCESSING' &&
         pi.createdAt < olderThan
       )
+      // Deterministic order (oldest first) so the cap drains the backlog
+      // by age and mirrors the Drizzle ORDER BY createdAt ASC.
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
       .map(pi => ({ ...pi }));
+    return limit !== undefined && limit >= 0 ? matches.slice(0, limit) : matches;
   }
 }

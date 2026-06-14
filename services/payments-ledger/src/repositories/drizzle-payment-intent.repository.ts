@@ -28,7 +28,7 @@
  *     to retry. We do NOT swallow errors here.
  */
 
-import { and, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import {
   Money,
   type PaymentIntent,
@@ -404,8 +404,9 @@ export class DrizzlePaymentIntentRepository
   async findNeedingReconciliation(
     tenantId: TenantId,
     olderThan: Date,
+    limit?: number,
   ): Promise<PaymentIntent[]> {
-    const rows = await this.db
+    const base = this.db
       .select()
       .from(paymentIntents)
       .where(
@@ -414,7 +415,13 @@ export class DrizzlePaymentIntentRepository
           eq(paymentIntents.status, 'PROCESSING'),
           lt(paymentIntents.createdAt, olderThan),
         ),
-      );
+      )
+      // Oldest first so a capped fetch drains the backlog by age and the
+      // same intents are not starved across runs.
+      .orderBy(asc(paymentIntents.createdAt));
+
+    const rows =
+      limit !== undefined && limit >= 0 ? await base.limit(limit) : await base;
 
     return rows.map(rowToPaymentIntent);
   }

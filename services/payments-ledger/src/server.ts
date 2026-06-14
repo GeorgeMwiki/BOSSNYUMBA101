@@ -162,6 +162,50 @@ function getTenantId(req: Request): TenantId {
   return asTenantId(tenantId);
 }
 
+/** Shape a manual-journal idempotency key may arrive in (header or body). */
+const JournalIdempotencyKeySchema = z.string().trim().min(1).max(255);
+
+/**
+ * Resolve the idempotency key for a manual journal/account-entry POST.
+ *
+ * Manual ledger posts are NOT naturally idempotent: a client retry (proxy
+ * timeout, double-click, at-least-once delivery) would otherwise post the
+ * same balanced journal twice and double-move money. The key is threaded
+ * into `ledgerService.postJournalEntry`, which collapses a replay onto the
+ * first journal via the `journal_idempotency` table (migration 0318).
+ *
+ * Canonical source is the `Idempotency-Key` HTTP header (REST convention);
+ * a body `idempotencyKey` is accepted as a fallback for non-header clients.
+ *
+ * Returns `{ ok: true, key: undefined }` when no key is supplied (caller
+ * decides whether that is allowed), `{ ok: true, key }` for a valid key,
+ * and `{ ok: false, error }` for a malformed key so the route can answer a
+ * clean 400 rather than letting a zod throw become a 500.
+ */
+type IdempotencyKeyResult =
+  | { readonly ok: true; readonly key: string | undefined }
+  | { readonly ok: false; readonly error: string };
+
+function resolveJournalIdempotencyKey(
+  req: Request,
+  bodyKey?: unknown,
+): IdempotencyKeyResult {
+  const headerRaw = req.headers['idempotency-key'];
+  const header = Array.isArray(headerRaw) ? headerRaw[0] : headerRaw;
+  const candidate = header ?? bodyKey;
+  if (candidate === undefined || candidate === null || candidate === '') {
+    return { ok: true, key: undefined };
+  }
+  const parsed = JournalIdempotencyKeySchema.safeParse(candidate);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: 'Idempotency-Key must be a non-empty string of at most 255 chars',
+    };
+  }
+  return { ok: true, key: parsed.data };
+}
+
 /**
  * Resolve tenant aggregate - uses env-configured defaults (PLATFORM_FEE_BPS, etc.).
  * Production: replace with HTTP call to tenant service when available. See Docs/PRODUCTION_READINESS.md.
@@ -873,23 +917,33 @@ app.post('/api/v1/accounts/:id/entries', async (req: Request, res: Response, nex
 
     const moneyAmount = Money.fromMinorUnits(amount.amount, amount.currency as CurrencyCode);
 
-    const result = await ledgerService.postJournalEntry({
-      tenantId,
-      effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
-      paymentIntentId: paymentIntentId ? asPaymentIntentId(paymentIntentId) : undefined,
-      lines: [{
-        accountId,
-        type,
-        direction,
-        amount: moneyAmount,
-        description: description || type,
-        leaseId,
-        propertyId,
-        unitId,
-        metadata
-      }],
-      createdBy: createdBy || 'system'
-    });
+    // Idempotency: a retried single-account entry post collapses onto the
+    // first journal instead of double-posting (migration 0318).
+    const idem = resolveJournalIdempotencyKey(req, req.body.idempotencyKey);
+    if (!idem.ok) {
+      return res.status(400).json({ error: 'Validation error', details: idem.error });
+    }
+
+    const result = await ledgerService.postJournalEntry(
+      {
+        tenantId,
+        effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
+        paymentIntentId: paymentIntentId ? asPaymentIntentId(paymentIntentId) : undefined,
+        lines: [{
+          accountId,
+          type,
+          direction,
+          amount: moneyAmount,
+          description: description || type,
+          leaseId,
+          propertyId,
+          unitId,
+          metadata
+        }],
+        createdBy: createdBy || 'system'
+      },
+      idem.key ? { idempotencyKey: idem.key } : {},
+    );
 
     res.status(201).json({
       journalId: result.journalId,
@@ -956,28 +1010,39 @@ app.post('/api/v1/journal', async (req: Request, res: Response, next: NextFuncti
       return res.status(400).json({ error: 'At least one journal line is required' });
     }
 
-    const result = await ledgerService.postJournalEntry({
-      tenantId,
-      effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
-      paymentIntentId: paymentIntentId ? asPaymentIntentId(paymentIntentId) : undefined,
-      lines: lines.map((line: {
-        accountId: string;
-        type: string;
-        direction: 'DEBIT' | 'CREDIT';
-        amount: { amount: number; currency: CurrencyCode };
-        description: string;
-        leaseId?: string;
-        propertyId?: string;
-        unitId?: string;
-        metadata?: Record<string, unknown>;
-      }) => ({
-        ...line,
-        type: line.type as any,
-        accountId: asAccountId(line.accountId),
-        amount: Money.fromMinorUnits(line.amount.amount, line.amount.currency)
-      })) as any,
-      createdBy: createdBy || 'system'
-    });
+    // Idempotency: a retried manual journal post (proxy timeout, double
+    // submit, at-least-once redelivery) collapses onto the first journal
+    // instead of double-posting and double-moving money (migration 0318).
+    const idem = resolveJournalIdempotencyKey(req, req.body.idempotencyKey);
+    if (!idem.ok) {
+      return res.status(400).json({ error: 'Validation error', details: idem.error });
+    }
+
+    const result = await ledgerService.postJournalEntry(
+      {
+        tenantId,
+        effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
+        paymentIntentId: paymentIntentId ? asPaymentIntentId(paymentIntentId) : undefined,
+        lines: lines.map((line: {
+          accountId: string;
+          type: string;
+          direction: 'DEBIT' | 'CREDIT';
+          amount: { amount: number; currency: CurrencyCode };
+          description: string;
+          leaseId?: string;
+          propertyId?: string;
+          unitId?: string;
+          metadata?: Record<string, unknown>;
+        }) => ({
+          ...line,
+          type: line.type as any,
+          accountId: asAccountId(line.accountId),
+          amount: Money.fromMinorUnits(line.amount.amount, line.amount.currency)
+        })) as any,
+        createdBy: createdBy || 'system'
+      },
+      idem.key ? { idempotencyKey: idem.key } : {},
+    );
 
     res.status(201).json({
       journalId: result.journalId,
