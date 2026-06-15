@@ -13,7 +13,12 @@
  * apiClient that throws the ApiError we want.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest'
+import type { ManagerApi } from '../../api/client'
+
+// The injected stub IS a Pick<ManagerApi,'post'> (what flushQueue accepts) AND
+// keeps the vitest Mock surface so tests can assert on `.mock.calls`.
+type StubClient = Pick<ManagerApi, 'post'> & { post: Mock }
 
 // In-memory AsyncStorage so queue.ts persists/reads against a real store.
 const store = new Map<string, string>()
@@ -47,17 +52,19 @@ function apiError(status: number): ApiError {
 }
 
 /** apiClient stub whose post() always rejects with the given error. */
-function rejectingClient(error: unknown) {
+function rejectingClient(error: unknown): StubClient {
   return {
     post: vi.fn(async () => {
       throw error
-    })
+    }) as unknown as StubClient['post'],
   }
 }
 
 /** apiClient stub whose post() resolves (2xx). */
-function okClient() {
-  return { post: vi.fn(async () => ({ data: { id: 'srv-1' } })) }
+function okClient(): StubClient {
+  return {
+    post: vi.fn(async () => ({ data: { id: 'srv-1' } })) as unknown as StubClient['post'],
+  }
 }
 
 beforeEach(async () => {
@@ -77,7 +84,7 @@ describe('flushQueue — retain on route-missing / transient', () => {
     // The entry must STILL be in the queue (not dropped).
     const remaining = await listQueued()
     expect(remaining).toHaveLength(1)
-    expect(remaining[0].attempts).toBe(1)
+    expect(remaining[0]!.attempts).toBe(1)
     expect(result.remaining).toBe(1)
   })
 
@@ -143,7 +150,7 @@ describe('flushQueue — success path + parking', () => {
     const client = okClient()
     await flushQueue(client)
     expect(client.post).toHaveBeenCalledTimes(1)
-    const [path, sentBody] = client.post.mock.calls[0]
+    const [path, sentBody] = client.post.mock.calls[0]!
     expect(path).toBe('attendance')
     expect((sentBody as { clientId: string }).clientId).toBe(entry.id)
     // Scoping field lifted to the envelope; typed fields carried under `body`.
