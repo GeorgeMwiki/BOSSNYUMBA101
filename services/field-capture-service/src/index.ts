@@ -37,6 +37,15 @@ import { createMetrics, type MetricsHarness } from './metrics.js';
 import { logger } from './logger.js';
 
 export interface BuildAppDeps {
+  /**
+   * Capture RECORD store (queue / status / listing). When omitted,
+   * `buildApp` falls back to `createInMemoryCaptureStore()` — a process-
+   * local `Map` that is acceptable ONLY for dev/test. The production
+   * entrypoint NEVER reaches that fallback: `buildProductionApp` (the sole
+   * prod boot path) FAILS FAST when no durable store is wired, because an
+   * in-memory store on `replicas: 2` silently loses records on restart and
+   * desyncs across pods. See `composition/build-app.ts`.
+   */
   readonly store?: CaptureStore;
   readonly metrics?: MetricsHarness;
   /**
@@ -59,6 +68,10 @@ export interface BuildAppDeps {
 
 export async function buildApp(deps: BuildAppDeps = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
+  // DEV/TEST fallback only — production reaches buildApp exclusively via
+  // buildProductionApp, which fails fast before getting here when no
+  // durable store is wired (an in-memory Map on replicas: 2 silently loses
+  // and desyncs capture records). See composition/build-app.ts.
   const store = deps.store ?? createInMemoryCaptureStore();
   const metrics = deps.metrics ?? createMetrics();
 

@@ -21,11 +21,43 @@
  *   same one the api-gateway document pipeline uses) and passes it to
  *   `buildApp({ storageAdapter })` so captured bytes actually persist.
  *
- * PRODUCTION FAIL-FAST: when `NODE_ENV=production` and no durable
- * storage backend is configured, this THROWS a clear, actionable error
- * naming the missing env vars rather than silently falling through to
- * the no-adapter path (which drops every capture). A misconfigured prod
- * deploy crash-loops VISIBLY instead of losing workforce data silently.
+ * PRODUCTION FAIL-FAST (two black holes, both closed here):
+ *
+ *   (a) StorageAdapter — the raw capture BYTES. When `NODE_ENV=production`
+ *       and no durable storage backend is configured, this THROWS a clear,
+ *       actionable error naming the missing env vars rather than silently
+ *       falling through to the no-adapter path (which drops every byte).
+ *
+ *   (b) CaptureStore — the capture RECORDS (the queue, status, the
+ *       `GET /v1/field/queue/:surveyorId` listing). `index.ts buildApp()`
+ *       defaults to `createInMemoryCaptureStore()` — a `Map` in process
+ *       memory. The prod pod runs `replicas: 2`, so an in-memory store is
+ *       BOTH non-durable (records vanish on restart / rollout) AND
+ *       per-replica (a capture POSTed to pod A is invisible to pod B's
+ *       queue read — load-balanced reads silently miss records). That is a
+ *       second silent black hole on top of (a). A genuinely durable
+ *       `CaptureStore` for the geo-intelligence `FieldCapture` shape does
+ *       not exist yet (see DURABLE-STORE NOTE below), so until it lands
+ *       this composition root FAILS FAST in production rather than booting
+ *       a pod that quietly loses capture records — same crash-loop-visibly
+ *       discipline as (a). A test/dev caller may inject a durable
+ *       `store` via `BuildProductionAppOptions.store` to satisfy the gate.
+ *
+ * DURABLE-STORE NOTE (surfaced, not silently papered over): the only
+ * `CaptureStore` implementation today is `createInMemoryCaptureStore()` in
+ * `@bossnyumba/geo-intelligence`. The existing `field_captures` table
+ * (migration 0326) is a DIFFERENT entity — the staff-mobile manager-sync
+ * sink (`capture_type` ∈ attendance/task_ack/incident/shift_report) — and
+ * cannot hold the geo-intelligence capture shape (`kind` ∈
+ * photo/video/audio/inspection/polygon/sensor/drone/pano, plus
+ * `surveyorUserId`, `c2paSignature`, `capturedLocation`, `exifMetadata`,
+ * `aiInferences`, `storageUri`, `status` ∈ queued/processed/rejected). A
+ * durable store therefore requires a NEW migration + a new Drizzle schema
+ * in `@bossnyumba/database` + a `createDrizzleCaptureStore` factory in
+ * `@bossnyumba/geo-intelligence` — cross-package work outside this
+ * composition root. Until that lands, this file closes the SILENT half of
+ * the bug (a prod pod no longer boots on an in-memory record store) and a
+ * caller may inject a durable `store` through the seam below.
  *
  * Backend selection (first match wins):
  *   1. Supabase Storage — `NEXT_PUBLIC_SUPABASE_URL` +
@@ -54,6 +86,7 @@ import {
   type StorageAdapter,
 } from '@bossnyumba/storage-adapter';
 import { createSupabaseAdminClient } from '@bossnyumba/supabase-client';
+import type { CaptureStore } from '@bossnyumba/geo-intelligence';
 import { buildApp, type BuildAppDeps } from '../index.js';
 import type { FastifyInstance } from 'fastify';
 import { logger } from '../logger.js';
@@ -66,6 +99,17 @@ export interface BuildProductionAppOptions {
    * from the environment.
    */
   readonly storageAdapter?: StorageAdapter;
+  /**
+   * Inject a DURABLE `CaptureStore` for the capture RECORDS (queue /
+   * status / listing). When provided, it satisfies the production
+   * fail-fast gate and is threaded into `buildApp({ store })` so reads and
+   * writes hit the durable backend instead of the per-replica in-memory
+   * `Map`. Production has no env-resolved durable store yet (see the
+   * DURABLE-STORE NOTE in the module header), so omitting this in
+   * production THROWS rather than silently booting an in-memory store
+   * across `replicas: 2`. Tests inject a durable-enough stub here.
+   */
+  readonly store?: CaptureStore;
   /**
    * Override the production gate (tests). When omitted it is derived
    * from `NODE_ENV === 'production'`.
@@ -132,12 +176,14 @@ export function resolveStorageAdapter(
 }
 
 /**
- * Assemble the production app with a real `StorageAdapter` so workforce
- * captures persist.
+ * Assemble the production app with a real `StorageAdapter` (capture bytes)
+ * AND a durable `CaptureStore` (capture records) so workforce captures
+ * persist across restarts and are visible across `replicas: 2`.
  *
- * THROWS with an actionable message when production is required but no
- * durable storage backend is configured — refusing to boot a pod that
- * would silently drop every capture.
+ * THROWS with an actionable message when production is required but either
+ * the durable storage backend OR a durable record store is missing —
+ * refusing to boot a pod that would silently drop captures (bytes) or lose
+ * / desync capture records (the per-replica in-memory `Map`).
  */
 export async function buildProductionApp(
   options: BuildProductionAppOptions = {},
@@ -172,17 +218,47 @@ export async function buildProductionApp(
       );
     }
     // Dev/test only — no durable backend. Boot without an adapter so
-    // local stacks run; persistBytesIfNeeded no-ops (documented).
+    // local stacks run; persistBytesIfNeeded no-ops (documented). A
+    // caller-supplied durable `store` is still honoured if present.
     logger.warn(
       '[field-capture-service] composition: no StorageAdapter configured — ' +
         'inline capture bytes will NOT be persisted. DEV ONLY.',
     );
-    return buildApp({});
+    return buildApp({
+      ...(options.store ? { store: options.store } : {}),
+    });
+  }
+
+  // (b) Capture RECORDS — fail fast in production on the in-memory store.
+  // Checked AFTER the StorageAdapter gate so a prod deploy missing BOTH
+  // surfaces the bytes-backend error first (the more common misconfig),
+  // then this one once an adapter is supplied. No env-resolved durable
+  // `CaptureStore` exists yet (see the DURABLE-STORE NOTE in the module
+  // header), so the ONLY durable store a prod pod can run with is one
+  // injected through this seam. Without it, `buildApp` would default to
+  // `createInMemoryCaptureStore()` — a per-replica `Map` that loses
+  // records on restart and hides pod A's captures from pod B's queue
+  // reads. Refuse to boot rather than serve that silent black hole.
+  if (isProd && !options.store) {
+    throw new Error(
+      'field-capture-service: refusing to start in production without a ' +
+        'durable CaptureStore — capture RECORDS would live in a per-replica ' +
+        'in-memory Map (lost on restart, invisible across replicas: 2). No ' +
+        'env-resolved durable CaptureStore exists yet for the geo-intelligence ' +
+        'FieldCapture shape: it needs a new migration + Drizzle schema in ' +
+        '@bossnyumba/database and a createDrizzleCaptureStore factory in ' +
+        '@bossnyumba/geo-intelligence. Until that lands, inject a durable ' +
+        'store via buildProductionApp({ store }). See composition/build-app.ts.',
+    );
   }
 
   logger.info('[field-capture-service] composition: StorageAdapter wired', {
     mode: resolved.mode,
+    captureStore: options.store ? 'durable (injected)' : 'in-memory (dev)',
   });
-  const deps: BuildAppDeps = { storageAdapter: resolved.adapter };
+  const deps: BuildAppDeps = {
+    storageAdapter: resolved.adapter,
+    ...(options.store ? { store: options.store } : {}),
+  };
   return buildApp(deps);
 }
