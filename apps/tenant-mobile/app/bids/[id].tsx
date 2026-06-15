@@ -98,7 +98,10 @@ export default function BidDetail() {
     )
   }
 
-  function handleSendRaw(): void {
+  // Arrow const (not a hoisted `function`) so the `if (!bid) return` guard
+  // above narrows `bid` to non-undefined inside this closure — matching the
+  // sibling handleAccept/handleWithdraw and clearing TS18048 at the mutate call.
+  const handleSendRaw = (): void => {
     const text = draft.trim()
     if (!text) {
       return
