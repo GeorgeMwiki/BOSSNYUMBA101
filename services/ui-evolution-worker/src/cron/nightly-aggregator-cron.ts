@@ -22,6 +22,7 @@ import cron from 'node-cron';
 
 import type {
   FitnessReport,
+  FormSchema,
   NightlySweepSummary,
   RecipeSweepResult,
   TabRecipeRow,
@@ -46,7 +47,6 @@ import type { RecipeRepository } from '../storage/recipe-repository.js';
 import type { TelemetryRepository } from '../storage/telemetry-repository.js';
 import type { ProposalRepository } from '../storage/proposal-repository.js';
 import type { AuditEmitter } from '../audit/audit-emit.js';
-import type { FormSchema } from '@bossnyumba/portal-genui';
 import type { BrainLLMClient } from '@bossnyumba/brain-llm-router';
 
 // ---------------------------------------------------------------------------

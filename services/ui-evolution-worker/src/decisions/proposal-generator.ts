@@ -27,9 +27,9 @@ import type {
   BrainLLMClient,
   BrainLLMResponse,
 } from '@bossnyumba/brain-llm-router';
-import type { FormSchema } from '@bossnyumba/portal-genui';
 import type {
   FailingSignal,
+  FormSchema,
   ProposedDiff,
   ProposedDiffOp,
   TabRecipeRow,

@@ -12,11 +12,12 @@
  * window (Ramadan / Iftar profiles, etc.) by setting a different value.
  */
 
+// PORT-SHIM: compliance-pack (renamed equivalent) lacks these — see ./port-shim
 import {
   type JurisdictionProfile,
   type RegulatorDefinition,
   linkRegistryRow,
-} from '@bossnyumba/compliance-pack';
+} from './port-shim.js';
 
 // ---------------------------------------------------------------------------
 // TZ profile

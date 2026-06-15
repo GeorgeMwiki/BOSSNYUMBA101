@@ -11,7 +11,12 @@
  * tested elsewhere with red-team / sycophancy / calibration suites.
  */
 
-import { applyConversationFeel, type Locale } from '@bossnyumba/conversation-feel';
+// PORT-SHIM: @bossnyumba/conversation-feel lacks applyConversationFeel + Locale;
+// sourced from a local stub for build-green, reconcile at live-wiring.
+import {
+  applyConversationFeel,
+  type Locale,
+} from './conversation-feel-shim.js';
 import type {
   ResponseDraft,
   ResponseStyle,

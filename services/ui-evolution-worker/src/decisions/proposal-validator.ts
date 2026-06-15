@@ -25,8 +25,7 @@
  * Pure. No DB, no LLM.
  */
 
-import type { FormSchema } from '@bossnyumba/portal-genui';
-import type { ProposedDiff, ProposedDiffOp } from '../types.js';
+import type { FormSchema, ProposedDiff, ProposedDiffOp } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Result shape
@@ -54,7 +53,9 @@ export function validateProposal(args: ValidateProposalArgs): ValidationResult {
   }
 
   const fieldGroupIndex = buildFieldGroupIndex(args.currentSchema);
-  const allGroupIds = new Set(args.currentSchema.groups.map((g) => g.id));
+  const allGroupIds: ReadonlySet<string> = new Set(
+    args.currentSchema.groups.map((g) => g.id),
+  );
 
   for (const op of args.diff.ops) {
     const opViolations = validateOp(op, {

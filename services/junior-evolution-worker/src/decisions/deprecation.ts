@@ -7,6 +7,8 @@
  * root in production; this module only formats the candidates.
  */
 
+// PORT-SHIM: @bossnyumba/agent-platform lacks the 'junior-spawner' subpath;
+// local stub for build-green, reconcile at live-wiring (see junior-spawner-types.ts).
 import {
   decideDeprecation,
   type AuditChainEmitter,
@@ -14,7 +16,7 @@ import {
   type JuniorRepository,
   type LifecycleThresholds,
   type PersistedJuniorRecord,
-} from '@bossnyumba/agent-platform/junior-spawner';
+} from './junior-spawner-types.js';
 
 export interface DeprecationCandidate {
   readonly junior_id: string;

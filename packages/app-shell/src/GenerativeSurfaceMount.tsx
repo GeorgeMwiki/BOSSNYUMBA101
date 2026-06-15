@@ -1,10 +1,13 @@
 'use client';
 
 import * as React from 'react';
+// PORT-SHIM: @bossnyumba/genui lacks SandboxedSurfaceFrame / SandboxedSurface;
+// sourced from the local sandboxed-surface shim for build-green, reconcile at
+// live-wiring (swap back to '@bossnyumba/genui' when genui regains the renderer).
 import {
   SandboxedSurfaceFrame,
   type SandboxedSurface,
-} from '@bossnyumba/genui';
+} from './sandboxed-surface-shim.js';
 import {
   applyTabPatch,
   type PortalTab,

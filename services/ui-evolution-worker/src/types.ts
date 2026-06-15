@@ -82,6 +82,58 @@ export interface WorkerLogger {
 }
 
 // ---------------------------------------------------------------------------
+// PORT-SHIM: @bossnyumba/portal-genui lacks `FormSchema`; local stub for
+// build-green, reconcile at live-wiring.
+//
+// The sibling repo this worker was ported from exported a bilingual
+// `FormSchema` ({ title_en/title_sw, groups:[{ id, title_en/title_sw,
+// fields:[{ id, label_en, label_sw, kind?, required? }] }] }). The
+// BossNyumba `portal-genui` dep has drifted to a single-locale
+// `PortalTab` shape (`sections`/`key`/`label`/`kind`) that does NOT
+// preserve the per-locale `_en`/`_sw` labels this worker's proposal
+// generator + validator operate on (it diffs `label_en`/`label_sw`
+// independently). Adapting every call-site to `PortalTab` would drop
+// that bilingual distinction, so we keep an honest local type here. At
+// live-wiring, `fetchCurrentSchema` will project a `PortalTab` (or its
+// successor) into this shape — see `SweepDeps.fetchCurrentSchema`.
+// ---------------------------------------------------------------------------
+
+/** A single field inside a {@link FormGroup}. Only the keys this worker
+ *  reads are required; presentational extras (`kind`, `required`, …) are
+ *  carried opaquely so projections stay lossless. */
+export interface FormField {
+  readonly id: string;
+  readonly label_en: string;
+  readonly label_sw: string;
+  readonly kind?: string;
+  readonly required?: boolean;
+}
+
+/** A labelled group of fields — the unit the proposal diff reorders /
+ *  regroups / splits. */
+export interface FormGroup {
+  readonly id: string;
+  readonly title_en: string;
+  readonly title_sw: string;
+  readonly fields: ReadonlyArray<FormField>;
+}
+
+/** The bilingual form/widget schema a Tab Recipe renders. Mirrors the
+ *  sibling-repo `portal-genui` export that BossNyumba's drifted dep no
+ *  longer provides. */
+export interface FormSchema {
+  readonly title_en: string;
+  readonly title_sw: string;
+  readonly groups: ReadonlyArray<FormGroup>;
+  readonly submit_action?: {
+    readonly form_id: string;
+    readonly url: string;
+    readonly method: string;
+  };
+  readonly evidence_ids?: ReadonlyArray<string>;
+}
+
+// ---------------------------------------------------------------------------
 // Telemetry events + aggregation
 // ---------------------------------------------------------------------------
 

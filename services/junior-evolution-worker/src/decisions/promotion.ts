@@ -9,6 +9,8 @@
  * `@bossnyumba/agent-platform/junior-spawner/lifecycle/promotion-decider`.
  */
 
+// PORT-SHIM: @bossnyumba/agent-platform lacks the 'junior-spawner' subpath;
+// local stub for build-green, reconcile at live-wiring (see junior-spawner-types.ts).
 import {
   decidePromotion,
   type AuditChainEmitter,
@@ -16,7 +18,7 @@ import {
   type LifecycleThresholds,
   type PersistedJuniorRecord,
   type PromotionStats,
-} from '@bossnyumba/agent-platform/junior-spawner';
+} from './junior-spawner-types.js';
 
 export interface PromotionSweepDeps {
   readonly repository: JuniorRepository;

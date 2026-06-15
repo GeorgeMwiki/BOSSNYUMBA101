@@ -17,10 +17,13 @@ import {
   type PortalTab,
   type PortalTabPatch,
 } from '@bossnyumba/portal-genui';
+// PORT-SHIM: @bossnyumba/genui lacks parseSandboxedSurface / SandboxedSurface;
+// sourced from the local sandboxed-surface shim for build-green, reconcile at
+// live-wiring (swap back to '@bossnyumba/genui' when genui regains the renderer).
 import {
   parseSandboxedSurface,
   type SandboxedSurface,
-} from '@bossnyumba/genui';
+} from './sandboxed-surface-shim.js';
 
 function freshTab(): PortalTab {
   return buildFallbackTab({

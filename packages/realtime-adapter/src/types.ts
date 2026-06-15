@@ -15,6 +15,10 @@ export const REALTIME_TOPICS = [
   'tabs-updated',
   'reports-generated',
   'field-captures',
+  // Generic SYSTEM channel (not domain data): the cross-surface state
+  // bus used by @bossnyumba/blackboard-sota for slot deltas + handoff
+  // signals. Additive + tenant-scoped like the domain topics.
+  'state-bus',
 ] as const;
 
 export type RealtimeTopic = (typeof REALTIME_TOPICS)[number];
