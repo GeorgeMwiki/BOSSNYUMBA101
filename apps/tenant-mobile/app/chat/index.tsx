@@ -100,7 +100,7 @@ export default function ChatIndex() {
     if (!text || !activeBidId) {
       return
     }
-    sendMutation.mutate({ bidId: activeBidId, body: text })
+    sendMutation.mutate({ listingId: bid.listingId, bidId: activeBidId, body: text })
   }
 
   return (

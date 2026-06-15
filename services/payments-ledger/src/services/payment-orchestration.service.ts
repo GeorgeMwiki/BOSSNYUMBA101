@@ -5,6 +5,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import {
   Money,
+  moneyFromDecimal,
   PaymentIntent,
   PaymentIntentAggregate,
   PaymentIntentId,
@@ -754,8 +755,9 @@ export class PaymentOrchestrationService {
 
     // Book in the holding account's currency (the platform clearing currency
     // for this tenant). M-Pesa sends amounts in MAJOR units (e.g. "1500.00");
-    // the platform stores minor units at the fixed 2-decimal convention
-    // (minor = round(major × 100), mirroring Money.amountMajorUnits).
+    // convert via moneyFromDecimal which uses the currency's REAL ISO-4217
+    // minor-unit digits — NOT a hard ×100, which 100x-overstates the 0-decimal
+    // launch currencies (1500 TZS major = 1500 minor, never 150000).
     const currency = holding.currency;
     const amountMajor = Number(input.amountMajor);
     if (!Number.isFinite(amountMajor) || amountMajor <= 0) {
@@ -763,7 +765,7 @@ export class PaymentOrchestrationService {
         `Unallocated C2B receipt has a non-positive/invalid amount "${input.amountMajor}" (TransID ${input.transId})`,
       );
     }
-    const amount = Money.fromMinorUnits(Math.round(amountMajor * 100), currency);
+    const amount = moneyFromDecimal(amountMajor, currency);
 
     const suspense = await this.resolveUnallocatedSuspenseAccount(input.tenantId, currency);
 
