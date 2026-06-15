@@ -80,9 +80,27 @@ function jsonError(
   return { status, body: { success: false as const, error: { code, message } } };
 }
 
-/** Tenant-local calendar day as YYYY-MM-DD (UTC bucket — TZ-first launch). */
+/**
+ * The launch-jurisdiction timezone. Tanzania (Africa/Dar_es_Salaam, UTC+3) is
+ * the starting jurisdiction; as East-Africa expansion adds markets this should
+ * resolve from the tenant/property config rather than a constant. It lives here
+ * as a single documented launch default — not a jurisdiction branch in logic.
+ */
+const LAUNCH_TIMEZONE = 'Africa/Dar_es_Salaam';
+
+/**
+ * Worker-local calendar day as YYYY-MM-DD. Bucketing on the LOCAL day (not the
+ * UTC day) fixes the 21:00–24:00 UTC window: a UTC+3 worker is already on the
+ * next local day, so a UTC bucket showed them tomorrow's (empty) shift.
+ */
 function todayDateString(now: Date): string {
-  return now.toISOString().slice(0, 10);
+  // en-CA renders ISO-style YYYY-MM-DD; timeZone shifts to the local day.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: LAUNCH_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
 }
 
 function toISO(value: unknown): string {

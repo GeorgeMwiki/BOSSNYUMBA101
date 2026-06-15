@@ -342,8 +342,11 @@ app.post(
 
       try {
         // The applicant_user_id is ALWAYS the JWT subject — never client input.
-        // currency is a passthrough: when omitted the DB column default applies
-        // (tenant launch jurisdiction), so no jurisdiction is branched in code.
+        // currency is a passthrough: when the applicant provides one we persist
+        // it; when omitted we emit the SQL DEFAULT keyword so the rfb_requests
+        // column default applies. The launch-jurisdiction default lives in the
+        // migration (the legitimate place for it), NOT hard-coded in this code
+        // path — so no jurisdiction/currency literal is branched in app logic.
         const inserted = await db.execute(sql`
           INSERT INTO rfb_requests (
             id, tenant_id, applicant_user_id,
@@ -355,7 +358,7 @@ app.post(
             ${id}, ${auth.tenantId}, ${auth.userId},
             ${body.unitType}, ${body.gradeMin ?? null},
             ${body.floorAreaMinSqm}, ${body.floorAreaMaxSqm ?? null},
-            ${body.unitPriceTzs}, COALESCE(${body.currency ?? null}, 'TZS'),
+            ${body.unitPriceTzs}, ${body.currency ?? sql`DEFAULT`},
             ${body.deliveryBy}::date,
             ${body.locationLat ?? null}, ${body.locationLon ?? null},
             ${body.radiusKm}, ${body.notes ?? null},

@@ -284,11 +284,30 @@ app.get('/work-orders', async (c) => {
   if (!db) return dbUnavailable(c);
   const tenantId = c.get('tenantId');
   const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') ?? '50') || 50));
+  const statusParam = c.req.query('status');
+  const propertyId = c.req.query('propertyId');
   try {
+    // Apply the caller's status + propertyId filters (previously ignored, so
+    // the manager "to dispatch" queue showed completed/cancelled orders and the
+    // property filter was a no-op). `status=open` is the manager-app alias for
+    // "still needs attention" — every non-terminal state, using the SAME
+    // terminal set as /work-orders/queue. A concrete status filters to exactly
+    // that state.
+    const conditions = [eq(workOrders.tenantId, tenantId)];
+    if (statusParam === 'open') {
+      conditions.push(
+        sql`${workOrders.status} NOT IN ('completed','cancelled','closed')`,
+      );
+    } else if (statusParam) {
+      conditions.push(sql`${workOrders.status} = ${statusParam}`);
+    }
+    if (propertyId) {
+      conditions.push(eq(workOrders.propertyId, propertyId));
+    }
     const rows = await db
       .select()
       .from(workOrders)
-      .where(eq(workOrders.tenantId, tenantId))
+      .where(and(...conditions))
       .orderBy(desc(workOrders.createdAt))
       .limit(limit);
     return c.json({ success: true, data: rows });

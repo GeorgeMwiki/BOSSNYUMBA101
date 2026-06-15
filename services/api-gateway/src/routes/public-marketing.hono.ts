@@ -238,9 +238,15 @@ async function runMarketingLLM(
 const app = new Hono();
 
 // Unauthenticated marketing surface — guard the shared ANTHROPIC budget with
-// the per-IP public limiter (process-wide bucket shared across /public/*).
+// the per-IP public limiter. Apply it to THIS router's own surfaces ONLY, by
+// explicit path — NOT a bare '*'. A bare '*' on the /public mount also covered
+// the sibling /public/status board (mounted under the same prefix in index.ts),
+// so a StatusBoard poll consumed the AI bucket and could 429 the chat. Listing
+// paths keeps a new sibling under /public from silently inheriting the limiter.
 const publicAiRateLimit = getSharedPublicAiRateLimit();
-app.use('*', publicAiRateLimit.handler);
+for (const aiPath of ['/chat', '/pricing-advice', '/demo-estate', '/waitlist']) {
+  app.use(aiPath, publicAiRateLimit.handler);
+}
 
 app.post('/chat', zValidator('json', ChatTurnSchema), async (c) => {
   const body = c.req.valid('json');

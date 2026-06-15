@@ -147,8 +147,12 @@ function makeDbStub() {
           floor_area_min: String(floor_area_min),
           floor_area_max: floor_area_max == null ? null : String(floor_area_max),
           unit_price: String(unit_price),
-          // COALESCE($currency, 'TZS') — the param is the first COALESCE arg.
-          currency: currencyArg == null ? 'TZS' : String(currencyArg),
+          // Route emits `${body.currency ?? sql\`DEFAULT\`}`: a client-supplied
+          // currency arrives as a bound string param; when omitted the slot is
+          // the inlined SQL `DEFAULT` keyword (a non-string SQL fragment here),
+          // which real Postgres resolves to the column default (TZS at launch).
+          // So: string → verbatim; non-string (DEFAULT) or null → launch default.
+          currency: typeof currencyArg === 'string' ? currencyArg : 'TZS',
           delivery_by: String(delivery_by),
           location_lat: location_lat == null ? null : String(location_lat),
           location_lon: location_lon == null ? null : String(location_lon),
