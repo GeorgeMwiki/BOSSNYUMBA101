@@ -26,6 +26,7 @@
     "@bossnyumba/geo-intelligence": "workspace:*",
     "@bossnyumba/observability": "workspace:^",
     "@bossnyumba/storage-adapter": "workspace:*",
+    "@bossnyumba/supabase-client": "workspace:*",
     "fastify": "^5.8.3",
     "jose": "^6.2.3",
     "pino": "^10.3.1",

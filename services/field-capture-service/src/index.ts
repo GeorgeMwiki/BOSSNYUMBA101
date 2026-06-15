@@ -23,6 +23,7 @@
  * Spec: Docs/requirements/VOICE_MEMO_2026-04-18_questionnaire_analysis.md §2-§3.
  */
 
+import { pathToFileURL } from 'node:url';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import {
@@ -86,7 +87,14 @@ export async function buildApp(deps: BuildAppDeps = {}): Promise<FastifyInstance
 }
 
 async function main(): Promise<void> {
-  const app = await buildApp();
+  // Build via the composition root so the standalone pod boots with a
+  // real StorageAdapter (captures persist) or fails fast with an
+  // actionable message when no durable backend is configured in
+  // production. The bare `buildApp({})` would boot WITHOUT an adapter
+  // and silently drop every inline-bytes capture. See
+  // `composition/build-app.ts`.
+  const { buildProductionApp } = await import('./composition/build-app.js');
+  const app = await buildProductionApp();
   const port = Number(process.env.PORT ?? 9020);
   const host = process.env.HOST ?? '0.0.0.0';
   try {
@@ -98,16 +106,31 @@ async function main(): Promise<void> {
   }
 }
 
+// Auto-start when invoked directly (`node dist/index.js`). Uses
+// `pathToFileURL` (not `new URL('file://' + argv)`) so dev paths with
+// spaces still match — the raw constructor does not percent-encode
+// spaces and main() would never fire. The `.catch` + process.exit
+// ensures the production fail-fast throw in `buildProductionApp` exits
+// cleanly (code 1) instead of surfacing as an UnhandledPromiseRejection.
 const invokedDirectly = (() => {
   try {
-    if (!process.argv[1]) return false;
-    const argvUrl = new URL(`file://${process.argv[1]}`).href;
-    return import.meta.url === argvUrl;
+    const entry = process.argv[1];
+    if (typeof entry !== 'string' || entry.length === 0) return false;
+    return import.meta.url === pathToFileURL(entry).href;
   } catch {
     return false;
   }
 })();
 
 if (invokedDirectly) {
-  void main();
+  void main().catch((err) => {
+    logger.error('[field-capture-service] unhandled fatal', { error: err });
+    process.exit(1);
+  });
 }
+
+// NOTE: the composition root (`composition/build-app.ts`) is intentionally
+// NOT re-exported from this module. It is loaded only via the dynamic
+// `await import()` inside `main()` (and directly by tests), mirroring
+// `services/outcomes-metering` — keeping it out of the static export graph
+// avoids the index ↔ build-app circular-import eager-evaluation hazard.

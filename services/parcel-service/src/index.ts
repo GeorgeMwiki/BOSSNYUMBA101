@@ -106,7 +106,13 @@ export async function buildApp(deps: BuildAppDeps = {}): Promise<FastifyInstance
 }
 
 async function main(): Promise<void> {
-  const app = await buildApp();
+  // Build via the composition root so the standalone pod boots with a
+  // real JWT tenant resolver (or fails fast with an actionable message
+  // when no JWT secret is configured in production). The bare
+  // `buildApp()` would hit the production tenant-spoof guard and
+  // crash-loop. See `composition/build-app.ts`.
+  const { buildProductionApp } = await import('./composition/build-app.js');
+  const app = await buildProductionApp();
   const port = Number(process.env.PORT ?? 3017);
   const host = process.env.HOST ?? '0.0.0.0';
   try {
@@ -162,6 +168,12 @@ export type {
 
 export { registerGeocodeRoutes } from './routes/geocode.js';
 export { registerSnapRoutes } from './routes/snap.js';
+
+// NOTE: the composition root (`composition/build-app.ts`) is intentionally
+// NOT re-exported from this barrel. It is loaded only via the dynamic
+// `await import()` inside `main()` (and directly by tests), mirroring
+// `services/outcomes-metering` — keeping it out of the static export graph
+// avoids the index ↔ build-app circular-import eager-evaluation hazard.
 
 export {
   createDefaultGeocoderChain,
