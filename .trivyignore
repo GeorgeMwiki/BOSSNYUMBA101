@@ -78,8 +78,9 @@ CVE-2026-25223 # package=fastify, severity=HIGH
 #   reason:       Fastify Content-Type header tab-character validation
 #                 bypass. Six internal services pin fastify ^4.27.0
 #                 (sleep-pass-orchestrator, parcel-service,
-#                 onboarding-orchestrator, outcomes-metering,
-#                 field-capture-service, voice-agent). All six are
+#                 onboarding-orchestrator, outcomes-metering, voice-agent).
+#                 All five are internal-only — see audit-with-allowlist.
+#                 voice-agent). All five are
 #                 internal-only — they sit behind the api-gateway BFF and
 #                 only accept service-to-service traffic with the agent-
 #                 platform mTLS-style JWT, never raw public Content-Type

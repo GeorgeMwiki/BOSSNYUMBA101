@@ -57,7 +57,6 @@ export const RATE_LIMIT_ALLOWLIST = new Map([
 
   // ─── other services behind api-gateway internal mTLS edge limiter ───
   ['services/document-intelligence/src/routes/documents.routes.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/field-capture-service/src/routes/captures.ts', 'field-capture-service captures POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
   ['services/outcomes-metering/src/routes/events.ts', 'outcomes-metering events POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
   ['services/parcel-service/src/routes/geocode.ts', 'parcel-service geocode POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
   ['services/parcel-service/src/routes/parcels.ts', 'parcel-service parcels CRUD; service sits behind api-gateway internal mTLS, edge limiter applies.'],

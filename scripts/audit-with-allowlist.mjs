@@ -95,7 +95,7 @@ const ALLOWLIST = [
     severity: ['high'],
     fix: '>=5.7.2',
     reason:
-      'GHSA-jx2c-rxcm-jvmq: Fastify Content-Type header tab-character validation bypass. Six internal services pin fastify ^4.27.0 (sleep-pass-orchestrator, parcel-service, onboarding-orchestrator, outcomes-metering, field-capture-service, voice-agent). All six are internal-only — they sit behind the api-gateway BFF and only accept service-to-service traffic with the agent-platform JWT, never raw public Content-Type headers. Fix lands in fastify 5.7.2; fastify 4 → 5 is a major-version migration (Node 20 baseline + error-handler signature changes) deferred to its own PR.',
+      'GHSA-jx2c-rxcm-jvmq: Fastify Content-Type header tab-character validation bypass. Five internal services pin fastify ^4.27.0 (sleep-pass-orchestrator, parcel-service, onboarding-orchestrator, outcomes-metering, voice-agent). All five are internal-only — they sit behind the api-gateway BFF and only accept service-to-service traffic with the agent-platform JWT, never raw public Content-Type headers. Fix lands in fastify 5.7.2; fastify 4 → 5 is a major-version migration (Node 20 baseline + error-handler signature changes) deferred to its own PR.',
     tracked_in: 'Docs/DEP_HYGIENE.md (fastify 5.x migration)',
     next_review: '2026-Q3',
   },
