@@ -624,6 +624,17 @@
         "staging"
       ],
       "notes": "Mode-C R2 RLS-darkness #29: the admin superpower dispatchers (bulk-action-dispatchers.ts enqueueOutbox) write a CROSS-TENANT event_outbox actuation row (tenant_id = TARGET tenant, or NULL broadcast) under the acting admin's own app.current_tenant_id GUC, so FORCE-RLS event_outbox_tenant_isolation REJECTED it for any cross-tenant target while the route journal said 'applied' (born-dark: tenant suspended with no outbox row to drain). enqueueOutbox now wraps the insert in withServiceRoleContext; 0344 adds the matching service_role_bypass policy (same shape as 0336/0337) so the WITH CHECK passes. Additive permissive policy OR-composes with tenant_isolation \u2014 ordinary tenant-scoped outbox writes/reads unchanged. Dropping re-darkens the admin four-eye side-effects but loses no data."
+    },
+    {
+      "up": "0345_persistent_memory.sql",
+      "down": "down/0345_down_persistent_memory.sql",
+      "reverses": "CREATE TABLE session_memory, skills (PK id,version), pending_threads, thread_summaries \u2014 the 4 tenant-scoped persistent-memory / skill-library tables + their indexes, CHECK constraints, FORCE-RLS tenant_isolation + service_role_bypass policies, and anon REVOKEs",
+      "dataLoss": true,
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "CORE port (uplift ratchet) of the persistent-memory subsystem from the green sibling vertical (Borjie drizzle/0030, carried in final post-0297 shape: canonical app.current_tenant_id GUC + FORCE RLS, plus a service-role-bypass policy for cross-tenant decay/TTL sweeps per the 0337 house idiom). Tables back Mr. Mwikila's temporal-continuity substrate (session_memory, skills, pending_threads, thread_summaries). No FK on tenant_id, no pgvector (these 4 carry no embedding column). Forward-apply is prod-safe (all CREATE IF NOT EXISTS, NOT NULLs on fresh columns only). Dropping discards durable memory; continuity regresses to in-memory-only until re-created."
     }
   ]
 }

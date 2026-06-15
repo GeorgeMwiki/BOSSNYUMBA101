@@ -780,3 +780,10 @@ export * from './development-plans.schema.js';
 //       service-role-bypass RLS (cross-tenant platform-admin target + purge
 //       worker write under service-role).
 export * from './tenant-deletion-schedules.schema.js';
+// Persistent-memory + skill-library tier (CORE port, uplift ratchet). The 4
+// tenant-scoped tables (session_memory, skills, pending_threads,
+// thread_summaries) backing Mr. Mwikila's temporal-continuity substrate so he
+// never forgets across restarts / context resets / handoffs. Created by
+// migration 0345_persistent_memory.sql (FORCE-RLS tenant_isolation +
+// service-role-bypass).
+export * from './persistent-memory.schema.js';
