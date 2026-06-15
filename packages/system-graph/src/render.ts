@@ -90,7 +90,7 @@ export function describeBody(summary: OrganMapSummary): string {
   const capabilities = summary.countsByKind.capability ?? 0;
   const juniors = summary.countsByKind.junior ?? 0;
   return [
-    'I am the Borjie brain — a mining-estate operating system, not a chatbot bolted onto it.',
+    'I am the BossNyumba brain — a mining-estate operating system, not a chatbot bolted onto it.',
     `My body is a live, derived self-model: ${summary.totalNodes} organs across surfaces, services, capabilities, data tables, MCP tools, and sub-MDs.`,
     `Right now that is ${surfaces} surfaces, ${capabilities} capabilities, and ${juniors} sub-MDs,`,
     summary.injuredLimbs.length > 0

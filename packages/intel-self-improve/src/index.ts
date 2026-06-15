@@ -1,7 +1,7 @@
 /**
  * `@bossnyumba/intel-self-improve` — public surface (Wave INTEL-SELF-IMPROVE).
  *
- * Persona: **Mr. Mwikila** — Borjie's autonomous Managing Director for
+ * Persona: **Mr. Mwikila** — BossNyumba's autonomous Managing Director for
  * Tanzanian mining operators. Companion spec:
  * Docs/DESIGN/INTELLIGENCE_SELF_IMPROVE_WIRING_2026.md.
  *

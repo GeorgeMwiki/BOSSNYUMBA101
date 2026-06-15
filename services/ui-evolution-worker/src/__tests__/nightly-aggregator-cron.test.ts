@@ -64,7 +64,7 @@ function recipe(over: Partial<TabRecipeRow> = {}): TabRecipeRow {
     intent: over.intent ?? 'BuyerKYBStart',
     composeFnRef: over.composeFnRef ?? 'ref',
     authorityTier: 1,
-    brand: 'borjie',
+    brand: 'bossnyumba',
     promotedAtIso: null,
     promotedBy: null,
     lockedAtIso: null,

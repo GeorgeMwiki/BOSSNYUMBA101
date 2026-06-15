@@ -8,13 +8,13 @@ import type { OrgUnit } from '../types.js';
 function unit(partial: Partial<OrgUnit> & Pick<OrgUnit, 'id'>): OrgUnit {
   return {
     id: partial.id,
-    tenant_id: partial.tenant_id ?? 't-borjie',
+    tenant_id: partial.tenant_id ?? 't-bossnyumba',
     parent_unit_id: partial.parent_unit_id ?? null,
     default_kind: partial.default_kind ?? 'district',
     display_name: partial.display_name ?? `unit-${partial.id}`,
     display_kind_singular: partial.display_kind_singular ?? 'district',
     display_kind_plural: partial.display_kind_plural ?? 'districts',
-    materialised_path: partial.materialised_path ?? `t-borjie/${partial.id}`,
+    materialised_path: partial.materialised_path ?? `t-bossnyumba/${partial.id}`,
     depth: partial.depth ?? 1,
     authority_inheritance: partial.authority_inheritance ?? true,
     created_at: partial.created_at ?? '2026-05-26T00:00:00.000Z',
@@ -30,11 +30,11 @@ describe('buildOrgUnitTree', () => {
       id: 'u-geita-site-a',
       parent_unit_id: 'u-geita',
       display_name: 'Geita Site A',
-      materialised_path: 't-borjie/geita/site-a',
+      materialised_path: 't-bossnyumba/geita/site-a',
       depth: 2,
     });
     const tree = buildOrgUnitTree({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       units: [mererani, geita, geitaSiteA],
     });
     expect(tree.roots.map((r) => r.id)).toEqual(['u-geita', 'u-mererani']);
@@ -47,7 +47,7 @@ describe('buildOrgUnitTree', () => {
   it('rejects tenant_id mismatch', () => {
     expect(() =>
       buildOrgUnitTree({
-        tenantId: 't-borjie',
+        tenantId: 't-bossnyumba',
         units: [unit({ id: 'u-1', tenant_id: 't-other' })],
       }),
     ).toThrow(TreeBuildError);
@@ -56,7 +56,7 @@ describe('buildOrgUnitTree', () => {
   it('rejects duplicate unit ids', () => {
     expect(() =>
       buildOrgUnitTree({
-        tenantId: 't-borjie',
+        tenantId: 't-bossnyumba',
         units: [unit({ id: 'u-1' }), unit({ id: 'u-1', display_name: 'dup' })],
       }),
     ).toThrow(TreeBuildError);
@@ -65,14 +65,14 @@ describe('buildOrgUnitTree', () => {
   it('rejects orphaned parents', () => {
     expect(() =>
       buildOrgUnitTree({
-        tenantId: 't-borjie',
+        tenantId: 't-bossnyumba',
         units: [unit({ id: 'u-1', parent_unit_id: 'u-missing' })],
       }),
     ).toThrow(TreeBuildError);
   });
 
   it('returns an empty tree for an empty input', () => {
-    const tree = buildOrgUnitTree({ tenantId: 't-borjie', units: [] });
+    const tree = buildOrgUnitTree({ tenantId: 't-bossnyumba', units: [] });
     expect(tree.byId.size).toBe(0);
     expect(tree.roots.length).toBe(0);
   });

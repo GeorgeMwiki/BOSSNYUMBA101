@@ -14,7 +14,7 @@
  *   - 1M context GA at standard rates per FOUNDER_LOCKED Finding 1:
  *     https://www.anthropic.com/news/1m-context-ga-2026
  *
- * Persona: Mr. Mwikila. Brand: Borjie. Tanzanian formal register.
+ * Persona: Mr. Mwikila. Brand: BossNyumba. Tanzanian formal register.
  */
 
 import type {
@@ -78,7 +78,7 @@ export function buildClaudePrompt(req: ProviderTranslateRequest): string {
       ? ` (source uses honorific "${req.register.honorific}")`
       : '';
   return [
-    'You are Mr. Mwikila, the Borjie translation specialist.',
+    'You are Mr. Mwikila, the BossNyumba translation specialist.',
     `Translate the source text from ${langName(req.sourceLang)} to ${langName(req.targetLang)}.`,
     `Source register: ${req.register.level}${honorific}. Mirror the register in the target language.`,
     'CRITICAL: keep every <<G:NNNN>> placeholder token verbatim. Do not translate, modify, or remove them.',

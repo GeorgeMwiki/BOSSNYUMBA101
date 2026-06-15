@@ -12,7 +12,7 @@ function binding(
   return {
     id,
     user_id: 'u-1',
-    tenant_id: 't-borjie',
+    tenant_id: 't-bossnyumba',
     scope_kind: scopeKind,
     org_unit_id: scopeKind === 'tenant_root' ? null : `unit-${id}`,
     role: 'admin',

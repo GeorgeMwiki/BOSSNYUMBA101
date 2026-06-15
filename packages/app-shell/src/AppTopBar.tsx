@@ -15,7 +15,7 @@ import { PortalSwitcher, type PortalSwitcherProps } from './PortalSwitcher.js';
  */
 export interface AppTopBarProps
   extends Pick<PortalSwitcherProps, 'current' | 'ownerUrl' | 'adminUrl' | 'labels'> {
-  /** Left slot — typically the Borjie logomark / wordmark, optionally linked. */
+  /** Left slot — typically the BossNyumba logomark / wordmark, optionally linked. */
   brand?: React.ReactNode;
   /** Right slot — consumer-owned controls (locale, theme, user menu, …). */
   actions?: React.ReactNode;
@@ -32,12 +32,12 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
   labels,
   className,
 }) => {
-  const rootClassName = ['borjie-app-top-bar', className].filter(Boolean).join(' ');
+  const rootClassName = ['bossnyumba-app-top-bar', className].filter(Boolean).join(' ');
 
   return (
     <header className={rootClassName}>
-      <div className="borjie-app-top-bar__brand">{brand}</div>
-      <div className="borjie-app-top-bar__center">
+      <div className="bossnyumba-app-top-bar__brand">{brand}</div>
+      <div className="bossnyumba-app-top-bar__center">
         <PortalSwitcher
           current={current}
           ownerUrl={ownerUrl}
@@ -45,7 +45,7 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
           {...(labels ? { labels } : {})}
         />
       </div>
-      <div className="borjie-app-top-bar__actions">{actions}</div>
+      <div className="bossnyumba-app-top-bar__actions">{actions}</div>
     </header>
   );
 };

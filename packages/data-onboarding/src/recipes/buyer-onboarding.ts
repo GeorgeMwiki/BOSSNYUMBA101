@@ -146,7 +146,7 @@ export function createBuyerOnboardingRecipe(
     build_chain: buildChainFn,
     enrich: enrichFn,
     authority_tier: 2,
-    brand: 'borjie',
+    brand: 'bossnyumba',
   });
 }
 

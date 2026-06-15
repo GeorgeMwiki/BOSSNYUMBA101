@@ -6,7 +6,7 @@
  * The contract by which every domain function declares its UI manifest
  * and the composer emits a TabRecipe on demand. Strict types, all
  * immutable (`ReadonlyArray<T>`, `readonly` everywhere), `brand` of any
- * emitted recipe forced to `'borjie'`.
+ * emitted recipe forced to `'bossnyumba'`.
  *
  * No I/O. No DB. No React. Pure typed primitives + pure composer
  * functions. Server-safe (Node + Edge) and browser-safe.

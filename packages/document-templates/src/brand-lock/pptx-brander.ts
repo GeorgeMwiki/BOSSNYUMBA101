@@ -222,7 +222,7 @@ export function brandPptx(doc: IRDoc): BrandPptxResult {
         text:
           doc.subtitle !== undefined && doc.subtitle.length > 0
             ? doc.subtitle
-            : `Borjie — Generated ${doc.generated_at}`,
+            : `BossNyumba — Generated ${doc.generated_at}`,
       },
     ],
     citationIds: [],

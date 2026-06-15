@@ -5,7 +5,7 @@
 Composition root that wires the 12 cognitive subsystems into a single named
 pipeline and owns the operator-grade 12-wire health probe.
 
-Persona: Mr. Mwikila. Brand: Borjie.
+Persona: Mr. Mwikila. Brand: BossNyumba.
 
 See `Docs/DESIGN/NEURO_WIRING_SOTA_2026.md` for the full design — this
 package is the implementation of §6 (composition root) and §8 (12-wire

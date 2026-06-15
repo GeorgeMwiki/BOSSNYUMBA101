@@ -8,7 +8,7 @@
  * draft → shadow → live → locked → deprecated lifecycle.
  *
  * Spec: Docs/DESIGN/DYNAMIC_RECIPE_AUTHORING_SPEC.md.
- * Persona: Mr. Mwikila. Brand: Borjie.
+ * Persona: Mr. Mwikila. Brand: BossNyumba.
  */
 
 // ---------------------------------------------------------------------------

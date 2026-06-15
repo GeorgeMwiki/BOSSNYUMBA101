@@ -1,9 +1,9 @@
 import * as React from 'react';
 
 /**
- * The two product surfaces that make up the Borjie suite. `owner` is the
+ * The two product surfaces that make up the BossNyumba suite. `owner` is the
  * mining owner's strategic cockpit (owner-web, port 3010); `admin` is the
- * Borjie team's internal console (admin-web, port 3020).
+ * BossNyumba team's internal console (admin-web, port 3020).
  */
 export type PortalKey = 'owner' | 'admin';
 
@@ -16,7 +16,7 @@ export type PortalKey = 'owner' | 'admin';
  *
  * Expected keys:
  * - `owner`  — visible name of the Owner Cockpit portal (e.g. EN "Owner Cockpit").
- * - `admin`  — visible name of the Borjie Console portal (e.g. EN "Borjie Console").
+ * - `admin`  — visible name of the BossNyumba Console portal (e.g. EN "BossNyumba Console").
  * - `switch` — accessible action label for the trigger / menu, announced to
  *              screen readers (e.g. EN "Switch portal"). Used as the menu's
  *              `aria-label` and the trigger's accessible description.
@@ -30,7 +30,7 @@ export interface PortalSwitcherLabels {
 /** English defaults. Consumers MUST override with `sw` copy when locale=sw. */
 export const DEFAULT_PORTAL_LABELS: PortalSwitcherLabels = {
   owner: 'Owner Cockpit',
-  admin: 'Borjie Console',
+  admin: 'BossNyumba Console',
   switch: 'Switch portal',
 };
 
@@ -39,7 +39,7 @@ export interface PortalSwitcherProps {
   current: PortalKey;
   /** Absolute, cross-origin URL of the Owner Cockpit (owner-web). */
   ownerUrl: string;
-  /** Absolute, cross-origin URL of the Borjie Console (admin-web). */
+  /** Absolute, cross-origin URL of the BossNyumba Console (admin-web). */
   adminUrl: string;
   /** Localized strings supplied by the consumer. Defaults are English. */
   labels?: PortalSwitcherLabels;
@@ -112,17 +112,17 @@ export const PortalSwitcher: React.FC<PortalSwitcherProps> = ({
     };
   }, [close]);
 
-  const rootClassName = ['borjie-portal-switcher', className].filter(Boolean).join(' ');
+  const rootClassName = ['bossnyumba-portal-switcher', className].filter(Boolean).join(' ');
 
   return (
     <details ref={detailsRef} className={rootClassName} data-current={current}>
       <summary
-        className="borjie-portal-switcher__trigger"
+        className="bossnyumba-portal-switcher__trigger"
         aria-label={labels.switch}
         aria-haspopup="menu"
       >
-        <span className="borjie-portal-switcher__trigger-label">{currentEntry.label}</span>
-        <span className="borjie-portal-switcher__chevron" aria-hidden="true">
+        <span className="bossnyumba-portal-switcher__trigger-label">{currentEntry.label}</span>
+        <span className="bossnyumba-portal-switcher__chevron" aria-hidden="true">
           {'▾'}
         </span>
       </summary>
@@ -130,7 +130,7 @@ export const PortalSwitcher: React.FC<PortalSwitcherProps> = ({
         role="menu"
         aria-label={labels.switch}
         aria-orientation="vertical"
-        className="borjie-portal-switcher__menu"
+        className="bossnyumba-portal-switcher__menu"
       >
         {entries.map((entry) =>
           entry.key === current ? (
@@ -140,7 +140,7 @@ export const PortalSwitcher: React.FC<PortalSwitcherProps> = ({
               aria-current="page"
               aria-disabled="true"
               tabIndex={-1}
-              className="borjie-portal-switcher__item borjie-portal-switcher__item--current"
+              className="bossnyumba-portal-switcher__item bossnyumba-portal-switcher__item--current"
             >
               {entry.label}
             </span>
@@ -150,7 +150,7 @@ export const PortalSwitcher: React.FC<PortalSwitcherProps> = ({
               role="menuitem"
               href={entry.href}
               onClick={close}
-              className="borjie-portal-switcher__item"
+              className="bossnyumba-portal-switcher__item"
             >
               {entry.label}
             </a>

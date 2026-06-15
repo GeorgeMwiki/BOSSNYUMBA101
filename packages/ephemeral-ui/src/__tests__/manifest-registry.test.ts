@@ -17,7 +17,7 @@ function buildManifest(overrides: Record<string, unknown> = {}): unknown {
     output_shape: z.object({ kpis: z.array(z.unknown()) }),
     ui_hints: {
       preferred_size: 'tab',
-      preferred_colors: ['var(--borjie-color-primary)'],
+      preferred_colors: ['var(--bossnyumba-color-primary)'],
       preferred_layout: 'cards',
       emphasis: 'actionable',
       mobile_strategy: 'reflow',

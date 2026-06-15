@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
-  "description": "The OPERATOR / BUSINESS pack — the UNIVERSAL domain pack the platform operator (Borjie-the-company) loads over the Mr-Mwikila cortex to run itself: an ERP business world (GL/AP/AR/payroll/treasury) expressed in @bossnyumba/business-ontology REA terms, plus the operator's homeostatic drives (cash-runway, AR-collection, payroll-on-time, margin, retention). NOT a customer vertical — it ships WITH the cortex and is always-loaded; every vertical's operator inherits it. The mining/real-estate packs relabel the SAME ontology for CUSTOMERS; this one is for the OPERATOR.",
+  "description": "The OPERATOR / BUSINESS pack — the UNIVERSAL domain pack the platform operator (BossNyumba-the-company) loads over the Mr-Mwikila cortex to run itself: an ERP business world (GL/AP/AR/payroll/treasury) expressed in @bossnyumba/business-ontology REA terms, plus the operator's homeostatic drives (cash-runway, AR-collection, payroll-on-time, margin, retention). NOT a customer vertical — it ships WITH the cortex and is always-loaded; every vertical's operator inherits it. The mining/real-estate packs relabel the SAME ontology for CUSTOMERS; this one is for the OPERATOR.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

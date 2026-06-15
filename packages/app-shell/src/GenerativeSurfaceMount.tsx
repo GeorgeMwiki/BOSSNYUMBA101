@@ -91,7 +91,7 @@ export const GenerativeSurfaceMount: React.FC<GenerativeSurfaceMountProps> = ({
   onPatchError,
   className,
 }) => {
-  const rootClassName = ['borjie-generative-surface-mount', className]
+  const rootClassName = ['bossnyumba-generative-surface-mount', className]
     .filter(Boolean)
     .join(' ');
 

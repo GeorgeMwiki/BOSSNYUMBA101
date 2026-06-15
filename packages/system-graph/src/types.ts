@@ -6,7 +6,7 @@
  * inspectable artifact, never introspect from weights). This is the layered
  * KG over the existing substrates:
  *
- *   LAYER 0 = Borjie-the-OS (the self).
+ *   LAYER 0 = BossNyumba-the-OS (the self).
  *   LAYER 1 = sub-MDs / juniors.
  *   LAYERS 2-4 = surfaces -> screens -> capabilities -> data-flows.
  *
@@ -71,7 +71,7 @@ export const BODY_LAYERS = {
 //   flows_data_to — a dataflow edge (schema -> service -> surface)
 //   governed_by   — a capability is governed by a rail/gate
 //   measured_by   — a capability/node is measured by an observability axis
-//   mirrors       — Borjie<->BN parity edge (registry "mirrors BN")
+//   mirrors       — BossNyumba<->BN parity edge (registry "mirrors BN")
 //   exposes       — a service exposes an mcp tool / a surface exposes a screen
 //   serves        — a service serves a capability / a junior serves a capability
 // ─────────────────────────────────────────────────────────────────────

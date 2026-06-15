@@ -108,7 +108,7 @@ function verbositySuffix(level: number): string {
  * (rules run for `locale` only; the other language is never injected). The
  * persona preamble / tail scaffolds are deliberately left untouched.
  *
- * @param locale active reply language; defaults to Borjie's `en`. Pass `sw`
+ * @param locale active reply language; defaults to BossNyumba's `en`. Pass `sw`
  *               when the user has toggled to Swahili so the guards stay
  *               locale-pure.
  */

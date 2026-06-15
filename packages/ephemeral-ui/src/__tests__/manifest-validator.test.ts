@@ -19,7 +19,7 @@ function validManifest(): unknown {
     }),
     ui_hints: {
       preferred_size: 'tab',
-      preferred_colors: ['var(--borjie-color-primary)'],
+      preferred_colors: ['var(--bossnyumba-color-primary)'],
       preferred_layout: 'split',
       emphasis: 'narrative',
       mobile_strategy: 'simplify',

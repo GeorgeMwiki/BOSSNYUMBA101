@@ -1,5 +1,5 @@
 # =============================================================================
-# BORJIE — wave-resilience-manager (Wave 18DD)
+# BOSSNYUMBA — wave-resilience-manager (Wave 18DD)
 # =============================================================================
 # Per AGENT_SELF_REVIVAL_SPEC: detect crashed agent waves, revive them from
 # the last checkpoint, drive to 100% completion automatically.

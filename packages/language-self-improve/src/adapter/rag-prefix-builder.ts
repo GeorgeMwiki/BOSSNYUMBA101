@@ -46,7 +46,7 @@ export interface RagPrefixConfig {
 export const DEFAULT_RAG_PREFIX_CONFIG: RagPrefixConfig = Object.freeze({
   maxTokens: 4_000,
   preamble:
-    'Few-shot exemplars (Mr. Mwikila — Borjie). Tanzanian mining-domain Swahili turns curated from prior live interactions.',
+    'Few-shot exemplars (Mr. Mwikila — BossNyumba). Tanzanian mining-domain Swahili turns curated from prior live interactions.',
 });
 
 export interface RagPrefix {

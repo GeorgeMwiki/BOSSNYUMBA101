@@ -9,7 +9,7 @@
  */
 
 // ---------------------------------------------------------------------------
-// Closed-set document classes — the 11 BORJIE recipes.
+// Closed-set document classes — the 11 BOSSNYUMBA recipes.
 // ---------------------------------------------------------------------------
 
 export type DocumentClass =
@@ -122,7 +122,7 @@ export interface DocComposeContext {
   /** Reproducibility seed — pin the renderer's "now" so checksums are
    *  stable across runs in tests. Optional in production. */
   readonly generated_at?: string;
-  /** Storage bucket override — defaults to `borjie-docs-${class}`. */
+  /** Storage bucket override — defaults to `bossnyumba-docs-${class}`. */
   readonly storage_bucket?: string;
 }
 
@@ -212,7 +212,7 @@ export interface DocumentRecipe {
   readonly required_citations: ReadonlyArray<CitationContract>;
   readonly output_formats: ReadonlyArray<DocumentFormat>;
   readonly authority_tier: AuthorityTier;
-  readonly brand: 'borjie';
+  readonly brand: 'bossnyumba';
   readonly approval_required: boolean;
 }
 

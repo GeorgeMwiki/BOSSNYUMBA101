@@ -141,7 +141,7 @@ describe('media engine — hard rails', () => {
       { ...baseRequest, locale: 'sw' },
       ctx(),
     );
-    expect(sw.provenance.watermark.text).toBe('Imetengenezwa na Borjie');
+    expect(sw.provenance.watermark.text).toBe('Imetengenezwa na BossNyumba');
     expect(sw.provenance.watermark.text).not.toContain('Generated');
   });
 });

@@ -55,12 +55,12 @@ describe('parsePayload', () => {
   it('accepts a complete payload', () => {
     expect(
       parsePayload({
-        systemPrompt: 'You are Borjie.',
+        systemPrompt: 'You are BossNyumba.',
         intent: 'Hello',
         language: 'sw',
       }),
     ).toEqual({
-      systemPrompt: 'You are Borjie.',
+      systemPrompt: 'You are BossNyumba.',
       intent: 'Hello',
       language: 'sw',
       model: undefined,
@@ -117,8 +117,8 @@ describe('corsHeaders', () => {
 
   it('echoes the configured origin', () => {
     expect(
-      corsHeaders('https://api.borjie.io')['access-control-allow-origin'],
-    ).toBe('https://api.borjie.io');
+      corsHeaders('https://api.bossnyumba.io')['access-control-allow-origin'],
+    ).toBe('https://api.bossnyumba.io');
   });
 
   it('always permits POST + OPTIONS', () => {

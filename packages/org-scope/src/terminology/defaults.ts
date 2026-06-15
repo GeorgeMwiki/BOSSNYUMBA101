@@ -41,7 +41,7 @@ export const DEFAULT_TERMINOLOGY: ReadonlyArray<TerminologyDefault> = [
     singular_sw: 'shirika',
     plural_sw: 'mashirika',
     category: 'org_structure',
-    description: 'The root organisation that owns a Borjie installation.',
+    description: 'The root organisation that owns a BossNyumba installation.',
   },
   {
     key: 'team',

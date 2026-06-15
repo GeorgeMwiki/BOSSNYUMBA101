@@ -4,7 +4,7 @@
  * Companion to Docs/DESIGN/EMPLOYEE_DAILY_PERFORMANCE_FOLLOWUP_SPEC.md.
  * Every record here is immutable. State transitions produce new
  * projections via dedicated handlers — never an in-place mutation.
- * This mirrors the immutability discipline used across the Borjie
+ * This mirrors the immutability discipline used across the BossNyumba
  * codebase.
  *
  * Locked default per

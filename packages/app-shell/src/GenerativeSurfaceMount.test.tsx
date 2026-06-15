@@ -57,7 +57,7 @@ function sandboxedSurface(): SandboxedSurface {
     srcdoc: '<!doctype html><html><body>map</body></html>',
     sandboxTokens: ['allow-forms'],
     csp: "default-src 'none'; script-src 'unsafe-inline'",
-    allowedMessageOrigins: ['https://sandbox.borjie.app'],
+    allowedMessageOrigins: ['https://sandbox.bossnyumba.app'],
     heightPx: 400,
     createdBy: 'agent-1',
     createdAt: '2026-06-08T10:00:00.000Z',

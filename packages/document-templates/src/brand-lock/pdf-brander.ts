@@ -57,10 +57,10 @@ export function renderIRDocToHtml(doc: IRDoc): string {
     `<!doctype html><html lang="en"><head>` +
     `<meta charset="utf-8"/>` +
     `<title>${escapeHtml(doc.title)}</title>` +
-    `<link rel="stylesheet" href="/borjie-brand.css"/>` +
+    `<link rel="stylesheet" href="/bossnyumba-brand.css"/>` +
     `</head><body class="brj-body">` +
     watermark +
-    `<header class="brj-header"><span class="brj-wordmark">Borjie</span></header>` +
+    `<header class="brj-header"><span class="brj-wordmark">BossNyumba</span></header>` +
     `<main class="brj-main">` +
     `<h1 class="brj-h1">${escapeHtml(doc.title)}</h1>` +
     (doc.subtitle ? `<p class="brj-subtitle">${escapeHtml(doc.subtitle)}</p>` : '') +
@@ -68,7 +68,7 @@ export function renderIRDocToHtml(doc: IRDoc): string {
     sectionsHtml +
     citationsHtml +
     `</main>` +
-    `<footer class="brj-footer"><span class="brj-wordmark">Borjie</span></footer>` +
+    `<footer class="brj-footer"><span class="brj-wordmark">BossNyumba</span></footer>` +
     `</body></html>`
   );
 }
@@ -214,7 +214,7 @@ export function brandPdf(doc: IRDoc): BrandPdfResult {
     );
   }
   const lines: string[] = [
-    `Borjie — ${doc.title}`,
+    `BossNyumba — ${doc.title}`,
     ...(doc.subtitle !== undefined && doc.subtitle.length > 0 ? [doc.subtitle] : []),
     `Generated ${doc.generated_at}`,
     '',

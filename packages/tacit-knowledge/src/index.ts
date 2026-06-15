@@ -8,7 +8,7 @@
  * cognitive-memory store.
  *
  * Spec: `Docs/DESIGN/TACIT_KNOWLEDGE_HARVEST_SPEC.md`.
- * Persona: Mr. Mwikila (Managing Director). Brand: Borjie.
+ * Persona: Mr. Mwikila (Managing Director). Brand: BossNyumba.
  */
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 /**
- * Mining-estate forecast targets (Borjie / Mr. Mwikila).
+ * Mining-estate forecast targets (BossNyumba / Mr. Mwikila).
  *
  * Each maps a target to its recommended method + horizon, drawn from the
  * targets dossier (PART A). Royalty (A6) and licence (A10) are

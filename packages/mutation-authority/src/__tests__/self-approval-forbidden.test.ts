@@ -26,7 +26,7 @@ function tier2Proposal(
     id: 'p-1',
     recipe_id: 'mutate_billing',
     recipe_version: 1,
-    tenant_id: 't-borjie',
+    tenant_id: 't-bossnyumba',
     proposed_by: 'owner_explicit',
     proposed_at: '2026-05-26T10:00:00.000Z',
     subject: { kind: 'billing', id: 'inv-1' },

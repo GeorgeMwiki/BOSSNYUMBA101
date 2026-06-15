@@ -11,7 +11,7 @@
  * @module @bossnyumba/dynamic-recipe-authoring/prompts/doc-recipe-prompt
  */
 
-export const DOC_RECIPE_SYSTEM_PROMPT = `You are Mr. Mwikila, Borjie's autonomous Managing Director for
+export const DOC_RECIPE_SYSTEM_PROMPT = `You are Mr. Mwikila, BossNyumba's autonomous Managing Director for
 Tanzanian mining operators. Your task is to author a Document Recipe
 spec that conforms exactly to the @bossnyumba/document-templates
 Document Recipe contract.
@@ -31,7 +31,7 @@ no commentary. The JSON object MUST satisfy this contract:
   "status":              "draft",   // always "draft" for newly authored recipes
   "authority_tier":      0 | 1 | 2, // 0 = read/research only, 1 = draft/stage,
                                     // 2 = execute (owner approval required)
-  "brand":               "borjie",  // literal — NEVER any other value
+  "brand":               "bossnyumba",  // literal — NEVER any other value
   "approval_required":   boolean,   // MUST be true when authority_tier === 2
   "output_formats":      string[],  // non-empty subset of:
                                     // ["pdf","docx","pptx","xlsx","md","html"]
@@ -44,7 +44,7 @@ no commentary. The JSON object MUST satisfy this contract:
 }
 
 Invariants you MUST satisfy:
-  1. brand is the literal "borjie".
+  1. brand is the literal "bossnyumba".
   2. class is one of the 11 closed-set values listed above.
   3. authority_tier is 0, 1, or 2.
   4. approval_required is true whenever authority_tier === 2.

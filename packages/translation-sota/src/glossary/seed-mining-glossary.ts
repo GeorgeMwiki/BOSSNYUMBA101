@@ -17,7 +17,7 @@
  *   - Maneno Matamu: Tanzanian vs Kenyan polite expressions:
  *     https://manenomatamu.wordpress.com/2011/11/20/swahili-kenyan-vs-tanzanian-speak-round-3-polite-expressions/
  *
- * Persona: Mr. Mwikila. Brand: Borjie. Tanzanian formal register.
+ * Persona: Mr. Mwikila. Brand: BossNyumba. Tanzanian formal register.
  */
 
 import type { GlossaryEntry } from '../types.js';

@@ -39,7 +39,7 @@ function makeRecipe(over: Partial<TabRecipeRow>): TabRecipeRow {
     intent: over.intent ?? 'BuyerKYBStart',
     composeFnRef: over.composeFnRef ?? '@bossnyumba/portal-genui/recipes/buyer-kyb-start',
     authorityTier: over.authorityTier ?? 1,
-    brand: 'borjie',
+    brand: 'bossnyumba',
     promotedAtIso: over.promotedAtIso ?? null,
     promotedBy: over.promotedBy ?? null,
     lockedAtIso: over.lockedAtIso ?? null,

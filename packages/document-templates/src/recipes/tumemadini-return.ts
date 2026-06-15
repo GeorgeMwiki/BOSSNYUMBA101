@@ -20,7 +20,7 @@ export const tumemadiniReturnRecipe: DocumentRecipe = {
   version: 1,
   status: 'live',
   authority_tier: 2,
-  brand: 'borjie',
+  brand: 'bossnyumba',
   approval_required: true,
   output_formats: ['pdf'] as const,
   required_inputs: [
@@ -101,7 +101,7 @@ export const tumemadiniReturnRecipe: DocumentRecipe = {
     ];
 
     const irDoc: IRDoc = {
-      title: 'Borjie — Tumemadini Monthly Return',
+      title: 'BossNyumba — Tumemadini Monthly Return',
       subtitle: 'Official Filing',
       sections,
       citations: ctx.citations,

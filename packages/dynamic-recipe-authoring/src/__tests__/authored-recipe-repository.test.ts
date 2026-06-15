@@ -3,7 +3,7 @@ import { createInMemoryAuthoredRecipeRepository } from '../repositories/authored
 
 const sampleSpec = Object.freeze({
   id: 'pit-safety-kpis-by-shift',
-  brand: 'borjie',
+  brand: 'bossnyumba',
 }) as Readonly<Record<string, unknown>>;
 
 describe('authored-recipe-repository (in-memory)', () => {

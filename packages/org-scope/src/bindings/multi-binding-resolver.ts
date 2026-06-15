@@ -5,7 +5,7 @@
  * districts. When a request comes in, we need to know WHICH binding is
  * active. There are two strategies:
  *
- *   1. **explicit** — the client passed an `X-Borjie-Active-Binding` id
+ *   1. **explicit** — the client passed an `X-BossNyumba-Active-Binding` id
  *      because the user clicked the context switcher in the UI.
  *   2. **implicit** — pick the "most powerful" binding (highest
  *      authority_tier_max; tenant_root > org_unit > cross_scope on

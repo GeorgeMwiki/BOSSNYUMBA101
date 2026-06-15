@@ -18,7 +18,7 @@ export const dailyBriefingRecipe: DocumentRecipe = {
   version: 1,
   status: 'live',
   authority_tier: 1,
-  brand: 'borjie',
+  brand: 'bossnyumba',
   approval_required: false,
   output_formats: ['md', 'pdf'] as const,
   required_inputs: [
@@ -84,7 +84,7 @@ export const dailyBriefingRecipe: DocumentRecipe = {
     ];
 
     const irDoc: IRDoc = {
-      title: 'Borjie — Daily Briefing',
+      title: 'BossNyumba — Daily Briefing',
       subtitle: ctx.owner_profile.displayName,
       sections,
       citations: ctx.citations,

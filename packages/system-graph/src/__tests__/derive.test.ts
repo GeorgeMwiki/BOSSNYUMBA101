@@ -15,7 +15,7 @@ describe('deriveSelf', () => {
     const f = deriveSelf();
     expect(f.nodes).toHaveLength(1);
     expect(f.nodes[0]!.kind).toBe('org');
-    expect(f.nodes[0]!.id).toBe('org:borjie');
+    expect(f.nodes[0]!.id).toBe('org:bossnyumba');
   });
 });
 

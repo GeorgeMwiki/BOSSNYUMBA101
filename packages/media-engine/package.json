@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
-  "description": "Standalone media-generation ENGINE. ProviderPort over IMAGE (Imagen-3 / FLUX / Seedream-class), SHORT-VIDEO (Sora-2 / Veo-3 / Seedance-2-class) and GIF/animation providers; provider registry with one deterministic in-repo stub provider so it runs with zero API keys; real HTTP adapters behind injected config (keys never read from process.env). Prompt-safety gate, watermark + C2PA provenance stamp, async job model, storage PORT (signed-URL delivery), and cost guards. Typed media-request kinds for Borjie mining-estate and BN real-estate. Ports exposed for later modality-arbiter wiring; not wired into the brain.",
+  "description": "Standalone media-generation ENGINE. ProviderPort over IMAGE (Imagen-3 / FLUX / Seedream-class), SHORT-VIDEO (Sora-2 / Veo-3 / Seedance-2-class) and GIF/animation providers; provider registry with one deterministic in-repo stub provider so it runs with zero API keys; real HTTP adapters behind injected config (keys never read from process.env). Prompt-safety gate, watermark + C2PA provenance stamp, async job model, storage PORT (signed-URL delivery), and cost guards. Typed media-request kinds for BossNyumba mining-estate and BN real-estate. Ports exposed for later modality-arbiter wiring; not wired into the brain.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

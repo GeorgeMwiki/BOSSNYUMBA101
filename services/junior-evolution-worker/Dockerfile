@@ -1,5 +1,5 @@
 # =============================================================================
-# BORJIE — junior-evolution-worker
+# BOSSNYUMBA — junior-evolution-worker
 # =============================================================================
 # Lifecycle worker for dynamically-spawned + tenant-authored juniors.
 # Runs nightly at 04:00 UTC (two hours after the UI evolution sweep).
@@ -8,11 +8,11 @@
 #
 # Build:
 #   docker build -f services/junior-evolution-worker/Dockerfile \
-#     -t borjie/junior-evolution-worker:dev .
+#     -t bossnyumba/junior-evolution-worker:dev .
 #
 # Run (one-shot mode):
 #   docker run --rm -e JUNIOR_EVO_ONESHOT=1 \
-#     borjie/junior-evolution-worker:dev
+#     bossnyumba/junior-evolution-worker:dev
 # =============================================================================
 
 # -----------------------------------------------------------------------------

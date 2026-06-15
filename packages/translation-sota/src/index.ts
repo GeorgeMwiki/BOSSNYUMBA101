@@ -8,7 +8,7 @@
  * Claude Opus 4.7 → Gemini 2.5 Pro → NLLB-200 self-host.
  *
  * Spec: Docs/DESIGN/TRANSLATION_SOTA_SPEC.md.
- * Persona: Mr. Mwikila. Brand: Borjie.
+ * Persona: Mr. Mwikila. Brand: BossNyumba.
  */
 
 // ---------------------------------------------------------------------------

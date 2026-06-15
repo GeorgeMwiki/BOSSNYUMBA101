@@ -18,7 +18,7 @@ export const financialModelRecipe: DocumentRecipe = {
   version: 1,
   status: 'live',
   authority_tier: 1,
-  brand: 'borjie',
+  brand: 'bossnyumba',
   approval_required: false,
   output_formats: ['xlsx'] as const,
   required_inputs: [
@@ -88,7 +88,7 @@ export const financialModelRecipe: DocumentRecipe = {
     ];
 
     const irDoc: IRDoc = {
-      title: 'Borjie — Financial Model',
+      title: 'BossNyumba — Financial Model',
       subtitle: 'Scenario Workbook',
       sections,
       citations: ctx.citations,

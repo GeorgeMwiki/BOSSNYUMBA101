@@ -6,14 +6,14 @@ import type { OrgUnit, TerminologyOverride } from '../types.js';
 function unit(id: string, parent: string | null, name: string): OrgUnit {
   return {
     id,
-    tenant_id: 't-borjie',
+    tenant_id: 't-bossnyumba',
     parent_unit_id: parent,
     default_kind: 'district',
     display_name: name,
     display_kind_singular: 'district',
     display_kind_plural: 'districts',
     materialised_path:
-      parent === null ? `borjie/${id}` : `borjie/${parent}/${id}`,
+      parent === null ? `bossnyumba/${id}` : `bossnyumba/${parent}/${id}`,
     depth: parent === null ? 1 : 2,
     authority_inheritance: true,
     created_at: '2026-05-26T00:00:00.000Z',
@@ -29,7 +29,7 @@ function override(
 ): TerminologyOverride {
   return {
     id: `${orgUnitId ?? 'root'}:${key}`,
-    tenant_id: 't-borjie',
+    tenant_id: 't-bossnyumba',
     org_unit_id: orgUnitId,
     key,
     singular_en: singularEn,
@@ -42,7 +42,7 @@ function override(
 }
 
 const tree = buildOrgUnitTree({
-  tenantId: 't-borjie',
+  tenantId: 't-bossnyumba',
   units: [
     unit('geita', null, 'Geita'),
     unit('geita-site-a', 'geita', 'Geita Site A'),
@@ -53,7 +53,7 @@ const tree = buildOrgUnitTree({
 describe('resolveTerminologyForScope', () => {
   it('returns defaults when no overrides are provided', () => {
     const resolved = resolveTerminologyForScope({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       scopePath: null,
       tree,
       overrides: [],
@@ -64,7 +64,7 @@ describe('resolveTerminologyForScope', () => {
 
   it('applies tenant-wide override over default', () => {
     const resolved = resolveTerminologyForScope({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       scopePath: null,
       tree,
       overrides: [override(null, 'parcel', 'package', 'packages')],
@@ -76,8 +76,8 @@ describe('resolveTerminologyForScope', () => {
 
   it('applies org-unit-level override over tenant-wide', () => {
     const resolved = resolveTerminologyForScope({
-      tenantId: 't-borjie',
-      scopePath: 'borjie/geita',
+      tenantId: 't-bossnyumba',
+      scopePath: 'bossnyumba/geita',
       tree,
       overrides: [
         override(null, 'parcel', 'package', 'packages'),
@@ -91,8 +91,8 @@ describe('resolveTerminologyForScope', () => {
 
   it('walks up to ancestor override when no exact match', () => {
     const resolved = resolveTerminologyForScope({
-      tenantId: 't-borjie',
-      scopePath: 'borjie/geita/geita-site-a',
+      tenantId: 't-bossnyumba',
+      scopePath: 'bossnyumba/geita/geita-site-a',
       tree,
       overrides: [override('geita', 'site', 'pit', 'pits')],
     });
@@ -103,8 +103,8 @@ describe('resolveTerminologyForScope', () => {
 
   it('peer overrides do NOT leak between siblings', () => {
     const resolved = resolveTerminologyForScope({
-      tenantId: 't-borjie',
-      scopePath: 'borjie/mererani',
+      tenantId: 't-bossnyumba',
+      scopePath: 'bossnyumba/mererani',
       tree,
       overrides: [override('geita', 'parcel', 'lot', 'lots')],
     });
@@ -115,7 +115,7 @@ describe('resolveTerminologyForScope', () => {
 
   it('keeps Swahili fallback from default when override omits sw', () => {
     const resolved = resolveTerminologyForScope({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       scopePath: null,
       tree,
       overrides: [override(null, 'parcel', 'package', 'packages')],
@@ -129,7 +129,7 @@ describe('resolveTerminologyForScope', () => {
       tenant_id: 't-other',
     };
     const resolved = resolveTerminologyForScope({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       scopePath: null,
       tree,
       overrides: [foreign],
@@ -141,7 +141,7 @@ describe('resolveTerminologyForScope', () => {
 describe('term()', () => {
   it('returns singular en by default', () => {
     const resolved = resolveTerminologyForScope({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       scopePath: null,
       tree,
       overrides: [],
@@ -151,7 +151,7 @@ describe('term()', () => {
 
   it('returns plural when requested', () => {
     const resolved = resolveTerminologyForScope({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       scopePath: null,
       tree,
       overrides: [],
@@ -161,7 +161,7 @@ describe('term()', () => {
 
   it('returns Swahili when requested', () => {
     const resolved = resolveTerminologyForScope({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       scopePath: null,
       tree,
       overrides: [],
@@ -172,7 +172,7 @@ describe('term()', () => {
 
   it('returns the key as defensive fallback', () => {
     const resolved = resolveTerminologyForScope({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       scopePath: null,
       tree,
       overrides: [],

@@ -221,7 +221,7 @@ function toCard(
 ): Tier2ApprovalCard | null {
   // We do not know the row's recipe class without the join — the caller
   // supplied only the closed set. We pick the matching class by reading
-  // the artefact's storage_bucket convention `borjie-docs-<class>`. If
+  // the artefact's storage_bucket convention `bossnyumba-docs-<class>`. If
   // none matches we still emit but mark `contract` as a safe default —
   // tests use the explicit class set.
   const classFromStorage = classes.find((c) => row.storage_key.includes(c));

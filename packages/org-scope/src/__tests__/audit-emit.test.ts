@@ -5,7 +5,7 @@ import { buildOrgScopeAuditEntry } from '../audit/audit-emit.js';
 describe('buildOrgScopeAuditEntry', () => {
   it('builds a genesis entry when no previous hash is supplied', () => {
     const out = buildOrgScopeAuditEntry({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       kind: 'binding.granted',
       actorUserId: 'owner',
       subjectId: 'b-1',
@@ -21,7 +21,7 @@ describe('buildOrgScopeAuditEntry', () => {
 
   it('chains to a previous hash + increments index', () => {
     const first = buildOrgScopeAuditEntry({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       kind: 'org_unit.created',
       actorUserId: 'owner',
       subjectId: 'geita',
@@ -30,7 +30,7 @@ describe('buildOrgScopeAuditEntry', () => {
       occurredAt: '2026-05-26T00:00:00.000Z',
     });
     const second = buildOrgScopeAuditEntry({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       kind: 'terminology.override.upserted',
       actorUserId: 'owner',
       subjectId: 'o-1',

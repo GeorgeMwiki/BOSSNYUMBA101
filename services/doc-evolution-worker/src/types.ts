@@ -69,7 +69,7 @@ export interface DocumentRecipeRow {
   readonly required_citations: ReadonlyArray<unknown>;
   readonly output_formats: ReadonlyArray<DocumentFormat>;
   readonly authority_tier: AuthorityTier;
-  readonly brand: 'borjie';
+  readonly brand: 'bossnyumba';
   readonly approval_required: boolean;
   readonly promoted_at: string | null;
   readonly promoted_by: string | null;

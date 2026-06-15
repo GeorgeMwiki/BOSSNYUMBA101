@@ -210,7 +210,7 @@ const ENTRIES: ReadonlyArray<OmnidataConnectorMetadata> = [
     authKind: 'oauth2',
   },
 
-  // ---- P3 — Specialised (Borjie-regulator) ----
+  // ---- P3 — Specialised (BossNyumba-regulator) ----
   {
     id: 'tra_portal:default',
     sourceKind: 'tra_portal',

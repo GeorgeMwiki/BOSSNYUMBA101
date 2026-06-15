@@ -17,7 +17,7 @@ export const nemcFilingRecipe: DocumentRecipe = {
   version: 1,
   status: 'live',
   authority_tier: 2,
-  brand: 'borjie',
+  brand: 'bossnyumba',
   approval_required: true,
   output_formats: ['pdf'] as const,
   required_inputs: [
@@ -82,7 +82,7 @@ export const nemcFilingRecipe: DocumentRecipe = {
     ];
 
     const irDoc: IRDoc = {
-      title: 'Borjie — NEMC Environmental Filing',
+      title: 'BossNyumba — NEMC Environmental Filing',
       subtitle: 'Official Submission',
       sections,
       citations: ctx.citations,

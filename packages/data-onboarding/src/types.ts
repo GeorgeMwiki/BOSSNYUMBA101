@@ -357,7 +357,7 @@ export interface DataOnboardingRecipe {
     ctx: EnrichmentCtx,
   ) => Promise<EnrichmentResult>;
   readonly authority_tier: AuthorityTier;
-  readonly brand: 'borjie';
+  readonly brand: 'bossnyumba';
 }
 
 // ---------------------------------------------------------------------------

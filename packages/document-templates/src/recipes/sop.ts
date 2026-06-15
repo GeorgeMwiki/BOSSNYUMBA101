@@ -16,7 +16,7 @@ export const sopRecipe: DocumentRecipe = {
   version: 1,
   status: 'live',
   authority_tier: 1,
-  brand: 'borjie',
+  brand: 'bossnyumba',
   approval_required: false,
   output_formats: ['docx'] as const,
   required_inputs: [
@@ -79,7 +79,7 @@ export const sopRecipe: DocumentRecipe = {
     ];
 
     const irDoc: IRDoc = {
-      title: 'Borjie — SOP',
+      title: 'BossNyumba — SOP',
       subtitle: 'Internal Procedure',
       sections,
       citations: ctx.citations,

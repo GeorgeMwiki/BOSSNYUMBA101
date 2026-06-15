@@ -9,7 +9,7 @@
  * perspective synthesis with citations, disagreements, and confidence.
  *
  * Spec: Docs/DESIGN/INFORMATION_SYNTHESIS_SOTA_SPEC.md.
- * Persona: Mr. Mwikila. Brand: Borjie.
+ * Persona: Mr. Mwikila. Brand: BossNyumba.
  */
 
 // ---------------------------------------------------------------------------

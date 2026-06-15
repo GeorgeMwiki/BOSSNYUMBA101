@@ -89,7 +89,7 @@ export interface JuniorManifestEntry {
 // ─────────────────────────────────────────────────────────────────────
 
 const nid = {
-  org: () => 'org:borjie',
+  org: () => 'org:bossnyumba',
   surface: (s: string) => `surface:${s}`,
   screen: (surface: string, screen: string) => `screen:${surface}/${screen}`,
   service: (s: string) => `service:${s}`,
@@ -118,7 +118,7 @@ export function deriveSelf(): GraphFragment {
       {
         id: nid.org(),
         kind: 'org',
-        label: 'Borjie (the OS)',
+        label: 'BossNyumba (the OS)',
         summary: 'The MD-as-body operating system — the self these organs compose.',
         derivedFrom: 'self',
       },

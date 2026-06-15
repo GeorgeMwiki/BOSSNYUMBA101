@@ -6,13 +6,13 @@ import type { OrgUnit, UserScopeBinding } from '../types.js';
 function unit(id: string, parent: string | null): OrgUnit {
   return {
     id,
-    tenant_id: 't-borjie',
+    tenant_id: 't-bossnyumba',
     parent_unit_id: parent,
     default_kind: 'district',
     display_name: id,
     display_kind_singular: 'district',
     display_kind_plural: 'districts',
-    materialised_path: parent === null ? `t-borjie/${id}` : `t-borjie/${parent}/${id}`,
+    materialised_path: parent === null ? `t-bossnyumba/${id}` : `t-bossnyumba/${parent}/${id}`,
     depth: parent === null ? 1 : 2,
     authority_inheritance: true,
     created_at: '2026-05-26T00:00:00.000Z',
@@ -30,7 +30,7 @@ function binding(
   return {
     id,
     user_id: 'u-1',
-    tenant_id: 't-borjie',
+    tenant_id: 't-bossnyumba',
     scope_kind: scopeKind,
     org_unit_id: orgUnitId,
     role: 'admin',
@@ -43,7 +43,7 @@ function binding(
 }
 
 const tree = buildOrgUnitTree({
-  tenantId: 't-borjie',
+  tenantId: 't-bossnyumba',
   units: [
     unit('geita', null),
     unit('geita-site-a', 'geita'),
@@ -54,7 +54,7 @@ const tree = buildOrgUnitTree({
 describe('buildVisibilityFilter', () => {
   it('returns tenant-wide filter for tenant_root binding', () => {
     const out = buildVisibilityFilter({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       bindings: [binding('b-1', 'tenant_root', null, 2)],
       tree,
     });
@@ -65,7 +65,7 @@ describe('buildVisibilityFilter', () => {
 
   it('expands org_unit binding with descendants', () => {
     const out = buildVisibilityFilter({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       bindings: [binding('b-1', 'org_unit', 'geita', 2)],
       tree,
     });
@@ -78,7 +78,7 @@ describe('buildVisibilityFilter', () => {
 
   it('unions multiple bindings', () => {
     const out = buildVisibilityFilter({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       bindings: [
         binding('b-1', 'org_unit', 'geita', 1),
         binding('b-2', 'org_unit', 'mererani', 2),
@@ -93,7 +93,7 @@ describe('buildVisibilityFilter', () => {
 
   it('returns empty filter + tier 0 when no bindings', () => {
     const out = buildVisibilityFilter({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       bindings: [],
       tree,
     });
@@ -104,7 +104,7 @@ describe('buildVisibilityFilter', () => {
 
   it('respects activeBindingId narrow', () => {
     const out = buildVisibilityFilter({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       bindings: [
         binding('b-1', 'org_unit', 'geita', 2),
         binding('b-2', 'org_unit', 'mererani', 1),
@@ -118,7 +118,7 @@ describe('buildVisibilityFilter', () => {
 
   it('ignores revoked bindings', () => {
     const out = buildVisibilityFilter({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       bindings: [
         binding('b-1', 'tenant_root', null, 2, {
           revoked_at: '2026-05-20T00:00:00.000Z',

@@ -1,7 +1,7 @@
 /**
  * @bossnyumba/operator-pack — the operator/business pack manifest.
  *
- * What the platform operator (Borjie-the-company) loads over the Mr-Mwikila
+ * What the platform operator (BossNyumba-the-company) loads over the Mr-Mwikila
  * cortex to run ITSELF. UNIVERSAL: ships with the cortex, always-loaded, NOT a
  * per-customer vertical pin — every vertical's operator inherits it. Customer
  * verticals (mining-tz, …) relabel the SAME @bossnyumba/business-ontology for their
@@ -53,7 +53,7 @@ export interface OperatorPackManifest {
 
 export const operatorPack: OperatorPackManifest = {
   packId: 'operator-business',
-  displayName: 'Borjie Operator — Business / ERP',
+  displayName: 'BossNyumba Operator — Business / ERP',
   universal: true,
   ontology: operatorBusinessOntology,
   drives: OPERATOR_DRIVES,

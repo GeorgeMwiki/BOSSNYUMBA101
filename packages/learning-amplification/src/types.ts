@@ -1,7 +1,7 @@
 /**
  * Continuous Learning Amplification — types.
  *
- * Ported verbatim from LitFin (litfin → borjie). The brain MUST be
+ * Ported verbatim from LitFin (litfin → bossnyumba). The brain MUST be
  * measurably smarter for user 100 than for user 50. We achieve that by
  * capturing every interaction as a datum that updates:
  *
@@ -13,7 +13,7 @@
  *
  * Every observation is anonymised, hashed, and federated: what one user
  * teaches the engine helps every subsequent user without ever leaking
- * PII back into the corpus. The Borjie BorjieMark privacy invariant
+ * PII back into the corpus. The BossNyumba BossNyumbaMark privacy invariant
  * (SHA-256 user_id) is preserved.
  */
 
@@ -77,9 +77,9 @@ export interface UserCohortStats {
 
 /**
  * Minimal Supabase-like client interface the recorder + job need.
- * Borjie is multi-surface (owner-web, admin-web, mobile, api-gateway);
+ * BossNyumba is multi-surface (owner-web, admin-web, mobile, api-gateway);
  * each surface injects its own service-role client through this shape
- * so the package stays portable. Mirrors the BorjieMark contract that
+ * so the package stays portable. Mirrors the BossNyumbaMark contract that
  * LitFin's recorder relied on via `@/lib/supabase/server`.
  */
 export interface SupabaseLike {
@@ -102,8 +102,8 @@ export interface SupabaseQueryBuilder {
 }
 
 /**
- * Borjie BorjieMark — package brand marker for diagnostic logs.
- * Mirrors LitFin's LitfinMark constant so the LitFin → Borjie port
+ * BossNyumba BossNyumbaMark — package brand marker for diagnostic logs.
+ * Mirrors LitFin's LitfinMark constant so the LitFin → BossNyumba port
  * stays grep-able across the two codebases.
  */
-export const BorjieMark = "BorjieMark::learning-amplification" as const;
+export const BossNyumbaMark = "BossNyumbaMark::learning-amplification" as const;

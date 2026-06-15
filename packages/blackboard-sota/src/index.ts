@@ -8,7 +8,7 @@
  * token-budgeted summarisation, per-region hash chain.
  *
  * Spec: Docs/DESIGN/BLACKBOARD_SOTA_2026.md.
- * Persona: Mr. Mwikila (Managing Director). Brand: Borjie.
+ * Persona: Mr. Mwikila (Managing Director). Brand: BossNyumba.
  */
 
 // ---------------------------------------------------------------------------

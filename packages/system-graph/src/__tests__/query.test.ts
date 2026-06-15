@@ -9,7 +9,7 @@ import type { EdgeCandidate, NodeCandidate, SystemGraph } from '../types.js';
 
 function fixture(): SystemGraph {
   const nodes: NodeCandidate[] = [
-    { id: 'org:borjie', kind: 'org', label: 'Borjie', derivedFrom: 'self' },
+    { id: 'org:bossnyumba', kind: 'org', label: 'BossNyumba', derivedFrom: 'self' },
     { id: 'surface:owner-web', kind: 'surface', label: 'owner-web', derivedFrom: 'screens' },
     { id: 'screen:owner-web/royalties', kind: 'screen', label: 'Royalties', derivedFrom: 'screens' },
     {

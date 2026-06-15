@@ -81,7 +81,7 @@ const TabRecipeSchema = z.object({
     .string()
     .min(1)
     .regex(/^[a-z][a-z0-9_]*$/, 'telemetry_key must be snake_case'),
-  brand: z.literal('borjie'),
+  brand: z.literal('bossnyumba'),
   authority_tier: z.union([z.literal(0), z.literal(1), z.literal(2)]),
   form: FormSchemaSchema,
 });
@@ -127,7 +127,7 @@ const DocRecipeSchema = z.object({
   version: z.number().int().min(1),
   status: z.enum(['draft', 'shadow', 'live', 'locked', 'deprecated']),
   authority_tier: z.union([z.literal(0), z.literal(1), z.literal(2)]),
-  brand: z.literal('borjie'),
+  brand: z.literal('bossnyumba'),
   approval_required: z.boolean(),
   output_formats: z.array(z.enum(DOCUMENT_FORMATS)).min(1),
   required_inputs: z.array(InputContractSchema),
@@ -141,7 +141,7 @@ const ShapeOnlySchema = z.object({
   id: z.string().min(1),
   version: z.number().int().min(1),
   status: z.enum(['draft', 'shadow', 'live', 'locked', 'deprecated']),
-  brand: z.literal('borjie'),
+  brand: z.literal('bossnyumba'),
 });
 
 // ---------------------------------------------------------------------------
@@ -224,8 +224,8 @@ function checkTabInvariants(spec: ParsedTab): ReadonlyArray<string> {
   const errors: string[] = [];
 
   // Brand is locked. Zod literal already catches this — defensive.
-  if (spec.brand !== 'borjie') {
-    errors.push(`brand: must be the literal "borjie"`);
+  if (spec.brand !== 'bossnyumba') {
+    errors.push(`brand: must be the literal "bossnyumba"`);
   }
 
   // Authority tier is 0|1|2.
@@ -297,8 +297,8 @@ function checkTabInvariants(spec: ParsedTab): ReadonlyArray<string> {
 function checkDocInvariants(spec: ParsedDoc): ReadonlyArray<string> {
   const errors: string[] = [];
 
-  if (spec.brand !== 'borjie') {
-    errors.push(`brand: must be the literal "borjie"`);
+  if (spec.brand !== 'bossnyumba') {
+    errors.push(`brand: must be the literal "bossnyumba"`);
   }
 
   // Tier-2 docs must require approval.

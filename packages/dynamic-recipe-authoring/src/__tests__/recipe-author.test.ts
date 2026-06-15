@@ -9,7 +9,7 @@ const validTabSpec = {
   version: 1,
   status: 'draft' as const,
   telemetry_key: 'pit_safety_kpis_by_shift',
-  brand: 'borjie' as const,
+  brand: 'bossnyumba' as const,
   authority_tier: 1 as const,
   form: {
     title_en: 'Pit safety KPIs by shift',
@@ -60,14 +60,14 @@ describe('recipe-author orchestrator', () => {
     if (result.ok) {
       expect(result.recipe.lifecycleState).toBe('draft');
       expect(result.recipe.kind).toBe('tab');
-      expect(result.recipe.spec['brand']).toBe('borjie');
+      expect(result.recipe.spec['brand']).toBe('bossnyumba');
       expect(result.nextTransitions).toEqual(['shadow', 'deprecated']);
     }
   });
 
   it('returns invalid_spec when the LLM emits a malformed payload', async () => {
     const llm: LlmAuthorPort = async () => ({
-      spec: { id: 'broken', brand: 'borjie' /* missing form, etc. */ },
+      spec: { id: 'broken', brand: 'bossnyumba' /* missing form, etc. */ },
       modelId: 'stub-claude',
     });
     const repository = createInMemoryAuthoredRecipeRepository();
@@ -111,7 +111,7 @@ describe('recipe-author orchestrator', () => {
 
   it('returns unsupported_kind for media when no custom prompt builder is injected', async () => {
     const llm: LlmAuthorPort = async () => ({
-      spec: { id: 'x', version: 1, status: 'draft', brand: 'borjie' },
+      spec: { id: 'x', version: 1, status: 'draft', brand: 'bossnyumba' },
       modelId: 'stub-claude',
     });
     const repository = createInMemoryAuthoredRecipeRepository();

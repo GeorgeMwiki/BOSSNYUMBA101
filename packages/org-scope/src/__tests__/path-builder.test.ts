@@ -27,37 +27,37 @@ describe('path-builder', () => {
 
   describe('buildChildPath', () => {
     it('builds top-level path from tenant slug', () => {
-      expect(buildChildPath('borjie-tz', null, 'North Zone')).toBe('borjie-tz/north-zone');
+      expect(buildChildPath('bossnyumba-tz', null, 'North Zone')).toBe('bossnyumba-tz/north-zone');
     });
 
     it('appends to parent path', () => {
-      expect(buildChildPath('borjie-tz', 'borjie-tz/north-zone', 'Geita')).toBe(
-        'borjie-tz/north-zone/geita',
+      expect(buildChildPath('bossnyumba-tz', 'bossnyumba-tz/north-zone', 'Geita')).toBe(
+        'bossnyumba-tz/north-zone/geita',
       );
     });
   });
 
   describe('buildTenantRootPath', () => {
     it('returns slugged tenant id', () => {
-      expect(buildTenantRootPath('Borjie TZ')).toBe('borjie-tz');
+      expect(buildTenantRootPath('BossNyumba TZ')).toBe('bossnyumba-tz');
     });
   });
 
   describe('isDescendantPath', () => {
     it('matches exact', () => {
-      expect(isDescendantPath('borjie/geita', 'borjie/geita')).toBe(true);
+      expect(isDescendantPath('bossnyumba/geita', 'bossnyumba/geita')).toBe(true);
     });
 
     it('matches descendant', () => {
-      expect(isDescendantPath('borjie/geita/site-a', 'borjie/geita')).toBe(true);
+      expect(isDescendantPath('bossnyumba/geita/site-a', 'bossnyumba/geita')).toBe(true);
     });
 
     it('rejects sibling with prefix overlap', () => {
-      expect(isDescendantPath('borjie/geita-2', 'borjie/geita')).toBe(false);
+      expect(isDescendantPath('bossnyumba/geita-2', 'bossnyumba/geita')).toBe(false);
     });
 
     it('rejects unrelated paths', () => {
-      expect(isDescendantPath('borjie/mererani', 'borjie/geita')).toBe(false);
+      expect(isDescendantPath('bossnyumba/mererani', 'bossnyumba/geita')).toBe(false);
     });
   });
 });

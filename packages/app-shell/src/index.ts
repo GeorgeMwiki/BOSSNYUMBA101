@@ -1,8 +1,8 @@
 /**
  * @bossnyumba/app-shell
  *
- * Shared application shell that unifies the Borjie owner-web (Owner Cockpit,
- * port 3010) and admin-web (Borjie Console, port 3020) surfaces into one
+ * Shared application shell that unifies the BossNyumba owner-web (Owner Cockpit,
+ * port 3010) and admin-web (BossNyumba Console, port 3020) surfaces into one
  * product. Exposes a thin top bar with a cross-portal switcher.
  *
  * Locale policy: this package hard-codes NO Swahili. Every visible string is

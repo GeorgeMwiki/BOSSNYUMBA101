@@ -29,12 +29,12 @@ export type MediaFormat = 'png' | 'jpeg' | 'webp' | 'mp4' | 'gif';
 export type MediaAspectRatio = '1:1' | '4:5' | '9:16' | '16:9' | '21:9';
 
 // ---------------------------------------------------------------------------
-// Typed media-request kinds — Borjie mining-estate AND BN real-estate.
+// Typed media-request kinds — BossNyumba mining-estate AND BN real-estate.
 // Closed-set discriminator so a new kind requires an explicit extension.
 // ---------------------------------------------------------------------------
 
-/** Borjie mining-estate request kinds. */
-export type BorjieMediaKind =
+/** BossNyumba mining-estate request kinds. */
+export type BossNyumbaMediaKind =
   | 'mining_site_map'
   | 'equipment_process_diagram'
   | 'marketplace_listing_hero'
@@ -47,7 +47,7 @@ export type RealEstateMediaKind =
   | 'neighbourhood_reel';
 
 /** Every typed media-request kind the engine understands. */
-export type MediaRequestKind = BorjieMediaKind | RealEstateMediaKind;
+export type MediaRequestKind = BossNyumbaMediaKind | RealEstateMediaKind;
 
 /** Which product surface a kind belongs to. */
 export type MediaDomain = 'mining_estate' | 'real_estate';

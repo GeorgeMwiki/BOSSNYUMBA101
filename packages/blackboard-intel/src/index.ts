@@ -7,7 +7,7 @@
  * (FTS + dense + RRF) search across the entire blackboard posting
  * history.
  *
- * Persona: Mr. Mwikila (Managing Director). Brand: Borjie.
+ * Persona: Mr. Mwikila (Managing Director). Brand: BossNyumba.
  * Spec: `Docs/DESIGN/BLACKBOARD_INTEL_SOTA_2026.md`.
  * Migration: `0074_blackboard_intel.sql`.
  *

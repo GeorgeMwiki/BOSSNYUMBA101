@@ -1,7 +1,7 @@
 /**
  * @bossnyumba/omnidata — shared types.
  *
- * The connector contract every external-data integration in Borjie's
+ * The connector contract every external-data integration in BossNyumba's
  * capability-boost wave (Slack, Gmail, Notion, WhatsApp, Drive, social,
  * etc.) must implement. The kernel sees a uniform `OmnidataConnector`;
  * downstream MCP clients see the per-source MCP tool surface. One source
@@ -16,7 +16,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
- * Closed catalogue of source kinds Borjie supports. Adding a new source
+ * Closed catalogue of source kinds BossNyumba supports. Adding a new source
  * is a typed change — every consumer (registry, audit, sync scheduler)
  * is forced to handle it.
  */

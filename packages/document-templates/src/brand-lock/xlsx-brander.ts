@@ -204,7 +204,7 @@ export function brandXlsx(doc: IRDoc): BrandXlsxResult {
   const docCells: SheetCell[] = [];
   let row = 0;
   // Header.
-  docCells.push({ row, col: 0, stringIndex: pool.add('BORJIE'), styleIndex: 2 });
+  docCells.push({ row, col: 0, stringIndex: pool.add('BOSSNYUMBA'), styleIndex: 2 });
   row += 1;
   docCells.push({ row, col: 0, stringIndex: pool.add(doc.title), styleIndex: 1 });
   row += 1;

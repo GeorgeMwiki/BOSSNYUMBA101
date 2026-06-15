@@ -287,7 +287,7 @@ export interface TabRecipeRow {
   readonly intent: string;
   readonly composeFnRef: string;
   readonly authorityTier: AuthorityTier;
-  readonly brand: 'borjie';
+  readonly brand: 'bossnyumba';
   readonly promotedAtIso: string | null;
   readonly promotedBy: string | null;
   readonly lockedAtIso: string | null;

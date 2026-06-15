@@ -7,7 +7,7 @@ describe('InMemoryUserScopeBindingRepository', () => {
     const repo = new InMemoryUserScopeBindingRepository();
     const grant = await repo.grant({
       userId: 'u-1',
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       scopeKind: 'org_unit',
       orgUnitId: 'geita',
       role: 'admin',
@@ -16,15 +16,15 @@ describe('InMemoryUserScopeBindingRepository', () => {
     });
     expect(grant.user_id).toBe('u-1');
 
-    const listed = await repo.list({ tenantId: 't-borjie', userId: 'u-1' });
+    const listed = await repo.list({ tenantId: 't-bossnyumba', userId: 'u-1' });
     expect(listed.length).toBe(1);
 
     await repo.revoke(grant.id);
-    const afterRevoke = await repo.list({ tenantId: 't-borjie', userId: 'u-1' });
+    const afterRevoke = await repo.list({ tenantId: 't-bossnyumba', userId: 'u-1' });
     expect(afterRevoke.length).toBe(0);
 
     const includingRevoked = await repo.list({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       userId: 'u-1',
       includeRevoked: true,
     });
@@ -36,7 +36,7 @@ describe('InMemoryUserScopeBindingRepository', () => {
     const repo = new InMemoryUserScopeBindingRepository();
     await repo.grant({
       userId: 'u-1',
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       scopeKind: 'org_unit',
       orgUnitId: 'geita',
       role: 'admin',
@@ -45,14 +45,14 @@ describe('InMemoryUserScopeBindingRepository', () => {
     });
     await repo.grant({
       userId: 'u-2',
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       scopeKind: 'org_unit',
       orgUnitId: 'mererani',
       role: 'admin',
       authorityTierMax: 2,
       grantedBy: 'owner',
     });
-    const geitaOnly = await repo.list({ tenantId: 't-borjie', orgUnitId: 'geita' });
+    const geitaOnly = await repo.list({ tenantId: 't-bossnyumba', orgUnitId: 'geita' });
     expect(geitaOnly.length).toBe(1);
     expect(geitaOnly[0]?.user_id).toBe('u-1');
   });
@@ -62,7 +62,7 @@ describe('InMemoryTerminologyOverrideRepository', () => {
   it('upserts and lists overrides', async () => {
     const repo = new InMemoryTerminologyOverrideRepository();
     const first = await repo.upsert({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       orgUnitId: 'geita',
       key: 'parcel',
       singularEn: 'lot',
@@ -75,7 +75,7 @@ describe('InMemoryTerminologyOverrideRepository', () => {
 
     // Upserting again updates the existing row (same id).
     const second = await repo.upsert({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       orgUnitId: 'geita',
       key: 'parcel',
       singularEn: 'parcel-v2',
@@ -87,18 +87,18 @@ describe('InMemoryTerminologyOverrideRepository', () => {
     expect(second.id).toBe(first.id);
     expect(second.singular_en).toBe('parcel-v2');
 
-    const listed = await repo.list({ tenantId: 't-borjie', key: 'parcel' });
+    const listed = await repo.list({ tenantId: 't-bossnyumba', key: 'parcel' });
     expect(listed.length).toBe(1);
 
     await repo.remove(second.id);
-    const afterRemove = await repo.list({ tenantId: 't-borjie', key: 'parcel' });
+    const afterRemove = await repo.list({ tenantId: 't-bossnyumba', key: 'parcel' });
     expect(afterRemove.length).toBe(0);
   });
 
   it('filters by orgUnitId === null for tenant-wide rows', async () => {
     const repo = new InMemoryTerminologyOverrideRepository();
     await repo.upsert({
-      tenantId: 't-borjie',
+      tenantId: 't-bossnyumba',
       orgUnitId: null,
       key: 'parcel',
       singularEn: 'package',
@@ -107,7 +107,7 @@ describe('InMemoryTerminologyOverrideRepository', () => {
       pluralSw: null,
       overriddenBy: 'owner',
     });
-    const tenantWide = await repo.list({ tenantId: 't-borjie', orgUnitId: null });
+    const tenantWide = await repo.list({ tenantId: 't-bossnyumba', orgUnitId: null });
     expect(tenantWide.length).toBe(1);
   });
 });

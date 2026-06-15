@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
-  "description": "Shared application shell (top bar + portal switcher) unifying the BORJIE owner-web and admin-web surfaces into one suite",
+  "description": "Shared application shell (top bar + portal switcher) unifying the BOSSNYUMBA owner-web and admin-web surfaces into one suite",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./src/index.ts",

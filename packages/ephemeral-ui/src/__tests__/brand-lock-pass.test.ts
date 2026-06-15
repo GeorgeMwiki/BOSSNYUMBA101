@@ -16,16 +16,16 @@ function hintsWith(colors: ReadonlyArray<string>): UIHints {
 }
 
 describe('brand-lock-pass', () => {
-  it('passes on var(--borjie-...) tokens', () => {
+  it('passes on var(--bossnyumba-...) tokens', () => {
     const r = brandLockPass({
-      hints: hintsWith(['var(--borjie-color-primary)']),
+      hints: hintsWith(['var(--bossnyumba-color-primary)']),
     });
     expect(r.ok).toBe(true);
   });
 
-  it('passes on bare --borjie-* token names', () => {
+  it('passes on bare --bossnyumba-* token names', () => {
     const r = brandLockPass({
-      hints: hintsWith(['--borjie-color-surface']),
+      hints: hintsWith(['--bossnyumba-color-surface']),
     });
     expect(r.ok).toBe(true);
   });
@@ -63,14 +63,14 @@ describe('brand-lock-pass', () => {
 
   it('checkPreferredColors returns the offending strings', () => {
     const offenders = checkPreferredColors(
-      hintsWith(['var(--borjie-color-x)', '#aaa']),
+      hintsWith(['var(--bossnyumba-color-x)', '#aaa']),
     );
     expect(offenders).toEqual(['#aaa']);
   });
 
   it('rejects raw values in stylingStrings', () => {
     const r = brandLockPass({
-      hints: hintsWith(['var(--borjie-color-primary)']),
+      hints: hintsWith(['var(--bossnyumba-color-primary)']),
       stylingStrings: ['#1234ff'],
     });
     expect(r.ok).toBe(false);

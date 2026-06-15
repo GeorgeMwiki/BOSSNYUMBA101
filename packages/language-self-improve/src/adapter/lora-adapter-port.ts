@@ -1,7 +1,7 @@
 /**
  * LoRA adapter port — the external fine-tune provider integration point.
  *
- * Borjie does NOT own a training cluster. This port abstracts the
+ * BossNyumba does NOT own a training cluster. This port abstracts the
  * contracted provider (Anthropic / OpenAI / Together) so the runner
  * never directly knows which vendor is wired. The port surface is the
  * minimum needed for the self-improvement loop:

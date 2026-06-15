@@ -13,7 +13,7 @@ const RECIPE: TabRecipeRow = {
   intent: 'BuyerKYBStart',
   composeFnRef: '@bossnyumba/portal-genui/recipes/buyer-kyb-start',
   authorityTier: 1,
-  brand: 'borjie',
+  brand: 'bossnyumba',
   promotedAtIso: '2026-04-01T00:00:00.000Z',
   promotedBy: 'owner',
   lockedAtIso: null,

@@ -16,7 +16,7 @@
  *  - Tailwind v4 OKLCH palette — https://tailwindcss.com/docs/colors (2025-01)
  *  - Refactoring UI accessible palettes — https://www.refactoringui.com/ (Adam Wathan, 2025-08)
  *
- * Borjie brand anchor: warm amber signal + warm ink near-black.
+ * BossNyumba brand anchor: warm amber signal + warm ink near-black.
  * Mr. Mwikila persona — mining-domain auditor — never asks for neon;
  * institutional palette only.
  */
@@ -53,7 +53,7 @@ export interface OklchBrandTheme {
 const SIGNAL_AMBER: OklchSwatch = {
   oklch: 'oklch(0.78 0.13 70)',
   hex: '#E5B26B',
-  description: 'Borjie warm amber — the single signal color',
+  description: 'BossNyumba warm amber — the single signal color',
 };
 
 const SIGNAL_AMBER_DEEP: OklchSwatch = {

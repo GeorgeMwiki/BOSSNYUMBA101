@@ -5,18 +5,18 @@ import type { ResolvedScope } from '../types.js';
 function scope(overrides: Partial<ResolvedScope> = {}): ResolvedScope {
   return {
     kind: 'tenant_root',
-    tenant_id: 't-borjie',
+    tenant_id: 't-bossnyumba',
     org_unit_ids: [],
     authority_tier_max: 2,
     visible_tables_filter: {
-      tenant_id: 't-borjie',
+      tenant_id: 't-bossnyumba',
       org_unit_ids: [],
       include_descendants: false,
     },
     visible_juniors: [],
     visible_recipes: [],
     resolved_terminology: {
-      tenant_id: 't-borjie',
+      tenant_id: 't-bossnyumba',
       scope_path: null,
       entries: new Map(),
     },
@@ -34,7 +34,7 @@ describe('buildScopedMDContext', () => {
 
   it('builds a tenant-scoped audit persona id at the root', () => {
     const ctx = buildScopedMDContext({ scope: scope() });
-    expect(ctx.audit_persona_id).toBe('mr-mwikila@t-borjie');
+    expect(ctx.audit_persona_id).toBe('mr-mwikila@t-bossnyumba');
     expect(ctx.visible_table_filter_token).toContain('root');
   });
 
@@ -44,8 +44,8 @@ describe('buildScopedMDContext', () => {
         kind: 'org_unit',
         org_unit_ids: ['geita'],
         resolved_terminology: {
-          tenant_id: 't-borjie',
-          scope_path: 'borjie/geita',
+          tenant_id: 't-bossnyumba',
+          scope_path: 'bossnyumba/geita',
           entries: new Map(),
         },
       }),

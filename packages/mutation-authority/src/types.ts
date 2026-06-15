@@ -95,7 +95,7 @@ export interface MutationRecipe {
   ) => Promise<MutationResult>;
   readonly required_citations: ReadonlyArray<CitationContract>;
   readonly reversibility: Reversibility;
-  readonly brand: 'borjie';
+  readonly brand: 'bossnyumba';
 }
 
 // ---------------------------------------------------------------------------

@@ -10,7 +10,7 @@ function graph(nodes: NodeCandidate[]): SystemGraph {
 }
 
 const BASE: NodeCandidate[] = [
-  { id: 'org:borjie', kind: 'org', label: 'Borjie', derivedFrom: 'self' },
+  { id: 'org:bossnyumba', kind: 'org', label: 'BossNyumba', derivedFrom: 'self' },
   { id: 'surface:owner-web', kind: 'surface', label: 'owner-web', derivedFrom: 'screens' },
   { id: 'capability:offtake', kind: 'capability', label: 'Offtake', derivedFrom: 'capabilities' },
   { id: 'junior:metallurgy', kind: 'junior', label: 'Metallurgy', derivedFrom: 'juniors' },
@@ -47,7 +47,7 @@ describe('renderOrganMapBlock', () => {
 describe('describeBody', () => {
   it('grounds the answer in the live body counts', () => {
     const out = describeBody(summariseOrganMap(graph(BASE)));
-    expect(out).toMatch(/I am the Borjie brain/);
+    expect(out).toMatch(/I am the BossNyumba brain/);
     expect(out).toMatch(/1 surfaces/);
     expect(out).toMatch(/I AM the platform/);
   });

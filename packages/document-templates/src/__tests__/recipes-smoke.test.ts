@@ -47,9 +47,9 @@ describe('11 recipes smoke compose', () => {
     expect(BUILT_IN_RECIPES.length).toBe(11);
   });
 
-  it('every recipe declares brand=borjie', () => {
+  it('every recipe declares brand=bossnyumba', () => {
     for (const r of BUILT_IN_RECIPES) {
-      expect(r.brand).toBe('borjie');
+      expect(r.brand).toBe('bossnyumba');
     }
   });
 
@@ -76,7 +76,7 @@ describe('11 recipes smoke compose', () => {
       expect(artifact.checksum).toMatch(/^[a-f0-9]{64}$/);
       expect(artifact.audit_hash).toMatch(/^[a-f0-9]{64}$/);
       expect(artifact.format).toBeOneOf(recipe.output_formats as string[]);
-      expect(artifact.storage_key).toContain(`borjie-docs-${recipe.class}`);
+      expect(artifact.storage_key).toContain(`bossnyumba-docs-${recipe.class}`);
       // Tier 2 recipes land in pending; others auto_published.
       if (recipe.authority_tier === 2) {
         expect(artifact.approval_state).toBe('pending');

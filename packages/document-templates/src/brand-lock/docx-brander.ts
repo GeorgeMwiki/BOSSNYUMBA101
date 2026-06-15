@@ -101,7 +101,7 @@ function buildDocumentXml(doc: IRDoc): string {
   const parts: string[] = [];
 
   // Header band
-  parts.push(pAccent('BORJIE'));
+  parts.push(pAccent('BOSSNYUMBA'));
   parts.push(pHeading(doc.title, 1));
   if (doc.subtitle !== undefined && doc.subtitle.length > 0) {
     parts.push(pBody(doc.subtitle));

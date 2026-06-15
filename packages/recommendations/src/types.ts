@@ -1,7 +1,7 @@
 /**
  * Public type surface for @bossnyumba/recommendations.
  *
- * Persona: Mr. Mwikila — Borjie's autonomous Managing Director for
+ * Persona: Mr. Mwikila — BossNyumba's autonomous Managing Director for
  * Tanzanian mining operators. Every request crossing this package
  * carries a `tenantId` and is isolated by it at every layer.
  *

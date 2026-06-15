@@ -6,7 +6,7 @@
  *
  *   - groundedness — every factual claim has a resolvable citation
  *   - calibration  — claimed confidence ≈ observed accuracy
- *   - brand        — Mr. Mwikila persona + Borjie token discipline
+ *   - brand        — Mr. Mwikila persona + BossNyumba token discipline
  *   - authority    — proposed tier ≤ granted tier (and T2-Critical
  *                    routing to double-verify)
  *   - budget       — usd / wall-clock / tool-call axes have headroom

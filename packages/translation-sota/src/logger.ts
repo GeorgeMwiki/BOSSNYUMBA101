@@ -17,7 +17,7 @@
  *   logLevel            — 'trace' | 'debug' | 'info' | 'warn' | 'error'
  *                         | 'fatal'
  *   redactFields        — sensitive field path list (default = the
- *                         standard Borjie set)
+ *                         standard BossNyumba set)
  *
  * Tests construct a logger with a `silent` log level — no I/O.
  */

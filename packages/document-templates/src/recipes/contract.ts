@@ -16,7 +16,7 @@ export const contractRecipe: DocumentRecipe = {
   version: 1,
   status: 'live',
   authority_tier: 2,
-  brand: 'borjie',
+  brand: 'bossnyumba',
   approval_required: true,
   output_formats: ['docx'] as const,
   required_inputs: [
@@ -36,7 +36,7 @@ export const contractRecipe: DocumentRecipe = {
         blocks: [
           {
             kind: 'paragraph',
-            text: 'This Agreement is entered into between Borjie and the Counterparty.',
+            text: 'This Agreement is entered into between BossNyumba and the Counterparty.',
             citationId: ctx.citations[0]?.id,
           },
         ],
@@ -79,7 +79,7 @@ export const contractRecipe: DocumentRecipe = {
         id: 'signature',
         title: 'Signatures',
         blocks: [
-          { kind: 'signature_block', text: 'Borjie — Mr. Mwikila, Managing Director' },
+          { kind: 'signature_block', text: 'BossNyumba — Mr. Mwikila, Managing Director' },
           { kind: 'signature_block', text: 'Counterparty signatory' },
         ],
         citationIds: [],
@@ -87,7 +87,7 @@ export const contractRecipe: DocumentRecipe = {
     ];
 
     const irDoc: IRDoc = {
-      title: 'Borjie — Contract',
+      title: 'BossNyumba — Contract',
       subtitle: 'Draft for Counterparty Review',
       sections,
       citations: ctx.citations,

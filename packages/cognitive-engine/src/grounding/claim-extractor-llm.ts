@@ -230,7 +230,7 @@ function pickBorderline(
 }
 
 const SYSTEM_PROMPT = [
-  'You are Borjie\'s grounding gate. For each sentence supplied,',
+  'You are BossNyumba\'s grounding gate. For each sentence supplied,',
   'decide if it is a FACTUAL CLAIM that the upstream auditor must',
   'verify against evidence. Return JSON ONLY:',
   '',

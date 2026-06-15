@@ -287,7 +287,7 @@ export async function resolveRegionKeyManager(input: {
   }
   // Fallback: a deterministic per-region in-memory KEK (dev / CI only).
   const seed = input.localSeed ?? input.region;
-  const kek = sha256(utf8ToBytes(`borjie-local-kek:${seed}`));
+  const kek = sha256(utf8ToBytes(`bossnyumba-local-kek:${seed}`));
   const manager = createInMemoryKeyManager({
     kind: 'platform-managed',
     keyRef: `local-region:${input.region}:${bytesToHex(kek).slice(0, 12)}`,

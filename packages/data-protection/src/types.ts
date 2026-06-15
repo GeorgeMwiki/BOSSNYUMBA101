@@ -82,7 +82,7 @@ export const CLASSIFICATION_PRECEDENCE: readonly Classification[] = Object.freez
 /**
  * Compliance framework port — the caller-supplied shape.
  *
- * Each framework instance binds a regulator's parameters to Borjie's
+ * Each framework instance binds a regulator's parameters to BossNyumba's
  * controls. The package consumes the shape via dependency injection;
  * NEVER names a framework directly.
  */

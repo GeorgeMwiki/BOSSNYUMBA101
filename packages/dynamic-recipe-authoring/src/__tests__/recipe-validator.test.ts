@@ -11,7 +11,7 @@ const validTabRaw = {
   version: 1,
   status: 'draft' as const,
   telemetry_key: 'pit_safety_kpis_by_shift',
-  brand: 'borjie' as const,
+  brand: 'bossnyumba' as const,
   authority_tier: 1 as const,
   form: {
     title_en: 'Pit safety KPIs by shift',
@@ -64,7 +64,7 @@ describe('validateTabRecipe — happy path', () => {
     const result = validateTabRecipe(validTabRaw);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.spec['brand']).toBe('borjie');
+      expect(result.spec['brand']).toBe('bossnyumba');
       expect(result.spec['authority_tier']).toBe(1);
       expect(Object.isFrozen(result.spec)).toBe(true);
     }
@@ -77,7 +77,7 @@ describe('validateTabRecipe — happy path', () => {
 });
 
 describe('validateTabRecipe — violations', () => {
-  it('rejects a spec whose brand is not the literal "borjie"', () => {
+  it('rejects a spec whose brand is not the literal "bossnyumba"', () => {
     const bad = { ...validTabRaw, brand: 'acme-cup' };
     const result = validateTabRecipe(bad);
     expect(result.ok).toBe(false);
@@ -171,7 +171,7 @@ const validDocRaw = {
   version: 1,
   status: 'draft' as const,
   authority_tier: 2 as const,
-  brand: 'borjie' as const,
+  brand: 'bossnyumba' as const,
   approval_required: true,
   output_formats: ['pdf', 'docx'] as const,
   required_inputs: [

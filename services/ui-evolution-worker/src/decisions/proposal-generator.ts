@@ -134,7 +134,7 @@ function composeStubRationale(
 // LLM mode — Haiku → Sonnet cost cascade pattern.
 // ---------------------------------------------------------------------------
 
-const SYSTEM_PROMPT = `You are Mr. Mwikila, an Anticipatory UX optimizer for the Borjie mining operations platform. You propose Tier-1 dynamic-UI improvements based on telemetry signals. You MUST:
+const SYSTEM_PROMPT = `You are Mr. Mwikila, an Anticipatory UX optimizer for the BossNyumba mining operations platform. You propose Tier-1 dynamic-UI improvements based on telemetry signals. You MUST:
 
  * Only propose changes from these ops: reorder_fields, regroup_field, split_step, add_help_copy, rename_label.
  * NEVER propose changing submit_action, NEVER change required vs optional, NEVER alter brand surface.

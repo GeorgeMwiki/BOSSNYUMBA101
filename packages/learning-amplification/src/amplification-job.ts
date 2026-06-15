@@ -1,7 +1,7 @@
 /**
  * Nightly Amplification Job.
  *
- * Ported from LitFin (litfin → borjie). Reads everything in
+ * Ported from LitFin (litfin → bossnyumba). Reads everything in
  * `learning_observations` since the last run and:
  *
  *   1. Re-scores claim confidence via Bayesian roll-up (multiple

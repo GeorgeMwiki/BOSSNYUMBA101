@@ -132,7 +132,7 @@ function rowToRecipe(row: Record<string, unknown>): TabRecipeRow {
     intent: requireString(row['intent'], 'intent'),
     composeFnRef: requireString(row['compose_fn_ref'], 'compose_fn_ref'),
     authorityTier: requireTier(row['authority_tier']),
-    brand: 'borjie',
+    brand: 'bossnyumba',
     promotedAtIso: optionalIso(row['promoted_at']),
     promotedBy: optionalString(row['promoted_by']),
     lockedAtIso: optionalIso(row['locked_at']),

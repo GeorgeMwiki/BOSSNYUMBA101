@@ -1,6 +1,6 @@
 /**
  * Brand-lock — the colour / typography / spacing whitelist that every
- * Borjie-branded artifact must conform to before it can be persisted.
+ * BossNyumba-branded artifact must conform to before it can be persisted.
  *
  * Mirrors the brand-lint policy from
  * `docs/DESIGN/DOCUMENT_COMPOSITION_SPEC.md §4 Layer 3`: every fill/font
@@ -54,7 +54,7 @@ export const BRAND_COLOR_PALETTE: ReadonlyArray<string> = Object.freeze([
   '#dc2626',
   '#3b82f6',
   '#2563eb',
-  // Borjie signature gradient anchors.
+  // BossNyumba signature gradient anchors.
   '#1F3864',
   '#C45B12',
   // Pure black / white reserved for body text + paper.

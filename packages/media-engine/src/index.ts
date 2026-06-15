@@ -15,7 +15,7 @@
 
 // Core types + errors.
 export type {
-  BorjieMediaKind,
+  BossNyumbaMediaKind,
   FetchLike,
   FetchResponseLike,
   MediaApprovalState,

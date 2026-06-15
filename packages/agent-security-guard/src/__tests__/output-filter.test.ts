@@ -15,7 +15,7 @@ import {
   type DataProtectionPort,
 } from '../filter/output-filter.js';
 
-const allowed = ['cdn.borjie.com', 'images.borjie.com'];
+const allowed = ['cdn.bossnyumba.com', 'images.bossnyumba.com'];
 
 describe('OutputFilter (LLM02 / LLM05 / LLM07)', () => {
   it('strips markdown image to disallowed domain', () => {
@@ -39,9 +39,9 @@ describe('OutputFilter (LLM02 / LLM05 / LLM07)', () => {
       channel: 'chat',
       allowedImageDomains: allowed,
     });
-    const r = f.filter('Logo: ![logo](https://cdn.borjie.com/logo.png)');
+    const r = f.filter('Logo: ![logo](https://cdn.bossnyumba.com/logo.png)');
     expect(r.blocks.length).toBe(0);
-    expect(r.cleaned).toContain('cdn.borjie.com');
+    expect(r.cleaned).toContain('cdn.bossnyumba.com');
   });
 
   it('strips system-prompt leak', () => {

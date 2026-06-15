@@ -2,7 +2,7 @@
  * PII redactor — Discipline 6 boundary check.
  *
  * Mirrors the patterns in `packages/file-ingest/src/schema-sniff/pii-redactor.ts`
- * (Borjie's canonical PII patterns: TRA-TIN, KRA-PIN, NIDA, +254/+255
+ * (BossNyumba's canonical PII patterns: TRA-TIN, KRA-PIN, NIDA, +254/+255
  * mobile, email, generic 9+-digit national id). Copied here intentionally — the
  * cognitive-engine package is a leaf and may not depend backward on
  * file-ingest (same rule that file-ingest enforces against database).

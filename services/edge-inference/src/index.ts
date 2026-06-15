@@ -1,5 +1,5 @@
 /**
- * Borjie Edge Inference — Cloudflare Worker (Roadmap R3, MVP scaffold).
+ * BossNyumba Edge Inference — Cloudflare Worker (Roadmap R3, MVP scaffold).
  *
  * Phase-2 deployment per Docs/RESEARCH/EDGE_INFERENCE_CLOUDFLARE.md.
  * The worker runs Llama 3.1-8b at af-south-1 via Workers AI and emits
@@ -209,7 +209,7 @@ export default {
         ...headers,
         'content-type': 'text/event-stream',
         'cache-control': 'no-cache, no-store',
-        'x-borjie-edge': '1',
+        'x-bossnyumba-edge': '1',
       },
     });
   },

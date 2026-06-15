@@ -48,7 +48,7 @@ function fakeRecipe(
     is_critical: false,
     reversibility: 'fully',
     required_citations: [],
-    brand: 'borjie',
+    brand: 'bossnyumba',
     async compose() {
       throw new Error('compose not exercised');
     },

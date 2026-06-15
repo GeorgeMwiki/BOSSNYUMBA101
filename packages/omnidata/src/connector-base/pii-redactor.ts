@@ -52,7 +52,7 @@ export function createDefaultPIIRedactor(fields: ReadonlyArray<string>): PIIReda
 }
 
 /**
- * Default Borjie boundary PII set. Mirrors the superset in
+ * Default BossNyumba boundary PII set. Mirrors the superset in
  * `packages/observability/src/pii-redactor.ts` but kept local so the
  * omnidata scaffold has zero hard dependency at type-check time.
  */

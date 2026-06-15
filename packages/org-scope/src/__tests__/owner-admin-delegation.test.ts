@@ -34,7 +34,7 @@ import { checkAuthority } from '../scope/authority-checker.js';
 import { InMemoryUserScopeBindingRepository } from '../bindings/binding-repository.js';
 import type { OrgUnit, UserScopeBinding } from '../types.js';
 
-const TENANT = 't-borjie';
+const TENANT = 't-bossnyumba';
 
 // ---------------------------------------------------------------------------
 // Fixtures

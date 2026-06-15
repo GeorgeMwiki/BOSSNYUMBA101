@@ -289,7 +289,7 @@ export type SlotKind = (typeof SLOT_KINDS)[number];
 
 /**
  * The surfaces a slot can live on / be handed off to. Maps onto the
- * four Borjie product surfaces plus the chat front door.
+ * four BossNyumba product surfaces plus the chat front door.
  */
 export const SLOT_SURFACES = [
   'chat',

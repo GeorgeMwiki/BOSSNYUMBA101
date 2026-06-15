@@ -16,7 +16,7 @@ export const marketplaceListingRecipe: DocumentRecipe = {
   version: 1,
   status: 'live',
   authority_tier: 1,
-  brand: 'borjie',
+  brand: 'bossnyumba',
   approval_required: false,
   output_formats: ['html', 'pdf'] as const,
   required_inputs: [
@@ -36,7 +36,7 @@ export const marketplaceListingRecipe: DocumentRecipe = {
         blocks: [
           {
             kind: 'paragraph',
-            text: 'Borjie marketplace listing for an available ore parcel.',
+            text: 'BossNyumba marketplace listing for an available ore parcel.',
             citationId: ctx.citations[0]?.id,
           },
         ],
@@ -51,7 +51,7 @@ export const marketplaceListingRecipe: DocumentRecipe = {
             kpis: [
               { label: 'Tonnage', value: 'see register', citationId: ctx.citations[0]?.id },
               { label: 'Grade', value: 'see assay', citationId: ctx.citations[0]?.id },
-              { label: 'Origin', value: 'Borjie licensed area' },
+              { label: 'Origin', value: 'BossNyumba licensed area' },
             ],
           },
         ],
@@ -78,14 +78,14 @@ export const marketplaceListingRecipe: DocumentRecipe = {
         id: 'contact',
         title: 'Contact',
         blocks: [
-          { kind: 'paragraph', text: 'Inquire via the Borjie marketplace portal.' },
+          { kind: 'paragraph', text: 'Inquire via the BossNyumba marketplace portal.' },
         ],
         citationIds: [],
       },
     ];
 
     const irDoc: IRDoc = {
-      title: 'Borjie — Marketplace Listing',
+      title: 'BossNyumba — Marketplace Listing',
       subtitle: 'Ore Parcel For Sale',
       sections,
       citations: ctx.citations,

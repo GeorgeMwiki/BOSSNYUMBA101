@@ -1,5 +1,5 @@
 /**
- * `brand-lock-pass.ts` — runtime mirror of the `borjie/no-non-token-style`
+ * `brand-lock-pass.ts` — runtime mirror of the `bossnyumba/no-non-token-style`
  * ESLint rule (Wave 18K). Rejects any composed recipe carrying raw hex,
  * rgb(), hsl(), oklch() literals, or non-token spacing magic numbers.
  *
@@ -13,14 +13,14 @@ const RAW_RGB_RE = /\brgba?\s*\(/i;
 const RAW_HSL_RE = /\bhsla?\s*\(/i;
 const RAW_OKLCH_LITERAL_RE = /\boklch\s*\(\s*[\d.]/i;
 
-const TOKEN_REF_RE = /^var\(--borjie-[a-z0-9-]+\)$/i;
-const TOKEN_NAME_RE = /^--borjie-[a-z0-9-]+$/i;
+const TOKEN_REF_RE = /^var\(--bossnyumba-[a-z0-9-]+\)$/i;
+const TOKEN_NAME_RE = /^--bossnyumba-[a-z0-9-]+$/i;
 
 function isLikelyToken(value: string): boolean {
   if (TOKEN_REF_RE.test(value)) return true;
   if (TOKEN_NAME_RE.test(value)) return true;
   // The composer also accepts bare token identifiers (e.g.
-  // `borjie.color.surface.primary`) — anything that doesn't look like
+  // `bossnyumba.color.surface.primary`) — anything that doesn't look like
   // a raw color literal is treated as a token reference.
   if (
     RAW_HEX_RE.test(value) ||

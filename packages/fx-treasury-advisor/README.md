@@ -1,6 +1,6 @@
 # @bossnyumba/fx-treasury-advisor
 
-FX + treasury advisor for the Borjie mining stack. Reads cash balances
+FX + treasury advisor for the BossNyumba mining stack. Reads cash balances
 by currency, inflows / outflows by counterparty, off-take pricing
 schedule, and BoT gold-window obligations from the LMBM. Produces a
 cash-runway projection, FX-exposure map (TZS vs USD vs EUR), a

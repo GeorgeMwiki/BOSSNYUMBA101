@@ -1,9 +1,9 @@
 /**
  * Observation Recorder.
  *
- * Ported from LitFin (litfin → borjie); BorjieMark privacy invariant
+ * Ported from LitFin (litfin → bossnyumba); BossNyumbaMark privacy invariant
  * preserved (SHA-256 user_id, no raw id ever stored). Single entry
- * point for any Borjie module to feed an observation into the
+ * point for any BossNyumba module to feed an observation into the
  * continuous-learning loop. The recorder:
  *
  *   1. Anonymises the user id (SHA-256, no raw user_id ever stored).
@@ -39,7 +39,7 @@ export function recordedObservationsDropped(): number {
 }
 
 /**
- * Borjie-style client accessor. Each surface (api-gateway, owner-web,
+ * BossNyumba-style client accessor. Each surface (api-gateway, owner-web,
  * admin-web, mobile BFFs) registers its own service-role Supabase
  * client at bootstrap. Replaces LitFin's `createServiceClient()` import
  * path so the package stays standalone.

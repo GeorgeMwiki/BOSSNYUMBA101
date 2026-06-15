@@ -17,7 +17,7 @@ export const geologicalReportRecipe: DocumentRecipe = {
   version: 1,
   status: 'live',
   authority_tier: 1,
-  brand: 'borjie',
+  brand: 'bossnyumba',
   approval_required: false,
   output_formats: ['pdf'] as const,
   required_inputs: [
@@ -75,7 +75,7 @@ export const geologicalReportRecipe: DocumentRecipe = {
     ];
 
     const irDoc: IRDoc = {
-      title: 'Borjie — Geological Report',
+      title: 'BossNyumba — Geological Report',
       subtitle: 'Drill Campaign Synthesis',
       sections,
       citations: ctx.citations,

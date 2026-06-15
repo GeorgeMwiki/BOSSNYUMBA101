@@ -21,7 +21,7 @@
  *                             ledger.
  *
  * Spec: Docs/DESIGN/STRATEGIC_DIRECTION_LAYER_SPEC.md §15.
- * Persona: Mr. Mwikila (Managing Director). Brand: Borjie.
+ * Persona: Mr. Mwikila (Managing Director). Brand: BossNyumba.
  */
 
 // ---------------------------------------------------------------------------

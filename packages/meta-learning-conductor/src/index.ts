@@ -8,7 +8,7 @@
  * Every dependency the runner needs comes in as an injected port —
  * the package has no global state and no I/O of its own.
  *
- * Persona: Mr. Mwikila. Brand: Borjie.
+ * Persona: Mr. Mwikila. Brand: BossNyumba.
  * Spec: Docs/DESIGN/SELF_IMPROVE_AND_DP_FEDERATION_SPEC.md.
  */
 

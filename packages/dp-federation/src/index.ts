@@ -9,7 +9,7 @@
  *   - DP-mean with Gaussian noise (sensitivity 2C/n).
  *
  * Numerics validated against published Mironov 2017 reference vectors.
- * Persona: Mr. Mwikila. Brand: Borjie.
+ * Persona: Mr. Mwikila. Brand: BossNyumba.
  * Spec: Docs/DESIGN/SELF_IMPROVE_AND_DP_FEDERATION_SPEC.md.
  */
 

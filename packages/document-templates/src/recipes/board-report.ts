@@ -18,7 +18,7 @@ export const boardReportRecipe: DocumentRecipe = {
   version: 1,
   status: 'live',
   authority_tier: 1,
-  brand: 'borjie',
+  brand: 'bossnyumba',
   approval_required: false,
   output_formats: ['docx', 'pdf'] as const,
   required_inputs: [
@@ -118,7 +118,7 @@ export const boardReportRecipe: DocumentRecipe = {
     ];
 
     const irDoc: IRDoc = {
-      title: 'Borjie — Board Report',
+      title: 'BossNyumba — Board Report',
       subtitle: 'Quarterly Pack',
       sections,
       citations: ctx.citations,

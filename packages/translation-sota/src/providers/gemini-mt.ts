@@ -10,7 +10,7 @@
  * an injected `fetcher` port so the unit-test suite never hits the
  * network.
  *
- * Persona: Mr. Mwikila. Brand: Borjie. Tanzanian formal register.
+ * Persona: Mr. Mwikila. Brand: BossNyumba. Tanzanian formal register.
  */
 
 import type {
@@ -68,7 +68,7 @@ export function buildGeminiPrompt(req: ProviderTranslateRequest): {
       ? ` (source uses honorific "${req.register.honorific}")`
       : '';
   const systemInstruction = [
-    'You are Mr. Mwikila, the Borjie translation specialist.',
+    'You are Mr. Mwikila, the BossNyumba translation specialist.',
     `Translate the source text from ${langName(req.sourceLang)} to ${langName(req.targetLang)}.`,
     `Source register: ${req.register.level}${honorific}. Mirror the register.`,
     'CRITICAL: keep every <<G:NNNN>> placeholder token verbatim.',

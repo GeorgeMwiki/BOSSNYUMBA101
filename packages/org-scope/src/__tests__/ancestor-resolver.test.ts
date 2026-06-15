@@ -14,13 +14,13 @@ import type { OrgUnit } from '../types.js';
 function unit(id: string, parent: string | null, depth = 1): OrgUnit {
   return {
     id,
-    tenant_id: 't-borjie',
+    tenant_id: 't-bossnyumba',
     parent_unit_id: parent,
     default_kind: 'district',
     display_name: id,
     display_kind_singular: 'district',
     display_kind_plural: 'districts',
-    materialised_path: `t-borjie/${id}`,
+    materialised_path: `t-bossnyumba/${id}`,
     depth,
     authority_inheritance: true,
     created_at: '2026-05-26T00:00:00.000Z',
@@ -29,7 +29,7 @@ function unit(id: string, parent: string | null, depth = 1): OrgUnit {
 }
 
 const tree = buildOrgUnitTree({
-  tenantId: 't-borjie',
+  tenantId: 't-bossnyumba',
   units: [
     unit('north-zone', null, 1),
     unit('geita', 'north-zone', 2),

@@ -28,7 +28,7 @@ function buildManifest(
     }),
     ui_hints: {
       preferred_size: 'tab',
-      preferred_colors: ['var(--borjie-color-primary)'],
+      preferred_colors: ['var(--bossnyumba-color-primary)'],
       preferred_layout: 'table',
       emphasis: 'actionable',
       mobile_strategy: 'stack',
@@ -50,7 +50,7 @@ function buildContext(): UserContext {
     memory_recall: [],
     brand_dna: {
       tokens_version: 'v3',
-      oklch_color_tokens: ['--borjie-color-primary'],
+      oklch_color_tokens: ['--bossnyumba-color-primary'],
       motion_preset: 'ease-out',
     },
     mastery_tier: 'expert',

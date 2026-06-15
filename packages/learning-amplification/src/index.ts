@@ -1,11 +1,11 @@
 /**
- * Continuous Learning Amplification — public surface (Borjie port).
+ * Continuous Learning Amplification — public surface (BossNyumba port).
  *
- * Ported verbatim from LitFin (BorjieMark replaces LitfinMark, brand
+ * Ported verbatim from LitFin (BossNyumbaMark replaces LitfinMark, brand
  * swap). Two entry points:
  *
  *   - `recordObservation(obs)` — fire-and-forget; called from any
- *     Borjie module that observes a meaningful interaction (claim
+ *     BossNyumba module that observes a meaningful interaction (claim
  *     cited by Mr. Mwikila, user disputed, answer accepted, language
  *     misdetected, etc.). Side-effect only.
  *
@@ -33,7 +33,7 @@ export type {
   SupabaseLike,
   SupabaseQueryBuilder,
 } from "./types.js";
-export { BorjieMark } from "./types.js";
+export { BossNyumbaMark } from "./types.js";
 export {
   recordObservation,
   recordedObservationsDropped,

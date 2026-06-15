@@ -22,6 +22,6 @@ R3 entry and the research doc for the gate criterion.
 
 1. `services/api-gateway/src/services/edge-brain/edge-brain-client.ts`
 2. `services/api-gateway/src/services/edge-brain/race-merge.ts`
-3. `BORJIE_EDGE_BRAIN=on` env flag wiring
+3. `BOSSNYUMBA_EDGE_BRAIN=on` env flag wiring
 4. Staging deploy via `wrangler deploy --env staging`
 5. Cron Trigger to keep the isolate warm during business hours

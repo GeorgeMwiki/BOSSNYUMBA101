@@ -1,5 +1,5 @@
 # =============================================================================
-# BORJIE — research-orchestrator
+# BOSSNYUMBA — research-orchestrator
 # =============================================================================
 # Deep Research engine — Planner + Executor + Scorer + Synthesizer pipeline
 # for the 5 research modes (Reactive Query, Anticipatory Sweep, Daily Briefing,
@@ -8,7 +8,7 @@
 #
 # Build:
 #   docker build -f services/research-orchestrator/Dockerfile \
-#     -t borjie/research-orchestrator:dev .
+#     -t bossnyumba/research-orchestrator:dev .
 #
 # Run:
 #   docker run --rm \
@@ -16,7 +16,7 @@
 #     -e REDIS_URL=redis://... \
 #     -e TAVILY_API_KEY=... \
 #     -e EXA_API_KEY=... \
-#     borjie/research-orchestrator:dev
+#     bossnyumba/research-orchestrator:dev
 # =============================================================================
 
 # -----------------------------------------------------------------------------

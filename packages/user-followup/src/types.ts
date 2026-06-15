@@ -5,7 +5,7 @@
  * Every record here is immutable. State transitions
  * (`pending → sent | dismissed | expired`) produce new projections
  * via dedicated handlers — never an in-place mutation. This mirrors
- * the immutability discipline used across the Borjie codebase.
+ * the immutability discipline used across the BossNyumba codebase.
  */
 
 import { z } from 'zod';

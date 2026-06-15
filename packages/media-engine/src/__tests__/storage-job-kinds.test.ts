@@ -72,7 +72,7 @@ describe('async job store', () => {
 });
 
 describe('kind catalogue', () => {
-  it('covers all Borjie + BN typed kinds', () => {
+  it('covers all BossNyumba + BN typed kinds', () => {
     const kinds = allMediaKinds();
     expect(kinds).toContain('mining_site_map');
     expect(kinds).toContain('equipment_process_diagram');

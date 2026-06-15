@@ -20,7 +20,7 @@ function fakeRecipe(overrides: Partial<MutationRecipe> = {}): MutationRecipe {
     is_critical: false,
     reversibility: 'fully',
     required_citations: [],
-    brand: 'borjie',
+    brand: 'bossnyumba',
     async compose(ctx): Promise<MutationProposal> {
       return {
         id: '',

@@ -96,7 +96,7 @@ function luhnValid(value: string): boolean {
 }
 
 // Patterns are jurisdiction-neutral in shape but cover the common East-
-// African IDs Borjie ingests (NIDA = 20 digits often hyphenated; TIN = 9
+// African IDs BossNyumba ingests (NIDA = 20 digits often hyphenated; TIN = 9
 // digits). The bounds are anchored to avoid ReDoS.
 const REGEX_RULES: ReadonlyArray<RegexRule> = Object.freeze([
   {

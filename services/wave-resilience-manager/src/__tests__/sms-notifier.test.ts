@@ -121,7 +121,7 @@ describe('createSmsNotifier — Twilio HTTP call shape', () => {
     const body = String(call?.init?.body);
     expect(body).toContain('To=%2B15550002222');
     expect(body).toContain('From=%2B15550001111');
-    expect(body).toContain('Body=%5BBorjie%5D');
+    expect(body).toContain('Body=%5BBossNyumba%5D');
     expect(body).toContain('Wave+W+unrecoverable');
   });
 

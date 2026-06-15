@@ -9,7 +9,7 @@
  *       …).
  *   (b) Brand-lock token discipline — any rendered UI / template text
  *       must not contain raw hex colors. This mirrors the
- *       `borjie/no-non-token-style` ESLint rule. Rather than embed an
+ *       `bossnyumba/no-non-token-style` ESLint rule. Rather than embed an
  *       ESLint runtime here, we apply the same hex regex inline; the
  *       gate emits a hit list which the loop runner can route into
  *       the lint-rule's auto-fix pipeline if it wants.

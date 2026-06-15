@@ -13,7 +13,7 @@ describe('brand-gate', () => {
 
   it('fails when the text claims a non-Mwikila persona', () => {
     const r = brandGate({
-      userFacingText: "I'm the BORJIE AI assistant.",
+      userFacingText: "I'm the BOSSNYUMBA AI assistant.",
       renderedSurface: '',
     });
     expect(r.pass).toBe(false);

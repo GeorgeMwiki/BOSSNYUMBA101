@@ -5,7 +5,7 @@
  * Every record below is immutable — the observe → resolve → aggregate
  * pipeline never mutates rows in place; transitions produce new
  * projections (this mirrors the immutability discipline used across
- * the Borjie codebase).
+ * the BossNyumba codebase).
  */
 
 import { z } from 'zod';

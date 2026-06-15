@@ -29,7 +29,7 @@ export interface Notifier {
  * Slack, and email all share the same phrasing.
  */
 export function formatUnrecoverableBody(notice: UnrecoverableNotice): string {
-  const base = `[Borjie] Wave ${notice.wave_id} unrecoverable after ${notice.attempts} attempts. Reason: ${notice.reason}. Check admin panel for details.`;
+  const base = `[BossNyumba] Wave ${notice.wave_id} unrecoverable after ${notice.attempts} attempts. Reason: ${notice.reason}. Check admin panel for details.`;
   if (notice.detail && notice.detail.length > 0) {
     return `${base} (${notice.detail})`;
   }

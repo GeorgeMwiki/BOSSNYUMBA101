@@ -161,7 +161,7 @@ function makeRecipe(
     required_citations: overrides.required_citations ?? [],
     output_formats: overrides.output_formats ?? ['pdf'],
     authority_tier: overrides.authority_tier ?? 2,
-    brand: 'borjie',
+    brand: 'bossnyumba',
     approval_required: overrides.approval_required ?? true,
     promoted_at: overrides.promoted_at ?? null,
     promoted_by: overrides.promoted_by ?? null,

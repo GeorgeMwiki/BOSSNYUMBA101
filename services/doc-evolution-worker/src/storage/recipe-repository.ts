@@ -134,7 +134,7 @@ export function createRecipeRepository(sql: SqlPort): RecipeRepository {
           ${JSON.stringify(args.required_inputs)}::jsonb,
           ${JSON.stringify(args.required_citations)}::jsonb,
           ${args.output_formats as ReadonlyArray<string> as unknown as string[]},
-          ${args.authority_tier}, 'borjie', ${args.approval_required},
+          ${args.authority_tier}, 'bossnyumba', ${args.approval_required},
           ${args.promoted_by}
         )
         on conflict (id, version) do nothing

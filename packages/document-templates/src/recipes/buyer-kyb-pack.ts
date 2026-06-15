@@ -18,7 +18,7 @@ export const buyerKybPackRecipe: DocumentRecipe = {
   version: 1,
   status: 'live',
   authority_tier: 2,
-  brand: 'borjie',
+  brand: 'bossnyumba',
   approval_required: true,
   output_formats: ['pdf'] as const,
   required_inputs: [
@@ -90,14 +90,14 @@ export const buyerKybPackRecipe: DocumentRecipe = {
         id: 'declaration',
         title: 'Authored',
         blocks: [
-          { kind: 'signature_block', text: 'Borjie Compliance — under MD authority' },
+          { kind: 'signature_block', text: 'BossNyumba Compliance — under MD authority' },
         ],
         citationIds: [],
       },
     ];
 
     const irDoc: IRDoc = {
-      title: 'Borjie — Buyer KYB Pack',
+      title: 'BossNyumba — Buyer KYB Pack',
       subtitle: 'Counterparty Diligence Bundle',
       sections,
       citations: ctx.citations,

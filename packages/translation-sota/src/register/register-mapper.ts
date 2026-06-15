@@ -14,7 +14,7 @@
  *     https://arxiv.org/pdf/2405.11942
  *
  * Tanzanian usage differs from Kenyan usage on a few terms — we default
- * to Tanzanian formal register since that's the Borjie user base
+ * to Tanzanian formal register since that's the BossNyumba user base
  * (FOUNDER_LOCKED — persona "Mr. Mwikila").
  *   - https://manenomatamu.wordpress.com/2011/11/20/swahili-kenyan-vs-tanzanian-speak-round-3-polite-expressions/
  */

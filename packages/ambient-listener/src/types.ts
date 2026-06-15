@@ -5,7 +5,7 @@
  * here is immutable. State transitions
  * (`not-set → granted → revoked → granted ...`) produce new projections via
  * dedicated handlers — never an in-place mutation. This mirrors the
- * immutability discipline used across the Borjie codebase.
+ * immutability discipline used across the BossNyumba codebase.
  *
  * Locked default per Docs/DESIGN/FOUNDER_LOCKED_DECISIONS_2026_05_26.md —
  * Decisions 3 + 4 (privacy tiers + 90-day re-consent + employee opt-out).

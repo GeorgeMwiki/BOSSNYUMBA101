@@ -53,7 +53,7 @@ export function buildArtifactFromIRDoc(args: BuildArtifactArgs): DocumentArtifac
   });
 
   const id = randomUUID();
-  const storageBucket = args.ctx.storage_bucket ?? `borjie-docs-${args.recipe.class}`;
+  const storageBucket = args.ctx.storage_bucket ?? `bossnyumba-docs-${args.recipe.class}`;
   const storage_key = `${storageBucket}/${id}.${formatExtension(args.format)}`;
 
   const approval_state = args.recipe.approval_required

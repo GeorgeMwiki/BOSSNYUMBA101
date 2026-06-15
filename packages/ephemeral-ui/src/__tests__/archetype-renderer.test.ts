@@ -4,7 +4,7 @@ import type { UIHints } from '../types.js';
 
 const hints: UIHints = {
   preferred_size: 'tab',
-  preferred_colors: ['var(--borjie-color-primary)'],
+  preferred_colors: ['var(--bossnyumba-color-primary)'],
   preferred_layout: 'cards',
   emphasis: 'narrative',
   mobile_strategy: 'reflow',

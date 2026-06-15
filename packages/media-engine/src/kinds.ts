@@ -12,13 +12,13 @@
 import type { MediaKindProfile, MediaRequestKind } from './types.js';
 
 /**
- * The closed catalogue. Borjie mining-estate first, then BN real-estate.
+ * The closed catalogue. BossNyumba mining-estate first, then BN real-estate.
  * Frozen so callers cannot mutate the shared profile objects.
  */
 export const MEDIA_KIND_PROFILES: Readonly<
   Record<MediaRequestKind, MediaKindProfile>
 > = Object.freeze({
-  // --- Borjie mining-estate -------------------------------------------------
+  // --- BossNyumba mining-estate -------------------------------------------------
   mining_site_map: Object.freeze({
     kind: 'mining_site_map',
     domain: 'mining_estate',

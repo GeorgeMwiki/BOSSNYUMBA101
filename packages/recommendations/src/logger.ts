@@ -5,7 +5,7 @@
  * default `logger` instance, matching the convention used by
  * `packages/forecasting/src/logger.ts` and
  * `services/api-gateway/src/utils/logger.ts`. Replaces direct
- * `console.*` calls per `.semgrep/borjie-rules.yml` rule
+ * `console.*` calls per `.semgrep/bossnyumba-rules.yml` rule
  * `console-statement-in-production-path` and the CLAUDE.md
  * "No `console.log` in services — Pino logger only — it handles
  * redaction." policy.

@@ -1,5 +1,5 @@
 /**
- * Mr. Mwikila terminology adherence — Borjie-specific eval.
+ * Mr. Mwikila terminology adherence — BossNyumba-specific eval.
  *
  * Percentage of glossary terms that survived the round trip. Computed
  * pure-JS in this module. Threshold for production ship: ≥ 99 % (see

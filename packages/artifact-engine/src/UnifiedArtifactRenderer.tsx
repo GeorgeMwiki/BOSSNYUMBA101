@@ -101,7 +101,7 @@ function surfaceClassName(): string {
   // surfaces. We tag the container with data-attrs (below) so a host
   // stylesheet (and a later-wave chrome layer) can style per
   // surface/density/theme without this package owning any visual design.
-  return 'borjie-artifact';
+  return 'bossnyumba-artifact';
 }
 
 // ---------------------------------------------------------------------------
@@ -217,7 +217,7 @@ function ArtifactActions({
   const actions = readSpecActions(spec);
   if (actions.length === 0) return null;
   return (
-    <div className="borjie-artifact-actions" role="group">
+    <div className="bossnyumba-artifact-actions" role="group">
       {actions.map((action) => (
         <ActionButton
           key={action.id}

@@ -32,7 +32,7 @@ export const GENESIS_HASH = '';
 
 /**
  * Canonical-JSON SHA-256 hash of a verdict, chained against the prior
- * hash. Mirrors the audit pattern used elsewhere in BORJIE.
+ * hash. Mirrors the audit pattern used elsewhere in BOSSNYUMBA.
  */
 export function computeAnomalyAuditHash(
   payload: {
