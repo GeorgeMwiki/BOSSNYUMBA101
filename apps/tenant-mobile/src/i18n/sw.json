@@ -120,6 +120,8 @@
     "accept_counter": "Kubali toleo la kupinga",
     "withdraw_bid": "Ondoa ombi",
     "message_placeholder": "Jibu mmiliki",
+    "author_you": "Wewe",
+    "author_landlord": "Mmiliki",
     "loading": "Inapakia ombi",
     "load_failed": "Imeshindwa kupakia ombi"
   },

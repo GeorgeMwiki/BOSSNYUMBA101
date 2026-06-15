@@ -662,7 +662,7 @@
           "items": [
             {
               "name": "BoT FX desk",
-              "desc": "Bank of Tanzania · AM-fix window for foreign-currency rent settlement"
+              "desc": "Bank of Tanzania · the FX reference window for foreign-currency rent"
             },
             {
               "name": "East-African REIT Council",
@@ -717,7 +717,7 @@
       "kicker": "Meet Mr. Mwikila",
       "title": "Seven modes, one governed brain.",
       "titleAccent": "Switch tabs to see them work.",
-      "sub": "Mr. Mwikila is BossNyumba's AI Real-Estate Managing Director. He adapts to the moment — building you a brief at 06:00, drafting your rent at month-end, hedging your treasury at the BoT FX window. Pick a mode to see what he does.",
+      "sub": "Mr. Mwikila is BossNyumba's AI Real-Estate Managing Director. He adapts to the moment — building you a brief at 06:00, drafting your rent at month-end, flagging your FX exposure at the BoT window. Pick a mode to see what he does.",
       "modes": [
         {
           "id": "build",
@@ -811,7 +811,7 @@
           "desc": "The chat you're using right now. Mr. Mwikila answers your questions about pricing, regulators, and timelines — and guides you to sign up when you're ready.",
           "preview": {
             "user": "What does BossNyumba do for a Mikocheni landlord?",
-            "ai": "Drafts your Regulator rent in the official format, hedges your treasury at the BoT FX fix, runs your staff roster on the supervisor's phone. Want to see how a real Wednesday at 06:00 looks?"
+            "ai": "Drafts your Regulator rent in the official format, flags your FX exposure at the BoT window, runs your staff roster on the supervisor's phone. Want to see how a real Wednesday at 06:00 looks?"
           }
         },
         {
@@ -1155,7 +1155,7 @@
       },
       {
         "title": "2. Why",
-        "body": "We use this data to run your Master Brain, deliver morning briefings, prepare reports for Regulator and TRA, and propose month-end window hedges. We do not sell it. We do not use it for advertising."
+        "body": "We use this data to run your Master Brain, deliver morning briefings, prepare reports for Regulator and TRA, and prepare currency-exposure reports. We do not sell it. We do not use it for advertising."
       },
       {
         "title": "3. Where it lives",
@@ -1548,7 +1548,7 @@
         },
         "usdCliff": {
           "title": "27-Mar-2026 USD cliff remediation",
-          "blurb": "Tracks USD exposure against the regulatory cliff date. Suggests hedges, alternative invoice currencies, and month-end window settlements."
+          "blurb": "Tracks USD exposure against the regulatory cliff date. Flags USD exposure and suggests alternative invoice currencies and settlement timing."
         },
         "auditPack": {
           "title": "Audit-pack export",

@@ -328,6 +328,10 @@ describe('tenders bid loop — My Bids returns the tenant-mobile Bid shape', () 
     expect(Array.isArray(bid.thread)).toBe(true);
     expect(bid.thread).toHaveLength(1);
     expect(bid.thread[0].body).toBe('Welcome — can you move in May?');
+    // Thread messages carry the FE `from` field (tenant|landlord), never
+    // the raw DB enum, so the renderer attributes own/counterparty right.
+    expect(['tenant', 'landlord']).toContain(bid.thread[0].from);
+    expect(bid.thread[0].sender).toBeUndefined();
     // No leftover gateway-only fields on the render path.
     expect(bid.price).toBeUndefined();
     expect(bid.submittedAt).toBeUndefined();
@@ -418,7 +422,11 @@ describe('tenders bid loop — messages', () => {
     );
     expect(post.status).toBe(201);
     const posted = await post.json();
-    expect(posted.data.sender).toBe('applicant');
+    // Wire contract the tenant-mobile renderer reads is `from`
+    // (tenant|landlord), NOT the raw applicant|owner DB enum. The
+    // applicant's own message attributes to 'tenant' so it renders as own.
+    expect(posted.data.from).toBe('tenant');
+    expect(posted.data.sender).toBeUndefined();
     expect(posted.data.body).toBe('Can we discuss move-in date?');
 
     const list = await mount().request('/tenders/tender-1/bids/bid-x/messages');
@@ -426,6 +434,25 @@ describe('tenders bid loop — messages', () => {
     const listed = await list.json();
     expect(listed.data).toHaveLength(1);
     expect(listed.data[0].body).toBe('Can we discuss move-in date?');
+    expect(listed.data[0].from).toBe('tenant');
+  });
+
+  it('attributes a counterparty (owner) message as landlord, not as own', async () => {
+    seedBid({ id: 'bid-y', tender_id: 'tender-1', vendor_id: 'applicant-1' });
+    // Seeded helper stamps sender:'owner' — the gateway must surface it as
+    // from:'landlord' so the FE does NOT render it right-aligned as own.
+    seedMessage('bid-y', 'We can offer a 12-month term.', 'tender-1');
+
+    const list = await mount().request('/tenders/tender-1/bids/bid-y/messages');
+    expect(list.status).toBe(200);
+    const listed = await list.json();
+    expect(listed.data).toHaveLength(1);
+    expect(listed.data[0].from).toBe('landlord');
+    expect(listed.data[0].sender).toBeUndefined();
+    // Contract guard: every message's `from` is in the FE value set.
+    for (const msg of listed.data) {
+      expect(['tenant', 'landlord']).toContain(msg.from);
+    }
   });
 
   it('rejects an empty message body (zod 400)', async () => {

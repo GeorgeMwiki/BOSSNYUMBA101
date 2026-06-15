@@ -42,10 +42,14 @@
  */
 
 import { sql } from 'drizzle-orm';
-import { agency as agencyKernel } from '@bossnyumba/central-intelligence';
+import {
+  agency as agencyKernel,
+  createApprovalGate,
+} from '@bossnyumba/central-intelligence';
 import {
   createKernelGoalsService,
   createKernelActionAuditService,
+  createPgApprovalStore,
 } from '@bossnyumba/database';
 import {
   createBoundActionToolDeps,
@@ -347,10 +351,28 @@ export function createWakeLoopCronSupervisor(
           // flipped to `failed` (fail-closed unless
           // SOVEREIGN_LEDGER_FAIL_OPEN=1).
           const sovereignLedger = createSovereignLedgerPort(db);
+          // Durable four-eye gate for scheduled actions. The wake cron is
+          // cross-tenant, so the store is platform-scoped (tenantId:null);
+          // each proposed action persists by its own actionId in the
+          // shared sovereign_approvals table. Without this the scheduled
+          // executor ran with `approvalGate` unbound and a
+          // requiresApproval:true escalation (e.g. arrears → irreversible
+          // action) silently auto-executed — the class-halfwired-dormant
+          // gap this remediates. When the gate is bound the executor's
+          // fail-closed guard still refuses any step it cannot gate.
+          // The Drizzle store satisfies the structural put/get/list
+          // surface the kernel gate needs; the database package types it
+          // with its own ApprovalRecord, so duck-cast at the boundary.
+          const approvalGate = createApprovalGate({
+            store: createPgApprovalStore(db as never, {
+              tenantId: null,
+            }) as never,
+          });
           const executor = agencyKernel.createExecutor({
             goals,
             tools: toolRegistry,
             auditSink,
+            approvalGate,
             autonomyPolicy: agencyKernel.createDefaultAllowLowStakesPolicy(),
             sovereignLedger,
             sovereignLedgerFailClosed: readSovereignLedgerFailClosedFromEnv(),

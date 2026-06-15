@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "marketing",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "apps/marketing", "dev"],
+      "port": 3010
+    },
+    {
+      "name": "api-gateway",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "PORT=4011 pnpm -C services/api-gateway dev"],
+      "port": 4011
+    }
+  ]
+}

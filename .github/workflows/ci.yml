@@ -243,13 +243,26 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run E2E (all portal projects, real backend, parallel)
+      - name: Assert E2E spec coverage (no silently-dropped specs)
+        # Fails LOUD if any *.spec.ts under e2e/tests matches no project
+        # testMatch and would be silently dropped from the run below. Guards
+        # against regressing the wave where all 23 @security @critical
+        # critical-flows specs went uncollected while CI stayed green.
+        run: pnpm test:e2e:assert-coverage
+
+      - name: Run E2E (owner-portal + owner-live-journeys + critical-flows + platform-journeys, real backend, parallel)
         # No `--project` filter — Playwright's per-project `testMatch` keeps
-        # specs scoped to their portal, and its built-in worker pool runs
-        # projects in parallel within this one job. A matrix would re-build
-        # the docker stack 4x; keeping it in one job is the least diff.
+        # specs scoped to their surface, and its built-in worker pool runs
+        # projects in parallel within this one job. The four browser projects
+        # together cover EVERY spec under e2e/tests (enforced by the coverage
+        # assert step above); a matrix would re-build the docker stack 4x, so
+        # keeping it in one job is the least diff.
         run: pnpm test:e2e
         env:
+          # Load-bearing: consumed by the critical-flows + platform-journeys
+          # projects (e.g. journeys/admin-platform-cert-revoke.spec.ts reads
+          # ADMIN_PORTAL_URL). Specs self-skip when their backend env guard
+          # (E2E_ENABLE_REAL_BACKEND / USE_REAL_SERVERS / E2E_REAL_LLM) is unset.
           ADMIN_PORTAL_URL: http://localhost:3001
           OWNER_PORTAL_URL: http://localhost:3000
           API_GATEWAY_URL: http://localhost:4000

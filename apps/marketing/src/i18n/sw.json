@@ -662,7 +662,7 @@
           "items": [
             {
               "name": "BoT FX desk",
-              "desc": "Bank of Tanzania · dirisha la AM-fix kwa malipo ya kodi ya fedha za kigeni"
+              "desc": "Bank of Tanzania · dirisha la marejeleo ya FX kwa kodi ya fedha za kigeni"
             },
             {
               "name": "East-African REIT Council",
@@ -811,7 +811,7 @@
           "desc": "Chat unayoitumia sasa hivi. Mwl. Mwikila anajibu maswali yako kuhusu bei, mamlaka, na ratiba — na anakuongeza kusajiri ukiwa tayari.",
           "preview": {
             "user": "BossNyumba inafanya nini kwa mmiliki wa mali wa Mikocheni?",
-            "ai": "Anaandaa rent yako ya Regulator kwa muundo rasmi, anafunga kodi yako ya fedha za kigeni kwa BoT FX fix, anaendesha staff roster yako kwa simu ya msimamizi. Ungependa kuona jinsi Jumatano halisi saa 06:00 inavyoonekana?"
+            "ai": "Anaandaa rent yako ya Regulator kwa muundo rasmi, anaonyesha hatari yako ya FX kwenye dirisha la BoT, anaendesha staff roster yako kwa simu ya msimamizi. Ungependa kuona jinsi Jumatano halisi saa 06:00 inavyoonekana?"
           }
         },
         {
@@ -1155,7 +1155,7 @@
       },
       {
         "title": "2. Kwa nini",
-        "body": "Tunatumia data hii kuendesha Master Brain yako, kutoa briefing za asubuhi, kuandaa reports kwa NHC na TRA, na kufanya hedge proposals kwenye FX-window. Hatuiuzi kwa watu wengine. Hatuitumii kwa matangazo."
+        "body": "Tunatumia data hii kuendesha Master Brain yako, kutoa briefing za asubuhi, kuandaa reports kwa NHC na TRA, na kuandaa ripoti za hatari ya sarafu. Hatuiuzi kwa watu wengine. Hatuitumii kwa matangazo."
       },
       {
         "title": "3. Wapi inaishi",
@@ -1548,7 +1548,7 @@
         },
         "usdCliff": {
           "title": "Remediation ya USD cliff ya 27-Mar-2026",
-          "blurb": "Inafuatilia USD exposure dhidi ya tarehe ya cliff ya kanuni. Inapendekeza hedges, sarafu mbadala za invoice, na settlement za FX-window."
+          "blurb": "Inafuatilia USD exposure dhidi ya tarehe ya cliff ya kanuni. Inaonyesha hatari ya USD na inapendekeza sarafu mbadala za invoice na muda wa settlement."
         },
         "auditPack": {
           "title": "Export ya audit-pack",

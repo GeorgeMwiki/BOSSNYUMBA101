@@ -500,6 +500,58 @@ export function createExecutor(deps: ExecutorDeps): Executor {
           }
         }
 
+        // Fail-CLOSED policy DENY enforcement (class-halfwired-dormant
+        // remediation). The autonomy policy can return
+        // `authorized:false` — a hard DENY — yet the field was read into
+        // the type and never checked, so a denied tool executed anyway.
+        // A DENY now aborts the step BEFORE the counter-model / approval /
+        // invoke branches: the action is refused, audited, and (for
+        // sovereign-tier tools) recorded as a ledger failure so the
+        // hash-chain captures the refusal. This is the safe default —
+        // an explicit policy DENY can never silently fall through to
+        // execution.
+        if (!policyOutcome.authorized) {
+          const message = `policy denied: ${policyOutcome.reason}`;
+          await safeUpdateStep(deps, {
+            goalId: goal.id,
+            stepId: step.id,
+            status: 'failed',
+            errorMessage: message,
+          });
+          await safeAudit(deps, {
+            tenantId: goal.tenantId,
+            userId: goal.userId,
+            goalId: goal.id,
+            stepId: step.id,
+            toolName: step.toolName,
+            decision: 'failed',
+            payloadHash: hashPayload(step.toolPayload),
+            outcome: 'policy-denied',
+            errorMessage: message,
+            startedAt: startedAt.toISOString(),
+            endedAt: clock().toISOString(),
+            latencyMs: clock().getTime() - startedAt.getTime(),
+          });
+          // Sovereign-tier refusals MUST hit the hash-chained ledger so
+          // an external audit can reconstruct that the action was
+          // proposed and denied — even though the tool never ran.
+          if (isSovereignTier(tool)) {
+            await safeSovereignLedger(deps, tool, {
+              tenantId: goal.tenantId,
+              userId: goal.userId,
+              input: step.toolPayload,
+              output: null,
+              outcome: 'failure',
+              errorMessage: message,
+              executedAt: clock(),
+            });
+          }
+          stepsFailed += 1;
+          failureMessages.push(message);
+          bailed = true;
+          continue;
+        }
+
         // Counter-model sanity check (Central Command Phase B — B5).
         // For sovereign-tier (destroy / billing-tier irreversible)
         // actions a second LLM reviews the proposal BEFORE the approval
@@ -570,6 +622,58 @@ export function createExecutor(deps: ExecutorDeps): Executor {
             bailed = true;
             continue;
           }
+        }
+
+        // Fail-CLOSED unbound-gate guard (class-halfwired-dormant
+        // remediation). When the policy requires approval but no
+        // ApprovalGate port is wired, the step MUST NOT fall through to
+        // the autonomous invoke branch below — doing so silently
+        // authorizes a high-stakes action that a human was supposed to
+        // sign off. We mark the step failed with a structured outcome so
+        // a missing port can never auto-approve, mirroring the
+        // approval-gate-error branch. (When the gate IS wired the next
+        // branch runs the real four-eye propose path.)
+        if (policyOutcome.requiresApproval && !deps.approvalGate) {
+          const message =
+            'approval-gate-unbound: step requires four-eye approval ' +
+            'but no ApprovalGate is wired; refusing to auto-execute';
+          await safeUpdateStep(deps, {
+            goalId: goal.id,
+            stepId: step.id,
+            status: 'failed',
+            errorMessage: message,
+          });
+          await safeAudit(deps, {
+            tenantId: goal.tenantId,
+            userId: goal.userId,
+            goalId: goal.id,
+            stepId: step.id,
+            toolName: step.toolName,
+            decision: 'failed',
+            payloadHash: hashPayload(step.toolPayload),
+            outcome: 'approval-gate-unbound',
+            errorMessage: message,
+            startedAt: startedAt.toISOString(),
+            endedAt: clock().toISOString(),
+            latencyMs: clock().getTime() - startedAt.getTime(),
+          });
+          // Sovereign-tier actions that cannot be gated are recorded as
+          // a ledger failure so the audit chain captures the refusal.
+          if (isSovereignTier(tool)) {
+            await safeSovereignLedger(deps, tool, {
+              tenantId: goal.tenantId,
+              userId: goal.userId,
+              input: step.toolPayload,
+              output: null,
+              outcome: 'failure',
+              errorMessage: message,
+              executedAt: clock(),
+            });
+          }
+          stepsFailed += 1;
+          failureMessages.push(message);
+          bailed = true;
+          continue;
         }
 
         // Approval branch — propose, mark pending(awaiting-approval),

@@ -188,8 +188,16 @@ export function createFieldShiftsRouter(): Hono {
         .from(maintenanceTasks)
         .where(
           and(
-            eq(maintenanceTasks.tenantId, tenantId),
-            eq(maintenanceTasks.assignedToUserId, userId),
+            // maintenance_tasks.tenant_id / assigned_to_user_id are UUID
+            // columns, but tenant/user ids on the JWT are free-form TEXT (as
+            // on every other tenant-scoped table). Binding a non-uuid id to an
+            // `eq` against a uuid column makes Postgres cast the *parameter* to
+            // uuid and throw 22P02. Compare via an explicit ::text cast on the
+            // column, mirroring the 0283 RLS policy's
+            // `tenant_id::text = current_setting(...)` convention, so a real
+            // tenant id never 22P02s.
+            sql`${maintenanceTasks.tenantId}::text = ${tenantId}`,
+            sql`${maintenanceTasks.assignedToUserId}::text = ${userId}`,
             sql`${maintenanceTasks.status} IN ('pending', 'in_progress', 'blocked')`,
             or(
               sql`${maintenanceTasks.dueAt} IS NULL`,

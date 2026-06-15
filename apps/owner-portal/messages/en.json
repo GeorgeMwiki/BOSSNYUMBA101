@@ -3288,7 +3288,29 @@
       "mdrTitle": "MDR plan"
     },
     "skills": {
-      "marketplaceTitle": "Skills marketplace"
+      "marketplaceTitle": "Skills marketplace",
+      "title": "Skills marketplace",
+      "subtitle": "Install workflows Mr. Mwikila can run on a schedule, on an event, or on demand. Toggle them off any time.",
+      "createSkill": "Create new Skill",
+      "installedHeading": "Installed ({count})",
+      "marketplaceHeading": "Marketplace ({count})",
+      "categoryLabel": "Category:",
+      "triggerLabel": "Trigger:",
+      "category": {
+        "all": "All",
+        "arrears": "Arrears",
+        "lease": "Lease",
+        "maintenance": "Maintenance",
+        "comms": "Communications",
+        "compliance": "Compliance",
+        "reporting": "Reporting"
+      },
+      "trigger": {
+        "all": "All",
+        "cron": "Scheduled",
+        "event": "Event-driven",
+        "manual": "Manual"
+      }
     },
     "feedbackThumbs": {
       "prompt": "Was this helpful?",

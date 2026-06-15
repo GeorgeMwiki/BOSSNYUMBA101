@@ -220,25 +220,22 @@ export default function SkillsPage(): JSX.Element {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             <Sparkles className="h-6 w-6 text-violet-600" />
-            Skills marketplace
+            {t('title')}
           </h1>
-          <p className="text-sm text-gray-500">
-            Install workflows Mr. Mwikila can run on a schedule, on an event, or
-            on demand. Toggle them off any time.
-          </p>
+          <p className="text-sm text-gray-500">{t('subtitle')}</p>
         </div>
         <button
           type="button"
           onClick={createNewSkill}
           className="inline-flex items-center gap-1 rounded bg-violet-600 px-3 py-1.5 text-sm font-medium text-white"
         >
-          <Plus className="h-4 w-4" /> Create new Skill
+          <Plus className="h-4 w-4" /> {t('createSkill')}
         </button>
       </header>
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-gray-700">
-          Installed ({installed.length})
+          {t('installedHeading', { count: installed.length })}
         </h2>
         <SkillLibraryGrid
           skills={installed}
@@ -250,10 +247,10 @@ export default function SkillsPage(): JSX.Element {
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-gray-700">
-          Marketplace ({filteredMarketplace.length})
+          {t('marketplaceHeading', { count: filteredMarketplace.length })}
         </h2>
         <div className="mb-3 flex flex-wrap items-center gap-3 text-xs">
-          <span className="text-gray-500">Category:</span>
+          <span className="text-gray-500">{t('categoryLabel')}</span>
           {ALL_CATEGORIES.map((c) => (
             <button
               key={c}
@@ -265,22 +262,22 @@ export default function SkillsPage(): JSX.Element {
                   : 'border border-gray-200 bg-white text-gray-700'
               }`}
             >
-              {c}
+              {t(`category.${c}`)}
             </button>
           ))}
-          <span className="ml-4 text-gray-500">Trigger:</span>
-          {ALL_TRIGGERS.map((t) => (
+          <span className="ml-4 text-gray-500">{t('triggerLabel')}</span>
+          {ALL_TRIGGERS.map((trig) => (
             <button
-              key={t}
+              key={trig}
               type="button"
-              onClick={() => setTriggerFilter(t)}
+              onClick={() => setTriggerFilter(trig)}
               className={`rounded-full px-2 py-0.5 ${
-                triggerFilter === t
+                triggerFilter === trig
                   ? 'bg-gray-900 text-white'
                   : 'border border-gray-200 bg-white text-gray-700'
               }`}
             >
-              {t}
+              {t(`trigger.${trig}`)}
             </button>
           ))}
         </div>

@@ -3288,7 +3288,29 @@
       "mdrTitle": "Mpango wa MDR"
     },
     "skills": {
-      "marketplaceTitle": "Soko la Ujuzi"
+      "marketplaceTitle": "Soko la Ujuzi",
+      "title": "Soko la Ujuzi",
+      "subtitle": "Sakinisha mtiririko wa kazi ambao Mr. Mwikila anaweza kuendesha kwa ratiba, kwa tukio, au unapohitaji. Zima wakati wowote.",
+      "createSkill": "Tengeneza Ujuzi mpya",
+      "installedHeading": "Vilivyosakinishwa ({count})",
+      "marketplaceHeading": "Soko ({count})",
+      "categoryLabel": "Kategoria:",
+      "triggerLabel": "Kichocheo:",
+      "category": {
+        "all": "Zote",
+        "arrears": "Madeni",
+        "lease": "Mkataba wa kukodi",
+        "maintenance": "Matengenezo",
+        "comms": "Mawasiliano",
+        "compliance": "Uzingatiaji",
+        "reporting": "Ripoti"
+      },
+      "trigger": {
+        "all": "Zote",
+        "cron": "Iliyoratibiwa",
+        "event": "Inayoendeshwa na tukio",
+        "manual": "Mwongozo"
+      }
     },
     "feedbackThumbs": {
       "prompt": "Je, hii ilisaidia?",

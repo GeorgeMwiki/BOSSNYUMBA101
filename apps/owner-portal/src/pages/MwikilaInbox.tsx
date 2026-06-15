@@ -165,6 +165,7 @@ export default function MwikilaInbox({
   );
   const [categoryFilter, setCategoryFilter] = useState<Category | 'all'>('all');
   const [nowMs, setNowMs] = useState<number>(Date.now());
+  const [pendingId, setPendingId] = useState<string | null>(null);
   const sw = languagePreference === 'sw';
 
   const refresh = useCallback(async () => {
@@ -200,31 +201,69 @@ export default function MwikilaInbox({
     });
   }, [rows, statusFilter, categoryFilter]);
 
-  const onApprove = useCallback(
-    async (id: string) => {
-      await api.post(`/owner/mwikila-inbox/${id}/approve`);
-      await refresh();
+  // Sovereign-action mutations (approve / deny / reverse) are the highest-
+  // stakes buttons on the surface. A silent failure here would leave the owner
+  // believing an action landed when it did not, so the result MUST be surfaced.
+  const runSovereignAction = useCallback(
+    async (
+      id: string,
+      request: () => Promise<{ success: boolean; error?: { message?: string } }>,
+    ) => {
+      setPendingId(id);
+      setErrorMsg(null);
+      try {
+        const res = await request();
+        if (!res.success) {
+          setErrorMsg(
+            res.error?.message ??
+              (sw
+                ? 'Hatua hii haikufanikiwa. Tafadhali jaribu tena.'
+                : 'That action could not be completed. Please try again.'),
+          );
+          return;
+        }
+        await refresh();
+      } catch (err) {
+        setErrorMsg(
+          err instanceof Error
+            ? err.message
+            : sw
+              ? 'Hitilafu ya mtandao. Tafadhali jaribu tena.'
+              : 'Network error. Please try again.',
+        );
+      } finally {
+        setPendingId(null);
+      }
     },
-    [refresh],
+    [refresh, sw],
+  );
+
+  const onApprove = useCallback(
+    (id: string) =>
+      runSovereignAction(id, () =>
+        api.post(`/owner/mwikila-inbox/${id}/approve`),
+      ),
+    [runSovereignAction],
   );
 
   const onDeny = useCallback(
-    async (id: string) => {
-      await api.post(`/owner/mwikila-inbox/${id}/deny`);
-      await refresh();
-    },
-    [refresh],
+    (id: string) =>
+      runSovereignAction(id, () =>
+        api.post(`/owner/mwikila-inbox/${id}/deny`),
+      ),
+    [runSovereignAction],
   );
 
   const onReverse = useCallback(
-    async (row: InboxRow) => {
-      if (row.reversalToken === null) return;
-      await api.post(`/owner/mwikila-inbox/${row.id}/reverse`, {
-        reversalToken: row.reversalToken,
-      });
-      await refresh();
+    (row: InboxRow) => {
+      if (row.reversalToken === null) return Promise.resolve();
+      return runSovereignAction(row.id, () =>
+        api.post(`/owner/mwikila-inbox/${row.id}/reverse`, {
+          reversalToken: row.reversalToken,
+        }),
+      );
     },
-    [refresh],
+    [runSovereignAction],
   );
 
   return (
@@ -344,7 +383,8 @@ export default function MwikilaInbox({
                         <button
                           type="button"
                           onClick={() => void onApprove(row.id)}
-                          className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+                          disabled={pendingId === row.id}
+                          className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                           data-testid="mwikila-approve"
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" />
@@ -353,7 +393,8 @@ export default function MwikilaInbox({
                         <button
                           type="button"
                           onClick={() => void onDeny(row.id)}
-                          className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-xs text-zinc-700 hover:bg-zinc-50"
+                          disabled={pendingId === row.id}
+                          className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-xs text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
                           data-testid="mwikila-deny"
                         >
                           <XCircle className="h-3.5 w-3.5" />
@@ -365,7 +406,8 @@ export default function MwikilaInbox({
                       <button
                         type="button"
                         onClick={() => void onReverse(row)}
-                        className="inline-flex items-center gap-1 rounded border border-amber-500 bg-amber-50 px-2.5 py-1 text-xs text-amber-800 hover:bg-amber-100"
+                        disabled={pendingId === row.id}
+                        className="inline-flex items-center gap-1 rounded border border-amber-500 bg-amber-50 px-2.5 py-1 text-xs text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
                         data-testid="mwikila-reverse"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />

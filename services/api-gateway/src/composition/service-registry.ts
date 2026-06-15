@@ -168,6 +168,7 @@ import {
   classify as classifyDbColumn,
   createApprovalPolicyService,
   createKernelGoalsService,
+  createPgApprovalStore,
   createPrivacyBudgetComposerService,
   createSensorRoutingService,
 } from '@bossnyumba/database';
@@ -411,6 +412,7 @@ import {
 // pgvector-backed adapter will replace it for production.
 // Follow-up wave-30 (Docs/TODO_BACKLOG.md): swap in pgvector-backed ConversationMemory for prod.
 import {
+  createApprovalGate,
   createInMemoryConversationMemory,
   createInMemoryAuditSinkAndReader,
   createConversationAuditRecorder,
@@ -2698,6 +2700,28 @@ function buildServicesInner(
       cnsLoopActuatorHolder.supervisor = inProcessWakeSupervisor;
       cnsLoopActuatorHolder.runtime = inProcessInngestRuntime;
 
+      // Durable four-eye gate for the orchestrator main-loop's PreToolUse
+      // four-eye hook. Threaded into BOTH brain-kernel-wiring sites (primary
+      // + voice) via `orchestratorBindings.approvalGate` so production runs
+      // on the Drizzle-backed `sovereign_approvals` table (replica-shared,
+      // survives restart) instead of the wiring's in-memory fallback. The
+      // orchestrator is platform-scoped (`_platform`), matching the
+      // `tenantId` passed into `buildOrchestratorBindings`. When `db` is
+      // null (degraded / no-DB dev + tests) we leave the override unset and
+      // the wiring keeps its in-memory store. createInMemoryApprovalStore
+      // stays strictly for that DB-absent path.
+      // The Drizzle store satisfies the structural put/get/list surface
+      // both the kernel gate and the orchestrator hook need; the database
+      // package types it with its own (policy/plan-free) ApprovalRecord,
+      // so we duck-cast at the boundary — the same pattern composeSovereign
+      // already uses when consuming `mutable.approvalStore`.
+      const platformApprovalStore = db
+        ? createPgApprovalStore(db, { tenantId: '_platform' })
+        : undefined;
+      const orchestratorApprovalGate = platformApprovalStore
+        ? createApprovalGate({ store: platformApprovalStore as never })
+        : undefined;
+
       // BN-EXE-04 — deep-reasoning mixture-of-agents fan-out. Build the
       // multi-LLM synthesizer port (Anthropic + OpenAI + DeepSeek proposers
       // in parallel, Claude-Opus serial merge). Returns null when the wire
@@ -2735,6 +2759,14 @@ function buildServicesInner(
         // kernel keeps the single-shot path with no behavioural change.
         synthesizer: synthesizerWiring?.port ?? null,
         approvalPolicyResolver: createApprovalPolicyService(db),
+        // Durable kernel-level four-eye gate (same Drizzle store the
+        // orchestrator hook uses). composeSovereign builds its `approvals`
+        // gate over this instead of the in-memory fallback. Unset when db
+        // is null (dev/test) → kernel keeps in-memory. Duck-cast at the
+        // boundary (database ApprovalRecord ↔ kernel ApprovalStore port).
+        ...(platformApprovalStore
+          ? { approvalStore: platformApprovalStore as never }
+          : {}),
         sensorRoutingService: createSensorRoutingService(db),
         hqToolRegistry: hqPortBindings.hqToolRegistry,
         // PART B — real-backed seed-tool deps. `lookupTenantArrears` +
@@ -2763,6 +2795,13 @@ function buildServicesInner(
         orchestratorBindings: {
           db,
           tenantId: '_platform',
+          // Durable, replica-shared four-eye gate (Drizzle-backed) so the
+          // PreToolUse four-eye hook persists approvals across restart
+          // instead of the wiring's in-memory fallback. Unset when db is
+          // null → wiring keeps in-memory (dev/test only).
+          ...(orchestratorApprovalGate
+            ? { approvalGate: orchestratorApprovalGate }
+            : {}),
         },
         // Phase F.3 — LIVE-BY-DEFAULT main-loop. `llmRouter` is non-null
         // exactly when `ANTHROPIC_API_KEY` is configured; gating on it
@@ -2897,8 +2936,24 @@ function buildServicesInner(
     // memory → cohort → persona → sensor failover → normalize →
     // judge → drift → policy → confidence → provenance).
     voiceAgent: (() => {
+      // Durable Drizzle-backed four-eye gate for the voice path's kernel
+      // + orchestrator hook. Built locally here (the primary path's
+      // store is scoped to its own IIFE) so voice turns also persist
+      // approvals across restart/replicas. Unset when db is null
+      // (dev/test) → both the kernel gate and the orchestrator hook keep
+      // their in-memory stores.
+      const voiceApprovalStore = db
+        ? createPgApprovalStore(db, { tenantId: '_platform' })
+        : undefined;
+      const voiceOrchestratorApprovalGate = voiceApprovalStore
+        ? createApprovalGate({ store: voiceApprovalStore as never })
+        : undefined;
       const brainKernel = createBrainKernelWiring({
         buildBudgetGuardedAnthropicClient,
+        // Durable kernel-level four-eye gate (mirrors the primary path).
+        ...(voiceApprovalStore
+          ? { approvalStore: voiceApprovalStore as never }
+          : {}),
         // PART C — thread the SAME db-backed orchestrator bindings the
         // primary path uses so voice turns enforce the real 9-hook chain
         // (PII → permission → four-eye → denylist → rate → cost → sandbox
@@ -2909,6 +2964,11 @@ function buildServicesInner(
         orchestratorBindings: {
           db,
           tenantId: '_platform',
+          // Same durable Drizzle-backed four-eye gate as the primary path
+          // so voice turns persist approvals across restart/replicas too.
+          ...(voiceOrchestratorApprovalGate
+            ? { approvalGate: voiceOrchestratorApprovalGate }
+            : {}),
         },
         // PART C — voice turns also get the real-backed seed tools so
         // `lookupTenantArrears` / `getMarketRateBand` execute against live

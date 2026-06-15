@@ -39,9 +39,12 @@
 import {
   agency as agencyKernel,
   composeSovereign,
+  createApprovalGate,
   createDpCohortSource,
   tools as kernelTools,
   type AgencyKernelPort,
+  type ApprovalGate,
+  type ApprovalStore,
   type FeedbackMemoryPort,
   type MemoryHierarchy,
   type PersonaBrandingOverride,
@@ -243,6 +246,13 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   // composeSovereign default (in-memory) is used.
   let substrateSinks: SubstrateSinks | undefined;
   let approvalStore: ReturnType<typeof createPgApprovalStore> | undefined;
+  // Four-eye gate built over the Drizzle-backed approval store. Threaded
+  // into BOTH executor branches so a step whose autonomy policy demands
+  // approval routes through a DURABLE propose/sign/markExecuted path
+  // (replica-shared, survives restart) instead of silently
+  // auto-executing. Undefined only when DB is down — the executor's
+  // fail-closed unbound-gate guard then refuses the step.
+  let agencyApprovalGate: ApprovalGate | undefined;
   let priorTurnsLoader: ((threadId: string) => Promise<ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>>) | undefined;
   let recentTurnCounter: ((threadId: string) => Promise<number>) | undefined;
   let groundingFacts:
@@ -276,6 +286,18 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       provenance: svc.provenance,
     };
     approvalStore = createPgApprovalStore(db, { tenantId: scope.tenantId });
+    // Wrap the Drizzle store in the four-eye gate so the agency executor
+    // gets a real, durable ApprovalGate (propose → sign → markExecuted).
+    // Without this the executor ran with `approvalGate` unbound and
+    // every requiresApproval:true step fell through to autonomous
+    // execution — the class-halfwired-dormant safety gap this remediates.
+    // The Drizzle store implements the structural `put/get/list` surface
+    // the kernel gate needs; the database package types it with its own
+    // (policy/plan-free) ApprovalRecord, so we duck-cast at the boundary
+    // — the SAME pattern composeSovereign uses for `mutable.approvalStore`.
+    agencyApprovalGate = createApprovalGate({
+      store: approvalStore as unknown as ApprovalStore,
+    });
     const memory = createKernelMemoryService(db, { tenantId: scope.tenantId });
     priorTurnsLoader = (threadId) => memory.loadPriorTurns(threadId);
     recentTurnCounter = (threadId) => memory.countRecentUserTurns(threadId);
@@ -389,6 +411,9 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       goals: goalsService,
       tools: toolRegistry,
       auditSink,
+      // Durable four-eye gate — a requiresApproval:true step now routes
+      // through propose/sign rather than auto-executing.
+      approvalGate: agencyApprovalGate,
       autonomyPolicy: agencyKernel.createDefaultAllowLowStakesPolicy(),
       counterModel: createProductionCounterModel(anthropic),
       sovereignLedger,
@@ -468,6 +493,9 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       goals: goalsService,
       tools: toolRegistry,
       auditSink,
+      // Durable four-eye gate (same store-backed gate as the early-stub
+      // executor above) — high-stakes steps propose for human sign-off.
+      approvalGate: agencyApprovalGate,
       autonomyPolicy: realAutonomyPolicy,
       counterModel: createProductionCounterModel(anthropic),
       sovereignLedger,

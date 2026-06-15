@@ -229,12 +229,29 @@ function toBidView(
   };
 }
 
+/**
+ * Map the persisted `bid_messages.sender` enum (canonical:
+ * 'applicant' | 'owner', migration 0328) to the wire contract the
+ * tenant-mobile thread renderer consumes (`BidMessage.from`:
+ * 'tenant' | 'landlord' — apps/tenant-mobile/src/types/listing.ts,
+ * MessageBubble.tsx). Without this map the FE reads `msg.from` as
+ * `undefined` and attributes EVERY message to the counterparty
+ * ('Landlord', left-aligned), so an applicant never sees their own
+ * replies as own. The DB enum stays untouched (immutable migration);
+ * only the API surface is reconciled.
+ */
+function senderToFrom(sender: string): 'tenant' | 'landlord' {
+  return sender === 'applicant' ? 'tenant' : 'landlord';
+}
+
 /** Shape a `bid_messages` row into the API message view. */
 function toMessageView(row: Record<string, unknown>) {
   return {
     id: String(row.id),
     bidId: String(row.bid_id),
-    sender: String(row.sender),
+    // Wire field the tenant-mobile renderer reads is `from`, value set
+    // tenant|landlord — NOT the raw applicant|owner enum.
+    from: senderToFrom(String(row.sender)),
     body: String(row.body),
     sentAt:
       row.created_at instanceof Date

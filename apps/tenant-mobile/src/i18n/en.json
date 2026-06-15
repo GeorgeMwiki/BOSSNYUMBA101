@@ -120,6 +120,8 @@
     "accept_counter": "Accept counter offer",
     "withdraw_bid": "Withdraw application",
     "message_placeholder": "Reply to the landlord",
+    "author_you": "You",
+    "author_landlord": "Landlord",
     "loading": "Loading application",
     "load_failed": "Could not load application"
   },
