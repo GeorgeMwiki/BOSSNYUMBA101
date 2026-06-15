@@ -75,3 +75,7 @@ override.tf.json
 .semgrep/
 .claude/worktrees/
 .vercel
+
+# review/port scratch (working artifacts)
+.r2-verify/
+.persistent-memory-port/
