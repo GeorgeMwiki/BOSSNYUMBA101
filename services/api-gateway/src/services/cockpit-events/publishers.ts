@@ -15,6 +15,7 @@
 import { publishCockpitEvent } from './bus.js';
 import type {
   ApplicationApprovedEvent,
+  BidPlacedEvent,
   ComplianceDeadlineApproachingEvent,
   DecisionRecordedEvent,
   InspectionCompletedEvent,
@@ -281,6 +282,33 @@ export function publishApplicationApproved(
       applicantUserId: input.applicantUserId,
       approvedBy: input.approvedBy,
     } satisfies ApplicationApprovedEvent);
+  } catch {
+    // Best-effort.
+  }
+}
+
+// Marketplace / tender bid placed — surfaces on the tender OWNER's cockpit
+// pulse (per-tenant channel) the moment an applicant submits a bid.
+export interface PublishBidPlacedInput extends CommonInputs {
+  readonly bidId: string;
+  readonly listingId: string | null;
+  readonly amount: number;
+  readonly currencyCode: string;
+  readonly bidderId: string;
+}
+
+export function publishBidPlaced(input: PublishBidPlacedInput): void {
+  try {
+    publishCockpitEvent({
+      kind: 'bid.placed',
+      tenantId: input.tenantId,
+      emittedAt: new Date().toISOString(),
+      bidId: input.bidId,
+      listingId: input.listingId,
+      amount: input.amount,
+      currencyCode: input.currencyCode,
+      bidderId: input.bidderId,
+    } satisfies BidPlacedEvent);
   } catch {
     // Best-effort.
   }

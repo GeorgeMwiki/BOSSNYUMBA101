@@ -18,6 +18,10 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
+import {
+  publishBidPlaced,
+  publishApplicationApproved,
+} from '../services/cockpit-events/index.js';
 const PublishTenderSchema = z
   .object({
     scope: z.string().min(1).max(2000),
@@ -452,6 +456,21 @@ app.post('/:id/bids', zValidator('json', SubmitBidSchema), withSecurityEvents({ 
       status
     );
   }
+  // Cockpit pulse (#22): a bid was placed. Surfaces on the tender OWNER's
+  // per-tenant channel (tenantId IS the owner's channel key) the moment an
+  // applicant submits a bid. `listingId` is the parent tender id — the same
+  // listing↔tender mapping `toBidView` uses. Fire-and-forget: the publisher
+  // swallows its own bus errors so a downstream problem can never break the
+  // bid write that already succeeded above.
+  const placedBid = result.value;
+  publishBidPlaced({
+    tenantId: auth.tenantId,
+    bidId: String(placedBid.id),
+    listingId: String(placedBid.tenderId),
+    amount: Number(placedBid.price),
+    currencyCode: String(placedBid.currency),
+    bidderId: String(placedBid.vendorId),
+  });
   return c.json({ success: true, data: result.value }, 201);
 }));
 
@@ -682,6 +701,19 @@ app.post('/:id/award', zValidator('json', AwardSchema), withSecurityEvents({ act
       { success: false, error: { code: result.error.code, message: result.error.message } },
       400
     );
+  // Cockpit pulse (#52): awarding a tender to a bid IS the owner APPROVING the
+  // applicant who placed that winning bid — the bid is the application, the
+  // tender is the listing, the bidder is the applicant. Fire-and-forget: the
+  // publisher swallows its own bus errors so it can never break the award that
+  // already succeeded above.
+  const { tender: awardedTender, bid: awardedBid } = result.value;
+  publishApplicationApproved({
+    tenantId: auth.tenantId,
+    applicationId: String(awardedBid.id),
+    listingId: String(awardedTender.id),
+    applicantUserId: String(awardedBid.vendorId),
+    approvedBy: String(auth.userId),
+  });
   return c.json({ success: true, data: result.value });
 }));
 
