@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { PageShell } from '@/components/shared/PageShell';
 
 export const metadata: Metadata = {
-  title: 'Privacy Notice — Boss Nyumba',
+  title: 'Privacy Notice — BossNyumba',
   description:
     "Privacy notice. What we collect, how we use it, your rights under the TZ Personal Data Protection Act and GDPR.",
 };
@@ -22,7 +22,7 @@ export default function PrivacyPage() {
         </p>
 
         <p className="mt-8 text-lg leading-relaxed text-foreground/75">
-          Boss Nyumba (operated by Boss Nyumba Limited, registered in
+          BossNyumba (operated by Boss Nyumba Limited, registered in
           Tanzania) processes personal data on behalf of landlords,
           property managers, tenants, and partners. This notice explains
           what we collect, how we use it, and your rights.

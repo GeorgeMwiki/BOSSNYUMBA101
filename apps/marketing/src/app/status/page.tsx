@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import { PageShell } from '@/components/shared/PageShell';
 
 export const metadata: Metadata = {
-  title: 'System status — Boss Nyumba',
+  title: 'System status — BossNyumba',
   description:
-    'The services that make up the Boss Nyumba platform — API, owner cockpit, tenant mobile, Master Brain, mobile-money rails, audit chain, and notifications.',
+    'The services that make up the BossNyumba platform — API, owner cockpit, tenant mobile, Master Brain, mobile-money rails, audit chain, and notifications.',
 };
 
 /**
@@ -47,7 +47,7 @@ export default function StatusPage() {
           Platform services.
         </h1>
         <p className="mt-6 text-lg leading-relaxed text-foreground/75">
-          These are the services that make up Boss Nyumba. A live,
+          These are the services that make up BossNyumba. A live,
           real-time status board is on the way. For any active incident we
           email every affected customer directly and post updates on{' '}
           <a

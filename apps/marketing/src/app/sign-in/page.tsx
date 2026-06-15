@@ -13,15 +13,15 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   if (locale === 'sw') {
     return {
-      title: 'Ingia — Boss Nyumba',
+      title: 'Ingia — BossNyumba',
       description:
-        'Ingia kwenye Boss Nyumba. Jisajili kwa simu yako iliyounganishwa na M-Pesa, NIDA, au barua pepe. Bw. Mwikila ataendelea kutoka pale ulipoachia.',
+        'Ingia kwenye BossNyumba. Jisajili kwa simu yako iliyounganishwa na M-Pesa, NIDA, au barua pepe. Bw. Mwikila ataendelea kutoka pale ulipoachia.',
     };
   }
   return {
-    title: 'Log In — Boss Nyumba',
+    title: 'Log In — BossNyumba',
     description:
-      'Log in to Boss Nyumba. Sign in with your M-Pesa-linked phone, NIDA, or email. Mr. Mwikila will pick up where you left off.',
+      'Log in to BossNyumba. Sign in with your M-Pesa-linked phone, NIDA, or email. Mr. Mwikila will pick up where you left off.',
   };
 }
 
@@ -37,7 +37,7 @@ interface SignInCopy {
 const COPY: Record<Locale, SignInCopy> = {
   en: {
     kicker: 'Welcome back',
-    headline: 'Log in to Boss Nyumba.',
+    headline: 'Log in to BossNyumba.',
     sub: 'Mr. Mwikila will pick up where you left off. Choose how you signed up.',
     noAccount: 'No account yet?',
     signUpFree: (tierName) => `Sign Up — free on ${tierName}`,
@@ -45,7 +45,7 @@ const COPY: Record<Locale, SignInCopy> = {
   },
   sw: {
     kicker: 'Karibu tena',
-    headline: 'Ingia kwenye Boss Nyumba.',
+    headline: 'Ingia kwenye BossNyumba.',
     sub: 'Bw. Mwikila ataendelea kutoka pale ulipoachia. Chagua jinsi ulivyojisajili.',
     noAccount: 'Bado huna akaunti?',
     signUpFree: (tierName) => `Jisajili — bure kwenye ${tierName}`,

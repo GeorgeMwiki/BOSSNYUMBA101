@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { PageShell } from '@/components/shared/PageShell';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service — Boss Nyumba',
+  title: 'Terms of Service — BossNyumba',
   description:
-    'Terms of service. Your contract with Boss Nyumba. Plain-English summary first, then the binding text.',
+    'Terms of service. Your contract with BossNyumba. Plain-English summary first, then the binding text.',
 };
 
 export default function TermsPage() {
@@ -23,7 +23,7 @@ export default function TermsPage() {
         </p>
 
         <p className="mt-8 text-lg leading-relaxed text-foreground/75">
-          By using Boss Nyumba you agree to these terms. The plain-English
+          By using BossNyumba you agree to these terms. The plain-English
           summary covers the spirit; the binding sections below cover the
           letter.
         </p>
@@ -36,7 +36,7 @@ export default function TermsPage() {
           <li>You pay for your tier. The Smallholder tier is free up to 5 units; other tiers are billed monthly in TZS.</li>
           <li>You can cancel any time. You keep access until the end of the current month. No early-termination fee.</li>
           <li>We&apos;ll do what we say in the SLA. If we don&apos;t, you get the remedies in the SLA.</li>
-          <li>Do not use Boss Nyumba to break the law, abuse tenants, evade tax, or commit fraud.</li>
+          <li>Do not use BossNyumba to break the law, abuse tenants, evade tax, or commit fraud.</li>
           <li>We can suspend accounts for abuse, fraud, or non-payment after notice.</li>
           <li>Disputes are resolved in Dar es Salaam under Tanzanian law. We aim to settle in good faith first.</li>
         </ul>
@@ -45,10 +45,10 @@ export default function TermsPage() {
           1. Definitions
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-foreground/70">
-          &quot;We&quot;, &quot;us&quot;, &quot;Boss Nyumba&quot; means Boss
+          &quot;We&quot;, &quot;us&quot;, &quot;BossNyumba&quot; means Boss
           Nyumba Limited (registered in Tanzania). &quot;You&quot;, &quot;your&quot;,
           &quot;customer&quot; means the entity or individual using the
-          service. &quot;Service&quot; means the Boss Nyumba platform,
+          service. &quot;Service&quot; means the BossNyumba platform,
           apps, and APIs.
         </p>
 
@@ -71,7 +71,7 @@ export default function TermsPage() {
           <Link href="/legal/acceptable-use" className="text-signal-500 hover:underline">
             /legal/acceptable-use
           </Link>
-          . You may not use Boss Nyumba to discriminate against tenants
+          . You may not use BossNyumba to discriminate against tenants
           unlawfully, to evade tax, to commit fraud, or to interfere
           with the platform.
         </p>

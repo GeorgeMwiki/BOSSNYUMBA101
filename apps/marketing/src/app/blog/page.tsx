@@ -4,7 +4,7 @@ import { PageShell } from '@/components/shared/PageShell';
 import { POSTS, TAG_TONE } from './posts';
 
 export const metadata: Metadata = {
-  title: 'Blog — Boss Nyumba',
+  title: 'Blog — BossNyumba',
   description:
     'Field notes from the East African property frontier. Product launches, M-Pesa integrations, regulatory changes, and lessons from real portfolios.',
 };

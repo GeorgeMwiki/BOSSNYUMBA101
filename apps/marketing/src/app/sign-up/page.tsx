@@ -12,13 +12,13 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   if (locale === 'sw') {
     return {
-      title: 'Jisajili — Boss Nyumba',
+      title: 'Jisajili — BossNyumba',
       description:
         'Jisajili bure kwenye daraja la Mkulima. Hadi vyumba 5, kiti kimoja cha mtumiaji, ukusanyaji wa kodi kwa M-Pesa, daftari la maingizo mawili, mazungumzo na Bw. Mwikila. Hakuna kadi inayohitajika. Lugha mbili sw/en.',
     };
   }
   return {
-    title: 'Sign Up — Boss Nyumba',
+    title: 'Sign Up — BossNyumba',
     description:
       'Sign up free on the Smallholder tier. Up to 5 units, one user seat, M-Pesa rent collection, double-entry ledger, Mr. Mwikila chat. No card needed. Bilingual sw/en.',
   };

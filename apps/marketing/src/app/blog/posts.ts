@@ -24,12 +24,12 @@ export const POSTS: ReadonlyArray<Post> = [
     slug: 'mr-mwikila-canonical-launch',
     title: 'Mr. Mwikila is now your AI Property Operations Manager',
     excerpt:
-      'We have locked the canonical identity. One name, one title, one chat header across every Boss Nyumba surface. Here is why we did it and what it means for tenant trust.',
+      'We have locked the canonical identity. One name, one title, one chat header across every BossNyumba surface. Here is why we did it and what it means for tenant trust.',
     date: '2026-05-22',
     tag: 'Product',
     readingMinutes: 4,
     body: [
-      'For most of our pilot, the assistant inside Boss Nyumba went by a handful of names depending on which screen you opened. On the owner cockpit it was the "co-pilot"; in the tenant app it was simply "the assistant"; in the chat header it borrowed whatever the last designer had typed. That inconsistency is small until it is not — until a tenant in Mikocheni asks their landlord who exactly is sending these Swahili rent reminders.',
+      'For most of our pilot, the assistant inside BossNyumba went by a handful of names depending on which screen you opened. On the owner cockpit it was the "co-pilot"; in the tenant app it was simply "the assistant"; in the chat header it borrowed whatever the last designer had typed. That inconsistency is small until it is not — until a tenant in Mikocheni asks their landlord who exactly is sending these Swahili rent reminders.',
       'So we locked it. Across every surface — owner web, tenant mobile, the marketing site, the chat header, the audit trail — the assistant is Mr. Mwikila, your AI Property Operations Manager. One name. One title. One face.',
       'The reason is trust. A property manager is a person you build a relationship with over years. When the brain handling your lease, your rent, and your maintenance has a consistent identity, the trust transfers. People do not trust "the system"; they trust Mr. Mwikila.',
       'Operationally, the canonical identity also gives us a single audit subject. Every signed action in the hash-chained ledger now attributes to one actor, which makes dispute resolution and regulator review dramatically cleaner.',
@@ -69,12 +69,12 @@ export const POSTS: ReadonlyArray<Post> = [
     slug: 'append-only-rent-ledger',
     title: 'Why our rent ledger is append-only (and what that means for disputes)',
     excerpt:
-      'The hash-chained audit invariant inside Boss Nyumba. How it survives phone changes, accountant turnover, and tenant-vs-landlord disputes.',
+      'The hash-chained audit invariant inside BossNyumba. How it survives phone changes, accountant turnover, and tenant-vs-landlord disputes.',
     date: '2026-04-09',
     tag: 'Engineering',
     readingMinutes: 7,
     body: [
-      'Every financial event in Boss Nyumba is written once and never edited. The rent ledger is append-only and hash-chained: each entry carries the hash of the one before it, so any tampering breaks the chain and is immediately detectable.',
+      'Every financial event in BossNyumba is written once and never edited. The rent ledger is append-only and hash-chained: each entry carries the hash of the one before it, so any tampering breaks the chain and is immediately detectable.',
       'This matters most in disputes. When a tenant and landlord disagree about whether March rent was paid, there is no "trust me" — there is a cryptographically verifiable record that survives phone changes, accountant turnover, and even a change of management company.',
       'Append-only also means corrections are reversals, not edits. If a payment was misapplied, we post a compensating entry. The original stays visible. An auditor can always reconstruct exactly what happened and when.',
       'The double-entry invariant underneath guarantees the books always balance. Every money path goes through a single posting service, so there is no back door that could write an unbalanced or untraceable entry.',
@@ -104,7 +104,7 @@ export const POSTS: ReadonlyArray<Post> = [
     tag: 'Product',
     readingMinutes: 5,
     body: [
-      'Boss Nyumba is bilingual, and the language toggle is absolute: when a user picks Swahili, every surface — chat, receipts, reminders, errors, greetings — is Swahili, with zero English bleeding through, and vice versa. That sounds obvious. It is genuinely hard.',
+      'BossNyumba is bilingual, and the language toggle is absolute: when a user picks Swahili, every surface — chat, receipts, reminders, errors, greetings — is Swahili, with zero English bleeding through, and vice versa. That sounds obvious. It is genuinely hard.',
       'The hard part is the long tail. It is easy to translate the homepage. It is the toast that fires on a failed M-Pesa retry, the empty-state copy on a screen nobody visits, the greeting that must never mix "Habari" with "Hello" — those are where mixed-language bugs hide.',
       'We default new users to English and let Tanzanian users switch to Swahili in settings, because English is the safest fallback across our audiences. Some of the team still argues we should default to Swahili in-market. It is a live debate.',
       'What we do not regret: treating the toggle as a hard invariant rather than a best-effort. A half-translated product reads as a half-built product, and trust is the whole business.',

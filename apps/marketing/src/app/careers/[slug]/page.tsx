@@ -28,10 +28,10 @@ export async function generateMetadata({
   const { slug } = await params;
   const role = getRoleBySlug(slug);
   if (!role) {
-    return { title: 'Role not found — Boss Nyumba' };
+    return { title: 'Role not found — BossNyumba' };
   }
   return {
-    title: `${role.title} — Careers — Boss Nyumba`,
+    title: `${role.title} — Careers — BossNyumba`,
     description: role.summary,
   };
 }
@@ -39,7 +39,7 @@ export async function generateMetadata({
 function buildApplyHref(roleTitle: string): string {
   const subject = encodeURIComponent(`Application: ${roleTitle}`);
   const body = encodeURIComponent(
-    `Hi Boss Nyumba team,\n\nI would like to apply for the ${roleTitle} role. My CV is attached.\n\nWhat I would build here:\n\n`,
+    `Hi BossNyumba team,\n\nI would like to apply for the ${roleTitle} role. My CV is attached.\n\nWhat I would build here:\n\n`,
   );
   return `mailto:${CAREERS_INBOX}?subject=${subject}&body=${body}`;
 }

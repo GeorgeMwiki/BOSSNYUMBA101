@@ -5,7 +5,7 @@ import { PageShell } from '@/components/shared/PageShell';
 import { ROLES, CAREERS_INBOX } from './roles';
 
 export const metadata: Metadata = {
-  title: 'Careers — Boss Nyumba',
+  title: 'Careers — BossNyumba',
   description:
     "Build the AI operating system for East African real estate. Hiring across engineering, product, AI, and field operations. Dar es Salaam, Nairobi, remote-friendly.",
 };

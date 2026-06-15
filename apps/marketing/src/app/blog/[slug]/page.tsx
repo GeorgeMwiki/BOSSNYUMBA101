@@ -27,10 +27,10 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = getPostBySlug(slug);
   if (!post) {
-    return { title: 'Post not found — Boss Nyumba' };
+    return { title: 'Post not found — BossNyumba' };
   }
   return {
-    title: `${post.title} — Boss Nyumba`,
+    title: `${post.title} — BossNyumba`,
     description: post.excerpt,
   };
 }
@@ -84,7 +84,7 @@ export default async function BlogPostPage({
 
         <div className="mt-16 rounded-2xl border border-border bg-surface p-6">
           <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
-            Run your portfolio on Boss Nyumba.
+            Run your portfolio on BossNyumba.
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-foreground/70">
             Leases, rent, maintenance, and treasury on one calm brain.

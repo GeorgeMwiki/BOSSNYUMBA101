@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { PageShell } from '@/components/shared/PageShell';
 
 export const metadata: Metadata = {
-  title: 'Legal — Boss Nyumba',
+  title: 'Legal — BossNyumba',
   description:
     'Terms of service, privacy notice, data processing agreement, sub-processors, acceptable use, security policy, and SLA. Bilingual sw/en where applicable.',
 };
@@ -16,11 +16,11 @@ interface LegalDoc {
 }
 
 const DOCS: ReadonlyArray<LegalDoc> = [
-  { title: 'Terms of Service',           href: '/terms',         summary: "Your contract with Boss Nyumba. Plain-English first, EN binding.",         updated: '2026-04-01' },
+  { title: 'Terms of Service',           href: '/terms',         summary: "Your contract with BossNyumba. Plain-English first, EN binding.",         updated: '2026-04-01' },
   { title: 'Privacy Notice',             href: '/privacy',       summary: 'What we collect, how we use it, your rights. Aligned with TZ DPA + GDPR.', updated: '2026-04-01' },
-  { title: 'Data Processing Agreement',  href: '/dpa',           summary: 'For enterprise customers processing personal data through Boss Nyumba.',   updated: '2026-04-01' },
+  { title: 'Data Processing Agreement',  href: '/dpa',           summary: 'For enterprise customers processing personal data through BossNyumba.',   updated: '2026-04-01' },
   { title: 'Sub-processors',             href: '/legal/sub-processors', summary: 'Every vendor that processes data on our behalf.',                  updated: '2026-05-01' },
-  { title: 'Acceptable Use',             href: '/legal/acceptable-use', summary: 'What you can and cannot do with Boss Nyumba.',                     updated: '2026-04-01' },
+  { title: 'Acceptable Use',             href: '/legal/acceptable-use', summary: 'What you can and cannot do with BossNyumba.',                     updated: '2026-04-01' },
   { title: 'Security Policy',            href: '/security',      summary: 'How we secure the platform and respond to disclosures.',                 updated: '2026-05-15' },
   { title: 'Service Level Agreement',    href: '/legal/sla',     summary: 'Uptime commitments, support response, and remediation.',                 updated: '2026-04-01' },
   { title: 'Cookie Policy',              href: '/legal/cookies', summary: 'What we set, why, and how to opt out.',                                   updated: '2026-04-01' },

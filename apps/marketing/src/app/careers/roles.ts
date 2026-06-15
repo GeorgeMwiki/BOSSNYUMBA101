@@ -178,7 +178,7 @@ export const ROLES: ReadonlyArray<Role> = [
     location: 'Remote (EAT ±5h)',
     type: 'Full-time',
     summary:
-      'Shape both the product surfaces and the Boss Nyumba brand — from cockpit interactions to the marketing identity — held to a world-class bar.',
+      'Shape both the product surfaces and the BossNyumba brand — from cockpit interactions to the marketing identity — held to a world-class bar.',
     responsibilities: [
       'Design product flows that feel calm and trustworthy.',
       'Evolve the brand system across marketing and product.',

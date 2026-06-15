@@ -5,9 +5,9 @@ import { PageShell } from '@/components/shared/PageShell';
 import { MwikilaChip } from '@/components/shared/MwikilaChip';
 
 export const metadata: Metadata = {
-  title: 'Pilot programme — Boss Nyumba',
+  title: 'Pilot programme — BossNyumba',
   description:
-    'Run Boss Nyumba alongside your current operations for 90 days. Free implementation, dedicated success manager, and a written report with the leakage we found.',
+    'Run BossNyumba alongside your current operations for 90 days. Free implementation, dedicated success manager, and a written report with the leakage we found.',
 };
 
 const COMMITMENTS: ReadonlyArray<{ title: string; body: string }> = [
@@ -44,7 +44,7 @@ export default function PilotPage() {
           </h1>
           <p className="mx-auto mt-6 max-w-prose-widest text-lg leading-relaxed text-foreground/70 sm:text-xl">
             For portfolio landlords, professional managers, and REITs.
-            Run Boss Nyumba alongside your current system for 90 days.
+            Run BossNyumba alongside your current system for 90 days.
             Free implementation, written leakage report, no card.
           </p>
           <div className="mt-8 flex justify-center">

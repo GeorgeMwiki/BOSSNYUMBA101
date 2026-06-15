@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { PageShell } from '@/components/shared/PageShell';
 
 export const metadata: Metadata = {
-  title: 'Data Processing Agreement — Boss Nyumba',
+  title: 'Data Processing Agreement — BossNyumba',
   description:
     'Data Processing Agreement (DPA) for enterprise customers. Aligned with TZ DPA, GDPR, and the Kenya Data Protection Act.',
 };
@@ -23,7 +23,7 @@ export default function DpaPage() {
 
         <p className="mt-8 text-lg leading-relaxed text-foreground/75">
           This DPA is incorporated by reference into the Terms of Service
-          and applies whenever Boss Nyumba processes personal data on
+          and applies whenever BossNyumba processes personal data on
           your behalf. For executed counterparts, email{' '}
           <a href="mailto:legal@bossnyumba.com" className="text-signal-500 hover:underline">
             legal@bossnyumba.com
@@ -35,7 +35,7 @@ export default function DpaPage() {
           1. Roles
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-foreground/70">
-          You are the controller. Boss Nyumba is the processor. Our
+          You are the controller. BossNyumba is the processor. Our
           sub-processors (cloud, comms, AI infra) are listed at{' '}
           <a href="/legal/sub-processors" className="text-signal-500 hover:underline">
             /legal/sub-processors
