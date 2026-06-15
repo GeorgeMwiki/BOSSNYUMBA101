@@ -146,7 +146,7 @@ import strategicReportsRouter from './routes/reports/reports.hono';
 import { buildPortalGenuiWiring } from './composition/portal-genui/portal-genui-wiring';
 import { createConnectorsRouter } from './routes/integrations/connectors.hono';
 import stationMasterCoverageRouter from './routes/station-master-coverage.hono';
-import { tendersRouter } from './routes/tenders.hono';
+import { tendersRouter, bidsRouter } from './routes/tenders.hono';
 import { waitlistRouter } from './routes/waitlist.hono';
 // Veteran-expert advisor packages — pure-function strategic
 // recommenders exposed as HTTP entry points. Each router takes the
@@ -1426,6 +1426,9 @@ api.route('/risk-reports', riskReportsRouter);
 api.route('/scans', scansRouter);
 api.route('/station-master-coverage', stationMasterCoverageRouter);
 api.route('/tenders', tendersRouter);
+// Bid counter-offer (owner negotiation) — POST /api/v1/bids/:id/counter. The
+// handler shipped in tenders.hono but was never mounted (born-dark route).
+api.route('/bids', bidsRouter);
 api.route('/waitlist', waitlistRouter);
 // Veteran-expert advisor packages — strategic recommenders.
 api.route('/acquisition-advisor', acquisitionAdvisorRouter);
@@ -1868,6 +1871,7 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/scans', app: scansRouter, defaultTag: 'scans' },
     { prefix: '/station-master-coverage', app: stationMasterCoverageRouter, defaultTag: 'station-master-coverage' },
     { prefix: '/tenders', app: tendersRouter, defaultTag: 'tenders' },
+    { prefix: '/bids', app: bidsRouter, defaultTag: 'tenders' },
     { prefix: '/waitlist', app: waitlistRouter, defaultTag: 'waitlist' },
     { prefix: '/feature-flags', app: featureFlagsRouter, defaultTag: 'feature-flags' },
     { prefix: '/gdpr', app: gdprRouter, defaultTag: 'gdpr' },

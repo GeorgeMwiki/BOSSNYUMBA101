@@ -757,3 +757,16 @@ export function mountBidCounterRoute(bidsApp: Hono) {
   );
   return bidsApp;
 }
+
+/**
+ * Bids router — the bid-counter (owner counter-offer) route lives on its own
+ * `/bids` mount per the public contract (`/v1/bids/:id/counter`, advertised in
+ * this module's header). It carries the SAME auth + db context as the tenders
+ * app so `c.get('auth')` resolves identically. Previously `mountBidCounterRoute`
+ * was exported but NEVER invoked anywhere — the counter-offer route was
+ * born-dark. The gateway mounts this `bidsRouter` at `/bids`.
+ */
+const bidsApp = new Hono();
+bidsApp.use('*', authMiddleware);
+bidsApp.use('*', databaseMiddleware);
+export const bidsRouter = mountBidCounterRoute(bidsApp);
