@@ -35,6 +35,13 @@
  * - The owner `users.id` is the Supabase auth user id, so the gateway's
  *   canonical Supabase-JWT verifier (`verifySupabaseJwt`) resolves the
  *   same principal on every later request.
+ * - After the platform rows exist, the Supabase user's `app_metadata` is
+ *   stamped with `{ tenant_id, roles: ['OWNER'] }` BEFORE the session is
+ *   minted, so the minted access token carries the server-managed tenant
+ *   binding the gateway's verifier REQUIRES (`verifyAndProjectSupabaseToken`
+ *   rejects a token whose `app_metadata.tenant_id` is absent). Without this
+ *   stamp the owner cockpit's `/auth/me` would reject the freshly-minted
+ *   token and bounce a new owner straight back to /login.
  *
  * No secrets are logged. Config (Supabase url/keys, db handle) is injected
  * by the composition root — this module never reads `process.env`.
@@ -402,10 +409,51 @@ export function createOrgSignupService(
       throw err instanceof Error ? err : new Error('provisioning_failed');
     }
 
-    // 3. Mint the session (active model). If minting fails we still report
-    //    a created account, but as pending_sign_in (no cookie) so the
-    //    owner can complete via the sign-in form.
-    const session = await mintSession(input.ownerEmail, input.ownerPassword);
+    // 3. Stamp the Supabase user's server-managed `app_metadata` with the
+    //    tenant binding + owner role BEFORE minting the session, so the
+    //    minted access token carries `app_metadata.tenant_id` — which the
+    //    gateway's Supabase-JWT verifier REQUIRES (a token without it is
+    //    rejected, bouncing the new owner back to /login). app_metadata is
+    //    immutable to the client, so this is the trusted tenant source.
+    //    If stamping fails we fall through to pending_sign_in rather than
+    //    minting a token the cockpit cannot use.
+    let metadataStamped = true;
+    try {
+      const { error: updateError } = await admin.auth.admin.updateUserById(
+        authUserId,
+        {
+          app_metadata: {
+            tenant_id: tenantId,
+            roles: ['OWNER'],
+          },
+        },
+      );
+      if (updateError) {
+        metadataStamped = false;
+        deps.logger?.warn?.(
+          { service: 'org-signup', step: 'stamp-app-metadata' },
+          'org-signup: failed to stamp app_metadata.tenant_id — returning pending_sign_in',
+        );
+      }
+    } catch (err) {
+      metadataStamped = false;
+      deps.logger?.warn?.(
+        {
+          service: 'org-signup',
+          step: 'stamp-app-metadata',
+          error: err instanceof Error ? err.message : 'unknown',
+        },
+        'org-signup: stamping app_metadata threw — returning pending_sign_in',
+      );
+    }
+
+    // 4. Mint the session (active model). If minting (or the metadata
+    //    stamp above) failed we still report a created account, but as
+    //    pending_sign_in (no cookie) so the owner can complete via the
+    //    sign-in form once their account is fully usable.
+    const session = metadataStamped
+      ? await mintSession(input.ownerEmail, input.ownerPassword)
+      : null;
 
     deps.logger?.info?.(
       {

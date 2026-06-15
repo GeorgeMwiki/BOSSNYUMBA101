@@ -184,8 +184,15 @@ export function createOrgsRouter(deps: OrgsRouterDeps): Hono {
       );
     }
 
-    // Created. When the session minted (active model), set the HttpOnly
-    // session cookie and return the session for the form's optional use.
+    // Created. When the session minted (active model) we do TWO things:
+    //  (1) return the Supabase `access_token` in the JSON body — this is
+    //      the PRIMARY, topology-independent cross-origin handoff: the
+    //      marketing form forwards it to the cockpit in a URL fragment and
+    //      the cockpit authenticates via the canonical Supabase-JWT path.
+    //  (2) set the HttpOnly `bossnyumba-session` cookie below — a SECONDARY
+    //      mechanism for same-origin / shared-parent-domain proxy topologies
+    //      (requires `cookieDomain` injection at the composition root). The
+    //      body token works even when the cockpit is a fully separate origin.
     const resBody = {
       success: true as const,
       tenantId: result.tenantId,

@@ -281,7 +281,8 @@
     "invalidVerificationCode": "Invalid verification code",
     "invalidVerificationCodeRetry": "Invalid verification code. Please try again.",
     "verificationFailed": "Verification failed",
-    "mfaSetupFailed": "MFA setup failed"
+    "mfaSetupFailed": "MFA setup failed",
+    "signupNotice": "Your account was created. Please sign in to continue."
   },
   "dashboard": {
     "totalTenants": "Total Tenants",

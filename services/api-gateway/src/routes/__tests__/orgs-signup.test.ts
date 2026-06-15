@@ -202,12 +202,20 @@ interface CreatedUser {
   readonly email: string;
 }
 
+interface AppMetadataUpdate {
+  readonly id: string;
+  readonly appMetadata: Record<string, unknown>;
+}
+
 function fakeAdminClient(opts: {
   existingEmails: Set<string>;
   onCreate?: () => void;
+  /** Force the app_metadata stamp to fail (covers the pending_sign_in fall-through). */
+  failMetadataStamp?: boolean;
 }) {
   const created: CreatedUser[] = [];
   const deleted: string[] = [];
+  const metadataUpdates: AppMetadataUpdate[] = [];
   const client = {
     auth: {
       admin: {
@@ -224,6 +232,19 @@ function fakeAdminClient(opts: {
           opts.existingEmails.add(attrs.email.toLowerCase());
           return { data: { user }, error: null };
         },
+        async updateUserById(
+          id: string,
+          attrs: { app_metadata?: Record<string, unknown> },
+        ) {
+          if (opts.failMetadataStamp) {
+            return {
+              data: { user: null },
+              error: { message: 'metadata stamp failed' },
+            };
+          }
+          metadataUpdates.push({ id, appMetadata: attrs.app_metadata ?? {} });
+          return { data: { user: { id } }, error: null };
+        },
         async deleteUser(id: string) {
           deleted.push(id);
           return { data: { user: null }, error: null };
@@ -231,7 +252,7 @@ function fakeAdminClient(opts: {
       },
     },
   };
-  return { client, created, deleted };
+  return { client, created, deleted, metadataUpdates };
 }
 
 /**
@@ -340,6 +361,39 @@ describe('createOrgSignupService — provisioning engine', () => {
     expect(ownerRow.lastName).toBe('Mwangi');
     // No password hash is persisted on the platform row — Supabase owns creds.
     expect(ownerRow.passwordHash).toBeUndefined();
+
+    // The Supabase user's app_metadata is stamped with the tenant binding +
+    // owner role BEFORE the session mint, so the minted token carries the
+    // server-managed tenant_id the gateway's Supabase-JWT verifier requires.
+    expect(admin.metadataUpdates).toHaveLength(1);
+    const stamp = admin.metadataUpdates[0];
+    expect(stamp.id).toBe('auth_asha@example.com');
+    expect(stamp.appMetadata.tenant_id).toBe(result.tenantId);
+    expect(stamp.appMetadata.roles).toEqual(['OWNER']);
+  });
+
+  it('app_metadata stamp failure → created but pending_sign_in (no session minted)', async () => {
+    const admin = fakeAdminClient({ existingEmails, failMetadataStamp: true });
+    const { db } = fakeDb();
+    let minted = false;
+    const service = createOrgSignupService({
+      db: db as never,
+      config: CONFIG,
+      createAdminClient: (() => admin.client) as never,
+      // If the stamp short-circuits correctly, mint must NEVER be called —
+      // a token without app_metadata.tenant_id is useless to the cockpit.
+      fetchImpl: (async () => {
+        minted = true;
+        return new Response('{}', { status: 200 });
+      }) as unknown as typeof fetch,
+    });
+
+    const result = await service.signup(INPUT);
+    expect(result.kind).toBe('created');
+    if (result.kind !== 'created') return;
+    expect(result.signupStatus).toBe('pending_sign_in');
+    expect(result.session).toBeNull();
+    expect(minted).toBe(false);
   });
 
   it('duplicate auth email → duplicate_email, NO platform rows, NO session', async () => {

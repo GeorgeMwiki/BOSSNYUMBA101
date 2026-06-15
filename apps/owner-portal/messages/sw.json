@@ -281,7 +281,8 @@
     "invalidVerificationCode": "Msimbo batili wa uthibitisho",
     "invalidVerificationCodeRetry": "Msimbo batili wa uthibitisho. Tafadhali jaribu tena.",
     "verificationFailed": "Uthibitisho umeshindikana",
-    "mfaSetupFailed": "Usanidi wa MFA umeshindikana"
+    "mfaSetupFailed": "Usanidi wa MFA umeshindikana",
+    "signupNotice": "Akaunti yako imeundwa. Tafadhali ingia ili kuendelea."
   },
   "dashboard": {
     "totalTenants": "Jumla ya Wapangaji",
