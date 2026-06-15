@@ -6,6 +6,7 @@ import { SkillLibraryGrid } from '../../components/SkillLibraryGrid';
 import type { SkillSummary, SkillCategory, SkillTrigger } from '../../components/SkillCard';
 import { MissingBackendNotice } from '../../components/MissingBackendNotice';
 import { openJarvisWithPrefill } from '../../lib/jarvis-prefill';
+import { api } from '../../lib/api';
 
 /**
  * /skills — owner-installable Skills marketplace.
@@ -15,24 +16,36 @@ import { openJarvisWithPrefill } from '../../lib/jarvis-prefill';
  *
  * "Create new skill" opens an AOP-compiler chat in Jarvis (waits for the
  * E3 prompt-compiler wire to land; until then we just pre-fill the chat).
+ *
+ * Backed by `/api/v1/owner/account/skills/*` (owner-account.hono.ts). The
+ * base URL + `/api/v1` prefix + bearer are resolved by `lib/api` from
+ * `VITE_API_URL`, so the page works in the nginx-served prod build (no Vite
+ * dev proxy). The bare relative endpoint below is for display only —
+ * MissingBackendNotice shows it to the operator; it is never fetched.
  */
 
-const ENDPOINT = '/api/v1/owner/account/skills';
+// Path relative to the shared api client's `/api/v1` base. The client
+// prepends VITE_API_URL + `/api/v1`, so this resolves in prod and dev alike.
+const SKILLS_PATH = '/owner/account/skills';
+// Public-facing form shown in MissingBackendNotice (the operator-readable URL).
+const PUBLIC_ENDPOINT = `/api/v1${SKILLS_PATH}`;
 
-// Owner-portal auth is a Bearer token in localStorage (see src/lib/api.ts). The
-// skills routes are auth + tenant-scoped, so every request MUST carry it.
-// `credentials: 'include'` is kept for cookie-based deployments.
-function authedFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  const token =
-    typeof window !== 'undefined' ? window.localStorage.getItem('token') : null;
-  return fetch(url, {
-    ...init,
-    credentials: 'include',
-    headers: {
-      ...(init.headers ?? {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
+// The 503 db-unavailable envelope carries this code; it is the signal that the
+// backend is not wired (honest MissingBackendNotice rather than a fake list).
+const DATABASE_UNAVAILABLE = 'DATABASE_UNAVAILABLE';
+
+// Envelope returned by the shared api client (see src/lib/api.ts). The skills
+// routes answer `{ success, skills }` on read and `{ success, data }` on write.
+interface SkillsListResponse {
+  readonly success?: boolean;
+  readonly skills?: ReadonlyArray<SkillSummary>;
+  readonly error?: { readonly code?: string };
+}
+
+interface SkillMutationResponse {
+  readonly success?: boolean;
+  readonly data?: SkillSummary;
+  readonly error?: { readonly code?: string };
 }
 
 interface SkillsApiState {
@@ -66,22 +79,23 @@ export default function SkillsPage(): JSX.Element {
     let cancelled = false;
     async function load(): Promise<void> {
       try {
-        const res = await authedFetch(ENDPOINT);
+        const body = (await api.get<unknown>(SKILLS_PATH)) as SkillsListResponse;
         if (cancelled) return;
-        if (res.status === 503) {
+        if (body.error?.code === DATABASE_UNAVAILABLE) {
+          // 503 db-unavailable → honest MissingBackendNotice, not a fake list.
           setState({ status: 'missing', skills: [] });
           return;
         }
-        if (!res.ok) {
+        if (body.success === false) {
           // No fabricated fallback — an API failure is surfaced honestly as an
           // error state with zero rows, never as a sample catalog.
           setState({ status: 'error', skills: [] });
           return;
         }
-        const body = (await res.json()) as { skills?: ReadonlyArray<SkillSummary> };
         // Empty list is a legitimate "ok" — rendered as an honest empty-state.
         setState({ status: 'ok', skills: body.skills ?? [] });
       } catch {
+        // Network failure / unconfigured base URL — surfaced honestly as error.
         if (!cancelled) setState({ status: 'error', skills: [] });
       }
     }
@@ -113,7 +127,7 @@ export default function SkillsPage(): JSX.Element {
   async function persistSkillMutation(
     skillId: string,
     apply: (skill: SkillSummary) => SkillSummary,
-    request: () => Promise<Response>,
+    request: () => Promise<SkillMutationResponse>,
   ): Promise<boolean> {
     const previous = state.skills.find((s) => s.id === skillId);
     if (!previous) return false;
@@ -123,7 +137,9 @@ export default function SkillsPage(): JSX.Element {
     }));
     try {
       const res = await request();
-      if (!res.ok) throw new Error(`skill mutation failed: ${res.status}`);
+      if (res.success !== true) {
+        throw new Error(`skill mutation failed: ${res.error?.code ?? 'unknown'}`);
+      }
       return true;
     } catch {
       // Revert the optimistic edit so the UI never shows an un-persisted state.
@@ -140,11 +156,10 @@ export default function SkillsPage(): JSX.Element {
       skillId,
       (s) => ({ ...s, enabled: nextEnabled }),
       () =>
-        authedFetch(`${ENDPOINT}/${encodeURIComponent(skillId)}/toggle`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled: nextEnabled }),
-        }),
+        api.post<unknown>(
+          `${SKILLS_PATH}/${encodeURIComponent(skillId)}/toggle`,
+          { enabled: nextEnabled },
+        ) as Promise<SkillMutationResponse>,
     );
   }
 
@@ -153,9 +168,9 @@ export default function SkillsPage(): JSX.Element {
       skillId,
       (s) => ({ ...s, installed: true, enabled: true }),
       () =>
-        authedFetch(`${ENDPOINT}/${encodeURIComponent(skillId)}/install`, {
-          method: 'POST',
-        }),
+        api.post<unknown>(
+          `${SKILLS_PATH}/${encodeURIComponent(skillId)}/install`,
+        ) as Promise<SkillMutationResponse>,
     );
   }
 
@@ -170,9 +185,9 @@ export default function SkillsPage(): JSX.Element {
         lastRunAt: new Date().toISOString().slice(0, 10),
       }),
       () =>
-        authedFetch(`${ENDPOINT}/${encodeURIComponent(skillId)}/run`, {
-          method: 'POST',
-        }),
+        api.post<unknown>(
+          `${SKILLS_PATH}/${encodeURIComponent(skillId)}/run`,
+        ) as Promise<SkillMutationResponse>,
     ).then((ok) => {
       if (ok) openInJarvis(`Run skill ${skill.slug} now.`);
     });
@@ -196,7 +211,7 @@ export default function SkillsPage(): JSX.Element {
     return (
       <MissingBackendNotice
         title={t('marketplaceTitle')}
-        endpoint={ENDPOINT}
+        endpoint={PUBLIC_ENDPOINT}
         description="The owner-skills API has not been wired in api-gateway yet."
       />
     );
@@ -206,7 +221,7 @@ export default function SkillsPage(): JSX.Element {
     return (
       <MissingBackendNotice
         title={t('marketplaceTitle')}
-        endpoint={ENDPOINT}
+        endpoint={PUBLIC_ENDPOINT}
         description="The owner-skills API could not be reached. No skills are shown until it responds."
       />
     );
