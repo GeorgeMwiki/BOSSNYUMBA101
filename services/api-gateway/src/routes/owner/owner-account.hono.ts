@@ -72,6 +72,7 @@ import {
   getOwnerSettings,
   upsertOwnerSettings,
   updateOwnerProfile,
+  listAcceptedMembers,
   listPendingInvites,
   createInvite,
   rotateInviteForResend,
@@ -119,6 +120,38 @@ function dbUnavailable(c: unknown) {
 function getDb(c: unknown): RepoDb | null {
   const db = (c as { get: Function }).get('db');
   return (db as RepoDb | undefined) ?? null;
+}
+
+/**
+ * A db handle that MAY expose drizzle's `.transaction(cb)`. Production clients
+ * always do; the unit-test recording stubs (which pre-inject a `db` exposing
+ * only `execute`) do not.
+ */
+type TxCapableDb = RepoDb & {
+  transaction?: (cb: (tx: RepoDb) => Promise<unknown>) => Promise<unknown>;
+};
+
+/**
+ * Run `work` inside a single DB transaction so a failure mid-sequence rolls
+ * back every write atomically (no orphaned rows). On real drizzle clients this
+ * opens a (possibly nested → SAVEPOINT) transaction; `databaseMiddleware`
+ * already runs the request inside the tenant-bound outer transaction, so this
+ * nests as a SAVEPOINT and the outer GUCs (RLS tenant context) stay live.
+ *
+ * When the handle does not expose `.transaction` (unit-test stubs without a
+ * live Postgres), we fall back to running `work` directly on the same handle —
+ * the test asserts the write SEQUENCE, not real ACID rollback. Production
+ * handles always take the transactional path.
+ */
+async function runInTx<T>(
+  db: RepoDb,
+  work: (tx: RepoDb) => Promise<T>,
+): Promise<T> {
+  const candidate = db as TxCapableDb;
+  if (typeof candidate.transaction === 'function') {
+    return (await candidate.transaction((tx) => work(tx))) as T;
+  }
+  return work(db);
 }
 
 // ---------------------------------------------------------------------------
@@ -342,39 +375,12 @@ ownerAccountRouter.get('/co-owners', async (c) => {
   const db = getDb(c);
   if (!db) return dbUnavailable(c);
   try {
-    // Accepted members: real users in this tenant (excluding the platform-admin
-    // service roles). status maps users.status → FE ACTIVE/PENDING/SUSPENDED.
-    const usersResult = await db.execute(sql`
-      SELECT id, email, first_name, last_name, phone, status, is_owner,
-             last_login_at, created_at
-        FROM users
-       WHERE tenant_id = ${auth.tenantId}
-       ORDER BY created_at ASC
-       LIMIT 500
-    `);
-    const userRows =
-      (usersResult as unknown as Record<string, unknown>[] | { rows?: Record<string, unknown>[] });
-    const rows = Array.isArray(userRows) ? userRows : (userRows.rows ?? []);
-    const members = rows.map((row) => {
-      const statusRaw = String(row.status ?? '');
-      const status =
-        statusRaw === 'active'
-          ? 'ACTIVE'
-          : statusRaw === 'suspended' || statusRaw === 'deactivated'
-            ? 'SUSPENDED'
-            : 'PENDING';
-      return {
-        id: String(row.id),
-        email: String(row.email ?? ''),
-        firstName: String(row.first_name ?? ''),
-        lastName: String(row.last_name ?? ''),
-        phone: (row.phone as string | null) ?? null,
-        role: row.is_owner ? 'OWNER' : 'CO_OWNER',
-        status,
-        lastLogin: (row.last_login_at as string | null) ?? null,
-        properties: [] as string[],
-      };
-    });
+    // Accepted members: real users in this tenant, each carrying their REAL
+    // property-access scope resolved from the co-owner invite they accepted
+    // (co_owner_invites.property_access — the only persisted scope; see
+    // listAcceptedMembers). status maps users.status → FE ACTIVE/PENDING/
+    // SUSPENDED. The owner-portal Users tab renders member.properties.
+    const members = await listAcceptedMembers(db, auth.tenantId);
     const invites = await listPendingInvites(db, auth.tenantId);
     return c.json({ success: true, data: [...members, ...invites] });
   } catch (error) {
@@ -402,20 +408,32 @@ ownerAccountRouter.post(
     if (!db) return dbUnavailable(c);
     const body = c.req.valid('json');
     try {
-      const invite = await createInvite(db, auth.tenantId, auth.userId, body);
-      // Resolve the caller's locale so the invite email is single-language
-      // (CLAUDE.md: greetings strictly single-language per active locale).
+      // Resolve the caller's locale FIRST (read-only) so the invite email is
+      // single-language (CLAUDE.md: greetings strictly single-language per
+      // active locale). Kept OUT of the transaction below — it is a pure read.
       const settings = await getOwnerSettings(db, auth.tenantId, auth.userId);
-      await enqueueInviteEmail(db, {
-        tenantId: auth.tenantId,
-        invitedBy: auth.userId,
-        email: invite.email,
-        firstName: invite.firstName,
-        token: invite.token,
-        role: invite.role,
-        locale: settings.language,
-        idempotencyKey: `co-owner-invite:${invite.id}`,
-        correlationId: `co-owner-invite:${invite.id}`,
+      // ATOMIC (fix M15): the invite row INSERT and the email-enqueue INSERT run
+      // in ONE transaction. Previously they were two un-transacted writes — if
+      // the enqueue failed AFTER the invite row was created, the owner saw
+      // "Failed to send invitation" and retried, leaving an ORPHANED pending
+      // invite. Now a failure in the enqueue rolls back the invite row, so the
+      // owner's retry starts clean. Idempotency is preserved: the enqueue keys
+      // on `co-owner-invite:${invite.id}` (the invite's own id) and dedupes via
+      // notification_dispatch_log's partial unique index.
+      const invite = await runInTx(db, async (tx) => {
+        const created = await createInvite(tx, auth.tenantId, auth.userId, body);
+        await enqueueInviteEmail(tx, {
+          tenantId: auth.tenantId,
+          invitedBy: auth.userId,
+          email: created.email,
+          firstName: created.firstName,
+          token: created.token,
+          role: created.role,
+          locale: settings.language,
+          idempotencyKey: `co-owner-invite:${created.id}`,
+          correlationId: `co-owner-invite:${created.id}`,
+        });
+        return created;
       });
       // Never leak the raw token to the client — the accept link is delivered
       // only via the email channel.
@@ -497,7 +515,29 @@ ownerAccountRouter.post(
     if (!db) return dbUnavailable(c);
     const id = c.req.param('id');
     try {
-      const invite = await rotateInviteForResend(db, auth.tenantId, id);
+      // Resolve locale first (pure read), then rotate + enqueue ATOMICALLY in
+      // one transaction (mirrors the invite path's M15 fix): a failed enqueue
+      // rolls back the token rotation, so the prior token/email stay coherent
+      // and the owner's retry starts from a consistent state.
+      const settings = await getOwnerSettings(db, auth.tenantId, auth.userId);
+      const invite = await runInTx(db, async (tx) => {
+        const rotated = await rotateInviteForResend(tx, auth.tenantId, id);
+        if (!rotated) return null;
+        await enqueueInviteEmail(tx, {
+          tenantId: auth.tenantId,
+          invitedBy: auth.userId,
+          email: rotated.email,
+          firstName: rotated.firstName,
+          token: rotated.token,
+          role: rotated.role,
+          locale: settings.language,
+          // New idempotency key per resend (token rotated) so the dispatcher
+          // ships a fresh email rather than collapsing into the prior row.
+          idempotencyKey: `co-owner-invite-resend:${rotated.id}:${rotated.token.slice(0, 12)}`,
+          correlationId: `co-owner-invite:${rotated.id}`,
+        });
+        return rotated;
+      });
       if (!invite) {
         return c.json(
           {
@@ -507,20 +547,6 @@ ownerAccountRouter.post(
           404,
         );
       }
-      const settings = await getOwnerSettings(db, auth.tenantId, auth.userId);
-      await enqueueInviteEmail(db, {
-        tenantId: auth.tenantId,
-        invitedBy: auth.userId,
-        email: invite.email,
-        firstName: invite.firstName,
-        token: invite.token,
-        role: invite.role,
-        locale: settings.language,
-        // New idempotency key per resend (token rotated) so the dispatcher
-        // ships a fresh email rather than collapsing into the prior row.
-        idempotencyKey: `co-owner-invite-resend:${invite.id}:${invite.token.slice(0, 12)}`,
-        correlationId: `co-owner-invite:${invite.id}`,
-      });
       return c.json({ success: true, data: { id: invite.id, resent: true } });
     } catch (error) {
       moduleLogger.error('co-owner resend failed', {

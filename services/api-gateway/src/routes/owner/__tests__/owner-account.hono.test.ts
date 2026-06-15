@@ -349,6 +349,193 @@ describe('owner-account co-owner invites (stub db)', () => {
     expect(joined).toMatch(/notification_dispatch_log/);
   });
 
+  it('M12: the dispatch-log INSERT ON CONFLICT names the PARTIAL index predicate', async () => {
+    // Migration 0091 idx_notification_dispatch_log_idempotency is PARTIAL
+    // (WHERE idempotency_key IS NOT NULL). A bare ON CONFLICT (cols) fails to
+    // match the partial index and raises 42P10 — 500-ing the route. The fixed
+    // statement must repeat the predicate so the inference matches.
+    const db = makeStubDb((text) => {
+      if (text.includes('owner_settings') && text.toLowerCase().includes('select')) {
+        return [
+          {
+            language: 'en',
+            currency: 'USD',
+            timezone: 'UTC',
+            date_format: 'DD/MM/YYYY',
+            notification_prefs: {},
+            updated_at: null,
+          },
+        ];
+      }
+      return [];
+    });
+    const res = await mountWithDb(db).request('/owner/account/co-owners/invite', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        Authorization: bearer(),
+      },
+      body: JSON.stringify({
+        email: 'cofounder@example.com',
+        firstName: 'Ada',
+        role: 'CO_OWNER',
+      }),
+    });
+    expect(res.status).toBe(201);
+    const dispatchInsert = db.calls.find(
+      (call) =>
+        call.text.includes('notification_dispatch_log') &&
+        call.text.toLowerCase().includes('insert'),
+    );
+    expect(dispatchInsert).toBeDefined();
+    // The ON CONFLICT must carry the partial-index WHERE predicate.
+    expect(dispatchInsert!.text).toMatch(/ON CONFLICT[\s\S]*idempotency_key\s+IS NOT NULL/i);
+    expect(dispatchInsert!.text).toMatch(/DO NOTHING/i);
+  });
+
+  it('M15: invite create + email enqueue run inside ONE transaction (atomic, no orphan)', async () => {
+    // A tx-capable stub: .transaction(cb) runs cb against a recording tx whose
+    // writes are ONLY committed to the parent call-log if cb resolves. If cb
+    // throws (enqueue fails), the tx writes are discarded — modelling rollback.
+    const committed: Array<{ text: string; params: unknown[] }> = [];
+    interface TxStub {
+      execute: (q: unknown) => Promise<unknown>;
+      transaction: (cb: (tx: TxStub) => Promise<unknown>) => Promise<unknown>;
+      readonly calls: Array<{ text: string; params: unknown[] }>;
+    }
+    const makeTxStub = (
+      responder: (text: string, params: unknown[]) => Record<string, unknown>[],
+      enqueueFails: boolean,
+    ): TxStub => {
+      const calls: Array<{ text: string; params: unknown[] }> = [];
+      const exec = async (q: unknown) => {
+        const { sqlText, params } = extractSqlAndParams(q);
+        calls.push({ text: sqlText, params });
+        if (
+          enqueueFails &&
+          sqlText.includes('notification_dispatch_log') &&
+          sqlText.toLowerCase().includes('insert')
+        ) {
+          throw new Error('simulated dispatcher enqueue failure');
+        }
+        return responder(sqlText, params);
+      };
+      return {
+        calls,
+        execute: exec,
+        async transaction(cb) {
+          // Buffer tx writes; only flush to `committed` if the callback resolves.
+          const staged: Array<{ text: string; params: unknown[] }> = [];
+          const txHandle: TxStub = {
+            calls: staged,
+            transaction: this.transaction.bind(this),
+            execute: async (q: unknown) => {
+              const { sqlText, params } = extractSqlAndParams(q);
+              staged.push({ text: sqlText, params });
+              if (
+                enqueueFails &&
+                sqlText.includes('notification_dispatch_log') &&
+                sqlText.toLowerCase().includes('insert')
+              ) {
+                throw new Error('simulated dispatcher enqueue failure');
+              }
+              return responder(sqlText, params);
+            },
+          };
+          const out = await cb(txHandle);
+          committed.push(...staged); // commit only on success
+          return out;
+        },
+      };
+    };
+
+    const responder = (text: string): Record<string, unknown>[] => {
+      if (text.includes('owner_settings') && text.toLowerCase().includes('select')) {
+        return [
+          {
+            language: 'en',
+            currency: 'USD',
+            timezone: 'UTC',
+            date_format: 'DD/MM/YYYY',
+            notification_prefs: {},
+            updated_at: null,
+          },
+        ];
+      }
+      return [];
+    };
+
+    // Failure path: enqueue throws → invite INSERT must NOT be committed.
+    const failingDb = makeTxStub(responder, true);
+    const failRes = await mountWithDb(failingDb as unknown as StubDb).request(
+      '/owner/account/co-owners/invite',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', Authorization: bearer() },
+        body: JSON.stringify({ email: 'a@b.com', firstName: 'Ada', role: 'CO_OWNER' }),
+      },
+    );
+    expect(failRes.status).toBe(500);
+    // The invite row INSERT was staged inside the tx but the enqueue threw, so
+    // the tx never committed — NO co_owner_invites write reaches `committed`.
+    const committedInviteWrite = committed.find(
+      (call) =>
+        call.text.includes('co_owner_invites') &&
+        call.text.toLowerCase().includes('insert'),
+    );
+    expect(committedInviteWrite).toBeUndefined(); // rolled back — no orphan
+
+    // Success path: both writes commit together inside the one transaction.
+    const okDb = makeTxStub(responder, false);
+    committed.length = 0;
+    const okRes = await mountWithDb(okDb as unknown as StubDb).request(
+      '/owner/account/co-owners/invite',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', Authorization: bearer() },
+        body: JSON.stringify({ email: 'a@b.com', firstName: 'Ada', role: 'CO_OWNER' }),
+      },
+    );
+    expect(okRes.status).toBe(201);
+    const okJoined = committed.map((c) => c.text).join(' | ');
+    expect(okJoined).toMatch(/co_owner_invites/);
+    expect(okJoined).toMatch(/notification_dispatch_log/);
+  });
+
+  it('L3: GET /co-owners resolves a member\'s REAL property access (not [])', async () => {
+    const db = makeStubDb((text) => {
+      // The accepted-members query joins co_owner_invites.property_access.
+      if (text.includes('FROM users') && text.includes('property_access')) {
+        return [
+          {
+            id: 'u-1',
+            email: 'co@b.com',
+            first_name: 'Asha',
+            last_name: 'M',
+            phone: null,
+            status: 'active',
+            is_owner: false,
+            last_login_at: null,
+            created_at: '2026-06-14T00:00:00.000Z',
+            property_access: ['Palm Gardens', 'Sunrise Block'],
+          },
+        ];
+      }
+      return []; // listPendingInvites → none
+    });
+    const res = await mountWithDb(db).request('/owner/account/co-owners', {
+      headers: { Authorization: bearer() },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const member = body.data.find((m: { id: string }) => m.id === 'u-1');
+    expect(member).toBeDefined();
+    expect(member.properties).toEqual(['Palm Gardens', 'Sunrise Block']);
+    // Sanity: the members query actually joined property_access (not [] inline).
+    const joined = db.calls.map((c) => c.text).join(' | ');
+    expect(joined).toMatch(/property_access/);
+  });
+
   it('DELETE /co-owners/:id returns uniform-404 when no pending invite matches', async () => {
     const db = makeStubDb(() => []); // UPDATE ... RETURNING id → no rows
     const res = await mountWithDb(db).request(

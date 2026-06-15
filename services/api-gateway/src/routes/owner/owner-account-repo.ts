@@ -270,6 +270,89 @@ function inviteRowToMember(row: Record<string, unknown>): CoOwnerMember {
   };
 }
 
+/**
+ * Map a `users` row (joined with its resolved invite property_access) into the
+ * FE member shape. `users.status` maps to the FE ACTIVE/PENDING/SUSPENDED set.
+ * `property_access` is the JSONB array carried over from the co-owner invite the
+ * member accepted (see listAcceptedMembers) — it is the REAL persisted access
+ * scope, not a hardcoded empty list.
+ */
+function userRowToMember(row: Record<string, unknown>): CoOwnerMember {
+  const statusRaw = String(row.status ?? '');
+  const status: 'ACTIVE' | 'PENDING' | 'SUSPENDED' =
+    statusRaw === 'active'
+      ? 'ACTIVE'
+      : statusRaw === 'suspended' || statusRaw === 'deactivated'
+        ? 'SUSPENDED'
+        : 'PENDING';
+
+  const rawProps = row.property_access;
+  let properties: string[] = [];
+  if (Array.isArray(rawProps)) {
+    properties = rawProps.map((p) => String(p));
+  } else if (typeof rawProps === 'string') {
+    try {
+      const parsed = JSON.parse(rawProps);
+      if (Array.isArray(parsed)) properties = parsed.map((p) => String(p));
+    } catch {
+      properties = [];
+    }
+  }
+
+  return {
+    id: String(row.id),
+    email: String(row.email ?? ''),
+    firstName: String(row.first_name ?? ''),
+    lastName: String(row.last_name ?? ''),
+    phone: (row.phone as string | null) ?? null,
+    role: row.is_owner ? 'OWNER' : 'CO_OWNER',
+    status,
+    lastLogin: (row.last_login_at as string | null) ?? null,
+    properties,
+  };
+}
+
+/**
+ * List the tenant's accepted members (real `users` rows) with each member's
+ * REAL property-access scope resolved from the co-owner invite they accepted.
+ *
+ * WHERE PROPERTY ACCESS LIVES (read before editing): a co-owner's property
+ * scope is captured on `co_owner_invites.property_access` (a JSONB array) at
+ * invite time and PRESERVED when the invite flips to `accepted` — the accept
+ * flow (services/api-gateway/src/routes/invite-accept-repo.ts:acceptInvite)
+ * provisions the user + links the role but does NOT copy property_access onto
+ * `users` (there is no per-user property-access column; the only persisted
+ * scope is the invite row). We therefore LEFT JOIN LATERAL the member's most
+ * recent accepted invite (matched on tenant_id + case-insensitive email) to
+ * recover the access list. The owner row (is_owner) and any member with no
+ * matching accepted invite resolve to an empty list — an honest "all / none"
+ * rather than a fabricated scope.
+ */
+export async function listAcceptedMembers(
+  db: RepoDb,
+  tenantId: string,
+): Promise<ReadonlyArray<CoOwnerMember>> {
+  const result = await db.execute(sql`
+    SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.status,
+           u.is_owner, u.last_login_at, u.created_at,
+           ci.property_access
+      FROM users u
+      LEFT JOIN LATERAL (
+        SELECT property_access
+          FROM co_owner_invites
+         WHERE tenant_id = u.tenant_id
+           AND LOWER(email) = LOWER(u.email)
+           AND status = 'accepted'
+         ORDER BY accepted_at DESC NULLS LAST, created_at DESC
+         LIMIT 1
+      ) ci ON TRUE
+     WHERE u.tenant_id = ${tenantId}
+     ORDER BY u.created_at ASC
+     LIMIT 500
+  `);
+  return rowsOf(result).map(userRowToMember);
+}
+
 /** List the tenant's pending (non-revoked, non-accepted) invitations. */
 export async function listPendingInvites(
   db: RepoDb,
@@ -414,6 +497,18 @@ export async function revokeInvite(
  * (WHERE delivery_status='pending' ... FOR UPDATE SKIP LOCKED) and ships them
  * through the configured provider — this is NOT a fake/no-op. Idempotent on
  * (tenant_id, idempotency_key) so a retried resend collapses into the same row.
+ *
+ * ON CONFLICT INFERENCE (migration 0091): the idempotency unique index is
+ * PARTIAL — `CREATE UNIQUE INDEX idx_notification_dispatch_log_idempotency ON
+ * notification_dispatch_log (tenant_id, idempotency_key) WHERE idempotency_key
+ * IS NOT NULL` (0091:86-88). Postgres only matches an ON CONFLICT inference
+ * clause to a partial unique index when the clause REPEATS the index's WHERE
+ * predicate; a bare `ON CONFLICT (tenant_id, idempotency_key)` fails to match
+ * and the INSERT raises 42P10 ("no unique or exclusion constraint matching the
+ * ON CONFLICT specification"), 500-ing the invite/resend route. We therefore
+ * append the same `WHERE idempotency_key IS NOT NULL` predicate so the clause
+ * matches the partial index and the dedupe DO NOTHING fires. idempotencyKey is
+ * always non-null here, so the predicate holds on every insert.
  */
 export async function enqueueInviteEmail(
   db: RepoDb,
@@ -444,7 +539,8 @@ export async function enqueueInviteEmail(
       })}::jsonb,
       ${params.correlationId}, ${params.idempotencyKey}, 0, 'pending', NOW(), NOW()
     )
-    ON CONFLICT (tenant_id, idempotency_key) DO NOTHING
+    ON CONFLICT (tenant_id, idempotency_key) WHERE idempotency_key IS NOT NULL
+    DO NOTHING
   `);
 }
 
