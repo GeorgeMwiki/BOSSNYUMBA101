@@ -42,7 +42,11 @@ import {
 } from './lib/idempotency-store-factory';
 import { buildWebhookIdempotencyKey } from './lib/idempotency-store';
 import { buildMpesaReceiptUrl } from './lib/mpesa-receipt';
-import { PaymentOrchestrationService, CreatePaymentRequest } from './services/payment-orchestration.service';
+import {
+  PaymentOrchestrationService,
+  CreatePaymentRequest,
+  isTerminalBookingError,
+} from './services/payment-orchestration.service';
 import { LedgerService } from './services/ledger.service';
 import { ReconciliationService } from './services/reconciliation.service';
 import { StatementGenerationService, GenerateStatementRequest } from './services/statement-generation.service';
@@ -1612,7 +1616,22 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
           logger.info({ eventType: event.type }, 'Unhandled Stripe event type');
       }
     } catch (err) {
-      // Processing failed — release the claim (compare-and-delete on OUR token)
+      // M13: a TERMINAL booking failure (e.g. payment currency has no matching
+      // holding account) is deterministic. Releasing the claim + re-throwing
+      // (non-2xx) would make Stripe retry forever. Instead KEEP the claim and
+      // ack 200 so the retry is deduplicated and stops; the SUCCEEDED intent
+      // persists and this alert flags it for manual reconciliation (money not
+      // dropped).
+      if (isTerminalBookingError(err)) {
+        logger.error(
+          { err, eventId: event.id, idemKey: stripeIdemKey },
+          'Stripe webhook hit a TERMINAL booking error (e.g. currency mismatch); ' +
+            'keeping idempotency claim to STOP retries; payment requires manual reconciliation',
+        );
+        res.json({ received: true });
+        return;
+      }
+      // TRANSIENT failure — release the claim (compare-and-delete on OUR token)
       // so Stripe's retry reprocesses instead of being silently deduplicated,
       // then surface the error to the express handler (non-2xx → Stripe retry).
       await webhookIdempotencyStore.release(stripeIdemKey, stripeClaimToken);
@@ -1744,7 +1763,21 @@ async function processStkCallbackRoute(
       );
     }
   } catch (err) {
-    // M8: processing failed — release the claim so the provider's retry
+    // M13: a TERMINAL booking failure (e.g. payment currency has no matching
+    // holding account) is deterministic — releasing the claim would poison-pill
+    // Safaricom into infinite retry. KEEP the claim so the retry is deduplicated
+    // and stops; the SUCCEEDED intent persists and this alert flags it for
+    // manual reconciliation (money not dropped).
+    if (isTerminalBookingError(err)) {
+      logger.error(
+        { err, checkoutRequestId: callback.CheckoutRequestID, idemKey },
+        'M-PESA STK hit a TERMINAL booking error (e.g. currency mismatch); ' +
+          'keeping idempotency claim to STOP retries; payment requires manual reconciliation',
+      );
+      res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+      return;
+    }
+    // M8: TRANSIENT failure — release the claim so the provider's retry
     // reprocesses instead of being silently deduplicated. Compare-and-
     // delete on the claim token so we only drop OUR claim (MUST-FIX 2).
     await webhookIdempotencyStore.release(idemKey, claimToken);
@@ -1997,10 +2030,25 @@ app.post('/webhooks/mpesa/c2b/confirm', async (req: Request, res: Response) => {
       // deterministic receipt resource URL from it (see STK path).
       receiptUrl: buildMpesaReceiptUrl(c2b.TransID),
     }).catch(async (err) => {
-      // M8: release the claim so Daraja's retry reprocesses instead of
-      // being deduplicated. Compare-and-delete on the claim token so we
-      // only drop OUR claim (MUST-FIX 2). Failures are logged but must
-      // not propagate — we still return 200 so Daraja stops the attempt.
+      // M13: a TERMINAL booking failure (e.g. the payment's currency has no
+      // matching platform-holding account) is DETERMINISTIC — retrying can
+      // never fix it. If we released the claim here, Daraja would re-deliver →
+      // re-throw → re-release → RETRY FOREVER (a poison pill). So we KEEP the
+      // claim: the next retry is deduplicated and Daraja stops. The cash is NOT
+      // dropped — the SUCCEEDED intent persists with its amount + external id and
+      // this LOUD alert flags it for manual reconciliation.
+      if (isTerminalBookingError(err)) {
+        logger.error(
+          { err, transId: c2b.TransID, idemKey: c2bIdemKey },
+          'C2B orchestration hit a TERMINAL booking error (e.g. currency mismatch); ' +
+            'keeping idempotency claim to STOP retries; payment requires manual reconciliation'
+        );
+        return;
+      }
+      // M8: TRANSIENT failure — release the claim so Daraja's retry reprocesses
+      // instead of being deduplicated. Compare-and-delete on the claim token so we
+      // only drop OUR claim (MUST-FIX 2). Failures are logged but must not
+      // propagate — we still return 200 so Daraja stops the attempt.
       await webhookIdempotencyStore.release(c2bIdemKey, c2bClaimToken);
       logger.error(
         { err, transId: c2b.TransID, idemKey: c2bIdemKey },

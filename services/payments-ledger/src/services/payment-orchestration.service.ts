@@ -47,6 +47,56 @@ export interface ILogger {
 }
 
 /**
+ * TERMINAL booking failure (M13). Raised when a succeeded payment cannot be
+ * booked to the ledger because the intent's currency has NO matching
+ * platform-holding account for the tenant — a DETERMINISTIC condition that
+ * retrying can never fix.
+ *
+ * Why a distinct typed error: a plain `Error` thrown on a webhook-driven path
+ * is treated by the provider as "transient — retry". On the M-Pesa C2B path the
+ * route releases the idempotency claim on ANY thrown error so Daraja re-delivers
+ * → re-throws → re-releases → DARAJA RETRIES FOREVER (a poison pill). The C2B /
+ * STK / Stripe webhook routes inspect `terminal === true` and, instead of
+ * releasing the claim, KEEP it (so the provider's next retry is deduplicated and
+ * STOPS) while logging LOUD for manual reconciliation. The cash is NOT silently
+ * dropped: the SUCCEEDED PaymentIntent persists with its amount + provider
+ * external id, the alert names it, and the reconciliation sweep can attribute it.
+ */
+export class CurrencyMismatchBookingError extends Error {
+  readonly code = 'PAYMENT_CURRENCY_MISMATCH_UNBOOKABLE';
+  /** Marks this as terminal so webhook routes do NOT trigger provider retry. */
+  readonly terminal = true;
+  constructor(
+    public readonly paymentIntentId: PaymentIntentId,
+    public readonly tenantId: TenantId,
+    public readonly intentCurrency: CurrencyCode,
+    public readonly holdingCurrency: CurrencyCode,
+  ) {
+    super(
+      `PAYMENT_CURRENCY_MISMATCH_UNBOOKABLE: payment ${paymentIntentId} is in ${intentCurrency} ` +
+        `but tenant ${tenantId} has no ${intentCurrency} platform-holding account ` +
+        `(default holding is ${holdingCurrency}). Cannot book to the ledger; ` +
+        `payment requires manual reconciliation. NOT retrying (terminal).`,
+    );
+    this.name = 'CurrencyMismatchBookingError';
+  }
+}
+
+/**
+ * Type guard — a booking/processing error the provider must NOT retry.
+ * Used by webhook routes to decide claim-release (retry) vs claim-keep
+ * (terminal, stop retrying) without coupling to the concrete error class.
+ */
+export function isTerminalBookingError(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'terminal' in err &&
+    (err as { terminal?: unknown }).terminal === true
+  );
+}
+
+/**
  * Create payment request
  */
 export interface CreatePaymentRequest {
@@ -103,7 +153,19 @@ export interface PaymentRefundResult {
  * satisfies this interface.
  */
 export interface ILedgerPoster {
-  postJournalEntry(request: CreateJournalEntryRequest): Promise<unknown>;
+  /**
+   * Books a balanced journal. `options.idempotencyKey` makes the post
+   * idempotent (a retry under the same key returns the original journal
+   * instead of double-posting) — the orchestrator relies on this for the
+   * per-payment + per-TransID dedupe keys. The shape is declared inline
+   * (rather than importing `PostJournalOptions` from `ledger.service`) to
+   * keep the dependency inverted and avoid an import cycle; `LedgerService`
+   * structurally satisfies it.
+   */
+  postJournalEntry(
+    request: CreateJournalEntryRequest,
+    options?: { readonly idempotencyKey?: string },
+  ): Promise<unknown>;
   findEntriesByPaymentIntent(
     paymentIntentId: PaymentIntentId,
     tenantId: TenantId,
@@ -505,14 +567,18 @@ export class PaymentOrchestrationService {
       return;
     }
 
-    // Resolve the accounts for the rent-payment booking.
-    const holding = await this.accountRepository.findPlatformAccounts(
+    // Resolve the holding account for the rent-payment booking, CURRENCY-AWARE
+    // (M13). The default `findPlatformAccounts` returns an arbitrary holding for
+    // the tenant — which may be in a DIFFERENT currency than this intent (a
+    // pre-created C2B intent can be in any tenant-supported currency). Booking
+    // `gross` (intent currency) onto a mismatched holding makes
+    // `LedgerService.postJournalEntry` throw "Currency mismatch"; on the
+    // at-least-once C2B webhook path that throw poison-pills Daraja into infinite
+    // retry. So we resolve a holding whose currency MATCHES the intent.
+    const holding = await this.resolveHoldingForCurrency(
       tenantId,
-      'PLATFORM_HOLDING',
+      paymentIntent,
     );
-    if (!holding) {
-      throw new Error(`Platform holding account not found for tenant ${tenantId}`);
-    }
     const liability = await this.accountRepository.findByCustomerAndType(
       tenantId,
       paymentIntent.customerId,
@@ -559,14 +625,20 @@ export class PaymentOrchestrationService {
       // Fee split (mirror of JournalTemplates.rentPayment's PLATFORM_FEE legs):
       // CREDIT holding (the fee leaves holding) / DEBIT platform-revenue (the
       // fee is earned). The journal stays balanced — gross debit/credit plus an
-      // equal-and-opposite PLATFORM_FEE pair.
-      const revenue = await this.accountRepository.findPlatformAccounts(
+      // equal-and-opposite PLATFORM_FEE pair. The revenue account is resolved
+      // CURRENCY-AWARE (M13) for the same reason as holding — a mismatched
+      // revenue leg would also throw "Currency mismatch" inside the ledger.
+      const revenue = await this.resolvePlatformAccountForCurrency(
         tenantId,
         'PLATFORM_REVENUE',
+        gross.currency,
       );
       if (!revenue) {
-        throw new Error(
-          `Platform revenue account not found for tenant ${tenantId} — cannot book platform fee`,
+        throw new CurrencyMismatchBookingError(
+          paymentIntent.id,
+          tenantId,
+          gross.currency,
+          holding.currency,
         );
       }
       lines.push(
@@ -610,6 +682,104 @@ export class PaymentOrchestrationService {
       amount: gross.toString(),
       platformFee: hasFee ? platformFee!.toString() : '0',
     });
+  }
+
+  /**
+   * Resolve the platform-holding account to book a payment into, ensuring its
+   * currency MATCHES the payment's currency (M13).
+   *
+   * The default `findPlatformAccounts(tenant, 'PLATFORM_HOLDING')` returns an
+   * arbitrary holding for the tenant. When a tenant operates in multiple
+   * currencies it has multiple holding accounts; the arbitrary one may not
+   * match THIS payment. Booking onto a mismatched holding throws "Currency
+   * mismatch" inside `LedgerService.postJournalEntry` — which, on the
+   * at-least-once C2B webhook path, poison-pills the provider into infinite
+   * retry.
+   *
+   *   - (a) If the default holding already matches the payment currency, use it.
+   *   - (a) Else look up a holding whose currency equals the payment currency
+   *         and route the booking there.
+   *   - (b) If NO holding exists in the payment currency, the payment is
+   *         genuinely unbookable as a rent receipt → throw the TERMINAL
+   *         {@link CurrencyMismatchBookingError} so webhook routes ack-and-
+   *         flag-for-reconciliation instead of retrying forever. (`findPlatform
+   *         Accounts` returning null at all is the pre-existing "no holding
+   *         configured" condition — kept as a transient throw so a genuinely
+   *         un-provisioned tenant is retried once provisioning lands.)
+   */
+  private async resolveHoldingForCurrency(
+    tenantId: TenantId,
+    paymentIntent: PaymentIntent,
+  ): Promise<Account> {
+    const currency = paymentIntent.amount.currency;
+    const defaultHolding = await this.accountRepository!.findPlatformAccounts(
+      tenantId,
+      'PLATFORM_HOLDING',
+    );
+    if (!defaultHolding) {
+      // No holding configured at all — transient (provisioning), retry.
+      throw new Error(`Platform holding account not found for tenant ${tenantId}`);
+    }
+    if (defaultHolding.currency === currency) {
+      return defaultHolding;
+    }
+
+    // (a) Route to a currency-matched holding if one exists.
+    const matched = await this.resolvePlatformAccountForCurrency(
+      tenantId,
+      'PLATFORM_HOLDING',
+      currency,
+    );
+    if (matched) {
+      this.logger.info('Routed payment to currency-matched holding account', {
+        paymentIntentId: paymentIntent.id,
+        tenantId,
+        currency,
+        holdingId: matched.id,
+      });
+      return matched;
+    }
+
+    // (b) Genuinely unbookable — TERMINAL. Do NOT throw a bare Error (would
+    // trigger infinite provider retry on the C2B path). The SUCCEEDED intent
+    // persists with its amount + external id; this LOUD alert names it so an
+    // operator / the reconciliation sweep can attribute it. Never silently drop.
+    this.logger.error(
+      'Payment currency has no matching platform-holding account — ' +
+        'NOT booked, requires manual reconciliation (terminal, not retrying)',
+      {
+        paymentIntentId: paymentIntent.id,
+        tenantId,
+        intentCurrency: currency,
+        defaultHoldingCurrency: defaultHolding.currency,
+        externalId: paymentIntent.externalId,
+        amount: paymentIntent.amount.toString(),
+      },
+    );
+    throw new CurrencyMismatchBookingError(
+      paymentIntent.id,
+      tenantId,
+      currency,
+      defaultHolding.currency,
+    );
+  }
+
+  /**
+   * Find a platform account of `type` whose currency equals `currency`, or null.
+   * Platform accounts have neither a customerId nor an ownerId.
+   */
+  private async resolvePlatformAccountForCurrency(
+    tenantId: TenantId,
+    type: 'PLATFORM_HOLDING' | 'PLATFORM_REVENUE',
+    currency: CurrencyCode,
+  ): Promise<Account | null> {
+    const candidates = await this.accountRepository!.find({
+      tenantId,
+      type,
+      currency,
+    });
+    const match = candidates.find((a) => !a.customerId && !a.ownerId);
+    return match ?? null;
   }
 
   /**
