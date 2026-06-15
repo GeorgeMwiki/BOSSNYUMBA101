@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2,
   ChevronDown,
-  HelpCircle,
   Menu,
   X,
   ArrowRight,
@@ -410,7 +409,6 @@ export function MainNav({ locale }: MainNavProps) {
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
               )}
             >
-              <Users className="h-4 w-4" />
               {labels.whoWeServe}
               <ChevronDown
                 className={cn(
@@ -489,7 +487,6 @@ export function MainNav({ locale }: MainNavProps) {
             href="/contact"
             className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
           >
-            <HelpCircle className="h-4 w-4 inline mr-1" />
             {labels.support}
           </Link>
         </div>

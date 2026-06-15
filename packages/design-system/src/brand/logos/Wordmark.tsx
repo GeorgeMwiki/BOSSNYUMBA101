@@ -139,10 +139,15 @@ export function WordmarkOnly({
 }
 
 /**
- * Render "BossNyumba" as a single compound word with a subtle amber
- * baseline dot between the two capitalised syllables. Reads "BossNyumba"
- * but optically flags the internal word-break. If the label isn't the
- * canonical BossNyumba, renders plain text.
+ * Render "BossNyumba" as ONE clean compound word. The internal capital (N)
+ * already marks the Boss/Nyumba syllable break optically, so the wordmark
+ * needs no separator. For a subtle premium two-tone, "Nyumba" carries the
+ * brand signal hue while staying bonded to "Boss" (no space, no hyphen, no
+ * dot) — true to the single-word canonical brand.
+ *
+ * (An earlier version placed an amber baseline DOT between the syllables;
+ * it rendered as a visible "Boss·Nyumba" separator that read as two words
+ * and fought the one-word brand. Removed.)
  */
 function splitCompoundLabel(label: string): React.ReactNode {
   const trimmed = label.trim();
@@ -151,11 +156,7 @@ function splitCompoundLabel(label: string): React.ReactNode {
   return (
     <>
       <span>{match[1]}</span>
-      <span
-        aria-hidden="true"
-        className="mx-[0.02em] inline-block h-[0.14em] w-[0.14em] translate-y-[-0.04em] rounded-full bg-signal-500/85 align-baseline"
-      />
-      <span>{match[2]}</span>
+      <span className="text-signal-600">{match[2]}</span>
     </>
   );
 }
