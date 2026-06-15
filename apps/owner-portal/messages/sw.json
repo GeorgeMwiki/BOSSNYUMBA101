@@ -2397,7 +2397,9 @@
     "twoFactorManualKey": "Au weka ufunguo huu mwenyewe",
     "twoFactorRecoveryCodes": "Misimbo ya kurejesha (ihifadhi kwa usalama)",
     "twoFactorEnterCode": "Msimbo wa tarakimu 6",
-    "twoFactorConfirm": "Thibitisha na uwashe"
+    "twoFactorConfirm": "Thibitisha na uwashe",
+    "twoFactorQrAlt": "Msimbo wa QR wa usajili wa uthibitishaji wa hatua mbili",
+    "twoFactorQrUnavailable": "Msimbo wa QR haupatikani"
   },
   "financialPage": {
     "title": "Fedha",

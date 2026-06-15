@@ -2397,7 +2397,9 @@
     "twoFactorManualKey": "Or enter this key manually",
     "twoFactorRecoveryCodes": "Recovery codes (store these safely)",
     "twoFactorEnterCode": "6-digit code",
-    "twoFactorConfirm": "Confirm & enable"
+    "twoFactorConfirm": "Confirm & enable",
+    "twoFactorQrAlt": "Two-factor authentication enrollment QR code",
+    "twoFactorQrUnavailable": "QR code unavailable"
   },
   "financialPage": {
     "title": "Financial",

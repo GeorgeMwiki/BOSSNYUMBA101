@@ -47,6 +47,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { buildSessionCookie } from '../auth/supabase';
+import { getSharedPublicAiRateLimit } from '../middleware/public-ai-rate-limit';
 import type {
   OrgSignupService,
   OrgSignupSession,
@@ -116,6 +117,14 @@ function sessionCookieValue(session: OrgSignupSession): string {
 
 export function createOrgsRouter(deps: OrgsRouterDeps): Hono {
   const app = new Hono();
+
+  // Anonymous, pre-auth account-creation surface — guard with the per-IP
+  // public limiter (same shared bucket as the other /public surfaces, e.g.
+  // public-leads.hono.ts) so a single origin cannot mint tenants/Supabase
+  // accounts in a flood. The per-tenant token budget cannot apply here: no
+  // tenant exists yet.
+  const publicAiRateLimit = getSharedPublicAiRateLimit();
+  app.use('*', publicAiRateLimit.handler);
 
   app.post('/signup', zValidator('json', SignupSchema, (result, c) => {
     // Shape validation errors to the FORM contract: a flat `issues` array

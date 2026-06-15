@@ -7,6 +7,15 @@ interface QrCodeProps {
   /** Rendered pixel size of the square. Defaults to 200. */
   size?: number;
   className?: string;
+  /**
+   * Localised aria-label for the rendered QR symbol. The consumer
+   * resolves this through the active locale (`useTranslations`) — no
+   * English default lives here so the symbol always announces in the
+   * user's active language.
+   */
+  label: string;
+  /** Localised aria-label shown when the symbol cannot be encoded. */
+  unavailableLabel: string;
 }
 
 /**
@@ -15,7 +24,7 @@ interface QrCodeProps {
  * draws it as crisp inline SVG. A quiet zone of 4 modules is included per the
  * spec so authenticator apps reliably detect the symbol.
  */
-export function QrCode({ value, size = 200, className }: QrCodeProps) {
+export function QrCode({ value, size = 200, className, label, unavailableLabel }: QrCodeProps) {
   const rendered = useMemo(() => {
     try {
       const matrix = encodeQr(value);
@@ -29,7 +38,7 @@ export function QrCode({ value, size = 200, className }: QrCodeProps) {
     return (
       <div
         role="img"
-        aria-label="QR code unavailable"
+        aria-label={unavailableLabel}
         className={className}
         style={{ width: size, height: size }}
       />
@@ -41,7 +50,7 @@ export function QrCode({ value, size = 200, className }: QrCodeProps) {
   return (
     <svg
       role="img"
-      aria-label="Two-factor authentication enrollment QR code"
+      aria-label={label}
       width={size}
       height={size}
       viewBox={`0 0 ${view} ${view}`}

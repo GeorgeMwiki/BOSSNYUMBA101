@@ -68,6 +68,10 @@ export const ZOD_ALLOWLIST = new Map([
     'POST /:customerId/generate takes NO body — pure action trigger keyed by the customerId path param.',
   ],
   [
+    'services/api-gateway/src/routes/notifications.ts',
+    'legit: POST /:id/read takes NO JSON body — pure action trigger keyed by the :id path param + JWT subject (tenantId/userId from auth middleware). The mark-read UPDATE is scoped by id + tenant_id + applicant_user_id (anti-IDOR, idempotent COALESCE on read_at); there is no request payload to Zod-validate.',
+  ],
+  [
     'services/api-gateway/src/routes/stage/index.ts',
     'POST /nudges/:id/dismiss takes NO body — pure action trigger keyed by the nudge id path param.',
   ],

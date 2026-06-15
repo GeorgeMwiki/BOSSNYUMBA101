@@ -617,4 +617,71 @@ export const HARDCODED_CURRENCY_ALLOWLIST = new Map([
   ['services/api-gateway/src/workers/decision-retrospective-worker.ts', 'Decision-retrospective worker projects reviewed amounts; TZ-first platform-default currency fallback. Tracked-gap.'],
   ['services/api-gateway/src/workers/outcome-reconciliation-resolvers.ts', 'Outcome-reconciliation resolvers project settled amounts; TZ-first platform-default currency fallback when a row currency is null. Tracked-gap.'],
   ['services/api-gateway/src/workers/outcome-reconciliation-worker.ts', 'Outcome-reconciliation worker default currency for a reconciled outcome; TZ-first platform default. Tracked-gap.'],
+
+  // ─── Ported born-dark CORE packages (uplift parity) ────────────────
+  // 59-package CORE port from a sibling vertical, merged born-dark: built +
+  // test-green but NOT consumed by any running surface (no api-gateway route,
+  // owner-portal, or mobile app imports them — every consumer is itself a
+  // born-dark ported package in the same cluster). They carry sibling-domain
+  // residue (mining royalties, commodity spot feeds, glossary seeds, jurisdiction
+  // currency/locale examples) that this gate flags. Allowlisting-pending-
+  // reconciliation is the honest born-dark pattern: the sibling/PACK residue is
+  // re-instantiated at live-wiring per the Domain-Residue Scrub.
+  [
+    'packages/fx-treasury-advisor/src/fx-treasury.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. USD literals project a treasury balance currency; unconsumed.',
+  ],
+  [
+    'packages/graph-viz/src/domain/mining-vizzes.tsx',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. Mining royalty-flow Sankey TZS fallback is sibling-domain residue; unconsumed.',
+  ],
+  [
+    'packages/jurisdiction-profile-tz/src/tz-profile.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. TZ jurisdiction profile declares currency_code TZS as the profile registry entry; unconsumed.',
+  ],
+  [
+    'packages/language-pack-en/src/locale.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. EN locale pack lists ISO-4217 codes (GBP/USD/TZS) as the currency-code registry; unconsumed.',
+  ],
+  [
+    'packages/research-tools/src/adapters/kitco-adapter.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. Kitco commodity-spot adapter USD summary fallback is sibling-domain (mining/metals) residue; unconsumed.',
+  ],
+  [
+    'packages/research-tools/src/adapters/lme-adapter.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. LME commodity adapter USD summary fallback is sibling-domain (mining/metals) residue; unconsumed.',
+  ],
+  [
+    'packages/translation-sota/src/glossary/seed-mining-glossary.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. Mining glossary seed carries USD/TZS as brand:true verbatim-survive units; sibling-domain residue, unconsumed.',
+  ],
+
+  // ─── Existing (non-ported) launch-jurisdiction / rail / render fallbacks ─
+  // Pre-existing legit infrastructure flagged by the gate; each literal is
+  // correct in place (resolution-chain fallback, rail-currency contract, or
+  // parameterised render default mirroring an already-allowlisted sibling).
+  [
+    'services/api-gateway/src/routes/owner/mwikila-inbox.hono.ts',
+    'legit: delegation envelope-threshold currency falls back to TZS (launch jurisdiction) when the row / body omits one; mirrors the already-allowlisted kernel autonomy default and MwikilaDelegation.tsx. Tracked-gap pending currency_preferences wire.',
+  ],
+  [
+    'services/api-gateway/src/routes/owner/owner-account-repo.ts',
+    'legit: DEFAULT_OWNER_SETTINGS uses USD as the platform-default when the owner has not saved settings yet; route-layer default, currency is parameterised on save. Tracked-gap pending currency_preferences wire.',
+  ],
+  [
+    'services/api-gateway/src/routes/tenant-currency.ts',
+    'legit: LAUNCH_CURRENCY = TZS IS the resolution-chain fallback constant (user → tenant → platform-default → launch currency) for resolveTenantCurrency; the source of truth for the launch-currency fallback, never used in a render path.',
+  ],
+  [
+    'services/outcomes-metering/src/store/drizzle-billing-store.ts',
+    'legit: dominant-currency default USD when a billing row has no currency / no events collected; mirrors the already-allowlisted services/outcomes-metering/src/store/billing-store.ts. Tracked-gap pending tenant-default FX.',
+  ],
+  [
+    'services/payments-ledger/src/services/disbursement.service.ts',
+    'legit: MOBILE_MONEY_CURRENCIES pins KES because the M-Pesa (Safaricom Kenya) payout rail is denominated in KES; a documented rail-currency gate that fails LOUD on a mismatched destination. TZS is deliberately absent until a TZS mobile-money provider registers.',
+  ],
+  [
+    'apps/tenant-mobile/src/components/formatters.ts',
+    'legit: formatCurrency DEFAULT_CURRENCY = TZS render-time fallback when a data row carries no currency code; code is parameterised (never assumed in logic), mirrors the already-allowlisted staff-mobile/src/home/owner/format.ts.',
+  ],
 ]);

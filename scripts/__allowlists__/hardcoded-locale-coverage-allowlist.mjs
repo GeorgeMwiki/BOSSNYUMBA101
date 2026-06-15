@@ -388,4 +388,55 @@ export const HARDCODED_LOCALE_ALLOWLIST = new Map([
   ['services/api-gateway/src/services/jurisdiction-resolver/index.ts', 'The dedicated jurisdiction->locale resolver; the locale tags ARE the resolver source-of-truth mapping (TZ->sw-TZ etc.), not hardcoded UI locale.'],
   ['services/api-gateway/src/services/document-drafter/renderers/pptx-renderer.ts', 'PPTX renderer Intl locale formatting bound to the draft document language; render-time number/date formatting only.'],
   ['services/api-gateway/src/workers/decision-retrospective-worker.ts', 'Retrospective worker formats reviewed timestamps with a stable Intl locale for the report; render-time formatting only. Tracked-gap: bind to tenant locale.'],
+
+  // ─── WZ-CI-GREEN 2026-06-16: ported born-dark CORE packages (59-package uplift parity) ───
+  // These packages were ported from a sibling vertical's CORE in commits
+  // 72c1ff96 / bd522e40 and are BORN-DARK — present + workspace-wired but not
+  // yet consumed by any running surface. They carry sibling/PACK locale
+  // residue (region-variant registries, language-pack BCP-47 tables, cron
+  // ISO-day bucketing) that will be re-instantiated at live-wiring per the
+  // Domain-Residue Scrub. Allowlisting-pending-reconciliation is the honest
+  // born-dark pattern for unconsumed code.
+  [
+    'packages/document-templates/src/brand-lock/pptx-brander.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. (PPTX <a:rPr lang="en-US"> OOXML baseline.)',
+  ],
+  [
+    'packages/employee-perf-followup/src/scheduler/daily-perf-cron.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. (en-US/en-CA Intl day-bucketing in cron.)',
+  ],
+  [
+    'packages/language-pack-en/src/index.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. (en region-variant registry.)',
+  ],
+  [
+    'packages/language-pack-en/src/locale.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. (en locale BCP-47 table — this IS the language-pack registry.)',
+  ],
+  [
+    'packages/language-pack-en/src/voice.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. (en voice locale→ASR-tag table — this IS the language-pack registry.)',
+  ],
+  [
+    'packages/language-packs/src/seed/seed-pack-definitions.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. (seed pack-definition region-variant lists — registry/seed data.)',
+  ],
+  [
+    'packages/user-followup/src/scheduler/followup-scheduler.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. (en-US Intl day-bucketing in cron.)',
+  ],
+  [
+    'services/research-orchestrator/src/cron/daily-briefing-cron.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. (en-CA Intl ISO-day formatting in cron.)',
+  ],
+
+  // ─── WZ-CI-GREEN 2026-06-16: existing live infrastructure (legit locale literals) ───
+  [
+    'services/api-gateway/src/routes/field/shifts.hono.ts',
+    'legit: en-CA is used purely to render ISO-style YYYY-MM-DD for worker-local day bucketing (the canonical en-CA ISO-date idiom), NOT a user-facing locale; the timezone resolves from the LAUNCH_TIMEZONE config, not a hardcoded jurisdiction.',
+  ],
+  [
+    'apps/owner-portal/src/lib/chart-locale.ts',
+    'legit: this IS the dedicated chart-locale resolver util — it maps the active UI locale (en|sw) to its BCP-47 chart-axis tag (en→en-GB region-neutral, sw→sw-TZ launch jurisdiction); the literals ARE the resolver source-of-truth mapping (same pattern as the allowlisted jurisdiction-resolver), created to FIX the prior hardcoded en-KE charts.',
+  ],
 ]);

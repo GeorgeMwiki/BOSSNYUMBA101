@@ -30,10 +30,12 @@ import { Hono } from 'hono';
 import { and, desc, eq, isNull, lt, sql } from 'drizzle-orm';
 import { applicantNotifications, notificationDispatchLog } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
+import { getSharedPerTenantRateBudget } from '../middleware/per-tenant-rate-budget';
 import { routeCatch } from '../utils/safe-error';
 
 const app = new Hono();
 app.use('*', authMiddleware);
+app.use('*', getSharedPerTenantRateBudget({ surface: 'api' }).handler);
 
 function notConfigured(c) {
   return c.json(

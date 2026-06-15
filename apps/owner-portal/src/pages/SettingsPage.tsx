@@ -681,7 +681,13 @@ export function SettingsPage() {
                   <div className="space-y-4 rounded-lg border border-gray-200 p-4">
                     <p className="text-sm text-gray-600">{t('twoFactorScanHint')}</p>
                     <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
-                      <QrCode value={mfaEnroll.otpauth} size={176} className="rounded border border-gray-200" />
+                      <QrCode
+                        value={mfaEnroll.otpauth}
+                        size={176}
+                        className="rounded border border-gray-200"
+                        label={t('twoFactorQrAlt')}
+                        unavailableLabel={t('twoFactorQrUnavailable')}
+                      />
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-gray-500 uppercase">{t('twoFactorManualKey')}</p>
                         <code className="block break-all rounded bg-gray-100 px-2 py-1 font-mono text-sm text-gray-800">
