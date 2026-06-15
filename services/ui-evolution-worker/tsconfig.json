@@ -9,14 +9,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    },
-    // PORT-SHIM: relaxes the base `exactOptionalPropertyTypes: true` for
-    // THIS package only. The dep `@bossnyumba/brain-llm-router`
-    // (cost-meter/cost-meter.ts:118, pulled via project refs) was authored
-    // without exact-optional semantics and fails that check; we do not edit
-    // the dep. Reconcile by upstreaming the fix to brain-llm-router, then
-    // drop this override.
-    "exactOptionalPropertyTypes": false
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "src/__tests__/**"]
