@@ -339,6 +339,12 @@ import {
 } from './routes/jarvis-router-factory';
 // Platform overview KPI aggregator — HQ-tier counts for /platform/overview.
 import platformOverviewRouter from './routes/platform-overview.hono';
+// Platform privacy-budget (ε) readout — HQ-tier, backs the admin-portal
+// Home "Privacy budget" panel (GET /api/v1/platform/budget).
+import platformBudgetRouter from './routes/platform-budget.hono';
+// Applicant-scoped @-mention feed — backs tenant-mobile chat composer
+// (GET /api/v1/scope/recent-entities).
+import scopeRecentEntitiesRouter from './routes/scope-recent-entities.hono';
 // Phase B Wave 30 — Task-Agents registry + executor (narrow-scope agents)
 import taskAgentsRouter from './routes/task-agents.hono';
 // Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity overrides)
@@ -1651,6 +1657,15 @@ api.route('/platform/jarvis', platformHqJarvisRouter);  // BossNyumba HQ (Nyumba
 // Platform overview KPI aggregator — read-only, platform-tier auth, used
 // by admin-platform-portal /platform/overview KPI tiles.
 api.route('/platform/overview', platformOverviewRouter);
+// Platform privacy-budget (ε) readout — read-only, platform-tier auth
+// (HQ-gated exactly like /platform/overview). Backs the admin-portal
+// Home "Privacy budget" panel via `services.privacyBudgetComposer`.
+// Returns top-level { remainingEpsilon, totalEpsilon, windowLabel }.
+api.route('/platform/budget', platformBudgetRouter);
+// Applicant-scoped @-mention feed — backs the tenant-mobile chat
+// composer (GET /api/v1/scope/recent-entities). RLS-scoped to the
+// applicant's RFA responses; returns { data: { entities: [...] } }.
+api.route('/scope', scopeRecentEntitiesRouter);
 // Phase B Wave 30 — Task-Agents (narrow-scope single-job agents + manual runs)
 api.route('/task-agents', taskAgentsRouter);
 api.route('/persona-registry', personaRegistryRouter); // admin-gated internally via services.personaRegistry
