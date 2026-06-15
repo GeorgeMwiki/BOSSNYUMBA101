@@ -136,6 +136,13 @@ import {
   type CreditRatingService,
 } from '@bossnyumba/ai-copilot';
 import { PostgresCreditRatingRepository } from './credit-rating-repository.js';
+// Admin audit-log read-back — Drizzle-backed query over the canonical,
+// append-only `audit_events` table. Backs GET /api/v1/admin/audit/log; the
+// route fails loud (503) when this slot is null rather than empty-success.
+import {
+  createAuditLogQueryService,
+  type AuditLogQueryService,
+} from './audit-log-query.service.js';
 // Wave-K W-Data — DSAR (Art.20/PDPA s.27) Drizzle-backed data source +
 // classification lookup. Bound here so the dsar router can pull a real
 // per-tenant data source out of the service registry.
@@ -654,6 +661,14 @@ export interface ServiceRegistry {
    *  reads/writes through this composer; the legacy in-process
    *  PlatformBudgetLedger is the back-compat fallback. */
   readonly privacyBudgetComposer: PrivacyBudgetComposerService;
+
+  /** Admin audit-log read-back (GDPR Art.5(2) / TZ PDPA s.13 accountability).
+   *  Drizzle-backed query over the canonical append-only `audit_events`
+   *  table with keyset pagination. Null in degraded mode (no DB) — the
+   *  admin-audit route then returns 503 AUDIT_LOG_UNAVAILABLE rather than an
+   *  empty `success: true` (which would read as a clean compliance state to
+   *  an auditor when the surface is simply unwired). */
+  readonly auditLogQuery: AuditLogQueryService | null;
 
   /**
    * Wave 26 Agent Z4 — multi-LLM router built from env keys. Null when no
@@ -1420,6 +1435,10 @@ function degradedRegistry(
     // than silently no-op'ing the erasure (the prior stub bug).
     dsarRtbfExecutor: null,
     privacyBudgetComposer: createPrivacyBudgetComposerService(),
+    // Degraded mode: no DB client, so the audit-log read-back is null. The
+    // admin-audit route returns 503 AUDIT_LOG_UNAVAILABLE (fail-loud) instead
+    // of an empty success.
+    auditLogQuery: createAuditLogQueryService(null),
     llmRouter: null,
     buildBudgetGuardedAnthropicClient: null,
     // PO-port wave-5 wiring #2 — LLM budget governor is always wired.
@@ -2162,6 +2181,9 @@ function buildServicesInner(
       db: db as unknown as never,
     }),
     privacyBudgetComposer: createPrivacyBudgetComposerService(),
+    // Live mode: Drizzle-backed audit-log read-back over `audit_events`
+    // (keyset pagination). Lights up GET /api/v1/admin/audit/log.
+    auditLogQuery: createAuditLogQueryService(db),
     llmRouter,
     buildBudgetGuardedAnthropicClient,
     // PO-port wave-5 wiring #2 — LLM budget governor. Live mode swaps

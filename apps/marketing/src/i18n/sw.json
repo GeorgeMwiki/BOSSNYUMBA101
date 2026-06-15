@@ -64,7 +64,7 @@
     "swahiliFirstBadge": "Kiingereza-kwanza · Kiswahili",
     "pill": "Tanzania-kwanza · Inayoongozwa na AI",
     "headline": "BossNyumba ni mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Mr. Mwikila ni safu yake ya akili.",
-    "sub": "Mr. Mwikila — safu ya akili ndani ya BossNyumba, mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili — anaandaa, anafunga, anasimamia, anawasilisha. Mikataba, kodi, wafanyakazi wa matengenezo, hazina, utii, soko, holdings, kampuni tanzu, biashara za ziada (huduma, ulinzi, usafi, kukodi vifaa), ofisi ya familia, urithi, daftari la mali. Wewe unasaini mara moja.",
+    "sub": "Mr. Mwikila — safu ya akili ndani ya BossNyumba, mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili — anaandaa, anasimamia, anaandaa taarifa, anawasilisha. Mikataba, kodi, wafanyakazi wa matengenezo, hazina, utii, soko, holdings, kampuni tanzu, biashara za ziada (huduma, ulinzi, usafi, kukodi vifaa). Wewe unasaini mara moja.",
     "ctaPilot": "Anza sasa",
     "ctaDemo": "Tazama demo ya sekunde 60",
     "trustline": "BRELA · TRA · NHC · BoT · M-Pesa",
@@ -160,12 +160,12 @@
         "delta": "0 mabadiliko"
       },
       {
-        "label": "TZS iliyofungwa kwenye FX-window",
+        "label": "Mfichuo wa kodi ya USD unaofuatiliwa",
         "value": "TZS 4.2B",
         "delta": "Mfano"
       }
     ],
-    "footnote": "Nambari zinasasishwa kutoka telemetry hai. TZS iliyofungwa inawakilisha wave M3-M4; dashibodi inasasishwa kila wiki."
+    "footnote": "Nambari zinasasishwa kutoka telemetry hai. Mfichuo unaofuatiliwa unawakilisha wave M3-M4; dashibodi inasasishwa kila wiki."
   },
   "finalCta": {
     "kicker": "Tayari unapokuwa wewe",
@@ -281,8 +281,8 @@
         },
         {
           "time": "03:05",
-          "domain": "Hazina · FX-window",
-          "body": "BoT FX spot imepanda 1.4% ndani ya saa 6. Hedge proposal ya unit 60 imeandaliwa.",
+          "domain": "Mfichuo wa FX · dirisha la BoT",
+          "body": "Dirisha la BoT USD/TZS limesogea 1.4% ndani ya saa 6. Mfichuo wa FX umealamishwa kwa unit 60 — noti ya muda wa malipo imeandaliwa kwa mapitio yako.",
           "tone": "good",
           "tag": "TX"
         },
@@ -365,8 +365,8 @@
         "minLevel": 2
       },
       {
-        "id": "hedge",
-        "label": "Funga FX hedge ya wiki",
+        "id": "fx-flag",
+        "label": "Alamisha dirisha la mfichuo wa FX",
         "minLevel": 2
       },
       {
@@ -608,8 +608,8 @@
             "desc": "Mwl. Mwikila anaandaa rent yako ya kila mwezi kwa muundo rasmi wa Regulator siku inayofuata dirisha la malipo kufungwa. Saini moja, kutajwa kwa mistari yote."
           },
           {
-            "title": "Hedge ya dirisha la FX kwa BoT fix",
-            "desc": "Hazina desk inafunga dirisha la BoT USD/TZS kiotomatiki — kila hedge inatajwa kwa BoT AM-fix. Akiba ya pilot 1.4% dhidi ya spot."
+            "title": "Mfichuo wa FX unaoalamishwa kwa dirisha la BoT",
+            "desc": "Mwl. Mwikila anafuatilia mfichuo wa kodi yako ya USD/TZS na kuanika madirisha ya muda wa malipo dhidi ya kiwango cha BoT — noti ya ushauri inayotajwa kwa BoT fix, iliyoandaliwa kwa mapitio yako. Hafanyi biashara ya kununua/kuuza."
           },
           {
             "title": "Utii pack kwa kila ratiba",

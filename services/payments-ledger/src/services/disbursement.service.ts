@@ -78,13 +78,24 @@ export function isCleanDisbursementSuccess(
 
 /**
  * Currencies whose payouts settle over a mobile-money rail (M-Pesa B2C) rather
- * than a card/bank rail. East-Africa expansion adds UGX/etc. here. Kept narrow
- * and explicit — never hard-coded into a business calculation, only used to
- * pick the correct transfer rail.
+ * than a card/bank rail. Kept narrow and explicit — never hard-coded into a
+ * business calculation, only used to pick the correct transfer rail.
+ *
+ * INVARIANT: a currency belongs here ONLY when a registered provider actually
+ * serves it. The Daraja M-Pesa provider serves KES (Safaricom Kenya). TZS is
+ * deliberately ABSENT: no TZS mobile-money provider (Vodacom M-Pesa TZ / Tigo
+ * Pesa / Airtel Money) is registered yet. Listing TZS here previously made a
+ * TZS phone-number payout WANT the mobile-money rail, find no provider, then
+ * silently fall through to the card/bank default (Stripe) and land
+ * NEEDS_REVERSAL after the ledger debit. With TZS removed, a TZS phone-number
+ * payout no longer claims the mobile-money rail, and `getProvider` additionally
+ * fails LOUD (before any ledger debit) if a TZS destination ever does request
+ * the mobile-money rail. Re-add 'TZS' here the same PR that registers a TZS
+ * mobile-money provider — not before. (East-Africa expansion adds UGX/etc. the
+ * same way: provider first, then the currency.)
  */
 const MOBILE_MONEY_CURRENCIES: ReadonlySet<CurrencyCode> = new Set<CurrencyCode>([
   'KES',
-  'TZS',
 ]);
 
 export function isMobileMoneyCurrency(currency: CurrencyCode): boolean {
@@ -781,9 +792,12 @@ export class DisbursementService {
    *     connected account can never go over M-Pesa.
    * Currency is only a secondary signal: an AMBIGUOUS destination (neither a
    * clear phone number nor an account id) on a mobile-money currency still
-   * prefers the M-Pesa rail. Falls back to the default when no specific match is
-   * registered, and throws LOUD when nothing can serve the payout (never
-   * silently mis-routes money).
+   * prefers the M-Pesa rail. A payout that WANTS the mobile-money rail but has
+   * NO registered provider for the currency (e.g. TZS today — see
+   * MOBILE_MONEY_CURRENCIES) throws LOUD here, BEFORE any ledger debit, rather
+   * than silently mis-routing to the card/bank default and stranding the money
+   * as NEEDS_REVERSAL. Only NON-mobile-money payouts fall back to the default
+   * provider. Throws LOUD whenever nothing can serve the payout.
    */
   private getProvider(destination: string, currency: CurrencyCode): IPaymentProvider {
     const isPhone = looksLikePhoneNumber(destination);
@@ -801,6 +815,22 @@ export class DisbursementService {
           return provider;
         }
       }
+
+      // No registered mobile-money provider serves this currency. We MUST NOT
+      // silently fall through to the card/bank default — a phone-number /
+      // mobile-money-currency payout cannot settle over Stripe, so routing it
+      // there debits the ledger first and then strands the money as
+      // NEEDS_REVERSAL. Fail LOUD here, BEFORE the claim + ledger debit (this
+      // method runs ahead of both), so the payout is rejected cleanly with no
+      // money moved. This is the defense-in-depth backstop to TZS having been
+      // removed from MOBILE_MONEY_CURRENCIES: even if a currency is mislisted,
+      // an unserved mobile-money rail can never dead-end.
+      throw new Error(
+        `No mobile-money provider registered for ${currency} disbursement to ` +
+          `"${destination}". Register a ${currency} mobile-money provider ` +
+          `(e.g. M-Pesa) before enabling this rail — refusing to route a ` +
+          `mobile-money payout to a card/bank rail.`,
+      );
     }
 
     if (!this.defaultProvider) {

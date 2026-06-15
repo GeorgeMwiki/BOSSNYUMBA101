@@ -24,6 +24,11 @@ const SOURCE = readFileSync(
   'utf8',
 );
 
+const LOGIN_SOURCE = readFileSync(
+  path.resolve(__dirname, '../../login/LoginForm.tsx'),
+  'utf8',
+);
+
 describe('JarvisConsole bearer source', () => {
   it('reads the platform_token from sessionStorage', () => {
     expect(SOURCE).toContain("sessionStorage.getItem('platform_token')");
@@ -35,5 +40,22 @@ describe('JarvisConsole bearer source', () => {
 
   it('wires the SDK bearerToken to the real reader', () => {
     expect(SOURCE).toMatch(/bearerToken:\s*\(\)\s*=>\s*readPlatformBearer\(\)/);
+  });
+});
+
+describe('platform_token has a WRITER (login flow), not just readers', () => {
+  // The R1 fix wired the reader but left no writer, so every Send still
+  // 401'd. The login flow MUST persist the session JWT to
+  // sessionStorage.platform_token on a successful login, or the reader above
+  // is permanently empty. Assert the writer exists in source so a regression
+  // that drops it is caught without booting the whole login flow.
+  it('LoginForm writes platform_token to sessionStorage on login', () => {
+    expect(LOGIN_SOURCE).toContain(
+      "sessionStorage.setItem('platform_token'",
+    );
+  });
+
+  it('LoginForm stashes the token on the res.ok path before redirecting', () => {
+    expect(LOGIN_SOURCE).toMatch(/stashPlatformToken\(extractSessionToken\(/);
   });
 });

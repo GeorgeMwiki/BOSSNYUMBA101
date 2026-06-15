@@ -27,14 +27,12 @@ import {
   type UseQueryResult,
   type UseMutationResult,
 } from '@tanstack/react-query'
-import { managerApi, request } from '../api/client'
-import { API_BASE_URL } from '../api/config'
+import { managerApi } from '../api/client'
 
-// The real assignment surface is the HR router, mounted at
-// `/api/v1/hr` (api.route('/hr', hrRouter)). There is NO
-// `/work-orders/:id/assign-worker` action — manager dispatch is modelled as a
-// POST to /hr/assignments. Built once here (no trailing slash on API_BASE_URL).
-const HR_ASSIGNMENTS_URL = `${API_BASE_URL}/api/v1/hr/assignments`
+// Manager dispatch is a single canonical write on the estate-manager router:
+// POST /api/v1/manager/work-orders/:id/assign-worker (mounted at /api/v1/manager).
+// It stamps the canonical work_orders.assigned_to_user_id (migration 0340) and
+// creates the bridge `assignments` row in one server-side transaction.
 
 export interface MaintenanceTaskRow {
   readonly id: string
@@ -148,22 +146,23 @@ interface AssignResponse {
 }
 
 /**
- * Manager dispatch mutation. Assigns a work order to a staff member by
- * creating an HR assignment that links back to the work order.
+ * Manager dispatch mutation. Assigns a work order to a worker.
  *
- * Targets the REAL route POST /api/v1/hr/assignments (hr.hono.ts,
- * CreateAssignmentSchema) — the previously-targeted
- * /work-orders/:id/assign-worker action does not exist and 404'd. The HR
- * contract requires `title` (min length 1) and accepts `assigneeEmployeeId` +
- * `linkedEntityId`; we map:
- *   - assigneeEmployeeId ← input.workerId (the assignee)
- *   - linkedEntityId     ← input.taskId   (the dispatched work order)
- *   - title              ← the manager's note when present, else a default.
- * `linkedEntityKind` is stamped 'work_order' so the assignment row is
- * traceable back to its origin.
+ * Targets the REAL canonical route POST
+ * /api/v1/manager/work-orders/:id/assign-worker (estate-manager-app.ts). That
+ * one write stamps the canonical work_orders.assigned_to_user_id (migration
+ * 0340) + status='assigned' + assigned_at/assigned_by AND creates a bridge
+ * `assignments` row linked back to the work order — so the dispatch is visible
+ * to both the manager work-order views (which read assigned_to_user_id) and the
+ * worker's /api/v1/field/staff/tasks/next queue.
+ *
+ * We map:
+ *   - :id (path)          ← input.taskId   (the dispatched work order)
+ *   - assignedToUserId    ← input.workerId (the worker's user id)
+ *   - note                ← the manager's note when present.
  *
  * The screen only awaits success/failure (it does not consume the returned
- * row's fields), so adapting the assignment row defensively is safe.
+ * row's fields), so adapting the response defensively is safe.
  *
  * On success the manager open-task queue is invalidated so the row either
  * disappears (status moves out of `open`) or reflects the new assignee inline.
@@ -178,20 +177,14 @@ export function useAssignTaskToWorker(): UseMutationResult<
   return useMutation<MaintenanceTaskRow, Error, AssignTaskInput, unknown>({
     mutationFn: async (input) => {
       const note = input.noteEn ?? input.noteSw
-      const title =
-        note && note.trim().length > 0
-          ? note.trim()
-          : `Work order ${input.taskId}`
       const body: Record<string, unknown> = {
-        assigneeEmployeeId: input.workerId,
-        title,
-        linkedEntityKind: 'work_order',
-        linkedEntityId: input.taskId,
+        assignedToUserId: input.workerId,
+        ...(note && note.trim().length > 0 ? { note: note.trim() } : {}),
       }
-      const res = await request<AssignResponse>(HR_ASSIGNMENTS_URL, {
-        method: 'POST',
+      const res = await managerApi.post<AssignResponse>(
+        `/work-orders/${input.taskId}/assign-worker`,
         body,
-      })
+      )
       if (!res.data) {
         throw new Error('Assign returned an empty payload')
       }

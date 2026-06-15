@@ -64,7 +64,7 @@
     "swahiliFirstBadge": "English-first · Swahili",
     "pill": "Tanzanian-first · AI-native",
     "headline": "BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer.",
-    "sub": "Mr. Mwikila — the brain layer within BossNyumba, an AI-native real estate operating system — drafts, hedges, supervises, files. Leases, rent, maintenance staff, treasury, compliance, marketplace, holdings, subsidiaries, ancillary businesses (utilities, security, cleaning, gardening, equipment rental), family office, succession, asset register. You sign once.",
+    "sub": "Mr. Mwikila — the brain layer within BossNyumba, an AI-native real estate operating system — drafts, supervises, prepares, files. Leases, rent, maintenance staff, treasury, compliance, marketplace, holdings, subsidiaries, ancillary businesses (utilities, security, cleaning, gardening, equipment rental). You sign once.",
     "ctaPilot": "Get started",
     "ctaDemo": "Watch a 60s demo",
     "trustline": "BRELA · TRA · NHC · BoT · M-Pesa",
@@ -160,12 +160,12 @@
         "delta": "0 mutations"
       },
       {
-        "label": "TZS hedged at month-end window",
+        "label": "USD-rent exposure tracked",
         "value": "TZS 4.2B",
         "delta": "Indicative"
       }
     ],
-    "footnote": "Numbers refresh from live telemetry. Hedged TZS reflects M3-M4 wave; live dashboard updates weekly."
+    "footnote": "Numbers refresh from live telemetry. Tracked exposure reflects M3-M4 wave; live dashboard updates weekly."
   },
   "finalCta": {
     "kicker": "Ready when you are",
@@ -281,8 +281,8 @@
         },
         {
           "time": "03:05",
-          "domain": "Treasury · month-end window",
-          "body": "BoT FX spot up 1.4% inside 6 hours. Hedge proposal for 60 units drafted.",
+          "domain": "FX exposure · BoT window",
+          "body": "BoT USD/TZS window moved 1.4% inside 6 hours. FX exposure flagged for 60 units — settlement-timing note drafted for your review.",
           "tone": "good",
           "tag": "TX"
         },
@@ -365,8 +365,8 @@
         "minLevel": 2
       },
       {
-        "id": "hedge",
-        "label": "Place weekly FX hedge",
+        "id": "fx-flag",
+        "label": "Flag FX exposure window",
         "minLevel": 2
       },
       {
@@ -608,8 +608,8 @@
             "desc": "Mr. Mwikila drafts your monthly management fee in the official Regulator format the day after each month-end window closes. One-tap signature, cited line-by-line."
           },
           {
-            "title": "FX-window hedge at BoT FX fix",
-            "desc": "The treasury desk hedges the BoT USD/TZS window automatically — every hedge cited to the BoT AM-fix. Pilot saving of 1.4% versus walk-in spot."
+            "title": "FX exposure flagged at the BoT window",
+            "desc": "Mr. Mwikila tracks your USD/TZS rent exposure and flags settlement-timing windows against the BoT rate — an advisory note cited to the BoT fix, drafted for your review. He does not place trades."
           },
           {
             "title": "Compliance pack on every cadence",

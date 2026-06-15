@@ -28,6 +28,52 @@ export function safeNext(raw: string | null): string {
   return raw;
 }
 
+/**
+ * Extract the platform session JWT from the identity `/sessions` login
+ * response body. The session itself is ALSO set as an httpOnly cookie (which
+ * JS cannot read), but non-cookie callers — the Jarvis SDK client, system-
+ * health fetcher, EventSource — authenticate via `Authorization: Bearer …`
+ * sourced from `sessionStorage.platform_token`. The identity service returns
+ * the same JWT in the body precisely so the browser can stash it for those
+ * callers. We accept a few canonical field names / nestings so this stays
+ * resilient to the exact body shape, and ignore anything non-string.
+ */
+export function extractSessionToken(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const obj = body as Record<string, unknown>;
+  const candidates: ReadonlyArray<unknown> = [
+    obj.token,
+    obj.accessToken,
+    obj.sessionToken,
+    obj.platformToken,
+    (obj.session as Record<string, unknown> | undefined)?.token,
+    (obj.session as Record<string, unknown> | undefined)?.accessToken,
+    (obj.data as Record<string, unknown> | undefined)?.token,
+    (obj.data as Record<string, unknown> | undefined)?.accessToken,
+    (obj.data as Record<string, unknown> | undefined)?.sessionToken,
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.length > 0) return c;
+  }
+  return null;
+}
+
+/**
+ * Persist the session JWT to `sessionStorage.platform_token` so non-cookie
+ * callers (Jarvis SDK, system-health, EventSource) can send it as a bearer.
+ * Best-effort: sessionStorage can throw in locked-down / private-mode
+ * contexts; a failure here must not block the redirect (the httpOnly cookie
+ * still carries cookie-capable requests).
+ */
+function stashPlatformToken(token: string | null): void {
+  if (!token) return;
+  try {
+    window.sessionStorage.setItem('platform_token', token);
+  } catch {
+    // Non-fatal: cookie path still authenticates cookie-capable requests.
+  }
+}
+
 export function LoginForm() {
   const params = useSearchParams();
   const next = safeNext(params.get('next'));
@@ -45,6 +91,13 @@ export function LoginForm() {
         body: JSON.stringify({ email, password, next }),
       });
       if (res.ok) {
+        // Stash the session JWT for non-cookie callers (Jarvis SDK, system-
+        // health, EventSource) BEFORE redirecting. Without this the Jarvis
+        // console reads an absent `platform_token` and every Send hits the
+        // gateway unauthenticated (401). The httpOnly session cookie is set
+        // independently by the identity service for cookie-capable requests.
+        const okBody = await res.json().catch(() => null);
+        stashPlatformToken(extractSessionToken(okBody));
         window.location.href = next;
         return;
       }

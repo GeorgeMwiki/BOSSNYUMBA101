@@ -1,18 +1,21 @@
 /**
  * Tenant-mobile — L8 lease-activation screen.
  *
- * The applicant reviews the accepted application response, taps "Sign
- * lease" with a deterministic checksum, and the api-gateway runs the
- * settlement orchestrator end-to-end (math → LedgerService.post() →
- * M-Pesa B2C payout). Result is shown in a success banner with the
- * gross/deduction/fee/net breakdown.
+ * The screen loads GET /api/v1/marketplace/rfb/:id to resolve the ACCEPTED
+ * landlord-response id; the CTA stays gated behind an honest "awaiting
+ * acceptance" state until one exists, so a sign tap never posts a stand-in id
+ * and 404s. On sign it POSTs /marketplace/rfb-responses/:responseId/
+ * sign-delivery — the api-gateway derives a deterministic checksum (sha256 over
+ * the ownership-history chain) server-side and runs the settlement orchestrator
+ * end-to-end (math → LedgerService.post() → M-Pesa B2C payout). Result is shown
+ * in a success banner with the gross/deduction/fee/net breakdown.
  *
  * Bilingual sw/en throughout.
  */
 
-import { useState, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -40,20 +43,37 @@ interface SignDeliveryResponse {
   }
 }
 
-interface SignDeliveryInput {
-  readonly responseId: string
-  readonly coCStepChecksum: string
+interface RfbDetailResponse {
+  readonly success: boolean
+  readonly data?: {
+    readonly accepted_response_id: string | null
+  }
+}
+
+/**
+ * Load the rfb detail and resolve the ACCEPTED landlord-response id — the id the
+ * settlement endpoint needs. Returns null when no response has been accepted yet
+ * (the screen then shows an honest "awaiting acceptance" state instead of a CTA
+ * that would 404).
+ */
+async function fetchAcceptedResponseId(rfbId: string): Promise<string | null> {
+  const res = await apiFetch<RfbDetailResponse>(
+    `/api/v1/marketplace/rfb/${encodeURIComponent(rfbId)}`,
+  )
+  if (!res.success || !res.data) {
+    throw new Error('Failed to load request')
+  }
+  return res.data.accepted_response_id ?? null
 }
 
 async function signDelivery(
-  input: SignDeliveryInput,
+  responseId: string,
 ): Promise<NonNullable<SignDeliveryResponse['data']>> {
+  // The checksum is derived server-side (deterministic sha256 over the
+  // ownership-history chain) so the client sends no non-deterministic value.
   const res = await apiFetch<SignDeliveryResponse>(
-    `/api/v1/marketplace/rfb-responses/${encodeURIComponent(input.responseId)}/sign-delivery`,
-    {
-      method: 'POST',
-      body: { coCStepChecksum: input.coCStepChecksum },
-    },
+    `/api/v1/marketplace/rfb-responses/${encodeURIComponent(responseId)}/sign-delivery`,
+    { method: 'POST', body: {} },
   )
   if (!res.success || !res.data) {
     throw new Error('Sign delivery failed')
@@ -68,36 +88,27 @@ function formatTzs(amount: number, isSw: boolean): string {
   return `${fmt.format(amount)} TZS`
 }
 
-/**
- * Deterministic checksum stub — the real screen would compute this
- * from the unit's ownership-history chain (sha256 over each step's audit
- * hash). For now we derive a value that's stable for the (rfbId,
- * deviceTs) pair so idempotent replays from the same applicant collapse.
- */
-function deriveChecksum(rfbId: string): string {
-  // Stable within the screen session — re-tapping "Sign" within the
-  // same mount uses the same checksum so the backend collapses replays.
-  return `coc-${rfbId}-${Date.now()}`
-}
-
 export default function SignDeliveryScreen(): JSX.Element {
   const params = useLocalSearchParams<{ id: string }>()
   const rfbId = String(params.id ?? '')
   const router = useRouter()
   const { lang } = useTranslation()
   const isSw = lang === 'sw'
-  const [checksum] = useState<string>(() => deriveChecksum(rfbId))
+
+  // Resolve the accepted-response id from the rfb detail. The CTA stays gated
+  // behind an honest "awaiting acceptance" state until a landlord response is
+  // accepted, so a sign tap never posts a stand-in id and 404s.
+  const detail = useQuery({
+    queryKey: ['rfb-accepted-response', rfbId],
+    queryFn: () => fetchAcceptedResponseId(rfbId),
+    enabled: rfbId.length > 0,
+    staleTime: 15_000,
+  })
+  const responseId = detail.data ?? null
 
   const mutation = useMutation({
-    mutationFn: (responseId: string) =>
-      signDelivery({ responseId, coCStepChecksum: checksum }),
+    mutationFn: (id: string) => signDelivery(id),
   })
-
-  // For now, the screen uses the rfbId as a stand-in for the responseId
-  // until the screen is wired to the accepted-response lookup. The real
-  // screen loads /api/v1/marketplace/rfb/:id and picks the accepted
-  // response id; for the L8 chain we surface the form + CTA.
-  const responseId = rfbId
 
   const onSubmit = useCallback(() => {
     if (!responseId) return
@@ -132,12 +143,37 @@ export default function SignDeliveryScreen(): JSX.Element {
             <Text style={styles.value}>{rfbId.slice(0, 8)}…</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>
-              {isSw ? 'Saini ya CoC' : 'CoC checksum'}
+            <Text style={styles.label}>{isSw ? 'Hali' : 'Status'}</Text>
+            <Text style={styles.value}>
+              {detail.isPending
+                ? isSw
+                  ? 'Inapakia…'
+                  : 'Loading…'
+                : detail.isError
+                  ? isSw
+                    ? 'Imeshindwa kupakia'
+                    : 'Failed to load'
+                  : responseId
+                    ? isSw
+                      ? 'Jibu limekubaliwa'
+                      : 'Response accepted'
+                    : isSw
+                      ? 'Inasubiri kukubaliwa'
+                      : 'Awaiting acceptance'}
             </Text>
-            <Text style={styles.valueMono}>{checksum.slice(-12)}</Text>
           </View>
         </Card>
+
+        {/* Honest "awaiting acceptance" state — no accepted response, no CTA. */}
+        {!detail.isPending && !detail.isError && !responseId && !mutation.isSuccess ? (
+          <Card>
+            <Text style={styles.muted}>
+              {isSw
+                ? 'Hakuna jibu lililokubaliwa bado. Utaweza kusaini mara mwenye nyumba atakapokubali ombi lako.'
+                : "No accepted response yet. You'll be able to sign once a landlord's response is accepted."}
+            </Text>
+          </Card>
+        ) : null}
 
         {mutation.isError ? (
           <Card>
@@ -215,11 +251,12 @@ export default function SignDeliveryScreen(): JSX.Element {
 
         <Pressable
           onPress={onSubmit}
-          disabled={mutation.isPending || mutation.isSuccess}
+          disabled={!responseId || mutation.isPending || mutation.isSuccess}
           style={({ pressed }) => [
             styles.cta,
             pressed && styles.ctaPressed,
-            (mutation.isPending || mutation.isSuccess) && styles.ctaDisabled,
+            (!responseId || mutation.isPending || mutation.isSuccess) &&
+              styles.ctaDisabled,
           ]}
         >
           <Text style={styles.ctaText}>
