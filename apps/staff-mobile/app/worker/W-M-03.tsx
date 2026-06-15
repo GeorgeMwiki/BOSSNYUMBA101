@@ -44,6 +44,25 @@ interface AttendanceRow {
   readonly id: string
 }
 
+// HTTP statuses where the server understood and rejected the BODY — re-sending
+// loops forever, so these are NOT queued (they surface as a real error).
+// Mirrors flush.ts POISON_STATUSES so an online failure and a queued flush make
+// the identical drop-vs-retain decision.
+const POISON_STATUSES = new Set<number>([400, 401, 403, 409, 413, 422])
+
+/**
+ * Queue the briefing-sign offline when offline OR on a transient/deploy-gap
+ * status (network status 0, 404 route-missing, 405 wrong-verb, 408/429, 5xx) —
+ * flush.ts `shouldDrop` RETAINS exactly these, so a worker hitting a deploy gap
+ * keeps their signed briefing. Genuine poison (400/401/403/409/413/422) is the
+ * body's fault — do not queue; surface the error.
+ */
+function shouldQueueOffline(error: ApiError, online: boolean): boolean {
+  if (!online) return true
+  if (error.status === 0) return true
+  return !POISON_STATUSES.has(error.status)
+}
+
 export default function Screen(): JSX.Element {
   return (
     <RoleGuard screenId={SCREEN_ID}>
@@ -61,13 +80,24 @@ function BriefingView(): JSX.Element {
 
   const mutation = useMutation<AttendanceRow, ApiError, CheckInRequest>({
     mutationFn: async (input) =>
-      managerApi.post<{ success: true; data: AttendanceRow }>('/attendance/check-in', input).then((r) => r.data),
+      // Mounted route is POST /attendance (captureHandler('attendance')); the
+      // briefing-sign is a fingerprint-signed shift start, so `kind` is folded
+      // into the BODY exactly as the offline enqueue does.
+      managerApi
+        .post<{ success: true; data: AttendanceRow }>('/attendance', {
+          ...input,
+          kind: 'check-in'
+        })
+        .then((r) => r.data),
     onSuccess: () => {
       setSignedFlag('ok')
     },
     onError: async (error, input) => {
-      if (error.status === 0 || !online) {
-        await enqueueWrite('attendance', input)
+      // Queue offline AND on a 404/405/5xx deploy gap — flush.ts shouldDrop
+      // retains those, so a signed briefing survives a missing route instead of
+      // dead-ending. Only genuine poison falls through to the surfaced error.
+      if (shouldQueueOffline(error, online)) {
+        await enqueueWrite('attendance', { ...input, kind: 'check-in' })
         setSignedFlag('queued')
       }
     }
@@ -92,6 +122,9 @@ function BriefingView(): JSX.Element {
   const submitError = mutation.error
   const submitNetwork = submitError?.status === 0 || !online
   const submitMissing = submitError?.status === 503
+  // A queued sign (network / 404 / 405 / 5xx deploy-gap) was retained for sync —
+  // show only the "saved for sync" box, never a contradictory hard error.
+  const queuedOffline = signedFlag === 'queued'
   const successCopy = useMemo<string | null>(() => {
     if (signedFlag === 'ok') return COPY.ackOk
     if (signedFlag === 'queued') return COPY.ackQueued
@@ -125,7 +158,7 @@ function BriefingView(): JSX.Element {
             <Text style={styles.signedText}>{successCopy}</Text>
           </Pressable>
         )}
-        {submitError && !submitNetwork && !submitMissing ? (
+        {submitError && !submitNetwork && !submitMissing && !queuedOffline ? (
           <Text style={styles.errorText}>{COPY.errorPrefix}{submitError.message}</Text>
         ) : null}
         {submitNetwork ? <PreviewBanner kind="offline" /> : null}

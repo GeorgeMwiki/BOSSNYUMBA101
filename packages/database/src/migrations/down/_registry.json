@@ -401,6 +401,14 @@
       "dataLoss": false,
       "envs": ["dev", "staging"],
       "notes": "R2-supplement RLS-darkness fix: the consolidation-worker (CoT->semantic) and executive-brief cron scan these FORCE-RLS tables cross-tenant; without a service_role_bypass policy they matched ZERO rows under the non-BYPASS prod role (born-dark — no CoT consolidation, no briefs). Additive permissive FOR ALL policy gated solely on app.is_service_role; tenant-scoped access is unchanged. Dropping re-darkens both workers but loses no data."
+    },
+    {
+      "up": "0337_tenant_deletion_schedules.sql",
+      "down": "down/0337_down_tenant_deletion_schedules.sql",
+      "reverses": "CREATE TABLE tenant_deletion_schedules + status/grace CHECKs + partial-unique active-per-tenant idx + due/tenant idx + FORCE RLS tenant_isolation + service_role_bypass + REVOKE anon",
+      "dataLoss": true,
+      "envs": ["dev", "staging"],
+      "notes": "R2 blocker #8 fix: durable backing for the tenant-wide right-to-erasure surface DELETE /api/v1/tenants/:id, which was a silent no-op (resolved an unwired tenantDeletion service and returned 202 without persisting). The route now writes a 'scheduled' row before returning success; the platform tenant-purge worker consumes status='scheduled' AND scheduled_purge_at <= now() at grace expiry. Dropping discards scheduled erasure requests; the surface regresses to audit-event-only until re-created."
     }
   ]
 }

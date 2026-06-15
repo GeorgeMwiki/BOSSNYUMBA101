@@ -134,29 +134,98 @@ function dbUnavailable(c: any) {
   );
 }
 
-/** Shape a `bids` row into the API bid view (camelCase). */
-function toBidView(row: Record<string, unknown>) {
+// ---------------------------------------------------------------------------
+// Bid-status mapping (tenant-mobile bid loop — backend shape).
+//
+// The gateway/DB `bid_status` enum (submitted | negotiating | awarded |
+// rejected | withdrawn) is the OWNER/vendor-tender vocabulary. The
+// tenant-mobile applicant surface (apps/tenant-mobile/src/types/listing.ts —
+// `BidStatus`) speaks pending | accepted | rejected | countered. The applicant
+// never sees raw gateway statuses, so toBidView maps every persisted status to
+// the applicant vocabulary:
+//
+//   submitted   → pending
+//   negotiating → pending   (but see the `countered` override below)
+//   awarded     → accepted
+//   withdrawn   → rejected   (the applicant withdrew — surfaced as not-active)
+//   rejected    → rejected
+//
+// COUNTERED SIGNAL: a counter-offer lives on the negotiation linked to the bid.
+// When the bid is still live (submitted/negotiating) AND a negotiation exists
+// (`negotiation_id` set) or an inline negotiation turn has been recorded
+// (`negotiation_turns` non-empty), the applicant has an offer to act on, so we
+// surface `countered` (the BidDetail screen shows the "Accept counter" CTA only
+// for this status). A terminal status (awarded/rejected/withdrawn) is never
+// re-mapped to countered.
+// ---------------------------------------------------------------------------
+function hasCounter(row: Record<string, unknown>): boolean {
+  if (row.negotiation_id != null && String(row.negotiation_id).length > 0) {
+    return true;
+  }
+  const turns = row.negotiation_turns;
+  if (Array.isArray(turns)) return turns.length > 0;
+  // Drizzle/pg may hand a jsonb column back as a JSON string.
+  if (typeof turns === 'string') {
+    try {
+      const parsed = JSON.parse(turns);
+      return Array.isArray(parsed) && parsed.length > 0;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+function mapBidStatus(row: Record<string, unknown>): string {
+  const raw = String(row.status);
+  if (raw === 'awarded') return 'accepted';
+  if (raw === 'rejected') return 'rejected';
+  if (raw === 'withdrawn') return 'rejected';
+  // submitted | negotiating — live. Surface a counter when one exists.
+  if (hasCounter(row)) return 'countered';
+  return 'pending';
+}
+
+function toIso(value: unknown): string | null {
+  if (value instanceof Date) return value.toISOString();
+  if (value == null) return null;
+  return String(value);
+}
+
+/**
+ * Shape a `bids` row (LEFT JOINed to its parent `tenders` row) into the
+ * tenant-mobile applicant `Bid` view
+ * (apps/tenant-mobile/src/types/listing.ts). The listing the application is
+ * placed against IS the parent tender — the tenant-mobile API client treats a
+ * listing id as a tender id (apps/tenant-mobile/src/api/marketplace.ts) — so
+ * `listingId` is the bid's `tender_id` and `listingTitle` is the tender
+ * `scope`. The tender carries no property-type / floor-area columns, so those
+ * degrade to safe, render-correct defaults (a valid PropertyType and a numeric
+ * area) rather than null, since the screen calls `formatSqm(...)` /
+ * `formatTzs(...)` and a `Pill` keyed on the status — all of which assume a
+ * concrete value. `thread` is hydrated by the caller (My Bids) from
+ * `bid_messages`; it defaults to an empty array so `bid.thread.map(...)` is
+ * always safe.
+ */
+function toBidView(
+  row: Record<string, unknown>,
+  thread: ReturnType<typeof toMessageView>[] = []
+) {
+  const placedAt = toIso(row.submitted_at);
   return {
     id: String(row.id),
-    tenderId: String(row.tender_id),
-    vendorId: String(row.vendor_id),
-    price: Number(row.price),
+    listingId: String(row.tender_id),
+    listingTitle:
+      row.tender_scope == null ? String(row.tender_id) : String(row.tender_scope),
+    propertyType: 'commercial',
+    offerRentPerMonthTzs: Number(row.price),
+    floorAreaSqm: 0,
+    status: mapBidStatus(row),
+    placedAt: placedAt ?? new Date(0).toISOString(),
+    thread,
+    // Retained internal fields (non-FE consumers / debugging). The FE `Bid`
+    // type ignores unknown extras; the applicant view above is authoritative.
     currency: String(row.currency),
-    timelineDays: row.timeline_days == null ? null : Number(row.timeline_days),
-    notes: row.notes == null ? null : String(row.notes),
-    status: String(row.status),
-    submittedAt:
-      row.submitted_at instanceof Date
-        ? row.submitted_at.toISOString()
-        : row.submitted_at == null
-          ? null
-          : String(row.submitted_at),
-    awardedAt:
-      row.awarded_at instanceof Date
-        ? row.awarded_at.toISOString()
-        : row.awarded_at == null
-          ? null
-          : String(row.awarded_at),
   };
 }
 
@@ -178,6 +247,39 @@ function rowsOf(result: unknown): Record<string, unknown>[] {
   if (Array.isArray(result)) return result as Record<string, unknown>[];
   const maybe = (result as { rows?: unknown[] })?.rows;
   return Array.isArray(maybe) ? (maybe as Record<string, unknown>[]) : [];
+}
+
+/**
+ * Load and group the `bid_messages` threads for a set of bids in one query.
+ * Returns a Map keyed by `bid_id` whose values are the oldest-first message
+ * views for that bid (empty when a bid has no messages). RLS already scopes to
+ * the tenant; the bid ids passed in are the authenticated applicant's own bids
+ * (resolved by the caller), so this never leaks another applicant's thread.
+ */
+async function loadThreads(
+  handle: { execute: (q: unknown) => Promise<unknown> },
+  bidIds: readonly string[]
+): Promise<Map<string, ReturnType<typeof toMessageView>[]>> {
+  const byBid = new Map<string, ReturnType<typeof toMessageView>[]>();
+  if (bidIds.length === 0) return byBid;
+  const inList = sql.join(
+    bidIds.map((id) => sql`${id}`),
+    sql`, `
+  );
+  const result = await handle.execute(sql`
+    SELECT id, bid_id, sender, body, created_at
+      FROM bid_messages
+     WHERE bid_id IN (${inList})
+     ORDER BY created_at ASC
+  `);
+  for (const row of rowsOf(result)) {
+    const key = String(row.bid_id);
+    const view = toMessageView(row);
+    const existing = byBid.get(key);
+    if (existing) existing.push(view);
+    else byBid.set(key, [view]);
+  }
+  return byBid;
 }
 
 /**
@@ -251,14 +353,30 @@ app.get('/bids/mine', async (c) => {
     );
   const handle = db(c);
   if (!handle) return dbUnavailable(c);
+  // JOIN the parent tender so the applicant Bid view can populate `listingId`
+  // (= tender_id) and `listingTitle` (= tender.scope). LEFT JOIN so a bid whose
+  // tender was hard-deleted still renders (degrades to the id as the title).
+  // `negotiation_id` / `negotiation_turns` drive the `countered` status signal.
   const result = await handle.execute(sql`
-    SELECT id, tender_id, vendor_id, price, currency, timeline_days,
-           notes, status, submitted_at, awarded_at
-      FROM bids
-     WHERE vendor_id = ${applicantUserId}
-     ORDER BY submitted_at DESC
+    SELECT b.id, b.tender_id, b.vendor_id, b.price, b.currency,
+           b.timeline_days, b.notes, b.status, b.submitted_at, b.awarded_at,
+           b.negotiation_id, b.negotiation_turns,
+           t.scope AS tender_scope
+      FROM bids b
+      LEFT JOIN tenders t ON t.id = b.tender_id
+     WHERE b.vendor_id = ${applicantUserId}
+     ORDER BY b.submitted_at DESC
   `);
-  const data = rowsOf(result).map(toBidView);
+  const bidRows = rowsOf(result);
+  // Hydrate each bid's message thread in one round-trip: fetch every message
+  // for the applicant's bids, then group by bid_id. The FE renders
+  // `bid.thread.map(...)`, so an absent thread must be an empty array — never
+  // undefined.
+  const bidIds = bidRows.map((r) => String(r.id));
+  const threadByBid = await loadThreads(handle, bidIds);
+  const data = bidRows.map((row) =>
+    toBidView(row, threadByBid.get(String(row.id)) ?? [])
+  );
   return c.json({ success: true, data });
 });
 

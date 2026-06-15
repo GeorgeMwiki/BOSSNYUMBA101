@@ -30,10 +30,23 @@ import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
+import { eq, sql } from 'drizzle-orm';
+import {
+  tenantDeletionSchedules,
+  users as usersTable,
+  withServiceRoleContext,
+} from '@bossnyumba/database';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { killSwitchGuard } from '../middleware/kill-switch.middleware';
+import {
+  getDatabaseClient,
+  isUsingMockData,
+} from '../middleware/database';
 import { UserRole } from '../types/user-role';
-import { e400, e401, e403, e500 } from '../utils/error-response';
+import { createLogger } from '../utils/logger';
+import { e400, e401, e403, e500, e503 } from '../utils/error-response';
+
+const moduleLogger = createLogger('tenants-admin');
 
 // ────────────────────────────────────────────────────────────────────────
 // Schema
@@ -192,8 +205,15 @@ export function createTenantsAdminRouter(): Hono {
       const svc = resolveTenantDeletionSvc(c);
       let tenantDeletionId = `tnt-del-${targetTenantId}-${now}`;
       let affectedUsers = 0;
+      // Tracks whether the erasure request was actually persisted. We MUST
+      // NOT return success on a no-op (R2 blocker #8): the prior code
+      // resolved an optional service that is never wired and returned 202
+      // without writing anything. A tenant owner who asked to be forgotten
+      // was told "scheduled" while nothing was scheduled.
+      let durablyPersisted = false;
 
       if (svc) {
+        // A real deletion service owns its own durable persistence.
         try {
           const result = await svc.scheduleTenantDeletion({
             tenantId: targetTenantId,
@@ -203,6 +223,7 @@ export function createTenantsAdminRouter(): Hono {
           });
           tenantDeletionId = result.tenantDeletionId ?? tenantDeletionId;
           affectedUsers = result.affectedUsers ?? 0;
+          durablyPersisted = true;
         } catch (err) {
           return e500(
             c,
@@ -212,6 +233,101 @@ export function createTenantsAdminRouter(): Hono {
               : 'Failed to schedule tenant deletion',
           );
         }
+      } else {
+        // No service wired → persist a soft-delete SCHEDULE row directly. The
+        // platform tenant-purge worker consumes rows where status='scheduled'
+        // AND scheduled_purge_at <= now() at grace expiry. Writes run under
+        // service-role context because a platform admin (SUPER_ADMIN/ADMIN)
+        // may legitimately target a DIFFERENT tenant than their own JWT
+        // tenant — the admin's own tenant GUC must not gate the write.
+        const db = c.get('db') ?? getDatabaseClient();
+        if (db) {
+          try {
+            const scheduledPurgeAtDate = new Date(scheduledPurgeAt);
+            const inserted = await withServiceRoleContext(db, async (tx) => {
+              // Best-effort affected-user count for the audit/notification.
+              let userCount = 0;
+              try {
+                const [countRow] = await tx
+                  .select({ n: sql<number>`count(*)::int` })
+                  .from(usersTable)
+                  .where(eq(usersTable.tenantId, targetTenantId));
+                userCount = Number(countRow?.n ?? 0);
+              } catch {
+                userCount = 0;
+              }
+
+              // Upsert on the active-per-tenant partial unique index so a
+              // repeated DELETE refreshes the existing schedule instead of
+              // stacking duplicates.
+              const [row] = await tx
+                .insert(tenantDeletionSchedules)
+                .values({
+                  tenantId: targetTenantId,
+                  status: 'scheduled',
+                  scheduledPurgeAt: scheduledPurgeAtDate,
+                  graceDays,
+                  requestedBy: callerUserId,
+                  requestedByRole: String(callerRole),
+                  ...(body.reason !== undefined ? { reason: body.reason } : {}),
+                  affectedUsers: userCount,
+                })
+                .onConflictDoUpdate({
+                  target: tenantDeletionSchedules.tenantId,
+                  targetWhere: sql`status IN ('scheduled', 'purging')`,
+                  set: {
+                    scheduledPurgeAt: scheduledPurgeAtDate,
+                    graceDays,
+                    requestedBy: callerUserId,
+                    requestedByRole: String(callerRole),
+                    reason: body.reason ?? null,
+                    affectedUsers: userCount,
+                    updatedAt: new Date(),
+                  },
+                })
+                .returning({
+                  id: tenantDeletionSchedules.id,
+                  affectedUsers: tenantDeletionSchedules.affectedUsers,
+                });
+              return row;
+            });
+
+            if (!inserted?.id) {
+              return e500(
+                c,
+                'TENANT_DELETION_FAILED',
+                'Failed to persist tenant deletion schedule',
+              );
+            }
+            tenantDeletionId = inserted.id;
+            affectedUsers = inserted.affectedUsers ?? 0;
+            durablyPersisted = true;
+          } catch (err) {
+            moduleLogger.error('tenant deletion schedule persist failed', {
+              targetTenantId,
+              requestedBy: callerUserId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+            return e500(
+              c,
+              'TENANT_DELETION_FAILED',
+              err instanceof Error
+                ? err.message
+                : 'Failed to persist tenant deletion schedule',
+            );
+          }
+        } else if (!isUsingMockData()) {
+          // Production with no db handle and no service: we cannot persist,
+          // so we MUST NOT pretend success. Fail closed with 503.
+          return e503(
+            c,
+            'TENANT_DELETION_UNAVAILABLE',
+            'Tenant deletion is temporarily unavailable (no durable store).',
+          );
+        }
+        // Mock/test mode with no db: fall through with the generated id so
+        // the surface is exercisable without Postgres. The audit event is
+        // still emitted; no durable claim is made.
       }
 
       await emitAudit(c, 'tenant.delete-scheduled', {
@@ -222,6 +338,7 @@ export function createTenantsAdminRouter(): Hono {
         scheduledPurgeAt,
         graceDays,
         affectedUsers,
+        durablyPersisted,
         reason: body.reason ?? null,
       });
 
@@ -239,6 +356,10 @@ export function createTenantsAdminRouter(): Hono {
             scheduledFor: scheduledPurgeAt,
             graceDays,
             affectedUsers,
+            // Honest signal: true once the schedule row is durably written
+            // (or the wired deletion service confirmed). False only in
+            // mock/test mode without a db handle.
+            durablyPersisted,
           },
         },
         202,

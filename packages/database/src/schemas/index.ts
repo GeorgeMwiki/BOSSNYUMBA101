@@ -757,3 +757,13 @@ export * from './courses.schema.js';
 //   development.plan.generate / modify_section / manage_sections /
 //   set_assumption / validate.
 export * from './development-plans.schema.js';
+
+// ─── R2 blocker #8 — TENANT DELETION SCHEDULES (migration 0337) ───────────
+//   - tenant_deletion_schedules : durable backing for the tenant-wide
+//       right-to-erasure surface DELETE /api/v1/tenants/:id (was a silent
+//       no-op). One active row per tenant (partial unique index); the
+//       platform tenant-purge worker walks status='scheduled' AND
+//       scheduled_purge_at <= now() at grace expiry. Tenant-isolation +
+//       service-role-bypass RLS (cross-tenant platform-admin target + purge
+//       worker write under service-role).
+export * from './tenant-deletion-schedules.schema.js';

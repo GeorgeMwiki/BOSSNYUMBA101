@@ -9,11 +9,12 @@
  *     member, which emits an audit-chain entry + (optionally) records the
  *     shift id on provenance.
  *
- * Endpoints map to work-orders.hono.ts (mounted /api/v1/work-orders): the
- * open-task queue reads GET /work-orders?status=..., and assignment is done
- * via PUT /work-orders/:id { vendorId }. (There is no literal
- * /work-orders/:id/assign-worker action — that path is flagged for a
- * coordinated backend contract.)
+ * Endpoints: the open-task queue reads GET /work-orders?status=... (mounted
+ * /api/v1/work-orders). Assignment is done via the HR assignments surface —
+ * POST /api/v1/hr/assignments { assigneeEmployeeId, title, linkedEntityId } —
+ * because there is no literal /work-orders/:id/assign-worker action. The work
+ * order id is carried as `linkedEntityId` so the assignment row links back to
+ * the dispatched work order.
  *
  * Each hook deals only with normalized snake_case rows the api-gateway
  * returns; renamers stay at the call site.
@@ -26,7 +27,14 @@ import {
   type UseQueryResult,
   type UseMutationResult,
 } from '@tanstack/react-query'
-import { managerApi } from '../api/client'
+import { managerApi, request } from '../api/client'
+import { API_BASE_URL } from '../api/config'
+
+// The real assignment surface is the HR router, mounted at
+// `/api/v1/hr` (api.route('/hr', hrRouter)). There is NO
+// `/work-orders/:id/assign-worker` action — manager dispatch is modelled as a
+// POST to /hr/assignments. Built once here (no trailing slash on API_BASE_URL).
+const HR_ASSIGNMENTS_URL = `${API_BASE_URL}/api/v1/hr/assignments`
 
 export interface MaintenanceTaskRow {
   readonly id: string
@@ -140,18 +148,25 @@ interface AssignResponse {
 }
 
 /**
- * Manager dispatch mutation. Assigns a work order to a staff member and
- * always appends a `work_order.assign_worker` audit-chain entry.
+ * Manager dispatch mutation. Assigns a work order to a staff member by
+ * creating an HR assignment that links back to the work order.
  *
- * NOTE: there is no literal /work-orders/:id/assign-worker action on the
- * work-orders router — assignment is modelled as PUT /work-orders/:id
- * { vendorId } (or the field/staff assignment flow). This relative path is
- * flagged for a coordinated backend contract; the request shape below is
- * preserved so the screen behaviour does not change.
+ * Targets the REAL route POST /api/v1/hr/assignments (hr.hono.ts,
+ * CreateAssignmentSchema) — the previously-targeted
+ * /work-orders/:id/assign-worker action does not exist and 404'd. The HR
+ * contract requires `title` (min length 1) and accepts `assigneeEmployeeId` +
+ * `linkedEntityId`; we map:
+ *   - assigneeEmployeeId ← input.workerId (the assignee)
+ *   - linkedEntityId     ← input.taskId   (the dispatched work order)
+ *   - title              ← the manager's note when present, else a default.
+ * `linkedEntityKind` is stamped 'work_order' so the assignment row is
+ * traceable back to its origin.
  *
- * On success the manager open-task queue is invalidated so the row
- * either disappears (status moves out of `open`) or reflects the new
- * assignee inline.
+ * The screen only awaits success/failure (it does not consume the returned
+ * row's fields), so adapting the assignment row defensively is safe.
+ *
+ * On success the manager open-task queue is invalidated so the row either
+ * disappears (status moves out of `open`) or reflects the new assignee inline.
  */
 export function useAssignTaskToWorker(): UseMutationResult<
   MaintenanceTaskRow,
@@ -162,14 +177,21 @@ export function useAssignTaskToWorker(): UseMutationResult<
   const queryClient = useQueryClient()
   return useMutation<MaintenanceTaskRow, Error, AssignTaskInput, unknown>({
     mutationFn: async (input) => {
-      const body: Record<string, unknown> = { workerId: input.workerId }
-      if (input.shiftId) body.shiftId = input.shiftId
-      if (input.noteSw) body.noteSw = input.noteSw
-      if (input.noteEn) body.noteEn = input.noteEn
-      const res = await managerApi.post<AssignResponse>(
-        `/work-orders/${encodeURIComponent(input.taskId)}/assign-worker`,
-        body
-      )
+      const note = input.noteEn ?? input.noteSw
+      const title =
+        note && note.trim().length > 0
+          ? note.trim()
+          : `Work order ${input.taskId}`
+      const body: Record<string, unknown> = {
+        assigneeEmployeeId: input.workerId,
+        title,
+        linkedEntityKind: 'work_order',
+        linkedEntityId: input.taskId,
+      }
+      const res = await request<AssignResponse>(HR_ASSIGNMENTS_URL, {
+        method: 'POST',
+        body,
+      })
       if (!res.data) {
         throw new Error('Assign returned an empty payload')
       }

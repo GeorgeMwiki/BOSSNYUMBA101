@@ -8,8 +8,14 @@ import { getDatabaseClient } from '../middleware/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { generateToken } from '../middleware/auth';
 import { tokenBlocklist } from '../middleware/token-blocklist';
-import { tenants, users, roles, userRoles } from '@bossnyumba/database';
+import { tenants, users, roles, userRoles, withServiceRoleContext } from '@bossnyumba/database';
 import { UserRole } from '../types/user-role';
+import {
+  resolveInviteByToken,
+  classifyInvite,
+  acceptInvite,
+  type InviteRejection,
+} from './invite-accept-repo';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
 // Request schemas — enforced server-side so clients cannot bypass.
@@ -17,6 +23,45 @@ const LoginSchema = z.object({
   email: z.string().email().max(255),
   password: z.string().min(1).max(200),
 });
+
+// Co-owner invite acceptance. The invitee is anonymous (no JWT yet) — the
+// email is taken IMMUTABLY from the token-resolved invite, never from client
+// input, so the accept can never be redirected to a different identity.
+const AcceptInviteSchema = z.object({
+  token: z.string().min(16).max(512),
+  firstName: z.string().trim().min(1).max(120),
+  lastName: z.string().trim().min(1).max(120),
+  password: z.string().min(8).max(200),
+});
+
+// Map a repo-layer rejection reason to a stable error envelope the FE keys on.
+// `INVITE_EXPIRED` is the code the owner-portal InvitePage matches to show its
+// dedicated "expired" screen (apps/owner-portal/src/pages/InvitePage.tsx:46).
+const INVITE_REJECTION_ENVELOPE: Record<
+  InviteRejection,
+  { status: 410 | 404; code: string; message: string }
+> = {
+  expired: {
+    status: 410,
+    code: 'INVITE_EXPIRED',
+    message: 'This invitation has expired. Ask the sender for a new one.',
+  },
+  revoked: {
+    status: 410,
+    code: 'INVITE_REVOKED',
+    message: 'This invitation has been revoked and can no longer be used.',
+  },
+  accepted: {
+    status: 410,
+    code: 'INVITE_ALREADY_ACCEPTED',
+    message: 'This invitation has already been accepted. Please sign in.',
+  },
+  not_found: {
+    status: 404,
+    code: 'INVITE_NOT_FOUND',
+    message: 'This invitation link is invalid or has already been used.',
+  },
+};
 
 const app = new Hono();
 
@@ -42,8 +87,22 @@ function mapRoleName(roleName?: string): UserRole {
       return UserRole.RESIDENT;
     case 'admin':
     case 'administrator':
-    default:
       return UserRole.TENANT_ADMIN;
+    case 'co_owner':
+    case 'co-owner':
+      // A co-owner has owner-level reach on the properties they share;
+      // org-membership + RLS scope it to those properties only.
+      return UserRole.OWNER;
+    case 'viewer':
+      // Read-only invitee — lowest privilege. (A precise read-only-owner
+      // scope is a separate role-model task; here we fail SAFE on privilege.)
+      return UserRole.RESIDENT;
+    default:
+      // Fail CLOSED on privilege: an UNRECOGNIZED role gets the LEAST
+      // privilege, NEVER tenant-admin. A TENANT_ADMIN default silently
+      // escalates every new role (e.g. a read-only co-owner invite) to full
+      // tenant administration — a privilege-escalation vuln.
+      return UserRole.RESIDENT;
   }
 }
 
@@ -273,6 +332,146 @@ app.post('/login', zValidator('json', LoginSchema), withSecurityEvents({ action:
     },
   });
 }));
+
+// ───────────────────────────────────────────────────────────────────────────
+// Co-owner invite acceptance (owner-portal InvitePage). Both routes are PUBLIC
+// — the invitee has no session yet. Token resolution is cross-tenant, so both
+// run inside `withServiceRoleContext` (the 0335 co_owner_invites
+// service-role-bypass policy lets the lookup/write through while the
+// tenant-isolation policy would otherwise zero the rows — see invite-accept-repo).
+// ───────────────────────────────────────────────────────────────────────────
+
+// GET /auth/invite/:token — anonymous preview. Returns org name, role, inviter
+// so the FE can render the "You've been invited" screen before the invitee
+// commits a password. Rejects expired/revoked/already-accepted/unknown tokens
+// with a stable typed envelope.
+app.get('/invite/:token', async (c) => {
+  const token = c.req.param('token');
+  if (!token || token.length < 16) {
+    return c.json(
+      { success: false, error: INVITE_REJECTION_ENVELOPE.not_found },
+      404,
+    );
+  }
+
+  const db = getDatabaseClient();
+  if (!db) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'AUTH_NOT_CONFIGURED',
+          message: 'Invitations require a live database connection.',
+        },
+      },
+      503,
+    );
+  }
+
+  const invite = await withServiceRoleContext(db, (tx) =>
+    resolveInviteByToken(tx as unknown as { execute(q: unknown): Promise<unknown> }, token),
+  );
+
+  if (!invite) {
+    return c.json(
+      { success: false, error: INVITE_REJECTION_ENVELOPE.not_found },
+      404,
+    );
+  }
+
+  const rejection = classifyInvite(invite);
+  if (rejection) {
+    const env = INVITE_REJECTION_ENVELOPE[rejection];
+    return c.json({ success: false, error: env }, env.status);
+  }
+
+  return c.json({
+    success: true,
+    data: {
+      inviteId: invite.id,
+      email: invite.email,
+      role: invite.role,
+      inviterName: invite.inviterName,
+      organizationName: invite.organizationName,
+      propertyName: invite.properties.length
+        ? invite.properties.join(', ')
+        : undefined,
+      expiresAt: invite.expiresAt,
+    },
+  });
+});
+
+// POST /auth/accept-invite — anonymous consume. Resolves the token, provisions
+// the invitee (user + tenant role link, email pinned by the token), flips the
+// invite to accepted. Idempotent: a double-submit (or already-accepted invite
+// whose user exists) returns success without duplicating the account.
+app.post(
+  '/accept-invite',
+  zValidator('json', AcceptInviteSchema),
+  withSecurityEvents(
+    { action: 'auth.create', resource: 'auth', severity: 'warn' },
+    async (c) => {
+      const body = c.req.valid('json');
+
+      const db = getDatabaseClient();
+      if (!db) {
+        return c.json(
+          {
+            success: false,
+            error: {
+              code: 'AUTH_NOT_CONFIGURED',
+              message: 'Invitations require a live database connection.',
+            },
+          },
+          503,
+        );
+      }
+
+      const passwordHash = await bcrypt.hash(body.password, 12);
+
+      const outcome = await withServiceRoleContext(db, async (tx) => {
+        const repoTx = tx as unknown as { execute(q: unknown): Promise<unknown> };
+        const invite = await resolveInviteByToken(repoTx, body.token);
+        if (!invite) {
+          return { kind: 'reject' as const, reason: 'not_found' as InviteRejection };
+        }
+
+        const rejection = classifyInvite(invite);
+        // An already-accepted invite is the idempotent-replay case (the FE
+        // double-submitted, or the invitee revisited the link): re-run the
+        // accept so the user/role link is guaranteed present, then report
+        // success rather than the `accepted` rejection.
+        if (rejection && rejection !== 'accepted') {
+          return { kind: 'reject' as const, reason: rejection };
+        }
+
+        const result = await acceptInvite(repoTx, invite, {
+          firstName: body.firstName,
+          lastName: body.lastName,
+          passwordHash,
+        });
+        return { kind: 'ok' as const, result };
+      });
+
+      if (outcome.kind === 'reject') {
+        const env = INVITE_REJECTION_ENVELOPE[outcome.reason];
+        return c.json({ success: false, error: env }, env.status);
+      }
+
+      return c.json({
+        success: true,
+        data: {
+          accepted: true,
+          email: outcome.result.email,
+          role: outcome.result.role,
+          organizationName: outcome.result.organizationName,
+          // The FE routes the invitee to /login after success — no session
+          // token is minted here (sign-in is an explicit, separate step).
+        },
+      });
+    },
+  ),
+);
 
 app.get('/me', authMiddleware, async (c) => {
   const auth = c.get('auth');

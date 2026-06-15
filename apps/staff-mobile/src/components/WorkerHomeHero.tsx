@@ -1,9 +1,12 @@
 /**
  * WorkerHomeHero — data-loading wrapper around WorkerHeroCard.
  *
- * Roadmap R5. Reads `/api/v1/field/workforce/me` (worker identity +
- * shift) and `/api/v1/field/workforce/tasks/next` (next assigned task)
- * and feeds the presentational `WorkerHeroCard`. The wrapper is
+ * Roadmap R5. Reads `/api/v1/field/staff/me` (worker identity + shift)
+ * and `/api/v1/field/staff/tasks/next` (next assigned task) and feeds the
+ * presentational `WorkerHeroCard`. The router is mounted at
+ * `/api/v1/field/staff` (createFieldStaffRouter) — NOT `/workforce` — so
+ * all paths go through `fieldApi`, which prepends `API_BASE_URL` +
+ * `FIELD_PREFIX` and reaches the real `/staff` segment. The wrapper is
  * intentionally tiny:
  *   • Holds no derived state beyond the API payload.
  *   • Tolerates a missing endpoint gracefully — when fetch returns null,
@@ -15,8 +18,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
-import { request } from '../api/client'
-import { FIELD_PREFIX } from '../api/config'
+import { fieldApi } from '../api/client'
 import { WorkerHeroCard } from './WorkerHeroCard'
 import {
   buildHeroData,
@@ -31,22 +33,21 @@ export function WorkerHomeHero(): JSX.Element | null {
   const { lang } = useI18n()
   const [me, setMe] = useState<MeResponseShape | null>(null)
   const [task, setTask] = useState<NextTaskResponseShape | null>(null)
+  const [completeError, setCompleteError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     const load = async (): Promise<void> => {
       try {
-        const next = await request<MeResponseShape>(
-          `${FIELD_PREFIX}/workforce/me`,
-        )
+        const next = await fieldApi.get<MeResponseShape>('/staff/me')
         if (!cancelled) setMe(next)
       } catch {
         // Endpoint may be optional in dev — leave `me` as null so the
         // card falls back to the cached user identity.
       }
       try {
-        const t = await request<NextTaskResponseShape>(
-          `${FIELD_PREFIX}/workforce/tasks/next`,
+        const t = await fieldApi.get<NextTaskResponseShape>(
+          '/staff/tasks/next',
         )
         if (!cancelled) setTask(t)
       } catch {
@@ -64,29 +65,39 @@ export function WorkerHomeHero(): JSX.Element | null {
 
   const onMarkComplete = useCallback(
     async (taskId: string): Promise<void> => {
+      // CRITICAL: only clear the task on a confirmed 2xx. `fieldApi.post`
+      // resolves ONLY on a 2xx and throws `ApiError` otherwise, so reaching
+      // the line after the await IS the server confirmation. Previously the
+      // failure was swallowed and the task cleared regardless (fake success),
+      // hiding an unsynced completion. Now a failure surfaces and the task
+      // stays visible so the worker can retry.
+      setCompleteError(null)
       try {
-        await request<{ readonly ok: true }>(
-          `${FIELD_PREFIX}/workforce/tasks/${encodeURIComponent(taskId)}/complete`,
-          { method: 'POST' },
+        await fieldApi.post<{ readonly ok: true }>(
+          `/staff/tasks/${encodeURIComponent(taskId)}/complete`,
+          undefined,
         )
         setTask(null)
-      } catch {
-        // Surface failures via the chat; the hero stays unchanged.
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : lang === 'sw'
+              ? 'Imeshindwa kukamilisha kazi'
+              : 'Could not mark the task complete'
+        setCompleteError(message)
       }
     },
-    [],
+    [lang],
   )
 
   const onNeedHelp = useCallback(
     async (taskId: string | null): Promise<void> => {
       try {
-        await request<{ readonly ok: true }>(
-          `${FIELD_PREFIX}/workforce/help-requests`,
-          {
-            method: 'POST',
-            body: { taskId, locale: lang },
-          },
-        )
+        await fieldApi.post<{ readonly ok: true }>('/staff/help-requests', {
+          taskId,
+          locale: lang,
+        })
       } catch {
         // best-effort
       }
@@ -101,6 +112,7 @@ export function WorkerHomeHero(): JSX.Element | null {
       locale={lang}
       onMarkComplete={onMarkComplete}
       onNeedHelp={onNeedHelp}
+      completeError={completeError}
     />
   )
 }

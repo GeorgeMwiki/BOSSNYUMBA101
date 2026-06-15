@@ -35,6 +35,12 @@ interface BidRow {
   status: string;
   submitted_at: string;
   awarded_at: string | null;
+  // Joined from the parent tender + negotiation linkage. Present on the
+  // My-Bids read (LEFT JOIN tenders); drive listingTitle + the countered
+  // status signal.
+  tender_scope?: string | null;
+  negotiation_id?: string | null;
+  negotiation_turns?: unknown[];
 }
 
 interface MsgRow {
@@ -161,9 +167,12 @@ vi.mock('../../middleware/database', () => {
       return [row];
     }
     if (/FROM bid_messages/i.test(text)) {
-      const bidId = params[0];
+      // Single-bid thread (WHERE bid_id = ?) or the My-Bids IN-list hydrate
+      // (WHERE bid_id IN (?, ?, ...)). Either way the params are the bid ids
+      // to include, so membership over the full param list is faithful to both.
+      const bidIds = new Set(params.map(String));
       return state.messages
-        .filter((m) => m.bid_id === bidId)
+        .filter((m) => bidIds.has(String(m.bid_id)))
         .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
     }
 
@@ -214,9 +223,37 @@ function seedBid(overrides: Partial<BidRow> = {}): BidRow {
     status: overrides.status ?? 'submitted',
     submitted_at: overrides.submitted_at ?? new Date().toISOString(),
     awarded_at: overrides.awarded_at ?? null,
+    // Preserve an EXPLICIT null (orphan-tender case) — `??` would swallow it
+    // and hide the impl's null→tender_id fallback. Default only when omitted.
+    tender_scope:
+      'tender_scope' in overrides
+        ? overrides.tender_scope ?? null
+        : 'Riverside 2-bed apartment',
+    negotiation_id: overrides.negotiation_id ?? null,
+    negotiation_turns: overrides.negotiation_turns ?? [],
   };
   state.bids = [...state.bids, bid as unknown as Record<string, unknown>];
   return bid;
+}
+
+function seedMessage(
+  bidId: string,
+  body: string,
+  tenderId = 'tender-1',
+): void {
+  state.messages = [
+    ...state.messages,
+    {
+      id: `msg-${++state.seq}`,
+      tenant_id: 'tenant-A',
+      bid_id: bidId,
+      tender_id: tenderId,
+      sender: 'owner',
+      sender_user_id: 'owner-1',
+      body,
+      created_at: new Date(Date.now() + state.seq).toISOString(),
+    },
+  ];
 }
 
 beforeEach(() => {
@@ -259,6 +296,111 @@ describe('tenders bid loop — My Bids', () => {
     expect(body.success).toBe(true);
     const ids = body.data.map((b: { id: string }) => b.id).sort();
     expect(ids).toEqual(['mine-1', 'mine-2']);
+  });
+});
+
+describe('tenders bid loop — My Bids returns the tenant-mobile Bid shape', () => {
+  it('maps every field the BidDetail screen reads (no nulls on render paths)', async () => {
+    seedBid({
+      id: 'shape-1',
+      tender_id: 'tender-7',
+      tender_scope: 'Riverside 2-bed apartment',
+      price: 850000,
+    });
+    seedMessage('shape-1', 'Welcome — can you move in May?', 'tender-7');
+
+    const res = await mount().request('/tenders/bids/mine');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const bid = body.data.find((b: { id: string }) => b.id === 'shape-1');
+
+    // listingId / listingTitle come from the JOINed tender.
+    expect(bid.listingId).toBe('tender-7');
+    expect(bid.listingTitle).toBe('Riverside 2-bed apartment');
+    // price → offerRentPerMonthTzs (number, never null — formatTzs calls it).
+    expect(bid.offerRentPerMonthTzs).toBe(850000);
+    expect(typeof bid.offerRentPerMonthTzs).toBe('number');
+    // floorAreaSqm is a number (formatSqm calls .toFixed on it).
+    expect(typeof bid.floorAreaSqm).toBe('number');
+    // submitted_at → placedAt.
+    expect(typeof bid.placedAt).toBe('string');
+    // thread is hydrated from bid_messages and is always an array.
+    expect(Array.isArray(bid.thread)).toBe(true);
+    expect(bid.thread).toHaveLength(1);
+    expect(bid.thread[0].body).toBe('Welcome — can you move in May?');
+    // No leftover gateway-only fields on the render path.
+    expect(bid.price).toBeUndefined();
+    expect(bid.submittedAt).toBeUndefined();
+  });
+
+  it('falls back to the tender id as the title when the tender is gone', async () => {
+    seedBid({ id: 'shape-orphan', tender_id: 'tender-x', tender_scope: null });
+    const res = await mount().request('/tenders/bids/mine');
+    const body = await res.json();
+    const bid = body.data.find((b: { id: string }) => b.id === 'shape-orphan');
+    expect(bid.listingTitle).toBe('tender-x');
+  });
+
+  it('defaults thread to an empty array when the bid has no messages', async () => {
+    seedBid({ id: 'shape-no-thread' });
+    const res = await mount().request('/tenders/bids/mine');
+    const body = await res.json();
+    const bid = body.data.find((b: { id: string }) => b.id === 'shape-no-thread');
+    expect(bid.thread).toEqual([]);
+  });
+});
+
+describe('tenders bid loop — status enum maps to the FE BidStatus vocabulary', () => {
+  it('submitted → pending', async () => {
+    seedBid({ id: 's1', status: 'submitted' });
+    const body = await (await mount().request('/tenders/bids/mine')).json();
+    expect(body.data.find((b: { id: string }) => b.id === 's1').status).toBe('pending');
+  });
+
+  it('negotiating → pending when no counter is on record', async () => {
+    seedBid({ id: 's2', status: 'negotiating' });
+    const body = await (await mount().request('/tenders/bids/mine')).json();
+    expect(body.data.find((b: { id: string }) => b.id === 's2').status).toBe('pending');
+  });
+
+  it('awarded → accepted', async () => {
+    seedBid({ id: 's3', status: 'awarded' });
+    const body = await (await mount().request('/tenders/bids/mine')).json();
+    expect(body.data.find((b: { id: string }) => b.id === 's3').status).toBe('accepted');
+  });
+
+  it('withdrawn → rejected', async () => {
+    seedBid({ id: 's4', status: 'withdrawn' });
+    const body = await (await mount().request('/tenders/bids/mine')).json();
+    expect(body.data.find((b: { id: string }) => b.id === 's4').status).toBe('rejected');
+  });
+
+  it('rejected → rejected', async () => {
+    seedBid({ id: 's5', status: 'rejected' });
+    const body = await (await mount().request('/tenders/bids/mine')).json();
+    expect(body.data.find((b: { id: string }) => b.id === 's5').status).toBe('rejected');
+  });
+
+  it('surfaces countered when a negotiation is linked to a live bid', async () => {
+    seedBid({ id: 's6', status: 'negotiating', negotiation_id: 'neg-1' });
+    const body = await (await mount().request('/tenders/bids/mine')).json();
+    expect(body.data.find((b: { id: string }) => b.id === 's6').status).toBe('countered');
+  });
+
+  it('surfaces countered when an inline negotiation turn exists', async () => {
+    seedBid({
+      id: 's7',
+      status: 'submitted',
+      negotiation_turns: [{ actor: 'owner', offer: 800000 }],
+    });
+    const body = await (await mount().request('/tenders/bids/mine')).json();
+    expect(body.data.find((b: { id: string }) => b.id === 's7').status).toBe('countered');
+  });
+
+  it('never re-maps a terminal awarded bid to countered even with a negotiation', async () => {
+    seedBid({ id: 's8', status: 'awarded', negotiation_id: 'neg-2' });
+    const body = await (await mount().request('/tenders/bids/mine')).json();
+    expect(body.data.find((b: { id: string }) => b.id === 's8').status).toBe('accepted');
   });
 });
 
@@ -306,7 +448,9 @@ describe('tenders bid loop — accept / withdraw', () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data.status).toBe('awarded');
+    // The transition response is mapped to the FE BidStatus vocabulary:
+    // awarded → accepted (the applicant never sees raw gateway statuses).
+    expect(body.data.status).toBe('accepted');
   });
 
   it('withdraws a submitted bid (transition to withdrawn)', async () => {
@@ -317,7 +461,8 @@ describe('tenders bid loop — accept / withdraw', () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data.status).toBe('withdrawn');
+    // withdrawn → rejected in the FE vocabulary.
+    expect(body.data.status).toBe('rejected');
   });
 
   it('rejects accept on an already-awarded bid (compare-and-set 409)', async () => {
