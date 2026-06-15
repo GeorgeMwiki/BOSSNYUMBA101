@@ -602,6 +602,28 @@
         "staging"
       ],
       "notes": "Mode-C R2 owner\u2194workforce HIGH: makes work_orders.assigned_to_user_id the ONE canonical worker assignee, bridging the previously-unbridged work_orders (vendor-only) vs assignments (worker-keyed) models. Stamped by POST /api/v1/manager/work-orders/:id/assign-worker (which also creates a bridge assignments row) and surfaced by /api/v1/field/staff/tasks/next. Additive ADD COLUMN IF NOT EXISTS, FORCE RLS inherited from 0155/0156 \u2014 forward-apply is prod-safe. Dropping discards recorded WO assignees; dispatch regresses to vendor-only and /tasks/next falls back to bridge assignments rows only."
+    },
+    {
+      "up": "0343_admin_four_eye_role_floor.sql",
+      "down": "down/0343_down_admin_four_eye_role_floor.sql",
+      "reverses": "Restore the 0301 admin_four_eye_role_chk (proposed_by_role IN SUPER_ADMIN/ADMIN/SUPPORT, no approved_by_role floor) in place of the tightened SUPER_ADMIN/ADMIN-only proposer+approver CHECK",
+      "dataLoss": false,
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Mode-C R2 security #23: the four-eye gate on admin_superpower_pending_approvals only enforced DISTINCT actor IDs, never a ROLE floor, so two read-mostly SUPPORT operators could collude to PROPOSE+APPROVE a HIGH-risk destructive cross-tenant verb (suspend_tenant_org / force_password_reset / force_lease_termination / export_regulator_pack). 0343 tightens admin_four_eye_role_chk to SUPER_ADMIN/ADMIN for proposed_by_role and (when set) approved_by_role, as the DB backstop to the route-layer requireRole(SUPER_ADMIN,ADMIN)+isAdminFloor() guards on POST /bulk-action,/approve,/reject in superpowers.hono.ts. Constraint swap only \u2014 no rows touched. Down re-admits SUPPORT at the DB level (route guards still hold); MUST NOT run in production."
+    },
+    {
+      "up": "0344_event_outbox_service_role_bypass.sql",
+      "down": "down/0344_down_event_outbox_service_role_bypass.sql",
+      "reverses": "DROP POLICY event_outbox_service_role_bypass on public.event_outbox (additive permissive FOR ALL bypass gated on app.is_service_role)",
+      "dataLoss": false,
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Mode-C R2 RLS-darkness #29: the admin superpower dispatchers (bulk-action-dispatchers.ts enqueueOutbox) write a CROSS-TENANT event_outbox actuation row (tenant_id = TARGET tenant, or NULL broadcast) under the acting admin's own app.current_tenant_id GUC, so FORCE-RLS event_outbox_tenant_isolation REJECTED it for any cross-tenant target while the route journal said 'applied' (born-dark: tenant suspended with no outbox row to drain). enqueueOutbox now wraps the insert in withServiceRoleContext; 0344 adds the matching service_role_bypass policy (same shape as 0336/0337) so the WITH CHECK passes. Additive permissive policy OR-composes with tenant_isolation \u2014 ordinary tenant-scoped outbox writes/reads unchanged. Dropping re-darkens the admin four-eye side-effects but loses no data."
     }
   ]
 }

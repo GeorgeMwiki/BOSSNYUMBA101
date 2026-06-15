@@ -165,11 +165,34 @@ const pendingQuerySchema = z.object({
 
 const app = new Hono();
 app.use('*', authMiddleware);
+// Base floor: SUPPORT may reach the router (for the read-only /pending
+// queue), but the MUTATING four-eye verbs below demand the stricter
+// SUPER_ADMIN/ADMIN floor applied per-route. SUPPORT is read-mostly — it
+// must NOT be able to PROPOSE or APPROVE a HIGH-risk destructive
+// cross-tenant verb. The four-eye CHECK constraint only enforced distinct
+// actor IDs, never role, so without this floor two SUPPORT operators could
+// collude to suspend a tenant org / force a password reset (#23).
 app.use(
   '*',
   requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT),
 );
 app.use('*', databaseMiddleware);
+
+// Stricter floor for the mutating four-eye routes (propose / approve /
+// reject). Mounted per-route below so /pending stays SUPPORT-readable.
+// migration 0343 also EXCLUDES SUPPORT for proposed_by_role/approved_by_role
+// on HIGH verbs as a DB-level backstop.
+const requireAdminFloor = requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN);
+
+/**
+ * Defense-in-depth role floor for the four-eye approve handler: reject 403
+ * when the caller is not SUPER_ADMIN/ADMIN even if upstream middleware were
+ * ever misconfigured. SUPPORT is read-mostly and must never grant the second
+ * eye on a destructive cross-tenant verb (#23).
+ */
+function isAdminFloor(role: string): boolean {
+  return role === UserRole.SUPER_ADMIN || role === UserRole.ADMIN;
+}
 
 function dbUnavailable(c: any) {
   return c.json(
@@ -185,7 +208,8 @@ function dbUnavailable(c: any) {
 }
 
 // ─── POST /bulk-action — propose a bulk admin verb ────────────────────
-app.post('/bulk-action', async (c: any) => {
+// requireAdminFloor: SUPPORT cannot PROPOSE a HIGH-risk destructive verb (#23).
+app.post('/bulk-action', requireAdminFloor, async (c: any) => {
   const auth = c.get('auth') as {
     tenantId: string;
     userId: string;
@@ -393,12 +417,31 @@ app.post('/bulk-action', async (c: any) => {
 });
 
 // ─── POST /approve/:journalId — second-actor approval (HIGH-risk) ─────
-app.post('/approve/:journalId', async (c: any) => {
+// requireAdminFloor: SUPPORT cannot grant the second eye on a destructive
+// verb (#23). The in-handler isAdminFloor check below is the defense-in-depth
+// backstop in case upstream middleware is ever misconfigured.
+app.post('/approve/:journalId', requireAdminFloor, async (c: any) => {
   const auth = c.get('auth') as {
     tenantId: string;
     userId: string;
     role: string;
   };
+  // Explicit role-floor backstop: the four-eye gate only checks distinct
+  // actor IDs, not role — so without this a read-mostly SUPPORT actor could
+  // approve a HIGH-risk cross-tenant verb proposed by another admin (#23).
+  if (!isAdminFloor(auth.role)) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'FOUR_EYE_ROLE_FLOOR',
+          message:
+            'Only SUPER_ADMIN or ADMIN may approve a HIGH-risk admin verb',
+        },
+      },
+      403,
+    );
+  }
   const db = c.get('db');
   if (!db) return dbUnavailable(c);
   const journalId = c.req.param('journalId');
@@ -687,7 +730,9 @@ app.post('/approve/:journalId', async (c: any) => {
 });
 
 // ─── POST /reject/:journalId — reject a pending HIGH proposal ─────────
-app.post('/reject/:journalId', async (c: any) => {
+// requireAdminFloor: resolving a four-eye proposal is a privileged decision;
+// SUPPORT stays read-only on the /pending queue (#23).
+app.post('/reject/:journalId', requireAdminFloor, async (c: any) => {
   const auth = c.get('auth') as {
     tenantId: string;
     userId: string;

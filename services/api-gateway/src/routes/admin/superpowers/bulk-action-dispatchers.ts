@@ -39,7 +39,11 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { createDatabaseClient, eventOutbox } from '@bossnyumba/database';
+import {
+  createDatabaseClient,
+  eventOutbox,
+  withServiceRoleContext,
+} from '@bossnyumba/database';
 
 // Locally-derived alias to avoid TS2709 namespace drift on the
 // barrel-exported `DatabaseClient`. Same pattern as the owner dispatcher.
@@ -95,32 +99,43 @@ async function enqueueOutbox(
   },
 ): Promise<AdminDispatchOutcome> {
   const outboxId = genId('admin_outbox');
-  await ctx.db.insert(eventOutbox).values({
-    id: outboxId,
-    // Scope the row to the TARGET tenant so the downstream processor
-    // applies the effect in the correct tenant context. NULL = platform-
-    // wide broadcast (e.g. operator announcement).
-    tenantId: ctx.targetTenantId,
-    eventType: args.eventType,
-    aggregateType: args.aggregateType,
-    aggregateId: args.aggregateId,
-    payload: {
-      ...args.payload,
-      reason: ctx.reason,
-    },
-    metadata: {
-      surface: 'admin-platform-portal',
-      actorId: ctx.actorId,
-      actorRole: ctx.actorRole,
-      actorTenantId: ctx.actorTenantId,
-      targetTenantId: ctx.targetTenantId,
-      adminAction: true,
-      ...(ctx.idempotencyKey ? { idempotencyKey: ctx.idempotencyKey } : {}),
-    },
-    sequenceNumber: Date.now(),
-    priority: args.priority ?? 'high',
-    correlationId: ctx.idempotencyKey ?? outboxId,
-  });
+  // CROSS-TENANT WRITE: this row is scoped to the TARGET tenant (or NULL for
+  // a platform-wide broadcast), NOT the acting admin's tenant. The admin's
+  // request runs under the admin's own `app.current_tenant_id` GUC, so a bare
+  // insert hits the FORCE-RLS `event_outbox_tenant_isolation` policy
+  // (tenant_id = app.current_tenant_id) and is REJECTED for any cross-tenant
+  // target — the journal would say 'applied' while nothing was enqueued
+  // (born-dark, #29). We bind `app.is_service_role='true'` via
+  // withServiceRoleContext so the 0344 `event_outbox_service_role_bypass`
+  // policy passes the WITH CHECK and the actuation row is durably written.
+  await withServiceRoleContext(ctx.db, async (tx) =>
+    tx.insert(eventOutbox).values({
+      id: outboxId,
+      // Scope the row to the TARGET tenant so the downstream processor
+      // applies the effect in the correct tenant context. NULL = platform-
+      // wide broadcast (e.g. operator announcement).
+      tenantId: ctx.targetTenantId,
+      eventType: args.eventType,
+      aggregateType: args.aggregateType,
+      aggregateId: args.aggregateId,
+      payload: {
+        ...args.payload,
+        reason: ctx.reason,
+      },
+      metadata: {
+        surface: 'admin-platform-portal',
+        actorId: ctx.actorId,
+        actorRole: ctx.actorRole,
+        actorTenantId: ctx.actorTenantId,
+        targetTenantId: ctx.targetTenantId,
+        adminAction: true,
+        ...(ctx.idempotencyKey ? { idempotencyKey: ctx.idempotencyKey } : {}),
+      },
+      sequenceNumber: Date.now(),
+      priority: args.priority ?? 'high',
+      correlationId: ctx.idempotencyKey ?? outboxId,
+    }),
+  );
   return { ok: true, artifactId: outboxId, artifactKind: 'outbox' };
 }
 
