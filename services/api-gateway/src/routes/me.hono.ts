@@ -139,10 +139,9 @@ app.post('/device-tokens', async (c) => {
         ${tenantId}, ${userId}, ${token}, ${input.platform}, ${appName},
         NOW(), NOW(), NULL
       )
-      ON CONFLICT (user_id, token, platform) DO UPDATE SET
+      ON CONFLICT (tenant_id, user_id, token, platform) DO UPDATE SET
         last_seen_at = NOW(),
         revoked_at   = NULL,
-        tenant_id    = EXCLUDED.tenant_id,
         app          = EXCLUDED.app,
         updated_at   = NOW()
       RETURNING id::text AS id, last_seen_at
