@@ -17,6 +17,7 @@ const SAFE_SCHEME = /^(?:https?:|mailto:|tel:)/i;
 const RELATIVE = /^(?:\/|#|\.\/|\.\.\/)/;
 // Control/whitespace chars an attacker injects to dodge the prefix check
 // (e.g. "java\tscript:" or a leading NUL). Strip before classifying scheme.
+// eslint-disable-next-line no-control-regex -- intentional: matches control chars to strip attacker scheme-evasion
 const CONTROL = /[\x00-\x20\x7f-\x9f]/g;
 
 export function safeUrl(raw: string | undefined | null): string | undefined {

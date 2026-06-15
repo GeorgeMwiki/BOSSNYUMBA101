@@ -9,6 +9,7 @@
  * components at once.
  */
 
+/* eslint-disable no-script-url -- this suite MUST contain javascript:/vbscript: URLs to prove safeUrl() rejects them */
 import { describe, it, expect } from 'vitest';
 
 import { safeUrl } from '../safe-url';
