@@ -1,3 +1,4 @@
+/* eslint-disable no-secrets/no-secrets -- red-team scenarios intentionally contain secret-like attack payloads */
 /**
  * Built-in red-team scenarios — 30+ covering OWASP LLM Top 10 +
  * MITRE ATLAS techniques. See Docs/SECURITY/AI_AGENT_SECURITY_SOTA_2026.md §11.

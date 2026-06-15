@@ -120,7 +120,6 @@ function matchesFilter(
  * via closure.
  */
 export function createInMemoryRegistry(): VerticalProfileRegistry {
-  // eslint-disable-next-line functional/no-let -- closure-encapsulated state
   let state = emptyState();
 
   async function list(

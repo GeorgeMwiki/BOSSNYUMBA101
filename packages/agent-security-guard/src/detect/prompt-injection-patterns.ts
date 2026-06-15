@@ -1,3 +1,4 @@
+/* eslint-disable no-irregular-whitespace, no-misleading-character-class, security/detect-bidi-characters -- this file intentionally CONTAINS the trojan-source / bidi / zero-width / irregular-whitespace attack patterns it DETECTS */
 /**
  * Canonical direct-prompt-injection pattern corpus.
  *

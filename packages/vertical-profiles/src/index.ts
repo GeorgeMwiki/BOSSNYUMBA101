@@ -1,3 +1,4 @@
+/* eslint-disable no-secrets/no-secrets -- the high-entropy literal is a spec-doc PATH, not a secret */
 /**
  * `@bossnyumba/vertical-profiles` — public surface (Wave VP-1).
  *
