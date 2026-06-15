@@ -114,8 +114,31 @@ function rowToCapture(
   };
 }
 
+/** Filters for the tenant-scoped field-capture read-back surface. */
+export interface FieldCaptureListFilter {
+  readonly tenantId: string;
+  /** Restrict to one capture type (e.g. 'incident' for the incidents panel). */
+  readonly captureType?: CaptureType;
+  /** Restrict to one property. */
+  readonly propertyId?: string | null;
+  /** Inclusive lower bound on captured_at (falls back to created_at). ISO. */
+  readonly fromDate?: string | null;
+  /** Inclusive upper bound on captured_at (falls back to created_at). ISO. */
+  readonly toDate?: string | null;
+  /** Page size (1..200). */
+  readonly limit?: number;
+}
+
 export interface EstateFieldIdentityRepo {
   saveFieldCapture(input: FieldCaptureInput): Promise<FieldCaptureRecord>;
+  /**
+   * Tenant-scoped read-back of persisted field captures (the owner/manager
+   * projection that closes the worker→owner capture loop). Bound by the RLS
+   * tenant GUC via withTenantContext; ordered newest-first.
+   */
+  listFieldCaptures(
+    filter: FieldCaptureListFilter,
+  ): Promise<ReadonlyArray<FieldCaptureRecord>>;
   // KYC
   submitKyc(input: KycSubmissionInput): Promise<KycRecord>;
   getKycStatus(
@@ -272,6 +295,33 @@ export function createEstateFieldIdentityRepo(
           );
         }
         return rowToCapture(existingRows[0], true);
+      });
+    },
+
+    async listFieldCaptures(
+      filter: FieldCaptureListFilter,
+    ): Promise<ReadonlyArray<FieldCaptureRecord>> {
+      const limit = Math.min(200, Math.max(1, filter.limit ?? 50));
+      return withTenantContext(db, filter.tenantId, async (tx) => {
+        // Tenant predicate is belt-and-braces alongside the bound RLS GUC. The
+        // date window is matched against captured_at when present, else
+        // created_at (a capture may arrive without a device timestamp). All
+        // values are parameterised — no interpolation.
+        const result = await tx.execute(sql`
+          SELECT * FROM field_captures
+          WHERE tenant_id = ${filter.tenantId}
+            AND (${filter.captureType ?? null}::text IS NULL
+                 OR capture_type = ${filter.captureType ?? null})
+            AND (${filter.propertyId ?? null}::text IS NULL
+                 OR property_id = ${filter.propertyId ?? null})
+            AND (${filter.fromDate ?? null}::timestamptz IS NULL
+                 OR COALESCE(captured_at, created_at) >= ${filter.fromDate ?? null}::timestamptz)
+            AND (${filter.toDate ?? null}::timestamptz IS NULL
+                 OR COALESCE(captured_at, created_at) <= ${filter.toDate ?? null}::timestamptz)
+          ORDER BY COALESCE(captured_at, created_at) DESC, created_at DESC
+          LIMIT ${limit}
+        `);
+        return rowsOf(result).map((row) => rowToCapture(row, false));
       });
     },
 

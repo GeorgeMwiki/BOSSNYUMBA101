@@ -202,6 +202,24 @@ describe('admin-audit.router — GET /admin/audit/log', () => {
     });
     expect(res.status).toBe(400);
   });
+
+  it('fails LOUD with 503 when the audit-log service is unwired (never empty-success)', async () => {
+    // R2 fix: an unwired read-back must NOT return `success: true, data: []` —
+    // an auditor would read that as a clean compliance state. Mirror the
+    // purge-now fail-loud. `mount()` with no `auditLogQuery` leaves the slot
+    // null, exercising the resolveAuditSvc === null branch.
+    const app = mount();
+    const res = await app.request('/admin/audit/log', {
+      headers: { Authorization: bearer(UserRole.SUPER_ADMIN) },
+    });
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as {
+      success?: boolean;
+      error?: { code?: string };
+    };
+    expect(body.success).not.toBe(true);
+    expect(body.error?.code).toBe('AUDIT_LOG_UNAVAILABLE');
+  });
 });
 
 describe('admin-audit.router — POST /admin/tenants/:id/purge-now', () => {

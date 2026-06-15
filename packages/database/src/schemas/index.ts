@@ -554,6 +554,19 @@ export * from './request-for-applications.schema.js';
 export * from './move-in-out-condition-reports.schema.js';
 export * from './maintenance-tasks.schema.js';
 
+// ─── Mode-C R2 counterparty highs — applicant inbox + rfb responses
+//     (migration 0338) ────────────────────────────────────────────────────
+//   - applicant_notifications : the tenant-mobile (counterparty) L7 inbox the
+//       FE contract reads (GET /api/v1/notifications -> { data: { notifications } }
+//       + POST /:id/read backed by read_at). DOUBLE-scoped: tenant_id (RLS) +
+//       applicant_user_id (per-applicant anti-IDOR at the route). Bilingual
+//       title/body (single-locale render).
+//   - rfb_responses           : landlord response to an applicant rfb_requests
+//       row, carrying the settlement linkage (rent/term/deposit/currency/
+//       landlord) the L8 SettlementOrchestrator runs against. At most one
+//       accepted response per request (partial unique index).
+export * from './marketplace-rfb.schema.js';
+
 // ─── COMPANY-BRAIN wave (migrations 0285-0286) ─────────────────────────────
 //   - intelligence_corpus_chunks  : pgvector-backed brain memory store
 //                                    (global + per-tenant chunks).

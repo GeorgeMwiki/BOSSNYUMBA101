@@ -171,6 +171,64 @@ export async function upsertOwnerSettings(
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// users (existing) — the caller's own profile (name / email / phone)
+// ───────────────────────────────────────────────────────────────────────────
+
+export interface OwnerProfile {
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly email: string;
+  readonly phone: string | null;
+}
+
+export interface UpdateOwnerProfileInput {
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly email: string;
+  readonly phone: string | null;
+}
+
+function rowToOwnerProfile(row: Record<string, unknown>): OwnerProfile {
+  return {
+    firstName: String(row.first_name ?? ''),
+    lastName: String(row.last_name ?? ''),
+    email: String(row.email ?? ''),
+    phone: (row.phone as string | null) ?? null,
+  };
+}
+
+/**
+ * Update the caller's OWN profile (users.first_name / last_name / email /
+ * phone), scoped by tenant_id AND user_id (the per-user anti-IDOR ownership key
+ * on top of FORCE-RLS). Returns the refreshed profile, or null when no matching
+ * user row exists for this (tenant, user) — the route maps null to a 404.
+ *
+ * The email uniqueness conflict (a tenant may not have two users with the same
+ * email) surfaces as a unique-violation; the route maps it to a typed 409.
+ */
+export async function updateOwnerProfile(
+  db: RepoDb,
+  tenantId: string,
+  userId: string,
+  input: UpdateOwnerProfileInput,
+): Promise<OwnerProfile | null> {
+  const result = await db.execute(sql`
+    UPDATE users
+       SET first_name = ${input.firstName},
+           last_name  = ${input.lastName},
+           email      = ${input.email},
+           phone      = ${input.phone},
+           updated_at = NOW()
+     WHERE id = ${userId}
+       AND tenant_id = ${tenantId}
+       AND deleted_at IS NULL
+    RETURNING first_name, last_name, email, phone
+  `);
+  const row = rowsOf(result)[0];
+  return row ? rowToOwnerProfile(row) : null;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // co_owner_invites (migration 0335) + accepted members (users)
 // ───────────────────────────────────────────────────────────────────────────
 

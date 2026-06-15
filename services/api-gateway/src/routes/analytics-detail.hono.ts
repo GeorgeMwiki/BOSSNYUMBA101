@@ -32,6 +32,7 @@ import {
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { logger } from '../utils/logger';
+import { resolveTenantCurrency, minorToMajorFor } from './tenant-currency';
 
 const router = new Hono();
 router.use('*', authMiddleware);
@@ -74,10 +75,11 @@ function noTenant(c: any) {
   );
 }
 
-// Minor → major. Schema uses `integer` for amounts (cents).
-function minorToMajor(n: number | string | null | undefined): number {
-  return Number(n ?? 0) / 100;
-}
+// Minor → major is now currency-aware: see `minorToMajorFor` in
+// ./tenant-currency. A fixed /100 100x-understated 0-decimal TZS/UGX
+// (the launch currencies) and contradicted the identity `minorToMajor`
+// in db-mappers.ts. Each handler resolves the tenant currency and builds
+// its own converter, so the codebase has exactly one convention.
 
 // ----------------------------------------------------------------------------
 // GET /occupancy — 12-month occupancy % from leases active in each month.
@@ -164,6 +166,7 @@ router.get('/revenue', async (c) => {
   try {
     const buckets = lastNMonths(12);
     const earliest = buckets[0]!.start;
+    const minorToMajor = minorToMajorFor(await resolveTenantCurrency(db, auth.tenantId));
 
     // SQL date_trunc('month', completed_at) so we don't pull rows we
     // won't bucket. We also LEFT JOIN invoices to read type (rent vs
@@ -224,6 +227,7 @@ router.get('/expenses', async (c) => {
   try {
     const buckets = lastNMonths(12);
     const earliest = buckets[0]!.start;
+    const minorToMajor = minorToMajorFor(await resolveTenantCurrency(db, auth.tenantId));
 
     const rows = ((await db.execute(sql`
       SELECT

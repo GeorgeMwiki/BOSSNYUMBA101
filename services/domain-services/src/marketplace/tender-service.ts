@@ -29,6 +29,8 @@ interface BidSubmittedEvent extends DomainEvent {
     readonly tenderId: TenderId;
     readonly vendorId: Bid['vendorId'];
     readonly price: Bid['price'];
+    // Recipient for the owner-notification subscriber: the tender creator.
+    readonly tenderOwnerId: Tender['createdBy'];
   };
 }
 
@@ -40,6 +42,8 @@ interface TenderAwardedEvent extends DomainEvent {
     readonly vendorId: Bid['vendorId'];
     readonly awardedPrice: Bid['price'];
     readonly workOrderId: Tender['workOrderId'];
+    // Recipient for the winner-notification subscriber: the winning vendor.
+    readonly winnerUserId: Bid['vendorId'];
   };
 }
 
@@ -252,6 +256,7 @@ export class TenderService {
             tenderId: tender.id,
             vendorId: created.vendorId,
             price: created.price,
+            tenderOwnerId: tender.createdBy,
           },
         } satisfies BidSubmittedEvent,
         created.id,
@@ -331,6 +336,7 @@ export class TenderService {
             vendorId: updatedBid.vendorId,
             awardedPrice: updatedBid.price,
             workOrderId: updatedTender.workOrderId,
+            winnerUserId: updatedBid.vendorId,
           },
         } satisfies TenderAwardedEvent,
         updatedTender.id,

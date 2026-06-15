@@ -68,9 +68,10 @@ export function buildNightlySweepDeps(args: BuildDepsArgs): NightlySweepDeps {
   const verifier = o.verifier ?? createVerifierAdapter();
 
   return {
-    // The SAME raw handle every adapter above closes over. `runForTenant`
-    // binds the per-tenant RLS GUC on it so the episodic read + memory
-    // writes share one tenant-scoped transaction.
+    // The raw POOLED handle. `runForTenant` reserves a single connection off
+    // this pool (via `withWorkerTenantContext`) and re-binds the DB-backed
+    // ports onto it through `rebindPorts` so the per-tenant SET LOCAL and the
+    // episodic read + memory writes share that one reserved connection.
     db: args.db,
     directory,
     traceReader,
@@ -78,6 +79,17 @@ export function buildNightlySweepDeps(args: BuildDepsArgs): NightlySweepDeps {
     memoryWriter,
     reportSink,
     verifier,
+    // Re-bind the three DB-backed ports onto the connection-pinned handle.
+    // Explicit overrides (test fakes / injected engines) are preserved as-is;
+    // only the default DB-backed adapters are rebuilt against `pinned` so they
+    // execute on the reserved connection the tenant GUC was set on.
+    rebindPorts: (pinned: DrizzleLikeClient) => ({
+      traceReader: o.traceReader ?? createTraceReaderAdapter({ db: pinned }),
+      memoryWriter:
+        o.memoryWriter ??
+        createMemoryWriterAdapter({ db: pinned, logger: args.logger }),
+      reportSink: o.reportSink ?? createReportSinkAdapter({ db: pinned }),
+    }),
     logger: args.logger,
     ...(o.extractor ? { extractor: o.extractor } : {}),
     ...(typeof o.concurrency === 'number' ? { concurrency: o.concurrency } : {}),

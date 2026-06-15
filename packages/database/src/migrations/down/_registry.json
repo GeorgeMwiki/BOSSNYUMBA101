@@ -1,8 +1,8 @@
 {
   "$schema": "./_registry.schema.json",
-  "description": "Down-migration registry. Maps up-migrations to their reverse. Used by migration-runner --down to pick the right script. Not every up has a down — gold-standard append-only invariants (audit chain, event store) require explicit dev/staging-only down-flags. See LITFIN-parity item 5.",
+  "description": "Down-migration registry. Maps up-migrations to their reverse. Used by migration-runner --down to pick the right script. Not every up has a down \u2014 gold-standard append-only invariants (audit chain, event store) require explicit dev/staging-only down-flags. See LITFIN-parity item 5.",
   "version": 1,
-  "updatedAt": "2026-06-13",
+  "updatedAt": "2026-06-15",
   "scope": "10 highest-blast-radius migrations from 0252..0273, the 0317/0318 Borjie-parity RLS+idempotency ports, and the 0319..0323 parity-final back-port (portal-genui tabs/records/self-healing + connector-OAuth credentials/nonces). Older migrations get down scripts in follow-up passes.",
   "mappings": [
     {
@@ -10,70 +10,100 @@
       "down": "down/0252_down_land_areas.sql",
       "reverses": "CREATE TABLE land_areas + RLS",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0253_parcels.sql",
       "down": "down/0253_down_parcels.sql",
       "reverses": "CREATE TABLE parcels + RLS (CASCADEs 0254..0260)",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0264_layout_overrides.sql",
       "down": "down/0264_down_layout_overrides.sql",
       "reverses": "CREATE TABLE layout_overrides + RLS",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0266_agency_missions.sql",
       "down": "down/0266_down_agency_missions.sql",
       "reverses": "CREATE TABLE agency_missions + RLS (CASCADEs 0267..0270)",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0267_mission_steps.sql",
       "down": "down/0267_down_mission_steps.sql",
       "reverses": "CREATE TABLE mission_steps + RLS",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0268_mission_checkpoints.sql",
       "down": "down/0268_down_mission_checkpoints.sql",
       "reverses": "CREATE TABLE mission_checkpoints + RLS",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0269_mission_outcomes.sql",
       "down": "down/0269_down_mission_outcomes.sql",
       "reverses": "CREATE TABLE mission_outcomes + RLS",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0270_mission_drift_log.sql",
       "down": "down/0270_down_mission_drift_log.sql",
       "reverses": "CREATE TABLE mission_drift_log + RLS",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0272_tenant_llm_budgets.sql",
       "down": "down/0272_down_tenant_llm_budgets.sql",
       "reverses": "CREATE TABLE tenant_llm_budgets + tenant_llm_budget_caps + index",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0273_payment_event_store.sql",
       "down": "down/0273_down_payment_event_store.sql",
       "reverses": "CREATE TABLE payment_event_store + triggers + functions + indexes + RLS",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "criticality": "high",
       "notes": "Event store is audit substrate for rent + arrears. Production down requires export-then-restore plan."
     },
@@ -82,92 +112,131 @@
       "down": "down/0274_down_tenants_scale_tier.sql",
       "reverses": "ADD COLUMNs tenants.scale_tier + scale_signals + index + CHECK constraint",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0275_marketing_pilot_applications.sql",
       "down": "down/0275_down_marketing_pilot_applications.sql",
       "reverses": "CREATE TABLE marketing_pilot_applications + indexes + RLS policies",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0276_tenants_rate_limit_override.sql",
       "down": "down/0276_down_tenants_rate_limit_override.sql",
       "reverses": "ADD COLUMNs tenants.rate_limit_max_per_min + ai_rate_limit_max_per_min + token_budget_hourly + 3 CHECK constraints",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0277_regulator_jurisdictions.sql",
       "down": "down/0277_down_regulator_jurisdictions.sql",
       "reverses": "CREATE TABLE regulator_jurisdictions + ADD COLUMNs tenants.{regulator_set,country_code,primary_currency,default_language} + CHECK constraints + indexes",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0278_onboarding_state.sql",
       "down": "down/0278_down_onboarding_state.sql",
       "reverses": "CREATE TABLE onboarding_state + RLS",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0279_tab_proposals_inbox.sql",
       "down": "down/0279_down_tab_proposals_inbox.sql",
       "reverses": "CREATE TABLE tab_proposals_inbox + CHECK constraints + RLS",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0280_corpus_doc_uploads.sql",
       "down": "down/0280_down_corpus_doc_uploads.sql",
       "reverses": "CREATE TABLE corpus_doc_uploads + corpus_doc_summaries + RLS (append-only memory tables)",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0281_request_for_applications.sql",
       "down": "down/0281_down_request_for_applications.sql",
       "reverses": "CREATE TABLE request_for_applications + request_for_application_responses + indexes + RLS",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0282_move_in_out_condition_reports.sql",
       "down": "down/0282_down_move_in_out_condition_reports.sql",
       "reverses": "CREATE TABLE move_in_out_condition_reports + CHECK constraints + RLS",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0283_maintenance_tasks_toolbox.sql",
       "down": "down/0283_down_maintenance_tasks_toolbox.sql",
       "reverses": "CREATE TABLE maintenance_tasks + maintenance_toolbox_talks + CHECK constraints + RLS",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0284_maintenance_tasks_toolbox.sql",
       "down": "down/0284_down_maintenance_tasks_toolbox.sql",
-      "reverses": "CREATE TABLE maintenance_tasks + maintenance_toolbox_talks + CHECK constraints + RLS (renumbered from 0283 — slot taken by 0283_oauth_action_approvals.sql sibling port; effectively idempotent due to IF NOT EXISTS)",
+      "reverses": "CREATE TABLE maintenance_tasks + maintenance_toolbox_talks + CHECK constraints + RLS (renumbered from 0283 \u2014 slot taken by 0283_oauth_action_approvals.sql sibling port; effectively idempotent due to IF NOT EXISTS)",
       "dataLoss": true,
-      "envs": ["dev", "staging"]
+      "envs": [
+        "dev",
+        "staging"
+      ]
     },
     {
       "up": "0295_discovered_jurisdictions.sql",
       "down": "down/0295_down_discovered_jurisdictions.sql",
       "reverses": "CREATE TABLE discovered_jurisdictions + unique/partial indexes + RLS policy dj_admin_only",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Cache rows are recomputable via the discovery pipeline; safe to drop in dev/staging."
     },
     {
       "up": "0296_personal_knowledge_base.sql",
       "down": "down/0296_down_personal_knowledge_base.sql",
-      "reverses": "CREATE TABLE persons + person_links + personal_memory_cells (federated PKB — NO RLS by design; gated by app.current_person_id GUC + boundary-tagger Chinese-wall)",
+      "reverses": "CREATE TABLE persons + person_links + personal_memory_cells (federated PKB \u2014 NO RLS by design; gated by app.current_person_id GUC + boundary-tagger Chinese-wall)",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "personal_memory_cells holds GDPR Art. 4(1) personal data; production redaction MUST go through the GDPR right-to-be-forgotten pipeline (gdpr.schema.ts), not this down script."
     },
     {
@@ -175,7 +244,10 @@
       "down": "down/0297_down_share_links.sql",
       "reverses": "CREATE TABLE share_links + unique token idx + tenant/entity indexes + RLS policy share_links_tenant_isolation",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Active share links are time-bounded and re-mintable; safe to drop in dev/staging."
     },
     {
@@ -183,7 +255,10 @@
       "down": "down/0298_down_undo_journal.sql",
       "reverses": "CREATE TABLE undo_journal + actor/entity/window indexes + RLS policy undo_journal_tenant_isolation",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Undo journal is a transient 5-min reverse buffer; the immutable AI audit chain holds the durable record."
     },
     {
@@ -191,7 +266,10 @@
       "down": "down/0300_down_owner_tabs.sql",
       "reverses": "CREATE TABLE owner_tabs + updated_at idx + RLS policy owner_tabs_tenant_isolation",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Tab strip is rebuildable from chat + entity history; loss costs the landlord their drawer focus across devices. Production rollback must be coordinated by #ops."
     },
     {
@@ -199,7 +277,10 @@
       "down": "down/0301_down_admin_four_eye_pending.sql",
       "reverses": "CREATE TABLE admin_superpower_pending_approvals + journal/expires indexes + RLS policy admin_four_eye_admin_scope",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Pending approvals are short-lived (24h TTL); cancellation forces operators to re-propose. Production rollback must be coordinated with the platform-admin council."
     },
     {
@@ -207,7 +288,10 @@
       "down": "down/0307_down_owner_style_profiles.sql",
       "reverses": "CREATE TABLE owner_style_profiles + tenant-uq + dimension/score CHECKs + tenant_updated index + RLS policy owner_style_profiles_tenant_isolation",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Per-owner learned communication style; rebuildable from subsequent chat turns (the feedback loop re-converges from a neutral default). Dropping it costs the owner their personalised voice until it re-learns."
     },
     {
@@ -215,7 +299,10 @@
       "down": "down/0309_down_courses.sql",
       "reverses": "CREATE TABLE courses + course_lessons + course_documents + tenant/owner/status indexes + RLS policies courses_tenant_isolation / course_lessons_tenant_isolation / course_documents_tenant_isolation",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Generated courses are rebuildable from the same domain + scenario inputs, but learner quiz progress (course_lessons quiz_score/status/completed_at) is lost. Production rollback must be coordinated by #ops."
     },
     {
@@ -223,7 +310,10 @@
       "down": "down/0312_down_cases_photos.sql",
       "reverses": "ADD COLUMN cases.photos jsonb DEFAULT '[]'",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Drops case intake photo references. Photos promoted into the normalized evidence_attachments table are unaffected; only the lightweight intake-time refs on cases.photos are lost."
     },
     {
@@ -231,7 +321,10 @@
       "down": "down/0315_down_durable_scheduled_wakes.sql",
       "reverses": "CREATE TABLE durable_scheduled_wakes + durable_armed_monitors + unique/scan indexes + RLS policies (tenant_isolation + service_role_bypass) + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Drops the crash-resilient backing store for the orchestrator's schedule_wake / monitor Decisions. Any armed-but-not-yet-fired wakes/monitors are lost; the supervisor degrades to the storeless in-process fallback (arms lost on restart again). No money/audit data here."
     },
     {
@@ -239,23 +332,32 @@
       "down": "down/0316_down_person_links_rls.sql",
       "reverses": "ENABLE/FORCE RLS + tenant_isolation_select/modify + service_role_bypass policies on person_links + REVOKE anon; non-partial unique index disbursements_tenant_idempotency_uq (tenant_id, idempotency_key)",
       "dataLoss": false,
-      "envs": ["dev", "staging"],
-      "notes": "No table/row data is destroyed — person_links rows survive. The down only removes the RLS posture (re-opening the cross-tenant identity-linkage leak) and the redundant atomic-claim arbiter index; the 0174 partial idempotency index is left intact. MUST NOT run in production: disabling RLS re-exposes person→tenant→user PII linkage across tenants."
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "No table/row data is destroyed \u2014 person_links rows survive. The down only removes the RLS posture (re-opening the cross-tenant identity-linkage leak) and the redundant atomic-claim arbiter index; the 0174 partial idempotency index is left intact. MUST NOT run in production: disabling RLS re-exposes person\u2192tenant\u2192user PII linkage across tenants."
     },
     {
       "up": "0317_parity_rls_core_identity_geo.sql",
       "down": "down/0317_down_parity_rls_core_identity_geo.sql",
       "reverses": "ENABLE/FORCE RLS + tenant_isolation_<tbl> + <tbl>_service_role_bypass policies on org_memberships, invite_codes (platform_tenant_id=GUC), geo_label_types, geo_nodes, geo_assignments (organization_id->organizations.tenant_id FK-subquery) + REVOKE anon",
       "dataLoss": false,
-      "envs": ["dev", "staging"],
-      "notes": "Borjie-parity port of 0336. No table/row data destroyed — rows survive. The down only removes the RLS posture (re-opening the cross-tenant leak on org_memberships/invite_codes/geo_* identity+geo hierarchy). MUST NOT run in production: disabling RLS re-exposes per-org membership, invite tokens, and geo hierarchy across tenants."
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Borjie-parity port of 0336. No table/row data destroyed \u2014 rows survive. The down only removes the RLS posture (re-opening the cross-tenant leak on org_memberships/invite_codes/geo_* identity+geo hierarchy). MUST NOT run in production: disabling RLS re-exposes per-org membership, invite tokens, and geo hierarchy across tenants."
     },
     {
       "up": "0318_journal_idempotency.sql",
       "down": "down/0318_down_journal_idempotency.sql",
       "reverses": "CREATE TABLE journal_idempotency + journal_idempotency_journal_idx + FORCE RLS tenant_isolation policy + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Borjie-parity port of 0162. Dropping the dedupe rows re-opens double-post risk on LedgerService.postJournalEntry. MUST NOT run in production: replay-defense for the money path."
     },
     {
@@ -263,31 +365,43 @@
       "down": "down/0319_down_portal_tabs.sql",
       "reverses": "CREATE TABLE portal_tabs + portal_tabs_tenant_user_idx + portal_tabs_parent_idx + portal_tabs_tenant_tab_key_uq (unique) + FORCE RLS portal_tabs_tenant_isolation (app.current_tenant_id GUC) + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
-      "notes": "Portal-GenUI back-port (#10/#11). The MD-authored dynamic-tabs document store. Tenant-scoped, FORCE RLS. No money/licence/ledger rows live here — a tab is a UI/forms document only. MUST NOT run in production: discards every MD-authored PortalTab document and re-opens cross-tenant exposure of the tab store."
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Portal-GenUI back-port (#10/#11). The MD-authored dynamic-tabs document store. Tenant-scoped, FORCE RLS. No money/licence/ledger rows live here \u2014 a tab is a UI/forms document only. MUST NOT run in production: discards every MD-authored PortalTab document and re-opens cross-tenant exposure of the tab store."
     },
     {
       "up": "0320_tab_records.sql",
       "down": "down/0320_down_tab_records.sql",
       "reverses": "CREATE TABLE portal_tab_records + portal_tab_records_tenant_tab_idx + FORCE RLS tenant_isolation_portal_tab_records + portal_tab_records_service_role_bypass + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
-      "notes": "Portal-GenUI back-port (K1a). The generic schema-on-read record store that makes a generated tab ACT — every record from every generated tab lands here as tenant-scoped JSONB payload. Tenant-isolated, FORCE RLS. Dropping reverts generated tabs to render-only (portal_tabs documents untouched). No money/ledger. MUST NOT run in production: discards every record submitted into a generated tab."
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Portal-GenUI back-port (K1a). The generic schema-on-read record store that makes a generated tab ACT \u2014 every record from every generated tab lands here as tenant-scoped JSONB payload. Tenant-isolated, FORCE RLS. Dropping reverts generated tabs to render-only (portal_tabs documents untouched). No money/ledger. MUST NOT run in production: discards every record submitted into a generated tab."
     },
     {
       "up": "0321_self_healing_proposals.sql",
       "down": "down/0321_down_self_healing_proposals.sql",
       "reverses": "CREATE TABLE self_healing_proposals + self_healing_proposals_dedupe_key (unique) + self_healing_proposals_status_seen_idx + FORCE RLS self_healing_proposals_service_role_bypass (service-role-only; a tenant request sees ZERO rows) + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
-      "notes": "Portal-GenUI back-port (Borjie 0349). PLATFORM-INTERNAL self-healing console queue for the MAPE-K loop — NOT tenant-isolated (tenant_id is nullable TRIAGE context, never an access boundary). Service-role-only bypass: an owner can never read or approve the platform healing of its own wiring. Dropping discards the internal-admin repair-proposal queue."
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Portal-GenUI back-port (Borjie 0349). PLATFORM-INTERNAL self-healing console queue for the MAPE-K loop \u2014 NOT tenant-isolated (tenant_id is nullable TRIAGE context, never an access boundary). Service-role-only bypass: an owner can never read or approve the platform healing of its own wiring. Dropping discards the internal-admin repair-proposal queue."
     },
     {
       "up": "0322_connector_credentials.sql",
       "down": "down/0322_down_connector_credentials.sql",
       "reverses": "CREATE TABLE connector_credentials + idx_connector_creds_tenant_kind + idx_connector_creds_expiry + FORCE RLS tenant_isolation_connector_credentials + connector_credentials_service_role_bypass + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Connector-OAuth completion (#12, Borjie 0343). Per-tenant per-account OAuth credential store; access/refresh token columns are AES-GCM ciphertext sealed with a tenant-bound DEK (the database NEVER sees plaintext). Tenant-isolated, FORCE RLS. Dropping forces every connector to be reconnected. MUST NOT run in production: discards every tenant's connector OAuth state."
     },
     {
@@ -295,31 +409,44 @@
       "down": "down/0323_down_oauth_state_nonces.sql",
       "reverses": "CREATE TABLE oauth_state_nonces + oauth_state_nonces_created_idx + FORCE RLS oauth_state_nonces_tenant_isolation + oauth_state_nonces_service_role_bypass + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
-      "notes": "Connector-OAuth completion (#12). DURABLE single-use consumption of the connector-OAuth `state` nonce — multi-replica replay protection (a per-process Set cannot defend across replicas). Nonces are opaque random values: no PII, no token material, so the data loss is benign. Dropping re-opens cross-replica OAuth state replay until restored."
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Connector-OAuth completion (#12). DURABLE single-use consumption of the connector-OAuth `state` nonce \u2014 multi-replica replay protection (a per-process Set cannot defend across replicas). Nonces are opaque random values: no PII, no token material, so the data loss is benign. Dropping re-opens cross-replica OAuth state replay until restored."
     },
     {
       "up": "0324_stripe_payment_intent_unique.sql",
       "down": "down/0324_down_stripe_payment_intent_unique.sql",
       "reverses": "DROP partial UNIQUE index ledger_entries_payment_intent_rent_debit_uniq (tenant_id, payment_intent_id) WHERE payment_intent_id IS NOT NULL AND type='RENT_PAYMENT' AND direction='DEBIT'",
       "dataLoss": false,
-      "envs": ["dev", "staging", "production"],
-      "notes": "Wave-B Stripe-webhook idempotency DB backstop: one rent-payment cash DEBIT leg per (tenant_id, payment_intent_id). Index-only (no table/column drop) so the down is non-destructive and prod-safe. The index build fails LOUD on a populated table that already holds duplicate rent cash legs — reconcile the double-credit before applying."
+      "envs": [
+        "dev",
+        "staging",
+        "production"
+      ],
+      "notes": "Wave-B Stripe-webhook idempotency DB backstop: one rent-payment cash DEBIT leg per (tenant_id, payment_intent_id). Index-only (no table/column drop) so the down is non-destructive and prod-safe. The index build fails LOUD on a populated table that already holds duplicate rent cash legs \u2014 reconcile the double-credit before applying."
     },
     {
       "up": "0325_kernel_cot_reservoir_consolidation_cols.sql",
       "down": "down/0325_down_kernel_cot_reservoir_consolidation_cols.sql",
       "reverses": "ADD COLUMN kernel_cot_reservoir.user_id (TEXT) + consolidated_at (TIMESTAMPTZ) + partial index idx_kernel_cot_unconsolidated",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
-      "notes": "Wave-B memory-consolidation cursor columns the consolidation-worker codes against (was a schema-drift silent no-op — every hourly tick errored and was swallowed as []). Down drops the per-row consolidated_at cursor; re-applying 0325 re-consolidates already-consolidated turns. Additive ADD COLUMN IF NOT EXISTS, so forward-apply is prod-safe."
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Wave-B memory-consolidation cursor columns the consolidation-worker codes against (was a schema-drift silent no-op \u2014 every hourly tick errored and was swallowed as []). Down drops the per-row consolidated_at cursor; re-applying 0325 re-consolidates already-consolidated turns. Additive ADD COLUMN IF NOT EXISTS, so forward-apply is prod-safe."
     },
     {
       "up": "0326_field_captures.sql",
       "down": "down/0326_down_field_captures.sql",
       "reverses": "CREATE TABLE field_captures + field_captures_tenant_type_idx + field_captures_tenant_property_idx + field_captures_tenant_client_uq (unique) + FORCE RLS tenant_isolation_select/modify + service_role_bypass + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Wave-C staff-mobile offline field-capture sink (#7). Idempotent on (tenant_id, client_id). NO money columns. Dropping discards persisted attendance/incident/shift-report captures; the post-fix staff app RETAINS+retries on the resulting 5xx so an accidental down does not silently destroy in-flight field data."
     },
     {
@@ -327,7 +454,10 @@
       "down": "down/0327_down_applicant_identity.sql",
       "reverses": "CREATE TABLE applicant_kyc + applicant_kyc_tenant_applicant_idx + CREATE TABLE applicant_profile + applicant_profile_tenant_applicant_uq (unique) + FORCE RLS tenant_isolation_select/modify + service_role_bypass + REVOKE anon on both",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Wave-C renter-applicant identity surface (#9). KYC submissions + profile/notification prefs; keyed on JWT applicant_id (uniform-404 anti-IDOR); preferred_lang persisted (sw|en). NO money columns. Dropping discards all KYC + applicant profiles."
     },
     {
@@ -335,23 +465,32 @@
       "down": "down/0328_down_bid_messages.sql",
       "reverses": "CREATE TABLE bid_messages + enum bid_message_sender + append-only trigger + FORCE RLS (tenant_isolation_bid_messages + service_role_bypass) + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
-      "notes": "Wave-C tenant↔owner bid messaging for the tender-scoped bid loop (#8). Append-only. Dropping discards bid conversation history."
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Wave-C tenant\u2194owner bid messaging for the tender-scoped bid loop (#8). Append-only. Dropping discards bid conversation history."
     },
     {
       "up": "0329_document_signatures.sql",
       "down": "down/0329_down_document_signatures.sql",
       "reverses": "CREATE TABLE document_signatures + UNIQUE(tenant_id, document_id, signer_id) + idx_document_signatures_tenant_doc + idx_document_signatures_tenant_signer + FORCE RLS tenant_isolation + service_role_bypass + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
-      "notes": "Wave-C renter e-signature records (#H36). Idempotent on (tenant_id, document_id, signer_id). Dropping discards lease/contract signatures — legal records; MUST NOT run in production."
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Wave-C renter e-signature records (#H36). Idempotent on (tenant_id, document_id, signer_id). Dropping discards lease/contract signatures \u2014 legal records; MUST NOT run in production."
     },
     {
       "up": "0330_device_tokens.sql",
       "down": "down/0330_down_device_tokens.sql",
       "reverses": "CREATE TABLE device_tokens + UNIQUE(user_id, token, platform) + soft-revoke revoked_at + FORCE RLS tenant_isolation + service_role_bypass + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Wave-C mobile push device-token registry (#H35). Re-registered on next app open, so the loss is recoverable. Dropping pauses push fan-out until devices re-register."
     },
     {
@@ -359,7 +498,10 @@
       "down": "down/0331_down_rfb_requests.sql",
       "reverses": "CREATE TABLE rfb_requests + idx_rfb_requests_tenant_applicant + idx_rfb_requests_tenant_status + FORCE RLS tenant_isolation + service_role_bypass + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Wave-C renter request-for-application (#H37). Applicant-scoped, uniform-404 anti-IDOR. Dropping discards open renter requests."
     },
     {
@@ -367,23 +509,32 @@
       "down": "down/0332_down_staff_shifts.sql",
       "reverses": "CREATE TABLE staff_shifts + staff_shifts_tenant_user_date_idx + staff_shifts_tenant_employee_date_idx + UNIQUE staff_shifts_unique_employee_day_kind_idx + FORCE RLS tenant_isolation_select/modify + service_role_bypass + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
-      "notes": "Deferred-batch staff shift schedule backing GET /api/v1/field/shifts/today (staff-mobile Today's Shift — was fabricated, now real-or-honest-empty). Tenant-scoped, FORCE RLS. Dropping discards scheduled shifts; the app shows an honest 'no shift' empty state."
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Deferred-batch staff shift schedule backing GET /api/v1/field/shifts/today (staff-mobile Today's Shift \u2014 was fabricated, now real-or-honest-empty). Tenant-scoped, FORCE RLS. Dropping discards scheduled shifts; the app shows an honest 'no shift' empty state."
     },
     {
       "up": "0333_service_status_components.sql",
       "down": "down/0333_down_service_status_components.sql",
       "reverses": "CREATE TABLE service_status_components + service_status_components_status_idx + seed 6 components + FORCE RLS public_read (USING true) + service_role_write + GRANT SELECT anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
-      "notes": "Deferred-batch maintained PUBLIC platform status board backing GET /api/v1/public/status (marketing StatusBoard — was hardcoded 'all operational', now real). PUBLIC-READ by design (USING true), service-role write. Dropping discards the maintained status; the page degrades to its honest static catalogue."
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Deferred-batch maintained PUBLIC platform status board backing GET /api/v1/public/status (marketing StatusBoard \u2014 was hardcoded 'all operational', now real). PUBLIC-READ by design (USING true), service-role write. Dropping discards the maintained status; the page degrades to its honest static catalogue."
     },
     {
       "up": "0334_owner_settings.sql",
       "down": "down/0334_down_owner_settings.sql",
       "reverses": "CREATE TABLE owner_settings + UNIQUE(tenant_id,user_id) + idx_owner_settings_tenant_user + FORCE RLS tenant_isolation + service_role_bypass + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "Deferred-batch owner-portal per-(tenant,user) display + notification prefs (SettingsPage real Save). Currency also mirrored into currency_preferences (untouched by this down). Dropping discards saved owner preferences; Settings falls back to route defaults (en/USD/Africa/Dar_es_Salaam)."
     },
     {
@@ -391,24 +542,66 @@
       "down": "down/0335_down_co_owner_invites.sql",
       "reverses": "CREATE TABLE co_owner_invites + uniq_co_owner_invites_token + idx_co_owner_invites_tenant_status + FORCE RLS tenant_isolation + service_role_bypass + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
-      "notes": "Deferred-batch pending owner-portal team invitations (SettingsPage co-owner invite/revoke/resend — was a client-only illusion, now real via notification_dispatch_log). Accepted co-owners are real users rows (untouched). Dropping discards pending invites; owners re-invite."
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Deferred-batch pending owner-portal team invitations (SettingsPage co-owner invite/revoke/resend \u2014 was a client-only illusion, now real via notification_dispatch_log). Accepted co-owners are real users rows (untouched). Dropping discards pending invites; owners re-invite."
     },
     {
       "up": "0336_service_role_bypass_cot_briefing.sql",
       "down": "down/0336_down_service_role_bypass_cot_briefing.sql",
       "reverses": "CREATE POLICY service_role_bypass on kernel_cot_reservoir + briefing_subscriptions (closes the 0179 bypass gap for two later-created cross-tenant system-job tables)",
       "dataLoss": false,
-      "envs": ["dev", "staging"],
-      "notes": "R2-supplement RLS-darkness fix: the consolidation-worker (CoT->semantic) and executive-brief cron scan these FORCE-RLS tables cross-tenant; without a service_role_bypass policy they matched ZERO rows under the non-BYPASS prod role (born-dark — no CoT consolidation, no briefs). Additive permissive FOR ALL policy gated solely on app.is_service_role; tenant-scoped access is unchanged. Dropping re-darkens both workers but loses no data."
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "R2-supplement RLS-darkness fix: the consolidation-worker (CoT->semantic) and executive-brief cron scan these FORCE-RLS tables cross-tenant; without a service_role_bypass policy they matched ZERO rows under the non-BYPASS prod role (born-dark \u2014 no CoT consolidation, no briefs). Additive permissive FOR ALL policy gated solely on app.is_service_role; tenant-scoped access is unchanged. Dropping re-darkens both workers but loses no data."
     },
     {
       "up": "0337_tenant_deletion_schedules.sql",
       "down": "down/0337_down_tenant_deletion_schedules.sql",
       "reverses": "CREATE TABLE tenant_deletion_schedules + status/grace CHECKs + partial-unique active-per-tenant idx + due/tenant idx + FORCE RLS tenant_isolation + service_role_bypass + REVOKE anon",
       "dataLoss": true,
-      "envs": ["dev", "staging"],
+      "envs": [
+        "dev",
+        "staging"
+      ],
       "notes": "R2 blocker #8 fix: durable backing for the tenant-wide right-to-erasure surface DELETE /api/v1/tenants/:id, which was a silent no-op (resolved an unwired tenantDeletion service and returned 202 without persisting). The route now writes a 'scheduled' row before returning success; the platform tenant-purge worker consumes status='scheduled' AND scheduled_purge_at <= now() at grace expiry. Dropping discards scheduled erasure requests; the surface regresses to audit-event-only until re-created."
+    },
+    {
+      "up": "0338_applicant_notifications.sql",
+      "down": "down/0338_down_applicant_notifications.sql",
+      "reverses": "CREATE TABLE applicant_notifications (+ tenant/applicant + unread indexes) + CREATE TABLE rfb_responses (+ tenant/rfb index + partial-unique accepted-per-request) + FORCE RLS tenant_isolation + service_role_bypass + REVOKE anon on both",
+      "dataLoss": true,
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Mode-C R2 counterparty highs: (a) applicant_notifications backs the tenant-mobile L7 inbox (GET /api/v1/notifications -> { data: { notifications } } + POST /:id/read backed by read_at) which previously read the operator dispatch log and was permanently empty; (b) rfb_responses backs the accepted-response lookup the L8 Sign-Lease/sign-delivery settlement loads. Both tenant-scoped, FORCE RLS, applicant-scoped anti-IDOR at the route. Dropping (a) regresses the inbox to permanently-empty; dropping (b) regresses Sign-Lease to an honest no-accepted-response empty state."
+    },
+    {
+      "up": "0339_org_memberships_partial_active_idx.sql",
+      "down": "down/0339_down_org_memberships_partial_active_idx.sql",
+      "reverses": "DROP non-partial org_memberships_identity_org_active_idx + CREATE non-partial org_memberships_identity_org_idx (restores the pre-0339 index)",
+      "dataLoss": false,
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Mode-C R2 identity high: 0024's org_memberships unique index over (tenant_identity_id, organization_id) was NON-partial, so re-redeeming an invite after a retained LEFT/BLOCKED row threw a unique-violation surfaced as an opaque 500 (re-join impossible). 0339 makes uniqueness PARTIAL on status='ACTIVE' so at most one live membership per (identity, org) while history coexists; schema mirror identity.schema.ts updated in lockstep. Down restores the non-partial index and will ABORT (safe) if a LEFT + ACTIVE row would now collide. Indexes only \u2014 no rows touched."
+    },
+    {
+      "up": "0340_work_orders_assigned_to_user.sql",
+      "down": "down/0340_down_work_orders_assigned_to_user.sql",
+      "reverses": "ADD COLUMN work_orders.assigned_to_user_id (TEXT REFERENCES users(id) ON DELETE SET NULL) + partial index work_orders_assigned_to_user_idx (tenant_id, assigned_to_user_id) WHERE assigned_to_user_id IS NOT NULL",
+      "dataLoss": true,
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Mode-C R2 owner\u2194workforce HIGH: makes work_orders.assigned_to_user_id the ONE canonical worker assignee, bridging the previously-unbridged work_orders (vendor-only) vs assignments (worker-keyed) models. Stamped by POST /api/v1/manager/work-orders/:id/assign-worker (which also creates a bridge assignments row) and surfaced by /api/v1/field/staff/tasks/next. Additive ADD COLUMN IF NOT EXISTS, FORCE RLS inherited from 0155/0156 \u2014 forward-apply is prod-safe. Dropping discards recorded WO assignees; dispatch regresses to vendor-only and /tasks/next falls back to bridge assignments rows only."
     }
   ]
 }

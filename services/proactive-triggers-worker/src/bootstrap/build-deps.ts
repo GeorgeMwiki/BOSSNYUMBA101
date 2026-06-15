@@ -175,8 +175,8 @@ async function listActiveOwnerIds(
     // policy lets these rows through under the non-BYPASS prod role.
     // Without this the query returns ZERO rows and the staff alert has
     // no recipients.
-    const res = await withWorkerTenantContext(db, tenantId, () =>
-      db.execute(
+    const res = await withWorkerTenantContext(db, tenantId, (pinned) =>
+      pinned.execute(
         sql`SELECT id FROM users
             WHERE tenant_id = ${tenantId}
               AND status = 'active'

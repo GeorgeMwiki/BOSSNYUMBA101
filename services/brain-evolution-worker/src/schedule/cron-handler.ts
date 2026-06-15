@@ -58,6 +58,20 @@ export interface NightlySweepDeps {
   readonly reportSink: ReportSink;
   readonly verifier: ConstitutionVerifierPort;
   readonly extractor?: DeltaExtractor;
+  /**
+   * Re-bind the DB-backed ports (trace-reader / memory-writer / report-sink)
+   * onto the connection-pinned handle that `withWorkerTenantContext` reserves
+   * per tenant. Supplied by the composition root. Required so the episodic
+   * read + memory writes run on the SAME reserved connection the per-tenant
+   * `SET LOCAL` bound — without it the body would hit the pooled `db` and the
+   * GUC could miss. Absent in test fakes (single-connection), where the
+   * passed-through ports already share the one connection.
+   */
+  readonly rebindPorts?: (pinned: DrizzleLikeClient) => {
+    readonly traceReader: TraceReader;
+    readonly memoryWriter: MemoryWriter;
+    readonly reportSink: ReportSink;
+  };
   readonly logger?: BrainWorkerLogger;
   /** Override for tests; defaults to `new Date()`. */
   readonly clock?: { now(): Date };
@@ -113,14 +127,22 @@ async function runForTenant(
   // episodic rows and every write is RLS-rejected — the whole sweep is a
   // silent no-op. `withWorkerTenantContext` re-throws on failure, which the
   // `iterateTenants` per-tenant catch already folds into an `error` result.
-  return withWorkerTenantContext(deps.db, tenantId, async () => {
+  return withWorkerTenantContext(deps.db, tenantId, async (pinned) => {
+  // Re-bind the DB-backed ports onto the pinned (reserved) connection so the
+  // episodic read and the kernel_memory_* writes for THIS tenant run on the
+  // connection the SET LOCAL bound. Falls back to the passed-through ports
+  // when no rebinder is supplied (test fakes — already single-connection).
+  const bound = deps.rebindPorts?.(pinned as DrizzleLikeClient);
+  const traceReader = bound?.traceReader ?? deps.traceReader;
+  const memoryWriter = bound?.memoryWriter ?? deps.memoryWriter;
+  const reportSink = bound?.reportSink ?? deps.reportSink;
   const now = (deps.clock ?? { now: () => new Date() }).now();
   const windowMs = deps.windowMs ?? DEFAULT_WINDOW_MS;
   const windowEnd = now;
   const windowStart = new Date(now.getTime() - windowMs);
   const runId = `brevo_${windowEnd.getTime()}_${randomBytes(4).toString('hex')}`;
 
-  const traceResult = await readDailyTraces(deps.traceReader, {
+  const traceResult = await readDailyTraces(traceReader, {
     tenantId,
     windowStart,
     windowEnd,
@@ -183,13 +205,13 @@ async function runForTenant(
     ),
   );
 
-  const writeResults = await writeApprovedDeltas(deps.memoryWriter, {
+  const writeResults = await writeApprovedDeltas(memoryWriter, {
     deltas,
     approvals,
     logger: deps.logger,
   });
 
-  const report = await emitEvolutionReport(deps.reportSink, {
+  const report = await emitEvolutionReport(reportSink, {
     tenantId,
     runId,
     reflection,

@@ -11,7 +11,6 @@ import {
   Phone,
   MoreVertical,
   Trash2,
-  Edit,
   CheckCircle,
   Clock,
   AlertCircle,
@@ -22,6 +21,8 @@ import {
 import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
 import { api, formatDate } from '../lib/api';
+import { useProperties } from '../lib/hooks';
+import { QrCode } from '../components/QrCode';
 
 interface CoOwner {
   id: string;
@@ -72,6 +73,31 @@ export function SettingsPage() {
     };
   }, []);
 
+  // ── Profile (persisted via POST /owner/account/profile) ──────────────────
+  // Controlled inputs hydrated from the auth context. No more uncontrolled
+  // defaultValue inputs whose edits the Save button silently discarded.
+  const [profileForm, setProfileForm] = useState({
+    firstName: user?.firstName ?? '',
+    lastName: user?.lastName ?? '',
+    email: user?.email ?? '',
+    phone: (user as { phone?: string } | null)?.phone ?? '',
+  });
+
+  // Re-hydrate if the auth context resolves after first paint.
+  useEffect(() => {
+    if (!user) return;
+    setProfileForm((prev) => ({
+      firstName: prev.firstName || user.firstName || '',
+      lastName: prev.lastName || user.lastName || '',
+      email: prev.email || user.email || '',
+      phone: prev.phone || (user as { phone?: string }).phone || '',
+    }));
+  }, [user]);
+
+  // Real portfolio for the invite modal's Property Access list. Replaces the
+  // former hardcoded fictional array; options are keyed by real property id.
+  const { data: portfolio, isLoading: portfolioLoading } = useProperties();
+
   const [inviteForm, setInviteForm] = useState({
     email: '',
     firstName: '',
@@ -81,6 +107,7 @@ export function SettingsPage() {
   });
 
   const [saving, setSaving] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -142,6 +169,17 @@ export function SettingsPage() {
   });
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
+  // 2FA enrollment, surfaced INLINE (no more dispatch into a listener-less
+  // window event). enroll → render otpauth QR + manual key → 6-digit confirm.
+  const [mfaEnroll, setMfaEnroll] = useState<{
+    secret: string;
+    otpauth: string;
+    recoveryCodes: string[];
+  } | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [enrolling, setEnrolling] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     api
@@ -172,8 +210,6 @@ export function SettingsPage() {
     { id: 'preferences', label: t('tabPreferences'), icon: Globe },
   ];
 
-  const properties = ['Palm Gardens', 'Ocean View Apartments', 'Sunset Villas', 'Garden Estate'];
-
   // Real persistence — POST /owner/account/settings upserts the prefs row AND
   // mirrors the currency into the canonical currency_preferences chain.
   const handleSave = async () => {
@@ -198,6 +234,30 @@ export function SettingsPage() {
     }
   };
 
+  // Real profile save — POST /owner/account/profile updates the caller's own
+  // users row (first/last name, email, phone), tenant_id + user_id scoped. The
+  // four inputs are controlled, so what the owner typed is exactly what posts.
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const res = await api.post('/owner/account/profile', {
+        firstName: profileForm.firstName,
+        lastName: profileForm.lastName,
+        email: profileForm.email,
+        phone: profileForm.phone,
+      });
+      if (res.success) {
+        flashSuccess(t('profileSaved'));
+      } else {
+        flashError(res.error?.message ?? t('profileSaveFailed'));
+      }
+    } catch {
+      flashError(t('profileSaveFailed'));
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   // Real invite — POST /owner/account/co-owners/invite persists a pending
   // invite AND enqueues a real email via the notifications engine.
   const handleInviteUser = async () => {
@@ -211,7 +271,11 @@ export function SettingsPage() {
         properties: inviteForm.properties,
       });
       if (res.success && res.data) {
-        setCoOwners((prev) => [...prev, { ...res.data!, properties: inviteForm.properties }]);
+        // Send ids on the wire; show human-readable names in the optimistic row.
+        const grantedNames = (portfolio ?? [])
+          .filter((p) => inviteForm.properties.includes(p.id))
+          .map((p) => p.name);
+        setCoOwners((prev) => [...prev, { ...res.data!, properties: grantedNames }]);
         setShowInviteModal(false);
         setInviteForm({ email: '', firstName: '', lastName: '', role: 'VIEWER', properties: [] });
         flashSuccess(t('invitationSent'));
@@ -225,8 +289,10 @@ export function SettingsPage() {
     }
   };
 
-  // Real revoke — DELETE /owner/account/co-owners/:id. Only revertible PENDING
-  // invites are removable here; OWNER rows have no Remove control.
+  // Real revoke — DELETE /owner/account/co-owners/:id. The backend only revokes
+  // PENDING invites, so the Remove control is gated to status === 'PENDING' in
+  // the table (matching the resend gate). On failure we surface a GENUINE error
+  // string — never the success copy — so a 404/500/network error reads true.
   const handleRemoveUser = async (id: string) => {
     const previous = coOwners;
     setCoOwners((prev) => prev.filter((u) => u.id !== id));
@@ -236,26 +302,27 @@ export function SettingsPage() {
         flashSuccess(t('userRemoved'));
       } else {
         setCoOwners(previous);
-        flashError(res.error?.message ?? t('userRemoved'));
+        flashError(res.error?.message ?? t('userRemoveFailed'));
       }
     } catch {
       setCoOwners(previous);
-      flashError(t('userRemoved'));
+      flashError(t('userRemoveFailed'));
     }
   };
 
   // Real resend — POST /owner/account/co-owners/:id/resend rotates the token and
-  // re-enqueues a fresh email.
+  // re-enqueues a fresh email. Failure surfaces a genuine error (never the
+  // success copy).
   const handleResendInvite = async (id: string) => {
     try {
       const res = await api.post(`/owner/account/co-owners/${encodeURIComponent(id)}/resend`);
       if (res.success) {
         flashSuccess(t('invitationResent'));
       } else {
-        flashError(res.error?.message ?? t('invitationResent'));
+        flashError(res.error?.message ?? t('invitationResendFailed'));
       }
     } catch {
-      flashError(t('invitationResent'));
+      flashError(t('invitationResendFailed'));
     }
   };
 
@@ -281,31 +348,71 @@ export function SettingsPage() {
     }
   };
 
-  // Real 2FA enrollment — reuse the /auth/mfa/enroll engine. The owner finishes
-  // enrollment by scanning the otpauth QR and confirming via /auth/mfa/confirm
-  // (surfaced in Jarvis / a follow-up modal); this kicks off the real flow.
+  // Real 2FA enrollment — step 1: POST /auth/mfa/enroll returns the otpauth URI
+  // + manual key + recovery codes. We render the QR + a 6-digit confirm INLINE
+  // in the Security tab (no listener-less window event). The secret is held in
+  // component state only until confirmation; it is never persisted server-side
+  // until /auth/mfa/confirm succeeds.
   const handleEnable2fa = async () => {
+    setEnrolling(true);
     try {
-      const res = await api.post<{ otpauth?: string }>('/auth/mfa/enroll', {
+      const res = await api.post<{
+        secret: string;
+        otpauth: string;
+        recoveryCodes: string[];
+      }>('/auth/mfa/enroll', {
         accountName: user?.email ?? 'owner',
         issuer: 'BossNyumba',
       });
-      if (res.success && res.data?.otpauth) {
-        flashSuccess(t('twoFactorDesc'));
-        // Hand the enrollment payload to Jarvis to render the QR + confirm step.
-        try {
-          window.dispatchEvent(
-            new CustomEvent('owner-portal:mfa-enroll', { detail: res.data }),
-          );
-        } catch {
-          /* ignore */
-        }
+      if (res.success && res.data?.otpauth && res.data?.secret) {
+        setMfaEnroll({
+          secret: res.data.secret,
+          otpauth: res.data.otpauth,
+          recoveryCodes: res.data.recoveryCodes ?? [],
+        });
+        setMfaCode('');
       } else {
-        flashError(res.error?.message ?? 'Failed to start 2FA enrollment');
+        flashError(res.error?.message ?? t('twoFactorStartFailed'));
       }
     } catch {
-      flashError('Failed to start 2FA enrollment');
+      flashError(t('twoFactorStartFailed'));
+    } finally {
+      setEnrolling(false);
     }
+  };
+
+  // Step 2: POST /auth/mfa/confirm with the scanned secret + the 6-digit code.
+  // Only AFTER the server verifies the TOTP do we mark the account enrolled.
+  const handleConfirm2fa = async () => {
+    if (!mfaEnroll) return;
+    if (!/^\d{6}$/.test(mfaCode)) {
+      flashError(t('twoFactorCodeInvalid'));
+      return;
+    }
+    setConfirming(true);
+    try {
+      const res = await api.post<{ verified: boolean; enrolled: boolean }>(
+        '/auth/mfa/confirm',
+        { secret: mfaEnroll.secret, code: mfaCode },
+      );
+      if (res.success && res.data?.enrolled) {
+        setTwoFa((prev) => ({ ...prev, enrolled: true }));
+        setMfaEnroll(null);
+        setMfaCode('');
+        flashSuccess(t('twoFactorEnabled'));
+      } else {
+        flashError(res.error?.message ?? t('twoFactorCodeInvalid'));
+      }
+    } catch {
+      flashError(t('twoFactorConfirmFailed'));
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const handleCancel2fa = () => {
+    setMfaEnroll(null);
+    setMfaCode('');
   };
 
   const getRoleColor = (role: string) => {
@@ -390,17 +497,35 @@ export function SettingsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="settings-first-name" className="block text-sm font-medium text-gray-700 mb-1">{t('firstName')}</label>
-                  <input id="settings-first-name" type="text" defaultValue={user?.firstName} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input
+                    id="settings-first-name"
+                    type="text"
+                    value={profileForm.firstName}
+                    onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
                 <div>
                   <label htmlFor="settings-last-name" className="block text-sm font-medium text-gray-700 mb-1">{t('lastName')}</label>
-                  <input id="settings-last-name" type="text" defaultValue={user?.lastName} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input
+                    id="settings-last-name"
+                    type="text"
+                    value={profileForm.lastName}
+                    onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               </div>
 
               <div>
                 <label htmlFor="settings-email" className="block text-sm font-medium text-gray-700 mb-1">{t('emailAddress')}</label>
-                <input id="settings-email" type="email" defaultValue={user?.email} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input
+                  id="settings-email"
+                  type="email"
+                  value={profileForm.email}
+                  onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
               <div>
@@ -408,7 +533,8 @@ export function SettingsPage() {
                 <input
                   id="settings-phone"
                   type="tel"
-                  defaultValue={(user as { phone?: string } | null)?.phone ?? ''}
+                  value={profileForm.phone}
+                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                   placeholder={t('phonePlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -419,9 +545,13 @@ export function SettingsPage() {
                 <input id="settings-org" type="text" defaultValue={tenant?.name} disabled className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500" />
               </div>
 
-              <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
+              <button
+                onClick={handleSaveProfile}
+                disabled={savingProfile || !profileForm.firstName.trim() || !profileForm.email.trim()}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
                 <Save className="h-4 w-4" />
-                {saving ? t('savingLoading') : t('saveChanges')}
+                {savingProfile ? t('savingLoading') : t('saveChanges')}
               </button>
             </div>
           )}
@@ -527,27 +657,92 @@ export function SettingsPage() {
               <div>
                 <h3 className="font-medium text-gray-900 mb-4">{t('twoFactor')}</h3>
                 <p className="text-sm text-gray-500 mb-4">{t('twoFactorDesc')}</p>
-                {twoFa.available ? (
-                  <button
-                    type="button"
-                    onClick={handleEnable2fa}
-                    disabled={twoFa.enrolled}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    <Key className="h-4 w-4" />
-                    {twoFa.enrolled ? '2FA enabled' : t('enable2fa')}
-                  </button>
-                ) : (
+                {!twoFa.available ? (
                   // Honest disabled affordance — MFA is not configured for this
                   // deployment. No dead button.
                   <button
                     type="button"
                     disabled
-                    title="Two-factor authentication is not yet available"
+                    title={t('twoFactorComingSoon')}
                     className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg font-medium text-gray-400 cursor-not-allowed"
                   >
                     <Key className="h-4 w-4" />
-                    {t('enable2fa')} — coming soon
+                    {t('twoFactorComingSoon')}
+                  </button>
+                ) : twoFa.enrolled ? (
+                  <span className="inline-flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm font-medium text-green-700">
+                    <CheckCircle className="h-4 w-4" />
+                    {t('twoFactorEnabledBadge')}
+                  </span>
+                ) : mfaEnroll ? (
+                  // Inline enrollment: scannable QR (rendered client-side, the
+                  // secret never leaves the browser) + manual key + 6-digit
+                  // confirm. Calls /auth/mfa/confirm; only then is 2FA enabled.
+                  <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+                    <p className="text-sm text-gray-600">{t('twoFactorScanHint')}</p>
+                    <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
+                      <QrCode value={mfaEnroll.otpauth} size={176} className="rounded border border-gray-200" />
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-gray-500 uppercase">{t('twoFactorManualKey')}</p>
+                        <code className="block break-all rounded bg-gray-100 px-2 py-1 font-mono text-sm text-gray-800">
+                          {mfaEnroll.secret}
+                        </code>
+                        {mfaEnroll.recoveryCodes.length > 0 && (
+                          <details className="text-xs text-gray-500">
+                            <summary className="cursor-pointer">{t('twoFactorRecoveryCodes')}</summary>
+                            <div className="mt-1 grid grid-cols-2 gap-1 font-mono">
+                              {mfaEnroll.recoveryCodes.map((rc) => (
+                                <span key={rc}>{rc}</span>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="settings-mfa-code" className="block text-sm font-medium text-gray-700 mb-1">
+                        {t('twoFactorEnterCode')}
+                      </label>
+                      <input
+                        id="settings-mfa-code"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="000000"
+                        className="w-32 px-3 py-2 border border-gray-300 rounded-lg tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleConfirm2fa}
+                        disabled={confirming || mfaCode.length !== 6}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {confirming ? t('savingLoading') : t('twoFactorConfirm')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancel2fa}
+                        disabled={confirming}
+                        className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
+                      >
+                        {t('cancel')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleEnable2fa}
+                    disabled={enrolling}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <Key className="h-4 w-4" />
+                    {enrolling ? t('savingLoading') : t('enable2fa')}
                   </button>
                 )}
               </div>
@@ -617,7 +812,11 @@ export function SettingsPage() {
                         <td className="px-4 py-3 text-sm text-gray-600">
                           <div className="flex items-center gap-1">
                             <Building2 className="h-3 w-3" />
-                            {member.properties.length > 1 ? t('propertiesCount', { count: member.properties.length }) : member.properties[0]}
+                            {member.properties.length > 1
+                              ? t('propertiesCount', { count: member.properties.length })
+                              : member.properties.length === 1
+                                ? member.properties[0]
+                                : t('propertiesNone')}
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -631,15 +830,17 @@ export function SettingsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-1">
-                            {member.status === 'PENDING' && (
-                              <button onClick={() => handleResendInvite(member.id)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title={t('resendInvite')}>
-                                <Mail className="h-4 w-4" />
-                              </button>
-                            )}
-                            {member.role !== 'OWNER' && (
+                            {/* PENDING invites are the only locally-actionable
+                                rows: the backend resend + revoke (DELETE) paths
+                                operate on pending invites. Remove on an ACTIVE
+                                member would be a silent no-op, so it is gated
+                                out (no active-member offboard route exists yet).
+                                Edit had no handler and is removed until an
+                                edit-member route lands. */}
+                            {member.role !== 'OWNER' && member.status === 'PENDING' && (
                               <>
-                                <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title={t('editBtn')}>
-                                  <Edit className="h-4 w-4" />
+                                <button onClick={() => handleResendInvite(member.id)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title={t('resendInvite')}>
+                                  <Mail className="h-4 w-4" />
                                 </button>
                                 <button onClick={() => handleRemoveUser(member.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded" title={t('removeBtn')}>
                                   <Trash2 className="h-4 w-4" />
@@ -794,16 +995,27 @@ export function SettingsPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('propertyAccess')}</label>
                   <div className="space-y-2 mt-2">
-                    {properties.map((property) => (
-                      <label key={property} className="flex items-center gap-2">
-                        <input type="checkbox" checked={inviteForm.properties.includes(property)} onChange={(e) => {
-                          if (e.target.checked) {
-                            setInviteForm({ ...inviteForm, properties: [...inviteForm.properties, property] });
-                          } else {
-                            setInviteForm({ ...inviteForm, properties: inviteForm.properties.filter(p => p !== property) });
-                          }
-                        }} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                        <span className="text-sm text-gray-700">{property}</span>
+                    {portfolioLoading && (
+                      <p className="text-sm text-gray-400">{t('propertyAccessLoading')}</p>
+                    )}
+                    {!portfolioLoading && (portfolio ?? []).length === 0 && (
+                      <p className="text-sm text-gray-400">{t('propertyAccessEmpty')}</p>
+                    )}
+                    {(portfolio ?? []).map((property) => (
+                      <label key={property.id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={inviteForm.properties.includes(property.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setInviteForm({ ...inviteForm, properties: [...inviteForm.properties, property.id] });
+                            } else {
+                              setInviteForm({ ...inviteForm, properties: inviteForm.properties.filter((p) => p !== property.id) });
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">{property.name}</span>
                       </label>
                     ))}
                   </div>

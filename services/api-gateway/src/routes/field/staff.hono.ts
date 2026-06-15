@@ -48,6 +48,7 @@ import {
   assignments,
   employees,
   users,
+  workOrders,
 } from '@bossnyumba/database';
 
 import { authMiddleware } from '../../middleware/hono-auth';
@@ -370,6 +371,50 @@ export function createFieldStaffRouter(): Hono {
     }
 
     try {
+      // The worker's next task can come from EITHER canonical source:
+      //   (1) work_orders directly assigned via the canonical
+      //       work_orders.assigned_to_user_id column (migration 0340), OR
+      //   (2) the bridge `assignments` row the manager dispatch also writes,
+      //       keyed by the worker's employee id.
+      // A dispatch through POST /manager/work-orders/:id/assign-worker writes
+      // BOTH, so the same logical task may surface from both reads — we pick the
+      // single most-urgent candidate and de-dup by the originating work-order id
+      // so it is never shown twice.
+
+      // Candidate A — work orders assigned to this user directly. Priority is the
+      // enum (low..emergency); map to the same 1..5 scale as assignments
+      // (1 = most urgent) so the two candidates compare on one axis.
+      const woRows = await db
+        .select({
+          id: workOrders.id,
+          title: workOrders.title,
+          location: workOrders.location,
+          scheduledStartAt: workOrders.scheduledStartAt,
+          dueAt: workOrders.resolutionDueAt,
+          createdAt: workOrders.createdAt,
+          priorityRank: sql<number>`CASE ${workOrders.priority}
+            WHEN 'emergency' THEN 1 WHEN 'urgent' THEN 1 WHEN 'high' THEN 2
+            WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 3 END`,
+        })
+        .from(workOrders)
+        .where(
+          and(
+            eq(workOrders.tenantId, tenantId),
+            eq(workOrders.assignedToUserId, userId),
+            sql`${workOrders.status} IN ('assigned', 'scheduled', 'in_progress', 'pending_parts', 'reopened')`,
+          ),
+        )
+        .orderBy(
+          sql`CASE ${workOrders.priority}
+            WHEN 'emergency' THEN 1 WHEN 'urgent' THEN 1 WHEN 'high' THEN 2
+            WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 3 END ASC`,
+          sql`${workOrders.resolutionDueAt} ASC NULLS LAST`,
+          asc(workOrders.createdAt),
+        )
+        .limit(1);
+
+      // Candidate B — the bridge assignment (employee-keyed). Resolve the
+      // employee row; absent it, only candidate A can apply.
       const [employeeRow] = await db
         .select({ id: employees.id })
         .from(employees)
@@ -377,44 +422,105 @@ export function createFieldStaffRouter(): Hono {
           and(eq(employees.tenantId, tenantId), eq(employees.userId, userId)),
         )
         .limit(1);
-      if (!employeeRow) {
-        return c.json(null, 200);
-      }
 
-      const rows = await db
-        .select()
-        .from(assignments)
-        .where(
-          and(
-            eq(assignments.tenantId, tenantId),
-            eq(assignments.assigneeEmployeeId, employeeRow.id),
-            sql`${assignments.status} IN ('draft', 'in_progress', 'blocked')`,
+      const asgRows = employeeRow
+        ? await db
+            .select()
+            .from(assignments)
+            .where(
+              and(
+                eq(assignments.tenantId, tenantId),
+                eq(assignments.assigneeEmployeeId, employeeRow.id),
+                sql`${assignments.status} IN ('draft', 'assigned', 'accepted', 'in_progress', 'blocked')`,
+              ),
+            )
+            .orderBy(
+              asc(assignments.priority),
+              sql`${assignments.dueAt} ASC NULLS LAST`,
+              asc(assignments.createdAt),
+            )
+            .limit(2)
+        : [];
+
+      const wo = woRows[0];
+      // Drop the bridge assignment that points back at the chosen work order so
+      // a dual-written dispatch is not surfaced twice.
+      const asg = asgRows.find(
+        (r: Record<string, unknown>) =>
+          !(
+            wo &&
+            r.linkedEntityKind === 'work_order' &&
+            String(r.linkedEntityId ?? '') === String(wo.id)
           ),
-        )
-        .orderBy(
-          asc(assignments.priority),
-          sql`${assignments.dueAt} ASC NULLS LAST`,
-          asc(assignments.createdAt),
-        )
-        .limit(1);
+      );
 
-      const row = rows[0];
-      if (!row) {
+      type Candidate = {
+        readonly rank: number;
+        readonly dueAt: Date | null;
+        readonly createdAt: Date | null;
+        readonly response: NextTaskResponse;
+      };
+
+      const candidates: Candidate[] = [];
+      if (wo) {
+        candidates.push({
+          rank: Number(wo.priorityRank ?? 3),
+          dueAt: wo.dueAt ? new Date(String(wo.dueAt)) : null,
+          createdAt: wo.createdAt ? new Date(String(wo.createdAt)) : null,
+          response: {
+            id: String(wo.id),
+            titleEn: String(wo.title ?? ''),
+            titleSw: String(wo.title ?? ''),
+            ...(wo.location ? { location: String(wo.location) } : {}),
+            ...(wo.scheduledStartAt
+              ? { startedAt: new Date(String(wo.scheduledStartAt)).toISOString() }
+              : {}),
+            ...(wo.dueAt
+              ? { dueAt: new Date(String(wo.dueAt)).toISOString() }
+              : {}),
+          },
+        });
+      }
+      if (asg) {
+        candidates.push({
+          rank: Number(asg.priority ?? 3),
+          dueAt: asg.dueAt ? new Date(String(asg.dueAt)) : null,
+          createdAt: asg.createdAt ? new Date(String(asg.createdAt)) : null,
+          response: {
+            id: String(asg.id),
+            titleEn: String(asg.title ?? ''),
+            titleSw: String(asg.title ?? ''),
+            ...(asg.linkedEntityId
+              ? { location: String(asg.linkedEntityId) }
+              : {}),
+            ...(asg.startedAt
+              ? { startedAt: new Date(String(asg.startedAt)).toISOString() }
+              : {}),
+            ...(asg.dueAt
+              ? { dueAt: new Date(String(asg.dueAt)).toISOString() }
+              : {}),
+          },
+        });
+      }
+
+      if (candidates.length === 0) {
         return c.json(null, 200);
       }
-      const response: NextTaskResponse = {
-        id: String(row.id),
-        titleEn: String(row.title ?? ''),
-        titleSw: String(row.title ?? ''),
-        ...(row.linkedEntityId ? { location: String(row.linkedEntityId) } : {}),
-        ...(row.startedAt
-          ? { startedAt: new Date(String(row.startedAt)).toISOString() }
-          : {}),
-        ...(row.dueAt
-          ? { dueAt: new Date(String(row.dueAt)).toISOString() }
-          : {}),
-      };
-      return c.json(response, 200);
+
+      // Most urgent wins: lowest rank, then earliest due (nulls last), then
+      // earliest created.
+      const farFuture = Number.MAX_SAFE_INTEGER;
+      candidates.sort((a, b) => {
+        if (a.rank !== b.rank) return a.rank - b.rank;
+        const aDue = a.dueAt ? a.dueAt.getTime() : farFuture;
+        const bDue = b.dueAt ? b.dueAt.getTime() : farFuture;
+        if (aDue !== bDue) return aDue - bDue;
+        const aCreated = a.createdAt ? a.createdAt.getTime() : farFuture;
+        const bCreated = b.createdAt ? b.createdAt.getTime() : farFuture;
+        return aCreated - bCreated;
+      });
+
+      return c.json(candidates[0].response, 200);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'next failed';
       moduleLogger.error('field staff /tasks/next failed', {

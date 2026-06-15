@@ -209,7 +209,6 @@ export function createSovereignLedgerVerifyCronSupervisor(
           skippedReason: 'no-tenants',
         };
       }
-      const service = createSovereignActionLedgerService(db as never);
       const verdicts: Array<{
         tenantId: string;
         ok: boolean;
@@ -227,8 +226,14 @@ export function createSovereignLedgerVerifyCronSupervisor(
           // returns ZERO rows under the non-BYPASS prod role and the
           // verify falsely PASSES (`ok:true,count:0`) — the documented
           // tamper-evidence control would be silently dark.
-          const result = await withWorkerTenantContext(db, tenantId, () =>
-            service.verifyLedgerChain(tenantId),
+          const result = await withWorkerTenantContext(db, tenantId, (pinned) =>
+            // Build the verifier on the pinned (reserved) connection so the
+            // forward-walk read runs on the same connection the SET LOCAL bound
+            // — otherwise the FORCE-RLS chain read can land on a pooled
+            // connection without the GUC and falsely PASS with count:0.
+            createSovereignActionLedgerService(pinned as never).verifyLedgerChain(
+              tenantId,
+            ),
           );
           if (result.ok) {
             okCount += 1;

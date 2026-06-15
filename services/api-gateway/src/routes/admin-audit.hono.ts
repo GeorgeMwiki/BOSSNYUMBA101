@@ -52,6 +52,7 @@ import {
   e403,
   e404,
   e500,
+  e503,
 } from '../utils/error-response';
 
 // ────────────────────────────────────────────────────────────────────────
@@ -219,33 +220,44 @@ export function createAdminAuditRouter(): Hono {
       const svc = resolveAuditSvc(c);
       const limit = q.limit ?? 50;
 
+      // Fail loud when the read-back service is unwired. Returning an empty
+      // `success: true` here would be a silent prod no-op — an auditor /
+      // regulator would read "no events" as a clean compliance state when the
+      // truth is the surface simply isn't backed. Mirror the purge-now
+      // fail-loud one screen down (TENANT_PURGE_UNAVAILABLE).
+      if (!svc) {
+        return e503(
+          c,
+          'AUDIT_LOG_UNAVAILABLE',
+          'Audit log read-back service is not wired in this deployment',
+        );
+      }
+
       let items: ReadonlyArray<unknown> = [];
       let nextCursor: string | null = null;
 
-      if (svc) {
-        try {
-          const result = await svc.query({
-            ...(effectiveTenantId !== undefined
-              ? { tenantId: effectiveTenantId }
-              : {}),
-            ...(q.actor !== undefined ? { actor: q.actor } : {}),
-            ...(q.action !== undefined ? { action: q.action } : {}),
-            ...(q.since !== undefined ? { since: q.since } : {}),
-            ...(q.until !== undefined ? { until: q.until } : {}),
-            limit,
-            ...(q.cursor !== undefined ? { cursor: q.cursor } : {}),
-          });
-          items = result.items;
-          nextCursor = result.nextCursor ?? null;
-        } catch (err) {
-          return e500(
-            c,
-            'AUDIT_LOG_QUERY_FAILED',
-            err instanceof Error
-              ? err.message
-              : 'Failed to query audit log',
-          );
-        }
+      try {
+        const result = await svc.query({
+          ...(effectiveTenantId !== undefined
+            ? { tenantId: effectiveTenantId }
+            : {}),
+          ...(q.actor !== undefined ? { actor: q.actor } : {}),
+          ...(q.action !== undefined ? { action: q.action } : {}),
+          ...(q.since !== undefined ? { since: q.since } : {}),
+          ...(q.until !== undefined ? { until: q.until } : {}),
+          limit,
+          ...(q.cursor !== undefined ? { cursor: q.cursor } : {}),
+        });
+        items = result.items;
+        nextCursor = result.nextCursor ?? null;
+      } catch (err) {
+        return e500(
+          c,
+          'AUDIT_LOG_QUERY_FAILED',
+          err instanceof Error
+            ? err.message
+            : 'Failed to query audit log',
+        );
       }
 
       await emitAudit(c, 'admin.audit.log.read', {

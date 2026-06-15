@@ -40,6 +40,7 @@ import { payments, workOrders } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { logger } from '../utils/logger';
+import { resolveTenantCurrency, minorToMajorFor } from './tenant-currency';
 
 const router = new Hono();
 router.use('*', authMiddleware);
@@ -90,6 +91,7 @@ async function fetchMonthlyRevenue(
   db: any,
   tenantId: string,
   buckets: ReadonlyArray<MonthRow>,
+  toMajor: (minor: number | string | null | undefined) => number,
 ): Promise<ReadonlyArray<{ readonly t: string; readonly y: number }>> {
   const earliest = buckets[0]!.start;
   const rows = ((await db.execute(sql`
@@ -104,7 +106,8 @@ async function fetchMonthlyRevenue(
   `)) ?? { rows: [] }) as { readonly rows?: ReadonlyArray<{ readonly month_key: string; readonly amount_minor: string }> };
   const norm = (rows.rows ?? []).map((r) => ({
     key: r.month_key,
-    value: Number(r.amount_minor) / 100,
+    // Currency-aware minor→major (0-decimal TZS/UGX divide by 1, not 100).
+    value: toMajor(r.amount_minor),
   }));
   return gapFill(norm, buckets);
 }
@@ -113,6 +116,7 @@ async function fetchMonthlyExpenses(
   db: any,
   tenantId: string,
   buckets: ReadonlyArray<MonthRow>,
+  toMajor: (minor: number | string | null | undefined) => number,
 ): Promise<ReadonlyArray<{ readonly t: string; readonly y: number }>> {
   const earliest = buckets[0]!.start;
   const rows = ((await db.execute(sql`
@@ -126,7 +130,8 @@ async function fetchMonthlyExpenses(
   `)) ?? { rows: [] }) as { readonly rows?: ReadonlyArray<{ readonly month_key: string; readonly cost_minor: string }> };
   const norm = (rows.rows ?? []).map((r) => ({
     key: r.month_key,
-    value: Number(r.cost_minor) / 100,
+    // Currency-aware minor→major (0-decimal TZS/UGX divide by 1, not 100).
+    value: toMajor(r.cost_minor),
   }));
   return gapFill(norm, buckets);
 }
@@ -166,9 +171,11 @@ router.get('/', zValidator('query', querySchema), async (c) => {
   }
   try {
     const buckets = lastNMonths(HISTORY_MONTHS);
+    const currency = await resolveTenantCurrency(db, auth.tenantId);
+    const toMajor = minorToMajorFor(currency);
     const [revenueHistory, expensesHistory] = await Promise.all([
-      fetchMonthlyRevenue(db, auth.tenantId, buckets),
-      fetchMonthlyExpenses(db, auth.tenantId, buckets),
+      fetchMonthlyRevenue(db, auth.tenantId, buckets, toMajor),
+      fetchMonthlyExpenses(db, auth.tenantId, buckets, toMajor),
     ]);
 
     // Count months with non-zero revenue — Holt-Winters needs a real

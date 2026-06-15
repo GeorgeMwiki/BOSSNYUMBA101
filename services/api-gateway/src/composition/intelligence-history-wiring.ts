@@ -45,8 +45,8 @@ export function createPostgresIntelligenceHistoryRepository(
       // FORCE-RLS `intelligence_history` WITH CHECK accepts the insert —
       // without it the write is RLS-rejected under the non-BYPASS prod role
       // and no snapshot ever persists.
-      await withWorkerTenantContext(db as DbLike, snapshot.tenantId, () =>
-        exec(sql`
+      await withWorkerTenantContext(db as DbLike, snapshot.tenantId, (pinned) =>
+        pinned.execute(sql`
         INSERT INTO intelligence_history (
           id, tenant_id, customer_id, snapshot_date,
           payment_risk_score, payment_risk_level,
@@ -110,8 +110,8 @@ export function createPostgresCustomerCohortProvider(
         // resolves — without it this returns zero rows under the non-BYPASS
         // prod role and no snapshots are ever computed for this tenant.
         const rows = asRows(
-          await withWorkerTenantContext(db as DbLike, tenantId, () =>
-            exec(sql`SELECT id FROM customers WHERE tenant_id = ${tenantId}`),
+          await withWorkerTenantContext(db as DbLike, tenantId, (pinned) =>
+            pinned.execute(sql`SELECT id FROM customers WHERE tenant_id = ${tenantId}`),
           ),
         );
         return rows.map((r) => ({

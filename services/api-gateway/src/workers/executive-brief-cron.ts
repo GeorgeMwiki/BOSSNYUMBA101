@@ -152,8 +152,8 @@ export function createExecutiveBriefCron(
       // visible under the non-BYPASS prod role (mig 0336 adds the bypass
       // policy). Without it the scan returns ZERO due subs and no brief is
       // ever generated for anyone.
-      const due = await withWorkerServiceRoleContext(options.db, () =>
-        fetchDueSubscriptions(options.db, nowFn()),
+      const due = await withWorkerServiceRoleContext(options.db, (pinned) =>
+        fetchDueSubscriptions(pinned, nowFn()),
       );
       const mutable = result as { scanned: number };
       mutable.scanned = due.length;
@@ -170,7 +170,7 @@ export function createExecutiveBriefCron(
           const persona = await withWorkerTenantContext(
             options.db,
             sub.tenantId,
-            () => loadPersona(options.db, sub.tenantId, sub.personaId),
+            (pinned) => loadPersona(pinned, sub.tenantId, sub.personaId),
           );
           if (!persona) {
             (result as { failed: number }).failed += 1;
@@ -192,16 +192,16 @@ export function createExecutiveBriefCron(
             (result as { refused: number }).refused += 1;
             continue;
           }
-          await withWorkerTenantContext(options.db, sub.tenantId, () =>
-            persistBrief(options.db, outcome.brief),
+          await withWorkerTenantContext(options.db, sub.tenantId, (pinned) =>
+            persistBrief(pinned, outcome.brief),
           );
           if (outcome.status === 'degraded') {
             (result as { degraded: number }).degraded += 1;
           } else {
             (result as { generated: number }).generated += 1;
           }
-          await withWorkerTenantContext(options.db, sub.tenantId, () =>
-            bumpSubscription(options.db, sub, nowFn()),
+          await withWorkerTenantContext(options.db, sub.tenantId, (pinned) =>
+            bumpSubscription(pinned, sub, nowFn()),
           );
         } catch (err) {
           options.logger.error(

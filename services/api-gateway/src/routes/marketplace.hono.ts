@@ -12,9 +12,15 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import {
+  SettlementOrchestrator,
+  SettlementError,
+  resolveSettlementLedgerPort,
+  resolveSettlementPayoutPort,
+} from '../services/settlement/index.js';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
 const MediaItemSchema = z.object({
@@ -541,6 +547,212 @@ app.patch(
             error: {
               code: 'RFB_CANCEL_FAILED',
               message: error instanceof Error ? error.message : 'Failed to cancel request',
+            },
+          },
+          500,
+        );
+      }
+    },
+  ),
+);
+
+// ---------------------------------------------------------------------------
+// RFB detail + sign-delivery (counterparty L8 lease activation).
+//
+// The tenant-mobile Sign-Lease screen (apps/tenant-mobile/app/rfb/[id]/
+// sign-delivery.tsx) loads GET /marketplace/rfb/:id to resolve the ACCEPTED
+// response id, then POSTs /marketplace/rfb-responses/:responseId/sign-delivery
+// to run the L8 settlement orchestrator (math → LedgerService.post() → payout).
+// Both routes are applicant-scoped: the request's applicant_user_id (the JWT
+// subject) gates the read, and the orchestrator re-checks ownership before any
+// money moves. The checksum is DETERMINISTIC over the ownership-history chain so
+// replays from the same applicant collapse idempotently.
+// ---------------------------------------------------------------------------
+
+/**
+ * Deterministic chain-of-custody checksum: sha256 over the ownership-history
+ * chain (request id → accepted response id → accepted_at). Stable for a given
+ * accepted response so re-taps collapse via the settlements idempotency key.
+ */
+function deriveSignChecksum(parts: {
+  rfbId: string;
+  responseId: string;
+  acceptedAt: string;
+}): string {
+  const seed = `${parts.rfbId}:${parts.responseId}:${parts.acceptedAt}`;
+  return `coc-${createHash('sha256').update(seed).digest('hex')}`;
+}
+
+// GET /rfb/:id — the applicant's own request + its accepted-response id (the id
+// the sign-delivery POST needs). Applicant-scoped: only the renter who posted
+// the request can read it (uniform 404 on others'/missing — anti-IDOR on RLS).
+app.get('/rfb/:id', async (c) => {
+  const auth = c.get('auth');
+  const db = c.get('db');
+  if (!db) return rfbUnavailable(c);
+  try {
+    const rfbId = c.req.param('id');
+    const reqRaw = await db.execute(sql`
+      SELECT id, unit_type, grade_min, floor_area_min, floor_area_max,
+             unit_price, currency, delivery_by, status, created_at, expires_at
+        FROM rfb_requests
+       WHERE id = ${rfbId}
+         AND tenant_id = ${auth.tenantId}
+         AND applicant_user_id = ${auth.userId}
+       LIMIT 1
+    `);
+    const reqRow = rfbRows(reqRaw)[0];
+    if (!reqRow) {
+      return c.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'Request not found' } },
+        404,
+      );
+    }
+    // The accepted landlord response (at most one — partial unique index 0338).
+    const respRaw = await db.execute(sql`
+      SELECT id, landlord_user_id, rent_amount, lease_term_months,
+             deposit_amount, currency_code, status, accepted_at, created_at
+        FROM rfb_responses
+       WHERE rfb_id = ${rfbId}
+         AND tenant_id = ${auth.tenantId}
+         AND status = 'accepted'
+       LIMIT 1
+    `);
+    const respRow = rfbRows(respRaw)[0];
+    const acceptedResponse = respRow
+      ? {
+          id: String(respRow.id),
+          landlord_user_id: String(respRow.landlord_user_id),
+          rent_amount: String(respRow.rent_amount),
+          lease_term_months: Number(respRow.lease_term_months),
+          deposit_amount: String(respRow.deposit_amount),
+          currency_code: String(respRow.currency_code),
+          status: String(respRow.status),
+          accepted_at:
+            respRow.accepted_at instanceof Date
+              ? respRow.accepted_at.toISOString()
+              : respRow.accepted_at == null
+                ? null
+                : String(respRow.accepted_at),
+        }
+      : null;
+    return c.json({
+      success: true,
+      data: {
+        rfb: toRfbSummary(reqRow),
+        accepted_response_id: acceptedResponse?.id ?? null,
+        accepted_response: acceptedResponse,
+      },
+    });
+  } catch (error) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'RFB_FETCH_FAILED',
+          message: error instanceof Error ? error.message : 'Failed to load request',
+        },
+      },
+      500,
+    );
+  }
+});
+
+const SignDeliverySchema = z.object({
+  // Optional client-supplied checksum is IGNORED — the server derives a
+  // deterministic one over the ownership-history chain so a tampered or
+  // non-deterministic client value can never split idempotency.
+  coCStepChecksum: z.string().optional(),
+});
+
+// POST /rfb-responses/:responseId/sign-delivery — the L8 settlement.
+app.post(
+  '/rfb-responses/:responseId/sign-delivery',
+  zValidator('json', SignDeliverySchema),
+  withSecurityEvents(
+    { action: 'marketplace.rfb.sign_delivery', resource: 'marketplace', severity: 'info' },
+    async (c) => {
+      const auth = c.get('auth');
+      const db = c.get('db');
+      if (!db) return rfbUnavailable(c);
+      const responseId = c.req.param('responseId');
+      try {
+        // Resolve the accepted response to derive the deterministic checksum
+        // from its ownership-history chain. Applicant-scoped: the signer must
+        // own the parent request (re-checked in the orchestrator too).
+        const respRaw = await db.execute(sql`
+          SELECT r.id, r.rfb_id, r.status, r.accepted_at,
+                 req.applicant_user_id
+            FROM rfb_responses r
+            JOIN rfb_requests req ON req.id = r.rfb_id
+           WHERE r.id = ${responseId}
+             AND r.tenant_id = ${auth.tenantId}
+           LIMIT 1
+        `);
+        const respRow = rfbRows(respRaw)[0];
+        if (
+          !respRow ||
+          String(respRow.applicant_user_id ?? '') !== auth.userId ||
+          String(respRow.status ?? '') !== 'accepted'
+        ) {
+          // Uniform 404 — never leaks whether the response exists, belongs to
+          // another renter, or is not yet accepted.
+          return c.json(
+            { success: false, error: { code: 'NOT_FOUND', message: 'Accepted response not found' } },
+            404,
+          );
+        }
+        const acceptedAtIso =
+          respRow.accepted_at instanceof Date
+            ? respRow.accepted_at.toISOString()
+            : String(respRow.accepted_at ?? '');
+        const checksum = deriveSignChecksum({
+          rfbId: String(respRow.rfb_id),
+          responseId,
+          acceptedAt: acceptedAtIso,
+        });
+
+        const orchestrator = new SettlementOrchestrator({
+          db,
+          ledgerPort: resolveSettlementLedgerPort(),
+          payoutPort: resolveSettlementPayoutPort(),
+        });
+        const result = await orchestrator.signRfbDelivery({
+          tenantId: auth.tenantId,
+          applicantUserId: auth.userId,
+          responseId,
+          coCStepChecksum: checksum,
+        });
+
+        return c.json({
+          success: true,
+          data: {
+            settlementId: result.settlementId,
+            status: result.status,
+            grossTzs: result.math.grossAmount,
+            deductionTzs: result.math.depositAmount,
+            feeTzs: result.math.feeAmount,
+            netTzs: result.math.netAmount,
+            currencyCode: result.math.currencyCode,
+            ledgerTxnId: result.ledgerTxnId,
+            payoutProvider: result.payoutProvider,
+            idempotent: result.idempotent,
+          },
+        });
+      } catch (error) {
+        if (error instanceof SettlementError) {
+          const status = error.code === 'LEDGER_POST_FAILED' ? 502 : 422;
+          return c.json(
+            { success: false, error: { code: error.code, message: error.message } },
+            status,
+          );
+        }
+        return c.json(
+          {
+            success: false,
+            error: {
+              code: 'SIGN_DELIVERY_FAILED',
+              message: error instanceof Error ? error.message : 'Sign delivery failed',
             },
           },
           500,

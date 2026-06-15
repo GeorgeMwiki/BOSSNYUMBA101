@@ -56,7 +56,11 @@ import {
   properties,
   units,
   arrearsCases,
+  assignments,
+  employees,
+  withTenantContext,
 } from '@bossnyumba/database';
+import { randomUUID } from 'node:crypto';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { UserRole } from '../../types/user-role';
 import { routeCatch } from '../../utils/safe-error';
@@ -660,6 +664,57 @@ app.get('/vendors/scorecards', async (c) => {
 });
 
 // ============================================================================
+// FIELD-CAPTURE READ-BACK (#H — owner↔workforce HIGH) — closes the worker→owner
+// loop. Workers POST attendance / incidents / shift-reports into field_captures
+// (below). These three GETs are the owner/manager projection that reads them
+// back, tenant-scoped via the repo's withTenantContext (RLS GUC bound). Without
+// these reads the captures were a write-only sink no operator surface ever saw.
+//
+//   GET /incidents       — capture_type='incident'
+//   GET /shift-reports   — capture_type='shift_report'
+//   GET /attendance      — capture_type='attendance'
+//
+// Query params (all optional): propertyId, from (ISO), to (ISO), limit (1..200).
+// ============================================================================
+
+function fieldCaptureListHandler(captureType: CaptureType) {
+  return async (c) => {
+    const repo = fieldRepo(c);
+    if (!repo) return dbUnavailable(c);
+    const tenantId = c.get('tenantId');
+    const limit = Math.min(
+      200,
+      Math.max(1, Number(c.req.query('limit') ?? '50') || 50),
+    );
+    try {
+      const rows = await repo.listFieldCaptures({
+        tenantId,
+        captureType,
+        propertyId: c.req.query('propertyId') ?? null,
+        fromDate: c.req.query('from') ?? null,
+        toDate: c.req.query('to') ?? null,
+        limit,
+      });
+      return c.json({
+        success: true,
+        data: rows,
+        meta: { captureType, count: rows.length },
+      });
+    } catch (err) {
+      return routeCatch(c, err, {
+        code: 'FIELD_CAPTURE_LIST_FAILED',
+        status: 503,
+        fallback: 'Field capture read-back failed',
+      });
+    }
+  };
+}
+
+app.get('/incidents', fieldCaptureListHandler('incident'));
+app.get('/shift-reports', fieldCaptureListHandler('shift_report'));
+app.get('/attendance', fieldCaptureListHandler('attendance'));
+
+// ============================================================================
 // STAFF FIELD CAPTURES (#7) — the offline-sync write sink.
 //
 // apps/staff-mobile/src/sync/flush.ts POSTs each queued offline capture to
@@ -986,6 +1041,145 @@ const notificationPrefsHandler = async (c) => {
 
 app.put('/applicants/profile/notifications', withSecurityEvents({ action: 'estate-manager-app.notif-prefs', resource: 'applicant-profile', severity: 'info' }, notificationPrefsHandler));
 app.post('/applicants/profile/notifications', withSecurityEvents({ action: 'estate-manager-app.notif-prefs', resource: 'applicant-profile', severity: 'info' }, notificationPrefsHandler));
+
+// ============================================================================
+// OWNER→WORKER DISPATCH — POST /work-orders/:id/assign-worker.
+//
+// The canonical worker-assignee on a work order is work_orders.assigned_to_user_id
+// (migration 0340). This route is the ONE write that makes a manager's "assign
+// to worker" real (screen M-M-02 / useAssignTaskToWorker):
+//
+//   1. Stamps work_orders.assigned_to_user_id + status='assigned' + assigned_at
+//      + assigned_by (the dispatching manager) — so every manager/owner view of
+//      the work order now shows the assignee (mapWorkOrderRow reads the column).
+//   2. Creates a BRIDGE `assignments` row (linked_entity_kind='work_order',
+//      linked_entity_id=workOrderId, assignee_employee_id=<assignee's employee>)
+//      so the existing employee-keyed /api/v1/field/staff/tasks/next read also
+//      surfaces it. /tasks/next ALSO reads work_orders directly by
+//      assigned_to_user_id, so the WO reaches the worker even when the assignee
+//      has no employee record yet.
+//
+// Both writes run inside withTenantContext so the RLS GUC is bound (this router
+// uses the process-singleton services.db, NOT the per-request databaseMiddleware
+// tx) — a cross-tenant write SURFACES rather than fake-succeeding.
+// ============================================================================
+
+const AssignWorkerSchema = z.object({
+  // The worker the work order is dispatched to (users.id). Accept the
+  // legacy `workerId` alias the mobile hook historically sent.
+  assignedToUserId: z.string().min(1).max(200).optional(),
+  workerId: z.string().min(1).max(200).optional(),
+  note: z.string().trim().max(2000).optional(),
+}).refine((v) => Boolean(v.assignedToUserId ?? v.workerId), {
+  message: 'assignedToUserId (or workerId) is required',
+});
+
+async function assignWorkerToWorkOrder(
+  db,
+  tenantId: string,
+  actorUserId: string,
+  workOrderId: string,
+  assigneeUserId: string,
+  note: string | undefined,
+): Promise<{ ok: true; id: string; workOrderId: string; assignedToUserId: string; assignmentId: string | null } | { notFound: true }> {
+  return withTenantContext(db, tenantId, async (tx) => {
+    const [wo] = await tx
+      .select({ id: workOrders.id })
+      .from(workOrders)
+      .where(and(eq(workOrders.tenantId, tenantId), eq(workOrders.id, workOrderId)))
+      .limit(1);
+    if (!wo) return { notFound: true as const };
+
+    // Stamp the canonical assignee + lifecycle on the work order.
+    await tx
+      .update(workOrders)
+      .set({
+        assignedToUserId: assigneeUserId,
+        status: 'assigned',
+        assignedAt: new Date(),
+        assignedBy: actorUserId,
+        updatedAt: new Date(),
+        updatedBy: actorUserId,
+      })
+      .where(and(eq(workOrders.tenantId, tenantId), eq(workOrders.id, workOrderId)));
+
+    // Resolve the assignee's employee row (if any) so the bridge assignment is
+    // keyed the way /tasks/next reads it. A worker without an employee record
+    // still gets the work order via the work_orders.assigned_to_user_id read.
+    const [emp] = await tx
+      .select({ id: employees.id })
+      .from(employees)
+      .where(and(eq(employees.tenantId, tenantId), eq(employees.userId, assigneeUserId)))
+      .limit(1);
+
+    let assignmentId: string | null = null;
+    if (emp) {
+      assignmentId = randomUUID();
+      await tx.insert(assignments).values({
+        id: assignmentId,
+        tenantId,
+        assigneeEmployeeId: emp.id,
+        assignedByActorId: actorUserId,
+        title:
+          note && note.trim().length > 0
+            ? note.trim()
+            : `Work order ${workOrderId}`,
+        linkedEntityKind: 'work_order',
+        linkedEntityId: workOrderId,
+        status: 'assigned',
+        createdBy: actorUserId,
+      });
+    }
+
+    return {
+      ok: true as const,
+      // `id` mirrors the work-order id so the mobile adapter (adaptTaskRow)
+      // produces a coherent row; the screen only awaits success/failure.
+      id: workOrderId,
+      workOrderId,
+      assignedToUserId: assigneeUserId,
+      assignmentId,
+    };
+  });
+}
+
+app.post('/work-orders/:id/assign-worker', withSecurityEvents({ action: 'estate-manager-app.assign-worker', resource: 'work-orders', severity: 'info' }, async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const actorUserId = c.get('userId');
+  const workOrderId = c.req.param('id');
+
+  const bodyResult = await parseJsonBody(c);
+  if (!bodyResult.ok) return bodyResult.res;
+  const parsed = AssignWorkerSchema.safeParse(bodyResult.value);
+  if (!parsed.success) return validationError(c, parsed.error);
+  const assigneeUserId = (parsed.data.assignedToUserId ?? parsed.data.workerId) as string;
+
+  try {
+    const result = await assignWorkerToWorkOrder(
+      db,
+      tenantId,
+      actorUserId,
+      workOrderId,
+      assigneeUserId,
+      parsed.data.note,
+    );
+    if ('notFound' in result) {
+      return c.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'Work order not found' } },
+        404,
+      );
+    }
+    return c.json({ success: true, data: result }, 200);
+  } catch (err) {
+    return routeCatch(c, err, {
+      code: 'WORK_ORDER_ASSIGN_WORKER_FAILED',
+      status: 503,
+      fallback: 'Assigning the work order to a worker failed',
+    });
+  }
+}));
 
 // Mutations route through the canonical tenant-scoped routers. The BFF
 // never owned writes; these 501s make that explicit.

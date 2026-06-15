@@ -114,8 +114,8 @@ export function createReservoirSource(
       let result: unknown;
       try {
         const lim = clampLimit(limit, 5000);
-        result = await withWorkerServiceRoleContext(db, () =>
-          db.execute(
+        result = await withWorkerServiceRoleContext(db, (pinned) =>
+          pinned.execute(
             sql`SELECT thought_id, tenant_id, user_id, thread_id,
                        thought_text AS summary, captured_at
                 FROM kernel_cot_reservoir
@@ -178,8 +178,8 @@ export function createReservoirSource(
         // Drizzle's `sql` template doesn't safely parameterise IN
         // lists by default — we pass an array literal via JSON.
         const idsJson = JSON.stringify(thoughtIds);
-        await withWorkerServiceRoleContext(db, () =>
-          db.execute(
+        await withWorkerServiceRoleContext(db, (pinned) =>
+          pinned.execute(
             sql`UPDATE kernel_cot_reservoir
                 SET consolidated_at = NOW()
                 WHERE thought_id = ANY(

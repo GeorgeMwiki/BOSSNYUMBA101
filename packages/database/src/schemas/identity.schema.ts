@@ -28,7 +28,7 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import { tenants, organizations, users } from './tenant.schema.js';
 
 // ============================================================================
@@ -116,12 +116,15 @@ export const orgMemberships = pgTable(
     blockReason: text('block_reason'),
   },
   (table) => ({
-    // One ACTIVE-era row per (identity, org). Historical LEFT/BLOCKED rows
-    // are allowed to coexist — caller filters on status.
-    identityOrgIdx: uniqueIndex('org_memberships_identity_org_idx').on(
-      table.tenantIdentityId,
-      table.organizationId
-    ),
+    // At most ONE ACTIVE membership per (identity, org). Historical
+    // LEFT/BLOCKED rows coexist (audit retention + legitimate re-join after
+    // leaving). The uniqueness is PARTIAL on status='ACTIVE' so a re-redeem
+    // after a retained LEFT/BLOCKED row does not collide — see migration
+    // 0339_org_memberships_partial_active_idx.sql. (0024 shipped this index
+    // non-partial, which made re-join throw a unique-violation -> opaque 500.)
+    identityOrgActiveIdx: uniqueIndex('org_memberships_identity_org_active_idx')
+      .on(table.tenantIdentityId, table.organizationId)
+      .where(sql`status = 'ACTIVE'`),
     identityIdx: index('org_memberships_identity_idx').on(table.tenantIdentityId),
     orgIdx: index('org_memberships_org_idx').on(table.organizationId),
     platformTenantIdx: index('org_memberships_platform_tenant_idx').on(

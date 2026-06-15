@@ -20,6 +20,11 @@
  *                                         alias so the owner-portal api client
  *                                         (no .put helper) can call it.
  *
+ *   PROFILE (users table — the caller's own row)
+ *     PUT  /profile                     update caller's first/last name, email,
+ *     POST /profile                       phone (tenant_id + user_id scoped).
+ *                                         POST is the .put-less api-client alias.
+ *
  *   CO-OWNERS (co_owner_invites, migration 0335 + users)
  *     GET    /co-owners                 accepted members (users) + pending invites
  *     POST   /co-owners/invite          create a pending invite + REAL email
@@ -66,6 +71,7 @@ import { createLogger } from '../../utils/logger';
 import {
   getOwnerSettings,
   upsertOwnerSettings,
+  updateOwnerProfile,
   listPendingInvites,
   createInvite,
   rotateInviteForResend,
@@ -134,6 +140,14 @@ const SettingsSchema = z.object({
     .enum(['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'])
     .default('DD/MM/YYYY'),
   notificationPrefs: z.record(z.boolean()).default({}),
+});
+
+const ProfileSchema = z.object({
+  firstName: z.string().trim().min(1).max(120),
+  lastName: z.string().trim().max(120).default(''),
+  email: z.string().trim().email().max(254),
+  // Optional phone — empty string is normalised to null (cleared) in the route.
+  phone: z.string().trim().max(40).default(''),
 });
 
 const InviteSchema = z.object({
@@ -229,6 +243,89 @@ ownerAccountRouter.post(
   requireRole(...MANAGE_ROLES),
   zValidator('json', SettingsSchema),
   saveSettings,
+);
+
+// ===========================================================================
+// PROFILE — the caller's own name / email / phone (users table)
+// ===========================================================================
+
+/**
+ * Update the caller's OWN profile. Per-user (user_id from the JWT) — an owner
+ * can only edit their own row — and tenant-scoped on top of FORCE-RLS. A blank
+ * phone clears the column. A duplicate email within the tenant returns a typed
+ * 409 (Postgres unique-violation 23505); a vanished user row returns 404.
+ */
+async function saveProfile(c: unknown) {
+  const auth = (c as { get: Function }).get('auth');
+  const db = getDb(c);
+  if (!db) return dbUnavailable(c);
+  const body = (c as { req: { valid: Function } }).req.valid('json') as {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
+  const json = (c as { json: Function }).json.bind(c);
+  try {
+    const profile = await updateOwnerProfile(db, auth.tenantId, auth.userId, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: body.email,
+      // Normalise an empty phone to null (cleared) rather than storing ''.
+      phone: body.phone.length > 0 ? body.phone : null,
+    });
+    if (!profile) {
+      return json(
+        {
+          success: false,
+          error: { code: 'PROFILE_NOT_FOUND', message: 'Account not found' },
+        },
+        404,
+      );
+    }
+    return json({ success: true, data: profile });
+  } catch (error) {
+    // Unique-violation on (tenant_id, email): another user already owns it.
+    const code = (error as { code?: string } | null)?.code;
+    if (code === '23505') {
+      return json(
+        {
+          success: false,
+          error: {
+            code: 'EMAIL_ALREADY_IN_USE',
+            message: 'That email address is already in use',
+          },
+        },
+        409,
+      );
+    }
+    moduleLogger.error('owner profile save failed', {
+      tenantId: auth.tenantId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return json(
+      {
+        success: false,
+        error: { code: 'PROFILE_SAVE_FAILED', message: 'Failed to save profile' },
+      },
+      500,
+    );
+  }
+}
+
+ownerAccountRouter.put(
+  '/profile',
+  requireRole(...MANAGE_ROLES),
+  zValidator('json', ProfileSchema),
+  saveProfile,
+);
+
+// POST alias — the owner-portal api client has no .put() helper.
+ownerAccountRouter.post(
+  '/profile',
+  requireRole(...MANAGE_ROLES),
+  zValidator('json', ProfileSchema),
+  saveProfile,
 );
 
 // ===========================================================================

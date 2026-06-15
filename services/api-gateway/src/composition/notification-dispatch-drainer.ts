@@ -106,8 +106,8 @@ export async function reapStaleSendingRows(
   // `notification_dispatch_log` rows are visible/updatable under the
   // non-BYPASS prod role. Without it this resets ZERO rows and any row
   // wedged in `sending` (replica crashed mid-send) is stranded forever.
-  const res = await withWorkerServiceRoleContext(db, () =>
-    db.execute(sql`
+  const res = await withWorkerServiceRoleContext(db, (pinned) =>
+    pinned.execute(sql`
     UPDATE notification_dispatch_log
        SET delivery_status = 'pending',
            updated_at = ${now.toISOString()}
@@ -170,7 +170,11 @@ export function createNotificationDispatchDrainer(
   // transaction is ever held across a network call.
   const serviceRoleDb: ClusterLockDbLike = {
     execute: (query: unknown) =>
-      withWorkerServiceRoleContext(db, () => db.execute(query)),
+      // Run the dispatcher's query on the connection-pinned handle the
+      // service-role wrapper reserves, NOT the pooled `db` — otherwise the
+      // SET LOCAL service-role GUC and this statement could land on different
+      // pooled connections and the bypass policy would not fire.
+      withWorkerServiceRoleContext(db, (pinned) => pinned.execute(query)),
   };
   const dispatcher = createNotificationDispatcher({
     db: serviceRoleDb,

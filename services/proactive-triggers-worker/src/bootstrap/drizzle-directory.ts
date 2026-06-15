@@ -68,8 +68,8 @@ export function createDrizzleDirectory(
         // Bind the per-tenant RLS GUC so the `users` `tenant_isolation`
         // policy lets these rows through under the non-BYPASS prod role.
         // Without this the query returns ZERO rows and zero hints fire.
-        const res = await withWorkerTenantContext(db, tenantId, () =>
-          db.execute(
+        const res = await withWorkerTenantContext(db, tenantId, (pinned) =>
+          pinned.execute(
             sql`SELECT id, is_owner FROM users
                 WHERE tenant_id = ${tenantId}
                   AND status = 'active'`,
