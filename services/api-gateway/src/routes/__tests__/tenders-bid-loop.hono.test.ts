@@ -131,17 +131,24 @@ vi.mock('../../middleware/database', () => {
 
     // --- bids writes (compare-and-set) -------------------------------------
     if (/UPDATE bids/i.test(text)) {
-      const newStatus = /status = 'awarded'/i.test(text)
-        ? 'awarded'
-        : 'withdrawn';
+      const isAward = /status = 'awarded'/i.test(text);
+      const newStatus = isAward ? 'awarded' : 'withdrawn';
       // params order: id, tender_id, vendor_id (status IN list is literal)
       const [bidId, tenderId, vendorId] = params;
+      const hasCounter = (b: BidRow): boolean =>
+        b.negotiation_id != null ||
+        (Array.isArray(b.negotiation_turns) && b.negotiation_turns.length > 0);
       const row = state.bids.find(
         (b) =>
           b.id === bidId &&
           b.tender_id === tenderId &&
           b.vendor_id === vendorId &&
-          (b.status === 'submitted' || b.status === 'negotiating'),
+          (b.status === 'submitted' || b.status === 'negotiating') &&
+          // ACCEPT (award) additionally requires an owner counter to exist —
+          // mirrors the route's `negotiation_id IS NOT NULL OR
+          // jsonb_array_length(negotiation_turns) > 0` guard. WITHDRAW has no
+          // such requirement (an applicant may always pull a live bid).
+          (!isAward || hasCounter(b)),
       );
       if (!row) return [];
       row.status = newStatus;
@@ -467,8 +474,14 @@ describe('tenders bid loop — messages', () => {
 });
 
 describe('tenders bid loop — accept / withdraw', () => {
-  it('accepts a submitted bid (transition to awarded)', async () => {
-    seedBid({ id: 'bid-acc', tender_id: 'tender-1', status: 'submitted' });
+  it('accepts a COUNTERED bid (owner counter present → awarded)', async () => {
+    // Legitimate accept: the owner has countered, so a negotiation exists.
+    seedBid({
+      id: 'bid-acc',
+      tender_id: 'tender-1',
+      status: 'negotiating',
+      negotiation_id: 'neg-acc',
+    });
     const res = await mount().request(
       '/tenders/tender-1/bids/bid-acc/accept',
       { method: 'POST' },
@@ -478,6 +491,43 @@ describe('tenders bid loop — accept / withdraw', () => {
     // The transition response is mapped to the FE BidStatus vocabulary:
     // awarded → accepted (the applicant never sees raw gateway statuses).
     expect(body.data.status).toBe('accepted');
+  });
+
+  it('also accepts when the counter is an inline negotiation turn (no negotiation_id)', async () => {
+    seedBid({
+      id: 'bid-acc-turn',
+      tender_id: 'tender-1',
+      status: 'submitted',
+      negotiation_turns: [{ actor: 'owner', offer: 750000 }],
+    });
+    const res = await mount().request(
+      '/tenders/tender-1/bids/bid-acc-turn/accept',
+      { method: 'POST' },
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).data.status).toBe('accepted');
+  });
+
+  it('REJECTS self-award of a never-countered submitted bid (409, no owner involvement)', async () => {
+    // The M8 authz hole: an applicant could accept their OWN freshly-submitted
+    // bid — no negotiation_id, no negotiation_turns — and self-award the tender.
+    seedBid({
+      id: 'bid-self',
+      tender_id: 'tender-1',
+      status: 'submitted',
+      negotiation_id: null,
+      negotiation_turns: [],
+    });
+    const res = await mount().request(
+      '/tenders/tender-1/bids/bid-self/accept',
+      { method: 'POST' },
+    );
+    // The 409 proves the CAS UPDATE matched no row — the bid never transitioned
+    // (its WHERE required a counter that does not exist).
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('BID_NOT_TRANSITIONABLE');
   });
 
   it('withdraws a submitted bid (transition to withdrawn)', async () => {

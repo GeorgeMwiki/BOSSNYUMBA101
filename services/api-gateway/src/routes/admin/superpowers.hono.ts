@@ -521,8 +521,13 @@ app.post('/approve/:journalId', async (c: any) => {
   }
 
   const approvedAt = new Date();
-  // Update the pending row first — the CHECK constraint
-  // `admin_four_eye_distinct_actors_chk` is the DB-level safety net.
+  // Atomic compare-and-set: flip pending→applied ONLY while still 'pending'.
+  // Two concurrent approvers both pass the in-handler status checks above
+  // (a classic TOCTOU — both read status='pending' before either writes), so
+  // the `AND status='pending'` predicate is what makes Postgres pick exactly
+  // ONE winner. The CHECK constraint `admin_four_eye_distinct_actors_chk` is
+  // the DB-level distinct-ACTOR net; this guard is the distinct-EXECUTION net
+  // so the destructive verb below fires exactly once.
   const [updatedPending] = await db
     .update(adminSuperpowerPendingApprovals)
     .set({
@@ -534,8 +539,30 @@ app.post('/approve/:journalId', async (c: any) => {
       }),
       approvedAt,
     })
-    .where(eq(adminSuperpowerPendingApprovals.id, pending.id))
+    .where(
+      and(
+        eq(adminSuperpowerPendingApprovals.id, pending.id),
+        eq(adminSuperpowerPendingApprovals.status, 'pending'),
+      ),
+    )
     .returning();
+
+  // Lost the race: a concurrent approver already flipped pending→applied and
+  // is dispatching (or already dispatched) the side-effect. Return 409 and DO
+  // NOT dispatch — the destructive verb must never fire twice.
+  if (!updatedPending) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'ALREADY_APPLIED',
+          message:
+            'Approval already granted by a concurrent approver; mutation already fired',
+        },
+      },
+      409,
+    );
+  }
 
   // Update the journal row's provenance (best-effort — same-chain).
   if (journal) {

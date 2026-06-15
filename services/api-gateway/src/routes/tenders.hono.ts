@@ -547,10 +547,16 @@ app.post(
   )
 );
 
-// POST /:id/bids/:bidId/accept — applicant accepts (e.g. an owner counter),
-// transitioning the bid to `awarded`. Compare-and-set: only a bid currently in
-// `submitted` or `negotiating` may be accepted; the UPDATE's WHERE clause is
-// the guard, so a concurrent transition cannot double-apply.
+// POST /:id/bids/:bidId/accept — applicant accepts an OWNER COUNTER,
+// transitioning the bid to `awarded`. Compare-and-set: the UPDATE's WHERE
+// clause is the guard, so a concurrent transition cannot double-apply.
+//
+// AUTHZ (security): accepting requires a counter to actually EXIST — the bid
+// must carry a `negotiation_id` or a non-empty `negotiation_turns` (the same
+// `hasCounter` signal the applicant UI uses to show the "Accept counter" CTA).
+// Without this, an applicant could accept their own freshly-`submitted` bid that
+// the owner never engaged with and self-award the tender with zero owner
+// involvement. "Accept" is a response to an owner offer, never a self-award.
 app.post(
   '/:id/bids/:bidId/accept',
   zValidator('param', TenderBidParamSchema),
@@ -580,6 +586,10 @@ app.post(
            AND tender_id = ${tenderId}
            AND vendor_id = ${applicantUserId}
            AND status IN ('submitted', 'negotiating')
+           AND (
+                 negotiation_id IS NOT NULL
+              OR (negotiation_turns IS NOT NULL AND jsonb_array_length(negotiation_turns) > 0)
+               )
         RETURNING id, tender_id, vendor_id, price, currency, timeline_days,
                   notes, status, submitted_at, awarded_at
       `);
@@ -590,7 +600,7 @@ app.post(
             success: false,
             error: {
               code: 'BID_NOT_TRANSITIONABLE',
-              message: `Bid is ${String(bid.status)}; cannot accept`,
+              message: `Bid is ${String(bid.status)} with no owner counter to accept; cannot self-award`,
             },
           },
           409
