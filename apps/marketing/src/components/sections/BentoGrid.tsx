@@ -19,7 +19,7 @@ import { TiltCard } from '@/components/animations/TiltCard';
  *
  *   1 audit chain        — col-span-2 row-span-2 hero tile
  *   2 47-day radar       — standard
- *   3 Vetted window hedge  — standard
+ *   3 Scheduled owner payout — standard
  *   4 Regulator rent — standard
  *   5 M-Pesa vendor wallet — wide
  *
@@ -31,7 +31,7 @@ import { TiltCard } from '@/components/animations/TiltCard';
 const ICONS: Record<string, LucideIcon> = {
   audit: Lock,
   licence: CalendarClock,
-  hedge: Coins,
+  disbursement: Coins,
   rent: FileSignature,
   wallet: Wallet,
 };
@@ -39,7 +39,6 @@ const ICONS: Record<string, LucideIcon> = {
 const SPANS: Record<string, string> = {
   audit: 'md:col-span-2 md:row-span-2',
   licence: '',
-  hedge: '',
   rent: '',
   wallet: 'md:col-span-2',
 };
@@ -183,17 +182,6 @@ function BentoFlourish({ tileId }: { readonly tileId: string }) {
               style={{ width: '53%' }}
             />
           </div>
-        </div>
-      );
-    case 'hedge':
-      return (
-        <div className="flex items-center gap-2 rounded-md border border-signal-500/30 bg-signal-500/5 px-3 py-2 text-tiny">
-          <span
-            className="h-1.5 w-1.5 rounded-full bg-signal-500"
-            aria-hidden="true"
-          />
-          <span className="font-mono text-foreground/75">Vetted AM-fix</span>
-          <span className="ml-auto font-mono text-signal-500">+1.4%</span>
         </div>
       );
     case 'rent':
