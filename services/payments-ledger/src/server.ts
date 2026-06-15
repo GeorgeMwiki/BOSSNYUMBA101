@@ -443,6 +443,12 @@ const reconciliationService = new ReconciliationService({
   ledgerRepository,
   accountRepository,
   eventPublisher,
+  // #07: bind the idempotent ledger-booking self-heal so a reconciled
+  // missed-success (webhook never landed) actually books the ledger —
+  // not just flips the status. ensurePaymentBooked no-ops unless the
+  // intent is SUCCEEDED with zero existing entries.
+  bookPayment: (externalId, providerName, tenantId) =>
+    paymentOrchestrationService.ensurePaymentBooked(externalId, providerName, tenantId),
   logger: {
     info: (msg, ctx) => logger.info(ctx, msg),
     warn: (msg, ctx) => logger.warn(ctx, msg),

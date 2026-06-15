@@ -77,6 +77,26 @@ export interface ReconciliationServiceDeps {
   accountRepository: IAccountRepository;
   eventPublisher: IEventPublisher;
   logger: ILogger;
+  /**
+   * Book a now-SUCCEEDED payment into the ledger (BLOCKER #07).
+   *
+   * When provider reconciliation flips a stale PROCESSING intent to
+   * SUCCEEDED, the cash was collected but no journal was ever posted on the
+   * automated path (the success webhook never landed). This dep books the
+   * gap. It MUST be idempotent — book only when the intent is SUCCEEDED with
+   * zero existing ledger entries — so a re-run never double-books. The real
+   * binding is `PaymentOrchestrationService.ensurePaymentBooked`.
+   *
+   * Optional: omitted in surface-only / pure status-sync contexts (and in
+   * the scaling unit tests). When absent, reconciliation still flips the
+   * status but does not book — the existing self-heal on the next webhook
+   * duplicate covers it.
+   */
+  bookPayment?: (
+    externalId: string,
+    providerName: string,
+    tenantId: TenantId,
+  ) => Promise<void>;
 }
 
 /**
@@ -90,6 +110,7 @@ export class ReconciliationService {
   private accountRepository: IAccountRepository;
   private eventPublisher: IEventPublisher;
   private logger: ILogger;
+  private bookPayment?: ReconciliationServiceDeps['bookPayment'];
 
   // Tolerance for matching amounts (in minor units)
   private readonly AMOUNT_TOLERANCE = 0;
@@ -113,6 +134,7 @@ export class ReconciliationService {
     this.accountRepository = deps.accountRepository;
     this.eventPublisher = deps.eventPublisher;
     this.logger = deps.logger;
+    this.bookPayment = deps.bookPayment;
   }
 
   /**
@@ -402,6 +424,32 @@ export class ReconciliationService {
             oldStatus: payment.status,
             newStatus: status
           });
+
+          // BLOCKER #07: a stale PROCESSING intent that the provider confirms
+          // SUCCEEDED had its cash collected but NEVER booked (the success
+          // webhook was the only thing that posts the journal, and it never
+          // landed). Book the gap now. `bookPayment` is idempotent — it books
+          // only when the intent is SUCCEEDED with zero existing ledger
+          // entries — so a re-run never double-books. Wrapped so one booking
+          // failure surfaces (failed++ / error) but never crashes the batch:
+          // the next sweep retries, and the status is already correct.
+          if (status === 'SUCCEEDED' && this.bookPayment && payment.externalId) {
+            try {
+              await this.bookPayment(payment.externalId, providerName, tenantId);
+            } catch (bookError) {
+              failed++;
+              const message =
+                bookError instanceof Error ? bookError.message : 'Unknown error';
+              errors.push({ paymentId: payment.id, error: `ledger booking failed: ${message}` });
+              this.logger.error('Reconciliation booked status but ledger post failed', {
+                paymentIntentId: payment.id,
+                externalId: payment.externalId,
+                providerName,
+                tenantId,
+                error: message
+              });
+            }
+          }
         }
       } catch (error) {
         failed++;
