@@ -106,6 +106,10 @@
     "empty": "Bado hujatuma ombi lolote",
     "place_title": "Tuma ombi",
     "bid_price": "Kodi unayotoa (TZS / mwezi)",
+    "bid_price_error": {
+      "required": "Weka kodi unayotaka kutoa",
+      "integer": "Weka namba nzima — bila desimali"
+    },
     "payment_terms": "Masharti ya malipo",
     "payment_instant": "Kila mwezi",
     "payment_30": "Kila robo (miezi 3)",

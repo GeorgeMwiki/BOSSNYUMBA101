@@ -3,7 +3,8 @@ import type { Session } from '@supabase/supabase-js'
 import { clearAuthToken, setAuthToken } from './token'
 import { getSupabaseClient } from './supabaseClient'
 import { parseSupabaseTokenForTenant } from './tenantClaims'
-import type { TenantUser } from '@/types/auth'
+import { loadPreferredLang, savePreferredLang } from './lang-preference'
+import type { LanguageCode, TenantUser } from '@/types/auth'
 import { registerPushToken } from '@/lib/notifications/push-register'
 
 // Reactive in-memory session store, backed by Supabase phone OTP.
@@ -35,6 +36,12 @@ type Listener = (user: TenantUser | null) => void
 let currentUser: TenantUser | null = null
 let bootstrapped = false
 const listeners = new Set<Listener>()
+
+// Locale persistence: the JWT carries no language claim, so the user's sw/en
+// choice is hydrated from AsyncStorage on cold boot and applied when we
+// project the session. `null` until hydrated, which falls back to the English
+// default (CLAUDE.md), never Swahili.
+let persistedLang: LanguageCode | null = null
 
 // Resolves once the Supabase session has been read from storage on cold
 // boot (or the bootstrap has failed and we know there is no session).
@@ -73,7 +80,9 @@ function projectSession(session: Session | null): TenantUser | null {
     role: 'tenant',
     companyName,
     countryCode: 'TZ',
-    preferredLang: 'en',
+    // Honour the persisted language toggle; fall back to the English default
+    // (CLAUDE.md) only when nothing has been stored yet.
+    preferredLang: persistedLang ?? 'en',
     kycStatus: 'pending',
     phone: phoneFormatted
   }
@@ -83,6 +92,9 @@ async function ensureBootstrapped(): Promise<void> {
   if (bootstrapped) return
   bootstrapped = true
   try {
+    // Hydrate the language toggle BEFORE projecting the session so a Swahili
+    // user is not transiently reset to English on cold boot.
+    persistedLang = await loadPreferredLang()
     const supabase = getSupabaseClient()
     const { data } = await supabase.auth.getSession()
     const next = projectSession(data.session)
@@ -140,6 +152,11 @@ export function isAuthenticated(): boolean {
 
 export function setCurrentUser(user: TenantUser): void {
   currentUser = user
+  // Persist the language so the toggle survives a cold start.
+  if (persistedLang !== user.preferredLang) {
+    persistedLang = user.preferredLang
+    void savePreferredLang(user.preferredLang)
+  }
   emit()
 }
 
@@ -147,6 +164,8 @@ export function setPreferredLang(lang: TenantUser['preferredLang']): void {
   if (!currentUser) {
     return
   }
+  persistedLang = lang
+  void savePreferredLang(lang)
   currentUser = { ...currentUser, preferredLang: lang }
   emit()
 }

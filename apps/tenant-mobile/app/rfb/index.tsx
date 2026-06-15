@@ -15,6 +15,7 @@ import { Card } from '@/components/Card'
 import { Pill, type PillTone } from '@/components/Pill'
 import { EmptyState } from '@/components/EmptyState'
 import { PrimaryButton } from '@/components/PrimaryButton'
+import { formatCurrency } from '@/components/formatters'
 import { useTranslation } from '@/hooks/useTranslation'
 
 import { fetchMyRfbs, type RfbStatus } from '@/api/rfb'
@@ -93,7 +94,7 @@ export default function RfbIndex() {
             />
           </View>
           <Text style={styles.body}>
-            {t('rfb.unit_price_label')}: {rfb.unit_price_tzs}
+            {t('rfb.unit_price_label')}: {formatCurrency(rfb.unit_price_tzs, rfb.currency)}
           </Text>
           <Text style={styles.body}>
             {t('rfb.delivery_by_label')}: {rfb.delivery_by}

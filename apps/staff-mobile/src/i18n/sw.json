@@ -25,6 +25,15 @@
     "docs": "Hati",
     "ask": "Uliza"
   },
+  "hubs": {
+    "field": "Vifaa vya shambani",
+    "docs": "Hati na ripoti",
+    "decisions": "Mambo ya kuamua",
+    "cash": "Hela kwa muhtasari",
+    "people": "Watu na mali",
+    "sitesAll": "Mali yote",
+    "sitesRelated": "Skrini zinazohusiana"
+  },
   "common": {
     "next": "Endelea",
     "back": "Rudi",

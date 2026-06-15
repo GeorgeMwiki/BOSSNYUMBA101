@@ -106,6 +106,10 @@
     "empty": "You haven't submitted any applications yet",
     "place_title": "Submit application",
     "bid_price": "Offered rent (TZS / month)",
+    "bid_price_error": {
+      "required": "Enter the rent you want to offer",
+      "integer": "Enter a whole number — no decimals"
+    },
     "payment_terms": "Payment terms",
     "payment_instant": "Monthly",
     "payment_30": "Quarterly (3 months)",

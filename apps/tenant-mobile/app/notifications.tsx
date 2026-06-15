@@ -32,6 +32,7 @@ import {
   type TenantNotificationRow,
 } from '@/api/notifications'
 import { queryKeys } from '@/api/queryKeys'
+import { formatDateTime, formatTime } from '@/components/formatters'
 import {
   useInbox,
   markRead as markLiveRead,
@@ -185,9 +186,7 @@ function NotificationCard({
         </View>
         <Text style={styles.cardBody}>{body}</Text>
         <Text style={styles.cardTimestamp}>
-          {new Date(row.created_at).toLocaleString(
-            isSw ? 'sw-TZ' : 'en-US',
-          )}
+          {formatDateTime(row.created_at, isSw ? 'sw' : 'en')}
         </Text>
       </Card>
     </Pressable>
@@ -241,7 +240,7 @@ function LiveEventsRibbon({ items, unreadCount, isSw, onTapItem }: LiveEventsRib
           <View style={styles.ribbonRow}>
             <Text style={styles.ribbonKind}>{describeKind(item.kind, isSw)}</Text>
             <Text style={styles.ribbonTime}>
-              {new Date(item.emittedAt).toLocaleTimeString(isSw ? 'sw-TZ' : 'en-US')}
+              {formatTime(item.emittedAt, isSw ? 'sw' : 'en')}
             </Text>
           </View>
         </Pressable>

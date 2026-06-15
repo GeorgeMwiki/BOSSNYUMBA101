@@ -25,6 +25,15 @@
     "docs": "Documents",
     "ask": "Ask"
   },
+  "hubs": {
+    "field": "Field tools",
+    "docs": "Documents & reports",
+    "decisions": "Decisions to make",
+    "cash": "Cash overview",
+    "people": "People & property",
+    "sitesAll": "All properties",
+    "sitesRelated": "Related screens"
+  },
   "common": {
     "next": "Next",
     "back": "Back",
