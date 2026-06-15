@@ -115,4 +115,16 @@ export const HARDCODED_ROUTES_ALLOWLIST = new Map([
     'apps/tenant-mobile/src/dashboard/TenantDashboard.tsx',
     'Expo Router push to /marketplace + /chat + /marketplace/${id} dashboard tiles — tenant-mobile has no ROUTES registry yet.',
   ],
+  [
+    'apps/marketing/src/app/docs/page.tsx',
+    'Static marketing nav links (/security, /trust) — public Next pages; the marketing site has no ROUTES registry.',
+  ],
+  [
+    'apps/marketing/src/app/security/page.tsx',
+    'Static marketing nav link (/trust) — public Next page; the marketing site has no ROUTES registry.',
+  ],
+  [
+    'apps/owner-portal/src/pages/OperationsPage.tsx',
+    'navigate(\'/workflows\') — pre-existing owner-portal nav; ROUTES-registry migration tracked separately.',
+  ],
 ]);
