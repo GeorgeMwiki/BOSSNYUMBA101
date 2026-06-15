@@ -96,13 +96,11 @@ Codemaps are written from source. When source moves, update the codemap.
 
 | Codemap | Module | Purpose |
 |---------|--------|---------|
-| [customer-app.md](./customer-app.md) | `apps/customer-app/` | Next.js tenant portal (port 3002) |
-| [estate-manager-app.md](./estate-manager-app.md) | `apps/estate-manager-app/` | Next.js estate-manager workspace (port 3003) |
 | [owner-portal.md](./owner-portal.md) | `apps/owner-portal/` | Vite owner SPA (port 3001) |
 | [admin-platform-portal.md](./admin-platform-portal.md) | `apps/admin-platform-portal/` | Next.js operator command-deck (port 3020) |
-| [admin-portal.md](./admin-portal.md) | `apps/admin-portal/` | Deprecated Vite admin SPA |
 | [marketing.md](./marketing.md) | `apps/marketing/` | Public marketing site (port 3010) |
-| [bossnyumba-mobile.md](./bossnyumba-mobile.md) | `apps/bossnyumba_app/` | Flutter iOS/Android/Web client |
+| [bossnyumba-mobile.md](./bossnyumba-mobile.md) | `apps/staff-mobile/` | Expo workforce app (staff) |
+| [bossnyumba-mobile.md](./bossnyumba-mobile.md) | `apps/tenant-mobile/` | Expo tenant / counterparty app |
 
 ### Domain models
 

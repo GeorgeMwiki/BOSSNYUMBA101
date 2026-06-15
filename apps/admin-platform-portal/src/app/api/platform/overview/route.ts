@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies, headers } from 'next/headers';
 
 import { PLATFORM_SESSION_COOKIE } from '@/lib/session';
+import { getApiGatewayBase } from '@/lib/proxy';
 
 /**
  * Platform overview KPI proxy.
@@ -17,16 +18,11 @@ import { PLATFORM_SESSION_COOKIE } from '@/lib/session';
  * the user seeing a generic "failed to fetch" surface.
  */
 
-const GATEWAY_URL =
-  process.env.API_GATEWAY_URL?.trim() || 'http://localhost:4000';
-
 export async function GET() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get(PLATFORM_SESSION_COOKIE);
   const incomingHeaders = await headers();
   const auth = incomingHeaders.get('authorization');
-
-  const url = `${GATEWAY_URL.replace(/\/$/, '')}/api/v1/platform/overview`;
 
   const fetchHeaders: Record<string, string> = {
     Accept: 'application/json',
@@ -42,6 +38,13 @@ export async function GET() {
   }
 
   try {
+    // Resolve the gateway base via the shared prod-guarded resolver (throws in
+    // production if API_GATEWAY_URL is unset, instead of silently routing to
+    // localhost). Resolving at call-time — not module load — keeps this route
+    // consistent with every other proxy in lib/proxy.ts. Inside the try so a
+    // thrown prod-guard surfaces as GATEWAY_UNREACHABLE (em-dash fallback, the
+    // route's degradation contract), never a silent localhost hit or a hard 500.
+    const url = `${getApiGatewayBase().replace(/\/$/, '')}/api/v1/platform/overview`;
     const upstream = await fetch(url, {
       method: 'GET',
       headers: fetchHeaders,
