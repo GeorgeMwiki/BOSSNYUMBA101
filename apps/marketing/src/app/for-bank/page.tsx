@@ -5,9 +5,9 @@ import { AudiencePage } from '@/components/audience/AudiencePage';
 import { COPY } from '@/lib/audience-copy';
 
 export const metadata: Metadata = {
-  title: 'For banks + property finance — Boss Nyumba',
+  title: 'For banks + property finance — BossNyumba',
   description:
-    'Hash-chained property cash flows, conformal DSCR projections, API-first credit feed. Bank the underbanked landlord with confidence.',
+    'Hash-chained property cash flows and a computed landlord credit score for underwriting. Bank the underbanked landlord with confidence. Consented API credit feed on the roadmap.',
 };
 
 export default function ForBankPage() {

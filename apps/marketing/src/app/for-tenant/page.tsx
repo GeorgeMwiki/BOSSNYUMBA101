@@ -5,9 +5,9 @@ import { AudiencePage } from '@/components/audience/AudiencePage';
 import { COPY } from '@/lib/audience-copy';
 
 export const metadata: Metadata = {
-  title: 'For tenants and prospects — Boss Nyumba',
+  title: 'For tenants and prospects — BossNyumba',
   description:
-    'Browse verified listings across Tanzania and Kenya. Tour virtually. Sign your lease on your phone. Pay rent over M-Pesa. Digital receipt every month. No ghost listings.',
+    'Browse verified listings across Tanzania and Kenya. Apply, place a bid, and upload your NIDA to verify. Chat with Mr. Mwikila in Swahili or English. No ghost listings.',
 };
 
 export default function ForTenantPage() {

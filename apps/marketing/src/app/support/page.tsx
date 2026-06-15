@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BookOpen, MessageSquare, Phone, ShieldAlert } from 'lucide-react';
+import { BookOpen, MessageSquare, Mail, ShieldAlert } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 
 export const metadata: Metadata = {
-  title: 'Support — Boss Nyumba',
+  title: 'Support — BossNyumba',
   description:
-    'How to reach the Boss Nyumba team. Mr. Mwikila chat, EAT phone hours, email, and the security disclosure address. Swahili and English.',
+    'How to reach the BossNyumba team. Mr. Mwikila chat, EAT phone hours, email, and the security disclosure address. Swahili and English.',
 };
 
 interface Channel {
@@ -33,19 +33,19 @@ const CHANNELS: ReadonlyArray<Channel> = [
     icon: BookOpen,
     title: 'Help centre',
     tone: 'secondary',
-    body: 'Step-by-step guides and how-to videos for every screen and workflow. Swahili and English.',
+    body: 'Written guides are on the way. Until they land, ask Mr. Mwikila in the app or email docs@bossnyumba.com.',
     href: '/docs',
-    cta: 'Browse the docs',
-    sla: 'Searchable · 24/7',
+    cta: 'See docs status',
+    sla: 'In progress',
   },
   {
-    icon: Phone,
-    title: 'Phone (EAT)',
+    icon: Mail,
+    title: 'Email the team',
     tone: 'secondary',
-    body: 'Speak to our Dar es Salaam team. Weekdays 09:00-17:00 EAT. Saturdays 09:00-13:00 EAT.',
-    href: 'tel:+255222000000',
-    cta: 'Call +255 22 200 0000',
-    sla: 'Live · weekdays + Sat AM',
+    body: 'Write to support@bossnyumba.com. Our Dar es Salaam team works weekdays 09:00-17:00 EAT and Saturdays 09:00-13:00 EAT.',
+    href: 'mailto:support@bossnyumba.com',
+    cta: 'Email support@bossnyumba.com',
+    sla: 'Weekdays + Sat AM',
   },
   {
     icon: ShieldAlert,

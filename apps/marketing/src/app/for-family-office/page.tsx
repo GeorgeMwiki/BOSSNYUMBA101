@@ -5,9 +5,9 @@ import { AudiencePage } from '@/components/audience/AudiencePage';
 import { COPY } from '@/lib/audience-copy';
 
 export const metadata: Metadata = {
-  title: 'For family offices — Boss Nyumba',
+  title: 'For family offices — BossNyumba',
   description:
-    'Multi-entity consolidation, daily NAV, succession-ready entity maps, treasury sweep, FX hedging, living asset register. Built for the long-horizon owner.',
+    'One audit-ready, hash-chained ledger across every entity and currency, with owner statements and portfolio analytics. Built for the long-horizon owner.',
 };
 
 export default function ForFamilyOfficePage() {

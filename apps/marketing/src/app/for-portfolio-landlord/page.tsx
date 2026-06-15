@@ -5,7 +5,7 @@ import { AudiencePage } from '@/components/audience/AudiencePage';
 import { COPY } from '@/lib/audience-copy';
 
 export const metadata: Metadata = {
-  title: 'For the portfolio landlord — Boss Nyumba',
+  title: 'For the portfolio landlord — BossNyumba',
   description:
     'Scale from five units to 2,500. Cross-property cash flow, consolidated owner statements, autonomy dial, Master Brain reasoning. Built for the professional property manager.',
 };

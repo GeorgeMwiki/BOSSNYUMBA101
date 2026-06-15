@@ -5,9 +5,9 @@ import { AudiencePage } from '@/components/audience/AudiencePage';
 import { COPY } from '@/lib/audience-copy';
 
 export const metadata: Metadata = {
-  title: 'For housing cooperatives — Boss Nyumba',
+  title: 'For housing cooperatives — BossNyumba',
   description:
-    'Real-time view of dues paid, building maintenance, AGM calendar, cooperative bank balance. Mr. Mwikila handles dues collection, vendor disputes, registrar filings. 30% off every tier.',
+    'Real-time view of dues paid, building maintenance, AGM calendar, cooperative bank balance. Mr. Mwikila handles dues collection, vendor disputes, and generates a registrar-ready filing pack in one tap. 30% off every tier.',
 };
 
 export default function ForHousingCooperativePage() {

@@ -5,7 +5,7 @@ import { AudiencePage } from '@/components/audience/AudiencePage';
 import { COPY } from '@/lib/audience-copy';
 
 export const metadata: Metadata = {
-  title: 'For housing regulators — Boss Nyumba',
+  title: 'For housing regulators — BossNyumba',
   description:
     'Live, anonymised, hash-chained market signal: lease counts, district median rents, dispute volumes, council-levy compliance. Tenant-consent first; differentially private; constitutionally bounded.',
 };

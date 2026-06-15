@@ -110,21 +110,21 @@
     "claims": [
       {
         "id": "rent-compliance",
-        "title": "Regulator rent drafts pass first review.",
-        "body": "Every monthly management fee drafted by BossNyumba in the Regulator format passes regulator review without a rewrite. Indicative across early operations.",
-        "href": "/insights/rent-compliance-format-compliance"
+        "title": "Owner statements drafted in the required format.",
+        "body": "BossNyumba drafts your monthly owner and regulator statements in the required format, ready for one-tap approval. You review and sign — Mr. Mwikila never submits on his own authority.",
+        "href": "/pilot"
       },
       {
-        "id": "bot-hedge",
-        "title": "FX-window hedge against currency volatility.",
-        "body": "BossNyumba hedges your treasury at the BoT FX window automatically. Indicative saving of 1.4% vs spot at settlement.",
-        "href": "/insights/bot-window-hedging"
+        "id": "double-entry-ledger",
+        "title": "Every rent payment booked to an immutable ledger.",
+        "body": "Each payment is posted to a balanced, double-entry ledger that is append-only by construction. Zero mutations — your books reconcile and the audit chain holds.",
+        "href": "/trust"
       },
       {
-        "id": "biometric",
-        "title": "Biometric attendance lifts shift productivity 18%.",
-        "body": "Fingerprint clock-in at the building entrance cuts maintenance leakage and lifts work completed per shift. Data from early operations across Mikocheni and Mbezi.",
-        "href": "/insights/biometric-attendance-roi"
+        "id": "auto-dispatch",
+        "title": "Statements and reminders sent automatically.",
+        "body": "Owner statements go out on schedule and late-rent and lease-expiry reminders dispatch over WhatsApp, SMS, and email with channel failover — no manual chasing.",
+        "href": "/pilot"
       }
     ]
   },
@@ -177,7 +177,7 @@
   },
   "capabilities": {
     "kicker": "01 · Core capabilities",
-    "heading": "Six capabilities, one calm operator.",
+    "heading": "Six systems that run your estate — not a chatbot.",
     "sub": "Each capability ties into your property's knowledge graph and writes to an immutable audit chain.",
     "learnMore": "Learn more",
     "cards": {
@@ -194,8 +194,8 @@
         "blurb": "Field logger for maintenance jobs and quality-control. Issues photographed, verified, linked to a unit segment, written to the chain."
       },
       "treasury": {
-        "title": "FX & treasury",
-        "blurb": "TZS · USD · rent receipts. Hedge proposals against live BoT and BoT FX spot. Tenancy projections by week."
+        "title": "Multi-currency treasury",
+        "blurb": "TZS · USD rent receipts booked to a balanced double-entry ledger. Live treasury position and scheduled owner disbursements, every amount rendered in its own currency."
       },
       "marketplace": {
         "title": "Marketplace",
@@ -624,9 +624,9 @@
     },
     "ecosystem": {
       "kicker": "Regulators · markets · rails",
-      "title": "Wired into every counterpart",
-      "titleAccent": "Tanzanian real-estate touches.",
-      "sub": "BossNyumba integrates with every regulator, market, lab, and money-rail an operator already deals with. No new portals to learn — the work flows through the systems Tanzania already trusts.",
+      "title": "Already connected to M-Pesa, BRELA, TRA and your contractors.",
+      "titleAccent": "The systems Tanzania already trusts.",
+      "sub": "BossNyumba works through the money-rails, regulators, and markets an operator already deals with. No new portals to learn — rent collection, statements, and compliance exports flow through the systems Tanzania already trusts.",
       "categories": [
         {
           "title": "Regulators",
@@ -715,7 +715,7 @@
     },
     "mwikilaModes": {
       "kicker": "Meet Mr. Mwikila",
-      "title": "Seven modes, one calm operator.",
+      "title": "Seven modes, one governed brain.",
       "titleAccent": "Switch tabs to see them work.",
       "sub": "Mr. Mwikila is BossNyumba's AI Real-Estate Managing Director. He adapts to the moment — building you a brief at 06:00, drafting your rent at month-end, hedging your treasury at the BoT FX window. Pick a mode to see what he does.",
       "modes": [
@@ -736,7 +736,7 @@
           "headline": "Models the long arc — portfolio, treasury, tenants, market",
           "capabilities": [
             "Simulates 12-month rent income against three occupancy scenarios",
-            "Projects cash runway from current burn, hedge book, and tenancy pipeline",
+            "Projects cash runway from current burn rate and the tenancy pipeline",
             "Flags lease renewals 90, 60, and 30 days out with Regulator drafts pre-filled",
             "Recommends fleet, contractor, and supply purchases against quarterly plan"
           ]
@@ -746,7 +746,7 @@
           "label": "Operations",
           "headline": "Runs the day from the building entrance to the back office",
           "capabilities": [
-            "Schedules shifts and tracks biometric clock-in on the supervisor's phone",
+            "Runs shifts, service logs, and incident reports from the supervisor's phone",
             "Logs every maintenance ticket, inspection, and snag-list entry to the chain",
             "Tracks utility, supply, and equipment consumption against units",
             "Surfaces overnight incidents, near-misses, and equipment downtime by 06:00"
@@ -760,17 +760,17 @@
             "Regulator rent drafts in the official format every month",
             "NHC compliance and quarterly safety-and-environment report templates auto-populated from telemetry",
             "OSHA shift log, incident report, and corrective-action notes",
-            "Tenancy contracts with biometric fingerprint signature workflow"
+            "Tenancy and renewal agreements drafted for your one-tap approval"
           ]
         },
         {
           "id": "finance",
           "label": "Finance",
-          "headline": "Hedges the treasury window, watches the cash, files the tax",
+          "headline": "Books every shilling, pays you out, prepares the tax",
           "capabilities": [
-            "Hedges foreign-currency rent at the BoT AM-fix automatically inside policy",
-            "Tracks TZS · USD balances against the BoT USD cliff",
-            "Drafts VAT, PAYE, and withholding-tax returns ready for TRA filing",
+            "Books each rent payment to a balanced double-entry ledger and pays the owner out on schedule",
+            "Tracks TZS · USD balances, each amount rendered in its own currency",
+            "Prepares VAT, PAYE, and rental-income (MRI / ERITS) returns; on your approval, files them through a four-eye-approved, audit-chained workflow",
             "Settles vendor wallets through M-Pesa, Tigo Pesa, and Airtel Money"
           ]
         },
@@ -838,7 +838,7 @@
     },
     "platformShowcase": {
       "kicker": "Three product surfaces, one OS",
-      "title": "Where BossNyumba lives.",
+      "title": "One audited brain across owner cockpit, field app, and tenant marketplace.",
       "titleAccent": "On every screen the property needs.",
       "sub": "The Owner Cockpit, the Maintenance Mobile app, and the Tenant Marketplace are three windows into the same audited data fabric. The owner runs the business. The supervisor runs the shift. The tenant sources the unit.",
       "tiles": [
@@ -865,7 +865,7 @@
         {
           "title": "Maintenance Mobile",
           "subtitle": "Phone · 47 screens · role-gated",
-          "desc": "Biometric clock-in, shift log, utility ledger, incident report. The on-site app the supervisor uses every shift.",
+          "desc": "Shift log, maintenance tickets, utility readings, incident report. The on-site app the supervisor uses every shift.",
           "mockType": "shift",
           "rows": [
             {
@@ -888,7 +888,7 @@
         {
           "title": "Tenant Marketplace",
           "subtitle": "Web · mobile · 12 screens",
-          "desc": "KYB-verified landlords, vetted corporate inspections, biometric tenancy signatures. The marketplace for tenants sourcing verified Tanzanian properties.",
+          "desc": "KYB-verified landlords, vetted listings, place a bid or RFB, upload your KYC. The marketplace for tenants sourcing verified Tanzanian properties.",
           "mockType": "market",
           "listings": [
             {
@@ -929,9 +929,9 @@
           "badge": "Live now"
         },
         {
-          "id": "hedge",
-          "title": "BoT FX window hedge",
-          "desc": "BossNyumba hedges your treasury against the BoT USD/TZS window at the BoT AM-fix. Every hedge cited to the fix price, indicative pilot saving of 1.4% versus spot.",
+          "id": "disbursement",
+          "title": "Scheduled owner payout",
+          "desc": "Collected rent is paid out to the owner automatically on a daily, weekly, or monthly schedule over M-Pesa B2C — every payout posted to the double-entry ledger and signed to the audit chain.",
           "badge": "Treasury"
         },
         {
@@ -949,50 +949,34 @@
       ]
     },
     "insights": {
-      "kicker": "By the numbers · early voices",
-      "title": "What early operators are telling us.",
-      "titleAccent": "Indicative, refreshed weekly.",
-      "sub": "Operators across Mikocheni, Masaki, and Mbezi are running live on BossNyumba. Below: numbers from telemetry on the left, and what operators are saying on the right.",
-      "statsHeading": "By the numbers",
+      "kicker": "Proof, by construction",
+      "title": "The proof isn't a counter.",
+      "titleAccent": "It's how the books are built.",
+      "sub": "BossNyumba doesn't ask you to trust a dashboard number. Every rent payment is booked to an immutable double-entry ledger that is append-only by construction — so the count of tampered entries is, and stays, zero.",
+      "statsHeading": "Proof, by construction",
       "stats": [
         {
-          "value": 47,
+          "value": 0,
           "suffix": "",
-          "label": "Sites under live brain"
-        },
-        {
-          "value": 1284,
-          "suffix": "",
-          "label": "Briefings delivered before 06:00"
-        },
-        {
-          "value": 184,
-          "suffix": "k",
-          "label": "Audit-chain entries (zero mutations)"
-        },
-        {
-          "value": 4.2,
-          "suffix": "B",
-          "decimals": 1,
-          "label": "TZS hedged at FX window"
+          "label": "Mutations on the immutable double-entry ledger — every rent payment booked, balanced, and append-only by construction."
         }
       ],
-      "quotesHeading": "Early operator voices",
+      "quotesHeading": "What ships today",
       "quotes": [
         {
-          "body": "The 06:00 brief in Swahili changed how my Wednesday starts. I used to spend two hours pulling reports. Now I sign three decisions and head to the building.",
-          "name": "Joyce Mhagama",
-          "role": "Owner · Mikocheni landlord · 4 properties"
+          "body": "Rent collected via M-Pesa on one-tap tenant approval, booked to a balanced double-entry ledger, and paid out to the owner automatically on their schedule.",
+          "name": "Collect, book, pay out",
+          "role": "services/payments-ledger"
         },
         {
-          "body": "The Regulator rent draft has not been rewritten by the regulator once. Twelve months in. That's the proof for me.",
-          "name": "Hamisi Ngao",
-          "role": "Chair · Mbezi housing co-op · 18 members"
+          "body": "Owner monthly statements generated and delivered automatically, with late-rent and lease-expiry reminders dispatched over WhatsApp, SMS, and email with channel failover.",
+          "name": "Statements + reminders",
+          "role": "Scheduled, automatic dispatch"
         },
         {
-          "body": "Biometric clock-in killed our maintenance leakage in one week. The supervisor finally has a phone that does the job, not just makes calls.",
-          "name": "Asha Mwakajila",
-          "role": "CFO · Masaki property group · 9 properties"
+          "body": "Compliance and regulator exports written to a SHA-256 hash-chained, append-only audit trail that your lender or regulator can verify offline — no trust required.",
+          "name": "Audit-ready exports",
+          "role": "Hash-chained compliance"
         }
       ]
     },
@@ -1229,7 +1213,7 @@
   "ownersPage": {
     "kicker": "For landlords",
     "heading": "Run your estate like the world's best.",
-    "sub": "Master Brain, lease calendar, maintenance log, FX/treasury, marketplace and compliance — all in one calm operator.",
+    "sub": "Rent collection, the double-entry ledger, owner statements, lease calendar, maintenance log, marketplace and compliance exports — one governed brain you approve.",
     "ctaPilot": "Get started",
     "ctaPricing": "See pricing"
   },

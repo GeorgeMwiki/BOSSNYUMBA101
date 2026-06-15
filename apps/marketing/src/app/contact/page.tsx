@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Mail, MapPin, Phone } from 'lucide-react';
+import { Mail, MapPin } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 
 export const metadata: Metadata = {
-  title: 'Contact — Boss Nyumba',
+  title: 'Contact — BossNyumba',
   description:
-    'Reach the Boss Nyumba team. Sales, support, security, press, and partnerships — Dar es Salaam, Nairobi, EAT business hours.',
+    'Reach the BossNyumba team. Sales, support, security, press, and partnerships — Dar es Salaam, Nairobi, EAT business hours.',
 };
 
 interface Channel {
@@ -108,11 +108,9 @@ export default function ContactPage() {
               Dar es Salaam (HQ)
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-foreground/70">
-              Plot 12, Msasani Peninsula
+              Msasani Peninsula
               <br />
               Dar es Salaam, Tanzania
-              <br />
-              +255 22 200 0000
             </p>
           </article>
           <article className="rounded-2xl border border-border bg-surface p-6">
@@ -124,17 +122,18 @@ export default function ContactPage() {
               Westlands, Waiyaki Way
               <br />
               Nairobi, Kenya
-              <br />
-              +254 20 200 0000
             </p>
           </article>
         </div>
 
         <p className="mt-12 inline-flex items-center gap-2 text-sm text-foreground/70">
-          <Phone className="h-4 w-4 text-signal-500" aria-hidden="true" />
-          Switchboard:{' '}
-          <a href="tel:+255222000000" className="font-semibold text-signal-500 hover:underline">
-            +255 22 200 0000
+          <Mail className="h-4 w-4 text-signal-500" aria-hidden="true" />
+          Prefer to write?{' '}
+          <a
+            href="mailto:hello@bossnyumba.com"
+            className="font-semibold text-signal-500 hover:underline"
+          >
+            hello@bossnyumba.com
           </a>
         </p>
       </div>

@@ -4,16 +4,16 @@ import { ShieldCheck, FileSearch, Lock, Activity } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 
 export const metadata: Metadata = {
-  title: 'Trust centre — Boss Nyumba',
+  title: 'Trust centre — BossNyumba',
   description:
-    'Trust centre. SOC 2 Type II, ISO 27001, TZ DPA + GDPR posture, cryptographic audit chain, kill-switch, sub-processors, and the seven red-line guarantees.',
+    'Trust centre. SOC 2 / ISO 27001 controls in place (certification in progress), TZ DPA + GDPR posture, cryptographic audit chain, kill-switch, sub-processors, and the seven red-line guarantees.',
 };
 
 const PILLARS = [
   {
     icon: ShieldCheck,
-    title: 'Certified',
-    body: 'SOC 2 Type II audited annually. ISO 27001. Aligned with TZ DPA, KE DPA, and GDPR.',
+    title: 'Controls in place',
+    body: 'Built to SOC 2 / ISO 27001 controls — certification in progress. Aligned with TZ DPA, KE DPA, and GDPR.',
   },
   {
     icon: FileSearch,
@@ -28,7 +28,7 @@ const PILLARS = [
   {
     icon: Activity,
     title: 'Observable',
-    body: 'Live system status at /status. Sev-1 + Sev-2 post-mortems published. 99.95% uptime on Group SLA.',
+    body: 'System status published at /status. Sev-1 + Sev-2 post-mortems published. Live telemetry board coming.',
   },
 ];
 
@@ -43,8 +43,8 @@ export default function TrustPage() {
           How we earn the trust to manage your rent.
         </h1>
         <p className="mt-6 max-w-prose-wide text-lg leading-relaxed text-foreground/75">
-          Property data is sensitive. Rent flows are real money. Boss
-          Nyumba is built to be auditable from day one — not certified
+          Property data is sensitive. Rent flows are real money.
+          BossNyumba is built to be auditable from day one — not certified
           after the fact.
         </p>
 
@@ -69,7 +69,7 @@ export default function TrustPage() {
           The seven red-line guarantees
         </h2>
         <p className="mt-3 max-w-prose-wide text-sm leading-relaxed text-foreground/70">
-          There are seven things Boss Nyumba will never do, regardless
+          There are seven things BossNyumba will never do, regardless
           of how the autonomy dial is configured.
         </p>
         <ol className="mt-6 list-decimal space-y-3 pl-6 text-sm leading-relaxed text-foreground/70">
@@ -92,12 +92,12 @@ export default function TrustPage() {
                 Security policy
               </Link>{' '}
               and{' '}
-              <Link href="/legal/sub-processors" className="text-signal-500 hover:underline">
+              <Link href="/legal" className="text-signal-500 hover:underline">
                 sub-processors
               </Link>
             </li>
             <li>
-              SOC 2 Type II report — available under NDA from{' '}
+              Control summaries and compliance status — request from{' '}
               <a href="mailto:trust@bossnyumba.com" className="text-signal-500 hover:underline">
                 trust@bossnyumba.com
               </a>
@@ -109,7 +109,7 @@ export default function TrustPage() {
             </li>
             <li>
               <Link href="/status" className="text-signal-500 hover:underline">
-                Live system status
+                System status
               </Link>
             </li>
           </ul>

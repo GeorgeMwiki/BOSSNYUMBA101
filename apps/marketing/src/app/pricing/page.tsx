@@ -21,13 +21,13 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   if (locale === 'sw') {
     return {
-      title: 'Bei — Boss Nyumba',
+      title: 'Bei — BossNyumba',
       description:
         'Madaraja matano, msingi wa TZS, kulipwa kila mwezi. Mkulima ni bure kwa mmiliki mmoja wa nyumba; Mwanafamilia, Mfanyabiashara, Kampuni, na Group hupanda kutoka hapo. M-Pesa, Tigo Pesa, Airtel Money, benki, na kadi zinakubaliwa.',
     };
   }
   return {
-    title: 'Pricing — Boss Nyumba',
+    title: 'Pricing — BossNyumba',
     description:
       'Five tiers, TZS-primary, billed monthly. Smallholder is free for the single landlord; Family, Professional, Corporate, and Group scale up from there. M-Pesa, Tigo Pesa, Airtel Money, bank, and card payments accepted.',
   };
@@ -54,8 +54,7 @@ function tierShipsFeature(tierId: TierId, feature: (typeof COMPARISON)[number]):
 }
 
 const TRUST_BADGES: readonly string[] = [
-  'SOC 2 Type II',
-  'ISO 27001',
+  'SOC 2 / ISO 27001 controls — certification in progress',
   'GDPR + TZ DPA aligned',
   'M-Pesa partner',
   'Tigo Pesa partner',

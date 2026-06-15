@@ -500,7 +500,7 @@ const DEFAULT_COPY: Record<
   { readonly kicker: string; readonly headline: string; readonly subhead: string }
 > = {
   platform: {
-    kicker: 'What BossNyumba is, concretely',
+    kicker: 'Six systems that run your estate — not a chatbot',
     headline: 'An AI-native estate operating system.',
     subhead:
       'Not a chat bolted onto a spreadsheet. Six interlocking systems, every one shipping in production. Built for Tanzanian real-estate first, generalised second.',
@@ -554,7 +554,7 @@ const DEFAULT_COPY_SW: Record<
   { readonly kicker: string; readonly headline: string; readonly subhead: string }
 > = {
   platform: {
-    kicker: 'BossNyumba ni nini, kwa uhalisia',
+    kicker: 'Mifumo sita inayoendesha mali yako — si gumzo',
     headline: 'Mfumo wa uendeshaji wa mali wenye AI ya asili.',
     subhead:
       'Sio gumzo lililobandikwa kwenye karatasi ya kuhesabu. Mifumo sita iliyofungamana, kila moja ipo katika uzalishaji. Iliyojengwa kwa mali ya Tanzania kwanza, baadaye iliyojumuishwa kote.',

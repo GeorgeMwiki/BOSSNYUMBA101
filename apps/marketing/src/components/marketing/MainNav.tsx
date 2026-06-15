@@ -245,16 +245,16 @@ function buildAudienceCategories(
         {
           label: sw ? 'REIT na mfuko wa mali' : 'REIT and property fund',
           desc: sw
-            ? 'NAV ya kila siku, faida na hasara kwa kila mali, ukaguzi wa kiwango cha wanahisa.'
-            : 'Daily NAV, per-asset P&L, unitholder-grade audit.',
+            ? 'Leja iliyofungwa kwa heshi, uchambuzi wa portfolio, ripoti za utii.'
+            : 'Hash-chained ledger, portfolio analytics, compliance exports.',
           href: '/for-reit',
           icon: LineChart,
         },
         {
           label: sw ? 'Chuo kikuu na hospitali' : 'University and hospital',
           desc: sw
-            ? 'Mali ya kampasi, faida na hasara kwa kila kitivo, ukaguzi wa kiwango cha wafadhili.'
-            : 'Campus estate, per-faculty P&L, donor-grade audit.',
+            ? 'Ripoti za utii, uchambuzi wa portfolio, ukaguzi uliofungwa kwa heshi.'
+            : 'Compliance exports, portfolio analytics, hash-chained audit.',
           href: '/for-institutional-landlord',
           icon: GraduationCap,
         },

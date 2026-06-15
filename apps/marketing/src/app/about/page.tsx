@@ -13,7 +13,7 @@ const SECTIONS: ReadonlyArray<{ title: string; body: string }> = [
   {
     title: 'Why BossNyumba exists',
     body:
-      'East African rental markets lose an estimated 18% of annual rent to manual chase, missing receipts, and disputes that never settle. Council-levy filings are paper-and-WhatsApp. Tenants pay over M-Pesa and walk away with no proof. Landlords keep books on phones that get replaced every two years. BossNyumba is an AI-native real estate operating system that collapses that broken stack — and Mr. Mwikila, the brain layer within BossNyumba, runs the business end-to-end alongside the owner.',
+      'In many East African rental markets, a significant share of annual rent leaks away to manual chase, missing receipts, and disputes that never settle (Bank of Tanzania, 2025). Council-levy filings are paper-and-WhatsApp. Tenants pay over M-Pesa and walk away with no proof. Landlords keep books on phones that get replaced every two years. BossNyumba is an AI-native real estate operating system that collapses that broken stack — and Mr. Mwikila, the brain layer within BossNyumba, runs the day-to-day with you: he collects rent on one-tap tenant approval, books every shilling, pays you on schedule, sends your statements and reminders, and prepares the rest — invoices, renewals, and your council-levy filing — for you to approve. You sign the big calls.',
   },
   {
     title: 'Who we serve',
@@ -23,7 +23,7 @@ const SECTIONS: ReadonlyArray<{ title: string; body: string }> = [
   {
     title: 'How we build',
     body:
-      "Boss Nyumba is multi-tenant by design. Every query is scoped by tenant id end-to-end. Storage is regional, encrypted at rest, with cryptographic audit-hash chains on every rent receipt, lease, and dispute. We default to Swahili and toggle to English — two languages, one source of truth. M-Pesa, Tigo Pesa, Airtel Money, and bank rails are native, not bolted on. Open-source where we can be, proprietary where compliance demands.",
+      "BossNyumba is multi-tenant by design. Every query is scoped by tenant id end-to-end. Storage is regional, encrypted at rest, with cryptographic audit-hash chains on every rent receipt, lease, and dispute. We default to Swahili and toggle to English — two languages, one source of truth. M-Pesa, Tigo Pesa, Airtel Money, and bank rails are native, not bolted on. Open-source where we can be, proprietary where compliance demands.",
   },
   {
     title: 'Where we are based',
@@ -33,7 +33,7 @@ const SECTIONS: ReadonlyArray<{ title: string; body: string }> = [
   {
     title: 'Meet Mr. Mwikila',
     body:
-      "Mr. Mwikila is the canonical user-facing identity of the Boss Nyumba brain. One Mr. Mwikila per portfolio, knowing everything about it — leases, tenants, maintenance, council levies, owner statements, multi-currency cashflow. He speaks Swahili by default and switches to English on request. He never pretends to be human; the chat header always reads \"Mr. Mwikila — Boss Nyumba's AI Property Operations Manager\".",
+      "Mr. Mwikila is the canonical user-facing identity of the BossNyumba brain. One Mr. Mwikila per portfolio, knowing everything about it — leases, tenants, maintenance, council levies, owner statements, multi-currency cashflow. He speaks Swahili by default and switches to English on request. He never pretends to be human; the chat header always reads \"Mr. Mwikila — BossNyumba's AI Property Operations Manager\".",
   },
 ];
 
@@ -48,7 +48,7 @@ export default function AboutPage() {
           The AI operating system for East African real estate.
         </h1>
         <p className="mt-6 text-lg leading-relaxed text-foreground/75">
-          Boss Nyumba is built in Dar es Salaam, for the property sector
+          BossNyumba is built in Dar es Salaam, for the property sector
           that houses the continent. We replace WhatsApp rent chase,
           paper leases, and ad-hoc bookkeeping with one Master Brain
           that runs the portfolio with the owner.

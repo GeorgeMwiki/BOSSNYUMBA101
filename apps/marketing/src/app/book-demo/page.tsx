@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Calendar, MessageSquare, Phone } from 'lucide-react';
+import { Calendar, MessageSquare, Mail } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 
 export const metadata: Metadata = {
-  title: 'Book a 20-minute demo — Boss Nyumba',
+  title: 'Book a 20-minute demo — BossNyumba',
   description:
     'Twenty minutes with our solutions team. Bring a sample of your portfolio; leave with a cockpit preview tailored to your buildings, currencies, and council.',
 };
@@ -41,11 +41,11 @@ const CHANNELS: ReadonlyArray<DemoChannel> = [
     external: false,
   },
   {
-    icon: Phone,
-    title: 'Phone Dar es Salaam',
-    body: 'Speak to a person. Our solutions team is in Dar, EAT business hours. Swahili and English.',
-    href: 'tel:+255222000000',
-    cta: 'Call +255 22 200 0000',
+    icon: Mail,
+    title: 'Email the team',
+    body: 'Write to our Dar es Salaam solutions team. EAT business hours, Swahili and English.',
+    href: 'mailto:sales@bossnyumba.com',
+    cta: 'Email sales@bossnyumba.com',
     primary: false,
     external: false,
   },

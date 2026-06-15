@@ -5,7 +5,7 @@ import { AudiencePage } from '@/components/audience/AudiencePage';
 import { COPY } from '@/lib/audience-copy';
 
 export const metadata: Metadata = {
-  title: 'For community housing — Boss Nyumba',
+  title: 'For community housing — BossNyumba',
   description:
     'Cooperative housing, community land trusts, worker-housing partnerships. Transparent dues, fair allocation lottery, AGM-ready records, donor impact packs. 30% community discount.',
 };
