@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslations } from 'next-intl';
 import { Sparkles, Plus } from 'lucide-react';
 import { SkillLibraryGrid } from '../../components/SkillLibraryGrid';
 import type { SkillSummary, SkillCategory, SkillTrigger } from '../../components/SkillCard';
 import { MissingBackendNotice } from '../../components/MissingBackendNotice';
+import { openJarvisWithPrefill } from '../../lib/jarvis-prefill';
 
 /**
  * /skills — owner-installable Skills marketplace.
@@ -55,6 +57,7 @@ const ALL_TRIGGERS: ReadonlyArray<SkillTrigger | 'all'> = ['all', 'cron', 'event
 
 export default function SkillsPage(): JSX.Element {
   const t = useTranslations('p89.skills');
+  const navigate = useNavigate();
   const [state, setState] = useState<SkillsApiState>({ status: 'loading', skills: [] });
   const [categoryFilter, setCategoryFilter] = useState<SkillCategory | 'all'>('all');
   const [triggerFilter, setTriggerFilter] = useState<SkillTrigger | 'all'>('all');
@@ -175,17 +178,12 @@ export default function SkillsPage(): JSX.Element {
     });
   }
 
+  // Hand the prompt to the Jarvis composer route via react-router location
+  // state. Deterministic (no listener-less window event) — the /jarvis page
+  // reads the prefill on mount, seeds its input, and lets the owner edit
+  // before sending (autoSubmit defaults to false).
   function openInJarvis(prompt: string): void {
-    if (typeof window === 'undefined') return;
-    try {
-      window.dispatchEvent(
-        new CustomEvent('owner-portal:jarvis-prefill', {
-          detail: { prompt, autoSubmit: false },
-        }),
-      );
-    } catch {
-      /* ignore */
-    }
+    navigate(...openJarvisWithPrefill(prompt));
   }
 
   function createNewSkill(): void {

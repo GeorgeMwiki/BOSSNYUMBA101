@@ -15,9 +15,11 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslations } from 'next-intl';
 import { Zap, Package } from 'lucide-react';
 import { createBossnyumbaClient, createJarvisClient } from '@bossnyumba/api-sdk';
+import { readJarvisPrefill } from '../lib/jarvis-prefill';
 import {
   MicButton,
   createWebSpeechAudioPort,
@@ -63,7 +65,12 @@ function readStoredMode(): JarvisMode {
 
 export default function Jarvis(): JSX.Element {
   const t = useTranslations('p89.jarvis');
+  const location = useLocation();
+  const navigate = useNavigate();
   const [draft, setDraft] = useState('');
+  // Guards the one-shot prefill so it seeds the composer exactly once even
+  // across re-renders (the history state is also cleared below).
+  const prefillConsumedRef = useRef(false);
   const [threadId] = useState(
     () => `own_${Date.now()}_${crypto.randomUUID().slice(0, 6)}`,
   );
@@ -191,6 +198,27 @@ export default function Jarvis(): JSX.Element {
       await think(text);
     }
   }
+
+  // Prefill handoff from /skills and /plan. The prompt arrives as react-router
+  // location state (see lib/jarvis-prefill). Seed the composer once, clear the
+  // history state so a refresh / back-nav never re-fires it, and — when the
+  // caller asked for autoSubmit — send straight away through the active mode.
+  useEffect(() => {
+    if (prefillConsumedRef.current) return;
+    const prefill = readJarvisPrefill(location.state);
+    if (!prefill) return;
+    prefillConsumedRef.current = true;
+    navigate(location.pathname, { replace: true, state: {} });
+    if (prefill.autoSubmit) {
+      if (isStreaming) {
+        void startStream(prefill.prompt);
+      } else {
+        void think(prefill.prompt);
+      }
+      return;
+    }
+    setDraft(prefill.prompt);
+  }, [location.state, location.pathname, navigate, isStreaming, startStream, think]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

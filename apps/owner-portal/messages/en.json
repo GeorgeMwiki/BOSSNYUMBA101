@@ -2319,6 +2319,7 @@
     "savingLoading": "Saving...",
     "savePreferences": "Save Preferences",
     "savedSuccess": "Settings saved successfully",
+    "savedFailed": "Failed to save settings",
     "invitationSent": "Invitation sent successfully",
     "userRemoved": "User removed successfully",
     "invitationResent": "Invitation resent successfully",

@@ -225,10 +225,10 @@ export function SettingsPage() {
       if (res.success) {
         flashSuccess(t('savedSuccess'));
       } else {
-        flashError(res.error?.message ?? t('savedSuccess'));
+        flashError(res.error?.message ?? t('savedFailed'));
       }
     } catch {
-      flashError(t('savedSuccess'));
+      flashError(t('savedFailed'));
     } finally {
       setSaving(false);
     }
@@ -483,14 +483,14 @@ export function SettingsPage() {
           {/* Profile Tab */}
           {activeTab === 'profile' && (
             <div className="space-y-6 max-w-xl">
+              {/* Avatar shows the owner's initials. The "Change Photo" control
+                  was removed: no avatar-upload flow exists anywhere in the
+                  owner-portal frontend (no upload route, handler, or input —
+                  `avatarUrl` is read-only in AuthContext), so a button here
+                  could only ever be dead. It returns when an upload flow lands. */}
               <div className="flex items-center gap-4">
                 <div className="h-20 w-20 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-medium">
                   {user?.firstName?.[0]}{user?.lastName?.[0]}
-                </div>
-                <div>
-                  <button className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">
-                    {t('changePhoto')}
-                  </button>
                 </div>
               </div>
 
