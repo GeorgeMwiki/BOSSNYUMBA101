@@ -66,7 +66,9 @@ describe('barrel import-safety (born-at-import landmine guard)', () => {
     expect(mod.inAppProvider).toBeDefined();
     expect(mod.providerRegistry).toBeDefined();
     expect(typeof mod.createInAppNotificationService).toBe('function');
-  });
+    // Generous budget: the cold dynamic barrel import transitively loads the full
+    // provider SDK tree, which can exceed vitest's default 5s on slower machines.
+  }, 30000);
 
   it('preserves the env requirement: using whatsAppClient without WHATSAPP_API_URL still throws on first access', async () => {
     const { whatsAppClient } = await import('../index.js');
@@ -74,7 +76,7 @@ describe('barrel import-safety (born-at-import landmine guard)', () => {
     // First property access resolves the lazy singleton -> constructor runs ->
     // the missing-env throw fires now (deferred from import-time, not removed).
     expect(() => whatsAppClient.sendText).toThrow(/WHATSAPP_API_URL/);
-  });
+  }, 30000);
 
   it('preserves the env requirement: using africasTalkingSms without AFRICAS_TALKING_* still throws on first access', async () => {
     const { africasTalkingSms } = await import('../index.js');
@@ -82,5 +84,5 @@ describe('barrel import-safety (born-at-import landmine guard)', () => {
     expect(() => africasTalkingSms.sendSms).toThrow(
       /AFRICAS_TALKING_(ENVIRONMENT|USERNAME)/,
     );
-  });
+  }, 30000);
 });
