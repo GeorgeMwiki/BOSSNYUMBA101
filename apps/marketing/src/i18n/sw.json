@@ -111,7 +111,7 @@
       {
         "id": "rent-compliance",
         "title": "Taarifa za mmiliki zinaandaliwa kwa muundo unaohitajika.",
-        "body": "BossNyumba huandaa taarifa zako za kila mwezi za mmiliki na za mamlaka kwa muundo unaohitajika, tayari kwa idhini ya gusa-moja. Wewe hukagua na kusaini — Bw. Mwikila hawasilishi kamwe kwa mamlaka yake mwenyewe.",
+        "body": "BossNyumba huandaa taarifa zako za kila mwezi za mmiliki na za mamlaka kwa muundo unaohitajika, tayari kwa idhini ya gusa-moja. Wewe hukagua na kusaini — Mwl. Mwikila hawasilishi kamwe kwa mamlaka yake mwenyewe.",
         "href": "/pilot"
       },
       {
@@ -1108,7 +1108,7 @@
       },
       {
         "q": "Mwanzo ni bure kweli?",
-        "a": "Ndio. Mwanzo ni bure kabisa, hakuna kadi inayohitajika. Mmiliki mmoja, site moja, nyaraka 10 kwa mwezi, msaada wa jumuiya, na Bw. Mwikila katika hali ya ushauri. Pandisha tu wakati shughuli yako inahitaji reli za ziada."
+        "a": "Ndio. Mwanzo ni bure kabisa, hakuna kadi inayohitajika. Mmiliki mmoja, site moja, nyaraka 10 kwa mwezi, msaada wa jumuiya, na Mwl. Mwikila katika hali ya ushauri. Pandisha tu wakati shughuli yako inahitaji reli za ziada."
       },
       {
         "q": "Mkulima inatofautianaje na Mfanyabiashara?",
@@ -2157,7 +2157,7 @@
         {
           "value": "T+0",
           "label": "Muhtasari wa kila siku kwenye dawati la familia",
-          "sub": "Bw. Mwikila anaandaa ukusanyaji wa kodi wa usiku, mishahara, hazina na uzingatiaji katika muhtasari mmoja wa lugha mbili."
+          "sub": "Mwl. Mwikila anaandaa ukusanyaji wa kodi wa usiku, mishahara, hazina na uzingatiaji katika muhtasari mmoja wa lugha mbili."
         },
         {
           "value": "Macho 4",
@@ -2176,7 +2176,7 @@
         {
           "n": "02",
           "title": "Wadhamini wanaweka mipaka.",
-          "body": "Sera za enzi, macho-manne, na kizimio zinawekwa kwa kila aina ya mali. Bw. Mwikila anatekeleza kila hatua."
+          "body": "Sera za enzi, macho-manne, na kizimio zinawekwa kwa kila aina ya mali. Mwl. Mwikila anatekeleza kila hatua."
         },
         {
           "n": "03",
@@ -2274,7 +2274,7 @@
         {
           "n": "02",
           "title": "BossNyumba inatoa ushuhuda.",
-          "body": "Muhtasari wa kila siku wenye ushahidi, taarifa za kila mwezi, vifuatiliaji vya masharti - vilivyoandikwa na Bw. Mwikila, vilivyosainiwa na mkopaji."
+          "body": "Muhtasari wa kila siku wenye ushahidi, taarifa za kila mwezi, vifuatiliaji vya masharti - vilivyoandikwa na Mwl. Mwikila, vilivyosainiwa na mkopaji."
         },
         {
           "n": "03",
@@ -2309,7 +2309,7 @@
       "solutions": [
         {
           "title": "Ushuhuda wa kila siku wenye ushahidi.",
-          "desc": "Ufikiaji wa kusoma uliopangwa kwa vipimo karatasi yako ya masharti inavyofafanua, ulioandikwa na Bw. Mwikila na hash-chained."
+          "desc": "Ufikiaji wa kusoma uliopangwa kwa vipimo karatasi yako ya masharti inavyofafanua, ulioandikwa na Mwl. Mwikila na hash-chained."
         },
         {
           "title": "Wakala wa Mkaguzi kwa kila sharti.",
@@ -2754,7 +2754,7 @@
     "faqs": [
       {
         "q": "Naingizaje mali yangu?",
-        "a": "Jisajili kwa Mwanzo (bure) au Mkulima. Pakia cheti chako cha Individual Landlord / Portfolio Landlord na risiti ya hivi karibuni ya kodi. Bw. Mwikila anakuongoza kupitia muhtasari wa wiki ya kwanza. Kwa Mfanyabiashara na juu, mhandisi wa BossNyumba anapanga simu ya kuanza ndani ya siku mbili za kazi."
+        "a": "Jisajili kwa Mwanzo (bure) au Mkulima. Pakia cheti chako cha Individual Landlord / Portfolio Landlord na risiti ya hivi karibuni ya kodi. Mwl. Mwikila anakuongoza kupitia muhtasari wa wiki ya kwanza. Kwa Mfanyabiashara na juu, mhandisi wa BossNyumba anapanga simu ya kuanza ndani ya siku mbili za kazi."
       },
       {
         "q": "Naweza kuingiza lahajedwali zangu zilizopo?",
@@ -2762,7 +2762,7 @@
       },
       {
         "q": "Jukwaa linaunga mkono lugha gani?",
-        "a": "Kiswahili na Kiingereza. Mtumiaji anaweza kubadilisha kwa kifaa, na Bw. Mwikila anajibu kwa lugha uliyoandika."
+        "a": "Kiswahili na Kiingereza. Mtumiaji anaweza kubadilisha kwa kifaa, na Mwl. Mwikila anajibu kwa lugha uliyoandika."
       },
       {
         "q": "Data yangu inahifadhiwa wapi?",

@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       title: 'Jisajili — BossNyumba',
       description:
-        'Jisajili bure kwenye daraja la Mkulima. Hadi vyumba 5, kiti kimoja cha mtumiaji, ukusanyaji wa kodi kwa M-Pesa, daftari la maingizo mawili, mazungumzo na Bw. Mwikila. Hakuna kadi inayohitajika. Lugha mbili sw/en.',
+        'Jisajili bure kwenye daraja la Mkulima. Hadi vyumba 5, kiti kimoja cha mtumiaji, ukusanyaji wa kodi kwa M-Pesa, daftari la maingizo mawili, mazungumzo na Mwl. Mwikila. Hakuna kadi inayohitajika. Lugha mbili sw/en.',
     };
   }
   return {
@@ -94,10 +94,7 @@ export default async function SignUpPage() {
     <PageShell>
       <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
         <div className="hero-aurora" aria-hidden="true" />
-        <div
-          className="absolute inset-0 cinematic-grid opacity-20"
-          aria-hidden="true"
-        />
+        <div className="absolute inset-0 cinematic-grid opacity-20" aria-hidden="true" />
         <div className="relative mx-auto max-w-xl px-6 py-20 lg:py-28">
           <header className="mb-10 text-center">
             <p className="font-mono text-xs uppercase tracking-widest text-signal-500">

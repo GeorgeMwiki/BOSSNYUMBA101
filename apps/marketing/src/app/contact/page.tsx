@@ -1,13 +1,24 @@
 import type { Metadata } from 'next';
+import { getLocale } from '@/lib/locale';
 import Link from 'next/link';
 import { Mail, MapPin } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 
-export const metadata: Metadata = {
-  title: 'Contact — BossNyumba',
-  description:
-    'Reach the BossNyumba team. Sales, support, security, press, and partnerships — Dar es Salaam, Nairobi, EAT business hours.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'sw') {
+    return {
+      title: 'Wasiliana — BossNyumba',
+      description:
+        'Wasiliana na timu ya BossNyumba. Mauzo, msaada, usalama, vyombo vya habari, na ushirikiano — Dar es Salaam, Nairobi, saa za kazi za EAT.',
+    };
+  }
+  return {
+    title: 'Contact — BossNyumba',
+    description:
+      'Reach the BossNyumba team. Sales, support, security, press, and partnerships — Dar es Salaam, Nairobi, EAT business hours.',
+  };
+}
 
 interface Channel {
   readonly icon: typeof Mail;
@@ -66,16 +77,13 @@ export default function ContactPage() {
   return (
     <PageShell>
       <div className="mx-auto max-w-4xl px-6 pb-24 pt-20 lg:px-8">
-        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">
-          Contact
-        </p>
+        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">Contact</p>
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           Reach the right desk.
         </h1>
         <p className="mt-6 text-lg leading-relaxed text-foreground/75">
-          We are in Dar es Salaam and Nairobi. EAT business hours. Mr.
-          Mwikila is always on; humans are on weekdays 09:00-17:00 EAT
-          and Saturdays 09:00-13:00 EAT.
+          We are in Dar es Salaam and Nairobi. EAT business hours. Mr. Mwikila is always on; humans
+          are on weekdays 09:00-17:00 EAT and Saturdays 09:00-13:00 EAT.
         </p>
 
         <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -88,9 +96,7 @@ export default function ContactPage() {
               <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
                 {c.heading}
               </h2>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-foreground/70">
-                {c.body}
-              </p>
+              <p className="mt-2 flex-1 text-sm leading-relaxed text-foreground/70">{c.body}</p>
               <Link
                 href={c.href}
                 className="mt-4 inline-flex items-center text-sm font-semibold text-signal-500 hover:underline"

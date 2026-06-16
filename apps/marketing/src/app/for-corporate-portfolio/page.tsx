@@ -5,11 +5,21 @@ import { AudiencePage } from '@/components/audience/AudiencePage';
 import { getAudienceCopy } from '@/lib/audience-copy';
 import { getLocale } from '@/lib/locale';
 
-export const metadata: Metadata = {
-  title: 'For corporate portfolios — BossNyumba',
-  description:
-    'BossNyumba runs corporate property portfolios — staff housing, branch offices, warehouses — as one operating system. Mr. Mwikila consolidates leases, levies, maintenance, and treasury across every entity.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'sw') {
+    return {
+      title: 'Kwa makundi ya mali ya makampuni — BossNyumba',
+      description:
+        'BossNyumba inaendesha makundi ya mali ya makampuni — makazi ya wafanyakazi, ofisi za matawi, maghala — kama mfumo mmoja wa uendeshaji. Mwl. Mwikila huunganisha mikataba, tozo, matengenezo, na hazina katika kila taasisi.',
+    };
+  }
+  return {
+    title: 'For corporate portfolios — BossNyumba',
+    description:
+      'BossNyumba runs corporate property portfolios — staff housing, branch offices, warehouses — as one operating system. Mr. Mwikila consolidates leases, levies, maintenance, and treasury across every entity.',
+  };
+}
 
 export default async function ForCorporatePortfolioPage() {
   const locale = await getLocale();

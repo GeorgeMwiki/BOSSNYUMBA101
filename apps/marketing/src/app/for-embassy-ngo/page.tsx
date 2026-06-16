@@ -5,11 +5,21 @@ import { AudiencePage } from '@/components/audience/AudiencePage';
 import { getAudienceCopy } from '@/lib/audience-copy';
 import { getLocale } from '@/lib/locale';
 
-export const metadata: Metadata = {
-  title: 'For diplomatic missions and NGOs — BossNyumba',
-  description:
-    'BossNyumba runs the property estate of diplomatic missions, international NGOs, and donor agencies across multiple capitals. Donor-audit-ready ledger, jurisdiction-aware compliance, multi-currency NAV.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'sw') {
+    return {
+      title: 'Kwa balozi na mashirika yasiyo ya kiserikali — BossNyumba',
+      description:
+        'BossNyumba huendesha mali ya balozi, mashirika ya kimataifa yasiyo ya kiserikali, na mashirika ya wafadhili katika miji mikuu mbalimbali. Leja iliyo tayari kwa ukaguzi wa wafadhili, utii unaozingatia mamlaka ya kisheria, na NAV ya sarafu nyingi.',
+    };
+  }
+  return {
+    title: 'For diplomatic missions and NGOs — BossNyumba',
+    description:
+      'BossNyumba runs the property estate of diplomatic missions, international NGOs, and donor agencies across multiple capitals. Donor-audit-ready ledger, jurisdiction-aware compliance, multi-currency NAV.',
+  };
+}
 
 export default async function ForEmbassyNgoPage() {
   const locale = await getLocale();

@@ -1,13 +1,24 @@
 import type { Metadata } from 'next';
+import { getLocale } from '@/lib/locale';
 import Link from 'next/link';
 import { ShieldCheck, FileSearch, Lock, Activity } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 
-export const metadata: Metadata = {
-  title: 'Trust centre — BossNyumba',
-  description:
-    'Trust centre. SOC 2 / ISO 27001 controls in place (certification in progress), TZ DPA + GDPR posture, cryptographic audit chain, kill-switch, sub-processors, and the seven red-line guarantees.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'sw') {
+    return {
+      title: 'Kituo cha uaminifu — BossNyumba',
+      description:
+        'Kituo cha uaminifu. Vidhibiti vya SOC 2 / ISO 27001 vimewekwa (uthibitishaji unaendelea), msimamo wa Sheria ya TZ ya Ulinzi wa Data Binafsi (DPA) na GDPR, mnyororo wa ukaguzi uliosimbwa kwa njia ya fiche, kistasha cha dharura, wachakataji-wadogo, na dhamana saba za mstari mwekundu.',
+    };
+  }
+  return {
+    title: 'Trust centre — BossNyumba',
+    description:
+      'Trust centre. SOC 2 / ISO 27001 controls in place (certification in progress), TZ DPA + GDPR posture, cryptographic audit chain, kill-switch, sub-processors, and the seven red-line guarantees.',
+  };
+}
 
 const PILLARS = [
   {
@@ -36,16 +47,13 @@ export default function TrustPage() {
   return (
     <PageShell>
       <div className="mx-auto max-w-4xl px-6 pb-24 pt-20 lg:px-8">
-        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">
-          Trust centre
-        </p>
+        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">Trust centre</p>
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           How we earn the trust to manage your rent.
         </h1>
         <p className="mt-6 max-w-prose-wide text-lg leading-relaxed text-foreground/75">
-          Property data is sensitive. Rent flows are real money.
-          BossNyumba is built to be auditable from day one — not certified
-          after the fact.
+          Property data is sensitive. Rent flows are real money. BossNyumba is built to be auditable
+          from day one — not certified after the fact.
         </p>
 
         <div className="mt-12 grid gap-4 md:grid-cols-2">
@@ -58,9 +66,7 @@ export default function TrustPage() {
               <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
                 {p.title}
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-foreground/70">
-                {p.body}
-              </p>
+              <p className="mt-2 text-sm leading-relaxed text-foreground/70">{p.body}</p>
             </article>
           ))}
         </div>
@@ -69,8 +75,8 @@ export default function TrustPage() {
           The seven red-line guarantees
         </h2>
         <p className="mt-3 max-w-prose-wide text-sm leading-relaxed text-foreground/70">
-          There are seven things BossNyumba will never do, regardless
-          of how the autonomy dial is configured.
+          There are seven things BossNyumba will never do, regardless of how the autonomy dial is
+          configured.
         </p>
         <ol className="mt-6 list-decimal space-y-3 pl-6 text-sm leading-relaxed text-foreground/70">
           <li>We will not evict a tenant without the owner&apos;s explicit signature.</li>

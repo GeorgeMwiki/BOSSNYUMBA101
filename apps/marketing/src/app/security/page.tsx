@@ -1,13 +1,24 @@
 import type { Metadata } from 'next';
+import { getLocale } from '@/lib/locale';
 import Link from 'next/link';
 import { ShieldCheck, FileSearch, Lock, KeyRound, AlertTriangle } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 
-export const metadata: Metadata = {
-  title: 'Security — BossNyumba',
-  description:
-    'BossNyumba security posture: append-only hash-chained audit trail, row-level tenant isolation, the seven red-line guarantees, kill-switch fail-closed, and responsible disclosure. Built to SOC 2 / ISO 27001 controls — certification in progress.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'sw') {
+    return {
+      title: 'Usalama — BossNyumba',
+      description:
+        'Mkao wa usalama wa BossNyumba: njia ya ukaguzi iliyofungamanishwa kwa hash isiyofutika, utengaji wa mpangaji kwa kiwango cha safu, dhamana saba za mstari mwekundu, kifa-funga kinachosalia salama kinapozimwa, na ufichuzi wa kuwajibika. Imejengwa kwa vidhibiti vya SOC 2 / ISO 27001 — uthibitishaji unaendelea.',
+    };
+  }
+  return {
+    title: 'Security — BossNyumba',
+    description:
+      'BossNyumba security posture: append-only hash-chained audit trail, row-level tenant isolation, the seven red-line guarantees, kill-switch fail-closed, and responsible disclosure. Built to SOC 2 / ISO 27001 controls — certification in progress.',
+  };
+}
 
 interface Pillar {
   readonly icon: typeof ShieldCheck;
@@ -52,17 +63,14 @@ export default function SecurityPage() {
   return (
     <PageShell>
       <div className="mx-auto max-w-4xl px-6 pb-24 pt-20 lg:px-8">
-        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">
-          Security
-        </p>
+        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">Security</p>
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           How we protect your rent, your tenants, and your books.
         </h1>
         <p className="mt-6 max-w-prose-wide text-lg leading-relaxed text-foreground/75">
-          Property data is sensitive and rent flows are real money.
-          BossNyumba is built to be auditable from day one — isolated per
-          tenant, hash-chained, and fail-closed on anything that touches
-          money or a regulator.
+          Property data is sensitive and rent flows are real money. BossNyumba is built to be
+          auditable from day one — isolated per tenant, hash-chained, and fail-closed on anything
+          that touches money or a regulator.
         </p>
 
         <div className="mt-12 grid gap-4 md:grid-cols-2">
@@ -75,9 +83,7 @@ export default function SecurityPage() {
               <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
                 {p.title}
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-foreground/70">
-                {p.body}
-              </p>
+              <p className="mt-2 text-sm leading-relaxed text-foreground/70">{p.body}</p>
             </article>
           ))}
         </div>
@@ -86,8 +92,8 @@ export default function SecurityPage() {
           The seven red-line guarantees
         </h2>
         <p className="mt-3 max-w-prose-wide text-sm leading-relaxed text-foreground/70">
-          There are seven things BossNyumba will never do, regardless of
-          how the autonomy dial is configured.
+          There are seven things BossNyumba will never do, regardless of how the autonomy dial is
+          configured.
         </p>
         <ol className="mt-6 list-decimal space-y-3 pl-6 text-sm leading-relaxed text-foreground/70">
           {RED_LINES.map((line) => (
@@ -97,10 +103,7 @@ export default function SecurityPage() {
 
         <div className="mt-16 rounded-2xl border border-border bg-surface p-6">
           <div className="flex items-start gap-3">
-            <AlertTriangle
-              className="mt-0.5 h-5 w-5 shrink-0 text-signal-500"
-              aria-hidden="true"
-            />
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-signal-500" aria-hidden="true" />
             <div>
               <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
                 Report a vulnerability
@@ -113,17 +116,16 @@ export default function SecurityPage() {
                 >
                   security@bossnyumba.com
                 </a>
-                . We acknowledge responsible disclosures within four hours
-                and will keep you updated through remediation. Please do not
-                publicly disclose until we have confirmed a fix.
+                . We acknowledge responsible disclosures within four hours and will keep you updated
+                through remediation. Please do not publicly disclose until we have confirmed a fix.
               </p>
             </div>
           </div>
         </div>
 
         <p className="mt-8 text-sm leading-relaxed text-foreground/70">
-          For our wider compliance posture, sub-processors, and the Data
-          Processing Agreement, see the{' '}
+          For our wider compliance posture, sub-processors, and the Data Processing Agreement, see
+          the{' '}
           <Link href="/trust" className="text-signal-500 hover:underline">
             trust centre
           </Link>

@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       title: 'Ingia — BossNyumba',
       description:
-        'Ingia kwenye BossNyumba. Jisajili kwa simu yako iliyounganishwa na M-Pesa, NIDA, au barua pepe. Bw. Mwikila ataendelea kutoka pale ulipoachia.',
+        'Ingia kwenye BossNyumba. Jisajili kwa simu yako iliyounganishwa na M-Pesa, NIDA, au barua pepe. Mwl. Mwikila ataendelea kutoka pale ulipoachia.',
     };
   }
   return {
@@ -46,7 +46,7 @@ const COPY: Record<Locale, SignInCopy> = {
   sw: {
     kicker: 'Karibu tena',
     headline: 'Ingia kwenye BossNyumba.',
-    sub: 'Bw. Mwikila ataendelea kutoka pale ulipoachia. Chagua jinsi ulivyojisajili.',
+    sub: 'Mwl. Mwikila ataendelea kutoka pale ulipoachia. Chagua jinsi ulivyojisajili.',
     noAccount: 'Bado huna akaunti?',
     signUpFree: (tierName) => `Jisajili — bure kwenye ${tierName}`,
     forgot: 'Umesahau nenosiri lako?',

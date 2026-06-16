@@ -48,58 +48,84 @@ function resolveSiteUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_MARKETING_SITE_URL?.trim();
   if (fromEnv && fromEnv.length > 0) return fromEnv.replace(/\/$/, '');
   if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'NEXT_PUBLIC_MARKETING_SITE_URL must be set in production marketing builds.',
-    );
+    throw new Error('NEXT_PUBLIC_MARKETING_SITE_URL must be set in production marketing builds.');
   }
   return 'https://bossnyumba.co.tz';
 }
 
 const SITE_URL = resolveSiteUrl();
 
-export const metadata: Metadata = {
-  title: 'BossNyumba — AI-native real estate operating system',
-  description:
-    'BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer. Leases, rent, maintenance staff, treasury, compliance, marketplace, holdings, subsidiaries, ancillary businesses, family office, succession, asset register. Multi-tenant. Multi-lingual.',
-  applicationName: 'BossNyumba',
-  metadataBase: new URL(SITE_URL),
-  keywords: [
-    'AI-native real estate operating system',
-    'BossNyumba',
-    'Mr. Mwikila',
-    'property management Tanzania',
-    'property lease management',
-    'rent-collection treasury',
-    'real-estate compliance Tanzania',
-    'NHC',
-    'BRELA',
-  ],
-  openGraph: {
-    title: 'BossNyumba — AI-native real estate operating system',
-    description:
-      'BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer. Run your entire real estate portfolio on autopilot. Bilingual sw/en.',
-    type: 'website',
-    siteName: 'BossNyumba',
-    locale: 'en_US',
-    alternateLocale: ['sw_TZ'],
-    url: SITE_URL,
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'BossNyumba — AI-native real estate operating system',
-    description:
-      'BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer. Bilingual sw/en. Multi-tenant. NHC + BRELA + TRA aware.',
-    creator: '@bossnyumba_tz',
-  },
-  alternates: {
-    canonical: SITE_URL,
-    languages: {
-      sw: SITE_URL,
-      en: `${SITE_URL}?lang=en`,
+// Locale-aware site metadata. Resolves the active locale from the
+// `bossnyumba_locale` cookie so the browser-tab title, SEO description, and
+// OG/Twitter cards render in the SAME language the visitor selected — the
+// absolute sw/en toggle extends to document metadata, not only page body.
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const sw = locale === 'sw';
+
+  const title = sw
+    ? 'BossNyumba — mfumo wa uendeshaji wa mali wenye AI ya asili'
+    : 'BossNyumba — AI-native real estate operating system';
+
+  return {
+    title,
+    description: sw
+      ? 'BossNyumba ni mfumo wa uendeshaji wa mali wenye AI ya asili. Mwl. Mwikila ni tabaka lake la ubongo. Mikataba, kodi, wafanyakazi wa matengenezo, hazina, utii, soko, milki, kampuni tanzu, biashara saidizi, ofisi ya familia, urithi, daftari la mali. Wateja wengi. Lugha nyingi.'
+      : 'BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer. Leases, rent, maintenance staff, treasury, compliance, marketplace, holdings, subsidiaries, ancillary businesses, family office, succession, asset register. Multi-tenant. Multi-lingual.',
+    applicationName: 'BossNyumba',
+    metadataBase: new URL(SITE_URL),
+    keywords: sw
+      ? [
+          'mfumo wa uendeshaji wa mali wenye AI ya asili',
+          'BossNyumba',
+          'Mwl. Mwikila',
+          'usimamizi wa mali Tanzania',
+          'usimamizi wa mikataba ya mali',
+          'hazina ya ukusanyaji kodi',
+          'utii wa mali Tanzania',
+          'NHC',
+          'BRELA',
+        ]
+      : [
+          'AI-native real estate operating system',
+          'BossNyumba',
+          'Mr. Mwikila',
+          'property management Tanzania',
+          'property lease management',
+          'rent-collection treasury',
+          'real-estate compliance Tanzania',
+          'NHC',
+          'BRELA',
+        ],
+    openGraph: {
+      title,
+      description: sw
+        ? 'BossNyumba ni mfumo wa uendeshaji wa mali wenye AI ya asili. Mwl. Mwikila ni tabaka lake la ubongo. Endesha kundi lako lote la mali kiotomatiki. Lugha mbili sw/en.'
+        : 'BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer. Run your entire real estate portfolio on autopilot. Bilingual sw/en.',
+      type: 'website',
+      siteName: 'BossNyumba',
+      locale: sw ? 'sw_TZ' : 'en_US',
+      alternateLocale: sw ? ['en_US'] : ['sw_TZ'],
+      url: SITE_URL,
     },
-  },
-  robots: { index: true, follow: true },
-};
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description: sw
+        ? 'BossNyumba ni mfumo wa uendeshaji wa mali wenye AI ya asili. Mwl. Mwikila ni tabaka lake la ubongo. Lugha mbili sw/en. Wateja wengi. Inatambua NHC + BRELA + TRA.'
+        : 'BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer. Bilingual sw/en. Multi-tenant. NHC + BRELA + TRA aware.',
+      creator: '@bossnyumba_tz',
+    },
+    alternates: {
+      canonical: SITE_URL,
+      languages: {
+        sw: SITE_URL,
+        en: `${SITE_URL}?lang=en`,
+      },
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: '#17100A',
@@ -126,11 +152,7 @@ export const viewport: Viewport = {
  *           > MarketingFooter (client island)
  *       > MarketingWidgetSlot (client island)
  */
-export default async function RootLayout({
-  children,
-}: {
-  readonly children: React.ReactNode;
-}) {
+export default async function RootLayout({ children }: { readonly children: React.ReactNode }) {
   const locale = await getLocale();
   const t = getMessages(locale).common;
   return (

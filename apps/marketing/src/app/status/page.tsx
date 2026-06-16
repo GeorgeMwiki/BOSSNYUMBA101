@@ -1,11 +1,22 @@
 import type { Metadata } from 'next';
+import { getLocale } from '@/lib/locale';
 import { PageShell } from '@/components/shared/PageShell';
 
-export const metadata: Metadata = {
-  title: 'System status — BossNyumba',
-  description:
-    'The services that make up the BossNyumba platform — API, owner cockpit, tenant mobile, Master Brain, mobile-money rails, audit chain, and notifications.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'sw') {
+    return {
+      title: 'Hali ya mfumo — BossNyumba',
+      description:
+        'Huduma zinazounda jukwaa la BossNyumba — API, chumba cha uendeshaji cha mwenye nyumba, programu ya simu ya mpangaji, Master Brain, miundombinu ya pesa za simu, mnyororo wa ukaguzi, na arifa.',
+    };
+  }
+  return {
+    title: 'System status — BossNyumba',
+    description:
+      'The services that make up the BossNyumba platform — API, owner cockpit, tenant mobile, Master Brain, mobile-money rails, audit chain, and notifications.',
+  };
+}
 
 /**
  * Static status page.
@@ -40,16 +51,13 @@ export default function StatusPage() {
   return (
     <PageShell>
       <div className="mx-auto max-w-3xl px-6 pb-24 pt-20 lg:px-8">
-        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">
-          Status
-        </p>
+        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">Status</p>
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           Platform services.
         </h1>
         <p className="mt-6 text-lg leading-relaxed text-foreground/75">
-          These are the services that make up BossNyumba. A live,
-          real-time status board is on the way. For any active incident we
-          email every affected customer directly and post updates on{' '}
+          These are the services that make up BossNyumba. A live, real-time status board is on the
+          way. For any active incident we email every affected customer directly and post updates on{' '}
           <a
             href="https://x.com/bossnyumba_ops"
             className="text-signal-500 hover:underline"
@@ -62,10 +70,7 @@ export default function StatusPage() {
 
         <ul className="mt-10 divide-y divide-border rounded-2xl border border-border bg-surface">
           {SERVICES.map((service) => (
-            <li
-              key={service.name}
-              className="flex items-center justify-between gap-4 px-6 py-4"
-            >
+            <li key={service.name} className="flex items-center justify-between gap-4 px-6 py-4">
               <div>
                 <p className="text-sm font-semibold text-foreground">{service.name}</p>
                 <p className="text-xs text-foreground/60">{service.description}</p>
@@ -79,14 +84,10 @@ export default function StatusPage() {
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-foreground/70">
           Seeing something wrong? Email{' '}
-          <a
-            href="mailto:support@bossnyumba.com"
-            className="text-signal-500 hover:underline"
-          >
+          <a href="mailto:support@bossnyumba.com" className="text-signal-500 hover:underline">
             support@bossnyumba.com
           </a>{' '}
-          and our team in Dar es Salaam will respond during EAT business
-          hours.
+          and our team in Dar es Salaam will respond during EAT business hours.
         </p>
       </div>
     </PageShell>

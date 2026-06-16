@@ -1,39 +1,45 @@
 import type { Metadata } from 'next';
+import { getLocale } from '@/lib/locale';
 import Link from 'next/link';
 import { PageShell } from '@/components/shared/PageShell';
 import { MwikilaChip } from '@/components/shared/MwikilaChip';
 
-export const metadata: Metadata = {
-  title: 'About BossNyumba — AI-native real estate operating system',
-  description:
-    "BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer. Built in Dar es Salaam, Swahili-first, audit-grade, M-Pesa native — for landlords, tenants, and property managers in Tanzania and East Africa.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'sw') {
+    return {
+      title: 'Kuhusu BossNyumba — mfumo wa uendeshaji wa mali wenye AI ya asili',
+      description:
+        'BossNyumba ni mfumo wa uendeshaji wa mali wenye AI ya asili. Mwl. Mwikila ndiye tabaka lake la ubongo. Umejengwa Dar es Salaam, Kiswahili kwanza, wa kiwango cha ukaguzi, na M-Pesa ya asili — kwa ajili ya wenye nyumba, wapangaji, na wasimamizi wa mali nchini Tanzania na Afrika Mashariki.',
+    };
+  }
+  return {
+    title: 'About BossNyumba — AI-native real estate operating system',
+    description:
+      'BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brain layer. Built in Dar es Salaam, Swahili-first, audit-grade, M-Pesa native — for landlords, tenants, and property managers in Tanzania and East Africa.',
+  };
+}
 
 const SECTIONS: ReadonlyArray<{ title: string; body: string }> = [
   {
     title: 'Why BossNyumba exists',
-    body:
-      'In many East African rental markets, a significant share of annual rent leaks away to manual chase, missing receipts, and disputes that never settle (Bank of Tanzania, 2025). Council-levy filings are paper-and-WhatsApp. Tenants pay over M-Pesa and walk away with no proof. Landlords keep books on phones that get replaced every two years. BossNyumba is an AI-native real estate operating system that collapses that broken stack — and Mr. Mwikila, the brain layer within BossNyumba, runs the day-to-day with you: he collects rent on one-tap tenant approval, books every shilling, pays you on schedule, sends your statements and reminders, and prepares the rest — invoices, renewals, and your council-levy filing — for you to approve. You sign the big calls.',
+    body: 'In many East African rental markets, a significant share of annual rent leaks away to manual chase, missing receipts, and disputes that never settle (Bank of Tanzania, 2025). Council-levy filings are paper-and-WhatsApp. Tenants pay over M-Pesa and walk away with no proof. Landlords keep books on phones that get replaced every two years. BossNyumba is an AI-native real estate operating system that collapses that broken stack — and Mr. Mwikila, the brain layer within BossNyumba, runs the day-to-day with you: he collects rent on one-tap tenant approval, books every shilling, pays you on schedule, sends your statements and reminders, and prepares the rest — invoices, renewals, and your council-levy filing — for you to approve. You sign the big calls.',
   },
   {
     title: 'Who we serve',
-    body:
-      "Individual landlords with two units in Kinondoni and family portfolios across Mwanza. Professional property managers running 250-unit blocks in Arusha. REIT executives consolidating five entities across Tanzania and Kenya. Tenants signing leases in Mbeya, and leasing agencies placing bank-relocation prospects in Dar. Cooperatives transparently running their own buildings. Housing regulators wanting live signal instead of yearly surveys.",
+    body: 'Individual landlords with two units in Kinondoni and family portfolios across Mwanza. Professional property managers running 250-unit blocks in Arusha. REIT executives consolidating five entities across Tanzania and Kenya. Tenants signing leases in Mbeya, and leasing agencies placing bank-relocation prospects in Dar. Cooperatives transparently running their own buildings. Housing regulators wanting live signal instead of yearly surveys.',
   },
   {
     title: 'How we build',
-    body:
-      "BossNyumba is multi-tenant by design. Every query is scoped by tenant id end-to-end. Storage is regional, encrypted at rest, with cryptographic audit-hash chains on every rent receipt, lease, and dispute. We default to Swahili and toggle to English — two languages, one source of truth. M-Pesa, Tigo Pesa, Airtel Money, and bank rails are native, not bolted on. Open-source where we can be, proprietary where compliance demands.",
+    body: 'BossNyumba is multi-tenant by design. Every query is scoped by tenant id end-to-end. Storage is regional, encrypted at rest, with cryptographic audit-hash chains on every rent receipt, lease, and dispute. We default to Swahili and toggle to English — two languages, one source of truth. M-Pesa, Tigo Pesa, Airtel Money, and bank rails are native, not bolted on. Open-source where we can be, proprietary where compliance demands.',
   },
   {
     title: 'Where we are based',
-    body:
-      'Headquartered in Dar es Salaam, with field operators across Arusha, Mwanza, Mbeya, Nairobi, and Mombasa. Our team is East-African-led, property-experienced, and obsessed with closing the gap between landlords, tenants, banks, and regulators.',
+    body: 'Headquartered in Dar es Salaam, with field operators across Arusha, Mwanza, Mbeya, Nairobi, and Mombasa. Our team is East-African-led, property-experienced, and obsessed with closing the gap between landlords, tenants, banks, and regulators.',
   },
   {
     title: 'Meet Mr. Mwikila',
-    body:
-      "Mr. Mwikila is the canonical user-facing identity of the BossNyumba brain. One Mr. Mwikila per portfolio, knowing everything about it — leases, tenants, maintenance, council levies, owner statements, multi-currency cashflow. He speaks Swahili by default and switches to English on request. He never pretends to be human; the chat header always reads \"Mr. Mwikila — BossNyumba's AI Property Operations Manager\".",
+    body: 'Mr. Mwikila is the canonical user-facing identity of the BossNyumba brain. One Mr. Mwikila per portfolio, knowing everything about it — leases, tenants, maintenance, council levies, owner statements, multi-currency cashflow. He speaks Swahili by default and switches to English on request. He never pretends to be human; the chat header always reads "Mr. Mwikila — BossNyumba\'s AI Property Operations Manager".',
   },
 ];
 
@@ -41,16 +47,13 @@ export default function AboutPage() {
   return (
     <PageShell>
       <div className="mx-auto max-w-3xl px-6 pb-24 pt-20 lg:px-8">
-        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">
-          About
-        </p>
+        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">About</p>
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           The AI operating system for East African real estate.
         </h1>
         <p className="mt-6 text-lg leading-relaxed text-foreground/75">
-          BossNyumba is built in Dar es Salaam, for the property sector
-          that houses the continent. We replace WhatsApp rent chase,
-          paper leases, and ad-hoc bookkeeping with one Master Brain
+          BossNyumba is built in Dar es Salaam, for the property sector that houses the continent.
+          We replace WhatsApp rent chase, paper leases, and ad-hoc bookkeeping with one Master Brain
           that runs the portfolio with the owner.
         </p>
         <div className="mt-6">
@@ -60,9 +63,7 @@ export default function AboutPage() {
         <div className="mt-12 space-y-8 text-sm leading-relaxed text-foreground/70">
           {SECTIONS.map((s) => (
             <section key={s.title}>
-              <h2 className="font-display text-xl font-semibold text-foreground">
-                {s.title}
-              </h2>
+              <h2 className="font-display text-xl font-semibold text-foreground">{s.title}</h2>
               <p className="mt-3">{s.body}</p>
             </section>
           ))}

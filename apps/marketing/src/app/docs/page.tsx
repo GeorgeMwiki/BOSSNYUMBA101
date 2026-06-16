@@ -1,29 +1,37 @@
 import type { Metadata } from 'next';
+import { getLocale } from '@/lib/locale';
 import Link from 'next/link';
 import { MessageSquare, Mail } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 
-export const metadata: Metadata = {
-  title: 'Documentation — BossNyumba',
-  description:
-    'BossNyumba documentation is being written. Ask Mr. Mwikila in the app or email the docs team in the meantime.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'sw') {
+    return {
+      title: 'Nyaraka — BossNyumba',
+      description:
+        'Nyaraka za BossNyumba bado zinaandaliwa. Kwa sasa, muulize Mwl. Mwikila ndani ya programu au mtumie barua pepe timu ya nyaraka.',
+    };
+  }
+  return {
+    title: 'Documentation — BossNyumba',
+    description:
+      'BossNyumba documentation is being written. Ask Mr. Mwikila in the app or email the docs team in the meantime.',
+  };
+}
 
 export default function DocsIndexPage() {
   return (
     <PageShell>
       <div className="mx-auto max-w-3xl px-6 pb-24 pt-20 lg:px-8">
-        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">
-          Documentation
-        </p>
+        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">Documentation</p>
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           The docs are being written.
         </h1>
         <p className="mt-6 max-w-prose-wide text-lg leading-relaxed text-foreground/75">
-          We are writing the getting-started guides, M-Pesa connector
-          notes, API reference, and security docs now. While they land,
-          the fastest way to get an answer is to ask Mr. Mwikila in the
-          app — he answers most questions directly — or email the team.
+          We are writing the getting-started guides, M-Pesa connector notes, API reference, and
+          security docs now. While they land, the fastest way to get an answer is to ask Mr. Mwikila
+          in the app — he answers most questions directly — or email the team.
         </p>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
@@ -36,8 +44,8 @@ export default function DocsIndexPage() {
               Ask Mr. Mwikila
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-foreground/70">
-              Open the in-app chat. Mr. Mwikila walks you through setup,
-              payments, and any workflow — in Swahili or English.
+              Open the in-app chat. Mr. Mwikila walks you through setup, payments, and any workflow
+              — in Swahili or English.
             </p>
           </Link>
           <a
@@ -49,8 +57,8 @@ export default function DocsIndexPage() {
               Email the docs team
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-foreground/70">
-              Write to docs@bossnyumba.com. We read every message and will
-              point you to the right person or guide.
+              Write to docs@bossnyumba.com. We read every message and will point you to the right
+              person or guide.
             </p>
           </a>
         </div>
@@ -68,8 +76,8 @@ export default function DocsIndexPage() {
             <Link href="/trust" className="text-signal-500 hover:underline">
               trust centre
             </Link>{' '}
-            are published today — audit trail, tenant isolation, the seven
-            red-line guarantees, and our certification status.
+            are published today — audit trail, tenant isolation, the seven red-line guarantees, and
+            our certification status.
           </p>
         </div>
       </div>

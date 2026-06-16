@@ -1,14 +1,25 @@
 import type { Metadata } from 'next';
+import { getLocale } from '@/lib/locale';
 import Link from 'next/link';
 import { CheckCircle2, Sparkles } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { MwikilaChip } from '@/components/shared/MwikilaChip';
 
-export const metadata: Metadata = {
-  title: 'Pilot programme — BossNyumba',
-  description:
-    'Run BossNyumba alongside your current operations for 90 days. Free implementation, dedicated success manager, and a written report with the leakage we found.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'sw') {
+    return {
+      title: 'Mpango wa majaribio — BossNyumba',
+      description:
+        'Endesha BossNyumba sambamba na shughuli zako za sasa kwa siku 90. Usakinishaji bila malipo, meneja wa mafanikio aliyetengwa mahususi kwa ajili yako, na ripoti ya maandishi inayoonyesha uvujaji wa mapato tuliougundua.',
+    };
+  }
+  return {
+    title: 'Pilot programme — BossNyumba',
+    description:
+      'Run BossNyumba alongside your current operations for 90 days. Free implementation, dedicated success manager, and a written report with the leakage we found.',
+  };
+}
 
 const COMMITMENTS: ReadonlyArray<{ title: string; body: string }> = [
   {
@@ -43,9 +54,8 @@ export default function PilotPage() {
             Ninety days. Real portfolios. Real numbers.
           </h1>
           <p className="mx-auto mt-6 max-w-prose-widest text-lg leading-relaxed text-foreground/70 sm:text-xl">
-            For portfolio landlords, professional managers, and REITs.
-            Run BossNyumba alongside your current system for 90 days.
-            Free implementation, written leakage report, no card.
+            For portfolio landlords, professional managers, and REITs. Run BossNyumba alongside your
+            current system for 90 days. Free implementation, written leakage report, no card.
           </p>
           <div className="mt-8 flex justify-center">
             <MwikilaChip />
@@ -69,9 +79,7 @@ export default function PilotPage() {
                 <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">
                   {c.title}
                 </h2>
-                <p className="mt-2 text-sm leading-relaxed text-foreground/70">
-                  {c.body}
-                </p>
+                <p className="mt-2 text-sm leading-relaxed text-foreground/70">{c.body}</p>
               </div>
             </li>
           ))}

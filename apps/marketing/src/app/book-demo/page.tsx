@@ -1,13 +1,24 @@
 import type { Metadata } from 'next';
+import { getLocale } from '@/lib/locale';
 import Link from 'next/link';
 import { Calendar, MessageSquare, Mail } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 
-export const metadata: Metadata = {
-  title: 'Book a 20-minute demo — BossNyumba',
-  description:
-    'Twenty minutes with our solutions team. Bring a sample of your portfolio; leave with a cockpit preview tailored to your buildings, currencies, and council.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'sw') {
+    return {
+      title: 'Panga onyesho la dakika 20 — BossNyumba',
+      description:
+        'Dakika ishirini na timu yetu ya suluhisho. Leta sampuli ya kundi lako la mali; ondoka na onyesho la awali la dashibodi lililoandaliwa mahususi kwa majengo yako, sarafu zako, na halmashauri yako.',
+    };
+  }
+  return {
+    title: 'Book a 20-minute demo — BossNyumba',
+    description:
+      'Twenty minutes with our solutions team. Bring a sample of your portfolio; leave with a cockpit preview tailored to your buildings, currencies, and council.',
+  };
+}
 
 interface DemoChannel {
   readonly icon: typeof Calendar;
@@ -51,8 +62,7 @@ const CHANNELS: ReadonlyArray<DemoChannel> = [
   },
 ];
 
-const PRIMARY_CTA =
-  'bg-signal-500 text-primary-foreground hover:bg-signal-400';
+const PRIMARY_CTA = 'bg-signal-500 text-primary-foreground hover:bg-signal-400';
 const SECONDARY_CTA =
   'border border-border bg-surface text-foreground hover:border-signal-500/60 hover:text-signal-500';
 
@@ -60,17 +70,14 @@ export default function BookDemoPage() {
   return (
     <PageShell>
       <div className="mx-auto max-w-3xl px-6 pb-24 pt-20 lg:px-8">
-        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">
-          Book a demo
-        </p>
+        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">Book a demo</p>
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           Twenty minutes. Real portfolio. Real cockpit.
         </h1>
         <p className="mt-6 text-lg leading-relaxed text-foreground/75">
-          Bring a sample of your buildings, leases, or rent roll. We
-          import it live and walk you through the cockpit you would land
-          on tomorrow. No slide decks; no follow-up sales calls unless
-          you ask for one.
+          Bring a sample of your buildings, leases, or rent roll. We import it live and walk you
+          through the cockpit you would land on tomorrow. No slide decks; no follow-up sales calls
+          unless you ask for one.
         </p>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-3">
@@ -89,16 +96,9 @@ export default function BookDemoPage() {
                 <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
                   {c.title}
                 </h2>
-                <p className="mt-2 flex-1 text-sm leading-relaxed text-foreground/70">
-                  {c.body}
-                </p>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-foreground/70">{c.body}</p>
                 {c.external ? (
-                  <a
-                    href={c.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={ctaClass}
-                  >
+                  <a href={c.href} target="_blank" rel="noopener noreferrer" className={ctaClass}>
                     {c.cta}
                   </a>
                 ) : (
