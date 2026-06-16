@@ -46,7 +46,7 @@ describe('parseTenantChannel', () => {
 });
 
 describe('REALTIME_TOPICS', () => {
-  it('contains all seven topics in canonical order', () => {
+  it('contains the seven domain topics + the state-bus system channel in canonical order', () => {
     expect(REALTIME_TOPICS).toEqual([
       'leases',
       'maintenance',
@@ -55,6 +55,8 @@ describe('REALTIME_TOPICS', () => {
       'tabs-updated',
       'reports-generated',
       'field-captures',
+      // Generic system channel for @bossnyumba/blackboard-sota slot deltas / handoffs.
+      'state-bus',
     ]);
   });
 });
