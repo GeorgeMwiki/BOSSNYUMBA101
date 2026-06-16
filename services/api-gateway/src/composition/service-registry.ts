@@ -3172,7 +3172,6 @@ function buildServicesInner(
 export const SOVEREIGN_LEDGER_FAIL_CLOSED_ENV =
   'SOVEREIGN_LEDGER_FAIL_CLOSED';
 
-/* eslint-disable-next-line no-secrets/no-secrets */
 export const SOVEREIGN_LEDGER_FAIL_OPEN_ENV =
   'SOVEREIGN_LEDGER_FAIL_OPEN';
 

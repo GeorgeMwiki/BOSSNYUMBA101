@@ -38,6 +38,7 @@
  * Mounted ADDITIVELY in services/api-gateway/src/index.ts.
  */
 
+import { randomBytes } from 'node:crypto';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import pino from 'pino';
@@ -187,9 +188,11 @@ const CreateMissionSchema = z.object({
 
 const ids = Object.freeze({
   nextId(prefix: string): string {
-    // Stable, collision-resistant enough for a mission id-space; the table
-    // PK is TEXT so any unique string is valid.
-    const rand = Math.random().toString(36).slice(2, 10);
+    // Stable, collision-resistant for a mission id-space; the table PK is
+    // TEXT so any unique string is valid. Use crypto randomness (not
+    // Math.random) for the suffix so ids are unguessable — 5 bytes →
+    // 8 base36 chars, matching the prior id shape.
+    const rand = randomBytes(5).toString('hex').slice(0, 8);
     return `${prefix}_${Date.now().toString(36)}_${rand}`;
   },
 });

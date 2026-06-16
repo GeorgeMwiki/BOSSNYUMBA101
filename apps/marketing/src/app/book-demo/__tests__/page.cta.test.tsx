@@ -32,13 +32,13 @@ describe('/book-demo — CTA hierarchy + external safety (Wave D)', () => {
     );
   });
 
-  it('still exposes the chat and phone channels as secondary CTAs', () => {
+  it('still exposes the chat and email channels as secondary CTAs', () => {
     render(<BookDemoPage />);
     expect(
       screen.getByRole('link', { name: /sign up \+ chat/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: /call \+255/i }),
+      screen.getByRole('link', { name: /email sales@bossnyumba\.com/i }),
     ).toBeInTheDocument();
   });
 });

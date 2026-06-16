@@ -15,7 +15,11 @@ interface BlogPostParams {
   readonly slug: string;
 }
 
-export function generateStaticParams(): ReadonlyArray<BlogPostParams> {
+// Next.js' generated route-type validator requires a mutable
+// `Params[]` (or `Promise<Params[]>`); a `readonly`/`ReadonlyArray`
+// return is rejected at build time. `.map` already yields a fresh
+// array, so this stays a non-mutating, allocate-new return.
+export function generateStaticParams(): BlogPostParams[] {
   return POSTS.map((post) => ({ slug: post.slug }));
 }
 

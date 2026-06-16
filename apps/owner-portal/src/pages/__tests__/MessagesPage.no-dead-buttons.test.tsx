@@ -79,9 +79,10 @@ describe('MessagesPage — no dead buttons in the chat header', () => {
   it('does not render dead call/menu controls in the conversation header', async () => {
     render(<MessagesPage />);
 
-    // The first conversation auto-selects, rendering the chat header.
+    // The first conversation auto-selects: the name appears twice — once in
+    // the sidebar list item and once in the active-chat header.
     await waitFor(() => {
-      expect(screen.getByText('Mwikila Manager')).toBeInTheDocument();
+      expect(screen.getAllByText('Mwikila Manager').length).toBeGreaterThan(0);
     });
 
     // No "Phone"/"MoreVertical" lucide icons remain (their svg classes

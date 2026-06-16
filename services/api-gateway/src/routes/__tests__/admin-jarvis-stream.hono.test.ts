@@ -37,10 +37,12 @@ const capturedRequests: any[] = [];
 vi.mock('../../composition/sovereign', () => ({
   getSovereignBrain: vi.fn(async () => ({
     kernel: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       async *thinkStream(req: any) {
         capturedRequests.push(req);
         // Yield nothing — pumpKernelToAgUi frames RUN_STARTED/RUN_FINISHED.
+        // `yield* []` keeps this an empty async generator (zero items)
+        // while satisfying eslint's require-yield rule.
+        yield* [];
       },
     },
   })),

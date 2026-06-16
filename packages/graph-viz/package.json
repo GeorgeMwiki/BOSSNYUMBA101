@@ -46,6 +46,7 @@
     "@bossnyumba/genui": "workspace:*",
     "cytoscape": "^3.30.0",
     "d3": "^7.9.0",
+    "d3-force": "^3.0.0",
     "d3-sankey": "^0.12.3",
     "echarts": "^5.5.0",
     "echarts-for-react": "^3.0.2",
@@ -59,6 +60,7 @@
   "peerDependenciesMeta": {
     "cytoscape":        { "optional": true },
     "d3":               { "optional": true },
+    "d3-force":         { "optional": true },
     "d3-sankey":        { "optional": true },
     "echarts":          { "optional": true },
     "echarts-for-react":{ "optional": true },

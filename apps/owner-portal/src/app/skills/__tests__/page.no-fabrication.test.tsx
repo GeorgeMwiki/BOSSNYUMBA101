@@ -11,10 +11,39 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 
-// next-intl passthrough: translator returns the key so assertions are stable.
+// next-intl mock backed by the REAL `messages/en.json` bundle so headings
+// like `installedHeading` render their production string ("Installed (0)")
+// rather than a bare key — the empty-state assertion depends on that copy.
+// ICU `{placeholder}` tokens are interpolated from the supplied values.
+import enMessages from '../../../../messages/en.json';
+
 vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: (namespace: string) => (
+    key: string,
+    values?: Record<string, string | number>,
+  ): string => {
+    const path = `${namespace}.${key}`.split('.');
+    let node: unknown = enMessages;
+    for (const segment of path) {
+      node =
+        node && typeof node === 'object'
+          ? (node as Record<string, unknown>)[segment]
+          : undefined;
+    }
+    if (typeof node !== 'string') return key;
+    return node.replace(/\{(\w+)\}/g, (_match, token: string) =>
+      String(values?.[token] ?? `{${token}}`),
+    );
+  },
 }));
+
+// The page calls `useNavigate()` (Jarvis prefill on skill-run). These tests
+// render it standalone with no Router, so stub the hook — navigation is not
+// under test here; the no-fabrication behaviour is.
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return { ...actual, useNavigate: () => vi.fn() };
+});
 
 import SkillsPage from '../page';
 
@@ -53,9 +82,13 @@ afterEach(() => {
 
 describe('SkillsPage — no fabricated fallback', () => {
   it('renders an honest notice (no sample skills) on a non-503 API error', async () => {
+    // The shared api client returns the parsed envelope; a failed read carries
+    // `success: false`, which the page surfaces as an honest error notice.
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse({ error: 'boom' }, 500)),
+      vi.fn().mockResolvedValue(
+        jsonResponse({ success: false, error: { code: 'INTERNAL' } }, 500),
+      ),
     );
 
     render(<SkillsPage />);
@@ -68,9 +101,15 @@ describe('SkillsPage — no fabricated fallback', () => {
   });
 
   it('renders the missing-backend notice on a 503', async () => {
+    // Real 503 envelope from the gateway: `error.code === DATABASE_UNAVAILABLE`.
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse({ error: 'not wired' }, 503)),
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { success: false, error: { code: 'DATABASE_UNAVAILABLE' } },
+          503,
+        ),
+      ),
     );
 
     render(<SkillsPage />);

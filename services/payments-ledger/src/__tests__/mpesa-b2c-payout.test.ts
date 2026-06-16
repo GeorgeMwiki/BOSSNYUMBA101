@@ -12,8 +12,9 @@
  *      consumes it.
  *   3. A B2C QUEUE TIMEOUT flags NEEDS_REVERSAL (debited, undelivered, no result
  *      will arrive).
- *   4. Provider selection routes a mobile-money destination / KES·TZS currency
- *      to the M-Pesa rail and a connected-account destination to Stripe.
+ *   4. Provider selection routes a mobile-money destination / KES currency
+ *      to the M-Pesa rail and a connected-account destination to Stripe. (TZS
+ *      is intentionally NOT mobile-money yet — no TZS provider registered.)
  *   5. `MpesaPaymentProvider.getTransferStatus` throws the typed callback-only
  *      signal the reconciliation sweep relies on.
  */
@@ -296,7 +297,12 @@ describe('M-Pesa provider getTransferStatus is callback-only (Finding 2)', () =>
 describe('rail-selection helpers', () => {
   it('classifies mobile-money currencies', () => {
     expect(isMobileMoneyCurrency('KES')).toBe(true);
-    expect(isMobileMoneyCurrency('TZS')).toBe(true);
+    // TZS is deliberately NOT mobile-money: no TZS mobile-money provider
+    // (Vodacom M-Pesa TZ / Tigo Pesa / Airtel Money) is registered yet, so a
+    // TZS payout must not claim the M-Pesa rail and silently strand money as
+    // NEEDS_REVERSAL. Re-add TZS the same PR that registers a TZS provider —
+    // see MOBILE_MONEY_CURRENCIES in disbursement.service.ts.
+    expect(isMobileMoneyCurrency('TZS')).toBe(false);
     expect(isMobileMoneyCurrency('USD' as CurrencyCode)).toBe(false);
   });
 
