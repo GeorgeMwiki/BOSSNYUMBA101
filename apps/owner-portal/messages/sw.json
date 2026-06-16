@@ -3286,7 +3286,16 @@
       "pickOwnerIntent": "Chagua nia yako ya umiliki",
       "installStarterSkills": "Sakinisha Ujuzi 3 wa mwanzo",
       "scheduleBriefing": "Panga muhtasari wako wa kwanza wa kila siku",
-      "welcomeAboard": "Karibu"
+      "welcomeAboard": "Karibu",
+      "businessNameFallback": "Kundi lako la mali",
+      "accountCreatedDesc": "Akaunti yako ya shirika na mmiliki ipo hai.",
+      "verifyEmailDesc": "Bofya kiungo tulichotuma ili kuthibitisha anwani.",
+      "addFirstPropertyDesc": "Tuambie anwani, idadi ya vitengo, na makadirio ya kodi.",
+      "importTenantsDesc": "Pakia CSV au ongeza mpangaji mmoja kwa mkono.",
+      "chatFirstTimeDesc": "Kutana na Mwl. Mwikila, msaidizi wako wa kundi la mali.",
+      "pickOwnerIntentDesc": "Mtiririko wa fedha kwanza, ukuaji, au maandalizi ya kutoka: chagua moja.",
+      "installStarterSkillsDesc": "Imeteuliwa na Mwl. Mwikila kulingana na nia yako.",
+      "scheduleBriefingDesc": "Muhtasari wa asubuhi wa dakika 5 unaowasilishwa jinsi upendavyo."
     },
     "plan": {
       "mdrTitle": "Mpango wa MDR"

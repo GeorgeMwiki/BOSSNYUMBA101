@@ -7,6 +7,7 @@ import { CheckCircle2, Sparkles, TrendingUp } from 'lucide-react';
 
 import { SectionSkeleton } from '@/components/SectionSkeleton';
 import { LazyVisible } from '@/components/LazyVisible';
+import { WhoWeServeSection } from '@/components/sections/WhoWeServeSection';
 import type { Locale } from '@/lib/i18n';
 
 /**
@@ -34,7 +35,7 @@ const EcosystemSection = dynamic(
     import('@/components/sections/EcosystemSection').then((m) => ({
       default: m.EcosystemSection,
     })),
-  { loading: () => <SectionSkeleton minHeight={520} cards={3} /> },
+  { loading: () => <SectionSkeleton minHeight={520} cards={3} /> }
 );
 
 const UniversalAccessSection = dynamic(
@@ -42,7 +43,7 @@ const UniversalAccessSection = dynamic(
     import('@/components/sections/UniversalAccessSection').then((m) => ({
       default: m.UniversalAccessSection,
     })),
-  { loading: () => <SectionSkeleton minHeight={480} cards={3} /> },
+  { loading: () => <SectionSkeleton minHeight={480} cards={3} /> }
 );
 
 const MwikilaModesSection = dynamic(
@@ -50,7 +51,7 @@ const MwikilaModesSection = dynamic(
     import('@/components/sections/MwikilaModesSection').then((m) => ({
       default: m.MwikilaModesSection,
     })),
-  { loading: () => <SectionSkeleton minHeight={560} cards={3} /> },
+  { loading: () => <SectionSkeleton minHeight={560} cards={3} /> }
 );
 
 const InteractiveModesSection = dynamic(
@@ -58,7 +59,7 @@ const InteractiveModesSection = dynamic(
     import('@/components/sections/InteractiveModesSection').then((m) => ({
       default: m.InteractiveModesSection,
     })),
-  { loading: () => <SectionSkeleton minHeight={520} cards={3} /> },
+  { loading: () => <SectionSkeleton minHeight={520} cards={3} /> }
 );
 
 const BentoGrid = dynamic(
@@ -66,7 +67,7 @@ const BentoGrid = dynamic(
     import('@/components/sections/BentoGrid').then((m) => ({
       default: m.BentoGrid,
     })),
-  { loading: () => <SectionSkeleton minHeight={420} cards={4} /> },
+  { loading: () => <SectionSkeleton minHeight={420} cards={4} /> }
 );
 
 const PlatformShowcaseSection = dynamic(
@@ -74,7 +75,7 @@ const PlatformShowcaseSection = dynamic(
     import('@/components/sections/PlatformShowcaseSection').then((m) => ({
       default: m.PlatformShowcaseSection,
     })),
-  { loading: () => <SectionSkeleton minHeight={480} cards={3} /> },
+  { loading: () => <SectionSkeleton minHeight={480} cards={3} /> }
 );
 
 const InsightsAndScaleSection = dynamic(
@@ -82,7 +83,7 @@ const InsightsAndScaleSection = dynamic(
     import('@/components/sections/InsightsAndScaleSection').then((m) => ({
       default: m.InsightsAndScaleSection,
     })),
-  { loading: () => <SectionSkeleton minHeight={480} cards={3} /> },
+  { loading: () => <SectionSkeleton minHeight={480} cards={3} /> }
 );
 
 const RoadmapCTASection = dynamic(
@@ -90,7 +91,7 @@ const RoadmapCTASection = dynamic(
     import('@/components/sections/RoadmapCTASection').then((m) => ({
       default: m.RoadmapCTASection,
     })),
-  { loading: () => <SectionSkeleton minHeight={480} cards={4} /> },
+  { loading: () => <SectionSkeleton minHeight={480} cards={4} /> }
 );
 
 interface ListItem {
@@ -101,7 +102,7 @@ interface ListItem {
 const PROBLEM_ITEMS_EN: ReadonlyArray<ListItem> = [
   {
     title: 'Disconnected operations',
-    desc: 'Leases in Word, rent in Excel, maintenance in WhatsApp, tax in a folder. Every owner re-stitches the same flow every month.',
+    desc: "Leases in Word, rent in Excel, maintenance in WhatsApp, tax in a folder. Every operator, from a one-flat landlord to a fund's asset team, re-stitches the same flow every month.",
   },
   {
     title: 'Cash-flow blind spots',
@@ -120,7 +121,7 @@ const PROBLEM_ITEMS_EN: ReadonlyArray<ListItem> = [
 const PROBLEM_ITEMS_SW: ReadonlyArray<ListItem> = [
   {
     title: 'Shughuli zilizotenganishwa',
-    desc: 'Mikataba kwenye Word, kodi kwenye Excel, matengenezo kwenye WhatsApp, ushuru kwenye folda. Kila mmiliki anaunganisha tena mtiririko ule ule kila mwezi.',
+    desc: 'Mikataba kwenye Word, kodi kwenye Excel, matengenezo kwenye WhatsApp, ushuru kwenye folda. Kila mwendeshaji, kuanzia mwenye nyumba wa kitengo kimoja hadi timu ya mali ya mfuko, anaunganisha tena mtiririko ule ule kila mwezi.',
   },
   {
     title: 'Maeneo yasiyoonekana ya mtiririko wa fedha',
@@ -183,7 +184,7 @@ const BANNER_COPY_EN = {
   gapHeadingFirst: 'Property management,',
   gapHeadingAccent: 'from sprawl to system.',
   gapSubOne:
-    'Most landlords run their estate the same way they did 30 years ago. The tools changed name; the workflow did not.',
+    'Most real-estate operators — from a single landlord to a national fund — run their estate the same way they did 30 years ago. The tools changed name; the workflow did not.',
   gapSubTwo:
     'BossNyumba is the operating system that finally puts the entire estate — every lease, every tenant, every shilling — under one brain.',
   problemTitle: 'The problem today',
@@ -199,7 +200,7 @@ const BANNER_COPY_SW = {
   gapHeadingFirst: 'Usimamizi wa mali,',
   gapHeadingAccent: 'kutoka sambamba hadi mfumo.',
   gapSubOne:
-    'Wamiliki wengi wa nyumba wanaendesha mali zao kwa njia ile ile waliyofanya miaka 30 iliyopita. Vifaa vilibadilisha jina; mtiririko wa kazi haukubadilika.',
+    'Waendeshaji wengi wa mali — kuanzia mwenye nyumba mmoja hadi mfuko wa kitaifa — wanaendesha mali zao kwa njia ile ile waliyofanya miaka 30 iliyopita. Vifaa vilibadilisha jina; mtiririko wa kazi haukubadilika.',
   gapSubTwo:
     'BossNyumba ni mfumo wa uendeshaji unaoweka hatimaye mali yote — kila mkataba, kila mpangaji, kila shilingi — chini ya ubongo mmoja.',
   problemTitle: 'Tatizo la leo',
@@ -285,9 +286,7 @@ export function HomePage({ locale }: HomePageProps) {
                       {i + 1}
                     </span>
                     <div>
-                      <span className="text-sm font-semibold text-foreground">
-                        {item.title}
-                      </span>
+                      <span className="text-sm font-semibold text-foreground">{item.title}</span>
                       <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                         {item.desc}
                       </p>
@@ -309,11 +308,12 @@ export function HomePage({ locale }: HomePageProps) {
               <div className="space-y-5">
                 {solutionItems.map((item) => (
                   <div key={item.title} className="flex items-start gap-3">
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" strokeWidth={1.75} />
+                    <CheckCircle2
+                      className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+                      strokeWidth={1.75}
+                    />
                     <div>
-                      <span className="text-sm font-semibold text-foreground">
-                        {item.title}
-                      </span>
+                      <span className="text-sm font-semibold text-foreground">{item.title}</span>
                       <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                         {item.desc}
                       </p>
@@ -325,6 +325,10 @@ export function HomePage({ locale }: HomePageProps) {
           </div>
         </div>
       </section>
+
+      {/* WHO WE SERVE — the full real-estate-business spectrum (eager: key
+          message + audience links should be in the SSR HTML for SEO) */}
+      <WhoWeServeSection locale={locale} />
 
       {/* BELOW-FOLD — code-split + LazyVisible-gated */}
       <Suspense fallback={<SectionSkeleton minHeight={520} cards={3} />}>

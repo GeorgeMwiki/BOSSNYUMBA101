@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { Users } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { AudiencePage } from '@/components/audience/AudiencePage';
-import { COPY } from '@/lib/audience-copy';
+import { getAudienceCopy } from '@/lib/audience-copy';
+import { getLocale } from '@/lib/locale';
 
 export const metadata: Metadata = {
   title: 'For SACCOs and cooperatives — BossNyumba',
@@ -10,10 +11,12 @@ export const metadata: Metadata = {
     'BossNyumba runs the property estate of SACCOs, cooperative societies, and member-investment groups. Member-transparent dues ledger, allocation lottery, registrar-ready AGM filings, and one-tap consolidated statements.',
 };
 
-export default function ForCooperativeSaccoPage() {
+export default async function ForCooperativeSaccoPage() {
+  const locale = await getLocale();
+  const copy = getAudienceCopy('cooperativeSacco', locale);
   return (
     <PageShell>
-      <AudiencePage copy={COPY.cooperativeSacco} kickerIcon={Users} />
+      <AudiencePage copy={copy} kickerIcon={Users} />
     </PageShell>
   );
 }

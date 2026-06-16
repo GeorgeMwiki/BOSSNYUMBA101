@@ -3286,7 +3286,16 @@
       "pickOwnerIntent": "Pick your owner intent",
       "installStarterSkills": "Install 3 starter Skills",
       "scheduleBriefing": "Schedule your first daily briefing",
-      "welcomeAboard": "Welcome aboard"
+      "welcomeAboard": "Welcome aboard",
+      "businessNameFallback": "Your portfolio",
+      "accountCreatedDesc": "Your tenant + owner account are live.",
+      "verifyEmailDesc": "Click the link we sent to confirm the address.",
+      "addFirstPropertyDesc": "Tell us the address, unit count, and rent estimate.",
+      "importTenantsDesc": "CSV upload or add one tenant manually.",
+      "chatFirstTimeDesc": "Meet Mr. Mwikila, your portfolio concierge.",
+      "pickOwnerIntentDesc": "Cashflow-first, growth, or exit-prep: pick one.",
+      "installStarterSkillsDesc": "Curated by Mr. Mwikila based on your intent.",
+      "scheduleBriefingDesc": "A 5-minute morning brief delivered however you like."
     },
     "plan": {
       "mdrTitle": "MDR plan"

@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { LineChart } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { AudiencePage } from '@/components/audience/AudiencePage';
-import { COPY } from '@/lib/audience-copy';
+import { getAudienceCopy } from '@/lib/audience-copy';
+import { getLocale } from '@/lib/locale';
 
 export const metadata: Metadata = {
   title: 'For REITs and property funds — BossNyumba',
@@ -10,10 +11,12 @@ export const metadata: Metadata = {
     'BossNyumba is the operating system Real Estate Investment Trusts and institutional property funds run their estate on. Per-asset P&L, hash-chained audit trails, portfolio analytics, compliance exports, and consolidated reporting.',
 };
 
-export default function ForReitPage() {
+export default async function ForReitPage() {
+  const locale = await getLocale();
+  const copy = getAudienceCopy('reit', locale);
   return (
     <PageShell>
-      <AudiencePage copy={COPY.reit} kickerIcon={LineChart} />
+      <AudiencePage copy={copy} kickerIcon={LineChart} />
     </PageShell>
   );
 }

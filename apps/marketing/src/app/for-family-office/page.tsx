@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { Crown } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { AudiencePage } from '@/components/audience/AudiencePage';
-import { COPY } from '@/lib/audience-copy';
+import { getAudienceCopy } from '@/lib/audience-copy';
+import { getLocale } from '@/lib/locale';
 
 export const metadata: Metadata = {
   title: 'For family offices — BossNyumba',
@@ -10,10 +11,12 @@ export const metadata: Metadata = {
     'One audit-ready, hash-chained ledger across every entity and currency, with owner statements and portfolio analytics. Built for the long-horizon owner.',
 };
 
-export default function ForFamilyOfficePage() {
+export default async function ForFamilyOfficePage() {
+  const locale = await getLocale();
+  const copy = getAudienceCopy('familyOffice', locale);
   return (
     <PageShell>
-      <AudiencePage copy={COPY.familyOffice} kickerIcon={Crown} />
+      <AudiencePage copy={copy} kickerIcon={Crown} />
     </PageShell>
   );
 }

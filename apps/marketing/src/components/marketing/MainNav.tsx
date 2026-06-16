@@ -4,25 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDown, Menu, X, ArrowRight, Home } from 'lucide-react';
+
 import {
-  Building2,
-  ChevronDown,
-  Menu,
-  X,
-  ArrowRight,
-  Home,
-  Users,
-  Briefcase,
-  Building,
-  Landmark,
-  ShieldCheck,
-  HeartHandshake,
-  UserCircle,
-  Globe,
-  GraduationCap,
-  LineChart,
-  Church,
-} from 'lucide-react';
+  buildAudienceCategories,
+  ALL_AUDIENCE_HREFS,
+  type AudienceCategory,
+} from '@/lib/audiences';
 
 import { Wordmark } from '@bossnyumba/design-system';
 import { type Locale } from '@/lib/i18n';
@@ -102,208 +90,17 @@ function getLabels(locale: Locale): NavLabels {
 }
 
 // ----------------------------------------------------------------------------
-// "Who We Serve" mega-menu — BossNyumba real-estate audiences only.
-// ----------------------------------------------------------------------------
-
-interface AudienceItem {
-  readonly label: string;
-  readonly desc: string;
-  readonly href: string;
-  readonly icon: typeof Home;
-}
-
-interface AudienceCategory {
-  readonly title: string;
-  readonly items: ReadonlyArray<AudienceItem>;
-}
-
-function buildAudienceCategories(
-  labels: NavLabels,
-  sw: boolean,
-): ReadonlyArray<AudienceCategory> {
-  return [
-    {
-      title: labels.categories.individuals,
-      items: [
-        {
-          label: sw ? 'Mwenye nyumba binafsi' : 'Individual landlord',
-          desc: sw
-            ? 'Vyumba viwili vitatu. Mshirika tulivu wa uendeshaji.'
-            : 'One or two properties. Calm operator co-pilot.',
-          href: '/for-individual-landlord',
-          icon: Home,
-        },
-        {
-          label: sw ? 'Mpangaji' : 'Tenant',
-          desc: sw
-            ? 'Mkataba, kodi, matengenezo — kwenye eneo moja.'
-            : 'Lease, rent, maintenance — all in one place.',
-          href: '/for-tenant',
-          icon: UserCircle,
-        },
-      ],
-    },
-    {
-      title: labels.categories.operators,
-      items: [
-        {
-          label: sw ? 'Mwenye mali ya mfululizo' : 'Portfolio landlord',
-          desc: sw
-            ? 'Mali nyingi pamoja na hazina.'
-            : 'Multi-property portfolios with treasury.',
-          href: '/for-portfolio-landlord',
-          icon: Building,
-        },
-        {
-          label: sw ? 'Wakala wa upangishaji' : 'Leasing agency',
-          desc: sw
-            ? 'Mtiririko wa udalali pamoja na hesabu za kamisheni.'
-            : 'Brokerage flows + commission accounting.',
-          href: '/for-leasing-agency',
-          icon: Briefcase,
-        },
-        {
-          label: sw ? 'Ushirika wa nyumba' : 'Housing cooperative',
-          desc: sw
-            ? 'Utawala wa wanachama pamoja na huduma shirikishi.'
-            : 'Member governance + shared facilities.',
-          href: '/for-housing-cooperative',
-          icon: Users,
-        },
-      ],
-    },
-    {
-      title: labels.categories.capital,
-      items: [
-        {
-          label: sw ? 'Mwekezaji wa mali' : 'Real-estate investor',
-          desc: sw
-            ? 'Cap-rate, mavuno, thamani, mfumo wa kutoka.'
-            : 'Cap-rate, yield, valuation, exit modelling.',
-          href: '/for-real-estate-investor',
-          icon: Building2,
-        },
-        {
-          label: sw ? 'Ofisi ya familia' : 'Family office',
-          desc: sw
-            ? 'Usimamizi wa mali wa vizazi.'
-            : 'Inter-generational estate stewardship.',
-          href: '/for-family-office',
-          icon: HeartHandshake,
-        },
-        {
-          label: sw ? 'Benki' : 'Bank',
-          desc: sw
-            ? 'Dawati la mikopo iliyotegemea mali.'
-            : 'Property-collateralised lending desk.',
-          href: '/for-bank',
-          icon: Landmark,
-        },
-      ],
-    },
-    {
-      title: labels.categories.public,
-      items: [
-        {
-          label: sw ? 'Mdhibiti' : 'Regulator',
-          desc: sw
-            ? 'Ishara ya utii ya NHC / BRELA / TRA.'
-            : 'NHC / BRELA / TRA compliance signal.',
-          href: '/for-regulator',
-          icon: ShieldCheck,
-        },
-        {
-          label: sw ? 'Makazi ya jamii' : 'Community housing',
-          desc: sw
-            ? 'Waendeshaji wa makazi ya bei nafuu na yasiyo ya faida.'
-            : 'Affordable + non-profit housing operators.',
-          href: '/for-community-housing',
-          icon: HeartHandshake,
-        },
-        {
-          label: sw ? 'Taasisi ya serikali' : 'Government entity',
-          desc: sw
-            ? 'Mashirika ya serikali na wizara zinazohudumia mali za umma.'
-            : 'Parastatals and ministries stewarding public property.',
-          href: '/for-government-entity',
-          icon: Landmark,
-        },
-      ],
-    },
-    {
-      title: labels.categories.enterprise,
-      items: [
-        {
-          label: sw ? 'Mali za makampuni' : 'Corporate portfolio',
-          desc: sw
-            ? 'Nyumba za wafanyakazi, ofisi za matawi, maghala kama mali moja.'
-            : 'Staff housing, branch offices, warehouses as one estate.',
-          href: '/for-corporate-portfolio',
-          icon: Building2,
-        },
-        {
-          label: sw ? 'REIT na mfuko wa mali' : 'REIT and property fund',
-          desc: sw
-            ? 'Leja iliyofungwa kwa heshi, uchambuzi wa portfolio, ripoti za utii.'
-            : 'Hash-chained ledger, portfolio analytics, compliance exports.',
-          href: '/for-reit',
-          icon: LineChart,
-        },
-        {
-          label: sw ? 'Chuo kikuu na hospitali' : 'University and hospital',
-          desc: sw
-            ? 'Ripoti za utii, uchambuzi wa portfolio, ukaguzi uliofungwa kwa heshi.'
-            : 'Compliance exports, portfolio analytics, hash-chained audit.',
-          href: '/for-institutional-landlord',
-          icon: GraduationCap,
-        },
-      ],
-    },
-    {
-      title: labels.categories.community,
-      items: [
-        {
-          label: sw ? 'Ubalozi na NGO' : 'Diplomatic mission and NGO',
-          desc: sw
-            ? 'Mali katika miji mingi, leja iliyo tayari kwa ukaguzi wa wafadhili.'
-            : 'Multi-capital estate, donor-audit-ready ledger.',
-          href: '/for-embassy-ngo',
-          icon: Globe,
-        },
-        {
-          label: sw ? 'Taasisi ya kidini' : 'Religious organisation',
-          desc: sw
-            ? 'Michango iliyo wazi kwa waumini pamoja na taarifa za wadhamini.'
-            : 'Congregation-transparent dues + trustee statements.',
-          href: '/for-religious-organization',
-          icon: Church,
-        },
-        {
-          label: sw ? 'SACCO na ushirika' : 'SACCO and cooperative',
-          desc: sw
-            ? 'Leja inayoonekana kwa wanachama na taarifa zilizotayari kwa msajili.'
-            : 'Member-visible ledger + registrar-ready filings.',
-          href: '/for-cooperative-sacco',
-          icon: Users,
-        },
-      ],
-    },
-  ];
-}
-
-const AUDIENCE_CATEGORIES_FOR_HREFS: ReadonlyArray<AudienceCategory> =
-  buildAudienceCategories(getLabels('en'), false);
-
-const ALL_AUDIENCE_HREFS = AUDIENCE_CATEGORIES_FOR_HREFS.flatMap((cat) =>
-  cat.items.map((item) => item.href),
-);
-
-// ----------------------------------------------------------------------------
 // Smart CTA per page — operator pages → "Request demo", everyone else
 // (home, tenants, marketing) → "Get started".
 // ----------------------------------------------------------------------------
 
-const TENANT_PAGES = new Set<string>(['/', '/for-individual-landlord', '/for-tenant', '/about', '/pricing']);
+const TENANT_PAGES = new Set<string>([
+  '/',
+  '/for-individual-landlord',
+  '/for-tenant',
+  '/about',
+  '/pricing',
+]);
 const OPERATOR_PAGES = new Set<string>([
   '/for-portfolio-landlord',
   '/for-leasing-agency',
@@ -349,7 +146,7 @@ export function MainNav({ locale }: MainNavProps) {
   const pathname = usePathname();
   const labels = getLabels(locale);
   const sw = locale === 'sw';
-  const AUDIENCE_CATEGORIES = buildAudienceCategories(labels, sw);
+  const AUDIENCE_CATEGORIES = buildAudienceCategories(labels.categories, sw);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [audienceDropdownOpen, setAudienceDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -384,7 +181,7 @@ export function MainNav({ locale }: MainNavProps) {
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
         scrolled
           ? 'bg-background/92 backdrop-blur-2xl shadow-[0_18px_50px_rgb(15_23_42_/_0.08)] border-b border-border/60'
-          : 'bg-background/72 backdrop-blur-xl border-b border-border/40',
+          : 'bg-background/72 backdrop-blur-xl border-b border-border/40'
       )}
     >
       <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-2 px-4 sm:px-6">
@@ -406,14 +203,14 @@ export function MainNav({ locale }: MainNavProps) {
                 'flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors',
                 isOnAudiencePage
                   ? 'text-foreground bg-muted/50'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               )}
             >
               {labels.whoWeServe}
               <ChevronDown
                 className={cn(
                   'h-3.5 w-3.5 transition-transform',
-                  audienceDropdownOpen && 'rotate-180',
+                  audienceDropdownOpen && 'rotate-180'
                 )}
               />
             </button>
