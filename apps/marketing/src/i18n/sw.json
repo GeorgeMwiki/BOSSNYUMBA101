@@ -568,56 +568,56 @@
   },
   "home": {
     "frontierBanner": {
-      "kicker": "Toleo la Frontier",
-      "title": "Miundombinu ya Portfolio ya Mali, imeandikwa upya kwa mwendeshaji.",
-      "titleAccent": "Sio dashibodi.",
-      "sub": "BossNyumba inaleta mfumo wa uendeshaji unaobadilisha portfolio ya mali ya Tanzania kuwa Portfolio ya Mali yote tulivu, iliyokaguliwa, inayoongozwa na AI, ikifunika subsidiaries, holdings, family office, urithi, daftari la mali na kila biashara ya ziada; kwa lugha mbili tangu siku ya kwanza."
+      "kicker": "Toleo la mpaka",
+      "title": "Mfumo wa uendeshaji wa mali ndio mpaka.",
+      "titleAccent": "BossNyumba ndio mfumo wa uendeshaji.",
+      "sub": "Imejengwa kwa soko ambapo mtiririko wa kazi wenyewe haujadijitishwa bado. Sio CRM. Sio lahajedwali. Ni ubongo unaoendesha mali."
     },
     "problemSolution": {
-      "kicker": "Kwa nini mfumo wa Portfolio ya Mali",
-      "title": "Portfolio za mali zinaendeshwa ukingoni.",
-      "titleAccent": "BossNyumba inafunga pengo hilo mwanzo hadi mwisho.",
-      "subOne": "Portfolio za mali Tanzania bado zinaendeshwa kwa Excel, WhatsApp na mafaili ya kibinadamu ya utii, kwenye mkataba, kitabu cha kodi, wafanyakazi wa matengenezo, hazina, soko, subsidiaries, family office na kila biashara ya ziada. Fursa ni ya kiwango cha dunia. Miundombinu inayoizunguka sio.",
-      "subTwo": "BossNyumba ni mfumo wa uendeshaji wa Portfolio ya Mali wa AI ambao sekta imekuwa ikisubiri.",
+      "kicker": "Pengo tunalofunga",
+      "title": "Usimamizi wa mali,",
+      "titleAccent": "kutoka sambamba hadi mfumo.",
+      "subOne": "Waendeshaji wengi wa mali — kuanzia mwenye nyumba mmoja hadi mfuko wa kitaifa — wanaendesha mali zao kwa njia ile ile waliyofanya miaka 30 iliyopita. Vifaa vilibadilisha jina; mtiririko wa kazi haukubadilika.",
+      "subTwo": "BossNyumba ni mfumo wa uendeshaji unaoweka hatimaye mali yote — kila mkataba, kila mpangaji, kila shilingi — chini ya ubongo mmoja.",
       "problem": {
-        "title": "Mali ukingoni",
+        "title": "Tatizo la leo",
         "items": [
           {
-            "title": "Rent inawasilishwa kwa mkono",
-            "desc": "Wamiliki wanawasilisha returns za Regulator kwa Excel na kukosa dirisha la siku 47 la kuongeza muda kwa asilimia 18 ya wakati. Kila dirisha kukosekana huleta ada ya kuwasilisha tena na kuathiri uhusiano na mamlaka."
+            "title": "Shughuli zilizotenganishwa",
+            "desc": "Mikataba kwenye Word, kodi kwenye Excel, matengenezo kwenye WhatsApp, ushuru kwenye folda. Kila mwendeshaji, kuanzia mwenye nyumba wa kitengo kimoja hadi timu ya mali ya mfuko, anaunganisha tena mtiririko ule ule kila mwezi."
           },
           {
-            "title": "Dirisha la FX linabadilika 2.4% kwa siku",
-            "desc": "Wamiliki wa mali wadogo wanafunga hedge ya kodi ya fedha za kigeni kwa ujumbe wa WhatsApp kwenda madalali Dubai. Wanapoteza 4-6% ya faida kwa spread, muda, na utofauti wa habari kwa kila malipo."
+            "title": "Maeneo yasiyoonekana ya mtiririko wa fedha",
+            "desc": "Unaona tu kilicholipwa baada ya tukio. Hakuna onyo la mapema kwamba Kitengo 5 kinakaribia kushindwa kulipa."
           },
           {
-            "title": "Utii imegawanyika",
-            "desc": "Regulator, NHC, Benki Kuu ya Tanzania, na TRA wanataka vitu tofauti kwa nyakati tofauti. Mmiliki anakuwa afisa wa utii wa muda badala ya mwendeshaji wa mali."
+            "title": "Mzigo wa utii",
+            "desc": "NHC, BRELA na TRA wote wanahitaji data ile ile katika maumbo tofauti. Wamiliki wanalipia wahasibu kukusanya kile ambacho kingepaswa kuwepo tayari."
           },
           {
-            "title": "Mtazamo wa wafanyakazi wa matengenezo unaishia getini",
-            "desc": "Wamiliki hawawezi kuona aliyeingia ofisini, huduma gani zimetumika, au matukio gani yametokea Jumatano ya zamu B. Upotevu wa malipo na kasoro za usalama vinarundikana wiki kwa wiki."
+            "title": "Wapangaji wasioonekana",
+            "desc": "Wapangaji wengi ni wazuri. Wachache si. Bila historia, kila uchunguzi unaanza kutoka sifuri. Wapangaji wabaya wanagharimu mfumo."
           }
         ]
       },
       "solution": {
-        "title": "BossNyumba inafanya kazi hiyo",
+        "title": "BossNyumba inafanya nini",
         "items": [
           {
-            "title": "Rent kwa muundo wa Regulator",
-            "desc": "Mwl. Mwikila anaandaa rent yako ya kila mwezi kwa muundo rasmi wa Regulator siku inayofuata dirisha la malipo kufungwa. Saini moja, kutajwa kwa mistari yote."
+            "title": "Ubongo mmoja wa mali unaoendesha",
+            "desc": "Mkataba, kodi, matengenezo, hazina, utii, milki na daftari la mali — mfumo mmoja, chanzo kimoja cha ukweli. Mwl. Mwikila daima anaona picha kamili."
           },
           {
-            "title": "Mfichuo wa FX unaoalamishwa kwa dirisha la BoT",
-            "desc": "Mwl. Mwikila anafuatilia mfichuo wa kodi yako ya USD/TZS na kuanika madirisha ya muda wa malipo dhidi ya kiwango cha BoT — noti ya ushauri inayotajwa kwa BoT fix, iliyoandaliwa kwa mapitio yako. Hafanyi biashara ya kununua/kuuza."
+            "title": "Kila malipo, kila ahadi, vimekaguliwa",
+            "desc": "Leja ya hash-chain. Inaweza kurudishwa tu kwa ingizo la kupinga. Upatanisho wa kiwango cha benki. Wadhibiti wanaweza kuthibitisha mstari wowote bila wewe kuhusika."
           },
           {
-            "title": "Utii pack kwa kila ratiba",
-            "desc": "BossNyumba inawasilisha Regulator, NHC, BoT, na TRA kwa ratiba ya kila mamlaka. Imekaguliwa na hash-chain ili mamlaka iweze kuthibitisha bila ya kutuamini."
+            "title": "AI inayoomba idhini ipasavyo",
+            "desc": "Mwl. Mwikila ni mshirika tulivu — anaandaa kurefusha, taarifa ya kuondoa, kuwasilisha BRELA, na kusubiri wewe kusaini. Hatendi kamwe kwa mamlaka yake mwenyewe."
           },
           {
-            "title": "Wafanyakazi console kwenye simu ya msimamizi",
-            "desc": "Endesha zamu, mahudhurio, kumbukumbu za huduma na matukio kutoka mfukoni mwa msimamizi. Biometric clock-in kwenye lango la jengo inaongeza tija ya zamu kwa 18% kwa mali za pilot."
+            "title": "Imejengwa kwa Tanzania kwanza",
+            "desc": "M-Pesa, Airtel Money, Kiswahili-kwanza. Kisha Kenya, Uganda, Afrika Mashariki yote. Mfumo ule ule wa uendeshaji, unaotambua sheria za nchi."
           }
         ]
       }

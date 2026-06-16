@@ -569,55 +569,55 @@
   "home": {
     "frontierBanner": {
       "kicker": "Frontier release",
-      "title": "Property Portfolio infrastructure, rewritten for the operator.",
-      "titleAccent": "Not the dashboard.",
-      "sub": "BossNyumba ships the operating system that turns a Tanzanian property portfolio into an entire calm, audited, AI-managed Property Portfolio, covering subsidiaries, holdings, family office, succession, asset register and every ancillary business; bilingual on day one."
+      "title": "Property OS is the frontier.",
+      "titleAccent": "BossNyumba is the operating system.",
+      "sub": "Built for a market where the workflows themselves have not been digitised yet. Not a CRM. Not a spreadsheet. A brain that runs the estate."
     },
     "problemSolution": {
-      "kicker": "Why a Property Portfolio OS",
-      "title": "Real estate estates run on the margin.",
-      "titleAccent": "BossNyumba closes that gap end-to-end.",
-      "subOne": "Tanzanian property portfolios still run on Excel, WhatsApp and physical compliance binders across the lease, the rent book, the maintenance staff, the treasury, the marketplace, the subsidiaries, the family office and every ancillary business. The opportunity is world-class. The infrastructure around it is not.",
-      "subTwo": "BossNyumba is the AI-native Property Portfolio operating system the sector has been waiting for.",
+      "kicker": "The gap we are closing",
+      "title": "Property management,",
+      "titleAccent": "from sprawl to system.",
+      "subOne": "Most real-estate operators — from a single landlord to a national fund — run their estate the same way they did 30 years ago. The tools changed name; the workflow did not.",
+      "subTwo": "BossNyumba is the operating system that finally puts the entire estate — every lease, every tenant, every shilling — under one brain.",
       "problem": {
-        "title": "Real estate at the margin",
+        "title": "The problem today",
         "items": [
           {
-            "title": "Rent filings are manual",
-            "desc": "Owners file Regulator returns in Excel and miss the 47-day renewal window 18% of the time. Every missed window costs a re-filing fee and burns goodwill with the regulator."
+            "title": "Disconnected operations",
+            "desc": "Leases in Word, rent in Excel, maintenance in WhatsApp, tax in a folder. Every operator, from a one-flat landlord to a fund's asset team, re-stitches the same flow every month."
           },
           {
-            "title": "The FX window swings 2.4% a day",
-            "desc": "Small landlords hedge foreign-currency rent with WhatsApp messages to brokers in Dubai. They lose 4-6% of margin to spread, timing, and information asymmetry on every settlement."
+            "title": "Cash-flow blind spots",
+            "desc": "You only see what was paid after the fact. There is no early-warning that Unit 5 is about to default."
           },
           {
-            "title": "Compliance is fragmented",
-            "desc": "Regulator, NHC, Bank of Tanzania, and TRA all want different artifacts on different cadences. The owner becomes a part-time compliance officer instead of a property operator."
+            "title": "Compliance overhead",
+            "desc": "NHC, BRELA, TRA each ask for the same data in different shapes. Owners pay accountants to assemble what should already be there."
           },
           {
-            "title": "Maintenance visibility ends at the building gate",
-            "desc": "Owners can't see who clocked in, what utilities were consumed, or what incidents happened on Wednesday's B-shift. Payroll leakage and safety blindspots compound week-over-week."
+            "title": "Tenant invisibility",
+            "desc": "Most tenants are good. A few are not. Without history, every screening starts from zero. Bad tenants cost the system."
           }
         ]
       },
       "solution": {
-        "title": "BossNyumba does the work",
+        "title": "What BossNyumba does",
         "items": [
           {
-            "title": "Rent drafts in Regulator format",
-            "desc": "Mr. Mwikila drafts your monthly management fee in the official Regulator format the day after each month-end window closes. One-tap signature, cited line-by-line."
+            "title": "One running estate brain",
+            "desc": "Lease, rent, maintenance, treasury, compliance, holdings, asset register — one system, one source of truth. Mr. Mwikila is always aware of the full picture."
           },
           {
-            "title": "FX exposure flagged at the BoT window",
-            "desc": "Mr. Mwikila tracks your USD/TZS rent exposure and flags settlement-timing windows against the BoT rate — an advisory note cited to the BoT fix, drafted for your review. He does not place trades."
+            "title": "Every payment, every promise, audited",
+            "desc": "Hash-chained ledger. Reversible only by counter-entry. Bank-grade reconciliation. Regulators can verify any line without you in the loop."
           },
           {
-            "title": "Compliance pack on every cadence",
-            "desc": "BossNyumba files Regulator, NHC, BoT, and TRA on each authority's own cadence. Hash-chain audited so the regulator can verify offline without trusting us."
+            "title": "AI that asks permission correctly",
+            "desc": "Mr. Mwikila is a calm partner — he drafts the renewal, the eviction notice, the BRELA filing, and waits for you to sign. He never acts on his own authority."
           },
           {
-            "title": "Maintenance console on the supervisor's phone",
-            "desc": "Run shifts, attendance, service logs, and incidents from the supervisor's pocket. Biometric clock-in at the building entrance lifts shift productivity by 18% on pilot properties."
+            "title": "Built for Tanzania first",
+            "desc": "M-Pesa, Airtel Money, Swahili-first. Then Kenya, Uganda, the rest of East Africa. Same operating system, jurisdiction-aware."
           }
         ]
       }
