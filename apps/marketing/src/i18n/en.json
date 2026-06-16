@@ -176,36 +176,35 @@
     "microcopy": "Start your estate setup today. Already have an account? Log in."
   },
   "capabilities": {
-    "kicker": "01 · Core capabilities",
-    "heading": "Six systems that run your estate — not a chatbot.",
-    "sub": "Each capability ties into your property's knowledge graph and writes to an immutable audit chain.",
-    "learnMore": "Learn more",
-    "cards": {
-      "licence": {
-        "title": "Licence calendar",
-        "blurb": "Individual, portfolio, and institutional registrations on one calendar. 90-, 60-, 30-day expiry warnings. Aware of Regulator renewal workflow."
+    "kicker": "Six systems that run your estate — not a chatbot",
+    "heading": "An AI-native estate operating system.",
+    "sub": "Not a chat bolted onto a spreadsheet. Six interlocking systems, every one shipping in production. Built for Tanzanian real-estate first, generalised second.",
+    "cards": [
+      {
+        "name": "3-provider AI orchestration",
+        "description": "Claude, OpenAI, DeepSeek routed by task. Opus for deep reasoning on lease disputes, Haiku for fast triage, GPT-4 for structured extraction from PDFs."
       },
-      "brief": {
-        "title": "Daily brief",
-        "blurb": "Every morning at 06:00 the Master Brain shows overnight actions, decisions that need you, and rent-collection treasury position."
+      {
+        "name": "Live estate knowledge graph",
+        "description": "Every property, lease, tenant, payment, ticket as nodes with temporal edges. Ask in natural language; get cited answers grounded in your real data."
       },
-      "drillhole": {
-        "title": "Maintenance logger",
-        "blurb": "Field logger for maintenance jobs and quality-control. Issues photographed, verified, linked to a unit segment, written to the chain."
+      {
+        "name": "Cash-flow forecasting",
+        "description": "Per-unit, per-month rent forecast. Default-risk early signal. Maintenance budget projection with explainable driver subgraphs."
       },
-      "treasury": {
-        "title": "Multi-currency treasury",
-        "blurb": "TZS · USD rent receipts booked to a balanced double-entry ledger. Live treasury position and scheduled owner disbursements, every amount rendered in its own currency."
+      {
+        "name": "Enterprise-grade security",
+        "description": "RLS on every tenant-scoped table, AES-256-GCM field encryption, hash-chained audit. PDPA + GDPR ready. SOC 2 Type II on the roadmap."
       },
-      "marketplace": {
-        "title": "Marketplace",
-        "blurb": "Independent landlords, registered agencies, licensed maintenance contractors. KYC for every participant. One-click tenancy agreements."
+      {
+        "name": "Voice on every phone",
+        "description": "Swahili and English STT/TTS, OpenAI Realtime for calls. Works on feature phones via staged call + USSD. Mr. Mwikila speaks like a Tanzanian."
       },
-      "compliance": {
-        "title": "Compliance pack",
-        "blurb": "NHC compliance, management-fee returns, safety logs, audit chain. Ready for submission to Regulator and TRA."
+      {
+        "name": "Native payment rails",
+        "description": "M-Pesa, Airtel Money, Tigo Pesa, Stripe, NHC, BRELA, TRA connectors via MCP. Circuit-breaker + retry + idempotency on every webhook."
       }
-    }
+    ]
   },
   "how": {
     "kicker": "02 · How it works",

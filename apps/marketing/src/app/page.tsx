@@ -21,7 +21,7 @@ export default async function MarketingPage() {
     <>
       <IgnitionHero locale={locale} />
       <BrainClaimsBanner locale={locale} />
-      <CapabilitiesSection audience="platform" locale={locale} />
+      <CapabilitiesSection locale={locale} />
       <HomePage locale={locale} />
     </>
   );

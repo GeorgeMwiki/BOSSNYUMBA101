@@ -176,36 +176,35 @@
     "microcopy": "Anza kuandaa mali yako leo. Una akaunti tayari? Ingia."
   },
   "capabilities": {
-    "kicker": "01 · Uwezo wa msingi",
-    "heading": "Mifumo sita inayoendesha mali yako — si chatbot.",
-    "sub": "Kila uwezo umeunganishwa na grafu ya maarifa ya mali yako na chain ya audit isiyobadilika.",
-    "learnMore": "Soma zaidi",
-    "cards": {
-      "licence": {
-        "title": "Kalenda ya Mikataba",
-        "blurb": "Individual Landlord, Portfolio Landlord, na Institutional zote kwenye kalenda moja. Onyo la siku 90, 60, 30 kabla ya kuisha. Inafahamiana na utaratibu wa Regulator."
+    "kicker": "Mifumo sita inayoendesha mali yako — si gumzo",
+    "heading": "Mfumo wa uendeshaji wa mali wenye AI ya asili.",
+    "sub": "Sio gumzo lililobandikwa kwenye karatasi ya kuhesabu. Mifumo sita iliyofungamana, kila moja ipo katika uzalishaji. Iliyojengwa kwa mali ya Tanzania kwanza, baadaye iliyojumuishwa kote.",
+    "cards": [
+      {
+        "name": "Mratibu wa AI wa watoa-huduma watatu",
+        "description": "Claude, OpenAI na DeepSeek wakichaguliwa kwa kazi. Opus kwa hoja za kina za mizozo ya mikataba, Haiku kwa uainishaji wa haraka, GPT-4 kwa uchimbaji wa data kutoka PDF."
       },
-      "brief": {
-        "title": "Briefing ya Asubuhi",
-        "blurb": "Saa 06:00 kila siku Master Brain anaonyesha shughuli za usiku, maamuzi yanayohitajika, na hali ya hazina ya FX-window."
+      {
+        "name": "Grafu hai ya maarifa ya mali",
+        "description": "Kila mali, mkataba, mpangaji, malipo na tiketi kama nodi zilizo na nyuzi za muda. Uliza kwa lugha ya kawaida; pata majibu yaliyotajwa yaliyojengwa kwa data yako halisi."
       },
-      "drillhole": {
-        "title": "Daftari la Matengenezo",
-        "blurb": "Logger ya tiketi za matengenezo na ukaguzi-hali. Tiketi zimepigwa picha, kukaguliwa, kuhusishwa na unit ya mali, kwenye chain."
+      {
+        "name": "Utabiri wa mtiririko wa fedha",
+        "description": "Utabiri wa kodi kwa kila kitengo, kwa kila mwezi. Ishara ya mapema ya hatari ya kutolipa. Mfumo wa bajeti ya matengenezo wenye nyuzi zinazoeleweka."
       },
-      "treasury": {
-        "title": "Hazina ya Sarafu Nyingi",
-        "blurb": "Risiti za kodi za TZS · USD zinaandikwa kwenye leja iliyosawazishwa ya double-entry. Hali ya hazina hai na malipo ya mmiliki kwa ratiba, kila kiasi kikionyeshwa kwa sarafu yake."
+      {
+        "name": "Usalama wa kiwango cha biashara",
+        "description": "RLS kwenye kila jedwali la mteja, AES-256-GCM ya kuficha sehemu, ukaguzi wa hash-chain. PDPA na GDPR tayari. SOC 2 Type II kwenye ramani."
       },
-      "marketplace": {
-        "title": "Soko",
-        "blurb": "Wamiliki wa mali wadogo, mawakala waliosajiliwa, mafundi wa matengenezo wenye leseni. KYC kwa kila mshiriki. Mkataba wa upangaji kwa mbofyo mmoja."
+      {
+        "name": "Sauti kwenye kila simu",
+        "description": "STT/TTS ya Kiswahili na Kiingereza, OpenAI Realtime kwa simu. Inafanya kazi kwenye simu za kawaida kupitia simu iliyopangwa pamoja na USSD. Mwl. Mwikila huzungumza kama Mtanzania."
       },
-      "compliance": {
-        "title": "Mfuko wa Utii",
-        "blurb": "NHC compliance, rent returns, OSHA logs, audit chain. Tayari kuwasilisha kwa Regulator na Mamlaka ya Mapato."
+      {
+        "name": "Njia za malipo za asili",
+        "description": "M-Pesa, Airtel Money, Tigo Pesa, Stripe, NHC, BRELA na TRA kupitia MCP. Circuit-breaker, kujaribu tena na idempotency kwenye kila webhook."
       }
-    }
+    ]
   },
   "how": {
     "kicker": "02 · Inavyofanya kazi",
