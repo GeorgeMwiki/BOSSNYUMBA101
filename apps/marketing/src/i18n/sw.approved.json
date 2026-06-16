@@ -17,7 +17,6 @@
     "company": "Kampuni",
     "blog": "Blogi",
     "careers": "Kazi",
-    "support": "Msaada",
     "requestPilot": "Anza sasa",
     "categories": {
       "operators": "Waendeshaji wa mali",
@@ -42,7 +41,8 @@
       "investorsDesc": "Mtaji wa mali ukiwa na taarifa za kila siku.",
       "regulators": "Wadhibiti na wizara",
       "regulatorsDesc": "Regulator, NHC, BoT, TRA usimamizi."
-    }
+    },
+    "support": "Msaada"
   },
   "audienceSwitcher": {
     "kicker": "Chagua mtazamo wako",
@@ -181,10 +181,6 @@
     "sub": "Kila uwezo umeunganishwa na grafu ya maarifa ya mali yako na chain ya audit isiyobadilika.",
     "learnMore": "Soma zaidi",
     "cards": {
-      "licence": {
-        "title": "Kalenda ya Mikataba",
-        "blurb": "Individual Landlord, Portfolio Landlord, na Institutional zote kwenye kalenda moja. Onyo la siku 90, 60, 30 kabla ya kuisha. Inafahamiana na utaratibu wa Regulator."
-      },
       "brief": {
         "title": "Briefing ya Asubuhi",
         "blurb": "Saa 06:00 kila siku Master Brain anaonyesha shughuli za usiku, maamuzi yanayohitajika, na hali ya hazina ya FX-window."
@@ -192,6 +188,10 @@
       "drillhole": {
         "title": "Daftari la Matengenezo",
         "blurb": "Logger ya tiketi za matengenezo na ukaguzi-hali. Tiketi zimepigwa picha, kukaguliwa, kuhusishwa na unit ya mali, kwenye chain."
+      },
+      "licence": {
+        "title": "Kalenda ya Mikataba",
+        "blurb": "Individual Landlord, Portfolio Landlord, na Institutional zote kwenye kalenda moja. Onyo la siku 90, 60, 30 kabla ya kuisha. Inafahamiana na utaratibu wa Regulator."
       },
       "treasury": {
         "title": "Hazina ya Sarafu Nyingi",
