@@ -152,10 +152,16 @@ export function LitFinChatPanel({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<unknown>(null);
+  const prevStreamingRef = useRef(false);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const wasStreaming = prevStreamingRef.current;
+    prevStreamingRef.current = isStreaming;
+    // Stream INSTANTLY (no per-frame smooth-scroll yank — the §5.1 streaming
+    // bug); settle smoothly only once the reply completes.
+    const behavior: ScrollBehavior = isStreaming || wasStreaming ? 'auto' : 'smooth';
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  }, [messages, isStreaming]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -407,7 +413,7 @@ export function LitFinChatPanel({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.95 }}
       transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-      className="fixed bottom-4 right-4 z-50 flex h-[min(78vh,720px)] w-[min(92vw,380px)] flex-col overflow-hidden rounded-[28px] border border-border/50 bg-background/92 shadow-[0_28px_80px_rgb(15_23_42_/_0.22)] ring-1 ring-border/20 backdrop-blur-2xl md:bottom-6 md:right-6"
+      className="fixed bottom-4 right-4 z-50 flex h-[min(80vh,760px)] w-[min(94vw,500px)] flex-col overflow-hidden rounded-[28px] border border-border/50 bg-background/92 shadow-[0_28px_80px_rgb(15_23_42_/_0.22)] ring-1 ring-border/20 backdrop-blur-2xl md:bottom-6 md:right-6"
     >
       <div
         className={`relative flex items-center justify-between overflow-hidden border-b border-white/10 px-4 py-3 text-primary-foreground ${CHAT_HEADER_GRADIENT}`}
