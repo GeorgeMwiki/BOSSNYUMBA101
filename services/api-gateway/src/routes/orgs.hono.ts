@@ -130,7 +130,18 @@ export function createOrgsRouter(deps: OrgsRouterDeps): Hono {
     // Shape validation errors to the FORM contract: a flat `issues` array
     // of `{ path, message }` plus a top-level `error` code + `message`.
     if (!result.success) {
-      const issues = result.error.issues.map((i) => ({
+      // @hono/zod-validator intersects the discriminated result with an extra
+      // shape, which defeats `success` narrowing; on the failure branch `error`
+      // is always a ZodError, so read its issues via the failure shape.
+      const { error } = result as {
+        readonly error: {
+          readonly issues: ReadonlyArray<{
+            readonly path: ReadonlyArray<string | number>;
+            readonly message: string;
+          }>;
+        };
+      };
+      const issues = error.issues.map((i) => ({
         path: String(i.path[0] ?? 'form'),
         message: i.message,
       }));
