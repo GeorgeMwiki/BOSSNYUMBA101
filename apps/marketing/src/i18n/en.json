@@ -85,15 +85,15 @@
       "turns": [
         {
           "role": "ai",
-          "body": "Hi, I'm Mr. Mwikila — the brain layer within BossNyumba, an AI-native real estate operating system. What brings you here today?"
+          "body": "Hi. I'm Mr. Mwikila, your AI Estate-Management Partner. What brings you here today?"
         },
         {
           "role": "user",
-          "body": "I manage 25 units in Mikocheni."
+          "body": "I run 14 units in Mikocheni, Dar es Salaam. Rent collection is messy."
         },
         {
           "role": "ai",
-          "body": "Eight units, three hours every month on lease paperwork. That's the National Housing Corporation format eating your week. BossNyumba drafts it in two minutes, cites every line, and you sign once. Want to see how a real Wednesday at 06:00 looks?"
+          "body": "Got it. BossNyumba can put your 14 units on one rent-roll, auto-reconcile M-Pesa payments, and send Swahili reminders three days before each due date. Want to see how your March collection would have looked?"
         }
       ]
     },
@@ -102,7 +102,14 @@
       "bilingual": "Bilingual",
       "baseCurrency": "Base currency",
       "masterBrain": "Master Brain"
-    }
+    },
+    "seeItMove": "See it move",
+    "assurances": [
+      "Enterprise-grade security",
+      "Swahili + English, native",
+      "Works offline, by voice, over USSD",
+      "Every audience, first-class"
+    ]
   },
   "brainBanner": {
     "kicker": "BossNyumba claims · evidence-backed",

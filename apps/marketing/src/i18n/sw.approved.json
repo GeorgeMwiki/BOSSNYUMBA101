@@ -85,15 +85,15 @@
       "turns": [
         {
           "role": "ai",
-          "body": "Habari, mimi ni Mr. Mwikila — safu ya akili ndani ya BossNyumba, mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Umekuja kwa nini leo?"
+          "body": "Habari. Mimi ni Mwl. Mwikila, Mshirika wako wa AI wa Usimamizi wa Mali. Umekuja kwa nini leo?"
         },
         {
           "role": "user",
-          "body": "Nasimamia vyumba 25 Mikocheni."
+          "body": "Ninaendesha vyumba 14 Mikocheni, Dar es Salaam. Ukusanyaji wa kodi una matatizo."
         },
         {
           "role": "ai",
-          "body": "Vyumba nane, saa tatu kila mwezi kwenye karatasi za kodi. Ndio muundo wa National Housing Corporation unaokula wiki yako. BossNyumba anaandaa kwa dakika mbili, anataja kila mstari, na unasaini mara moja. Ungependa kuona jinsi Jumatano halisi saa 06:00 inavyoonekana?"
+          "body": "Nimekuelewa. BossNyumba inaweza kuweka vyumba vyako 14 kwenye orodha moja ya kodi, kuoanisha malipo ya M-Pesa kiotomatiki, na kutuma vikumbusho kwa Kiswahili siku tatu kabla ya tarehe ya mwisho. Ungependa kuona jinsi makusanyo yako ya Machi yangeonekana?"
         }
       ]
     },
@@ -102,7 +102,14 @@
       "bilingual": "Lugha mbili",
       "baseCurrency": "Sarafu ya msingi",
       "masterBrain": "Master Brain"
-    }
+    },
+    "seeItMove": "Onyesha jinsi inavyofanya kazi",
+    "assurances": [
+      "Usalama wa kiwango cha biashara",
+      "Kiswahili na Kiingereza, asili",
+      "Inafanya kazi nje ya mtandao, kwa sauti, kupitia USSD",
+      "Kila hadhira, daraja la kwanza"
+    ]
   },
   "brainBanner": {
     "kicker": "Madai ya BossNyumba · yamethibitishwa",
