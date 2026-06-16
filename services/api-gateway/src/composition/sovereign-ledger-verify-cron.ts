@@ -37,6 +37,25 @@
 import { sql } from 'drizzle-orm';
 import { createSovereignActionLedgerService } from '@bossnyumba/database';
 
+// Local mirror of @bossnyumba/database's SovereignLedgerVerifyResult. The
+// withWorkerTenantContext<T> wrap + the `pinned as never` cast (needed to satisfy
+// createSovereignActionLedgerService's db arg) collapse the inferred return to
+// `unknown`; cast the awaited result back to the known verify shape so the
+// ok/count/brokenAt/reason/expected/actual reads type-check. Kept local to avoid
+// the dep's barrel type-import resolving through a stale dist.
+type LedgerVerifyResult = {
+  readonly ok: boolean;
+  readonly count: number;
+  // Present only on the tamper (ok:false) branch; flat-optional so the reads
+  // type-check without relying on discriminant narrowing (an `await` inside the
+  // ok-branch defeats CFA narrowing in the else). The runtime only reads these
+  // after checking `!result.ok`, matching the service's actual union.
+  readonly brokenAt?: string;
+  readonly expected?: string;
+  readonly actual?: string;
+  readonly reason?: string;
+};
+
 import { withWorkerTenantContext } from '../workers/with-tenant-context.js';
 
 const DEFAULT_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
@@ -226,7 +245,7 @@ export function createSovereignLedgerVerifyCronSupervisor(
           // returns ZERO rows under the non-BYPASS prod role and the
           // verify falsely PASSES (`ok:true,count:0`) — the documented
           // tamper-evidence control would be silently dark.
-          const result = await withWorkerTenantContext(db, tenantId, (pinned) =>
+          const result = (await withWorkerTenantContext(db, tenantId, (pinned) =>
             // Build the verifier on the pinned (reserved) connection so the
             // forward-walk read runs on the same connection the SET LOCAL bound
             // — otherwise the FORCE-RLS chain read can land on a pooled
@@ -234,7 +253,7 @@ export function createSovereignLedgerVerifyCronSupervisor(
             createSovereignActionLedgerService(pinned as never).verifyLedgerChain(
               tenantId,
             ),
-          );
+          )) as LedgerVerifyResult;
           if (result.ok) {
             okCount += 1;
             verdicts.push({ tenantId, ok: true, count: result.count });
