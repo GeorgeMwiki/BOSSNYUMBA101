@@ -302,12 +302,28 @@ jobs:
           - dockerfile: docker/Dockerfile.api
             context: .
             image: api-gateway
+            target: ''
+          # owner-portal is a Vite SPA → the `vite` (nginx-static) stage, NOT
+          # the Next.js standalone stage. Dockerfile.web's default (last) stage
+          # is `nextjs`, so without an explicit target this built the Next path
+          # against a Vite app and failed on a missing `.next/standalone`.
+          # Mirrors docker-compose.e2e.yml's per-app `target:` selection.
           - dockerfile: docker/Dockerfile.web
             context: .
             image: web-apps
+            target: vite
             build-args: |
               APP_NAME=owner-portal
               APP_PATH=apps/owner-portal
+          # admin-platform-portal is Next.js (output: 'standalone') → validate
+          # the nextjs stage too, so both Dockerfile.web paths stay green.
+          - dockerfile: docker/Dockerfile.web
+            context: .
+            image: web-admin-nextjs
+            target: nextjs
+            build-args: |
+              APP_NAME=admin-platform-portal
+              APP_PATH=apps/admin-platform-portal
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -320,6 +336,7 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
           push: false
           tags: bossnyumba/${{ matrix.image }}:pr-${{ github.event.pull_request.number }}
           build-args: ${{ matrix.build-args }}
