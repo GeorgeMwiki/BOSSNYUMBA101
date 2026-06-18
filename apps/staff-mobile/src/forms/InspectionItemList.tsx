@@ -1,68 +1,81 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Field } from './Field'
 import { Button } from './Button'
+import { Dropdown } from './Dropdown'
 import { colors } from '../theme/colors'
 import { fontSize, radius, spacing } from '../theme/spacing'
-import type { InspectionItem } from './schemas/inspection'
+import type { InspectionItem, InspectionCondition } from './schemas/inspection'
 
-export interface LayerListProps {
-  layers: ReadonlyArray<InspectionItem>
-  draft: DraftLayer
-  onChangeDraft: (next: DraftLayer) => void
+export interface ConditionOption {
+  value: InspectionCondition
+  label: string
+}
+
+export interface InspectionItemListProps {
+  items: ReadonlyArray<InspectionItem>
+  draft: DraftItem
+  onChangeDraft: (next: DraftItem) => void
   onAdd: () => void
   onRemove: (id: string) => void
   addLabel: string
   removeLabel: string
-  typeLabel: string
-  fromLabel: string
-  toLabel: string
+  areaLabel: string
+  conditionLabel: string
+  notesLabel: string
   emptyLabel: string
+  conditionOptions: ReadonlyArray<ConditionOption>
 }
 
-export interface DraftLayer {
-  type: string
-  fromMeters: string
-  toMeters: string
+export interface DraftItem {
+  area: string
+  condition: InspectionCondition
+  notes: string
 }
 
-export const EMPTY_DRAFT: DraftLayer = { type: '', fromMeters: '', toMeters: '' }
+export const EMPTY_ITEM: DraftItem = { area: '', condition: 'good', notes: '' }
 
-export function LayerList({
-  layers,
+function conditionLabelFor(
+  condition: InspectionCondition,
+  options: ReadonlyArray<ConditionOption>
+): string {
+  return options.find((option) => option.value === condition)?.label ?? condition
+}
+
+export function InspectionItemList({
+  items,
   draft,
   onChangeDraft,
   onAdd,
   onRemove,
   addLabel,
   removeLabel,
-  typeLabel,
-  fromLabel,
-  toLabel,
-  emptyLabel
-}: LayerListProps): JSX.Element {
-  const canAdd =
-    draft.type.length > 0 &&
-    draft.fromMeters.length > 0 &&
-    draft.toMeters.length > 0
+  areaLabel,
+  conditionLabel,
+  notesLabel,
+  emptyLabel,
+  conditionOptions
+}: InspectionItemListProps): JSX.Element {
+  const canAdd = draft.area.trim().length > 0
   return (
     <View>
-      {layers.length === 0 ? (
+      {items.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyLabel}>{emptyLabel}</Text>
         </View>
       ) : (
-        layers.map((layer) => (
-          <View key={layer.id} style={styles.row}>
+        items.map((item) => (
+          <View key={item.id} style={styles.row}>
             <View style={styles.rowInfo}>
-              <Text style={styles.rowType}>{layer.type}</Text>
-              <Text style={styles.rowRange}>
-                {layer.fromMeters} m - {layer.toMeters} m
+              <Text style={styles.rowArea}>{item.area}</Text>
+              <Text style={styles.rowCondition}>
+                {conditionLabelFor(item.condition, conditionOptions)}
+                {item.notes ? ` · ${item.notes}` : ''}
               </Text>
             </View>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={removeLabel}
-              onPress={() => onRemove(layer.id)}
+              onPress={() => onRemove(item.id)}
               style={styles.remove}
             >
               <Text style={styles.removeLabel}>{removeLabel}</Text>
@@ -72,28 +85,21 @@ export function LayerList({
       )}
       <View style={styles.draftBox}>
         <Field
-          label={typeLabel}
-          value={draft.type}
-          onChangeText={(value) => onChangeDraft({ ...draft, type: value })}
+          label={areaLabel}
+          value={draft.area}
+          onChangeText={(value) => onChangeDraft({ ...draft, area: value })}
         />
-        <View style={styles.draftRow}>
-          <View style={styles.draftCol}>
-            <Field
-              label={fromLabel}
-              value={draft.fromMeters}
-              onChangeText={(value) => onChangeDraft({ ...draft, fromMeters: value })}
-              keyboardType="decimal-pad"
-            />
-          </View>
-          <View style={styles.draftCol}>
-            <Field
-              label={toLabel}
-              value={draft.toMeters}
-              onChangeText={(value) => onChangeDraft({ ...draft, toMeters: value })}
-              keyboardType="decimal-pad"
-            />
-          </View>
-        </View>
+        <Dropdown<InspectionCondition>
+          label={conditionLabel}
+          value={draft.condition}
+          onChange={(value) => onChangeDraft({ ...draft, condition: value })}
+          options={conditionOptions}
+        />
+        <Field
+          label={notesLabel}
+          value={draft.notes}
+          onChangeText={(value) => onChangeDraft({ ...draft, notes: value })}
+        />
         <Button label={addLabel} variant="secondary" disabled={!canAdd} onPress={onAdd} />
       </View>
     </View>
@@ -123,12 +129,12 @@ const styles = StyleSheet.create({
   rowInfo: {
     flex: 1
   },
-  rowType: {
+  rowArea: {
     color: colors.earth900,
     fontSize: fontSize.lead,
     fontWeight: '700'
   },
-  rowRange: {
+  rowCondition: {
     color: colors.textMuted,
     fontSize: fontSize.body,
     marginTop: spacing.xs
@@ -149,12 +155,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
     marginTop: spacing.sm
-  },
-  draftRow: {
-    flexDirection: 'row',
-    gap: spacing.sm
-  },
-  draftCol: {
-    flex: 1
   }
 })

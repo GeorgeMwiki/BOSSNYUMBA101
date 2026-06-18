@@ -17,10 +17,9 @@ export interface InspectionFieldsProps {
       kindDiamond: string
       kindRc: string
       kindAuger: string
-      depth: string
-      sampleTagLabel: string
-      sampleTagPlaceholder: string
-      scanSampleTag: string
+      unitRefLabel: string
+      unitRefPlaceholder: string
+      scanUnitRef: string
     }
   }
 }
@@ -59,40 +58,26 @@ export function InspectionFields({ control, setValue, t }: InspectionFieldsProps
       />
       <Controller
         control={control}
-        name="depth"
-        render={({ field, fieldState }) => (
-          <Field
-            label={t.drillHole.depth}
-            value={field.value}
-            onChangeText={field.onChange}
-            keyboardType="decimal-pad"
-            error={fieldState.error ? t.common.required : null}
-          />
-        )}
-      />
-      <Controller
-        control={control}
-        name="assetTag"
+        name="unitRef"
         render={({ field }) => (
           <Field
-            label={t.drillHole.sampleTagLabel}
+            label={t.drillHole.unitRefLabel}
             value={field.value ?? ''}
             onChangeText={field.onChange}
             autoCapitalize="characters"
-            placeholder={t.drillHole.sampleTagPlaceholder}
+            placeholder={t.drillHole.unitRefPlaceholder}
           />
         )}
       />
       <Button
-        label={t.drillHole.scanSampleTag}
+        label={t.drillHole.scanUnitRef}
         variant="ghost"
         onPress={() => {
-          // See gh-issue #14: requires EAS dev build — wire to
-          // expo-barcode-scanner when the asset-tag scanner module
-          // ships. For now we simulate a scan by generating a tag
-          // prefix so QA can exercise the flow.
-          const simulated = `AST-${Date.now().toString().slice(-6)}`
-          setValue('assetTag', simulated, { shouldValidate: true })
+          // See gh-issue #14: requires EAS dev build — wire to the unit/asset
+          // QR scanner when the scanner module ships. For now we simulate a
+          // scan by generating a unit reference so QA can exercise the flow.
+          const simulated = `UNIT-${Date.now().toString().slice(-6)}`
+          setValue('unitRef', simulated, { shouldValidate: true })
         }}
       />
     </Section>
