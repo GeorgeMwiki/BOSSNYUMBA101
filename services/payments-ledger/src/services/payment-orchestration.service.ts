@@ -5,6 +5,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import {
   Money,
+  moneyFromDecimal,
   PaymentIntent,
   PaymentIntentAggregate,
   PaymentIntentId,
@@ -14,7 +15,10 @@ import {
   LeaseId,
   CurrencyCode,
   LedgerEntry,
-  CreateJournalEntryRequest
+  CreateJournalEntryRequest,
+  Account,
+  AccountId,
+  createCustomerLiabilityAccount,
 } from '@bossnyumba/domain-models';
 import type { PaymentStatus } from '../types';
 import { TenantAggregate, createId, calculatePlatformFee } from '../domain-extensions';
@@ -40,6 +44,56 @@ export interface ILogger {
   info(message: string, context?: Record<string, unknown>): void;
   warn(message: string, context?: Record<string, unknown>): void;
   error(message: string, context?: Record<string, unknown>): void;
+}
+
+/**
+ * TERMINAL booking failure (M13). Raised when a succeeded payment cannot be
+ * booked to the ledger because the intent's currency has NO matching
+ * platform-holding account for the tenant — a DETERMINISTIC condition that
+ * retrying can never fix.
+ *
+ * Why a distinct typed error: a plain `Error` thrown on a webhook-driven path
+ * is treated by the provider as "transient — retry". On the M-Pesa C2B path the
+ * route releases the idempotency claim on ANY thrown error so Daraja re-delivers
+ * → re-throws → re-releases → DARAJA RETRIES FOREVER (a poison pill). The C2B /
+ * STK / Stripe webhook routes inspect `terminal === true` and, instead of
+ * releasing the claim, KEEP it (so the provider's next retry is deduplicated and
+ * STOPS) while logging LOUD for manual reconciliation. The cash is NOT silently
+ * dropped: the SUCCEEDED PaymentIntent persists with its amount + provider
+ * external id, the alert names it, and the reconciliation sweep can attribute it.
+ */
+export class CurrencyMismatchBookingError extends Error {
+  readonly code = 'PAYMENT_CURRENCY_MISMATCH_UNBOOKABLE';
+  /** Marks this as terminal so webhook routes do NOT trigger provider retry. */
+  readonly terminal = true;
+  constructor(
+    public readonly paymentIntentId: PaymentIntentId,
+    public readonly tenantId: TenantId,
+    public readonly intentCurrency: CurrencyCode,
+    public readonly holdingCurrency: CurrencyCode,
+  ) {
+    super(
+      `PAYMENT_CURRENCY_MISMATCH_UNBOOKABLE: payment ${paymentIntentId} is in ${intentCurrency} ` +
+        `but tenant ${tenantId} has no ${intentCurrency} platform-holding account ` +
+        `(default holding is ${holdingCurrency}). Cannot book to the ledger; ` +
+        `payment requires manual reconciliation. NOT retrying (terminal).`,
+    );
+    this.name = 'CurrencyMismatchBookingError';
+  }
+}
+
+/**
+ * Type guard — a booking/processing error the provider must NOT retry.
+ * Used by webhook routes to decide claim-release (retry) vs claim-keep
+ * (terminal, stop retrying) without coupling to the concrete error class.
+ */
+export function isTerminalBookingError(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'terminal' in err &&
+    (err as { terminal?: unknown }).terminal === true
+  );
 }
 
 /**
@@ -99,7 +153,19 @@ export interface PaymentRefundResult {
  * satisfies this interface.
  */
 export interface ILedgerPoster {
-  postJournalEntry(request: CreateJournalEntryRequest): Promise<unknown>;
+  /**
+   * Books a balanced journal. `options.idempotencyKey` makes the post
+   * idempotent (a retry under the same key returns the original journal
+   * instead of double-posting) — the orchestrator relies on this for the
+   * per-payment + per-TransID dedupe keys. The shape is declared inline
+   * (rather than importing `PostJournalOptions` from `ledger.service`) to
+   * keep the dependency inverted and avoid an import cycle; `LedgerService`
+   * structurally satisfies it.
+   */
+  postJournalEntry(
+    request: CreateJournalEntryRequest,
+    options?: { readonly idempotencyKey?: string },
+  ): Promise<unknown>;
   findEntriesByPaymentIntent(
     paymentIntentId: PaymentIntentId,
     tenantId: TenantId,
@@ -501,14 +567,18 @@ export class PaymentOrchestrationService {
       return;
     }
 
-    // Resolve the two accounts for the rent-payment booking.
-    const holding = await this.accountRepository.findPlatformAccounts(
+    // Resolve the holding account for the rent-payment booking, CURRENCY-AWARE
+    // (M13). The default `findPlatformAccounts` returns an arbitrary holding for
+    // the tenant — which may be in a DIFFERENT currency than this intent (a
+    // pre-created C2B intent can be in any tenant-supported currency). Booking
+    // `gross` (intent currency) onto a mismatched holding makes
+    // `LedgerService.postJournalEntry` throw "Currency mismatch"; on the
+    // at-least-once C2B webhook path that throw poison-pills Daraja into infinite
+    // retry. So we resolve a holding whose currency MATCHES the intent.
+    const holding = await this.resolveHoldingForCurrency(
       tenantId,
-      'PLATFORM_HOLDING',
+      paymentIntent,
     );
-    if (!holding) {
-      throw new Error(`Platform holding account not found for tenant ${tenantId}`);
-    }
     const liability = await this.accountRepository.findByCustomerAndType(
       tenantId,
       paymentIntent.customerId,
@@ -521,39 +591,195 @@ export class PaymentOrchestrationService {
     }
 
     const gross = paymentIntent.amount;
-    // Balanced 2-line journal: cash in (debit holding), receivable down
-    // (credit customer liability). Both legs in the payment's currency —
-    // LedgerService re-validates currency against the locked account row.
+    // Platform fee was computed + frozen on the intent at create time
+    // (createPayment). Book the fee SPLIT on success so the platform-revenue
+    // leg is recorded and DisbursementService's PLATFORM_FEE sum is not
+    // perpetually zero. A zero (or absent) fee falls back to the plain 2-line
+    // receipt — no degenerate zero-amount fee legs.
+    const platformFee = paymentIntent.platformFee;
+    const hasFee = !!platformFee && !platformFee.isZero();
+
+    const lines: CreateJournalEntryRequest['lines'] = [
+      // Cash in (debit holding) — gross. 1-per-intent leg; the migration-0324
+      // partial unique index governs exactly this (RENT_PAYMENT/DEBIT) leg.
+      {
+        accountId: holding.id,
+        type: 'RENT_PAYMENT',
+        direction: 'DEBIT',
+        amount: gross,
+        description: 'Payment received into holding',
+        leaseId: paymentIntent.leaseId,
+      },
+      // Receivable down (credit customer liability) — gross.
+      {
+        accountId: liability.id,
+        type: 'RENT_PAYMENT',
+        direction: 'CREDIT',
+        amount: gross,
+        description: 'Rent payment received',
+        leaseId: paymentIntent.leaseId,
+      },
+    ];
+
+    if (hasFee) {
+      // Fee split (mirror of JournalTemplates.rentPayment's PLATFORM_FEE legs):
+      // CREDIT holding (the fee leaves holding) / DEBIT platform-revenue (the
+      // fee is earned). The journal stays balanced — gross debit/credit plus an
+      // equal-and-opposite PLATFORM_FEE pair. The revenue account is resolved
+      // CURRENCY-AWARE (M13) for the same reason as holding — a mismatched
+      // revenue leg would also throw "Currency mismatch" inside the ledger.
+      const revenue = await this.resolvePlatformAccountForCurrency(
+        tenantId,
+        'PLATFORM_REVENUE',
+        gross.currency,
+      );
+      if (!revenue) {
+        throw new CurrencyMismatchBookingError(
+          paymentIntent.id,
+          tenantId,
+          gross.currency,
+          holding.currency,
+        );
+      }
+      lines.push(
+        {
+          accountId: holding.id,
+          type: 'PLATFORM_FEE',
+          direction: 'CREDIT',
+          amount: platformFee!,
+          description: 'Platform fee deducted',
+          leaseId: paymentIntent.leaseId,
+        },
+        {
+          accountId: revenue.id,
+          type: 'PLATFORM_FEE',
+          direction: 'DEBIT',
+          amount: platformFee!,
+          description: 'Platform fee earned',
+          leaseId: paymentIntent.leaseId,
+        },
+      );
+    }
+
     const journal: CreateJournalEntryRequest = {
       tenantId,
       effectiveDate: paymentIntent.paidAt ?? new Date(),
       paymentIntentId: paymentIntent.id,
-      lines: [
-        {
-          accountId: holding.id,
-          type: 'RENT_PAYMENT',
-          direction: 'DEBIT',
-          amount: gross,
-          description: 'Payment received into holding',
-          leaseId: paymentIntent.leaseId,
-        },
-        {
-          accountId: liability.id,
-          type: 'RENT_PAYMENT',
-          direction: 'CREDIT',
-          amount: gross,
-          description: 'Rent payment received',
-          leaseId: paymentIntent.leaseId,
-        },
-      ],
+      lines,
       createdBy: 'system',
     };
 
-    await this.ledgerService.postJournalEntry(journal);
+    // Per-payment idempotency key (defense-in-depth atop the route-level
+    // webhook claim + the application-level findEntriesByPaymentIntent check):
+    // a replayed Stripe `payment_intent.succeeded` that slips past the claim
+    // (released-for-retry race, multi-replica) re-drives the SAME journal under
+    // this key and books nothing extra. Migration 0324 is the final DB backstop.
+    await this.ledgerService.postJournalEntry(journal, {
+      idempotencyKey: `payment:${paymentIntent.id}`,
+    });
     this.logger.info('Payment booked to ledger', {
       paymentIntentId: paymentIntent.id,
       amount: gross.toString(),
+      platformFee: hasFee ? platformFee!.toString() : '0',
     });
+  }
+
+  /**
+   * Resolve the platform-holding account to book a payment into, ensuring its
+   * currency MATCHES the payment's currency (M13).
+   *
+   * The default `findPlatformAccounts(tenant, 'PLATFORM_HOLDING')` returns an
+   * arbitrary holding for the tenant. When a tenant operates in multiple
+   * currencies it has multiple holding accounts; the arbitrary one may not
+   * match THIS payment. Booking onto a mismatched holding throws "Currency
+   * mismatch" inside `LedgerService.postJournalEntry` — which, on the
+   * at-least-once C2B webhook path, poison-pills the provider into infinite
+   * retry.
+   *
+   *   - (a) If the default holding already matches the payment currency, use it.
+   *   - (a) Else look up a holding whose currency equals the payment currency
+   *         and route the booking there.
+   *   - (b) If NO holding exists in the payment currency, the payment is
+   *         genuinely unbookable as a rent receipt → throw the TERMINAL
+   *         {@link CurrencyMismatchBookingError} so webhook routes ack-and-
+   *         flag-for-reconciliation instead of retrying forever. (`findPlatform
+   *         Accounts` returning null at all is the pre-existing "no holding
+   *         configured" condition — kept as a transient throw so a genuinely
+   *         un-provisioned tenant is retried once provisioning lands.)
+   */
+  private async resolveHoldingForCurrency(
+    tenantId: TenantId,
+    paymentIntent: PaymentIntent,
+  ): Promise<Account> {
+    const currency = paymentIntent.amount.currency;
+    const defaultHolding = await this.accountRepository!.findPlatformAccounts(
+      tenantId,
+      'PLATFORM_HOLDING',
+    );
+    if (!defaultHolding) {
+      // No holding configured at all — transient (provisioning), retry.
+      throw new Error(`Platform holding account not found for tenant ${tenantId}`);
+    }
+    if (defaultHolding.currency === currency) {
+      return defaultHolding;
+    }
+
+    // (a) Route to a currency-matched holding if one exists.
+    const matched = await this.resolvePlatformAccountForCurrency(
+      tenantId,
+      'PLATFORM_HOLDING',
+      currency,
+    );
+    if (matched) {
+      this.logger.info('Routed payment to currency-matched holding account', {
+        paymentIntentId: paymentIntent.id,
+        tenantId,
+        currency,
+        holdingId: matched.id,
+      });
+      return matched;
+    }
+
+    // (b) Genuinely unbookable — TERMINAL. Do NOT throw a bare Error (would
+    // trigger infinite provider retry on the C2B path). The SUCCEEDED intent
+    // persists with its amount + external id; this LOUD alert names it so an
+    // operator / the reconciliation sweep can attribute it. Never silently drop.
+    this.logger.error(
+      'Payment currency has no matching platform-holding account — ' +
+        'NOT booked, requires manual reconciliation (terminal, not retrying)',
+      {
+        paymentIntentId: paymentIntent.id,
+        tenantId,
+        intentCurrency: currency,
+        defaultHoldingCurrency: defaultHolding.currency,
+        externalId: paymentIntent.externalId,
+        amount: paymentIntent.amount.toString(),
+      },
+    );
+    throw new CurrencyMismatchBookingError(
+      paymentIntent.id,
+      tenantId,
+      currency,
+      defaultHolding.currency,
+    );
+  }
+
+  /**
+   * Find a platform account of `type` whose currency equals `currency`, or null.
+   * Platform accounts have neither a customerId nor an ownerId.
+   */
+  private async resolvePlatformAccountForCurrency(
+    tenantId: TenantId,
+    type: 'PLATFORM_HOLDING' | 'PLATFORM_REVENUE',
+    currency: CurrencyCode,
+  ): Promise<Account | null> {
+    const candidates = await this.accountRepository!.find({
+      tenantId,
+      type,
+      currency,
+    });
+    const match = candidates.find((a) => !a.customerId && !a.ownerId);
+    return match ?? null;
   }
 
   /**
@@ -611,6 +837,183 @@ export class PaymentOrchestrationService {
     // bookPaymentToLedger is idempotent on paymentIntentId: it no-ops when
     // a journal already exists, and books the gap when none does.
     await this.bookPaymentToLedger(paymentIntent, tenantId);
+  }
+
+  /**
+   * Handle an M-Pesa C2B confirmation (money arrived directly to the paybill).
+   *
+   * Decides between two paths, returning which one it took:
+   *   - MATCHED: a PaymentIntent exists for this TransID (a pre-created C2B
+   *     intent) → the normal success path (mark SUCCEEDED + book the rent
+   *     payment journal). Identical to {@link handleWebhook}'s SUCCEEDED branch.
+   *   - UNALLOCATED: NO intent matches → instead of acking-and-dropping (the
+   *     prior silent-loss bug — the cash arrived but was recorded NOWHERE), book
+   *     an explicit UNALLOCATED RECEIPT: a balanced journal that debits the
+   *     platform-holding (the cash genuinely arrived) and credits a per-tenant
+   *     unallocated-suspense liability (we owe it back to whoever paid, pending
+   *     attribution). The TransID / MSISDN / amount are stamped on the entry so
+   *     an operator can later attribute it.
+   *
+   * Idempotent: the journal is tagged with paymentIntentId `c2b-unalloc:<TransID>`
+   * and posted under the same idempotency key, so a redelivered C2B confirmation
+   * books the unallocated receipt exactly once.
+   */
+  async handleC2bConfirmation(input: {
+    transId: string;
+    tenantId: TenantId;
+    amountMajor: string;
+    msisdn: string;
+    receiptUrl?: string;
+  }): Promise<'matched' | 'unallocated'> {
+    const paymentIntent = await this.repository.findByExternalId(
+      input.transId,
+      'mpesa_c2b',
+      input.tenantId,
+    );
+
+    if (paymentIntent) {
+      const aggregate = new PaymentIntentAggregate(paymentIntent);
+      await this.handlePaymentSuccess(aggregate, paymentIntent.tenantId, input.receiptUrl);
+      return 'matched';
+    }
+
+    // No matching intent → unallocated receipt. NEVER ack-and-drop.
+    await this.bookUnallocatedReceipt(input);
+    return 'unallocated';
+  }
+
+  /**
+   * Book an unallocated C2B receipt as a BALANCED journal so cash that arrived
+   * without a matching invoice is recorded (never silently dropped):
+   *
+   *   DR platform-holding   (the cash physically arrived in our clearing account)
+   *   CR unallocated-suspense liability  (we owe it back to whoever paid)
+   *
+   * The suspense leg lands on a per-tenant CUSTOMER_LIABILITY account for the
+   * sentinel "unallocated" customer, lazily provisioned on first use in the
+   * holding account's currency. Operators later attribute the balance by moving
+   * it from this suspense account to the real customer's liability.
+   *
+   * Idempotent on `c2b-unalloc:<TransID>` (paymentIntentId tag + ledger
+   * idempotency key), so a redelivered confirmation books it exactly once.
+   */
+  private async bookUnallocatedReceipt(input: {
+    transId: string;
+    tenantId: TenantId;
+    amountMajor: string;
+    msisdn: string;
+  }): Promise<void> {
+    if (!this.ledgerService || !this.accountRepository) {
+      this.logger.error(
+        'Unallocated C2B receipt could not be booked — ledger posting is not wired',
+        { transId: input.transId, tenantId: input.tenantId },
+      );
+      throw new Error(
+        'LedgerService/accountRepository not configured: cannot book unallocated C2B receipt',
+      );
+    }
+
+    const holding = await this.accountRepository.findPlatformAccounts(
+      input.tenantId,
+      'PLATFORM_HOLDING',
+    );
+    if (!holding) {
+      throw new Error(
+        `Platform holding account not found for tenant ${input.tenantId} — cannot book unallocated receipt`,
+      );
+    }
+
+    // Book in the holding account's currency (the platform clearing currency
+    // for this tenant). M-Pesa sends amounts in MAJOR units (e.g. "1500.00");
+    // convert via moneyFromDecimal which uses the currency's REAL ISO-4217
+    // minor-unit digits — NOT a hard ×100, which 100x-overstates the 0-decimal
+    // launch currencies (1500 TZS major = 1500 minor, never 150000).
+    const currency = holding.currency;
+    const amountMajor = Number(input.amountMajor);
+    if (!Number.isFinite(amountMajor) || amountMajor <= 0) {
+      throw new Error(
+        `Unallocated C2B receipt has a non-positive/invalid amount "${input.amountMajor}" (TransID ${input.transId})`,
+      );
+    }
+    const amount = moneyFromDecimal(amountMajor, currency);
+
+    const suspense = await this.resolveUnallocatedSuspenseAccount(input.tenantId, currency);
+
+    const journal: CreateJournalEntryRequest = {
+      tenantId: input.tenantId,
+      effectiveDate: new Date(),
+      // Deterministic per-TransID tag → idempotent dedupe + operator lookup.
+      paymentIntentId: createId<PaymentIntentId>(`c2b-unalloc:${input.transId}`),
+      lines: [
+        {
+          accountId: holding.id,
+          type: 'RENT_PAYMENT',
+          direction: 'DEBIT',
+          amount,
+          description: `Unallocated C2B receipt ${input.transId} from ${input.msisdn}`,
+          metadata: {
+            unallocated: true,
+            transId: input.transId,
+            msisdn: input.msisdn,
+          },
+        },
+        {
+          accountId: suspense.id,
+          type: 'RENT_PAYMENT',
+          direction: 'CREDIT',
+          amount,
+          description: `Unallocated C2B receipt ${input.transId} — pending attribution`,
+          metadata: {
+            unallocated: true,
+            transId: input.transId,
+            msisdn: input.msisdn,
+          },
+        },
+      ],
+      createdBy: 'system',
+    };
+
+    await this.ledgerService.postJournalEntry(journal, {
+      idempotencyKey: `c2b-unalloc:${input.transId}`,
+    });
+    this.logger.warn(
+      'Unallocated C2B receipt booked to suspense — operator attribution required',
+      {
+        transId: input.transId,
+        msisdn: input.msisdn,
+        amount: amount.toString(),
+        tenantId: input.tenantId,
+      },
+    );
+  }
+
+  /**
+   * Resolve (lazily provisioning on first use) the per-tenant unallocated
+   * suspense liability account — a CUSTOMER_LIABILITY account owned by the
+   * sentinel "unallocated" customer. Stable account id per tenant so the
+   * suspense balance accumulates in one place for operators to reconcile.
+   */
+  private async resolveUnallocatedSuspenseAccount(
+    tenantId: TenantId,
+    currency: CurrencyCode,
+  ): Promise<Account> {
+    const sentinelCustomerId = createId<CustomerId>('cust_unallocated');
+    const existing = await this.accountRepository!.findByCustomerAndType(
+      tenantId,
+      sentinelCustomerId,
+      'CUSTOMER_LIABILITY',
+    );
+    if (existing) {
+      return existing;
+    }
+    const account = createCustomerLiabilityAccount(
+      createId<AccountId>(`acc_unalloc_${tenantId}`),
+      tenantId,
+      sentinelCustomerId,
+      currency,
+      'system',
+    );
+    return this.accountRepository!.create(account);
   }
 
   /**
@@ -709,6 +1112,21 @@ export class PaymentOrchestrationService {
       aggregate.recordRefund(refundAmount);
       await this.repository.update(aggregate.toData());
 
+      // Post the balanced reversing journal BEFORE publishing the event. The
+      // original capture (`bookPaymentToLedger`) booked DEBIT holding / CREDIT
+      // customer-liability for the cash receipt; a refund returns that cash, so
+      // the reversal is the exact mirror — CREDIT holding / DEBIT customer-
+      // liability for `refundAmount`. Without it the ledger permanently
+      // over-credits holding by the refunded amount. Idempotent on
+      // `refund:<intent>:<refundId>` so an at-least-once retry of this refund
+      // collapses to a single reversal.
+      await this.bookRefundReversal(
+        paymentIntent,
+        request.tenantId,
+        refundAmount,
+        result.refundId,
+      );
+
       await this.eventPublisher.publish(
         createEvent<PaymentRefundedEvent>(
           'PAYMENT_REFUNDED',
@@ -731,6 +1149,103 @@ export class PaymentOrchestrationService {
       amount: refundAmount,
       status: result.status
     };
+  }
+
+  /**
+   * Book the balanced reversing journal for a SUCCEEDED refund (HIGH MONEY).
+   *
+   * The original capture (`bookPaymentToLedger`) booked the cash receipt as
+   * DEBIT holding / CREDIT customer-liability. A refund returns that cash, so
+   * the reversal is the exact mirror — CREDIT holding / DEBIT customer-
+   * liability for `refundAmount`. Omitting it leaves holding permanently
+   * over-credited by every refund.
+   *
+   * Idempotency: the post is keyed `refund:<intentId>:<refundId>` so an
+   * at-least-once retry of the same provider refund re-drives the SAME journal
+   * and books nothing extra.
+   *
+   * The journal header intentionally carries NO `paymentIntentId`: migration
+   * 0324's partial unique index on `(tenant_id, payment_intent_id)` for the
+   * `RENT_PAYMENT/DEBIT` leg would otherwise reject the refund's DEBIT leg as a
+   * "duplicate" of the original capture's DEBIT-into-holding leg for the same
+   * intent. The per-post idempotency key (above) is the dedupe authority here;
+   * the intent linkage is preserved in the line descriptions.
+   *
+   * Currency-aware (M13): the refund is in the intent currency, so the holding
+   * leg resolves through the same currency-matched holding the capture used.
+   *
+   * No-ops (logged loudly) when the ledger/account dependencies are not wired —
+   * mirroring `handlePaymentSuccess`, which treats them as optional.
+   */
+  private async bookRefundReversal(
+    paymentIntent: PaymentIntent,
+    tenantId: TenantId,
+    refundAmount: Money,
+    refundId: string,
+  ): Promise<void> {
+    if (!this.ledgerService || !this.accountRepository) {
+      this.logger.error(
+        'Refund succeeded but ledger/account dependencies are not wired — ' +
+          'NO reversing journal posted; holding is over-credited until ' +
+          'manual reconciliation',
+        {
+          paymentIntentId: paymentIntent.id,
+          tenantId,
+          refundId,
+          refundAmount: refundAmount.toString(),
+        },
+      );
+      return;
+    }
+
+    const holding = await this.resolveHoldingForCurrency(tenantId, paymentIntent);
+    const liability = await this.accountRepository.findByCustomerAndType(
+      tenantId,
+      paymentIntent.customerId,
+      'CUSTOMER_LIABILITY',
+    );
+    if (!liability) {
+      throw new Error(
+        `Customer liability account not found for customer ${paymentIntent.customerId}`,
+      );
+    }
+
+    const journal: CreateJournalEntryRequest = {
+      tenantId,
+      effectiveDate: new Date(),
+      lines: [
+        // Cash out (credit holding) — reverses the capture's DEBIT-into-holding.
+        {
+          accountId: holding.id,
+          type: 'RENT_PAYMENT',
+          direction: 'CREDIT',
+          amount: refundAmount,
+          description: `Refund of payment ${paymentIntent.id} (refund ${refundId})`,
+          leaseId: paymentIntent.leaseId,
+        },
+        // Receivable back up (debit customer liability) — reverses the
+        // capture's CREDIT of the customer liability.
+        {
+          accountId: liability.id,
+          type: 'RENT_PAYMENT',
+          direction: 'DEBIT',
+          amount: refundAmount,
+          description: `Refund reversal for payment ${paymentIntent.id} (refund ${refundId})`,
+          leaseId: paymentIntent.leaseId,
+        },
+      ],
+      createdBy: 'system',
+    };
+
+    await this.ledgerService.postJournalEntry(journal, {
+      idempotencyKey: `refund:${paymentIntent.id}:${refundId}`,
+    });
+    this.logger.info('Refund reversal booked to ledger', {
+      paymentIntentId: paymentIntent.id,
+      tenantId,
+      refundId,
+      refundAmount: refundAmount.toString(),
+    });
   }
 
   /**

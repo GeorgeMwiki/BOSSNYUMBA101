@@ -47,9 +47,11 @@ BossNyumba, an AI-native real estate operating system.
 | OTel, audit, Sentry, logging, eval, red-team | [`Docs/CODEMAPS/observability.md`](./Docs/CODEMAPS/observability.md) | `packages/observability/` + `evals/` |
 | Adaptive layout engine (UI-1) — sections rearrange themselves | [`Docs/CODEMAPS/dynamic-sections.md`](./Docs/CODEMAPS/dynamic-sections.md) | `packages/dynamic-sections/` |
 | ProactiveHint (UI-2), MasteryGate (UI-3), LearnedShortcutsPanel (UI-5) | [`Docs/CODEMAPS/chat-ui.md`](./Docs/CODEMAPS/chat-ui.md) | `packages/chat-ui/` |
-| Customer app (Next.js — port 3002, tenant + marketing) | [`Docs/CODEMAPS/customer-app.md`](./Docs/CODEMAPS/customer-app.md) | `apps/customer-app/` |
-| Estate-manager app (Next.js — port 3003, org operator) | [`Docs/CODEMAPS/estate-manager-app.md`](./Docs/CODEMAPS/estate-manager-app.md) | `apps/estate-manager-app/` |
+| Internal-admin platform console (Next.js) | [`Docs/CODEMAPS/admin-platform-portal.md`](./Docs/CODEMAPS/admin-platform-portal.md) | `apps/admin-platform-portal/` |
+| Marketing site (Next.js — public) | [`Docs/CODEMAPS/marketing.md`](./Docs/CODEMAPS/marketing.md) | `apps/marketing/` |
 | Owner portal (Vite SPA — port 3001, 80+ pages) | [`Docs/CODEMAPS/owner-portal.md`](./Docs/CODEMAPS/owner-portal.md) | `apps/owner-portal/` |
+| Workforce app (Expo mobile) | [`Docs/CODEMAPS/bossnyumba-mobile.md`](./Docs/CODEMAPS/bossnyumba-mobile.md) | `apps/staff-mobile/` |
+| Tenant/counterparty app (Expo mobile) | [`Docs/CODEMAPS/bossnyumba-mobile.md`](./Docs/CODEMAPS/bossnyumba-mobile.md) | `apps/tenant-mobile/` |
 
 ## Hard rules (NEVER violate)
 

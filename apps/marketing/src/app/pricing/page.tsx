@@ -21,13 +21,13 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   if (locale === 'sw') {
     return {
-      title: 'Bei — Boss Nyumba',
+      title: 'Bei — BossNyumba',
       description:
         'Madaraja matano, msingi wa TZS, kulipwa kila mwezi. Mkulima ni bure kwa mmiliki mmoja wa nyumba; Mwanafamilia, Mfanyabiashara, Kampuni, na Group hupanda kutoka hapo. M-Pesa, Tigo Pesa, Airtel Money, benki, na kadi zinakubaliwa.',
     };
   }
   return {
-    title: 'Pricing — Boss Nyumba',
+    title: 'Pricing — BossNyumba',
     description:
       'Five tiers, TZS-primary, billed monthly. Smallholder is free for the single landlord; Family, Professional, Corporate, and Group scale up from there. M-Pesa, Tigo Pesa, Airtel Money, bank, and card payments accepted.',
   };
@@ -54,8 +54,7 @@ function tierShipsFeature(tierId: TierId, feature: (typeof COMPARISON)[number]):
 }
 
 const TRUST_BADGES: readonly string[] = [
-  'SOC 2 Type II',
-  'ISO 27001',
+  'SOC 2 / ISO 27001 controls — certification in progress',
   'GDPR + TZ DPA aligned',
   'M-Pesa partner',
   'Tigo Pesa partner',
@@ -87,7 +86,8 @@ const COPY: Record<Locale, PageCopy> = {
     heroKicker: 'Pricing',
     heroHeading: 'Priced per portfolio, not per door.',
     heroSubOne: 'The Smallholder tier is free for the single landlord.',
-    heroSubTwo: 'Group is bespoke for multi-country REITs. The same Mr. Mwikila brain runs every tier.',
+    heroSubTwo:
+      'Group is bespoke for multi-country REITs. The same Mr. Mwikila brain runs every tier.',
     trustHeading: 'Trusted with billions of TZS in rent under management.',
     compareHeading: 'Every feature, every tier.',
     compareSub: (highlight) =>
@@ -109,7 +109,7 @@ const COPY: Record<Locale, PageCopy> = {
     heroHeading: 'Bei kwa portfolio, si kwa mlango.',
     heroSubOne: 'Daraja la Mkulima ni bure kwa mmiliki mmoja wa nyumba.',
     heroSubTwo:
-      'Daraja la Group ni la kibinafsi kwa REIT za mataifa mengi. Ubongo wa Bw. Mwikila ni sawa kwa kila daraja.',
+      'Daraja la Group ni la kibinafsi kwa REIT za mataifa mengi. Ubongo wa Mwl. Mwikila ni sawa kwa kila daraja.',
     trustHeading: 'Inayoaminika na mabilioni ya TZS ya kodi inayosimamiwa.',
     compareHeading: 'Kila kipengele, kila daraja.',
     compareSub: (highlight) =>
@@ -118,7 +118,7 @@ const COPY: Record<Locale, PageCopy> = {
     faqKicker: 'Maswali',
     faqHeading: 'Maswali ya Bei',
     faqSub:
-      'Majibu nane tunayoulizwa mara nyingi. Una swali lingine? Muulize Bw. Mwikila kwenye dirisha la mazungumzo — anaongea Kiswahili kwa chaguo-msingi.',
+      'Majibu nane tunayoulizwa mara nyingi. Una swali lingine? Muulize Mwl. Mwikila kwenye dirisha la mazungumzo — anaongea Kiswahili kwa chaguo-msingi.',
     ctaHeading: 'Anza leo. Hakuna kadi inayohitajika.',
     ctaSub: (smallholder) =>
       // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- reason: static marketing copy / TZ-launch pricing CTA in Swahili locale, not a tenant business-logic binding
@@ -141,15 +141,9 @@ export default async function PricingPage() {
   return (
     <PageShell>
       {/* HERO */}
-      <section
-        className="relative overflow-hidden"
-        aria-labelledby="pricing-page-heading"
-      >
+      <section className="relative overflow-hidden" aria-labelledby="pricing-page-heading">
         <div className="hero-aurora" aria-hidden="true" />
-        <div
-          className="absolute inset-0 cinematic-grid opacity-30"
-          aria-hidden="true"
-        />
+        <div className="absolute inset-0 cinematic-grid opacity-30" aria-hidden="true" />
         <div className="relative mx-auto max-w-3xl px-6 py-20 text-center lg:py-28">
           <p className="font-mono text-xs uppercase tracking-widest text-signal-500">
             {copy.heroKicker}
@@ -238,46 +232,43 @@ export default async function PricingPage() {
                   ? comparisonGroupLabel(sampleRow, locale)
                   : group;
                 return [
-                <tr
-                  key={`group-${group}`}
-                  className="border-b border-border bg-surface-sunken"
-                >
-                  <td
-                    colSpan={1 + TIERS.length}
-                    className="px-5 py-2 font-mono text-[0.65rem] uppercase tracking-widest text-signal-500"
-                  >
-                    {groupLabelLocalised}
-                  </td>
-                </tr>,
-                ...COMPARISON.filter((c) => c.group === group).map((row) => (
-                  <tr
-                    key={`${group}-${row.feature}`}
-                    className="border-b border-border last:border-b-0"
-                  >
-                    <td className="px-5 py-3 text-left text-foreground">
-                      {comparisonFeatureLabel(row, locale)}
+                  <tr key={`group-${group}`} className="border-b border-border bg-surface-sunken">
+                    <td
+                      colSpan={1 + TIERS.length}
+                      className="px-5 py-2 font-mono text-[0.65rem] uppercase tracking-widest text-signal-500"
+                    >
+                      {groupLabelLocalised}
                     </td>
-                    {TIERS.map((tier) => {
-                      const has = tierShipsFeature(tier.id, row);
-                      return (
-                        <td key={tier.id} className="px-3 py-3 text-center">
-                          {has ? (
-                            <Check
-                              className="mx-auto h-4 w-4 text-signal-500"
-                              aria-label="included"
-                            />
-                          ) : (
-                            <Minus
-                              className="mx-auto h-4 w-4 text-neutral-600"
-                              aria-label="not included"
-                            />
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                )),
-              ];
+                  </tr>,
+                  ...COMPARISON.filter((c) => c.group === group).map((row) => (
+                    <tr
+                      key={`${group}-${row.feature}`}
+                      className="border-b border-border last:border-b-0"
+                    >
+                      <td className="px-5 py-3 text-left text-foreground">
+                        {comparisonFeatureLabel(row, locale)}
+                      </td>
+                      {TIERS.map((tier) => {
+                        const has = tierShipsFeature(tier.id, row);
+                        return (
+                          <td key={tier.id} className="px-3 py-3 text-center">
+                            {has ? (
+                              <Check
+                                className="mx-auto h-4 w-4 text-signal-500"
+                                aria-label="included"
+                              />
+                            ) : (
+                              <Minus
+                                className="mx-auto h-4 w-4 text-neutral-600"
+                                aria-label="not included"
+                              />
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  )),
+                ];
               })}
             </tbody>
           </table>

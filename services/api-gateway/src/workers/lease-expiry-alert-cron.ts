@@ -16,9 +16,16 @@
  *     wins. If none are configured, we still write a `pending` row to
  *     `notification_dispatch_log` so the alert exists for audit and the
  *     ops team can reconfigure providers later.
- *   - The worker scans `leases.end_date` directly (RLS bypassed via
- *     service-role DB pool, but we re-attach `tenantId` on every log row
- *     and notification payload so downstream RLS reads are clean).
+ *   - The worker is multi-tenant: it enumerates active tenants (the
+ *     `tenants` table is RLS `USING(TRUE)`, so visible to any role) and
+ *     runs the `leases.end_date` scan + every `notification_dispatch_log`
+ *     read/write for that tenant INSIDE `withWorkerTenantContext`, which
+ *     binds `app.current_tenant_id` transaction-locally. The `leases` /
+ *     `customers` tables carry ONLY the tenant-GUC isolation policy (no
+ *     `service_role_bypass`), so without a bound tenant GUC the
+ *     `leases_tenant_isolation` policy would silently filter the scan to
+ *     ZERO rows under the non-BYPASS DB role. We never rely on a BYPASSRLS
+ *     role; per-tenant context is the isolation boundary.
  *   - Lifecycle mirrors `cases-sla-supervisor.ts` — `start()` schedules a
  *     daily tick, `stop()` clears the timer. Both are idempotent.
  *
@@ -37,6 +44,7 @@
 import { sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import { randomUUID } from 'node:crypto';
+import { withWorkerTenantContext } from './with-tenant-context';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -217,10 +225,39 @@ export function selectChannel(
 }
 
 // ---------------------------------------------------------------------------
+// Active-tenant enumeration — the `tenants` table is RLS `USING(TRUE)`, so
+// this read resolves under the non-BYPASS DB role without binding any tenant
+// GUC. Every per-tenant scan below then runs inside `withWorkerTenantContext`
+// so the tenant-isolation policy on `leases` / `customers` matches rows.
+// ---------------------------------------------------------------------------
+
+interface RawTenantRow {
+  readonly id: unknown;
+}
+
+export async function enumerateActiveTenants(db: DbLike): Promise<readonly string[]> {
+  const res = await db.execute(sql`
+    SELECT id FROM tenants
+     WHERE status = 'active' AND deleted_at IS NULL
+     ORDER BY id ASC
+     LIMIT 5000
+  `);
+  const rows = Array.isArray(res)
+    ? (res as RawTenantRow[])
+    : (((res as { rows?: RawTenantRow[] }).rows ?? []) as RawTenantRow[]);
+  return rows.map((r) => String(r.id));
+}
+
+// ---------------------------------------------------------------------------
 // Scan query — returns leases whose end_date falls within MAX(windows) days.
 // We over-scan and filter in JS so the same row can match different windows
 // across multiple cron runs (e.g. a lease at 60d today is at 30d in 30 days
 // — both alerts must fire).
+//
+// MUST run inside `withWorkerTenantContext` (see the tick loop): the query has
+// no explicit `tenant_id` predicate, so the `leases_tenant_isolation` RLS
+// policy is what scopes it to the bound tenant. Without a bound tenant GUC it
+// returns ZERO rows under the non-BYPASS DB role.
 // ---------------------------------------------------------------------------
 
 interface RawLeaseRow {
@@ -521,6 +558,156 @@ export function createLeaseExpiryAlertCron(
     await tick();
   }
 
+  /**
+   * Process one tenant's expiring-lease alerts. Every DB statement runs
+   * inside `withWorkerTenantContext` so the `leases_tenant_isolation` /
+   * `customers_tenant_isolation` policies match rows for THIS tenant (these
+   * tables have no `service_role_bypass` policy — a bound tenant GUC is the
+   * only way they return rows under the non-BYPASS DB role).
+   *
+   * The cost-bearing `sender.send` (a network call) is deliberately run
+   * OUTSIDE any transaction — between two short context blocks — so the cron
+   * never holds a reserved DB connection across a provider round-trip. The
+   * slot-claim block and the outcome-update block are each their own pinned
+   * transaction; the per-(lease,window) `ON CONFLICT DO NOTHING` claim keeps
+   * delivery exactly-once across replicas regardless.
+   */
+  async function processTenant(tenantId: string, now: Date, result: TickResult): Promise<void> {
+    // Scan this tenant's leases under its bound GUC.
+    const candidates = await withWorkerTenantContext(options.db, tenantId, (pinned) =>
+      fetchExpiringLeases(pinned, now, windowsDays),
+    );
+    (result as { scanned: number }).scanned += candidates.length;
+
+    for (const lease of candidates) {
+      const window = lease.windowDays;
+      const idempotencyKey = buildIdempotencyKey(lease.id, window);
+      try {
+        const channel = selectChannel(lease, channelOrder);
+        if (!channel) {
+          options.logger.warn(
+            { tenantId: lease.tenantId, leaseId: lease.id, window },
+            'lease-expiry-cron: no channel available for lease',
+          );
+          (result as { failed: number }).failed += 1;
+          continue;
+        }
+        const recipientAddress =
+          channel === 'email'
+            ? (lease.customerEmail ?? '')
+            : channel === 'in_app'
+              ? lease.customerId
+              : (lease.customerPhone ?? '');
+
+        // Slot-claim block: the already-sent pre-check, the #24 consent
+        // suppression, and the TOCTOU-safe pending-dispatch insert all share
+        // ONE bound-tenant transaction so the FORCE-RLS
+        // `notification_dispatch_log` reads/writes match this tenant's rows.
+        // The consent gate (its own non-DB service) is consulted ONLY after
+        // the already-sent short-circuit, then BEFORE claiming a slot: if it
+        // disallows, we durably record `suppressed_no_consent` (idempotency-
+        // keyed so it isn't re-evaluated every day) and skip the send.
+        const claim = await withWorkerTenantContext(
+          options.db,
+          lease.tenantId,
+          async (
+            pinned,
+          ): Promise<{ readonly action: 'send' | 'skip' | 'suppressed'; readonly reason?: string; readonly id?: string }> => {
+            const sent = await isAlreadySent(pinned, lease.tenantId, idempotencyKey);
+            if (sent) return { action: 'skip' };
+
+            const consent = await consentGate.isAutomatedReminderAllowed({
+              tenantId: lease.tenantId,
+              customerId: lease.customerId,
+              channel,
+            });
+            if (!consent.allowed) {
+              const reason = consent.reason ?? 'no_consent';
+              await recordSuppressedDispatch(pinned, {
+                tenantId: lease.tenantId,
+                idempotencyKey,
+                lease,
+                channel,
+                recipientAddress,
+                reason,
+              });
+              return { action: 'suppressed', reason };
+            }
+
+            const inserted = await insertPendingDispatch(pinned, {
+              tenantId: lease.tenantId,
+              idempotencyKey,
+              lease,
+              channel,
+              recipientAddress,
+            });
+            // TOCTOU defence: if we did NOT win the insert race, another
+            // replica/tick owns this (lease, window) — skip the send so the
+            // alert goes out exactly once cluster-wide.
+            if (!inserted.inserted) return { action: 'skip' };
+            return { action: 'send', id: inserted.id };
+          },
+        );
+
+        if (claim.action === 'skip') {
+          (result as { skippedAlreadySent: number }).skippedAlreadySent += 1;
+          continue;
+        }
+        if (claim.action === 'suppressed') {
+          options.logger.info(
+            {
+              tenantId: lease.tenantId,
+              leaseId: lease.id,
+              window,
+              reason: claim.reason ?? 'no_consent',
+            },
+            'lease-expiry-cron: suppressed_no_consent',
+          );
+          (result as { suppressedNoConsent: number }).suppressedNoConsent += 1;
+          continue;
+        }
+
+        // Network send — OUTSIDE any transaction so no DB connection is held
+        // across the provider round-trip.
+        const outcome = await options.sender.send({
+          tenantId: lease.tenantId,
+          lease,
+          window,
+          channel,
+          idempotencyKey,
+        });
+
+        // Outcome-update block: separate bound-tenant transaction.
+        await withWorkerTenantContext(options.db, lease.tenantId, (pinned) =>
+          updateDispatchOutcome(pinned, {
+            id: claim.id!,
+            delivered: outcome.delivered,
+            providerMessageId: outcome.providerMessageId,
+            error: outcome.error,
+          }),
+        );
+        if (outcome.delivered) {
+          (result as { dispatched: number }).dispatched += 1;
+          (result as { byWindow: Record<number, number> }).byWindow[window] =
+            (result.byWindow[window] ?? 0) + 1;
+        } else {
+          (result as { failed: number }).failed += 1;
+        }
+      } catch (err) {
+        options.logger.error(
+          {
+            tenantId: lease.tenantId,
+            leaseId: lease.id,
+            window,
+            err: err instanceof Error ? err.message : String(err),
+          },
+          'lease-expiry-cron: lease alert failed',
+        );
+        (result as { failed: number }).failed += 1;
+      }
+    }
+  }
+
   async function tick(): Promise<TickResult> {
     const result: TickResult = {
       scanned: 0,
@@ -535,118 +722,37 @@ export function createLeaseExpiryAlertCron(
     const started = Date.now();
     try {
       const now = nowFn();
-      const candidates = await fetchExpiringLeases(options.db, now, windowsDays);
-      const mutable = result as { scanned: number };
-      mutable.scanned = candidates.length;
+      // Enumerate active tenants (the `tenants` table is RLS `USING(TRUE)`,
+      // so this read resolves without any tenant GUC). Each tenant's scan +
+      // dispatch then runs inside `withWorkerTenantContext` so the
+      // tenant-isolation policy on `leases` / `customers` matches rows.
+      const tenants = await enumerateActiveTenants(options.db);
+      if (tenants.length === 0) {
+        // Fail loud rather than silently no-op: an empty active-tenant set on
+        // a live deployment means either the enumeration itself was RLS-
+        // filtered to zero or there genuinely are no tenants. Log a warning
+        // so the dark-worker failure mode (the original bug) stays observable.
+        options.logger.warn(
+          'lease-expiry-cron: no active tenants enumerated — nothing to scan',
+        );
+      }
 
-      for (const lease of candidates) {
-        const window = lease.windowDays;
-        const idempotencyKey = buildIdempotencyKey(lease.id, window);
+      for (const tenantId of tenants) {
         try {
-          const sent = await isAlreadySent(options.db, lease.tenantId, idempotencyKey);
-          if (sent) {
-            (result as { skippedAlreadySent: number }).skippedAlreadySent += 1;
-            continue;
-          }
-          const channel = selectChannel(lease, channelOrder);
-          if (!channel) {
-            options.logger.warn(
-              { tenantId: lease.tenantId, leaseId: lease.id, window },
-              'lease-expiry-cron: no channel available for lease',
-            );
-            (result as { failed: number }).failed += 1;
-            continue;
-          }
-          const recipientAddress =
-            channel === 'email'
-              ? (lease.customerEmail ?? '')
-              : channel === 'in_app'
-                ? lease.customerId
-                : (lease.customerPhone ?? '');
-
-          // #24 — consult the per-recipient consent/preferences gate AND
-          // the per-tenant automated-reminders switch BEFORE claiming a
-          // dispatch slot. If disallowed, durably record
-          // `suppressed_no_consent` (idempotency-keyed so it isn't
-          // re-evaluated every day) and skip the send entirely.
-          const consent = await consentGate.isAutomatedReminderAllowed({
-            tenantId: lease.tenantId,
-            customerId: lease.customerId,
-            channel,
-          });
-          if (!consent.allowed) {
-            await recordSuppressedDispatch(options.db, {
-              tenantId: lease.tenantId,
-              idempotencyKey,
-              lease,
-              channel,
-              recipientAddress,
-              reason: consent.reason ?? 'no_consent',
-            });
-            options.logger.info(
-              {
-                tenantId: lease.tenantId,
-                leaseId: lease.id,
-                window,
-                reason: consent.reason ?? 'no_consent',
-              },
-              'lease-expiry-cron: suppressed_no_consent',
-            );
-            (result as { suppressedNoConsent: number }).suppressedNoConsent += 1;
-            continue;
-          }
-
-          const claim = await insertPendingDispatch(options.db, {
-            tenantId: lease.tenantId,
-            idempotencyKey,
-            lease,
-            channel,
-            recipientAddress,
-          });
-          // TOCTOU defence: if we did NOT win the insert race, another
-          // replica/tick owns this (lease, window) — skip the send so the
-          // alert goes out exactly once cluster-wide.
-          if (!claim.inserted) {
-            (result as { skippedAlreadySent: number }).skippedAlreadySent += 1;
-            continue;
-          }
-
-          const outcome = await options.sender.send({
-            tenantId: lease.tenantId,
-            lease,
-            window,
-            channel,
-            idempotencyKey,
-          });
-
-          await updateDispatchOutcome(options.db, {
-            id: claim.id,
-            delivered: outcome.delivered,
-            providerMessageId: outcome.providerMessageId,
-            error: outcome.error,
-          });
-          if (outcome.delivered) {
-            (result as { dispatched: number }).dispatched += 1;
-            (result as { byWindow: Record<number, number> }).byWindow[window] =
-              (result.byWindow[window] ?? 0) + 1;
-          } else {
-            (result as { failed: number }).failed += 1;
-          }
+          await processTenant(tenantId, now, result);
         } catch (err) {
           options.logger.error(
             {
-              tenantId: lease.tenantId,
-              leaseId: lease.id,
-              window,
+              tenantId,
               err: err instanceof Error ? err.message : String(err),
             },
-            'lease-expiry-cron: lease alert failed',
+            'lease-expiry-cron: tenant tick failed',
           );
           (result as { failed: number }).failed += 1;
         }
       }
       options.logger.info(
-        { durationMs: Date.now() - started, ...result },
+        { durationMs: Date.now() - started, tenants: tenants.length, ...result },
         'lease-expiry-cron: tick complete',
       );
     } finally {

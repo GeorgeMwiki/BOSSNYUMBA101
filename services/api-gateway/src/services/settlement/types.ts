@@ -61,6 +61,21 @@ export interface SignMoveInResult {
   readonly idempotent: boolean;
 }
 
+/**
+ * Applicant-driven RFB sign-delivery (lease activation) — the tenant-mobile
+ * counterparty L8 path. The APPLICANT who owns the rfb_requests row signs; the
+ * settlement pays the landlord who posted the accepted `rfb_responses` row.
+ */
+export interface SignRfbDeliveryInput {
+  readonly tenantId: string;
+  /** The applicant (renter) signing — must own the parent rfb_requests row. */
+  readonly applicantUserId: string;
+  /** The accepted `rfb_responses` row id (resolved via /marketplace/rfb/:id). */
+  readonly responseId: string;
+  /** Deterministic chain-of-custody checksum — drives idempotency. */
+  readonly coCStepChecksum: string;
+}
+
 export interface SettlementLedgerPostInput {
   readonly tenantId: string;
   readonly responseId: string;

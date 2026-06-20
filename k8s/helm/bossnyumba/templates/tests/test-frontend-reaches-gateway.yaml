@@ -1,6 +1,6 @@
-{{- if and .Values.apps.customerApp.enabled .Values.services.apiGateway.enabled -}}
+{{- if and .Values.apps.ownerPortal.enabled .Values.services.apiGateway.enabled -}}
 # Helm test: validate the NetworkPolicy allow rule by curling api-gateway
-# from a pod that wears the customer-app pod label. If this fails it
+# from a pod that wears the owner-portal pod label. If this fails it
 # usually means a NetworkPolicy regression — a frontend pod can no
 # longer reach the backend it depends on.
 apiVersion: v1
@@ -11,7 +11,7 @@ metadata:
   labels:
     {{- include "bossnyumba.labels" . | nindent 4 }}
     {{- include "bossnyumba.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: {{ .Values.apps.customerApp.name }}
+    app.kubernetes.io/component: {{ .Values.apps.ownerPortal.name }}
     bossnyumba.io/test: networkpolicy
   annotations:
     helm.sh/hook: test
@@ -39,7 +39,7 @@ spec:
           echo "FAIL: frontend pod could NOT reach api-gateway (HTTP $CODE)"
           echo "  most likely a NetworkPolicy regression — see:"
           echo "    helm/bossnyumba/templates/api-gateway.networkpolicy.yaml"
-          echo "    helm/bossnyumba/templates/customer-app.networkpolicy.yaml"
+          echo "    helm/bossnyumba/templates/owner-portal.networkpolicy.yaml"
           exit 1
       resources:
         requests: { cpu: 50m, memory: 32Mi }

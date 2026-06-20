@@ -81,35 +81,10 @@ export function captureRequest(respondWith: unknown, status = 200): RequestCaptu
 }
 
 /**
- * Install an auth state into localStorage so customer-app pages think the
- * user is signed in. The token is intentionally bogus — every API call is
- * mocked, so the gateway never validates it.
+ * Install an auth state into localStorage so a portal page thinks the user
+ * is signed in. The token is intentionally bogus — every API call is mocked,
+ * so the gateway never validates it.
  */
-export async function seedCustomerAuth(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    try {
-      window.localStorage.setItem('customer_token', 'mock-customer-token');
-      window.localStorage.setItem(
-        'customer_user',
-        // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- E2E test fixture phone number
-        JSON.stringify({ id: 'cust_test', phone: '+255712345678' }),
-      );
-    } catch {
-      /* ignore */
-    }
-  });
-}
-
-export async function seedManagerAuth(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    try {
-      window.localStorage.setItem('manager_token', 'mock-manager-token');
-    } catch {
-      /* ignore */
-    }
-  });
-}
-
 export async function seedOwnerAuth(page: Page): Promise<void> {
   await page.addInitScript(() => {
     try {

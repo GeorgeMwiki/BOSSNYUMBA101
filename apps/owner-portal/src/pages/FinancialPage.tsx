@@ -52,6 +52,8 @@ import {
   type FinancialTransaction as TransactionDetail,
 } from '../lib/hooks';
 import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
+import { chartLocaleTag } from '../lib/chart-locale';
+import { useLocaleContext } from '../contexts/LocaleProvider';
 
 // ─── Types ───────────────────────────────────────────────────────
 // IncomeStatement, Disbursement and TransactionDetail are now imported
@@ -62,6 +64,9 @@ import { useTenantCurrencyFormatter } from '../hooks/useTenantCurrency';
 // ─── Main Page ───────────────────────────────────────────────────
 export function FinancialPage() {
   const t = useTranslations('financialPage');
+  // Chart month labels follow the active UI locale (en->en-GB, sw->sw-TZ) — never
+  // a hard-coded jurisdiction. TZ is the launch market; KE is a planned expansion.
+  const { locale } = useLocaleContext();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   // `formatCurrency` is sourced from the tenant-bound formatter so amounts
@@ -139,7 +144,7 @@ export function FinancialPage() {
 
   const chartData = Array.from(
     payments.reduce((acc, payment) => {
-      const month = new Date(payment.createdAt).toLocaleDateString('en-KE', {
+      const month = new Date(payment.createdAt).toLocaleDateString(chartLocaleTag(locale), {
         month: 'short',
         year: 'numeric',
       });

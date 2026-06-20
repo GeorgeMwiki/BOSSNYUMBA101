@@ -3,7 +3,7 @@
 /**
  * AcquisitionAdvisorClient — interactive form + report renderer.
  *
- * Posts `{ deal, findings }` to `/api/v1/advisor/acquisition` and renders
+ * Posts `{ deal, findings }` to `/api/v1/acquisition-advisor/recommend` and renders
  * the returned `AcquisitionRecommendation` as a verdict card, pricing
  * grid, critical-findings list, and a closing checklist.
  *
@@ -109,7 +109,7 @@ export function AcquisitionAdvisorClient(): JSX.Element {
     }
     setState({ status: 'loading' });
     const envelope = await postAdvisor({
-      endpoint: 'acquisition',
+      endpoint: 'acquisition-advisor/recommend',
       body: payload,
       schema: acquisitionResponseSchema,
     });
@@ -160,7 +160,7 @@ export function AcquisitionAdvisorClient(): JSX.Element {
         />
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-neutral-500">
-            POST → /api/v1/advisor/acquisition
+            POST → /api/v1/acquisition-advisor/recommend
           </span>
           <button
             type="button"

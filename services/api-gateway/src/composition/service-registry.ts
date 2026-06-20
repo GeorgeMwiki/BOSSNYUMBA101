@@ -136,6 +136,13 @@ import {
   type CreditRatingService,
 } from '@bossnyumba/ai-copilot';
 import { PostgresCreditRatingRepository } from './credit-rating-repository.js';
+// Admin audit-log read-back — Drizzle-backed query over the canonical,
+// append-only `audit_events` table. Backs GET /api/v1/admin/audit/log; the
+// route fails loud (503) when this slot is null rather than empty-success.
+import {
+  createAuditLogQueryService,
+  type AuditLogQueryService,
+} from './audit-log-query.service.js';
 // Wave-K W-Data — DSAR (Art.20/PDPA s.27) Drizzle-backed data source +
 // classification lookup. Bound here so the dsar router can pull a real
 // per-tenant data source out of the service registry.
@@ -161,6 +168,7 @@ import {
   classify as classifyDbColumn,
   createApprovalPolicyService,
   createKernelGoalsService,
+  createPgApprovalStore,
   createPrivacyBudgetComposerService,
   createSensorRoutingService,
 } from '@bossnyumba/database';
@@ -404,6 +412,7 @@ import {
 // pgvector-backed adapter will replace it for production.
 // Follow-up wave-30 (Docs/TODO_BACKLOG.md): swap in pgvector-backed ConversationMemory for prod.
 import {
+  createApprovalGate,
   createInMemoryConversationMemory,
   createInMemoryAuditSinkAndReader,
   createConversationAuditRecorder,
@@ -654,6 +663,14 @@ export interface ServiceRegistry {
    *  reads/writes through this composer; the legacy in-process
    *  PlatformBudgetLedger is the back-compat fallback. */
   readonly privacyBudgetComposer: PrivacyBudgetComposerService;
+
+  /** Admin audit-log read-back (GDPR Art.5(2) / TZ PDPA s.13 accountability).
+   *  Drizzle-backed query over the canonical append-only `audit_events`
+   *  table with keyset pagination. Null in degraded mode (no DB) — the
+   *  admin-audit route then returns 503 AUDIT_LOG_UNAVAILABLE rather than an
+   *  empty `success: true` (which would read as a clean compliance state to
+   *  an auditor when the surface is simply unwired). */
+  readonly auditLogQuery: AuditLogQueryService | null;
 
   /**
    * Wave 26 Agent Z4 — multi-LLM router built from env keys. Null when no
@@ -1420,6 +1437,10 @@ function degradedRegistry(
     // than silently no-op'ing the erasure (the prior stub bug).
     dsarRtbfExecutor: null,
     privacyBudgetComposer: createPrivacyBudgetComposerService(),
+    // Degraded mode: no DB client, so the audit-log read-back is null. The
+    // admin-audit route returns 503 AUDIT_LOG_UNAVAILABLE (fail-loud) instead
+    // of an empty success.
+    auditLogQuery: createAuditLogQueryService(null),
     llmRouter: null,
     buildBudgetGuardedAnthropicClient: null,
     // PO-port wave-5 wiring #2 — LLM budget governor is always wired.
@@ -2162,6 +2183,9 @@ function buildServicesInner(
       db: db as unknown as never,
     }),
     privacyBudgetComposer: createPrivacyBudgetComposerService(),
+    // Live mode: Drizzle-backed audit-log read-back over `audit_events`
+    // (keyset pagination). Lights up GET /api/v1/admin/audit/log.
+    auditLogQuery: createAuditLogQueryService(db),
     llmRouter,
     buildBudgetGuardedAnthropicClient,
     // PO-port wave-5 wiring #2 — LLM budget governor. Live mode swaps
@@ -2676,6 +2700,28 @@ function buildServicesInner(
       cnsLoopActuatorHolder.supervisor = inProcessWakeSupervisor;
       cnsLoopActuatorHolder.runtime = inProcessInngestRuntime;
 
+      // Durable four-eye gate for the orchestrator main-loop's PreToolUse
+      // four-eye hook. Threaded into BOTH brain-kernel-wiring sites (primary
+      // + voice) via `orchestratorBindings.approvalGate` so production runs
+      // on the Drizzle-backed `sovereign_approvals` table (replica-shared,
+      // survives restart) instead of the wiring's in-memory fallback. The
+      // orchestrator is platform-scoped (`_platform`), matching the
+      // `tenantId` passed into `buildOrchestratorBindings`. When `db` is
+      // null (degraded / no-DB dev + tests) we leave the override unset and
+      // the wiring keeps its in-memory store. createInMemoryApprovalStore
+      // stays strictly for that DB-absent path.
+      // The Drizzle store satisfies the structural put/get/list surface
+      // both the kernel gate and the orchestrator hook need; the database
+      // package types it with its own (policy/plan-free) ApprovalRecord,
+      // so we duck-cast at the boundary — the same pattern composeSovereign
+      // already uses when consuming `mutable.approvalStore`.
+      const platformApprovalStore = db
+        ? createPgApprovalStore(db, { tenantId: '_platform' })
+        : undefined;
+      const orchestratorApprovalGate = platformApprovalStore
+        ? createApprovalGate({ store: platformApprovalStore as never })
+        : undefined;
+
       // BN-EXE-04 — deep-reasoning mixture-of-agents fan-out. Build the
       // multi-LLM synthesizer port (Anthropic + OpenAI + DeepSeek proposers
       // in parallel, Claude-Opus serial merge). Returns null when the wire
@@ -2713,6 +2759,14 @@ function buildServicesInner(
         // kernel keeps the single-shot path with no behavioural change.
         synthesizer: synthesizerWiring?.port ?? null,
         approvalPolicyResolver: createApprovalPolicyService(db),
+        // Durable kernel-level four-eye gate (same Drizzle store the
+        // orchestrator hook uses). composeSovereign builds its `approvals`
+        // gate over this instead of the in-memory fallback. Unset when db
+        // is null (dev/test) → kernel keeps in-memory. Duck-cast at the
+        // boundary (database ApprovalRecord ↔ kernel ApprovalStore port).
+        ...(platformApprovalStore
+          ? { approvalStore: platformApprovalStore as never }
+          : {}),
         sensorRoutingService: createSensorRoutingService(db),
         hqToolRegistry: hqPortBindings.hqToolRegistry,
         // PART B — real-backed seed-tool deps. `lookupTenantArrears` +
@@ -2741,6 +2795,13 @@ function buildServicesInner(
         orchestratorBindings: {
           db,
           tenantId: '_platform',
+          // Durable, replica-shared four-eye gate (Drizzle-backed) so the
+          // PreToolUse four-eye hook persists approvals across restart
+          // instead of the wiring's in-memory fallback. Unset when db is
+          // null → wiring keeps in-memory (dev/test only).
+          ...(orchestratorApprovalGate
+            ? { approvalGate: orchestratorApprovalGate }
+            : {}),
         },
         // Phase F.3 — LIVE-BY-DEFAULT main-loop. `llmRouter` is non-null
         // exactly when `ANTHROPIC_API_KEY` is configured; gating on it
@@ -2875,8 +2936,24 @@ function buildServicesInner(
     // memory → cohort → persona → sensor failover → normalize →
     // judge → drift → policy → confidence → provenance).
     voiceAgent: (() => {
+      // Durable Drizzle-backed four-eye gate for the voice path's kernel
+      // + orchestrator hook. Built locally here (the primary path's
+      // store is scoped to its own IIFE) so voice turns also persist
+      // approvals across restart/replicas. Unset when db is null
+      // (dev/test) → both the kernel gate and the orchestrator hook keep
+      // their in-memory stores.
+      const voiceApprovalStore = db
+        ? createPgApprovalStore(db, { tenantId: '_platform' })
+        : undefined;
+      const voiceOrchestratorApprovalGate = voiceApprovalStore
+        ? createApprovalGate({ store: voiceApprovalStore as never })
+        : undefined;
       const brainKernel = createBrainKernelWiring({
         buildBudgetGuardedAnthropicClient,
+        // Durable kernel-level four-eye gate (mirrors the primary path).
+        ...(voiceApprovalStore
+          ? { approvalStore: voiceApprovalStore as never }
+          : {}),
         // PART C — thread the SAME db-backed orchestrator bindings the
         // primary path uses so voice turns enforce the real 9-hook chain
         // (PII → permission → four-eye → denylist → rate → cost → sandbox
@@ -2887,6 +2964,11 @@ function buildServicesInner(
         orchestratorBindings: {
           db,
           tenantId: '_platform',
+          // Same durable Drizzle-backed four-eye gate as the primary path
+          // so voice turns persist approvals across restart/replicas too.
+          ...(voiceOrchestratorApprovalGate
+            ? { approvalGate: voiceOrchestratorApprovalGate }
+            : {}),
         },
         // PART C — voice turns also get the real-backed seed tools so
         // `lookupTenantArrears` / `getMarketRateBand` execute against live
@@ -3055,21 +3137,31 @@ function buildServicesInner(
 
 /* eslint-disable-next-line no-secrets/no-secrets */
 /**
- * Env-driven kill-switch for the agency executor's sovereign-tier
- * audit-write policy (W-FailClosed, wave-k-final-zero).
+ * Env-driven policy for the agency executor's sovereign-tier
+ * audit-write behaviour (Wave-B, owner-approved fail-CLOSED).
  *
- * - `SOVEREIGN_LEDGER_FAIL_CLOSED=true|1|yes|on` -> fail-closed.
- *   When the hash-chained sovereign action ledger cannot be written
- *   on a sovereign-tier action (tenant eviction, owner payout, KRA
- *   MRI, GePG control-number revocation, market-rate-band override,
- *   inspection-as-major-damage), the executor flips the step
- *   outcome to `failed` with reason `sovereign-audit-write-failed`.
- *   The tool's external side-effects are NOT un-executed — a
- *   compensating-action workflow (out of scope here; tracked in
- *   Docs/TODO_BACKLOG.md — "Sovereign-ledger reconciliation") must
- *   reconcile them.
- * - Anything else (unset / `false` / `0` / `no` / `off` / empty) →
- *   fail-open (legacy W-Agency behaviour: log-and-continue).
+ * The SAFE DEFAULT is fail-CLOSED. When the hash-chained sovereign
+ * action ledger cannot be written on a sovereign-tier action (tenant
+ * eviction, owner payout, KRA MRI, GePG control-number revocation,
+ * market-rate-band override, inspection-as-major-damage), the executor
+ * flips the step outcome to `failed` with reason
+ * `sovereign-audit-write-failed`. The tool's external side-effects are
+ * NOT un-executed — a compensating-action workflow (out of scope here;
+ * tracked in Docs/TODO_BACKLOG.md — "Sovereign-ledger reconciliation")
+ * must reconcile them.
+ *
+ * Resolution order (first match wins):
+ *   1. `SOVEREIGN_LEDGER_FAIL_OPEN=1|true|yes|on` → fail-OPEN. The
+ *      explicit legacy back-compat opt-out (W-Agency log-and-continue).
+ *      Use ONLY for legacy environments; NEVER in production.
+ *   2. `SOVEREIGN_LEDGER_FAIL_CLOSED=false|0|no|off` → fail-OPEN. Same
+ *      explicit opt-out spelled as the inverse flag (back-compat).
+ *   3. `SOVEREIGN_LEDGER_FAIL_CLOSED=true|1|yes|on` → fail-CLOSED.
+ *   4. Unset / empty / anything else → fail-CLOSED (the safe default).
+ *
+ * Returns `true` for fail-closed, `false` for fail-open — matching the
+ * `sovereignLedgerFailClosed` executor dep (where the executor ALSO
+ * treats unset/undefined as fail-closed as defence-in-depth).
  *
  * Exported so the agency-executor composition root
  * (`./sovereign.ts -> agencyKernel.createExecutor`) can read a
@@ -3080,10 +3172,10 @@ function buildServicesInner(
 export const SOVEREIGN_LEDGER_FAIL_CLOSED_ENV =
   'SOVEREIGN_LEDGER_FAIL_CLOSED';
 
-export function readSovereignLedgerFailClosedFromEnv(
-  env: NodeJS.ProcessEnv = process.env,
-): boolean {
-  const raw = env[SOVEREIGN_LEDGER_FAIL_CLOSED_ENV];
+export const SOVEREIGN_LEDGER_FAIL_OPEN_ENV =
+  'SOVEREIGN_LEDGER_FAIL_OPEN';
+
+function isTruthyEnvFlag(raw: string | undefined | null): boolean {
   if (raw === undefined || raw === null) return false;
   const trimmed = raw.trim().toLowerCase();
   if (trimmed === '') return false;
@@ -3093,6 +3185,30 @@ export function readSovereignLedgerFailClosedFromEnv(
     trimmed === 'yes' ||
     trimmed === 'on'
   );
+}
+
+function isFalsyEnvFlag(raw: string | undefined | null): boolean {
+  if (raw === undefined || raw === null) return false;
+  const trimmed = raw.trim().toLowerCase();
+  if (trimmed === '') return false;
+  return (
+    trimmed === 'false' ||
+    trimmed === '0' ||
+    trimmed === 'no' ||
+    trimmed === 'off'
+  );
+}
+
+export function readSovereignLedgerFailClosedFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  // Explicit legacy opt-out wins: SOVEREIGN_LEDGER_FAIL_OPEN=1.
+  if (isTruthyEnvFlag(env[SOVEREIGN_LEDGER_FAIL_OPEN_ENV])) return false;
+  // Inverse spelling of the opt-out: SOVEREIGN_LEDGER_FAIL_CLOSED=false.
+  if (isFalsyEnvFlag(env[SOVEREIGN_LEDGER_FAIL_CLOSED_ENV])) return false;
+  // Everything else — unset, empty, or any truthy spelling — is
+  // fail-CLOSED (the safe Wave-B default for irreversible actions).
+  return true;
 }
 
 /**

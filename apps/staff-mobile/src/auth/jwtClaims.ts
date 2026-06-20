@@ -1,12 +1,17 @@
 /**
  * Lightweight JWT claim parser — base64-decodes the middle segment of a
  * JWT to extract BossNyumba-domain custom claims (`app_metadata.tenant_id`,
- * `app_metadata.mining_role`). We intentionally avoid adding a `jose` or
+ * `app_metadata.workforce_role`). We intentionally avoid adding a `jose` or
  * `jwt-decode` dependency: signature verification happens server-side in
  * api-gateway (`services/api-gateway/src/auth/supabase/supabase-jwt-verify.ts`).
  *
  * The mobile client only inspects claims to drive UI routing — it never
  * trusts them for authorisation, so an unsigned parse is safe.
+ *
+ * Real-estate vertical: the canonical role claim is `workforce_role`. The
+ * legacy `mining_role` key (residue from the mining vertical this app was
+ * forked from) is still accepted as a deprecated fallback so any token
+ * minted before the rename keeps routing; new tokens use `workforce_role`.
  */
 
 import type { Role } from '../roles/types'
@@ -14,7 +19,7 @@ import type { Role } from '../roles/types'
 export interface SupabaseTokenClaims {
   readonly userId: string
   readonly tenantId: string | null
-  readonly miningRole: string | null
+  readonly workforceRole: string | null
   readonly role: Role | null
   readonly phone: string | null
 }
@@ -24,6 +29,8 @@ interface RawJwtPayload {
   readonly phone?: string
   readonly app_metadata?: {
     readonly tenant_id?: string
+    readonly workforce_role?: string
+    /** @deprecated mining-vertical residue — read as a fallback only. */
     readonly mining_role?: string
     readonly roles?: ReadonlyArray<string>
   }
@@ -44,10 +51,13 @@ function base64UrlDecode(input: string): string {
   throw new Error('No base64 decoder available in this runtime')
 }
 
-function mapMiningRoleToWorkforceRole(miningRole: string | null): Role | null {
-  if (!miningRole) return null
-  const lower = miningRole.toLowerCase()
+function mapWorkforceRoleToRole(workforceRole: string | null): Role | null {
+  if (!workforceRole) return null
+  const lower = workforceRole.toLowerCase()
   if (lower === 'owner') return 'owner'
+  // `site_manager` / `driver` / `field_employee` are legacy mining-vertical
+  // values kept in the map so already-minted tokens still route; the canonical
+  // real-estate vocabulary is manager / employee / maintenance_staff.
   if (lower === 'site_manager' || lower === 'manager') return 'manager'
   if (
     lower === 'driver' ||
@@ -75,13 +85,15 @@ export function parseSupabaseToken(accessToken: string): SupabaseTokenClaims | n
     const decoded = base64UrlDecode(middle)
     const payload = JSON.parse(decoded) as RawJwtPayload
     const appMd = payload.app_metadata ?? {}
-    const miningRole = appMd.mining_role ?? null
-    const role = mapMiningRoleToWorkforceRole(miningRole) ??
-      mapMiningRoleToWorkforceRole(appMd.roles?.[0] ?? null)
+    // Canonical `workforce_role`, falling back to the deprecated
+    // `mining_role` so pre-rename tokens keep routing.
+    const workforceRole = appMd.workforce_role ?? appMd.mining_role ?? null
+    const role = mapWorkforceRoleToRole(workforceRole) ??
+      mapWorkforceRoleToRole(appMd.roles?.[0] ?? null)
     return {
       userId: payload.sub ?? '',
       tenantId: appMd.tenant_id ?? null,
-      miningRole,
+      workforceRole,
       role,
       phone: payload.phone ?? null
     }

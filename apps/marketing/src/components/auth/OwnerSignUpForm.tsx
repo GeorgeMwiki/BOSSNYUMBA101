@@ -24,11 +24,26 @@ type Phase =
  *
  * Posts the marketing-form shape (orgName + ownerEmail + ownerPassword
  * + country) to `/api/v1/orgs/signup`. The gateway creates the tenant
- * + Supabase auth user inside one flow, mints a Supabase session, and
- * sets the encrypted `bossnyumba-session` HttpOnly cookie. The browser
- * then hard-redirects to the owner cockpit (different origin in dev)
- * where the session is rehydrated from the cookie on the first
- * /dashboard request.
+ * + Supabase auth user inside one flow and mints a canonical Supabase
+ * session.
+ *
+ * Auth handoff to the cockpit (canonical Supabase JWT)
+ * ----------------------------------------------------
+ * The owner cockpit is a SEPARATE origin (the cross-subdomain HttpOnly
+ * `bossnyumba-session` cookie set by the gateway is host-only and not
+ * reliably readable cross-origin, so we do NOT depend on it for the
+ * landing). Instead, when `signupStatus === 'active'`, the gateway
+ * returns the Supabase `access_token` in the JSON body and we hand it to
+ * the cockpit in the URL FRAGMENT (`#access_token=…`). The fragment is
+ * never sent to any server (no logs / no Referer leak); the cockpit reads
+ * it on first load, persists it as its bearer, and authenticates via
+ * `GET /auth/me` — which verifies Supabase JWTs. This is the canonical
+ * "Supabase JWT is canonical" path and is topology-independent.
+ *
+ * When `signupStatus === 'pending_sign_in'` no live session exists (the
+ * password-grant mint could not complete), so we route the owner to the
+ * cockpit's sign-in page with a "from=signup" notice rather than a fake
+ * /dashboard success that would bounce them straight back to /login.
  *
  * Inline errors render next to the field that failed; the gateway's
  * `error.field` hint (`ownerEmail`, etc.) is the canonical mapping.
@@ -51,14 +66,32 @@ export function OwnerSignUpForm({ locale }: OwnerSignUpFormProps) {
     country: z.enum(['TZ', 'KE', 'UG', 'NG']),
   });
 
-  function targetUrl(): string {
+  function ownerWebOrigin(): string {
     // requirePublicBaseUrl throws in prod when env unset — avoids silent
     // redirect to localhost from the deployed marketing site.
-    const base = requirePublicBaseUrl(
+    return requirePublicBaseUrl(
       'NEXT_PUBLIC_OWNER_WEB_ORIGIN',
       'http://localhost:3010',
     ).replace(/\/$/, '');
-    return `${base}/dashboard`;
+  }
+
+  /**
+   * Authenticated cockpit landing. The Supabase access_token rides in the
+   * URL FRAGMENT so it never reaches a server (no logs / no Referer leak);
+   * the cockpit reads `#access_token=…` on first load, persists it as its
+   * bearer, and authenticates via `GET /auth/me`.
+   */
+  function authedDashboardUrl(accessToken: string): string {
+    return `${ownerWebOrigin()}/dashboard#access_token=${encodeURIComponent(accessToken)}`;
+  }
+
+  /**
+   * Account-created-but-not-yet-signed-in landing. No live session exists,
+   * so send the owner to the cockpit sign-in page with a notice instead of
+   * a fake /dashboard success that would bounce them to /login.
+   */
+  function signInUrl(): string {
+    return `${ownerWebOrigin()}/login?from=signup`;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -103,9 +136,18 @@ export function OwnerSignUpForm({ locale }: OwnerSignUpFormProps) {
           }
         | null;
       if (res.ok && json && 'success' in json && json.success) {
-        // The gateway already set the bossnyumba-session cookie when
-        // `signupStatus: 'active'`. Hard redirect into the cockpit.
-        window.location.assign(targetUrl());
+        // Branch on the REAL provisioning status — never treat
+        // `pending_sign_in` as a logged-in landing.
+        const token = json.session?.access_token ?? null;
+        if (json.signupStatus === 'active' && token) {
+          // Live session: hand the canonical Supabase access_token to the
+          // cockpit via the URL fragment so it lands authenticated.
+          window.location.assign(authedDashboardUrl(token));
+          return;
+        }
+        // Account created but no live session yet: route to sign-in with a
+        // notice instead of a fake /dashboard success.
+        window.location.assign(signInUrl());
         return;
       }
       // Map gateway errors onto inline field hints.

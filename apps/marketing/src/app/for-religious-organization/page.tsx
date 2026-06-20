@@ -2,18 +2,21 @@ import type { Metadata } from 'next';
 import { Church } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { AudiencePage } from '@/components/audience/AudiencePage';
-import { COPY } from '@/lib/audience-copy';
+import { getMessages } from '@/lib/i18n';
+import { getLocale } from '@/lib/locale';
 
-export const metadata: Metadata = {
-  title: 'For religious organisations — BossNyumba',
-  description:
-    'BossNyumba runs the property estate of mosques, churches, temples, and dioceses. Congregation-transparent dues ledger, AGM-ready trustee statements, faith-aligned governance, hash-chained on every action.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = getMessages(locale).audiencePages.religiousOrganization;
+  return { title: t.metaTitle, description: t.metaDescription };
+}
 
-export default function ForReligiousOrganizationPage() {
+export default async function ForReligiousOrganizationPage() {
+  const locale = await getLocale();
+  const copy = getMessages(locale).audiencePages.religiousOrganization;
   return (
     <PageShell>
-      <AudiencePage copy={COPY.religiousOrganization} kickerIcon={Church} />
+      <AudiencePage copy={copy} kickerIcon={Church} />
     </PageShell>
   );
 }

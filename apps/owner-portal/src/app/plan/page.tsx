@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslations } from 'next-intl';
 import { Calendar, Plus, MessageSquare, CheckCircle2, XCircle } from 'lucide-react';
 import { PlanTree, type PlanItem, type PlanTreeAction, type MdrPlanHorizon } from '../../components/PlanTree';
 import { MissingBackendNotice } from '../../components/MissingBackendNotice';
 import { api } from '../../lib/api';
+import { openJarvisWithPrefill } from '../../lib/jarvis-prefill';
 
 /**
  * /plan — MDR plan tree page.
@@ -51,6 +53,7 @@ interface PlanApiState {
 
 export default function PlanPage(): JSX.Element {
   const t = useTranslations('p89.plan');
+  const navigate = useNavigate();
   const [state, setState] = useState<PlanApiState>({ status: 'loading', items: [] });
   const [horizonFilter, setHorizonFilter] = useState<MdrPlanHorizon | 'all'>('all');
 
@@ -101,17 +104,12 @@ export default function PlanPage(): JSX.Element {
     }
   }
 
+  // Hand the prompt to the Jarvis composer route via react-router location
+  // state. Deterministic (no listener-less window event) — the /jarvis page
+  // reads the prefill on mount, seeds its input, and lets the owner edit
+  // before sending (autoSubmit defaults to false).
   function openInJarvis(prompt: string): void {
-    if (typeof window === 'undefined') return;
-    try {
-      window.dispatchEvent(
-        new CustomEvent('owner-portal:jarvis-prefill', {
-          detail: { prompt, autoSubmit: false },
-        }),
-      );
-    } catch {
-      /* ignore */
-    }
+    navigate(...openJarvisWithPrefill(prompt));
   }
 
   async function bulkAct(kind: 'accept' | 'reject'): Promise<void> {

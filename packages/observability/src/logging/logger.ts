@@ -8,6 +8,7 @@
 import pino, { Logger as PinoLogger } from 'pino';
 import { trace, context, SpanStatusCode } from '@opentelemetry/api';
 import type { LogLevel, ServiceIdentity, TelemetryConfig } from '../types/telemetry.types.js';
+import { redactPII } from '../pii-redactor.js';
 
 /**
  * Logger context for multi-tenant and request scoping
@@ -99,6 +100,13 @@ const DEFAULT_REDACT_FIELDS = [
  * Create the base Pino logger instance
  */
 function createPinoLogger(config: LoggerConfig): PinoLogger {
+  // Pino's native `redact.paths` only matches LITERAL paths with a fixed
+  // number of wildcard segments — it cannot express "this key at any
+  // depth". We keep depths 0-2 here as a cheap fast-path / defence in
+  // depth, but the AUTHORITATIVE, depth-UNBOUNDED redaction is applied by
+  // the recursive `redactPII` walk in `buildLogObj` before the object ever
+  // reaches Pino (see Logger.buildLogObj). That walk censors any matching
+  // key at ANY nesting depth, closing the "depth >= 3 leaks" hole.
   const redactPaths = [
     ...(config.redactFields ?? DEFAULT_REDACT_FIELDS).map(f => f),
     ...(config.redactFields ?? DEFAULT_REDACT_FIELDS).map(f => `*.${f}`),
@@ -162,6 +170,14 @@ function getTraceContext(): { traceId?: string; spanId?: string } {
 export class Logger {
   private readonly pino: PinoLogger;
   private readonly baseContext: LoggerContext;
+  /**
+   * Field names redacted at UNBOUNDED depth by the recursive `redactPII`
+   * pass. Mirrors the Pino `redact.paths` field list (custom override or
+   * {@link DEFAULT_REDACT_FIELDS}) so the depth-unbounded walk censors
+   * exactly the same fields the static paths declare — only without the
+   * 3-level depth ceiling.
+   */
+  private readonly redactFields: ReadonlyArray<string>;
 
   constructor(
     private readonly config: LoggerConfig,
@@ -169,6 +185,7 @@ export class Logger {
   ) {
     this.pino = parentLogger ?? createPinoLogger(config);
     this.baseContext = config.baseContext ?? {};
+    this.redactFields = config.redactFields ?? DEFAULT_REDACT_FIELDS;
   }
 
   /**
@@ -211,14 +228,21 @@ export class Logger {
   }
 
   /**
-   * Build log object with context
+   * Build log object with context.
+   *
+   * The merged object is passed through the recursive {@link redactPII}
+   * walk so any PII-named key is censored at ANY nesting depth — not just
+   * the top 3 levels Pino's static `redact.paths` can reach. `tenantId`,
+   * `requestId`, etc. are intentionally NOT in the redact field set, so
+   * they survive; only sensitive field names (phone*, email, token,
+   * nationalId, …) are replaced.
    */
   private buildLogObj(
     data?: Record<string, unknown>
   ): Record<string, unknown> {
     const traceContext = getTraceContext();
-    
-    return {
+
+    const merged = {
       ...(this.baseContext.tenantId && { tenantId: this.baseContext.tenantId }),
       ...(this.baseContext.userId && { userId: this.baseContext.userId }),
       ...(this.baseContext.requestId && { requestId: this.baseContext.requestId }),
@@ -227,6 +251,21 @@ export class Logger {
       ...this.baseContext.attributes,
       ...data,
     };
+
+    return this.redact(merged);
+  }
+
+  /**
+   * Depth-unbounded PII redaction over a log payload. Uses the shared
+   * recursive walker with this logger's configured field set and a
+   * `[REDACTED]` censor matching Pino's `censor` so output is uniform
+   * regardless of which path (static vs recursive) catches the field.
+   */
+  private redact(obj: Record<string, unknown>): Record<string, unknown> {
+    return redactPII(obj, {
+      fields: this.redactFields,
+      format: () => '[REDACTED]',
+    });
   }
 
   /** Log at trace level */
@@ -251,8 +290,12 @@ export class Logger {
 
   /** Log at error level */
   error(message: string, error?: Error | Record<string, unknown>, data?: Record<string, unknown>): void {
+    // Build the merged context+data first, then fold the error in, then
+    // redact the WHOLE object once. Redacting after the merge guarantees
+    // PII riding inside an error record (`{ ...error }`) or a stack/message
+    // is censored at any depth — not just the `data` portion.
     let logData = this.buildLogObj(data);
-    
+
     if (error instanceof Error) {
       logData = {
         ...logData,
@@ -262,7 +305,7 @@ export class Logger {
           stack: error.stack,
         },
       };
-      
+
       // Also record error on current span if available
       const span = trace.getSpan(context.active());
       if (span) {
@@ -272,14 +315,14 @@ export class Logger {
     } else if (error) {
       logData = { ...logData, ...error };
     }
-    
-    this.pino.error(logData, message);
+
+    this.pino.error(this.redact(logData), message);
   }
 
   /** Log at fatal level */
   fatal(message: string, error?: Error | Record<string, unknown>, data?: Record<string, unknown>): void {
     let logData = this.buildLogObj(data);
-    
+
     if (error instanceof Error) {
       logData = {
         ...logData,
@@ -292,8 +335,8 @@ export class Logger {
     } else if (error) {
       logData = { ...logData, ...error };
     }
-    
-    this.pino.fatal(logData, message);
+
+    this.pino.fatal(this.redact(logData), message);
   }
 
   /**

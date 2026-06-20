@@ -281,7 +281,8 @@
     "invalidVerificationCode": "Msimbo batili wa uthibitisho",
     "invalidVerificationCodeRetry": "Msimbo batili wa uthibitisho. Tafadhali jaribu tena.",
     "verificationFailed": "Uthibitisho umeshindikana",
-    "mfaSetupFailed": "Usanidi wa MFA umeshindikana"
+    "mfaSetupFailed": "Usanidi wa MFA umeshindikana",
+    "signupNotice": "Akaunti yako imeundwa. Tafadhali ingia ili kuendelea."
   },
   "dashboard": {
     "totalTenants": "Jumla ya Wapangaji",
@@ -326,7 +327,7 @@
     "viewDetails": "Tazama maelezo",
     "details": "Maelezo",
     "revenueLabel": "Mapato",
-    "revenueTrendUnavailable": "Mwelekeo wa mapato haupatikani hadi data halisi ya wakati itaunganishwa.",
+    "revenueTrendUnavailable": "Hakuna data ya mapato bado.",
     "occupancyRate": "Kiwango cha Ujaaji",
     "occupiedLegend": "Zimejaa ({count})",
     "vacantLegend": "Wazi ({count})",
@@ -394,7 +395,10 @@
     "close": "Funga",
     "overrideDecision": "Badilisha Uamuzi",
     "retryingWorkflow": "Inajaribu tena mfumo {id}...",
-    "workflowCancelled": "Mfumo {id} umeghairiwa"
+    "workflowCancelled": "Mfumo {id} umeghairiwa",
+    "refreshed": "Data ya uendeshaji imehuishwa",
+    "exportLogEmpty": "Hakuna maamuzi ya AI ya kuhamisha bado",
+    "exportLogReady": "Kumbukumbu ya maamuzi ya AI imehamishwa"
   },
   "pages": {
     "tenantsTitle": "Wapangaji",
@@ -617,21 +621,39 @@
     "title": "Mtiririko wa Kazi",
     "subtitle": "Otomatiki za hatua nyingi zenye vituo vya idhini ya binadamu.",
     "loading": "Inapakia…",
-    "errorLoad": "Imeshindwa kupakia mtiririko wa kazi.",
+    "errorLoad": "Imeshindwa kupakia foleni yako ya mtiririko.",
     "errorRun": "Uendeshaji wa mtiririko umeshindwa.",
     "errorLookup": "Utafutaji wa uendeshaji umeshindwa.",
-    "stepCount": "Hatua {count}",
-    "runCta": "endesha",
-    "rolesLabel": "Majukumu",
-    "emptyDefs": "Hakuna mtiririko uliosajiliwa.",
+    "errorApprove": "Uthibitishaji umeshindwa.",
+    "errorReject": "Ukataaji umeshindwa.",
+    "runCta": "Anzisha uendeshaji",
+    "startTitle": "Anzisha uendeshaji",
+    "definitionLabel": "Ufafanuzi wa mtiririko",
+    "scopePlaceholder": "Wigo (mf. lease)",
+    "scopeRefPlaceholder": "Rejeo la wigo (mf. kitambulisho cha lease)",
+    "queueTitle": "Foleni yangu",
+    "emptyQueue": "Hakuna uendeshaji ulio wazi kwenye foleni yako.",
     "inspectTitle": "Kagua uendeshaji",
     "runIdPlaceholder": "Kitambulisho cha uendeshaji",
     "fetchCta": "Leta",
-    "runHeader": "Uendeshaji {id} · {workflowId}",
+    "runHeader": "Uendeshaji {id} · {definitionId}",
+    "scopeLabel": "Wigo",
     "statusLabel": "Hali",
-    "stepLabel": "hatua",
-    "approveStep": "Thibitisha hatua",
-    "rejectStep": "Kataa hatua"
+    "rejectionLabel": "Sababu ya kukataa",
+    "approverRolePlaceholder": "Jukumu la mthibitishaji (mf. ESTATE_MANAGER)",
+    "rationalePlaceholder": "Sababu ya uthibitishaji",
+    "rejectReasonPlaceholder": "Sababu ya kukataa",
+    "approveStep": "Thibitisha",
+    "rejectStep": "Kataa",
+    "state": {
+      "open": "Wazi",
+      "in_progress": "Inaendelea",
+      "in_review": "Inakaguliwa",
+      "in_approval": "Inasubiri idhini",
+      "committed": "Imetekelezwa",
+      "rejected": "Imekataliwa",
+      "cancelled": "Imeghairiwa"
+    }
   },
   "warehouse": {
     "title": "Hifadhi ya bidhaa",
@@ -2315,6 +2337,7 @@
     "savingLoading": "Inahifadhi...",
     "savePreferences": "Hifadhi Mapendeleo",
     "savedSuccess": "Mipangilio imehifadhiwa kwa mafanikio",
+    "savedFailed": "Imeshindwa kuhifadhi mipangilio",
     "invitationSent": "Mwaliko umetumwa kwa mafanikio",
     "userRemoved": "Mtumiaji ameondolewa kwa mafanikio",
     "invitationResent": "Mwaliko umetumwa tena kwa mafanikio",
@@ -2374,7 +2397,27 @@
     "dateFormat": "Muundo wa Tarehe",
     "cancel": "Ghairi",
     "sendInvitation": "Tuma Mwaliko",
-    "propertyAccess": "Ufikiaji wa Mali"
+    "propertyAccess": "Ufikiaji wa Mali",
+    "propertyAccessLoading": "Inapakia mali zako…",
+    "propertyAccessEmpty": "Hakuna mali bado — ongeza moja kwanza ili kutoa ufikiaji.",
+    "propertiesNone": "Hakuna mali",
+    "profileSaved": "Wasifu umesasishwa kwa mafanikio",
+    "profileSaveFailed": "Imeshindwa kusasisha wasifu",
+    "userRemoveFailed": "Imeshindwa kumwondoa mtumiaji",
+    "invitationResendFailed": "Imeshindwa kutuma tena mwaliko",
+    "twoFactorStartFailed": "Imeshindwa kuanza usajili wa 2FA",
+    "twoFactorConfirmFailed": "Imeshindwa kuthibitisha 2FA",
+    "twoFactorCodeInvalid": "Weka msimbo wa tarakimu 6 kutoka programu yako ya uthibitishaji",
+    "twoFactorEnabled": "Uthibitishaji wa hatua mbili umewashwa",
+    "twoFactorEnabledBadge": "2FA imewashwa",
+    "twoFactorComingSoon": "Washa 2FA — inakuja hivi karibuni",
+    "twoFactorScanHint": "Changanua msimbo huu wa QR kwa Google Authenticator, Authy, au programu yoyote ya TOTP, kisha weka msimbo wa tarakimu 6 kukamilisha.",
+    "twoFactorManualKey": "Au weka ufunguo huu mwenyewe",
+    "twoFactorRecoveryCodes": "Misimbo ya kurejesha (ihifadhi kwa usalama)",
+    "twoFactorEnterCode": "Msimbo wa tarakimu 6",
+    "twoFactorConfirm": "Thibitisha na uwashe",
+    "twoFactorQrAlt": "Msimbo wa QR wa usajili wa uthibitishaji wa hatua mbili",
+    "twoFactorQrUnavailable": "Msimbo wa QR haupatikani"
   },
   "financialPage": {
     "title": "Fedha",
@@ -2699,6 +2742,9 @@
     "subtitle": "Tazama na dhibiti nyaraka za mali",
     "retry": "Jaribu tena",
     "uploadDocument": "Pakia Hati",
+    "uploading": "Inapakia…",
+    "uploadFailed": "Kupakia hati kumeshindwa.",
+    "downloadFailed": "Imeshindwa kupakua hati hii.",
     "catLeases": "Mikataba na Makubaliano",
     "catLeasesDesc": "Mikataba ya kodi, viambatisho",
     "catFinancial": "Nyaraka za Fedha",
@@ -3258,13 +3304,44 @@
       "pickOwnerIntent": "Chagua nia yako ya umiliki",
       "installStarterSkills": "Sakinisha Ujuzi 3 wa mwanzo",
       "scheduleBriefing": "Panga muhtasari wako wa kwanza wa kila siku",
-      "welcomeAboard": "Karibu"
+      "welcomeAboard": "Karibu",
+      "businessNameFallback": "Kundi lako la mali",
+      "accountCreatedDesc": "Akaunti yako ya shirika na mmiliki ipo hai.",
+      "verifyEmailDesc": "Bofya kiungo tulichotuma ili kuthibitisha anwani.",
+      "addFirstPropertyDesc": "Tuambie anwani, idadi ya vitengo, na makadirio ya kodi.",
+      "importTenantsDesc": "Pakia CSV au ongeza mpangaji mmoja kwa mkono.",
+      "chatFirstTimeDesc": "Kutana na Mwl. Mwikila, msaidizi wako wa kundi la mali.",
+      "pickOwnerIntentDesc": "Mtiririko wa fedha kwanza, ukuaji, au maandalizi ya kutoka: chagua moja.",
+      "installStarterSkillsDesc": "Imeteuliwa na Mwl. Mwikila kulingana na nia yako.",
+      "scheduleBriefingDesc": "Muhtasari wa asubuhi wa dakika 5 unaowasilishwa jinsi upendavyo."
     },
     "plan": {
       "mdrTitle": "Mpango wa MDR"
     },
     "skills": {
-      "marketplaceTitle": "Soko la Ujuzi"
+      "marketplaceTitle": "Soko la Ujuzi",
+      "title": "Soko la Ujuzi",
+      "subtitle": "Sakinisha mtiririko wa kazi ambao Mr. Mwikila anaweza kuendesha kwa ratiba, kwa tukio, au unapohitaji. Zima wakati wowote.",
+      "createSkill": "Tengeneza Ujuzi mpya",
+      "installedHeading": "Vilivyosakinishwa ({count})",
+      "marketplaceHeading": "Soko ({count})",
+      "categoryLabel": "Kategoria:",
+      "triggerLabel": "Kichocheo:",
+      "category": {
+        "all": "Zote",
+        "arrears": "Madeni",
+        "lease": "Mkataba wa kukodi",
+        "maintenance": "Matengenezo",
+        "comms": "Mawasiliano",
+        "compliance": "Uzingatiaji",
+        "reporting": "Ripoti"
+      },
+      "trigger": {
+        "all": "Zote",
+        "cron": "Iliyoratibiwa",
+        "event": "Inayoendeshwa na tukio",
+        "manual": "Mwongozo"
+      }
     },
     "feedbackThumbs": {
       "prompt": "Je, hii ilisaidia?",

@@ -2,7 +2,7 @@
 
 /**
  * ExpansionAdvisorClient — POSTs an ExpansionInputs payload to
- * `/api/v1/advisor/expansion` and renders:
+ * `/api/v1/expansion-advisor/recommend` and renders:
  *
  *   - HBU gate log (4 tests: legal-permissibility, physical-possibility,
  *     financial-feasibility, maximal-productivity)
@@ -130,7 +130,7 @@ export function ExpansionAdvisorClient(): JSX.Element {
     }
     setState({ status: 'loading' });
     const envelope = await postAdvisor({
-      endpoint: 'expansion',
+      endpoint: 'expansion-advisor/recommend',
       body: payload,
       schema: expansionResponseSchema,
     });

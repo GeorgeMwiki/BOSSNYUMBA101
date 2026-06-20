@@ -2,18 +2,21 @@ import type { Metadata } from 'next';
 import { TrendingUp } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { AudiencePage } from '@/components/audience/AudiencePage';
-import { COPY } from '@/lib/audience-copy';
+import { getMessages } from '@/lib/i18n';
+import { getLocale } from '@/lib/locale';
 
-export const metadata: Metadata = {
-  title: 'For real-estate investors — Boss Nyumba',
-  description:
-    'Five-year IRR with conformal confidence for every prospect property. Title chain, zoning, comparable sales, rent rolls, levy history — all audited. Then operates it for you after you buy.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = getMessages(locale).audiencePages.realEstateInvestor;
+  return { title: t.metaTitle, description: t.metaDescription };
+}
 
-export default function ForRealEstateInvestorPage() {
+export default async function ForRealEstateInvestorPage() {
+  const locale = await getLocale();
+  const copy = getMessages(locale).audiencePages.realEstateInvestor;
   return (
     <PageShell>
-      <AudiencePage copy={COPY.realEstateInvestor} kickerIcon={TrendingUp} />
+      <AudiencePage copy={copy} kickerIcon={TrendingUp} />
     </PageShell>
   );
 }

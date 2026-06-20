@@ -10,7 +10,11 @@
  * header is forwarded as-is. The gateway enforces the SUPER_ADMIN /
  * ADMIN role gate — this proxy is permissive on purpose.
  *
- * Body: `{ message, presence? }`. The threadId comes from the URL.
+ * Body: `{ message, presence?, extendedThinking?, slice? }`. The
+ * threadId comes from the URL. The `extendedThinking` toggle and the
+ * `slice` selector (jurisdiction / property-class / time-window) are
+ * threaded through to the upstream so the operator's controls take
+ * effect rather than being silently dropped at the proxy boundary.
  * Anything else the caller supplies is ignored — we re-serialise into
  * the AG-UI request shape the gateway expects.
  */
@@ -28,6 +32,39 @@ interface RouteContext {
 interface IncomingBody {
   readonly message?: unknown;
   readonly presence?: unknown;
+  readonly extendedThinking?: unknown;
+  readonly slice?: unknown;
+}
+
+/**
+ * The `slice` selector the composer sends — jurisdiction, property
+ * class, and time window. Each is a short string code (e.g. `KE-30`,
+ * `Class-B`, `90d`). We forward only string-valued fields and cap the
+ * length so a misbehaving client can't balloon the upstream body.
+ */
+interface SlicePayload {
+  readonly jurisdiction?: string;
+  readonly propertyClass?: string;
+  readonly timeWindow?: string;
+}
+
+const MAX_SLICE_FIELD = 64;
+
+function asBoolean(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
+}
+
+function sanitiseSlice(value: unknown): SlicePayload | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  const out: { jurisdiction?: string; propertyClass?: string; timeWindow?: string } = {};
+  for (const key of ['jurisdiction', 'propertyClass', 'timeWindow'] as const) {
+    const v = raw[key];
+    if (typeof v === 'string' && v.length > 0 && v.length <= MAX_SLICE_FIELD) {
+      out[key] = v;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null;
 }
 
 function getGatewayBase(): string {
@@ -94,12 +131,43 @@ export async function POST(
     );
   }
 
+  const extendedThinking = asBoolean(body.extendedThinking);
+  const slice = sanitiseSlice(body.slice);
+
+  // Carry the operator's slice into the presence packet's forward-
+  // compatible `extra` bag too: the gateway's presence schema accepts
+  // it today (so the audit trail records the population the operator
+  // was reasoning over) while the top-level `slice`/`extendedThinking`
+  // fields below let the upstream act on the controls once it grows
+  // first-class support for them.
+  const inboundPresence =
+    body.presence && typeof body.presence === 'object'
+      ? (body.presence as Record<string, unknown>)
+      : undefined;
+  const presence =
+    inboundPresence || slice
+      ? {
+          ...(inboundPresence ?? {}),
+          ...(slice
+            ? {
+                extra: {
+                  ...((inboundPresence?.extra &&
+                  typeof inboundPresence.extra === 'object'
+                    ? (inboundPresence.extra as Record<string, unknown>)
+                    : {}) as Record<string, unknown>),
+                  slice,
+                },
+              }
+            : {}),
+        }
+      : undefined;
+
   const upstreamBody = JSON.stringify({
     threadId,
     message,
-    ...(body.presence && typeof body.presence === 'object'
-      ? { presence: body.presence }
-      : {}),
+    ...(presence ? { presence } : {}),
+    ...(extendedThinking !== null ? { extendedThinking } : {}),
+    ...(slice ? { slice } : {}),
   });
 
   const upstreamUrl = `${getGatewayBase()}/admin/jarvis/stream`;

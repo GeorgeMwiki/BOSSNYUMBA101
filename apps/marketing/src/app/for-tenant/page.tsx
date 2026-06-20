@@ -2,18 +2,21 @@ import type { Metadata } from 'next';
 import { KeyRound } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { AudiencePage } from '@/components/audience/AudiencePage';
-import { COPY } from '@/lib/audience-copy';
+import { getMessages } from '@/lib/i18n';
+import { getLocale } from '@/lib/locale';
 
-export const metadata: Metadata = {
-  title: 'For tenants and prospects — Boss Nyumba',
-  description:
-    'Browse verified listings across Tanzania and Kenya. Tour virtually. Sign your lease on your phone. Pay rent over M-Pesa. Digital receipt every month. No ghost listings.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = getMessages(locale).audiencePages.tenant;
+  return { title: t.metaTitle, description: t.metaDescription };
+}
 
-export default function ForTenantPage() {
+export default async function ForTenantPage() {
+  const locale = await getLocale();
+  const copy = getMessages(locale).audiencePages.tenant;
   return (
     <PageShell>
-      <AudiencePage copy={COPY.tenant} kickerIcon={KeyRound} />
+      <AudiencePage copy={copy} kickerIcon={KeyRound} />
     </PageShell>
   );
 }

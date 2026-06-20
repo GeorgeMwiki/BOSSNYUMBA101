@@ -1,7 +1,11 @@
 # BOSSNYUMBA E2E Tests (Playwright)
 
-End-to-end coverage for the critical user flows of the BOSSNYUMBA platform:
-customer-app, estate-manager-app, owner-portal, and admin-portal.
+End-to-end coverage for the critical user flows of the BOSSNYUMBA platform's
+web surfaces: **owner-portal** and **admin-platform-portal**.
+
+> Customer + workforce surfaces are the Expo **mobile** apps
+> (`tenant-mobile` / `staff-mobile`) and are covered by their own test suites,
+> not by this Playwright project.
 
 ## Directory layout
 
@@ -11,19 +15,14 @@ e2e/
   fixtures/                     Shared test data + auth fixtures
   helpers.ts                    Common helpers (selectors, waiting)
   page-objects/                 Page-object classes per portal
-  tests/                        Existing legacy spec files
-  tests/critical-flows/         NEW: critical user flow specs
-    _helpers.ts                 API mocks, webhook sim, sign-in shortcut
-    tenant-onboarding.spec.ts
-    tenant-letter-request.spec.ts
-    tenant-payment-gepg.spec.ts
-    owner-approval-routing.spec.ts
-    maintenance-flow.spec.ts
-    negotiation-floor-breach.spec.ts
-    conditional-survey.spec.ts
-    subdivision.spec.ts
-    waitlist-outreach.spec.ts
-    move-out-damage.spec.ts
+  tests/                        Portal spec files
+  tests/critical-flows/         Cross-cutting critical flow specs
+    cross-tenant-isolation/     RLS / tenant-isolation regression net
+    gdpr-pdpa/                  Data-export + account-deletion flows
+    mpesa-stk-callback/         M-Pesa STK push callback variants
+    session-refresh/            Token-expiry / refresh-flow coverage
+  tests/journeys/               Owner + platform deep-scrub journeys
+  tests/ui-smoke/               Cold-load console/HTTP smoke per portal
 ```
 
 ## Running locally
@@ -35,13 +34,11 @@ pnpm install
 pnpm exec playwright install --with-deps chromium
 ```
 
-Start the four dev servers (separate terminals or tmux panes):
+Start the dev servers (separate terminals or tmux panes):
 
 ```bash
-pnpm --filter @bossnyumba/customer-app dev        # http://localhost:3002
-pnpm --filter @bossnyumba/estate-manager-app dev  # http://localhost:3003
-pnpm --filter @bossnyumba/owner-portal dev        # http://localhost:3000
-pnpm --filter @bossnyumba/admin-portal dev        # http://localhost:3001
+pnpm --filter @bossnyumba/owner-portal dev            # http://localhost:3000
+pnpm --filter @bossnyumba/admin-platform-portal dev   # http://localhost:3001
 ```
 
 Run everything:
@@ -54,7 +51,7 @@ Run a single spec:
 
 ```bash
 pnpm exec playwright test --config e2e/playwright.config.ts \
-  e2e/tests/critical-flows/tenant-payment-gepg.spec.ts
+  e2e/tests/owner-portal/dashboard.spec.ts
 ```
 
 Run only the critical-flows folder:
@@ -67,10 +64,7 @@ pnpm exec playwright test --config e2e/playwright.config.ts \
 Filter by project (portal):
 
 ```bash
-pnpm exec playwright test --project=customer-app
-pnpm exec playwright test --project=estate-manager
 pnpm exec playwright test --project=owner-portal
-pnpm exec playwright test --project=admin-portal
 ```
 
 ## Environment variables
@@ -79,10 +73,8 @@ Copy `e2e/.env.example` to `e2e/.env` and populate. Critical ones:
 
 | Variable | Purpose |
 |----------|---------|
-| `CUSTOMER_APP_URL` | Tenant PWA base URL (default `http://localhost:3002`) |
-| `ESTATE_MANAGER_URL` | Estate manager portal URL |
-| `OWNER_PORTAL_URL` | Owner portal URL |
-| `ADMIN_PORTAL_URL` | Admin portal URL |
+| `OWNER_PORTAL_URL` | Owner portal base URL (default `http://localhost:3000`) |
+| `ADMIN_PORTAL_URL` | Admin platform portal base URL (default `http://localhost:3001`) |
 | `E2E_TEST_PHONE` | Tanzania-format phone for seed login (+2557...) |
 
 ## Fixture data
@@ -90,40 +82,10 @@ Copy `e2e/.env.example` to `e2e/.env` and populate. Critical ones:
 - `fixtures/data.fixture.ts` — property, lease, work-order generators
 - `fixtures/test-data.ts` — canonical test users / tenants / properties
 - `fixtures/auth.ts` — authentication storage state helpers
+- `fixtures/seed.sql` + `fixtures/seed-runner.ts` — real-backend seed data
 
-The critical-flows specs use their own inline mocks (`_helpers.ts`) so they do
-not depend on seeded DB data. This keeps them hermetic in CI.
-
-## Mocking external APIs
-
-`tests/critical-flows/_helpers.ts` exposes `installApiMocks(page, overrides)`
-which installs default `page.route()` handlers for:
-
-- GePG control-number issuance + webhook
-- M-Pesa STK push
-- Generic notifications dispatcher
-
-Override any handler by passing a map keyed by URL glob:
-
-```ts
-await installApiMocks(page, {
-  '**/api/payments/gepg/control-number**': (route) =>
-    route.fulfill({ status: 500, body: '{}' }),
-});
-```
-
-To simulate an inbound webhook from inside a test, use `fireMockWebhook`:
-
-```ts
-await fireMockWebhook(page, '/api/payments/gepg/webhook', {
-  controlNumber: '991234567890',
-  invoiceId: 'INV-001',
-  status: 'PAID',
-});
-```
-
-No real network calls are made by these specs. Do not add live external
-endpoints to critical-flows tests — they must run offline in CI.
+The cross-cutting specs use their own inline mocks so they do not depend on
+seeded DB data where possible. This keeps them hermetic in CI.
 
 ## Debugging failing tests
 
@@ -136,13 +98,13 @@ endpoints to critical-flows tests — they must run offline in CI.
 2. **Headed with slow-mo**:
 
    ```bash
-   pnpm exec playwright test --headed --project=customer-app --slow-mo=500
+   pnpm exec playwright test --headed --project=owner-portal --slow-mo=500
    ```
 
 3. **Inspect a single step**:
 
    ```bash
-   PWDEBUG=1 pnpm exec playwright test e2e/tests/critical-flows/tenant-payment-gepg.spec.ts
+   PWDEBUG=1 pnpm exec playwright test e2e/tests/owner-portal/dashboard.spec.ts
    ```
 
 4. **Trace viewer** — on CI, traces are stored on first retry. Download the
@@ -169,12 +131,12 @@ endpoints to critical-flows tests — they must run offline in CI.
 Playwright artifacts (`e2e/e2e-report/`, `e2e/test-results/`) are uploaded on
 failure from the `E2E (Playwright, strict)` job and retained for 14 days.
 
-## Adding a new critical-flow spec
+## Adding a new portal spec
 
-1. Create `e2e/tests/critical-flows/<flow>.spec.ts`
-2. Import `installApiMocks`, `signInAsTenant`, `hasText` from `./_helpers`
-3. Mock every external call with `page.route()` — do NOT hit real services
+1. Create `e2e/tests/owner-portal/<flow>.spec.ts` (or another portal folder)
+2. Pin the project with `test.use({ project: 'owner-portal' })`
+3. Mock external calls with `page.route()` — do NOT hit real third-party services
 4. Assert on both **UI state** (text visible, URL matches) and **API responses**
    where applicable (via `page.request.get(...)`)
-5. Prefer `browser.newContext({ baseURL })` when the flow spans portals
-6. Run locally with `--ui` before opening a PR
+5. Run locally with `--ui` before opening a PR
+```

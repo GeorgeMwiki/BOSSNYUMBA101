@@ -92,10 +92,6 @@ export const AUTH_ALLOWLIST = new Map([
     'apps/admin-platform-portal/src/app/api/platform/health/route.ts',
     'health probe — k8s liveness / uptime monitors require unauthenticated access.',
   ],
-  [
-    'apps/estate-manager-app/src/app/api/brain/health/route.ts',
-    'health probe for the brain proxy; unauthenticated readiness.',
-  ],
 
   // ─── Internal middleware-export file flagged as a route ────────────
   [
@@ -139,5 +135,13 @@ export const AUTH_ALLOWLIST = new Map([
   [
     'services/outcomes-metering/src/routes/readyz.ts',
     'k8s readiness probe — LB + uptime monitors require unauthenticated access; checks DB SELECT 1 only.',
+  ],
+  [
+    'services/api-gateway/src/routes/public-status.hono.ts',
+    'Public status board — UNAUTHENTICATED by design (marketing /status page + uptime monitors); cacheable, exposes no tenant data.',
+  ],
+  [
+    'services/api-gateway/src/routes/owner/owner-account-repo.ts',
+    'False positive — repository, not a route file; the flagged .get hits are c.get(\'db\') references inside JSDoc. Mounted behind the authed owner-account router.',
   ],
 ]);

@@ -32,6 +32,7 @@ import {
   type NotificationCategory,
   type NotificationPriority as InAppPriority,
 } from '../../services/in-app-notification.service.js';
+import { lazySingleton } from '../../lazy-singleton.js';
 
 const VALID_CATEGORIES: ReadonlySet<NotificationCategory> = new Set<NotificationCategory>([
   'payment',
@@ -122,4 +123,4 @@ export class InAppProvider implements INotificationProvider {
  * provider registry exports this; tests construct `new InAppProvider(stub)`
  * with an injected service.
  */
-export const inAppProvider = new InAppProvider();
+export const inAppProvider = lazySingleton(() => new InAppProvider());

@@ -17,10 +17,8 @@ variable "repository_names" {
   type        = list(string)
   default = [
     "api-gateway",
-    "customer-app",
-    "estate-manager-app",
     "owner-portal",
-    "admin-portal",
+    "admin-platform-portal",
     "payments",
     "notifications",
     "reports"

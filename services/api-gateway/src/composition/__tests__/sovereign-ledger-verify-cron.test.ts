@@ -91,7 +91,10 @@ describe('sovereign-ledger-verify-cron supervisor', () => {
   it('returns skippedReason=no-tenants when discovery yields none', async () => {
     const logger = makeLogger();
     const sup = createSovereignLedgerVerifyCronSupervisor({
-      db: {} as any,
+      // Per-tenant verify now runs inside withWorkerTenantContext, which
+      // issues BEGIN / SET LOCAL / COMMIT on this handle — provide a no-op
+      // execute. The verify RESULT still comes from the mocked service.
+      db: { execute: async () => [] } as any,
       logger,
       listActiveTenantIds: async () => [],
     });
@@ -117,7 +120,10 @@ describe('sovereign-ledger-verify-cron supervisor', () => {
     const logger = makeLogger();
     const bus = captureBus();
     const sup = createSovereignLedgerVerifyCronSupervisor({
-      db: {} as any,
+      // Per-tenant verify now runs inside withWorkerTenantContext, which
+      // issues BEGIN / SET LOCAL / COMMIT on this handle — provide a no-op
+      // execute. The verify RESULT still comes from the mocked service.
+      db: { execute: async () => [] } as any,
       eventBus: bus,
       logger,
       listActiveTenantIds: async () => ['t_ok', 't_broken'],
@@ -160,7 +166,10 @@ describe('sovereign-ledger-verify-cron supervisor', () => {
     const logger = makeLogger();
     const bus = captureBus();
     const sup = createSovereignLedgerVerifyCronSupervisor({
-      db: {} as any,
+      // Per-tenant verify now runs inside withWorkerTenantContext, which
+      // issues BEGIN / SET LOCAL / COMMIT on this handle — provide a no-op
+      // execute. The verify RESULT still comes from the mocked service.
+      db: { execute: async () => [] } as any,
       eventBus: bus,
       logger,
       listActiveTenantIds: async () => ['t_throw'],

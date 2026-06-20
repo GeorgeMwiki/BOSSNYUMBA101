@@ -206,54 +206,6 @@ services:
       postgres:
         condition: service_healthy
 
-  estate-manager:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.web
-      args:
-        APP_NAME: estate-manager-app
-        APP_PATH: apps/estate-manager-app
-      target: nextjs
-    container_name: bossnyumba-estate-manager
-    restart: unless-stopped
-    ports:
-      - "3003:3000"
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
-    depends_on:
-      - api-gateway
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-
-  customer-app:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.web
-      args:
-        APP_NAME: customer-app
-        APP_PATH: apps/customer-app
-      target: nextjs
-    container_name: bossnyumba-customer-app
-    restart: unless-stopped
-    ports:
-      - "3002:3000"
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
-    depends_on:
-      - api-gateway
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-
   owner-portal:
     build:
       context: .
@@ -266,29 +218,6 @@ services:
     restart: unless-stopped
     ports:
       - "3001:80"
-    environment:
-      NODE_ENV: production
-    depends_on:
-      - api-gateway
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
-  admin-portal:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.web
-      args:
-        APP_NAME: admin-portal
-        APP_PATH: apps/admin-portal
-      target: vite
-    container_name: bossnyumba-admin-portal
-    restart: unless-stopped
-    ports:
-      - "3000:80"
     environment:
       NODE_ENV: production
     depends_on:

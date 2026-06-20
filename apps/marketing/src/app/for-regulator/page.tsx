@@ -2,18 +2,21 @@ import type { Metadata } from 'next';
 import { Scale } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { AudiencePage } from '@/components/audience/AudiencePage';
-import { COPY } from '@/lib/audience-copy';
+import { getMessages } from '@/lib/i18n';
+import { getLocale } from '@/lib/locale';
 
-export const metadata: Metadata = {
-  title: 'For housing regulators — Boss Nyumba',
-  description:
-    'Live, anonymised, hash-chained market signal: lease counts, district median rents, dispute volumes, council-levy compliance. Tenant-consent first; differentially private; constitutionally bounded.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = getMessages(locale).audiencePages.regulator;
+  return { title: t.metaTitle, description: t.metaDescription };
+}
 
-export default function ForRegulatorPage() {
+export default async function ForRegulatorPage() {
+  const locale = await getLocale();
+  const copy = getMessages(locale).audiencePages.regulator;
   return (
     <PageShell>
-      <AudiencePage copy={COPY.regulator} kickerIcon={Scale} />
+      <AudiencePage copy={copy} kickerIcon={Scale} />
     </PageShell>
   );
 }

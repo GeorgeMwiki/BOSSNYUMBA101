@@ -107,6 +107,15 @@ export interface DisbursementReconciliationDeps {
    */
   readonly getProvider?: (name: string) => IPaymentProvider | null;
   readonly logger: ReconciliationLogger;
+  /**
+   * #20: how long an in-flight payout (PROCESSING / IN_TRANSIT) may sit
+   * without a provider callback before it is treated as stranded and
+   * escalated to NEEDS_REVERSAL. Defaults to {@link DEFAULT_STALE_AFTER_MINUTES}
+   * (≥ Safaricom's max B2C callback window). Injectable for tests.
+   */
+  readonly staleAfterMinutes?: number;
+  /** Injectable clock (tests). Defaults to `() => new Date()`. */
+  readonly now?: () => Date;
 }
 
 /** Per-disbursement outcome of one sweep pass (for callers + tests). */
@@ -125,8 +134,18 @@ export interface DisbursementReconciliationResult {
   readonly redriven: number;
   readonly markedPaid: number;
   readonly leftNeedsReversal: number;
+  /** #20: stale in-flight payouts escalated to NEEDS_REVERSAL this pass. */
+  readonly staleEscalated: number;
   readonly outcomes: readonly ReconciliationItemOutcome[];
 }
+
+/**
+ * #20: an in-flight payout older than this without a terminal provider
+ * callback is treated as stranded (debited-but-undelivered) and escalated
+ * to NEEDS_REVERSAL so the sweep + loud-surface drives it terminal. 120 min
+ * comfortably exceeds Safaricom's B2C result-callback window.
+ */
+export const DEFAULT_STALE_AFTER_MINUTES = 120;
 
 /**
  * Sweep one tenant's NEEDS_REVERSAL disbursements and drive each toward a
@@ -160,6 +179,50 @@ export async function reconcileDisbursements(
     outcomes.push(await reconcileOne(disbursement, deps));
   }
 
+  // #20: escalate STALE in-flight payouts (PROCESSING / IN_TRANSIT whose
+  // provider callback never arrived). findPending returns them but the
+  // NEEDS_REVERSAL filter above drops them — leaving debited-but-undelivered
+  // money that never reaches the sweep. Flip them to NEEDS_REVERSAL so the
+  // next pass's reverse/redrive + loud-surface drives them terminal. Never
+  // throws per-row — a failed flip is logged and retried next pass.
+  const now = (deps.now ?? (() => new Date()))();
+  const staleCutoffMs =
+    now.getTime() - (deps.staleAfterMinutes ?? DEFAULT_STALE_AFTER_MINUTES) * 60_000;
+  const staleInFlight = pending.filter(
+    (d) =>
+      (d.status === 'PROCESSING' || d.status === 'IN_TRANSIT') &&
+      d.updatedAt.getTime() < staleCutoffMs,
+  );
+  let staleEscalated = 0;
+  for (const d of staleInFlight) {
+    try {
+      await deps.disbursementRepository.update({
+        ...d,
+        status: 'NEEDS_REVERSAL',
+        updatedAt: now,
+      });
+      staleEscalated += 1;
+      deps.logger.warn(
+        {
+          tenantId,
+          disbursementId: d.id,
+          priorStatus: d.status,
+          ageMinutes: Math.round((now.getTime() - d.updatedAt.getTime()) / 60_000),
+        },
+        'DISBURSEMENT RECONCILIATION: stale in-flight payout (provider callback never arrived) escalated to NEEDS_REVERSAL',
+      );
+    } catch (err) {
+      deps.logger.error(
+        {
+          tenantId,
+          disbursementId: d.id,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        'DISBURSEMENT RECONCILIATION: failed to escalate stale in-flight payout — will retry next pass',
+      );
+    }
+  }
+
   const tally = (action: ReconciliationItemOutcome['action']) =>
     outcomes.filter((o) => o.action === action).length;
 
@@ -170,6 +233,7 @@ export async function reconcileDisbursements(
     redriven: tally('redriven'),
     markedPaid: tally('marked-paid'),
     leftNeedsReversal: tally('left-needs-reversal'),
+    staleEscalated,
     outcomes,
   };
 }
@@ -462,6 +526,7 @@ export class DisbursementReconciliationJob {
           redriven: 0,
           markedPaid: 0,
           leftNeedsReversal: 0,
+          staleEscalated: 0,
           outcomes: [],
         });
       }

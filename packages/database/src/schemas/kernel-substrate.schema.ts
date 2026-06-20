@@ -10,6 +10,7 @@
  * provenance recorder at the composition root.
  */
 
+import { sql } from 'drizzle-orm';
 import {
   pgTable,
   text,
@@ -79,6 +80,21 @@ export const kernelCotReservoir = pgTable(
     promptHash: text('prompt_hash'),
     /** SHA-256 of the sanitised text persisted in `thoughtText` (hex). */
     responseHash: text('response_hash'),
+    /**
+     * Opaque per-user grouping key for memory consolidation. The
+     * consolidation-worker buckets reservoir rows by (tenantId, userId)
+     * before emitting one semantic fact per group. NOT an access boundary —
+     * `tenantId` is the RLS key; no FK so a reservoir row can outlive its
+     * user. Added by migration 0325; NULL for pre-0325 rows (the
+     * consolidation query skips them via `user_id IS NOT NULL`).
+     */
+    userId: text('user_id'),
+    /**
+     * Idempotency cursor for the memory-consolidation worker. NULL = not
+     * yet consolidated (eligible for pickup); stamped after the semantic
+     * write for the row's group succeeds. Added by migration 0325.
+     */
+    consolidatedAt: timestamp('consolidated_at', { withTimezone: true }),
     capturedAt: timestamp('captured_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -86,6 +102,11 @@ export const kernelCotReservoir = pgTable(
   (t) => ({
     tenantTimeIdx: index('idx_kernel_cot_tenant_time').on(t.tenantId, t.capturedAt),
     threadIdx: index('idx_kernel_cot_thread').on(t.threadId),
+    // Partial index serving the consolidation fetch (only unconsolidated,
+    // attributable rows). Mirrors migration 0325's idx_kernel_cot_unconsolidated.
+    unconsolidatedIdx: index('idx_kernel_cot_unconsolidated')
+      .on(t.capturedAt)
+      .where(sql`consolidated_at IS NULL AND user_id IS NOT NULL`),
   }),
 );
 

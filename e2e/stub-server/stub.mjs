@@ -9,9 +9,8 @@
  * find labels, buttons, and assertion text. This stub serves exactly that.
  *
  * Usage:
- *   PORT=3002 node stub.mjs      # Customer PWA
- *   PORT=3003 node stub.mjs      # Estate manager
  *   PORT=3000 node stub.mjs      # Owner portal
+ *   PORT=3001 node stub.mjs      # Admin platform portal
  *
  * Wired up via playwright.config.ts webServer array.
  */

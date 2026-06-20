@@ -36,6 +36,8 @@ export const ROUTES = {
     withQuery: (params: string): string => `/manager-chat?${params}`,
   },
 
+  jarvis: '/jarvis',
+
   analytics: {
     occupancy: '/analytics/occupancy',
   },

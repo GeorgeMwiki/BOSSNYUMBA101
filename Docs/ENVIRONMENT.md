@@ -48,10 +48,10 @@ Last scrubbed: 2026-05-21.
 | `JWT_EXPIRES_IN` | OPT | schema-default | `@bossnyumba/config` | |
 | `JWT_AUDIENCE` | OPT | `bossnyumba-api` | auth middleware | |
 | `JWT_ISSUER` | OPT | `bossnyumba` | auth middleware | |
-| `NEXT_PUBLIC_SUPABASE_URL` | REQ-PROD | — | customer-app, estate-manager-app, owner-portal, admin-portal Supabase client | browser-safe project URL |
+| `NEXT_PUBLIC_SUPABASE_URL` | REQ-PROD | — | marketing, admin-platform-portal Supabase client (Expo mobile apps use `EXPO_PUBLIC_SUPABASE_URL`) | browser-safe project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | REQ-PROD | — | all Next.js apps Supabase client | browser-safe anon key; RLS-gated |
 | `SUPABASE_SERVICE_ROLE_KEY` | REQ-PROD | — | api-gateway admin operations, services/identity, scripts/seed | **SERVER ONLY** — bypasses RLS; never expose to client |
-| `SUPABASE_JWT_SECRET` | REQ-PROD | — | api-gateway `brain.hono.ts`, `ai-chat.router.ts`; customer-app `/api/brain/turn`; estate-manager-app brain-server; payments-ledger `auth-middleware` | throws on first request if missing or < 10 chars |
+| `SUPABASE_JWT_SECRET` | REQ-PROD | — | api-gateway `brain.hono.ts`, `ai-chat.hono.ts`, auth middleware; payments-ledger `auth-middleware` | throws on first request if missing or < 10 chars |
 | `CLERK_SECRET_KEY` | REMOVED | — | — | Clerk removed in favor of Supabase Auth — ADR-0004 |
 | `INTERNAL_API_KEY` | REQ-FEAT | dev-cli fallback in openapi cli | api-gateway (notifications dispatch, tenant-context fetch), payments-ledger statement dispatch | no guard — empty string silently passes as empty header |
 | `API_KEY_REGISTRY` | REQ-PROD | — | api-key-registry middleware | prod: `assertApiKeyConfig()` throws if neither this nor legacy is set |
@@ -67,7 +67,7 @@ Last scrubbed: 2026-05-21.
 | `SENTRY_TRACES_SAMPLE_RATE` | OPT | `0.1` | api-gateway | |
 | `POSTHOG_API_KEY` | REQ-FEAT | — | api-gateway | analytics disabled if unset |
 | `POSTHOG_HOST` | OPT | `https://eu.posthog.com` | api-gateway | |
-| `NEXT_PUBLIC_SENTRY_DSN` | REQ-FEAT | — | customer-app, estate-manager-app | browser Sentry |
+| `NEXT_PUBLIC_SENTRY_DSN` | REQ-FEAT | — | marketing, admin-platform-portal (Expo mobile apps use `EXPO_PUBLIC_SENTRY_DSN`) | browser Sentry |
 | `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | OPT | `production` | Next.js apps | |
 | `NEXT_PUBLIC_POSTHOG_KEY` | REQ-FEAT | — | Next.js apps | |
 | `NEXT_PUBLIC_POSTHOG_HOST` | OPT | — | Next.js apps | |
@@ -180,19 +180,16 @@ Last scrubbed: 2026-05-21.
 
 | Name | Status | Default | Consumed by | Notes |
 |---|---|---|---|---|
-| `API_URL` | REQ-PROD | dev: `http://localhost:4000` | config package, customer-app | |
+| `API_URL` | REQ-PROD | dev: `http://localhost:4000` | config package | |
 | `FRONTEND_URL` | REQ-PROD | dev: `http://localhost:3000` | config package | |
-| `NEXT_PUBLIC_API_URL` | REQ-FEAT | — | customer-app, estate-manager-app | |
+| `NEXT_PUBLIC_API_URL` | REQ-FEAT | — | marketing, admin-platform-portal (owner-portal uses `VITE_API_URL`; Expo mobile uses `EXPO_PUBLIC_API_GATEWAY_URL`) | |
 | `API_BASE_URL` | OPT | `https://api.bossnyumba.com` | credit-rating router | verification URL baked into PDF certs |
 | `PUBLIC_API_BASE_URL` | OPT | fallback to `API_BASE_URL` | credit-rating router | |
 | `PUBLIC_BASE_URL` | OPT | dev: `http://localhost:3000` | mcp.router agent-card | |
 | `STORAGE_BASE_URL` | REQ-FEAT | `/storage` | document-intelligence routes | used in evidence-pack URLs |
 | `TENANT_SERVICE_URL` | OPT | `API_URL` fallback | api-gateway tenant-context | |
-| `BASE_URL` | OPT (e2e) | `http://localhost:3003` | playwright.config | |
-| `CUSTOMER_APP_URL` | OPT (e2e) | `http://localhost:3002` | playwright, fixtures | |
-| `OWNER_PORTAL_URL` | OPT (e2e) | `http://localhost:3000` | playwright, fixtures | |
-| `ADMIN_PORTAL_URL` | OPT (e2e) | `http://localhost:3001` | playwright, fixtures | |
-| `ESTATE_MANAGER_URL` | OPT (e2e) | `http://localhost:3003` | playwright, fixtures | |
+| `OWNER_PORTAL_URL` | OPT (e2e) | `http://localhost:3000` | playwright, fixtures | owner-portal Vite SPA |
+| `ADMIN_PORTAL_URL` | OPT (e2e) | `http://localhost:3001` | playwright, fixtures | admin-platform-portal (note: app's real dev port is 3020 — set this var when running locally) |
 
 ## M. Storage + cloud
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Home, Shield, Smartphone, CheckCircle, AlertCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { createZodResolver, Spinner } from '@bossnyumba/design-system';
@@ -34,6 +34,11 @@ export function LoginPage() {
   const [skipLoading, setSkipLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Marketing org-signup that could not mint a live session routes here
+  // with `?from=signup`, so we explain the account was created and ask the
+  // owner to sign in (rather than leaving them on a bare login page).
+  const fromSignup = searchParams.get('from') === 'signup';
 
   /* -------------- Credentials form -------------- */
   const credentialsForm = useForm<CredentialsForm>({
@@ -180,6 +185,13 @@ export function LoginPage() {
             <>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('welcomeTitle')}</h2>
               <p className="text-gray-500 mb-8">{t('welcomeSubtitle')}</p>
+
+              {fromSignup && !serverError && (
+                <div role="status" className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                  {t('signupNotice')}
+                </div>
+              )}
 
               {serverError && (
                 <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center gap-2">

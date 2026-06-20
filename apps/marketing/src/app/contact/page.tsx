@@ -1,13 +1,24 @@
 import type { Metadata } from 'next';
+import { getLocale } from '@/lib/locale';
 import Link from 'next/link';
-import { Mail, MapPin, Phone } from 'lucide-react';
+import { Mail, MapPin } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 
-export const metadata: Metadata = {
-  title: 'Contact — Boss Nyumba',
-  description:
-    'Reach the Boss Nyumba team. Sales, support, security, press, and partnerships — Dar es Salaam, Nairobi, EAT business hours.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'sw') {
+    return {
+      title: 'Wasiliana — BossNyumba',
+      description:
+        'Wasiliana na timu ya BossNyumba. Mauzo, msaada, usalama, vyombo vya habari, na ushirikiano — Dar es Salaam, Nairobi, saa za kazi za EAT.',
+    };
+  }
+  return {
+    title: 'Contact — BossNyumba',
+    description:
+      'Reach the BossNyumba team. Sales, support, security, press, and partnerships — Dar es Salaam, Nairobi, EAT business hours.',
+  };
+}
 
 interface Channel {
   readonly icon: typeof Mail;
@@ -66,16 +77,13 @@ export default function ContactPage() {
   return (
     <PageShell>
       <div className="mx-auto max-w-4xl px-6 pb-24 pt-20 lg:px-8">
-        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">
-          Contact
-        </p>
+        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">Contact</p>
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           Reach the right desk.
         </h1>
         <p className="mt-6 text-lg leading-relaxed text-foreground/75">
-          We are in Dar es Salaam and Nairobi. EAT business hours. Mr.
-          Mwikila is always on; humans are on weekdays 09:00-17:00 EAT
-          and Saturdays 09:00-13:00 EAT.
+          We are in Dar es Salaam and Nairobi. EAT business hours. Mr. Mwikila is always on; humans
+          are on weekdays 09:00-17:00 EAT and Saturdays 09:00-13:00 EAT.
         </p>
 
         <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -88,9 +96,7 @@ export default function ContactPage() {
               <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
                 {c.heading}
               </h2>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-foreground/70">
-                {c.body}
-              </p>
+              <p className="mt-2 flex-1 text-sm leading-relaxed text-foreground/70">{c.body}</p>
               <Link
                 href={c.href}
                 className="mt-4 inline-flex items-center text-sm font-semibold text-signal-500 hover:underline"
@@ -108,11 +114,9 @@ export default function ContactPage() {
               Dar es Salaam (HQ)
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-foreground/70">
-              Plot 12, Msasani Peninsula
+              Msasani Peninsula
               <br />
               Dar es Salaam, Tanzania
-              <br />
-              +255 22 200 0000
             </p>
           </article>
           <article className="rounded-2xl border border-border bg-surface p-6">
@@ -124,17 +128,18 @@ export default function ContactPage() {
               Westlands, Waiyaki Way
               <br />
               Nairobi, Kenya
-              <br />
-              +254 20 200 0000
             </p>
           </article>
         </div>
 
         <p className="mt-12 inline-flex items-center gap-2 text-sm text-foreground/70">
-          <Phone className="h-4 w-4 text-signal-500" aria-hidden="true" />
-          Switchboard:{' '}
-          <a href="tel:+255222000000" className="font-semibold text-signal-500 hover:underline">
-            +255 22 200 0000
+          <Mail className="h-4 w-4 text-signal-500" aria-hidden="true" />
+          Prefer to write?{' '}
+          <a
+            href="mailto:hello@bossnyumba.com"
+            className="font-semibold text-signal-500 hover:underline"
+          >
+            hello@bossnyumba.com
           </a>
         </p>
       </div>

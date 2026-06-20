@@ -31,14 +31,6 @@ export const ZOD_ALLOWLIST = new Map([
     'apps/admin-platform-portal/src/app/api/platform/login/route.ts',
     'login proxy — credentials forwarded to identity service which validates.',
   ],
-  [
-    'apps/customer-app/src/app/api/brain/turn/route.ts',
-    'manual type-narrowing on req.json() with explicit guards; pending migration to Zod.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/api/brain/turn/route.ts',
-    'manual type-narrowing on req.json() with explicit guards; pending migration to Zod.',
-  ],
 
   // ─── api-gateway: tracked gaps awaiting a boundary Zod schema ───────
   [
@@ -74,6 +66,10 @@ export const ZOD_ALLOWLIST = new Map([
   [
     'services/api-gateway/src/routes/risk-reports.hono.ts',
     'POST /:customerId/generate takes NO body — pure action trigger keyed by the customerId path param.',
+  ],
+  [
+    'services/api-gateway/src/routes/notifications.ts',
+    'legit: POST /:id/read takes NO JSON body — pure action trigger keyed by the :id path param + JWT subject (tenantId/userId from auth middleware). The mark-read UPDATE is scoped by id + tenant_id + applicant_user_id (anti-IDOR, idempotent COALESCE on read_at); there is no request payload to Zod-validate.',
   ],
   [
     'services/api-gateway/src/routes/stage/index.ts',

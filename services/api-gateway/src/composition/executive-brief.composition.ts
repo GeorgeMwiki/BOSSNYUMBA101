@@ -46,6 +46,7 @@ import {
 import { getModelLatest } from '@bossnyumba/brain-llm-router/dynamic-registry';
 import type { GraphTraversalPort, GraphHop, EdgeType } from '@bossnyumba/org-graph';
 import { sql } from 'drizzle-orm';
+import { toPgTextArray } from '../utils/pg-array.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Public surface
@@ -502,7 +503,7 @@ function buildGraphTraversal(db: DbLike): GraphTraversalPort {
                    1 AS depth, ARRAY[e.id]::text[] AS path
               FROM org_graph_edges e
              WHERE e.tenant_id = ${tenantId}
-               AND e.edge_type = ANY(${edgeTypes}::text[])
+               AND e.edge_type = ANY(${toPgTextArray(edgeTypes ?? [])}::text[])
                AND e.valid_to IS NULL
                AND e.src_entity_id = ${entityId}
             UNION ALL
@@ -511,7 +512,7 @@ function buildGraphTraversal(db: DbLike): GraphTraversalPort {
               JOIN org_graph_edges e
                 ON e.tenant_id = ${tenantId}
                AND e.src_entity_id = c.entity_id
-               AND e.edge_type = ANY(${edgeTypes}::text[])
+               AND e.edge_type = ANY(${toPgTextArray(edgeTypes ?? [])}::text[])
                AND e.valid_to IS NULL
              WHERE c.depth < ${maxHops}
                AND NOT (e.id = ANY(c.path))

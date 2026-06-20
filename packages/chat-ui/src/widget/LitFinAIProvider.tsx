@@ -74,6 +74,33 @@ function persistPageData(
   }
 }
 
+/**
+ * Public-site concierge auto-opens on first load and stays open until the
+ * visitor explicitly closes it; once closed we persist a dismissal so it does
+ * not re-pop on every navigation. Scoped to the `public` (marketing) portal —
+ * the owner/manager/admin surfaces stay FAB-collapsed by default.
+ */
+const WIDGET_DISMISSED_KEY = 'bn-litfin-widget-dismissed';
+
+function shouldAutoOpenWidget(portalId: LitFinPortalId): boolean {
+  if (portalId !== 'public') return false;
+  if (typeof window === 'undefined') return false;
+  try {
+    return localStorage.getItem(WIDGET_DISMISSED_KEY) !== 'true';
+  } catch {
+    return false;
+  }
+}
+
+function markWidgetDismissed(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(WIDGET_DISMISSED_KEY, 'true');
+  } catch {
+    /* ignore */
+  }
+}
+
 interface LitFinAIContextValue {
   readonly portalId: LitFinPortalId;
   readonly currentRoute: string;
@@ -122,7 +149,7 @@ export function LitFinAIProvider({
   children,
 }: LitFinAIProviderProps): JSX.Element {
   const [currentRoute, setCurrentRoute] = useState<string>(initialRoute);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState<boolean>(() => shouldAutoOpenWidget(portalId));
   const [pageData, setPageData] = useState<Record<string, unknown>>({});
   const pageDataInitialized = useRef(false);
 
@@ -152,9 +179,19 @@ export function LitFinAIProvider({
     return () => window.removeEventListener('bn-litfin-open-chat', handleOpen);
   }, []);
 
-  const toggleWidget = useCallback(() => setIsOpen((prev) => !prev), []);
+  const toggleWidget = useCallback(
+    () =>
+      setIsOpen((prev) => {
+        if (prev) markWidgetDismissed();
+        return !prev;
+      }),
+    [],
+  );
   const openWidget = useCallback(() => setIsOpen(true), []);
-  const closeWidget = useCallback(() => setIsOpen(false), []);
+  const closeWidget = useCallback(() => {
+    markWidgetDismissed();
+    setIsOpen(false);
+  }, []);
 
   const registerPageData = useCallback(
     (data: Record<string, unknown>) => {

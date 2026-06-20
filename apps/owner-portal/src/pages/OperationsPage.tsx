@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Activity,
   AlertTriangle,
@@ -96,6 +97,7 @@ const COLORS = ['#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#6366F1'];
 
 export function OperationsPage() {
   const t = useTranslations('operations');
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('health');
   const [systemHealth, setSystemHealth] = useState<SystemHealth[]>([]);
   const [exceptions, setExceptions] = useState<ExceptionItem[]>([]);
@@ -109,10 +111,15 @@ export function OperationsPage() {
   const [healthMetrics, setHealthMetrics] = useState<any[]>([]);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  useEffect(() => {
+  const loadOperations = useCallback(() => {
     // Live wiring pending — until admin ops endpoints land we render empty state.
     // No fixture data seeds in prod; the tables below show EmptyState components
     // when the arrays are empty. See Docs/WAVE18_FINDINGS for the backlog.
+    //
+    // `Refresh` calls this same loader so the button performs the real
+    // re-read action it advertises rather than being a no-op. Once the
+    // admin ops endpoints land, this is the single place to swap the
+    // empty seeds for `api.get(...)` calls.
     setSystemHealth([]);
     setExceptions([]);
     setStuckWorkflows([]);
@@ -120,6 +127,16 @@ export function OperationsPage() {
     setHealthMetrics([]);
     setLoading(false);
   }, []);
+
+  useEffect(() => {
+    loadOperations();
+  }, [loadOperations]);
+
+  const handleRefresh = useCallback(() => {
+    loadOperations();
+    setNotification({ type: 'success', message: t('refreshed') });
+    setTimeout(() => setNotification(null), 3000);
+  }, [loadOperations, t]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -160,6 +177,63 @@ export function OperationsPage() {
     setNotification({ type: 'success', message: t('workflowCancelled', { id: workflow.id }) });
     setTimeout(() => setNotification(null), 3000);
   };
+
+  const handleExportLog = useCallback(() => {
+    // Honest export: serialise the AI-decision rows currently in view to
+    // CSV and trigger a browser download. When there are no decisions
+    // (current default until the ops endpoints land) we surface an
+    // explicit "nothing to export" notice rather than emitting an empty
+    // file or silently doing nothing.
+    if (aiDecisions.length === 0) {
+      setNotification({ type: 'error', message: t('exportLogEmpty') });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    const escapeCell = (value: string): string =>
+      `"${String(value).replace(/"/g, '""')}"`;
+    const header = [
+      'id',
+      'type',
+      'tenant',
+      'input',
+      'decision',
+      'confidence',
+      'reasoning',
+      'timestamp',
+      'overridden',
+    ];
+    const rows = aiDecisions.map((d) =>
+      [
+        d.id,
+        d.type,
+        d.tenant,
+        d.input,
+        d.decision,
+        String(d.confidence),
+        d.reasoning,
+        d.timestamp,
+        String(d.overridden),
+      ]
+        .map(escapeCell)
+        .join(','),
+    );
+    const csv = [header.map(escapeCell).join(','), ...rows].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `ai-decision-log-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.rel = 'noopener';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+
+    setNotification({ type: 'success', message: t('exportLogReady') });
+    setTimeout(() => setNotification(null), 3000);
+  }, [aiDecisions, t]);
 
   const filteredExceptions = exceptions.filter(e => {
     const matchesPriority = filterPriority === 'all' || e.priority === filterPriority;
@@ -207,7 +281,10 @@ export function OperationsPage() {
             <Eye className="h-4 w-4" />
             {t('enhancedControlTower')}
           </a>
-          <button className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
             <RefreshCw className="h-4 w-4" />
             {t('refresh')}
           </button>
@@ -477,7 +554,12 @@ export function OperationsPage() {
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">{t('stuckWorkflowsHeader', { count: stuckWorkflows.length })}</h3>
-            <button className="text-sm text-violet-600 hover:text-violet-700">{t('viewAllWorkflows')}</button>
+            <button
+              onClick={() => navigate('/workflows')}
+              className="text-sm text-violet-600 hover:text-violet-700"
+            >
+              {t('viewAllWorkflows')}
+            </button>
           </div>
           <div className="divide-y divide-gray-200">
             {stuckWorkflows.map((workflow) => (
@@ -560,7 +642,10 @@ export function OperationsPage() {
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="font-semibold text-gray-900">{t('recentAiDecisions')}</h3>
-              <button className="flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700">
+              <button
+                onClick={handleExportLog}
+                className="flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700"
+              >
                 <Download className="h-4 w-4" />
                 {t('exportLog')}
               </button>

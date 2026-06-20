@@ -7,7 +7,13 @@
  * Also augments the Money class with convenience methods used throughout
  * the service layer.
  */
-import { Money, CurrencyCode, TenantId } from '@bossnyumba/domain-models';
+import {
+  Money,
+  CurrencyCode,
+  TenantId,
+  CURRENCY_DECIMALS,
+  toDecimal,
+} from '@bossnyumba/domain-models';
 import { calculatePlatformFeeMinor } from './lib/platform-fee';
 
 // =============================================================================
@@ -123,15 +129,27 @@ if (typeof MoneyProto.isNegative !== 'function') {
   };
 }
 
-// Override default Object.prototype.toString with a useful representation
+// Override default Object.prototype.toString with a useful representation.
+//
+// Currency-aware: the minor→major divisor and the displayed fractional
+// precision BOTH derive from the currency's ISO-4217 decimal places, never
+// a hard-coded /100 + .toFixed(2). For a 0-decimal currency (TZS / UGX /
+// RWF — the launch currencies) the minor unit IS the major unit, so
+// `Money.fromMinorUnits(1500, 'TZS').toString()` is "TZS 1500", not
+// "TZS 15.00". `toDecimal` already reads the divisor from the canonical
+// ISO_4217 table in `@bossnyumba/domain-models`.
 MoneyProto.toString = function (this: Money): string {
-  return `${this.currency} ${(this.amountMinorUnits / 100).toFixed(2)}`;
+  const decimals = CURRENCY_DECIMALS[this.currency] ?? 2;
+  return `${this.currency} ${toDecimal(this).toFixed(decimals)}`;
 };
 
 if (!Object.getOwnPropertyDescriptor(Money.prototype, 'amountMajorUnits')) {
   Object.defineProperty(Money.prototype, 'amountMajorUnits', {
+    // Major units = minor units ÷ 10^decimals for the currency. 0-decimal
+    // currencies (TZS / UGX / RWF / JPY / KRW) return the minor amount
+    // unchanged; the old hard `/100` silently divided TSh 1,500 down to 15.
     get(this: Money): number {
-      return this.amountMinorUnits / 100;
+      return toDecimal(this);
     },
     configurable: true,
     enumerable: false,

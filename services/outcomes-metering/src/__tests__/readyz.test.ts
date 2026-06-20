@@ -13,8 +13,9 @@ import { buildApp } from '../index.js';
 import type { ReadinessDbPool } from '../routes/readyz.js';
 
 describe('outcomes-metering /readyz', () => {
-  it('returns 200 with mode=memory when no dbPool wired', async () => {
-    const { app } = await buildApp();
+  it('returns 200 with mode=memory when no dbPool wired (dev/test)', async () => {
+    // Explicitly NOT requiring prod adapters — the dev/test path.
+    const { app } = await buildApp({ requireProdAdapters: false });
     const res = await app.inject({ method: 'GET', url: '/readyz' });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({
@@ -22,6 +23,26 @@ describe('outcomes-metering /readyz', () => {
       service: 'outcomes-metering',
       mode: 'memory',
     });
+  });
+
+  it('BORN-DARK GUARD: fails 503 in memory mode when prod adapters are required', async () => {
+    // No dbPool + prod adapters required → the volatile in-memory store
+    // must NOT pass as healthy (finding BORN-DARK + FAKE-PERSISTENCE).
+    const { app } = await buildApp({ requireProdAdapters: true });
+    const res = await app.inject({ method: 'GET', url: '/readyz' });
+    expect(res.statusCode).toBe(503);
+    const body = res.json() as { ready: boolean; mode: string; reason: string };
+    expect(body.ready).toBe(false);
+    expect(body.mode).toBe('memory');
+    expect(body.reason).toContain('production adapters required');
+  });
+
+  it('a wired dbPool serves ready even when prod adapters are required', async () => {
+    const dbPool = { query: vi.fn(async () => ({ rows: [{ '?column?': 1 }] })) };
+    const { app } = await buildApp({ dbPool, requireProdAdapters: true });
+    const res = await app.inject({ method: 'GET', url: '/readyz' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ ready: true, mode: 'db' });
   });
 
   it('returns 200 with mode=db when dbPool SELECT 1 resolves', async () => {

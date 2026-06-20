@@ -3,12 +3,19 @@
  *
  * `submitFieldCapture({ surveyorId, parcelId, captures })` validates
  * each capture (kind-specific rules), signs with the C2PA stub, and
- * appends to the in-memory store. Offline-first: callers can persist
- * the queue locally on mobile and bulk-sync via the field-capture-service.
+ * appends to the injected store. Offline-first: callers can persist the
+ * queue locally on mobile and bulk-sync to a host.
+ *
+ * NOTE (2026-06): this is a DORMANT, reusable library. The standalone
+ * `field-capture-service` pod that once consumed it was RETIRED as
+ * vestigial (born-dark from inception — no client, no ingress, no CI;
+ * the live workforce-capture path is the api-gateway `/field/staff` +
+ * `/manager` routes → the durable `field_captures` table). A future
+ * surveyor / parcel-photo feature can re-wire this pipeline behind a
+ * durable store; until then it is unused outside its own tests.
  *
  * The AI inference hook is pluggable — by default we attach a tiny rule-
  * based stub that suggests a "buildingGuess" based on the EXIF heading.
- * Production wires this to a real vision model in the service tier.
  */
 
 import { randomUUID } from 'node:crypto';

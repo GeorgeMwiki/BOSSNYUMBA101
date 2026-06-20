@@ -98,12 +98,15 @@ export default function BidDetail() {
     )
   }
 
-  function handleSendRaw(): void {
+  // Arrow const (not a hoisted `function`) so the `if (!bid) return` guard
+  // above narrows `bid` to non-undefined inside this closure — matching the
+  // sibling handleAccept/handleWithdraw and clearing TS18048 at the mutate call.
+  const handleSendRaw = (): void => {
     const text = draft.trim()
     if (!text) {
       return
     }
-    messageMutation.mutate({ bidId, body: text })
+    messageMutation.mutate({ listingId: bid.listingId, bidId, body: text })
   }
   // G4 — robustness 2026-05-29: belt-and-braces double-tap guard.
   // The mutation's `isPending` already gates the button while in
@@ -111,10 +114,10 @@ export default function BidDetail() {
   // before the state flips on flaky mobile networks.
   const handleSend = useDebouncedSubmit(handleSendRaw)
   const handleAccept = useDebouncedSubmit(() =>
-    statusMutation.mutate({ bidId, action: 'accept' })
+    statusMutation.mutate({ listingId: bid.listingId, bidId, action: 'accept' })
   )
   const handleWithdraw = useDebouncedSubmit(() =>
-    statusMutation.mutate({ bidId, action: 'withdraw' })
+    statusMutation.mutate({ listingId: bid.listingId, bidId, action: 'withdraw' })
   )
 
   return (
@@ -137,7 +140,7 @@ export default function BidDetail() {
             key={msg.id}
             from={msg.from}
             body={msg.body}
-            authorLabel={msg.from === 'tenant' ? t('profile.title') : 'Landlord'}
+            authorLabel={msg.from === 'tenant' ? t('bids.author_you') : t('bids.author_landlord')}
           />
         ))}
         <View style={styles.composer}>

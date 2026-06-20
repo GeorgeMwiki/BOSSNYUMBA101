@@ -120,20 +120,18 @@ function CertRow({ label, selected, recommended, onPress }: CertRowProps): JSX.E
 function certLabel(cert: Certification, t: ReturnType<typeof pickStrings>): string {
   const copy = t.onboarding.certifications
   switch (cert) {
-    case 'haul-truck-license':
+    case 'property-manager-licence':
       return copy.haulTruckLicense
-    case 'excavator-license':
+    case 'real-estate-agent-licence':
       return copy.excavatorLicense
-    case 'underground-cert':
+    case 'hvac-technician':
       return copy.undergroundCert
-    case 'blaster-permit':
-      return copy.blasterPermit
-    case 'first-aid':
-      return copy.firstAid
-    case 'crusher-operator':
-      return copy.crusherOperator
     case 'electrician-class-b':
       return copy.electricianClassB
+    case 'first-aid':
+      return copy.firstAid
+    case 'plumber':
+      return copy.crusherOperator
     case 'confined-space':
       return copy.confinedSpace
     default:

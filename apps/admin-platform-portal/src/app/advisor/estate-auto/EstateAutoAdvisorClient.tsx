@@ -9,8 +9,9 @@
  *   - Collection cadence — escalation steps over offset days
  *   - Vendor scorecard — top vendors ranked by composite score
  *
- * The endpoint is a `GET` (not `POST`) because it scopes to the
- * caller's tenant via the session cookie — no body is needed.
+ * The endpoint (`GET /api/v1/estate-auto-management/dashboard`) is a `GET`
+ * (not `POST`) because it scopes to the caller's tenant via the session
+ * cookie — no body is needed.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -86,7 +87,7 @@ export function EstateAutoAdvisorClient(): JSX.Element {
   const fetchDashboard = useCallback(async () => {
     setState({ status: 'loading' });
     try {
-      const res = await fetch(`${getApiBase()}/advisor/estate-auto`, {
+      const res = await fetch(`${getApiBase()}/estate-auto-management/dashboard`, {
         credentials: 'include',
       });
       const json: { data?: unknown; error?: { message?: string } } = await res
@@ -112,8 +113,7 @@ export function EstateAutoAdvisorClient(): JSX.Element {
         return;
       }
       setState({ status: 'ok', data: parsed.data });
-    } catch (error) {
-      console.error('estate-auto fetch failed:', error);
+    } catch {
       setState({ status: 'error', error: 'Network error reaching api-gateway' });
     }
   }, []);

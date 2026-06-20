@@ -69,10 +69,10 @@ In `values-prod.yaml` override:
 
 ```yaml
 apps:
-  customerApp:
+  ownerPortal:
     autoscaling:
       minReplicas: 5
-      maxReplicas: 60        # was 30
+      maxReplicas: 60        # was 10
 services:
   apiGateway:
     autoscaling:
@@ -86,8 +86,7 @@ services:
 
 ### 2.b KEDA scalers
 
-For the 3 scale-to-zero portals, bump `maxReplicaCount` proportionally.
-`customer-app` doesn't scale to zero, so the HPA above is sufficient.
+For the scale-to-zero portals, bump `maxReplicaCount` proportionally.
 
 ### 2.c Cluster autoscaler
 

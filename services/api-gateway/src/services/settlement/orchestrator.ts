@@ -35,6 +35,7 @@ import {
   type SettlementMath,
   type SignMoveInInput,
   type SignMoveInResult,
+  type SignRfbDeliveryInput,
   type SettlementStatus,
   type PayoutProvider,
 } from './types.js';
@@ -75,7 +76,7 @@ export class SettlementOrchestrator {
     const { tenantId, landlordUserId, responseId, moveInChecksum } = input;
 
     // ---- step 1: idempotency lookup -----------------------------------
-    const existing = rowsOf(
+    const existing = this.findExistingSettlement(
       await this.db.execute(sql`
         SELECT id::text AS id,
                status,
@@ -93,28 +94,8 @@ export class SettlementOrchestrator {
            AND idempotency_key = ${moveInChecksum}
          LIMIT 1
       `),
-    )[0];
-
-    if (existing) {
-      const math: SettlementMath = {
-        grossAmount: Number(existing.gross_amount ?? 0),
-        depositAmount: Number(existing.deposit_amount ?? 0),
-        feeAmount: Number(existing.fee_amount ?? 0),
-        netAmount: Number(existing.net_amount ?? 0),
-        currencyCode: String(existing.currency_code ?? 'TZS'),
-      };
-      return {
-        settlementId: String(existing.id),
-        status: (existing.status ?? 'pending') as SettlementStatus,
-        math,
-        ledgerTxnId: (existing.ledger_txn_id as string | null) ?? null,
-        payoutProvider:
-          (existing.payout_provider as PayoutProvider | null) ?? null,
-        payoutProviderRef:
-          (existing.payout_provider_ref as string | null) ?? null,
-        idempotent: true,
-      };
-    }
+    );
+    if (existing) return existing;
 
     // ---- step 2: load response + parent RFA --------------------------
     // The RFA pipeline in BossNyumba uses `applications` (analogue of
@@ -169,6 +150,166 @@ export class SettlementOrchestrator {
       currencyCode: String(respRows.currency_code ?? 'TZS'),
     });
 
+    // ---- steps 4-7: INSERT → ledger.post → payout → cockpit ----------
+    return this.executeSettlement({
+      tenantId,
+      rfaId: String(respRows.lease_id),
+      responseId,
+      landlordUserId: String(respRows.landlord_user_id ?? ''),
+      idempotencyKey: moveInChecksum,
+      initiatedBy: landlordUserId,
+      math,
+    });
+  }
+
+  /**
+   * Applicant-driven RFB sign-delivery (lease activation) — the tenant-mobile
+   * counterparty L8 path. The APPLICANT who owns the parent rfb_requests row
+   * signs; the settlement pays the landlord who posted the ACCEPTED
+   * `rfb_responses` row. Shares the single money path (executeSettlement →
+   * ledgerPort.post → payoutPort.payout) with signMoveIn.
+   */
+  async signRfbDelivery(input: SignRfbDeliveryInput): Promise<SignMoveInResult> {
+    const { tenantId, applicantUserId, responseId, coCStepChecksum } = input;
+
+    // ---- step 1: idempotency lookup -----------------------------------
+    const existing = this.findExistingSettlement(
+      await this.db.execute(sql`
+        SELECT id::text AS id,
+               status,
+               gross_amount::text AS gross_amount,
+               deposit_amount::text AS deposit_amount,
+               fee_amount::text AS fee_amount,
+               net_amount::text AS net_amount,
+               currency_code,
+               ledger_txn_id,
+               payout_provider,
+               payout_provider_ref
+          FROM settlements
+         WHERE tenant_id = ${tenantId}::uuid
+           AND response_id = ${responseId}::uuid
+           AND idempotency_key = ${coCStepChecksum}
+         LIMIT 1
+      `),
+    );
+    if (existing) return existing;
+
+    // ---- step 2: load the ACCEPTED rfb_response + its parent request --
+    // The applicant signing MUST own the parent rfb_requests row; the payout
+    // pays the responding landlord. Both predicates are checked so a renter
+    // cannot settle another renter's (or a non-accepted) response.
+    const respRows = rowsOf(
+      await this.db.execute(sql`
+        SELECT
+          r.id::text                AS response_id,
+          r.tenant_id               AS tenant_id,
+          r.rfb_id::text            AS rfb_id,
+          r.landlord_user_id        AS landlord_user_id,
+          r.rent_amount::text       AS rent_amount,
+          r.lease_term_months       AS lease_term_months,
+          r.deposit_amount::text    AS deposit_amount,
+          r.currency_code           AS currency_code,
+          r.status                  AS response_status,
+          req.applicant_user_id     AS applicant_user_id
+          FROM rfb_responses r
+          JOIN rfb_requests req ON req.id = r.rfb_id
+         WHERE r.id = ${responseId}::uuid
+         LIMIT 1
+      `),
+    )[0];
+
+    if (!respRows) {
+      throw new SettlementError(
+        'RESPONSE_NOT_FOUND',
+        `RFB response ${responseId} not found in tenant ${tenantId}`,
+      );
+    }
+    if (String(respRows.tenant_id) !== tenantId) {
+      throw new SettlementError(
+        'CROSS_TENANT_BLOCKED',
+        `RFB response ${responseId} belongs to a different tenant`,
+      );
+    }
+    if (String(respRows.response_status ?? '') !== 'accepted') {
+      throw new SettlementError(
+        'RESPONSE_NOT_ACCEPTED',
+        `RFB response ${responseId} is not accepted (status=${respRows.response_status})`,
+      );
+    }
+    if (String(respRows.applicant_user_id ?? '') !== applicantUserId) {
+      throw new SettlementError(
+        'UNAUTHORIZED_APPLICANT',
+        `User ${applicantUserId} does not own the request behind response ${responseId}`,
+      );
+    }
+
+    // ---- step 3: compute math ----------------------------------------
+    const math = computeSettlementMath({
+      rentAmount: Number(respRows.rent_amount ?? 0),
+      leaseTermMonths: Number(respRows.lease_term_months ?? 0),
+      depositAmount: Number(respRows.deposit_amount ?? 0),
+      currencyCode: String(respRows.currency_code ?? 'TZS'),
+    });
+
+    // ---- steps 4-7: shared money path --------------------------------
+    return this.executeSettlement({
+      tenantId,
+      rfaId: String(respRows.rfb_id),
+      responseId,
+      landlordUserId: String(respRows.landlord_user_id ?? ''),
+      idempotencyKey: coCStepChecksum,
+      initiatedBy: applicantUserId,
+      math,
+    });
+  }
+
+  /**
+   * Project an idempotency-lookup row set into a SignMoveInResult, or null when
+   * no prior settlement matches. Shared by signMoveIn + signRfbDelivery.
+   */
+  private findExistingSettlement(raw: unknown): SignMoveInResult | null {
+    const existing = rowsOf(raw)[0];
+    if (!existing) return null;
+    const math: SettlementMath = {
+      grossAmount: Number(existing.gross_amount ?? 0),
+      depositAmount: Number(existing.deposit_amount ?? 0),
+      feeAmount: Number(existing.fee_amount ?? 0),
+      netAmount: Number(existing.net_amount ?? 0),
+      currencyCode: String(existing.currency_code ?? 'TZS'),
+    };
+    return {
+      settlementId: String(existing.id),
+      status: (existing.status ?? 'pending') as SettlementStatus,
+      math,
+      ledgerTxnId: (existing.ledger_txn_id as string | null) ?? null,
+      payoutProvider: (existing.payout_provider as PayoutProvider | null) ?? null,
+      payoutProviderRef: (existing.payout_provider_ref as string | null) ?? null,
+      idempotent: true,
+    };
+  }
+
+  /**
+   * Steps 4-7 of the settlement chain, shared by signMoveIn + signRfbDelivery:
+   *   4. INSERT settlements row (status='pending').
+   *   5. LedgerService.post() via the ledger port (the SOLE money-mutating
+   *      seam — CLAUDE.md hard rule). Ledger failure marks 'failed' + throws;
+   *      no payout fires.
+   *   6. Payout via the payout port (best-effort; payout failure stays
+   *      'posted' for the retry sweep).
+   *   7. Cockpit `rent_payout.initiated` event.
+   */
+  private async executeSettlement(ctx: {
+    readonly tenantId: string;
+    readonly rfaId: string;
+    readonly responseId: string;
+    readonly landlordUserId: string;
+    readonly idempotencyKey: string;
+    readonly initiatedBy: string;
+    readonly math: SettlementMath;
+  }): Promise<SignMoveInResult> {
+    const { tenantId, rfaId, responseId, landlordUserId, idempotencyKey, initiatedBy, math } =
+      ctx;
+
     // ---- step 4: INSERT settlements row ------------------------------
     const settlementId = randomUUID();
     await this.db.execute(sql`
@@ -180,13 +321,13 @@ export class SettlementOrchestrator {
       ) VALUES (
         ${settlementId}::uuid,
         ${tenantId}::uuid,
-        ${String(respRows.lease_id)}::uuid,
+        ${rfaId}::uuid,
         ${responseId}::uuid,
         ${math.grossAmount}, ${math.depositAmount},
         ${math.feeAmount}, ${math.netAmount},
         ${math.currencyCode},
         'pending',
-        ${moveInChecksum},
+        ${idempotencyKey},
         NOW()
       )
     `);
@@ -197,7 +338,7 @@ export class SettlementOrchestrator {
       const ledgerRes = await this.ledgerPort.post({
         tenantId,
         responseId,
-        idempotencyKey: moveInChecksum,
+        idempotencyKey,
         math,
       });
       ledgerTxnId = ledgerRes.journalId;
@@ -234,7 +375,7 @@ export class SettlementOrchestrator {
         settlementId,
         netAmount: math.netAmount,
         currencyCode: math.currencyCode,
-        landlordUserId: String(respRows.landlord_user_id ?? ''),
+        landlordUserId,
       });
       payoutProvider = payoutRes.provider;
       payoutProviderRef = payoutRes.providerRef;
@@ -262,10 +403,10 @@ export class SettlementOrchestrator {
         tenantId,
         emittedAt: new Date().toISOString(),
         payoutId: settlementId,
-        ownerId: String(respRows.landlord_user_id ?? ''),
+        ownerId: landlordUserId,
         amount: math.netAmount,
         currencyCode: math.currencyCode,
-        initiatedBy: landlordUserId,
+        initiatedBy,
       });
     } catch (err) {
       moduleLogger.warn('settlement_cockpit_event_failed', {
@@ -279,7 +420,7 @@ export class SettlementOrchestrator {
       settlementId,
       tenantId,
       responseId,
-      leaseId: String(respRows.lease_id),
+      rfaId,
       math,
       ledgerTxnId,
       payoutProvider,

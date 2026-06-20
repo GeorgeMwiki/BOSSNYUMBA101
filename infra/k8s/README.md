@@ -18,7 +18,6 @@ infra/k8s/
 ├── apollo-gauntlet-runner/      Per-service tree (CronJob, 02:00 UTC)
 ├── consolidation-worker/        Per-service tree (Deployment, 1h loop)
 ├── document-render/             Per-service tree (Deployment)
-├── field-capture-service/       Per-service tree (Deployment)
 ├── mcp-server-firs/             Per-service tree (Deployment, stdio MCP)
 ├── mcp-server-nggis/            Per-service tree (Deployment, stdio MCP)
 ├── mcp-server-nin/              Per-service tree (Deployment, stdio MCP)
@@ -50,7 +49,7 @@ runtime topology:
 
 | Shape                  | base files                                                    | Examples                                          |
 |------------------------|---------------------------------------------------------------|---------------------------------------------------|
-| HTTP backend           | deployment + service + hpa + pdb + networkpolicy + servicemonitor + externalsecret | voice-agent, sleep-pass-orchestrator, payments-ledger, field-capture-service, onboarding-orchestrator, outcomes-metering, parcel-service |
+| HTTP backend           | deployment + service + hpa + pdb + networkpolicy + servicemonitor + externalsecret | voice-agent, sleep-pass-orchestrator, payments-ledger, onboarding-orchestrator, outcomes-metering, parcel-service |
 | Singleton-loop worker  | deployment + networkpolicy + externalsecret                   | consolidation-worker, outbox-processor, proactive-triggers-worker |
 | Stdio MCP server       | deployment + networkpolicy + externalsecret                   | mcp-server-firs, mcp-server-nin, mcp-server-nggis, mcp-server-opay, mcp-server-process-intel |
 | Scheduled CronJob      | cronjob  + networkpolicy + externalsecret                     | brain-evolution-worker, apollo-gauntlet-runner    |
@@ -115,7 +114,6 @@ SERVICES=(
   brain-evolution-worker
   consolidation-worker
   document-render
-  field-capture-service
   mcp-server-firs
   mcp-server-nggis
   mcp-server-nin

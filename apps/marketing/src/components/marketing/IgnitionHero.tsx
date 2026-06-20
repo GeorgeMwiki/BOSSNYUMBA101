@@ -49,51 +49,6 @@ interface ChoreoTurn {
 
 const DELAYS: readonly number[] = [400, 1800, 3200];
 
-function getChoreo(locale: Locale, timestamp: string): ReadonlyArray<ChoreoTurn> {
-  if (locale === 'sw') {
-    return [
-      {
-        role: 'ai',
-        body: "Habari. Mimi ni Mwl. Mwikila, Mshirika wako wa AI wa Usimamizi wa Mali. Umekuja kwa nini leo?",
-        timestamp,
-        delay: DELAYS[0],
-      },
-      {
-        role: 'user',
-        body: 'Ninaendesha vyumba 14 Mikocheni, Dar es Salaam. Ukusanyaji wa kodi una matatizo.',
-        timestamp,
-        delay: DELAYS[1],
-      },
-      {
-        role: 'ai',
-        body: 'Nimekuelewa. BossNyumba inaweza kuweka vyumba vyako 14 kwenye orodha moja ya kodi, kuoanisha malipo ya M-Pesa kiotomatiki, na kutuma vikumbusho kwa Kiswahili siku tatu kabla ya tarehe ya mwisho. Ungependa kuona jinsi makusanyo yako ya Machi yangeonekana?',
-        timestamp,
-        delay: DELAYS[2],
-      },
-    ];
-  }
-  return [
-    {
-      role: 'ai',
-      body: "Hi. I'm Mr. Mwikila, your AI Estate-Management Partner. What brings you here today?",
-      timestamp,
-      delay: DELAYS[0],
-    },
-    {
-      role: 'user',
-      body: 'I run 14 units in Mikocheni, Dar es Salaam. Rent collection is messy.',
-      timestamp,
-      delay: DELAYS[1],
-    },
-    {
-      role: 'ai',
-      body: 'Got it. BossNyumba can put your 14 units on one rent-roll, auto-reconcile M-Pesa payments, and send Swahili reminders three days before each due date. Want to see how your March collection would have looked?',
-      timestamp,
-      delay: DELAYS[2],
-    },
-  ];
-}
-
 function ChatTurn({
   role,
   body,
@@ -191,7 +146,12 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
   const t = getMessages(locale).hero;
   const chat = t.chat;
   const sw = locale === 'sw';
-  const choreo = getChoreo(locale, chat.timestamp);
+  const choreo: ReadonlyArray<ChoreoTurn> = chat.turns.map((turn, i) => ({
+    role: turn.role as 'ai' | 'user',
+    body: turn.body,
+    timestamp: chat.timestamp,
+    delay: DELAYS[i] ?? 0,
+  }));
   const [shown, setShown] = useState<boolean[]>(choreo.map(() => false));
 
   useEffect(() => {
@@ -303,36 +263,34 @@ export function IgnitionHero({ locale }: IgnitionHeroProps) {
               {t.ctaPilot}
               <ArrowRight className="h-5 w-5" />
             </Link>
-            <Link
-              href="#how-it-works"
+            <a
+              href="#mwikila-live-demo"
               className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-border bg-card/60 px-6 py-3.5 text-base font-semibold text-foreground transition-all hover:bg-card hover:border-primary/40"
             >
-              {sw ? 'Onyesha jinsi inavyofanya kazi' : 'See it move'}
-            </Link>
+              {t.seeItMove}
+            </a>
           </div>
 
           <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-success" />
-              {sw ? 'Usalama wa kiwango cha biashara' : 'Enterprise-grade security'}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              {sw ? 'Kiswahili na Kiingereza, asili' : 'Swahili + English, native'}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-warning" />
-              {sw ? 'Inafanya kazi nje ya mtandao, kwa sauti, kupitia USSD' : 'Works offline, by voice, over USSD'}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-info" />
-              {sw ? 'Kila hadhira, daraja la kwanza' : 'Every audience, first-class'}
-            </span>
+            {t.assurances.map((label, i) => (
+              <span key={label} className="inline-flex items-center gap-1.5">
+                <span
+                  className={cn(
+                    'h-1.5 w-1.5 rounded-full',
+                    ['bg-success', 'bg-primary', 'bg-warning', 'bg-info'][i] ?? 'bg-primary'
+                  )}
+                />
+                {label}
+              </span>
+            ))}
           </div>
         </div>
 
         {/* RIGHT — live chat inset that mirrors the platform widget EXACTLY */}
-        <div className="relative flex items-center">
+        <div
+          id="mwikila-live-demo"
+          className="relative flex items-center scroll-mt-24"
+        >
           <div
             className="relative w-full overflow-hidden rounded-[28px] border border-border/50 bg-background/92 shadow-[0_28px_80px_rgb(15_23_42_/_0.22)] ring-1 ring-border/30 backdrop-blur-2xl"
             style={{ minHeight: '520px' }}

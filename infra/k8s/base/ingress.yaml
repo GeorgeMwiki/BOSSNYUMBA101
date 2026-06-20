@@ -29,11 +29,8 @@ spec:
   tls:
     - hosts:
         - api.bossnyumba.com
-        - bossnyumba.com
-        - www.bossnyumba.com
         - admin.bossnyumba.com
         - owners.bossnyumba.com
-        - manage.bossnyumba.com
       secretName: bossnyumba-tls
   rules:
     - host: api.bossnyumba.com
@@ -42,18 +39,6 @@ spec:
           - path: /
             pathType: Prefix
             backend: { service: { name: api-gateway, port: { number: 80 } } }
-    - host: bossnyumba.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend: { service: { name: customer-app, port: { number: 80 } } }
-    - host: www.bossnyumba.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend: { service: { name: customer-app, port: { number: 80 } } }
     - host: admin.bossnyumba.com
       http:
         paths:
@@ -66,9 +51,3 @@ spec:
           - path: /
             pathType: Prefix
             backend: { service: { name: owner-portal, port: { number: 80 } } }
-    - host: manage.bossnyumba.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend: { service: { name: estate-manager-app, port: { number: 80 } } }

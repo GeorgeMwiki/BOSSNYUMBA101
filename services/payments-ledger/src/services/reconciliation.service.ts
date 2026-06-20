@@ -77,6 +77,26 @@ export interface ReconciliationServiceDeps {
   accountRepository: IAccountRepository;
   eventPublisher: IEventPublisher;
   logger: ILogger;
+  /**
+   * Book a now-SUCCEEDED payment into the ledger (BLOCKER #07).
+   *
+   * When provider reconciliation flips a stale PROCESSING intent to
+   * SUCCEEDED, the cash was collected but no journal was ever posted on the
+   * automated path (the success webhook never landed). This dep books the
+   * gap. It MUST be idempotent — book only when the intent is SUCCEEDED with
+   * zero existing ledger entries — so a re-run never double-books. The real
+   * binding is `PaymentOrchestrationService.ensurePaymentBooked`.
+   *
+   * Optional: omitted in surface-only / pure status-sync contexts (and in
+   * the scaling unit tests). When absent, reconciliation still flips the
+   * status but does not book — the existing self-heal on the next webhook
+   * duplicate covers it.
+   */
+  bookPayment?: (
+    externalId: string,
+    providerName: string,
+    tenantId: TenantId,
+  ) => Promise<void>;
 }
 
 /**
@@ -90,6 +110,7 @@ export class ReconciliationService {
   private accountRepository: IAccountRepository;
   private eventPublisher: IEventPublisher;
   private logger: ILogger;
+  private bookPayment?: ReconciliationServiceDeps['bookPayment'];
 
   // Tolerance for matching amounts (in minor units)
   private readonly AMOUNT_TOLERANCE = 0;
@@ -97,12 +118,23 @@ export class ReconciliationService {
   private readonly MATCH_THRESHOLD = 60;
   private readonly AMBIGUOUS_THRESHOLD = 40;
 
+  // Scale guards for provider reconciliation. The set of PROCESSING
+  // payments is unbounded (a provider outage can strand thousands), and
+  // each one costs one external provider round-trip. We therefore (a) cap
+  // how many we pull/process per invocation, and (b) fan out in small
+  // bounded batches so we never open an unbounded number of concurrent
+  // sockets against the provider (backpressure). The cron re-runs until
+  // the backlog is drained, so capping does not drop work — it paces it.
+  private readonly DEFAULT_RECONCILE_MAX = 500;
+  private readonly DEFAULT_RECONCILE_CONCURRENCY = 5;
+
   constructor(deps: ReconciliationServiceDeps) {
     this.paymentIntentRepository = deps.paymentIntentRepository;
     this.ledgerRepository = deps.ledgerRepository;
     this.accountRepository = deps.accountRepository;
     this.eventPublisher = deps.eventPublisher;
     this.logger = deps.logger;
+    this.bookPayment = deps.bookPayment;
   }
 
   /**
@@ -310,16 +342,25 @@ export class ReconciliationService {
   }
 
   /**
-   * Reconcile payment statuses with provider
+   * Reconcile payment statuses with provider.
+   *
+   * Scale-bounded: at most `maxToProcess` PROCESSING intents are pulled
+   * and reconciled per invocation, and provider status calls fan out in
+   * bounded batches of `concurrency` (backpressure) rather than an
+   * unbounded serial — or unbounded parallel — sweep. When the backlog
+   * exceeds the cap, `limited` is returned true so the caller (cron) knows
+   * to schedule another pass; no work is silently dropped.
    */
   async reconcileWithProvider(
     tenantId: TenantId,
     providerName: string,
-    olderThanMinutes: number = 30
+    olderThanMinutes: number = 30,
+    options: { maxToProcess?: number; concurrency?: number } = {}
   ): Promise<{
     checked: number;
     updated: number;
     failed: number;
+    limited: boolean;
     errors: Array<{ paymentId: string; error: string }>;
   }> {
     const provider = this.providers.get(providerName);
@@ -327,30 +368,42 @@ export class ReconciliationService {
       throw new Error(`Provider ${providerName} not registered`);
     }
 
-    const cutoffTime = new Date(Date.now() - olderThanMinutes * 60 * 1000);
-    const paymentsToCheck = await this.paymentIntentRepository.findNeedingReconciliation(
-      tenantId,
-      cutoffTime
+    const maxToProcess = this.clampPositive(
+      options.maxToProcess,
+      this.DEFAULT_RECONCILE_MAX
+    );
+    const concurrency = this.clampPositive(
+      options.concurrency,
+      this.DEFAULT_RECONCILE_CONCURRENCY
     );
 
-    let checked = 0;
+    const cutoffTime = new Date(Date.now() - olderThanMinutes * 60 * 1000);
+    // Fetch one extra row to detect (without a second query) whether more
+    // work remains beyond the cap, so the cron can re-run promptly.
+    const fetched = await this.paymentIntentRepository.findNeedingReconciliation(
+      tenantId,
+      cutoffTime,
+      maxToProcess + 1
+    );
+    const limited = fetched.length > maxToProcess;
+    const paymentsToCheck = limited ? fetched.slice(0, maxToProcess) : fetched;
+
+    // Only the intents this provider actually owns cost a round-trip.
+    const targets = paymentsToCheck.filter(
+      (payment) => payment.providerName === providerName && !!payment.externalId
+    );
+
     let updated = 0;
     let failed = 0;
     const errors: Array<{ paymentId: string; error: string }> = [];
 
-    for (const payment of paymentsToCheck) {
-      if (payment.providerName !== providerName || !payment.externalId) {
-        continue;
-      }
-
-      checked++;
-
+    const reconcileOne = async (payment: PaymentIntent): Promise<void> => {
       try {
-        const { status } = await provider.getPaymentIntentStatus(payment.externalId);
-        
+        const { status } = await provider.getPaymentIntentStatus(payment.externalId!);
+
         if (status !== payment.status) {
           const aggregate = new PaymentIntentAggregate(payment);
-          
+
           switch (status) {
             case 'SUCCEEDED':
               aggregate.markSucceeded();
@@ -371,6 +424,32 @@ export class ReconciliationService {
             oldStatus: payment.status,
             newStatus: status
           });
+
+          // BLOCKER #07: a stale PROCESSING intent that the provider confirms
+          // SUCCEEDED had its cash collected but NEVER booked (the success
+          // webhook was the only thing that posts the journal, and it never
+          // landed). Book the gap now. `bookPayment` is idempotent — it books
+          // only when the intent is SUCCEEDED with zero existing ledger
+          // entries — so a re-run never double-books. Wrapped so one booking
+          // failure surfaces (failed++ / error) but never crashes the batch:
+          // the next sweep retries, and the status is already correct.
+          if (status === 'SUCCEEDED' && this.bookPayment && payment.externalId) {
+            try {
+              await this.bookPayment(payment.externalId, providerName, tenantId);
+            } catch (bookError) {
+              failed++;
+              const message =
+                bookError instanceof Error ? bookError.message : 'Unknown error';
+              errors.push({ paymentId: payment.id, error: `ledger booking failed: ${message}` });
+              this.logger.error('Reconciliation booked status but ledger post failed', {
+                paymentIntentId: payment.id,
+                externalId: payment.externalId,
+                providerName,
+                tenantId,
+                error: message
+              });
+            }
+          }
         }
       } catch (error) {
         failed++;
@@ -379,17 +458,38 @@ export class ReconciliationService {
           error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
+    };
+
+    // Bounded-concurrency fan-out: process in slices of `concurrency`,
+    // awaiting each slice before opening the next (backpressure).
+    for (let i = 0; i < targets.length; i += concurrency) {
+      const slice = targets.slice(i, i + concurrency);
+      await Promise.all(slice.map(reconcileOne));
     }
+
+    const checked = targets.length;
 
     this.logger.info('Provider reconciliation completed', {
       tenantId,
       providerName,
       checked,
       updated,
-      failed
+      failed,
+      limited
     });
 
-    return { checked, updated, failed, errors };
+    return { checked, updated, failed, limited, errors };
+  }
+
+  /**
+   * Coerce a caller-supplied bound to a safe positive integer, falling
+   * back to a default when undefined / non-finite / <= 0.
+   */
+  private clampPositive(value: number | undefined, fallback: number): number {
+    if (value === undefined || !Number.isFinite(value) || value <= 0) {
+      return fallback;
+    }
+    return Math.floor(value);
   }
 
   /**

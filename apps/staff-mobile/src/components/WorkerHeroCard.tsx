@@ -45,6 +45,12 @@ export interface WorkerHeroCardProps {
   readonly onMarkComplete?: (taskId: string) => void
   readonly onNeedHelp?: (taskId: string | null) => void
   /**
+   * Mark-complete failure surfaced by the parent. When set, the card shows an
+   * inline error and keeps the task visible — a failed completion is NEVER
+   * silently cleared (no fake success).
+   */
+  readonly completeError?: string | null
+  /**
    * Inject a clock for the running timer. Defaults to `Date.now`. Test
    * harnesses pass a deterministic function.
    */
@@ -56,6 +62,7 @@ export function WorkerHeroCard({
   locale,
   onMarkComplete,
   onNeedHelp,
+  completeError = null,
   now = Date.now,
 }: WorkerHeroCardProps): ReactElement {
   const isSw = locale === 'sw'
@@ -207,6 +214,12 @@ export function WorkerHeroCard({
           <Text style={styles.secondaryActionLabel}>{helpLabel}</Text>
         </Pressable>
       </View>
+
+      {completeError ? (
+        <Text testID="worker-hero-complete-error" style={styles.completeError}>
+          {completeError}
+        </Text>
+      ) : null}
     </View>
   )
 }
@@ -391,5 +404,10 @@ const styles = StyleSheet.create({
   },
   actionDisabled: {
     opacity: 0.45,
+  },
+  completeError: {
+    ...tokens.type.bodySm,
+    color: tokens.color.danger,
+    marginTop: tokens.space.md,
   },
 })

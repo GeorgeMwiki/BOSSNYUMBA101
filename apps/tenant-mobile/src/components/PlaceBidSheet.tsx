@@ -110,8 +110,12 @@ export function PlaceBidSheet({ visible, onClose, listing }: PlaceBidSheetProps)
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
-            keyboardType="decimal-pad"
-            error={fieldState.error?.message ? t('common.retry') : undefined}
+            keyboardType="number-pad"
+            error={
+              fieldState.error?.message
+                ? t(`bids.bid_price_error.${fieldState.error.message}`)
+                : undefined
+            }
           />
         )}
       />

@@ -77,6 +77,53 @@ import {
   ConnectedAccount
 } from './payment-provider.interface';
 
+/**
+ * Thrown by {@link MpesaPaymentProvider.getTransferStatus}. B2C is a
+ * callback-only rail — delivery status cannot be polled synchronously. The
+ * disbursement-reconciliation sweep catches this and leaves the row
+ * NEEDS_REVERSAL (flagged loud) instead of guessing the outcome. A distinct
+ * class (not a bare Error) lets a caller/test assert the callback-only contract.
+ */
+export class MpesaCallbackOnlyStatusError extends Error {
+  readonly code = 'MPESA_TRANSFER_STATUS_CALLBACK_ONLY';
+  constructor(public readonly transferId: string) {
+    super(
+      `M-PESA B2C transfer status is callback-only (ConversationID ${transferId}); ` +
+        'the outcome arrives at /webhooks/mpesa/b2c/{result,timeout}, not via a poll.',
+    );
+    this.name = 'MpesaCallbackOnlyStatusError';
+  }
+}
+
+/**
+ * Thrown by {@link MpesaPaymentProvider.createPaymentIntent} when an STK Push
+ * intent carries sub-major-unit precision (e.g. KES 100.50). M-PESA STK can
+ * only ever charge a WHOLE number of major units — the Daraja `Amount` field
+ * is whole-shilling. If we silently `Math.round()` here the customer is charged
+ * a different figure than the ledger books `paymentIntent.amount` exactly
+ * (payment-orchestration.service.ts ~593-622), so cash collected != cash
+ * booked. We fail CLOSED at intent creation instead: the caller must quantize
+ * the intent to a whole major unit BEFORE choosing the M-PESA STK rail, so
+ * `intent.amount` is already whole-unit and ledger == cash. A distinct class
+ * (not a bare Error) lets callers/tests assert the quantize-at-creation
+ * contract.
+ */
+export class MpesaSubUnitAmountError extends Error {
+  readonly code = 'MPESA_STK_AMOUNT_NOT_WHOLE_UNIT';
+  constructor(
+    public readonly amountMinorUnits: number,
+    public readonly currency: CurrencyCode,
+  ) {
+    super(
+      `M-PESA STK Push requires a whole-major-unit amount (${currency}); ` +
+        `received ${amountMinorUnits} minor units which is not a whole ${currency}. ` +
+        'Quantize the payment intent to a whole major unit before initiating ' +
+        'STK Push so the charged amount matches the booked ledger amount.',
+    );
+    this.name = 'MpesaSubUnitAmountError';
+  }
+}
+
 export interface MpesaProviderConfig {
   consumerKey: string;
   consumerSecret: string;
@@ -228,6 +275,25 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
       };
     }
 
+    // MONEY (stk-rounding): M-PESA STK can only charge a WHOLE number of major
+    // units, but the ledger books `paymentIntent.amount` to the exact minor
+    // unit (payment-orchestration.service.ts ~593-622). If the intent carries
+    // sub-major-unit precision (e.g. KES 100.50) we cannot reconcile cash
+    // collected against cash booked — `Math.round` would charge a different
+    // figure than is booked. Fail CLOSED here: the caller must quantize the
+    // intent to a whole major unit BEFORE selecting the STK rail so
+    // intent.amount is already whole-unit and ledger == cash. We do NOT round
+    // silently. `amountMajorUnits` derives the major value currency-aware
+    // (minor ÷ 10^decimals), so this also holds for 0-decimal currencies where
+    // every amount is already whole.
+    const majorUnits = params.amount.amountMajorUnits;
+    if (!Number.isInteger(majorUnits)) {
+      throw new MpesaSubUnitAmountError(
+        params.amount.amountMinorUnits,
+        params.amount.currency,
+      );
+    }
+
     const accessToken = await this.getAccessToken();
     const { password, timestamp } = this.generatePassword();
 
@@ -245,7 +311,7 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
       Password: password,
       Timestamp: timestamp,
       TransactionType: 'CustomerPayBillOnline',
-      Amount: Math.round(params.amount.amountMajorUnits), // M-PESA uses whole units
+      Amount: majorUnits, // already whole-unit (guarded above) — charged == booked
       PartyA: phoneNumber,
       PartyB: this.config.shortCode,
       PhoneNumber: phoneNumber,
@@ -431,6 +497,11 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
       throw new Error(`M-PESA B2C failed: ${data.ResponseDescription}`);
     }
 
+    // Real PENDING with the Daraja ConversationID mapped as the transferId.
+    // The authoritative delivery outcome arrives asynchronously at
+    // /webhooks/mpesa/b2c/result (success → PAID) or /webhooks/mpesa/b2c/timeout
+    // (no result → NEEDS_REVERSAL), keyed on this ConversationID. The
+    // disbursement row is the source of truth from there on.
     return {
       transferId: data.ConversationID!,
       status: 'PENDING',
@@ -438,10 +509,22 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
     };
   }
 
+  /**
+   * M-Pesa B2C is a CALLBACK-ONLY rail: Safaricom delivers the authoritative
+   * transfer outcome asynchronously to the ResultURL / QueueTimeOutURL
+   * (handled by /webhooks/mpesa/b2c/{result,timeout}, which update the
+   * disbursement row directly). There is NO synchronous "is this transfer
+   * delivered yet?" query — even the Daraja Transaction Status API returns its
+   * answer via a callback, not inline.
+   *
+   * We therefore throw a typed, explicit signal rather than guessing. The
+   * disbursement-reconciliation sweep CATCHES this throw and, for a B2C
+   * disbursement it cannot confirm here, leaves it NEEDS_REVERSAL + flags it
+   * LOUD (never blind-reverses, never blind-re-sends) — the safe money
+   * behaviour. The callbacks, not a poll, drive the terminal transition.
+   */
   async getTransferStatus(transferId: string): Promise<TransferResult> {
-    // B2C status is received via callback
-    // Would need to query from our database
-    throw new Error('M-PESA transfer status must be tracked via callbacks');
+    throw new MpesaCallbackOnlyStatusError(transferId);
   }
 
   async attachPaymentMethod(

@@ -69,6 +69,12 @@ export interface IntelligenceHistoryWorkerDeps {
   readonly cohorts: CustomerCohortProvider;
   readonly signals: CustomerSignalsProvider;
   readonly clock?: { now(): Date };
+  /**
+   * Optional structured logger (pino-shaped). Services MUST NOT use
+   * `console.*`; per-customer failures route here when provided. The
+   * `errors` count in the run result is always returned regardless.
+   */
+  readonly logger?: { error(obj: Record<string, unknown>, msg?: string): void };
 }
 
 function formatYmd(date: Date): string {
@@ -123,9 +129,13 @@ export class IntelligenceHistoryWorker {
           snapshotsWritten += 1;
         } catch (error) {
           errors += 1;
-          console.error(
-            `intelligence-history-worker: failed customer=${c.customerId} tenant=${c.tenantId}`,
-            error,
+          this.deps.logger?.error(
+            {
+              customerId: c.customerId,
+              tenantId: c.tenantId,
+              err: error instanceof Error ? error.message : String(error),
+            },
+            'intelligence-history-worker: customer snapshot failed',
           );
         }
       }

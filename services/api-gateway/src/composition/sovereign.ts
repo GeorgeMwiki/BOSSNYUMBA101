@@ -39,9 +39,12 @@
 import {
   agency as agencyKernel,
   composeSovereign,
+  createApprovalGate,
   createDpCohortSource,
   tools as kernelTools,
   type AgencyKernelPort,
+  type ApprovalGate,
+  type ApprovalStore,
   type FeedbackMemoryPort,
   type MemoryHierarchy,
   type PersonaBrandingOverride,
@@ -102,6 +105,11 @@ import { createMultiLLMSynthesizerWiring } from './multi-llm-synthesizer-wiring.
 type SovereignRole = 'tenant' | 'manager' | 'owner' | 'org-admin' | 'sovereign';
 import { getDb } from './db-client';
 import { readSovereignLedgerFailClosedFromEnv } from './service-registry';
+// Wave-B fail-closed ACTIVATION — bind the real hash-chained sovereign
+// action ledger so the executor's fail-closed branch has a ledger to
+// fail. Without this port bound, `safeSovereignLedger` is a no-op and an
+// un-auditable irreversible sovereign action would still report success.
+import { createSovereignLedgerPort } from './sovereign-ledger-port';
 import { wrapAnthropicWithCircuitBreaker } from './anthropic-circuit-breaker';
 import {
   createBoundActionToolDeps,
@@ -238,6 +246,13 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   // composeSovereign default (in-memory) is used.
   let substrateSinks: SubstrateSinks | undefined;
   let approvalStore: ReturnType<typeof createPgApprovalStore> | undefined;
+  // Four-eye gate built over the Drizzle-backed approval store. Threaded
+  // into BOTH executor branches so a step whose autonomy policy demands
+  // approval routes through a DURABLE propose/sign/markExecuted path
+  // (replica-shared, survives restart) instead of silently
+  // auto-executing. Undefined only when DB is down — the executor's
+  // fail-closed unbound-gate guard then refuses the step.
+  let agencyApprovalGate: ApprovalGate | undefined;
   let priorTurnsLoader: ((threadId: string) => Promise<ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>>) | undefined;
   let recentTurnCounter: ((threadId: string) => Promise<number>) | undefined;
   let groundingFacts:
@@ -271,6 +286,18 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       provenance: svc.provenance,
     };
     approvalStore = createPgApprovalStore(db, { tenantId: scope.tenantId });
+    // Wrap the Drizzle store in the four-eye gate so the agency executor
+    // gets a real, durable ApprovalGate (propose → sign → markExecuted).
+    // Without this the executor ran with `approvalGate` unbound and
+    // every requiresApproval:true step fell through to autonomous
+    // execution — the class-halfwired-dormant safety gap this remediates.
+    // The Drizzle store implements the structural `put/get/list` surface
+    // the kernel gate needs; the database package types it with its own
+    // (policy/plan-free) ApprovalRecord, so we duck-cast at the boundary
+    // — the SAME pattern composeSovereign uses for `mutable.approvalStore`.
+    agencyApprovalGate = createApprovalGate({
+      store: approvalStore as unknown as ApprovalStore,
+    });
     const memory = createKernelMemoryService(db, { tenantId: scope.tenantId });
     priorTurnsLoader = (threadId) => memory.loadPriorTurns(threadId);
     recentTurnCounter = (threadId) => memory.countRecentUserTurns(threadId);
@@ -360,6 +387,15 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
     // 0080 (`autonomy_policies`) here.
     const goalsService = createKernelGoalsService(db);
     const auditSink = createKernelActionAuditService(db);
+    // Wave-B fail-closed ACTIVATION — the hash-chained sovereign action
+    // ledger, bound over the SAME Drizzle client as the goals/audit
+    // services. Threaded into BOTH executor branches below so a
+    // sovereign-tier action (eviction / owner-payout / KRA-MRI / GePG /
+    // market-rate-override / inspection-major-damage) whose audit row
+    // cannot be written is flipped to `failed` (per
+    // `readSovereignLedgerFailClosedFromEnv` — closed unless
+    // SOVEREIGN_LEDGER_FAIL_OPEN=1).
+    const sovereignLedger = createSovereignLedgerPort(db);
     const toolRegistry = agencyKernel.createActionToolRegistry();
     for (const stub of agencyKernel.DEFAULT_ACTION_TOOL_STUBS) {
       toolRegistry.register(stub);
@@ -375,8 +411,12 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       goals: goalsService,
       tools: toolRegistry,
       auditSink,
+      // Durable four-eye gate — a requiresApproval:true step now routes
+      // through propose/sign rather than auto-executing.
+      approvalGate: agencyApprovalGate,
       autonomyPolicy: agencyKernel.createDefaultAllowLowStakesPolicy(),
       counterModel: createProductionCounterModel(anthropic),
+      sovereignLedger,
       sovereignLedgerFailClosed: readSovereignLedgerFailClosedFromEnv(),
     });
     agencyPort = {
@@ -453,8 +493,12 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       goals: goalsService,
       tools: toolRegistry,
       auditSink,
+      // Durable four-eye gate (same store-backed gate as the early-stub
+      // executor above) — high-stakes steps propose for human sign-off.
+      approvalGate: agencyApprovalGate,
       autonomyPolicy: realAutonomyPolicy,
       counterModel: createProductionCounterModel(anthropic),
+      sovereignLedger,
       sovereignLedgerFailClosed: readSovereignLedgerFailClosedFromEnv(),
     });
     agencyPort = {

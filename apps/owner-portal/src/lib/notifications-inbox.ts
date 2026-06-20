@@ -16,10 +16,9 @@
  * that's a server concern; this client helper just reflects the live
  * push.
  *
- * Ported to apps/owner-portal/src/lib/notifications-inbox.ts +
- * apps/customer-app/src/lib/notifications-inbox.ts +
- * apps/estate-manager-app/src/lib/notifications-inbox.ts so the same
- * subscriber lives on all three surfaces.
+ * Lives on the owner-portal web SPA. The Expo mobile surfaces
+ * (tenant-mobile, staff-mobile) carry their own native notification
+ * subscribers.
  */
 
 import type { CockpitEventKind } from './cockpit-stream';

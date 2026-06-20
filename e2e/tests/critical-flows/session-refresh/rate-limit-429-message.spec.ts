@@ -10,16 +10,14 @@
  *
  * Audit reference: `.audit/deep-audit-2026-05-20.md` — no test ever
  * verifies the UX of a 429. The brain (LLM) endpoint is the most
- * obvious rate-limited surface; the customer-app login OTP send is
- * another. We probe both via the api-gateway directly (the UX wiring
- * test runs through the browser on the customer-app project).
+ * obvious rate-limited surface. We probe it via the api-gateway
+ * directly (the surface UX wiring lives in the mobile apps' own suites).
  */
 import { test, expect } from '@playwright/test';
 import {
   REAL_BACKEND_ENABLED,
   API_GATEWAY_URL,
 } from '../../../fixtures/dual-tenant-fixtures';
-import { testUsers } from '../../../fixtures/test-data';
 
 test.describe('@session @critical @security — 429 surfaces a user-friendly message', () => {
   test.skip(
@@ -71,42 +69,5 @@ test.describe('@session @critical @security — 429 surfaces a user-friendly mes
     expect(asString, '429 body must include a human-readable message').toMatch(
       /rate|limit|too many|cooldown|try again/i,
     );
-  });
-
-  test('customer-app UI: 429 surfaces a toast / banner, not a raw error', async ({
-    page,
-  }) => {
-    test.use({ baseURL: process.env.CUSTOMER_APP_URL ?? 'http://localhost:3002' });
-
-    await page.goto('/auth/login').catch(() => undefined);
-    const phoneInput = page.getByLabel(/phone/i).first();
-    if (!(await phoneInput.isVisible().catch(() => false))) {
-      test.fixme(true, 'Customer login UI not rendering — out of scope here');
-      return;
-    }
-
-    // Spam the OTP-send button (rate-limited per phone).
-    await phoneInput.fill(testUsers.customer.phone);
-    const sendBtn = page.getByRole('button', { name: /send otp|continue|send/i }).first();
-    for (let i = 0; i < 10; i += 1) {
-      if (await sendBtn.isVisible().catch(() => false)) {
-        await sendBtn.click().catch(() => undefined);
-      }
-      await page.waitForTimeout(150);
-    }
-
-    // A user-facing rate-limit affordance must be visible somewhere on the
-    // page. We're permissive about widget type (toast vs banner vs modal).
-    const friendlyMsg = page.getByText(
-      /too many|rate limit|try again|wait|slow down|cooldown/i,
-    );
-    await expect(friendlyMsg.first(), 'user-facing 429 message must render').toBeVisible({
-      timeout: 10000,
-    });
-
-    // Defence-in-depth: no raw "Network Error" / stack trace bled through.
-    const body = (await page.locator('body').textContent()) ?? '';
-    expect(body, 'no raw "Network Error" string').not.toMatch(/^Network Error$/m);
-    expect(body, 'no stack trace bled into UI').not.toMatch(/at\s+\w+\s+\(/);
   });
 });

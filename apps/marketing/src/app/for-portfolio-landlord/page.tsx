@@ -2,18 +2,21 @@ import type { Metadata } from 'next';
 import { Building2 } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { AudiencePage } from '@/components/audience/AudiencePage';
-import { COPY } from '@/lib/audience-copy';
+import { getMessages } from '@/lib/i18n';
+import { getLocale } from '@/lib/locale';
 
-export const metadata: Metadata = {
-  title: 'For the portfolio landlord — Boss Nyumba',
-  description:
-    'Scale from five units to 2,500. Cross-property cash flow, consolidated owner statements, autonomy dial, Master Brain reasoning. Built for the professional property manager.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = getMessages(locale).audiencePages.portfolioLandlord;
+  return { title: t.metaTitle, description: t.metaDescription };
+}
 
-export default function ForPortfolioLandlordPage() {
+export default async function ForPortfolioLandlordPage() {
+  const locale = await getLocale();
+  const copy = getMessages(locale).audiencePages.portfolioLandlord;
   return (
     <PageShell>
-      <AudiencePage copy={COPY.portfolioLandlord} kickerIcon={Building2} />
+      <AudiencePage copy={copy} kickerIcon={Building2} />
     </PageShell>
   );
 }

@@ -29,11 +29,6 @@ export const RATE_LIMIT_ALLOWLIST = new Map([
   ['apps/admin-platform-portal/src/app/api/platform/intelligence/thread/[threadId]/message/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
   ['apps/admin-platform-portal/src/app/api/platform/intelligence/thread/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
   ['apps/admin-platform-portal/src/app/api/platform/login/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['apps/customer-app/src/app/api/brain/turn/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['apps/estate-manager-app/src/app/api/brain/migrate/commit/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['apps/estate-manager-app/src/app/api/brain/migrate/extract/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['apps/estate-manager-app/src/app/api/brain/review/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['apps/estate-manager-app/src/app/api/brain/turn/route.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
 
   // ─── api-gateway: tracked gaps awaiting an in-handler limiter ───────
   ['services/api-gateway/src/routes/auth-mfa.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
@@ -62,7 +57,6 @@ export const RATE_LIMIT_ALLOWLIST = new Map([
 
   // ─── other services behind api-gateway internal mTLS edge limiter ───
   ['services/document-intelligence/src/routes/documents.routes.ts', 'TRACKED GAP — wire perTenantRateBudget or withSecurityEvents; tracked from scanner pass.'],
-  ['services/field-capture-service/src/routes/captures.ts', 'field-capture-service captures POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
   ['services/outcomes-metering/src/routes/events.ts', 'outcomes-metering events POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
   ['services/parcel-service/src/routes/geocode.ts', 'parcel-service geocode POST; service sits behind api-gateway internal mTLS, edge limiter applies.'],
   ['services/parcel-service/src/routes/parcels.ts', 'parcel-service parcels CRUD; service sits behind api-gateway internal mTLS, edge limiter applies.'],

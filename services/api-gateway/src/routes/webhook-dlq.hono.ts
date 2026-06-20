@@ -1,6 +1,13 @@
 /**
  * Admin router for outbound webhook dead-letters.
  *
+ * Routes are registered RELATIVE to where this router is mounted. In the
+ * gateway it is composed via `api.route('/', webhookDlqRouter)` onto the base
+ * Hono `api`, which Express serves at `app.use('/api/v1', handle(api))`. The
+ * `/api/v1` adapter mount STRIPS that prefix before Hono routes, so these
+ * literals must NOT repeat it — otherwise every route 404s. The composed
+ * public surface is therefore:
+ *
  *   GET  /api/v1/webhooks/dead-letters           — list DLQ entries
  *   GET  /api/v1/webhooks/dead-letters/:id       — inspect one
  *   POST /api/v1/webhooks/dead-letters/:id/replay — re-queue for delivery
@@ -54,9 +61,9 @@ export function createWebhookDlqRouter(deps: WebhookDlqDeps): Hono {
   app.use('*', requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TENANT_ADMIN));
 
   // ---------------------------------------------------------------------
-  // GET /api/v1/webhooks/dead-letters
+  // GET /webhooks/dead-letters  (composed: /api/v1/webhooks/dead-letters)
   // ---------------------------------------------------------------------
-  app.get('/api/v1/webhooks/dead-letters', async (c) => {
+  app.get('/webhooks/dead-letters', async (c) => {
     const auth = c.get('auth');
     const limitRaw = Number(c.req.query('limit') ?? '50');
     const offsetRaw = Number(c.req.query('offset') ?? '0');
@@ -84,9 +91,9 @@ export function createWebhookDlqRouter(deps: WebhookDlqDeps): Hono {
   });
 
   // ---------------------------------------------------------------------
-  // GET /api/v1/webhooks/dead-letters/:id
+  // GET /webhooks/dead-letters/:id  (composed: /api/v1/webhooks/dead-letters/:id)
   // ---------------------------------------------------------------------
-  app.get('/api/v1/webhooks/dead-letters/:id', async (c) => {
+  app.get('/webhooks/dead-letters/:id', async (c) => {
     const id = c.req.param('id');
     const auth = c.get('auth');
     // Tenant-scoped fetch: the repository matches on (id, tenant_id) so a
@@ -110,9 +117,10 @@ export function createWebhookDlqRouter(deps: WebhookDlqDeps): Hono {
   });
 
   // ---------------------------------------------------------------------
-  // POST /api/v1/webhooks/dead-letters/:id/replay
+  // POST /webhooks/dead-letters/:id/replay
+  //      (composed: /api/v1/webhooks/dead-letters/:id/replay)
   // ---------------------------------------------------------------------
-  app.post('/api/v1/webhooks/dead-letters/:id/replay', withSecurityEvents({ action: 'webhook-dlq.create', resource: 'webhook-dlq', severity: 'info' }, async (c) => {
+  app.post('/webhooks/dead-letters/:id/replay', withSecurityEvents({ action: 'webhook-dlq.create', resource: 'webhook-dlq', severity: 'info' }, async (c) => {
     const id = c.req.param('id');
     const auth = c.get('auth');
 

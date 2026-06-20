@@ -16,13 +16,19 @@
  * Env vars consumed:
  *   - `PORT`         — Fastify listen port (default 3018)
  *   - `HOST`         — Fastify listen host (default 0.0.0.0)
- *   - `NODE_ENV`     — production / staging / dev (no behaviour delta yet;
- *                      reserved for the upcoming Postgres / RLS wiring)
+ *   - `NODE_ENV`     — production / staging / dev. In production the
+ *                      composition root REQUIRES real adapters (see
+ *                      `OUTCOMES_METERING_PROD_ADAPTERS`).
+ *   - `OUTCOMES_METERING_PROD_ADAPTERS=1` — force the production
+ *                      fail-fast even outside `NODE_ENV=production`.
  *
- * Backing store: defaults to the in-memory billing store. The api-
- * gateway composition root will replace it with a Drizzle adapter
- * bound to the `outcome_events` / `outcome_billing_lines` tables
- * (migration `0169_outcomes_metering.sql`) in a follow-up.
+ * Backing store: `buildApp` defaults to the in-memory store (dev/test).
+ * The composition root (`composition/build-app.ts`, called by `main()`)
+ * binds the real Drizzle adapter (`createDrizzleBillingStore`) against
+ * the `outcome_events` / `outcome_billing_lines` tables (migration
+ * `0169_outcomes_metering.sql`) and FAILS FAST in production if no DB
+ * resolves — a money-path service must never silently run the volatile
+ * in-memory store in prod.
  */
 
 import Fastify from 'fastify';
@@ -72,10 +78,19 @@ export interface BuildAppDeps {
   readonly newRecordId?: () => string;
   /**
    * Optional DB pool used by `/readyz`. When omitted, the readiness
-   * probe returns 200 in "memory mode" — the in-memory store has no
-   * async dependency to wait on.
+   * probe returns 200 in "memory mode" — UNLESS prod adapters are
+   * required (see `requireProdAdapters`), in which case memory mode
+   * fails 503 (born-dark guard).
    */
   readonly dbPool?: ReadinessDbPool;
+  /**
+   * Whether REAL production adapters are required. Threaded into
+   * `/readyz` — when `true` and no `dbPool` is wired, the readiness
+   * probe fails 503 instead of false-reporting healthy. Defaults to
+   * the env read in `routes/readyz.ts`. Tests pass `false` explicitly
+   * so the in-memory path stays ready.
+   */
+  readonly requireProdAdapters?: boolean;
   /**
    * Test-only — bypass JWT verification by stamping `request.user`
    * directly. Production constructs `buildApp({})` and so the real
@@ -117,12 +132,16 @@ export async function buildApp(deps: BuildAppDeps = {}): Promise<BuildAppResult>
 
   await registerReadyzRoutes(app, {
     ...(deps.dbPool ? { dbPool: deps.dbPool } : {}),
+    ...(deps.requireProdAdapters !== undefined
+      ? { requireProdAdapters: deps.requireProdAdapters }
+      : {}),
   });
 
   await registerEventsRoutes(app, {
     store,
     ...(deps.clock ? { clock: deps.clock } : {}),
     ...(deps.newRecordId ? { newRecordId: deps.newRecordId } : {}),
+    ...(deps.logger ? { logger: deps.logger } : {}),
   });
   await registerBillingRoutes(app, { store });
 
@@ -141,7 +160,13 @@ export async function buildApp(deps: BuildAppDeps = {}): Promise<BuildAppResult>
 }
 
 async function main(): Promise<void> {
-  const { app, consumer } = await buildApp();
+  // Compose the PRODUCTION app from the composition root: real Drizzle
+  // store + DB-backed readiness + wired bus consumer. Fails fast (throws)
+  // when prod adapters are required but no DB resolves — a money-path
+  // service must never silently run the volatile in-memory store in
+  // production (finding BORN-DARK + FAKE-PERSISTENCE).
+  const { buildProductionApp } = await import('./composition/build-app.js');
+  const { app, consumer } = await buildProductionApp();
   const port = Number(process.env.PORT ?? 3018);
   const host = process.env.HOST ?? '0.0.0.0';
   try {
@@ -167,7 +192,13 @@ const invokedDirectly = (() => {
 })();
 
 if (invokedDirectly) {
-  void main();
+  main().catch((err) => {
+    // A throw here is the production fail-fast (no DB resolved while prod
+    // adapters required). Exit non-zero so K8s crash-loops the pod
+    // visibly rather than leaving a born-dark process running.
+    logger.error('[outcomes-metering] fatal boot error', { error: err });
+    process.exit(1);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -179,8 +210,15 @@ export {
   type BillingStore,
   type RecordEventInput,
   type RecordEventResult,
+  type CommitOutcomeResult,
   type MonthlyBillingAggregate,
 } from './store/billing-store.js';
+
+export {
+  createDrizzleBillingStore,
+  type DrizzleBillingClient,
+  type DrizzleBillingStoreDeps,
+} from './store/drizzle-billing-store.js';
 
 export {
   createBrainEventConsumer,

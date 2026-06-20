@@ -67,6 +67,10 @@ import { authMiddleware, requireRole } from '../../middleware/hono-auth';
 import { databaseMiddleware } from '../../middleware/database';
 import { createLogger } from '../../utils/logger';
 import { UserRole } from '../../types/user-role';
+import {
+  dispatchAdmin,
+  type AdminDispatchContext,
+} from './superpowers/bulk-action-dispatchers';
 
 const moduleLogger = createLogger('admin-superpowers');
 
@@ -161,11 +165,34 @@ const pendingQuerySchema = z.object({
 
 const app = new Hono();
 app.use('*', authMiddleware);
+// Base floor: SUPPORT may reach the router (for the read-only /pending
+// queue), but the MUTATING four-eye verbs below demand the stricter
+// SUPER_ADMIN/ADMIN floor applied per-route. SUPPORT is read-mostly — it
+// must NOT be able to PROPOSE or APPROVE a HIGH-risk destructive
+// cross-tenant verb. The four-eye CHECK constraint only enforced distinct
+// actor IDs, never role, so without this floor two SUPPORT operators could
+// collude to suspend a tenant org / force a password reset (#23).
 app.use(
   '*',
   requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT),
 );
 app.use('*', databaseMiddleware);
+
+// Stricter floor for the mutating four-eye routes (propose / approve /
+// reject). Mounted per-route below so /pending stays SUPPORT-readable.
+// migration 0343 also EXCLUDES SUPPORT for proposed_by_role/approved_by_role
+// on HIGH verbs as a DB-level backstop.
+const requireAdminFloor = requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN);
+
+/**
+ * Defense-in-depth role floor for the four-eye approve handler: reject 403
+ * when the caller is not SUPER_ADMIN/ADMIN even if upstream middleware were
+ * ever misconfigured. SUPPORT is read-mostly and must never grant the second
+ * eye on a destructive cross-tenant verb (#23).
+ */
+function isAdminFloor(role: string): boolean {
+  return role === UserRole.SUPER_ADMIN || role === UserRole.ADMIN;
+}
 
 function dbUnavailable(c: any) {
   return c.json(
@@ -181,7 +208,8 @@ function dbUnavailable(c: any) {
 }
 
 // ─── POST /bulk-action — propose a bulk admin verb ────────────────────
-app.post('/bulk-action', async (c: any) => {
+// requireAdminFloor: SUPPORT cannot PROPOSE a HIGH-risk destructive verb (#23).
+app.post('/bulk-action', requireAdminFloor, async (c: any) => {
   const auth = c.get('auth') as {
     tenantId: string;
     userId: string;
@@ -207,14 +235,27 @@ app.post('/bulk-action', async (c: any) => {
   const input = parsed.data;
   const high = isHighRisk(input.action, input.ids);
 
+  // Target tenant for the verb (the tenant being suspended / exported /
+  // reset, etc.). NULL for cross-tenant broadcasts.
+  const targetTenantId =
+    ((input.payload as Record<string, unknown> | undefined)
+      ?.targetTenantId as string | undefined) ?? null;
+  const idempotencyKey = c.req.header('idempotency-key') ?? null;
+
   // Append one undo_journal entry per id. For HIGH-risk verbs the row
   // is also recorded in admin_superpower_pending_approvals so the
-  // four-eye gate is queryable cleanly.
+  // four-eye gate is queryable cleanly. For MEDIUM-risk verbs the side-
+  // effect FIRES immediately (single actor sufficient).
   const undoIds: string[] = [];
   const pendingIds: string[] = [];
   const processedIds: string[] = [];
   const failedRows: Array<{ readonly id: string; readonly reason: string }> =
     [];
+  const dispatchArtifacts: Array<{
+    readonly id: string;
+    readonly artifactId: string;
+    readonly artifactKind: string;
+  }> = [];
 
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
@@ -242,9 +283,7 @@ app.post('/bulk-action', async (c: any) => {
             reason: input.reason,
             requires_four_eye: high,
             status: high ? 'pending_approval' : 'applied',
-            target_tenant_id:
-              (input.payload as Record<string, unknown> | undefined)
-                ?.targetTenantId ?? null,
+            target_tenant_id: targetTenantId,
             audit_chain_id: null,
           },
         })
@@ -253,13 +292,14 @@ app.post('/bulk-action', async (c: any) => {
       processedIds.push(id);
 
       if (high) {
+        // HIGH/sovereign verbs do NOT fire here — they wait for the
+        // four-eye approval (POST /approve/:journalId). Record the
+        // pending row.
         const [pendingRow] = await db
           .insert(adminSuperpowerPendingApprovals)
           .values({
             journalId: journalRow.id,
-            targetTenantId:
-              ((input.payload as Record<string, unknown> | undefined)
-                ?.targetTenantId as string | undefined) ?? null,
+            targetTenantId,
             targetEntityRef: `${input.entityType}:${id}`,
             action: input.action,
             payload: input.payload,
@@ -272,10 +312,58 @@ app.post('/bulk-action', async (c: any) => {
           })
           .returning();
         pendingIds.push(pendingRow.id);
+      } else {
+        // MEDIUM verbs: FIRE the real side-effect now (single actor
+        // sufficient). Mirrors the owner dispatcher — the journal/audit
+        // row is kept; this ADDS the actuator call.
+        const dispatchCtx: AdminDispatchContext = {
+          db,
+          actorTenantId: auth.tenantId,
+          actorId: auth.userId,
+          actorRole: auth.role,
+          targetTenantId,
+          reason: input.reason,
+          idempotencyKey,
+        };
+        const outcome = await dispatchAdmin(
+          dispatchCtx,
+          input.entityType,
+          input.action,
+          id,
+          input.payload,
+        );
+        if (outcome.ok) {
+          if (outcome.artifactId && outcome.artifactKind) {
+            dispatchArtifacts.push({
+              id,
+              artifactId: outcome.artifactId,
+              artifactKind: outcome.artifactKind,
+            });
+          }
+        } else {
+          // The side-effect did not fire — surface it as a per-row
+          // failure rather than claiming success. The journal row stays
+          // for the audit trail / undo.
+          failedRows.push({
+            id,
+            reason: outcome.reason ?? `dispatch failed for ${input.action}`,
+          });
+          const procIdx = processedIds.indexOf(id);
+          if (procIdx !== -1) processedIds.splice(procIdx, 1);
+          moduleLogger.warn('admin-superpowers: MEDIUM dispatch failed', {
+            adminId: auth.userId,
+            entityType: input.entityType,
+            action: input.action,
+            id,
+            reason: outcome.reason,
+          });
+        }
       }
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
       failedRows.push({ id, reason });
+      const procIdx = processedIds.indexOf(id);
+      if (procIdx !== -1) processedIds.splice(procIdx, 1);
       moduleLogger.warn('admin-superpowers: bulk row failed', {
         adminId: auth.userId,
         entityType: input.entityType,
@@ -294,6 +382,7 @@ app.post('/bulk-action', async (c: any) => {
     requiresFourEye: high,
     processed: processedIds.length,
     pending: pendingIds.length,
+    dispatched: dispatchArtifacts.length,
     failed: failedRows.length,
   });
 
@@ -309,6 +398,9 @@ app.post('/bulk-action', async (c: any) => {
       failedIds: failedRows,
       undoJournalIds: undoIds,
       pendingApprovalIds: pendingIds,
+      // MEDIUM verbs that actually fired (outbox artifacts). HIGH verbs
+      // carry an empty list here until approval consummates them.
+      dispatchArtifacts,
       // i18n: bilingual sw/en surface copy. The FE picks the active
       // language via the user's locale preference.
       message: high
@@ -325,12 +417,31 @@ app.post('/bulk-action', async (c: any) => {
 });
 
 // ─── POST /approve/:journalId — second-actor approval (HIGH-risk) ─────
-app.post('/approve/:journalId', async (c: any) => {
+// requireAdminFloor: SUPPORT cannot grant the second eye on a destructive
+// verb (#23). The in-handler isAdminFloor check below is the defense-in-depth
+// backstop in case upstream middleware is ever misconfigured.
+app.post('/approve/:journalId', requireAdminFloor, async (c: any) => {
   const auth = c.get('auth') as {
     tenantId: string;
     userId: string;
     role: string;
   };
+  // Explicit role-floor backstop: the four-eye gate only checks distinct
+  // actor IDs, not role — so without this a read-mostly SUPPORT actor could
+  // approve a HIGH-risk cross-tenant verb proposed by another admin (#23).
+  if (!isAdminFloor(auth.role)) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'FOUR_EYE_ROLE_FLOOR',
+          message:
+            'Only SUPER_ADMIN or ADMIN may approve a HIGH-risk admin verb',
+        },
+      },
+      403,
+    );
+  }
   const db = c.get('db');
   if (!db) return dbUnavailable(c);
   const journalId = c.req.param('journalId');
@@ -453,8 +564,13 @@ app.post('/approve/:journalId', async (c: any) => {
   }
 
   const approvedAt = new Date();
-  // Update the pending row first — the CHECK constraint
-  // `admin_four_eye_distinct_actors_chk` is the DB-level safety net.
+  // Atomic compare-and-set: flip pending→applied ONLY while still 'pending'.
+  // Two concurrent approvers both pass the in-handler status checks above
+  // (a classic TOCTOU — both read status='pending' before either writes), so
+  // the `AND status='pending'` predicate is what makes Postgres pick exactly
+  // ONE winner. The CHECK constraint `admin_four_eye_distinct_actors_chk` is
+  // the DB-level distinct-ACTOR net; this guard is the distinct-EXECUTION net
+  // so the destructive verb below fires exactly once.
   const [updatedPending] = await db
     .update(adminSuperpowerPendingApprovals)
     .set({
@@ -466,8 +582,30 @@ app.post('/approve/:journalId', async (c: any) => {
       }),
       approvedAt,
     })
-    .where(eq(adminSuperpowerPendingApprovals.id, pending.id))
+    .where(
+      and(
+        eq(adminSuperpowerPendingApprovals.id, pending.id),
+        eq(adminSuperpowerPendingApprovals.status, 'pending'),
+      ),
+    )
     .returning();
+
+  // Lost the race: a concurrent approver already flipped pending→applied and
+  // is dispatching (or already dispatched) the side-effect. Return 409 and DO
+  // NOT dispatch — the destructive verb must never fire twice.
+  if (!updatedPending) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'ALREADY_APPLIED',
+          message:
+            'Approval already granted by a concurrent approver; mutation already fired',
+        },
+      },
+      409,
+    );
+  }
 
   // Update the journal row's provenance (best-effort — same-chain).
   if (journal) {
@@ -489,13 +627,83 @@ app.post('/approve/:journalId', async (c: any) => {
       .where(eq(undoJournal.id, journalId));
   }
 
-  moduleLogger.info('admin-superpowers: HIGH-risk verb approved (four-eye)', {
+  // FIRE the real side-effect now that the four-eye gate has passed. The
+  // pending row stored the original verb + payload at propose time; we
+  // reconstruct the (entityType, targetId) from targetEntityRef
+  // (`${entityType}:${targetId}`) and dispatch the actuator. The status
+  // flip ABOVE already records the approval; this ADDS the effect.
+  const refSep = pending.targetEntityRef.indexOf(':');
+  const dispatchEntityType =
+    refSep === -1
+      ? pending.targetEntityRef
+      : pending.targetEntityRef.slice(0, refSep);
+  const dispatchTargetId =
+    refSep === -1 ? '' : pending.targetEntityRef.slice(refSep + 1);
+  const idempotencyKey = c.req.header('idempotency-key') ?? null;
+
+  let dispatchArtifactId: string | null = null;
+  let dispatchArtifactKind: string | null = null;
+  let dispatchError: string | null = null;
+  try {
+    const dispatchCtx: AdminDispatchContext = {
+      db,
+      actorTenantId: auth.tenantId,
+      actorId: pending.proposedByActorId,
+      actorRole: auth.role,
+      targetTenantId: (pending.targetTenantId as string | null) ?? null,
+      reason: pending.reason,
+      idempotencyKey,
+    };
+    const outcome = await dispatchAdmin(
+      dispatchCtx,
+      dispatchEntityType,
+      pending.action,
+      dispatchTargetId,
+      (pending.payload as Record<string, unknown> | null) ?? {},
+    );
+    if (outcome.ok) {
+      dispatchArtifactId = outcome.artifactId ?? null;
+      dispatchArtifactKind = outcome.artifactKind ?? null;
+    } else {
+      dispatchError = outcome.reason ?? `dispatch failed for ${pending.action}`;
+    }
+  } catch (e) {
+    dispatchError = e instanceof Error ? e.message : String(e);
+  }
+
+  if (dispatchError) {
+    // The approval was recorded but the effect did NOT fire. Surface the
+    // failure honestly instead of claiming the action took effect; an
+    // operator can retry the actuation (the pending row is already
+    // 'applied', so this is a dispatch-retry concern, not a re-approval).
+    moduleLogger.error('admin-superpowers: four-eye approved but dispatch failed', {
+      journalId,
+      pendingId: updatedPending.id,
+      action: pending.action,
+      targetEntityRef: pending.targetEntityRef,
+      error: dispatchError,
+    });
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'ADMIN_DISPATCH_FAILED',
+          message: 'Approval recorded but the action failed to dispatch',
+          details: { journalId, pendingId: updatedPending.id, reason: dispatchError },
+        },
+      },
+      502,
+    );
+  }
+
+  moduleLogger.info('admin-superpowers: HIGH-risk verb approved + dispatched (four-eye)', {
     journalId,
     pendingId: updatedPending.id,
     proposingActorId: pending.proposedByActorId,
     approvingActorId: auth.userId,
     action: pending.action,
     targetEntityRef: pending.targetEntityRef,
+    artifactId: dispatchArtifactId,
   });
 
   return c.json({
@@ -507,16 +715,24 @@ app.post('/approve/:journalId', async (c: any) => {
       action: pending.action,
       targetEntityRef: pending.targetEntityRef,
       approvedAt: approvedAt.toISOString(),
+      ...(dispatchArtifactId && {
+        dispatchArtifact: {
+          artifactId: dispatchArtifactId,
+          artifactKind: dispatchArtifactKind,
+        },
+      }),
       message: {
-        en: 'Approval granted; action will fire shortly.',
-        sw: 'Idhini imetolewa; hatua itatekelezwa hivi punde.',
+        en: 'Approval granted; action dispatched.',
+        sw: 'Idhini imetolewa; hatua imetekelezwa.',
       },
     },
   });
 });
 
 // ─── POST /reject/:journalId — reject a pending HIGH proposal ─────────
-app.post('/reject/:journalId', async (c: any) => {
+// requireAdminFloor: resolving a four-eye proposal is a privileged decision;
+// SUPPORT stays read-only on the /pending queue (#23).
+app.post('/reject/:journalId', requireAdminFloor, async (c: any) => {
   const auth = c.get('auth') as {
     tenantId: string;
     userId: string;

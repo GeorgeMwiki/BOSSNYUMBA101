@@ -68,6 +68,9 @@ import { feedbackRouter } from './routes/feedback';
 import { complaintsRouter } from './routes/complaints';
 import { inspectionsRouter } from './routes/inspections';
 import { documentsHonoRouter } from './routes/documents.hono';
+import { meRouter } from './routes/me.hono';
+import { createOrgsRouter } from './routes/orgs.hono';
+import { createOrgSignupService } from './composition/org-signup-service';
 // Module G — document-intelligence service routes (OCR verify, evidence
 // packs, identity badges, fraud, expiry, progress). Previously dead code:
 // `documentIntelligenceRoutes` was never mounted. Mounted additively under
@@ -143,7 +146,7 @@ import strategicReportsRouter from './routes/reports/reports.hono';
 import { buildPortalGenuiWiring } from './composition/portal-genui/portal-genui-wiring';
 import { createConnectorsRouter } from './routes/integrations/connectors.hono';
 import stationMasterCoverageRouter from './routes/station-master-coverage.hono';
-import { tendersRouter } from './routes/tenders.hono';
+import { tendersRouter, bidsRouter } from './routes/tenders.hono';
 import { waitlistRouter } from './routes/waitlist.hono';
 // Veteran-expert advisor packages — pure-function strategic
 // recommenders exposed as HTTP entry points. Each router takes the
@@ -183,6 +186,9 @@ import { observabilityRealtimeRouter } from './routes/observability/realtime.hon
 //   POST   /api/v1/field/staff/tasks/:id/complete
 //   POST   /api/v1/field/staff/help-requests
 import { fieldStaffRouter } from './routes/field/staff.hono';
+import { fieldShiftsRouter } from './routes/field/shifts.hono';
+import { publicStatusRouter } from './routes/public-status.hono';
+import { ownerAccountRouter } from './routes/owner/owner-account.hono';
 // G1-A (2026-05-29) regulator DSR flow — jurisdiction-aware DSR intake
 // across regulator_jurisdictions catalogue rows.
 //   GET    /api/v1/regulator/dsr/jurisdictions
@@ -333,6 +339,12 @@ import {
 } from './routes/jarvis-router-factory';
 // Platform overview KPI aggregator — HQ-tier counts for /platform/overview.
 import platformOverviewRouter from './routes/platform-overview.hono';
+// Platform privacy-budget (ε) readout — HQ-tier, backs the admin-portal
+// Home "Privacy budget" panel (GET /api/v1/platform/budget).
+import platformBudgetRouter from './routes/platform-budget.hono';
+// Applicant-scoped @-mention feed — backs tenant-mobile chat composer
+// (GET /api/v1/scope/recent-entities).
+import scopeRecentEntitiesRouter from './routes/scope-recent-entities.hono';
 // Phase B Wave 30 — Task-Agents registry + executor (narrow-scope agents)
 import taskAgentsRouter from './routes/task-agents.hono';
 // Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity overrides)
@@ -588,13 +600,25 @@ import {
   gepgProbe,
 } from './health/deep-health';
 import { validateEnv } from './config/validate-env';
-import { securityEventsMiddleware } from '@bossnyumba/observability';
+import {
+  securityEventsMiddleware,
+  setSecurityEventSink,
+} from '@bossnyumba/observability';
 // SOTA perf middleware — Brotli compression + Cache-Control presets.
 // See `packages/performance-toolkit/src/cache/` for the implementation.
 import { expressCacheControl } from '@bossnyumba/performance-toolkit/cache';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
+});
+
+// Security-event sink — route every SecurityEvent through Pino instead of
+// the package default (`defaultStdoutSink` -> raw `console.log`, which
+// bypasses redaction and ships authorization/cookie/clientIp in plaintext
+// on every mutating /api/v1 request). Pino applies the structured-log
+// redaction config, so secrets are censored before they reach stdout.
+setSecurityEventSink((event) => {
+  logger.info({ ...event }, 'security-event');
 });
 
 // Dynamic model registry — bind the SSRF-guarded fetch port and Pino
@@ -686,7 +710,26 @@ app.use((req, res, next) => {
   if (req.path.startsWith('/api/v1')) return next();
   return express.json({ limit: '2mb' })(req, res, next);
 });
-app.use(pinoHttp({ logger }));
+// pino-http's default req/res serializers log `req.headers` (which carry
+// the Authorization bearer, Cookie, and x-api-key), `req.remoteAddress`,
+// and `res.headers` (Set-Cookie) in plaintext on EVERY request. Censor
+// those paths so the access log never ships credentials or PII. `[REDACTED]`
+// matches the censor token used by the @bossnyumba/observability logger.
+app.use(
+  pinoHttp({
+    logger,
+    redact: {
+      paths: [
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'req.headers["x-api-key"]',
+        'req.remoteAddress',
+        'res.headers["set-cookie"]',
+      ],
+      censor: '[REDACTED]',
+    },
+  }),
+);
 // Rate limit — when REDIS_URL is set we use the Redis-backed limiter so
 // the cap is enforced cluster-wide (HPA scales the gateway 3-20 replicas;
 // the in-memory limiter would otherwise allow `max * replicas` requests).
@@ -1230,10 +1273,30 @@ api.route('/dashboard', dashboardRouter);
 // /checklist) match before the legacy customer move-in router.
 api.route('/onboarding', onboardingFlowRouter);
 api.route('/onboarding', onboardingRouter);
+// Owner org sign-up — the marketing OwnerSignUpForm POSTs here (pre-auth, like
+// /onboarding): creates the Supabase auth user + tenant/org/owner + a session and
+// sets the bossnyumba-session cookie. Supabase env is `?? ''`-guarded so a missing
+// config fails loud at request time, never crashes boot.
+const orgsRouter = createOrgsRouter({
+  service: createOrgSignupService({
+    db: getDb(),
+    config: {
+      supabaseUrl: (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim(),
+      supabaseServiceRoleKey: (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim(),
+      supabaseAnonKey: (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '').trim(),
+    },
+    logger,
+  }),
+  logger,
+});
+api.route('/orgs', orgsRouter);
 api.route('/feedback', feedbackRouter);
 api.route('/complaints', complaintsRouter);
 api.route('/inspections', inspectionsRouter);
 api.route('/documents', documentsHonoRouter);
+// Per-principal self routes — mobile device push-token registration
+// (POST/DELETE /api/v1/me/device-tokens). authMiddleware is inside the router.
+api.route('/me', meRouter);
 // Module G — mount the document-intelligence service routes additively.
 // Distinct prefix from `/documents` (the CRUD router above) because the
 // doc-intel app already namespaces its own roots internally.
@@ -1369,6 +1432,9 @@ api.route('/risk-reports', riskReportsRouter);
 api.route('/scans', scansRouter);
 api.route('/station-master-coverage', stationMasterCoverageRouter);
 api.route('/tenders', tendersRouter);
+// Bid counter-offer (owner negotiation) — POST /api/v1/bids/:id/counter. The
+// handler shipped in tenders.hono but was never mounted (born-dark route).
+api.route('/bids', bidsRouter);
 api.route('/waitlist', waitlistRouter);
 // Veteran-expert advisor packages — strategic recommenders.
 api.route('/acquisition-advisor', acquisitionAdvisorRouter);
@@ -1401,6 +1467,8 @@ api.route('/observability', observabilityRealtimeRouter);
 // officers. All four endpoints are auth + tenant scoped via the
 // router's internal authMiddleware + databaseMiddleware.
 api.route('/field/staff', fieldStaffRouter);
+// Today's shift for the staff-mobile worker home (GET /api/v1/field/shifts/today).
+api.route('/field/shifts', fieldShiftsRouter);
 // G1-A — regulator DSR flow. Jurisdiction-aware Data Subject Request
 // intake + dispatch. Reads/writes against regulator_jurisdictions
 // catalogue and audits via ai_audit_chain. The actual export pipeline
@@ -1496,6 +1564,8 @@ api.route('/public', publicMarketingRouter);
 api.route('/translate', translateRouter);
 api.route('/public/sandbox', publicSandboxRouter);
 api.route('/public/leads', publicLeadsRouter);
+// Public platform status board (GET /api/v1/public/status) — marketing StatusBoard polls this.
+api.route('/public/status', publicStatusRouter);
 // Streaming AI chat — POST /api/v1/ai/chat with SSE response
 api.route('/ai', aiChatRouter);
 // Universal role-aware advisor — POST /api/v1/ask, GET /api/v1/ask/starting-points,
@@ -1587,6 +1657,15 @@ api.route('/platform/jarvis', platformHqJarvisRouter);  // BossNyumba HQ (Nyumba
 // Platform overview KPI aggregator — read-only, platform-tier auth, used
 // by admin-platform-portal /platform/overview KPI tiles.
 api.route('/platform/overview', platformOverviewRouter);
+// Platform privacy-budget (ε) readout — read-only, platform-tier auth
+// (HQ-gated exactly like /platform/overview). Backs the admin-portal
+// Home "Privacy budget" panel via `services.privacyBudgetComposer`.
+// Returns top-level { remainingEpsilon, totalEpsilon, windowLabel }.
+api.route('/platform/budget', platformBudgetRouter);
+// Applicant-scoped @-mention feed — backs the tenant-mobile chat
+// composer (GET /api/v1/scope/recent-entities). RLS-scoped to the
+// applicant's RFA responses; returns { data: { entities: [...] } }.
+api.route('/scope', scopeRecentEntitiesRouter);
 // Phase B Wave 30 — Task-Agents (narrow-scope single-job agents + manual runs)
 api.route('/task-agents', taskAgentsRouter);
 api.route('/persona-registry', personaRegistryRouter); // admin-gated internally via services.personaRegistry
@@ -1663,6 +1742,8 @@ api.route('/owner/pinned-items', ownerPinnedItemsRouter);
 // Tenant-scoped via JWT + RLS FORCE. Backs apps/owner-portal /plan page.
 api.route('/owner/plan', ownerPlanRouter);
 api.route('/owner/saved-searches', savedSearchesRouter);
+// Owner account — settings, co-owner invites, skills, password/2FA (SettingsPage + /skills controls).
+api.route('/owner/account', ownerAccountRouter);
 // Wave SUPERPOWERS — chat-as-OS backend (migration 0297). Owner-side
 // share-link CRUD (auth + RLS); the public token resolver is mounted
 // separately under /public/share so it stays outside the auth gate.
@@ -1805,6 +1886,7 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/scans', app: scansRouter, defaultTag: 'scans' },
     { prefix: '/station-master-coverage', app: stationMasterCoverageRouter, defaultTag: 'station-master-coverage' },
     { prefix: '/tenders', app: tendersRouter, defaultTag: 'tenders' },
+    { prefix: '/bids', app: bidsRouter, defaultTag: 'tenders' },
     { prefix: '/waitlist', app: waitlistRouter, defaultTag: 'waitlist' },
     { prefix: '/feature-flags', app: featureFlagsRouter, defaultTag: 'feature-flags' },
     { prefix: '/gdpr', app: gdprRouter, defaultTag: 'gdpr' },

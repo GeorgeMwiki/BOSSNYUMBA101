@@ -73,6 +73,16 @@ export interface DecisionRetrospectiveWorkerOptions {
   readonly db: DbLike;
   readonly logger: Logger;
   readonly recorder: DecisionRecorder;
+  /**
+   * Re-bind the recorder onto the connection-pinned handle that
+   * `withWorkerTenantContext` reserves per decision. Supplied by the
+   * composition root. Required so the recorder's hash-chained
+   * `decision_outcomes` write runs on the SAME reserved connection the tenant
+   * `SET LOCAL` bound — otherwise the FORCE-RLS insert can land on a pooled
+   * connection without the GUC and be RLS-rejected. Absent in tests (in-memory
+   * recorder), where the passed-through `recorder` is used directly.
+   */
+  readonly rebindRecorder?: (db: DbLike) => DecisionRecorder;
   readonly intervalMs?: number;
   readonly enabled?: boolean;
   readonly batchSize?: number;
@@ -217,7 +227,7 @@ export function createDecisionRetrospectiveWorker(
              r.status                  AS reconciliation_status,
              r.drift_score             AS drift_score,
              obs.observed_value        AS observed_value,
-             obs.observed_currency     AS observed_currency,
+             obs.observed_value_currency AS observed_currency,
              obs.observed_outcome::text AS observed_outcome_summary
         FROM decisions d
         LEFT JOIN outcome_reconciliations r
@@ -282,11 +292,16 @@ export function createDecisionRetrospectiveWorker(
         : `No prediction was attached; graded after ${softWaitDays}-day soft wait.`;
 
     try {
-      // G8 — wrap the GUC bind + recorder write in BEGIN/COMMIT so the
-      // tenant GUC is transaction-local and cannot leak onto the
-      // pooled connection.
-      await withWorkerTenantContext(options.db, pending.tenantId, async () => {
-        await options.recorder.recordOutcome({
+      // G8 — wrap the GUC bind + recorder write in BEGIN/COMMIT, all pinned to
+      // one reserved connection so the tenant GUC reliably applies to the
+      // recorder's write (and is transaction-local, never leaking onto the
+      // released connection).
+      await withWorkerTenantContext(options.db, pending.tenantId, async (pinned) => {
+        // Re-bind the recorder onto the pinned connection so its hash-chained
+        // write runs under the tenant GUC. Falls back to the passed-through
+        // recorder (in-memory test fake — single connection).
+        const recorder = options.rebindRecorder?.(pinned) ?? options.recorder;
+        await recorder.recordOutcome({
           tenantId: pending.tenantId,
           decisionId: pending.id,
           outcomeSummary: summary,

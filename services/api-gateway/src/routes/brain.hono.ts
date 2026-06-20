@@ -434,9 +434,15 @@ brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource:
       // ENFORCE the evidence-required hard rule: an unevidenced (reject)
       // response is replaced with the localized Auditor rejection copy
       // rather than leaking the original text. Fail-closed.
+      //
+      // Conversation-feel: surface `cleanedText` (chatbot-feel filler
+      // stripped by the auditChatResponse pre-pass) — NOT the raw
+      // `turn.responseText`. On any guard failure `cleanedText` equals the
+      // original (fail-open), so this never drops substance. This is the
+      // user-visible JSON path where the anti-call-center guards must land.
       const enforced = enforceEvidenceRule({
         verdict: auditVerdict,
-        responseText: turn.responseText,
+        responseText: auditVerdict.cleanedText,
         language: userLanguage,
       });
       return c.json({
@@ -473,10 +479,12 @@ brainRouter.post('/turn', withSecurityEvents({ action: 'brain.create', resource:
     });
     // ENFORCE the evidence-required hard rule on the continued-thread turn
     // exactly as on thread start: reject → localized rejection copy,
-    // fail-closed.
+    // fail-closed. Surface the conversation-feel `cleanedText` (filler
+    // stripped) rather than the raw reply so the anti-call-center guards
+    // reach the user on this JSON path too.
     const enforced = enforceEvidenceRule({
       verdict: auditVerdict,
-      responseText: result.data.responseText,
+      responseText: auditVerdict.cleanedText,
       language: userLanguage,
     });
     return c.json({

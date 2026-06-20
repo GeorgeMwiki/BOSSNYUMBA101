@@ -54,8 +54,12 @@ export function computeCost(
   usage: {
     readonly inputTokens: number;
     readonly outputTokens: number;
-    readonly cacheReadTokens?: number;
-    readonly cacheWriteTokens?: number;
+    // `?: number | undefined` (not bare `?: number`) so a caller can spread a
+    // possibly-undefined token count under the repo-wide
+    // `exactOptionalPropertyTypes: true`; the body below already treats
+    // undefined as "no cache tokens → 0 cost".
+    readonly cacheReadTokens?: number | undefined;
+    readonly cacheWriteTokens?: number | undefined;
   },
   pricing: ModelPricing
 ): { usd: number } {

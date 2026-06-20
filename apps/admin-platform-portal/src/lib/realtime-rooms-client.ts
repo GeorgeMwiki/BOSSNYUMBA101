@@ -8,15 +8,14 @@
  *      mints session tokens scoped to the caller's tenantId).
  *   3. Exposes a `useRoom(roomId)` hook for components to consume.
  *
- * Identical bodies exist in the other three portals:
+ * An identical body lives on the other web SPA surface:
  *   - apps/admin-platform-portal/src/lib/realtime-rooms-client.ts (this)
  *   - apps/owner-portal/src/lib/realtime-rooms-client.ts
- *   - apps/customer-app/src/lib/realtime-rooms-client.ts
- *   - apps/estate-manager-app/src/lib/realtime-rooms-client.ts
+ * The Expo mobile surfaces carry their own native room clients.
  *
  * Follow-up B6 follow-up (Docs/TODO_BACKLOG.md): extract to `packages/realtime-rooms-client/`
- * when a portal needs to override the auth dispatch (e.g. a
- * tenant-portal that proxies through a custom domain).
+ * when a surface needs to override the auth dispatch (e.g. one that
+ * proxies through a custom domain).
  */
 
 import {

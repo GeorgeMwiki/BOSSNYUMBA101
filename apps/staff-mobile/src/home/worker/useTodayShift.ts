@@ -1,12 +1,23 @@
 /**
- * R39 — `useTodayShift` reads the supervisor's current shift schedule
- * and task list from `/api/v1/field/workforce/shifts/today`. Backs the
- * W-M-02 (worker shift-report) screen, replacing the hardcoded SHIFT
- * fixture with a live composition.
+ * R39 — `useTodayShift` reads the worker's current shift schedule and
+ * task list from `/api/v1/field/shifts/today`. Backs the W-M-02 (worker
+ * shift-report) screen.
  *
- * Falls back to a deterministic empty-shift composition when the
- * endpoint is unavailable (network 0, 404, 501) so the FE still renders
- * a useful surface offline. Real errors propagate to the caller.
+ * NO-FABRICATION: when the endpoint is unavailable (network 0, 404, 501)
+ * OR the worker simply has no shift today (the route returns 200 `null`),
+ * the hook resolves to `null` — an HONEST "no shift / unavailable" empty
+ * state — instead of inventing a working 06:00–18:00 shift. The W-M-02
+ * screen null-guards the data and renders an empty surface. Real errors
+ * (auth, 5xx) propagate to the caller's error state.
+ *
+ * BACKEND: the `/api/v1/field/shifts/today` route is now served by the
+ * api-gateway field/shifts router (services/api-gateway/src/routes/field/
+ * shifts.hono.ts), backed by the real `staff_shifts` schedule table
+ * (migration 0332) with the shift's task list resolved live from
+ * `maintenance_tasks`. Auth = staff (MAINTENANCE_STAFF / PROPERTY_MANAGER /
+ * TENANT_ADMIN); the worker resolves THEIR OWN shift from the JWT subject.
+ * When no shift is scheduled the route returns 200 `null` — which this hook
+ * maps to the same honest empty state as an unreachable endpoint.
  */
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { request } from '../../api/client'
@@ -33,37 +44,25 @@ export interface TodayShift {
 const TODAY_SHIFT_URL = `${API_BASE_URL}${FIELD_PREFIX}/shifts/today`
 
 /**
- * Compose a deterministic empty-shift response so the screen still
- * renders when the gateway is unreachable. Anchored to today (TZ
- * +03:00) with a 06:00–18:00 day window and no tasks.
+ * A missing/unreachable endpoint means "no shift available" — NOT a hard
+ * error and NOT a reason to fabricate one. We treat network-0 / 404 / 501
+ * as an honest empty result so the screen can show a real empty state.
  */
-function composeOfflineFallback(): TodayShift {
-  const today = new Date().toISOString().slice(0, 10)
-  return {
-    shiftDate: today,
-    shiftKind: 'day',
-    siteName: '—',
-    startISO: `${today}T06:00:00+03:00`,
-    endISO: `${today}T18:00:00+03:00`,
-    nextBreakISO: `${today}T10:00:00+03:00`,
-    tasks: []
-  }
-}
-
-function shouldFallback(error: unknown): boolean {
+function isUnavailable(error: unknown): boolean {
   if (!(error instanceof ApiError)) return false
   return error.status === 0 || error.status === 404 || error.status === 501
 }
 
-export function useTodayShift(): UseQueryResult<TodayShift, Error> {
-  return useQuery<TodayShift, Error>({
+export function useTodayShift(): UseQueryResult<TodayShift | null, Error> {
+  return useQuery<TodayShift | null, Error>({
     queryKey: ['field-workforce', 'shifts', 'today'],
     queryFn: async ({ signal }) => {
       try {
         return await request<TodayShift>(TODAY_SHIFT_URL, { signal })
       } catch (error) {
-        if (shouldFallback(error)) {
-          return composeOfflineFallback()
+        if (isUnavailable(error)) {
+          // Honest empty state — no shift data to show, no fabrication.
+          return null
         }
         throw error
       }
@@ -72,5 +71,3 @@ export function useTodayShift(): UseQueryResult<TodayShift, Error> {
     retry: 1
   })
 }
-
-export { composeOfflineFallback }

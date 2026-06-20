@@ -11,6 +11,7 @@ import {
   pgTable,
   text,
   jsonb,
+  boolean,
   timestamp,
   index,
   pgEnum,
@@ -46,6 +47,10 @@ export const sovereignApprovals = pgTable(
     stakes: sovereignApprovalStakesEnum('stakes').notNull(),
     status: sovereignApprovalStatusEnum('status').notNull(),
     signatures: jsonb('signatures').notNull().default([]),
+    // One-shot consumption guard (migration 0145). casMarkExecuted does an
+    // atomic CAS — SET executed=true WHERE action_id=$1 AND executed=false —
+    // so two concurrent executors can never both fire the same sovereign action.
+    executed: boolean('executed').notNull().default(false),
     proposedAt: timestamp('proposed_at', { withTimezone: true }).notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true })

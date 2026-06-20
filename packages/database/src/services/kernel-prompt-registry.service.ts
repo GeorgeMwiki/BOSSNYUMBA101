@@ -14,7 +14,7 @@
  * the whole purpose of the table.
  */
 import { randomUUID } from 'crypto';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
 
   kernelPromptRegistry,
@@ -216,7 +216,7 @@ export function createKernelPromptRegistryService(
           and(
             eq(kernelPromptRegistry.capability, capability),
             // OR list of statuses — emit via SQL `IN`.
-            sql`${kernelPromptRegistry.status} = ANY(${statuses as string[]})`,
+            inArray(kernelPromptRegistry.status, statuses),
           ),
         )
         .orderBy(desc(kernelPromptRegistry.promotedAt));

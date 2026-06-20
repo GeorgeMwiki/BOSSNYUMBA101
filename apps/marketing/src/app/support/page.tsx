@@ -1,13 +1,24 @@
 import type { Metadata } from 'next';
+import { getLocale } from '@/lib/locale';
 import Link from 'next/link';
-import { BookOpen, MessageSquare, Phone, ShieldAlert } from 'lucide-react';
+import { BookOpen, MessageSquare, Mail, ShieldAlert } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 
-export const metadata: Metadata = {
-  title: 'Support — Boss Nyumba',
-  description:
-    'How to reach the Boss Nyumba team. Mr. Mwikila chat, EAT phone hours, email, and the security disclosure address. Swahili and English.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'sw') {
+    return {
+      title: 'Msaada — BossNyumba',
+      description:
+        'Jinsi ya kuwasiliana na timu ya BossNyumba. Mazungumzo na Mwl. Mwikila, saa za simu kwa muda wa EAT, barua pepe, na anwani ya kuripoti masuala ya usalama. Kiswahili na Kiingereza.',
+    };
+  }
+  return {
+    title: 'Support — BossNyumba',
+    description:
+      'How to reach the BossNyumba team. Mr. Mwikila chat, EAT phone hours, email, and the security disclosure address. Swahili and English.',
+  };
+}
 
 interface Channel {
   readonly icon: typeof MessageSquare;
@@ -33,19 +44,19 @@ const CHANNELS: ReadonlyArray<Channel> = [
     icon: BookOpen,
     title: 'Help centre',
     tone: 'secondary',
-    body: 'Step-by-step guides and how-to videos for every screen and workflow. Swahili and English.',
+    body: 'Written guides are on the way. Until they land, ask Mr. Mwikila in the app or email docs@bossnyumba.com.',
     href: '/docs',
-    cta: 'Browse the docs',
-    sla: 'Searchable · 24/7',
+    cta: 'See docs status',
+    sla: 'In progress',
   },
   {
-    icon: Phone,
-    title: 'Phone (EAT)',
+    icon: Mail,
+    title: 'Email the team',
     tone: 'secondary',
-    body: 'Speak to our Dar es Salaam team. Weekdays 09:00-17:00 EAT. Saturdays 09:00-13:00 EAT.',
-    href: 'tel:+255222000000',
-    cta: 'Call +255 22 200 0000',
-    sla: 'Live · weekdays + Sat AM',
+    body: 'Write to support@bossnyumba.com. Our Dar es Salaam team works weekdays 09:00-17:00 EAT and Saturdays 09:00-13:00 EAT.',
+    href: 'mailto:support@bossnyumba.com',
+    cta: 'Email support@bossnyumba.com',
+    sla: 'Weekdays + Sat AM',
   },
   {
     icon: ShieldAlert,
@@ -62,16 +73,14 @@ export default function SupportPage() {
   return (
     <PageShell>
       <div className="mx-auto max-w-4xl px-6 pb-24 pt-20 lg:px-8">
-        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">
-          Support
-        </p>
+        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">Support</p>
         <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           We answer in Swahili by default.
         </h1>
         <p className="mt-6 text-lg leading-relaxed text-foreground/75">
-          Mr. Mwikila is your first line; the human team is your second.
-          For paid tiers, SLAs are baked into your contract. For free
-          tier (Smallholder), we still aim to answer within one business day.
+          Mr. Mwikila is your first line; the human team is your second. For paid tiers, SLAs are
+          baked into your contract. For free tier (Smallholder), we still aim to answer within one
+          business day.
         </p>
 
         <div className="mt-12 grid gap-4 md:grid-cols-2">
@@ -89,9 +98,7 @@ export default function SupportPage() {
               <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
                 {c.title}
               </h2>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-foreground/70">
-                {c.body}
-              </p>
+              <p className="mt-2 flex-1 text-sm leading-relaxed text-foreground/70">{c.body}</p>
               <p className="mt-3 font-mono text-[0.65rem] uppercase tracking-widest text-foreground/60">
                 {c.sla}
               </p>

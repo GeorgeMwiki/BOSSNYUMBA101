@@ -1,7 +1,7 @@
 /**
  * Wave 20 — Owner Portal UI smoke.
  *
- * Vite-served React SPA. Like admin-portal, gated behind /login. We probe
+ * Vite-served React SPA, gated behind /login. We probe
  * the public shell + redirect behaviour and assert no bundle/hydration
  * errors. Owner-specific routes (/portfolio, /properties, /reports) all
  * redirect to /login when unauthenticated — that redirect chain is still

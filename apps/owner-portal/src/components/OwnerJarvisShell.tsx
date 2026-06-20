@@ -6,8 +6,8 @@
  *   - `tool_output_available` → `uiParts[]` plumbing already lives in
  *     the chat-ui hook; this shell just renders each part through a
  *     minimal AdaptiveRenderer-style dispatcher
- *   - FeedbackThumbs on every assistant turn (gateway wire identical
- *     to the customer-app variant)
+ *   - FeedbackThumbs on every assistant turn (shared gateway feedback
+ *     wire, with a surface-local copy of the widget)
  *
  * The owner-portal is Vite (not Next.js) so this component is plain
  * React with no `use client` directive. The Vite-only Jarvis page
@@ -19,10 +19,10 @@
  * without re-implementing the auth + streaming wiring.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { createBossnyumbaClient, createJarvisClient } from '@bossnyumba/api-sdk';
-import { useJarvisStream } from '@bossnyumba/chat-ui';
+import { useJarvisStream, useChatScroll } from '@bossnyumba/chat-ui';
 import { AdaptiveRenderer, type AgUiUiPart } from '@bossnyumba/genui';
 import { FeedbackThumbs, type FeedbackVerdict } from './FeedbackThumbs';
 import { getCsrfHeaders } from '@/lib/csrf';
@@ -173,12 +173,10 @@ export function OwnerJarvisShell({
     [isStreaming, startStream],
   );
 
-  // Auto-scroll the transcript to the bottom on new turns.
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const el = document.querySelector('[data-owner-jarvis-transcript]');
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [turns.length]);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+  // Canonical streaming-scroll behaviour (§5.1): follow only while the reader is
+  // at the bottom, instant during stream, never yank a reader who scrolled up.
+  useChatScroll(transcriptRef, turns, isStreaming);
 
   return (
     <div className="flex flex-col gap-3">
@@ -209,6 +207,7 @@ export function OwnerJarvisShell({
       </div>
 
       <div
+        ref={transcriptRef}
         data-owner-jarvis-transcript
         className="flex min-h-[40vh] flex-col gap-3 overflow-y-auto rounded border border-border bg-surface p-4"
       >

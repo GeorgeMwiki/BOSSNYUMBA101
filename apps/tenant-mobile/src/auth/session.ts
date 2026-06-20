@@ -3,7 +3,8 @@ import type { Session } from '@supabase/supabase-js'
 import { clearAuthToken, setAuthToken } from './token'
 import { getSupabaseClient } from './supabaseClient'
 import { parseSupabaseTokenForTenant } from './tenantClaims'
-import type { TenantUser } from '@/types/auth'
+import { loadPreferredLang, savePreferredLang } from './lang-preference'
+import type { LanguageCode, TenantUser } from '@/types/auth'
 import { registerPushToken } from '@/lib/notifications/push-register'
 
 // Reactive in-memory session store, backed by Supabase phone OTP.
@@ -36,6 +37,29 @@ let currentUser: TenantUser | null = null
 let bootstrapped = false
 const listeners = new Set<Listener>()
 
+// Locale persistence: the JWT carries no language claim, so the user's sw/en
+// choice is hydrated from AsyncStorage on cold boot and applied when we
+// project the session. `null` until hydrated, which falls back to the English
+// default (CLAUDE.md), never Swahili.
+let persistedLang: LanguageCode | null = null
+
+// Resolves once the Supabase session has been read from storage on cold
+// boot (or the bootstrap has failed and we know there is no session).
+// The splash gate awaits THIS instead of a fixed timer so it never routes
+// to the wrong stack by reading `isAuthenticated()` before the persisted
+// session has hydrated.
+let resolveAuthReady: () => void
+const authReadyPromise: Promise<void> = new Promise<void>((resolve) => {
+  resolveAuthReady = resolve
+})
+let authReadySettled = false
+
+function settleAuthReady(): void {
+  if (authReadySettled) return
+  authReadySettled = true
+  resolveAuthReady()
+}
+
 function emit(): void {
   for (const listener of listeners) {
     listener(currentUser)
@@ -56,7 +80,9 @@ function projectSession(session: Session | null): TenantUser | null {
     role: 'tenant',
     companyName,
     countryCode: 'TZ',
-    preferredLang: 'en',
+    // Honour the persisted language toggle; fall back to the English default
+    // (CLAUDE.md) only when nothing has been stored yet.
+    preferredLang: persistedLang ?? 'en',
     kycStatus: 'pending',
     phone: phoneFormatted
   }
@@ -66,6 +92,9 @@ async function ensureBootstrapped(): Promise<void> {
   if (bootstrapped) return
   bootstrapped = true
   try {
+    // Hydrate the language toggle BEFORE projecting the session so a Swahili
+    // user is not transiently reset to English on cold boot.
+    persistedLang = await loadPreferredLang()
     const supabase = getSupabaseClient()
     const { data } = await supabase.auth.getSession()
     const next = projectSession(data.session)
@@ -95,7 +124,22 @@ async function ensureBootstrapped(): Promise<void> {
   } catch {
     // Bootstrap failed (e.g. missing env in dev) — leave currentUser null;
     // subscribers will render unauthenticated state.
+  } finally {
+    // Either the persisted session hydrated or we proved there is none —
+    // the routing decision is now safe to make.
+    settleAuthReady()
   }
+}
+
+/**
+ * Resolves once the auth bootstrap has settled (session hydrated from
+ * storage, or confirmed absent). Routing gates MUST await this before
+ * reading `isAuthenticated()` so a cold boot never races the persisted
+ * session and lands on the wrong stack.
+ */
+export function ensureAuthReady(): Promise<void> {
+  void ensureBootstrapped()
+  return authReadyPromise
 }
 
 export function getCurrentUser(): TenantUser {
@@ -108,6 +152,11 @@ export function isAuthenticated(): boolean {
 
 export function setCurrentUser(user: TenantUser): void {
   currentUser = user
+  // Persist the language so the toggle survives a cold start.
+  if (persistedLang !== user.preferredLang) {
+    persistedLang = user.preferredLang
+    void savePreferredLang(user.preferredLang)
+  }
   emit()
 }
 
@@ -115,6 +164,8 @@ export function setPreferredLang(lang: TenantUser['preferredLang']): void {
   if (!currentUser) {
     return
   }
+  persistedLang = lang
+  void savePreferredLang(lang)
   currentUser = { ...currentUser, preferredLang: lang }
   emit()
 }

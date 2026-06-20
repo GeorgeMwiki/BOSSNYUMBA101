@@ -101,4 +101,86 @@ describe('CRITICAL #4 — NIN MCP server per-tenant allowlist', () => {
       process.env.NODE_ENV = prevEnv;
     }
   });
+
+  // --- FAIL-CLOSED-IN-EVERY-ENV regression (this hardening pass) ----------
+  // The previous code bypassed the gate whenever NODE_ENV !== 'production',
+  // which silently failed OPEN in dev / test / CI / staging / preview. The
+  // gate must now deny by default in EVERY environment unless an explicit
+  // opt-out env is set.
+
+  it('rejects in NON-production when no allowlist configured (no dev fail-open)', async () => {
+    const prevEnv = process.env.NODE_ENV;
+    const prevDisable = process.env.MCP_ALLOWLIST_DISABLED;
+    process.env.NODE_ENV = 'development';
+    delete process.env.MCP_ALLOWLIST_DISABLED;
+    try {
+      const srv = createNinServer({});
+      const handler = getCallHandler(srv);
+      if (!handler) return;
+      const res = (await handler({
+        params: {
+          name: 'nin.verify_nin',
+          arguments: { tenantId: 't-anything', nin: '12345678900' },
+        },
+        method: 'tools/call',
+      })) as { isError?: boolean; content?: Array<{ text?: string }> };
+      expect(res.isError).toBe(true);
+      expect(res.content?.[0]?.text).toMatch(/not in the per-tenant allowlist/);
+    } finally {
+      process.env.NODE_ENV = prevEnv;
+      if (prevDisable === undefined) delete process.env.MCP_ALLOWLIST_DISABLED;
+      else process.env.MCP_ALLOWLIST_DISABLED = prevDisable;
+    }
+  });
+
+  it('rejects with empty NODE_ENV (preview/unset) when no allowlist configured', async () => {
+    const prevEnv = process.env.NODE_ENV;
+    const prevDisable = process.env.MCP_ALLOWLIST_DISABLED;
+    delete process.env.NODE_ENV;
+    delete process.env.MCP_ALLOWLIST_DISABLED;
+    try {
+      const srv = createNinServer({});
+      const handler = getCallHandler(srv);
+      if (!handler) return;
+      const res = (await handler({
+        params: {
+          name: 'nin.verify_nin',
+          arguments: { tenantId: 't-anything', nin: '12345678900' },
+        },
+        method: 'tools/call',
+      })) as { isError?: boolean; content?: Array<{ text?: string }> };
+      expect(res.isError).toBe(true);
+      expect(res.content?.[0]?.text).toMatch(/not in the per-tenant allowlist/);
+    } finally {
+      if (prevEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = prevEnv;
+      if (prevDisable === undefined) delete process.env.MCP_ALLOWLIST_DISABLED;
+      else process.env.MCP_ALLOWLIST_DISABLED = prevDisable;
+    }
+  });
+
+  it('allows ANY tenant ONLY with the explicit MCP_ALLOWLIST_DISABLED opt-out', async () => {
+    const prevEnv = process.env.NODE_ENV;
+    const prevDisable = process.env.MCP_ALLOWLIST_DISABLED;
+    process.env.NODE_ENV = 'development';
+    process.env.MCP_ALLOWLIST_DISABLED = 'true';
+    try {
+      const srv = createNinServer({});
+      const handler = getCallHandler(srv);
+      if (!handler) return;
+      const res = (await handler({
+        params: {
+          name: 'nin.verify_nin',
+          arguments: { tenantId: 't-anything', nin: '12345678900' },
+        },
+        method: 'tools/call',
+      })) as { isError?: boolean; content?: Array<{ text?: string }> };
+      // Gate bypassed -> tool actually runs (mock adapter, no error).
+      expect(res.isError).toBeFalsy();
+    } finally {
+      process.env.NODE_ENV = prevEnv;
+      if (prevDisable === undefined) delete process.env.MCP_ALLOWLIST_DISABLED;
+      else process.env.MCP_ALLOWLIST_DISABLED = prevDisable;
+    }
+  });
 });

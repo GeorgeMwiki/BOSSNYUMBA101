@@ -14,10 +14,10 @@ const DECISION_LINKS: ReadonlyArray<string> = [
 ]
 
 export default function DecisionsTab(): JSX.Element {
-  const { screen } = useI18n()
+  const { screen, t } = useI18n()
   return (
     <ScreenShell screenId="O-M-03">
-      <Section title="Mambo ya kuamua">
+      <Section title={t.hubs.decisions}>
         <View style={styles.grid}>
           {DECISION_LINKS.map((id) => (
             <Link key={id} href={`/owner/${id}`} asChild>

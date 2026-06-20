@@ -24,7 +24,7 @@
  *   4. Composition / port-binding wires that pass typed adapter handles
  *      (the literal here is the property NAME on a DI container).
  *   5. Frontend UI pages that present a provider-specific flow
- *      (e.g. `apps/customer-app/src/app/payments/mpesa/page.tsx` IS
+ *      (e.g. a provider-specific `/payments/mpesa` page IS
  *      the M-Pesa flow's UI).
  *
  * Adding a new provider literal in business logic → register here with a
@@ -135,20 +135,8 @@ export const HARDCODED_BANK_ALLOWLIST = new Map([
     'PII-mask uses mpesa as a detection keyword for session-replay redaction; observability tool.',
   ],
   [
-    'apps/customer-app/src/app/payments/mpesa/page.tsx',
-    'Customer-app M-Pesa payment page IS the M-Pesa-specific UI flow; literal is the flow identity.',
-  ],
-  [
-    'apps/customer-app/src/app/payments/pay/page.tsx',
-    'Customer-app pay page dispatches by provider slug (mpesa/card) to the matching downstream flow.',
-  ],
-  [
     'packages/file-ingest/src/proposal/heuristic-map.ts',
     'Heuristic mapping of CSV column headers to entity attributes; "nida" is the KE national-ID schema-attribute label, not a routing decision.',
-  ],
-  [
-    'apps/customer-app/src/components/documents/MoveOutNoticeForm.tsx',
-    'Move-out notice form distinguishes refund-method preference (mpesa vs bank_transfer); UI dispatch, not provider routing.',
   ],
   [
     'packages/dynamic-sections/src/lib/adaptive-layout/policies/intent-policy.ts',
@@ -187,14 +175,6 @@ export const HARDCODED_BANK_ALLOWLIST = new Map([
     'Swahili noun-root lexicon: "huduma" is the Swahili common noun for "service" in the linguistic dictionary — NLP false-positive, not the Huduma ID provider.',
   ],
   [
-    'apps/estate-manager-app/src/lib/collections-api.ts',
-    'Collections API client forwards the user-selected payment channel; the mpesa guard only decides whether to attach phoneNumber for an STK push — channel set mirrors the gateway PaymentProcessSchema enum.',
-  ],
-  [
-    'apps/estate-manager-app/src/screens/payments/RecordPayment.tsx',
-    'Record-payment form: mpesa is one member of the PAYMENT_CHANNELS zod enum mirroring the gateway schema; the refine enforces the intrinsic M-Pesa STK phone-number requirement — UI form contract, not provider routing.',
-  ],
-  [
     'apps/tenant-mobile/app/(tabs)/kyc/index.tsx',
     'KYC wizard renders the nida step; literal is the KycStepKey step identity (TZ national-ID capture step), not provider routing.',
   ],
@@ -209,4 +189,18 @@ export const HARDCODED_BANK_ALLOWLIST = new Map([
   ['services/api-gateway/src/services/cockpit-events/types.ts', 'Cockpit event type references a payment-rail name as an event discriminant; schema-level event identity.'],
   ['services/api-gateway/src/services/ingestion-intent-inferrer/heuristic.ts', 'Ingestion NLP heuristic matches rail keywords (mpesa/bank) in uploaded text to infer document intent; lexical matcher, not provider routing.'],
   ['services/api-gateway/src/services/jurisdiction-discovery/synthesizer.ts', 'Jurisdiction-discovery synthesizer maps a discovered country to its bank/mobile-money rails; the literals ARE the jurisdiction rail registry, not routing.'],
+
+  // ─── Ported born-dark CORE packages (uplift parity) — 59-package sibling-vertical port, unconsumed by any running surface yet; sibling/PACK residue (mining regulators, NIDA detection patterns) re-instantiated at live-wiring per the Domain-Residue Scrub ───
+  ['packages/ambient-listener/src/extract/entity-extractor.ts', "ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub — 'tra' is a mining-domain org-keyword in the reference entity-extractor lexicon (gold/tanzanite/tumemadini), not provider routing."],
+  ['packages/cognitive-engine/src/ingest/pii-redactor.ts', "ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub — 'nida' is a PII-redaction pattern `kind` label (national-ID masking), not provider routing."],
+  ['packages/data-onboarding/src/discovery/column-type-inferer.ts', "ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub — 'nida' is the inferred column-type slug for a national-ID column, not provider routing."],
+  ['packages/data-onboarding/src/discovery/primary-key-detector.ts', "ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub — 'nida' is a candidate primary-key column name (national-ID), not provider routing."],
+  ['packages/data-onboarding/src/enrichment/adapters/nida-verifier.ts', "ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub — 'nida' is this enrichment adapter's source identity (national-ID verifier), not provider routing."],
+  ['packages/data-onboarding/src/enrichment/enrichment-orchestrator.ts', "ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub — 'nida' is an allowed-adapter id checked in the enrichment gate, not provider routing."],
+  ['packages/data-onboarding/src/intent/entity-recognizer.ts', "ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub — 'nida' is a required-attribute synonym for the national-ID entity recognizer, not provider routing."],
+  ['packages/omnidata/src/connector-base/pii-redactor.ts', "ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub — 'nida' is a sensitive field-name to redact (alongside tin/kraPin/mpesaNumber), not provider routing."],
+  ['services/research-orchestrator/src/planner/plan-builder.ts', "ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub — 'tra' is a mining daily-briefing regulator (alongside tumemadini/nemc, minerals:['gold']) in the fallback template, not provider routing."],
+
+  // ─── Existing (non-ported) legit payments-ledger infrastructure ───
+  ['services/payments-ledger/src/services/disbursement.service.ts', "legit: M-Pesa B2C disbursement infrastructure — 'mpesa' is the provider-rail key for findByTransferId() row lookup on Safaricom B2C result/timeout callbacks and the provider.name match that selects the M-Pesa B2C rail by destination shape; the M-Pesa B2C callback handler is provider-specific by nature, not a generic routing decision."],
 ]);

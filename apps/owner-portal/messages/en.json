@@ -281,7 +281,8 @@
     "invalidVerificationCode": "Invalid verification code",
     "invalidVerificationCodeRetry": "Invalid verification code. Please try again.",
     "verificationFailed": "Verification failed",
-    "mfaSetupFailed": "MFA setup failed"
+    "mfaSetupFailed": "MFA setup failed",
+    "signupNotice": "Your account was created. Please sign in to continue."
   },
   "dashboard": {
     "totalTenants": "Total Tenants",
@@ -326,7 +327,7 @@
     "viewDetails": "View details",
     "details": "Details",
     "revenueLabel": "Revenue",
-    "revenueTrendUnavailable": "Revenue trend is unavailable until live time-series data is wired.",
+    "revenueTrendUnavailable": "No revenue data yet.",
     "occupancyRate": "Occupancy Rate",
     "occupiedLegend": "Occupied ({count})",
     "vacantLegend": "Vacant ({count})",
@@ -394,7 +395,10 @@
     "close": "Close",
     "overrideDecision": "Override Decision",
     "retryingWorkflow": "Retrying workflow {id}...",
-    "workflowCancelled": "Workflow {id} cancelled"
+    "workflowCancelled": "Workflow {id} cancelled",
+    "refreshed": "Operations data refreshed",
+    "exportLogEmpty": "No AI decisions to export yet",
+    "exportLogReady": "AI decision log exported"
   },
   "pages": {
     "tenantsTitle": "Tenants",
@@ -617,21 +621,39 @@
     "title": "Workflows",
     "subtitle": "Orchestrated multi-step automations with human approval gates.",
     "loading": "Loading…",
-    "errorLoad": "Unable to load workflows.",
+    "errorLoad": "Unable to load your workflow queue.",
     "errorRun": "Workflow run failed.",
     "errorLookup": "Run lookup failed.",
-    "stepCount": "{count} steps",
-    "runCta": "run",
-    "rolesLabel": "Roles",
-    "emptyDefs": "No workflow definitions registered.",
+    "errorApprove": "Approval failed.",
+    "errorReject": "Rejection failed.",
+    "runCta": "Start run",
+    "startTitle": "Start a run",
+    "definitionLabel": "Workflow definition",
+    "scopePlaceholder": "Scope (e.g. lease)",
+    "scopeRefPlaceholder": "Scope reference (e.g. lease id)",
+    "queueTitle": "My queue",
+    "emptyQueue": "No open runs in your queue.",
     "inspectTitle": "Inspect run",
     "runIdPlaceholder": "Run ID",
     "fetchCta": "Fetch",
-    "runHeader": "Run {id} · {workflowId}",
+    "runHeader": "Run {id} · {definitionId}",
+    "scopeLabel": "Scope",
     "statusLabel": "Status",
-    "stepLabel": "step",
-    "approveStep": "Approve step",
-    "rejectStep": "Reject step"
+    "rejectionLabel": "Rejection reason",
+    "approverRolePlaceholder": "Approver role (e.g. ESTATE_MANAGER)",
+    "rationalePlaceholder": "Approval rationale",
+    "rejectReasonPlaceholder": "Reason for rejection",
+    "approveStep": "Approve",
+    "rejectStep": "Reject",
+    "state": {
+      "open": "Open",
+      "in_progress": "In progress",
+      "in_review": "In review",
+      "in_approval": "Awaiting approval",
+      "committed": "Committed",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
+    }
   },
   "warehouse": {
     "title": "Warehouse inventory",
@@ -2315,6 +2337,7 @@
     "savingLoading": "Saving...",
     "savePreferences": "Save Preferences",
     "savedSuccess": "Settings saved successfully",
+    "savedFailed": "Failed to save settings",
     "invitationSent": "Invitation sent successfully",
     "userRemoved": "User removed successfully",
     "invitationResent": "Invitation resent successfully",
@@ -2374,7 +2397,27 @@
     "dateFormat": "Date Format",
     "cancel": "Cancel",
     "sendInvitation": "Send Invitation",
-    "propertyAccess": "Property Access"
+    "propertyAccess": "Property Access",
+    "propertyAccessLoading": "Loading your properties…",
+    "propertyAccessEmpty": "No properties yet — add one first to grant access.",
+    "propertiesNone": "No properties",
+    "profileSaved": "Profile updated successfully",
+    "profileSaveFailed": "Failed to update profile",
+    "userRemoveFailed": "Failed to remove user",
+    "invitationResendFailed": "Failed to resend invitation",
+    "twoFactorStartFailed": "Failed to start 2FA enrollment",
+    "twoFactorConfirmFailed": "Failed to confirm 2FA",
+    "twoFactorCodeInvalid": "Enter the 6-digit code from your authenticator app",
+    "twoFactorEnabled": "Two-factor authentication enabled",
+    "twoFactorEnabledBadge": "2FA enabled",
+    "twoFactorComingSoon": "Enable 2FA — coming soon",
+    "twoFactorScanHint": "Scan this QR code with Google Authenticator, Authy, or any TOTP app, then enter the 6-digit code to finish.",
+    "twoFactorManualKey": "Or enter this key manually",
+    "twoFactorRecoveryCodes": "Recovery codes (store these safely)",
+    "twoFactorEnterCode": "6-digit code",
+    "twoFactorConfirm": "Confirm & enable",
+    "twoFactorQrAlt": "Two-factor authentication enrollment QR code",
+    "twoFactorQrUnavailable": "QR code unavailable"
   },
   "financialPage": {
     "title": "Financial",
@@ -2699,6 +2742,9 @@
     "subtitle": "View and manage property documents",
     "retry": "Retry",
     "uploadDocument": "Upload Document",
+    "uploading": "Uploading…",
+    "uploadFailed": "Document upload failed.",
+    "downloadFailed": "Could not download this document.",
     "catLeases": "Leases & Agreements",
     "catLeasesDesc": "Rental agreements, addendums",
     "catFinancial": "Financial Documents",
@@ -3258,13 +3304,44 @@
       "pickOwnerIntent": "Pick your owner intent",
       "installStarterSkills": "Install 3 starter Skills",
       "scheduleBriefing": "Schedule your first daily briefing",
-      "welcomeAboard": "Welcome aboard"
+      "welcomeAboard": "Welcome aboard",
+      "businessNameFallback": "Your portfolio",
+      "accountCreatedDesc": "Your tenant + owner account are live.",
+      "verifyEmailDesc": "Click the link we sent to confirm the address.",
+      "addFirstPropertyDesc": "Tell us the address, unit count, and rent estimate.",
+      "importTenantsDesc": "CSV upload or add one tenant manually.",
+      "chatFirstTimeDesc": "Meet Mr. Mwikila, your portfolio concierge.",
+      "pickOwnerIntentDesc": "Cashflow-first, growth, or exit-prep: pick one.",
+      "installStarterSkillsDesc": "Curated by Mr. Mwikila based on your intent.",
+      "scheduleBriefingDesc": "A 5-minute morning brief delivered however you like."
     },
     "plan": {
       "mdrTitle": "MDR plan"
     },
     "skills": {
-      "marketplaceTitle": "Skills marketplace"
+      "marketplaceTitle": "Skills marketplace",
+      "title": "Skills marketplace",
+      "subtitle": "Install workflows Mr. Mwikila can run on a schedule, on an event, or on demand. Toggle them off any time.",
+      "createSkill": "Create new Skill",
+      "installedHeading": "Installed ({count})",
+      "marketplaceHeading": "Marketplace ({count})",
+      "categoryLabel": "Category:",
+      "triggerLabel": "Trigger:",
+      "category": {
+        "all": "All",
+        "arrears": "Arrears",
+        "lease": "Lease",
+        "maintenance": "Maintenance",
+        "comms": "Communications",
+        "compliance": "Compliance",
+        "reporting": "Reporting"
+      },
+      "trigger": {
+        "all": "All",
+        "cron": "Scheduled",
+        "event": "Event-driven",
+        "manual": "Manual"
+      }
     },
     "feedbackThumbs": {
       "prompt": "Was this helpful?",

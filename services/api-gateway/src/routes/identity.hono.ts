@@ -677,6 +677,16 @@ function mapRedeemError(
   if (message.includes('INVITE_CODE_EXHAUSTED')) {
     return c.json(errBody('INVITE_EXHAUSTED', 'invite code has no redemptions left'), 409);
   }
+  // Re-redeeming while already an ACTIVE member of the org is a conflict, not a
+  // server fault. The explicit guard in the redeem path throws this; the
+  // defensive `unique|duplicate key` branch catches the same collision if it
+  // ever reaches the partial-unique index (migration 0339) directly.
+  if (message.includes('ALREADY_ACTIVE_MEMBER') || /unique|duplicate key/i.test(message)) {
+    return c.json(
+      errBody('ALREADY_MEMBER', 'identity is already an active member of this organization'),
+      409,
+    );
+  }
   if (message.includes('not found')) {
     return c.json(errBody('IDENTITY_NOT_FOUND', 'identity not found'), 404);
   }

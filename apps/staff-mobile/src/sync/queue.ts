@@ -8,15 +8,14 @@ export type EntityType =
   | 'attendance'
   | 'fingerprint_sign'
   | 'fuel_log'
-  | 'machine_hour'
   | 'photo_upload'
   | 'inventory_move'
   | 'voice_query'
   | 'driver_letter_ack'
   | 'task_ack'
   | 'ppe_receipt'
-  | 'excavator_count'
-  | 'drill_hole'
+  | 'unit_check'
+  | 'inspection'
 
 export interface QueuedWrite {
   id: string

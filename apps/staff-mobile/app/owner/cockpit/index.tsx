@@ -24,6 +24,8 @@ import { Redirect } from 'expo-router'
 import { ScreenShell } from '../../../src/components/ScreenShell'
 import { Section } from '../../../src/components/Section'
 import { useAuth } from '../../../src/auth/useAuth'
+import { useI18n } from '../../../src/i18n/useI18n'
+import type { Lang } from '../../../src/auth/types'
 import { colors } from '../../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../../src/theme/spacing'
 import {
@@ -35,6 +37,36 @@ import {
   type CockpitReminder,
 } from '../../../src/owner/cockpit/useCockpitHub'
 
+/**
+ * Single-locale copy for the cockpit hub. Every string resolves to exactly
+ * ONE language per the active locale — no stacked sw/en renders anywhere on
+ * this surface (absolute language-toggle rule). English is the default.
+ */
+const COCKPIT_COPY = Object.freeze({
+  ownerOnly: Object.freeze({ en: 'Cockpit hub is owner-only', sw: 'Cockpit ni kwa mmiliki tu' }),
+  loading: Object.freeze({ en: 'Loading cockpit…', sw: 'Inapakia cockpit…' }),
+  loadError: Object.freeze({ en: 'Cockpit failed to load', sw: 'Cockpit imeshindwa kupakia' }),
+  emptyTitle: Object.freeze({
+    en: 'No fresh cockpit data yet — pull down to refresh.',
+    sw: 'Hakuna data mpya bado — vuta chini kuburudisha.',
+  }),
+  brief: Object.freeze({ en: 'Brief', sw: 'Muhtasari' }),
+  decisions: Object.freeze({ en: 'Recent decisions', sw: 'Maamuzi ya hivi karibuni' }),
+  noDecisions: Object.freeze({ en: 'No pending decisions', sw: 'Hakuna maamuzi yaliyosubiri' }),
+  opportunities: Object.freeze({ en: 'Opportunities', sw: 'Fursa' }),
+  noOpportunities: Object.freeze({ en: 'No fresh opportunities', sw: 'Hakuna fursa mpya' }),
+  risks: Object.freeze({ en: 'Risks', sw: 'Hatari' }),
+  noRisks: Object.freeze({ en: 'No active risks', sw: 'Hakuna hatari za sasa' }),
+  reminders: Object.freeze({ en: 'Reminders', sw: 'Ukumbusho' }),
+  noReminders: Object.freeze({ en: 'No reminders', sw: 'Hakuna ukumbusho' }),
+  raised: Object.freeze({ en: 'Raised', sw: 'Iliibuliwa' }),
+  due: Object.freeze({ en: 'Due', sw: 'Inaisha' }),
+}) as Readonly<Record<string, Readonly<Record<Lang, string>>>>
+
+function copy(key: keyof typeof COCKPIT_COPY | string, lang: Lang): string {
+  return COCKPIT_COPY[key]?.[lang] ?? ''
+}
+
 // Screen ID is intentionally NOT registered in
 // `src/roles/access.ts` — the cockpit hub is reachable only from
 // inside the owner branch (O-M-01 → "Open cockpit hub" link) so the
@@ -45,14 +77,13 @@ const SCREEN_ID = 'O-M-01'
 
 export default function CockpitHubScreen(): JSX.Element {
   const { user, ready } = useAuth()
+  const { lang } = useI18n()
   if (!ready) return <View style={{ flex: 1 }} />
   if (!user) return <Redirect href="/onboarding/role" />
   if (user.role !== 'owner') {
     return (
       <View style={styles.loading}>
-        <Text style={styles.error}>
-          Cockpit hub is owner-only / Cockpit ni kwa mmiliki tu
-        </Text>
+        <Text style={styles.error}>{copy('ownerOnly', lang)}</Text>
       </View>
     )
   }
@@ -65,6 +96,7 @@ export default function CockpitHubScreen(): JSX.Element {
 
 function CockpitHubView(): JSX.Element {
   const query = useCockpitHub()
+  const { lang } = useI18n()
   const [refreshing, setRefreshing] = useState<boolean>(false)
 
   const onRefresh = useCallback(async (): Promise<void> => {
@@ -80,21 +112,20 @@ function CockpitHubView(): JSX.Element {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color={colors.gold} />
-        <Text style={styles.muted}>Loading cockpit… / Inapakia…</Text>
+        <Text style={styles.muted}>{copy('loading', lang)}</Text>
       </View>
     )
   }
   if (query.isError) {
     return (
       <View style={styles.loading}>
-        <Text style={styles.error}>
-          Cockpit failed to load / Cockpit imeshindwa kupakia
-        </Text>
+        <Text style={styles.error}>{copy('loadError', lang)}</Text>
       </View>
     )
   }
   const data = query.data
   const empty = isEmptyCockpit(data)
+  const briefHeadline = lang === 'sw' ? data.brief.headlineSw : data.brief.headlineEn
   return (
     <ScrollView
       contentContainerStyle={styles.scroll}
@@ -108,35 +139,29 @@ function CockpitHubView(): JSX.Element {
     >
       {empty ? (
         <View style={styles.bannerEmpty}>
-          <Text style={styles.bannerText}>
-            No fresh cockpit data yet — pull down to refresh.
-          </Text>
-          <Text style={styles.bannerHint}>
-            Hakuna data mpya bado — vuta chini kuburudisha.
-          </Text>
+          <Text style={styles.bannerText}>{copy('emptyTitle', lang)}</Text>
         </View>
       ) : null}
 
-      <Section title="Brief">
+      <Section title={copy('brief', lang)}>
         <View style={styles.briefCard}>
-          <Text style={styles.briefHeadline}>{data.brief.headlineEn}</Text>
-          <Text style={styles.briefHeadlineSw}>{data.brief.headlineSw}</Text>
+          <Text style={styles.briefHeadline}>{briefHeadline}</Text>
         </View>
       </Section>
 
-      <Section title={`Recent decisions (${data.decisions.length})`}>
+      <Section title={`${copy('decisions', lang)} (${data.decisions.length})`}>
         {data.decisions.length === 0 ? (
-          <Text style={styles.muted}>No pending decisions / Hakuna maamuzi yaliyosubiri</Text>
+          <Text style={styles.muted}>{copy('noDecisions', lang)}</Text>
         ) : (
           data.decisions.slice(0, 5).map((decision) => (
-            <DecisionRow key={decision.id} decision={decision} />
+            <DecisionRow key={decision.id} decision={decision} lang={lang} />
           ))
         )}
       </Section>
 
-      <Section title={`Opportunities (${data.opportunities.length})`}>
+      <Section title={`${copy('opportunities', lang)} (${data.opportunities.length})`}>
         {data.opportunities.length === 0 ? (
-          <Text style={styles.muted}>No fresh opportunities / Hakuna fursa mpya</Text>
+          <Text style={styles.muted}>{copy('noOpportunities', lang)}</Text>
         ) : (
           data.opportunities.slice(0, 5).map((opportunity) => (
             <OpportunityRow
@@ -147,9 +172,9 @@ function CockpitHubView(): JSX.Element {
         )}
       </Section>
 
-      <Section title={`Risks (${data.risks.length})`}>
+      <Section title={`${copy('risks', lang)} (${data.risks.length})`}>
         {data.risks.length === 0 ? (
-          <Text style={styles.muted}>No active risks / Hakuna hatari za sasa</Text>
+          <Text style={styles.muted}>{copy('noRisks', lang)}</Text>
         ) : (
           data.risks.slice(0, 5).map((risk) => (
             <RiskRow key={risk.id} risk={risk} />
@@ -157,12 +182,12 @@ function CockpitHubView(): JSX.Element {
         )}
       </Section>
 
-      <Section title={`Reminders (${data.reminders.length})`}>
+      <Section title={`${copy('reminders', lang)} (${data.reminders.length})`}>
         {data.reminders.length === 0 ? (
-          <Text style={styles.muted}>No reminders / Hakuna ukumbusho</Text>
+          <Text style={styles.muted}>{copy('noReminders', lang)}</Text>
         ) : (
           data.reminders.slice(0, 5).map((reminder) => (
-            <ReminderRow key={reminder.id} reminder={reminder} />
+            <ReminderRow key={reminder.id} reminder={reminder} lang={lang} />
           ))
         )}
       </Section>
@@ -172,8 +197,10 @@ function CockpitHubView(): JSX.Element {
 
 function DecisionRow({
   decision,
+  lang,
 }: {
   readonly decision: CockpitDecisionSummary
+  readonly lang: Lang
 }): JSX.Element {
   return (
     <Pressable style={styles.row}>
@@ -182,7 +209,7 @@ function DecisionRow({
         <Text style={styles.severity}>{decision.severity.toUpperCase()}</Text>
       </View>
       <Text style={styles.muted}>
-        Raised {new Date(decision.raisedAt).toLocaleString()}
+        {copy('raised', lang)} {new Date(decision.raisedAt).toLocaleString()}
       </Text>
     </Pressable>
   )
@@ -218,14 +245,16 @@ function RiskRow({ risk }: { readonly risk: CockpitRisk }): JSX.Element {
 
 function ReminderRow({
   reminder,
+  lang,
 }: {
   readonly reminder: CockpitReminder
+  readonly lang: Lang
 }): JSX.Element {
   return (
     <Pressable style={styles.row}>
       <Text style={styles.rowTitle}>{reminder.text}</Text>
       <Text style={styles.muted}>
-        Due {new Date(reminder.dueAt).toLocaleString()}
+        {copy('due', lang)} {new Date(reminder.dueAt).toLocaleString()}
       </Text>
     </Pressable>
   )
@@ -259,12 +288,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: fontSize.body,
   },
-  bannerHint: {
-    color: colors.textMuted,
-    fontSize: fontSize.body,
-    marginTop: spacing.xs,
-    fontStyle: 'italic',
-  },
   briefCard: {
     backgroundColor: colors.surface,
     padding: spacing.md,
@@ -274,12 +297,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: fontSize.h3,
     fontWeight: '600',
-  },
-  briefHeadlineSw: {
-    color: colors.textMuted,
-    fontSize: fontSize.body,
-    fontStyle: 'italic',
-    marginTop: spacing.xs,
   },
   row: {
     backgroundColor: colors.surface,

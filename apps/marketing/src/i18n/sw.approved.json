@@ -1,0 +1,3778 @@
+{
+  "common": {
+    "skipToContent": "Ruka kwenye maudhui"
+  },
+  "nav": {
+    "owners": "Wamiliki",
+    "tenants": "Wapangaji",
+    "investors": "Wawekezaji",
+    "product": "Bidhaa",
+    "pricing": "Bei",
+    "pilot": "Pilot",
+    "docs": "Nyaraka",
+    "signIn": "Ingia",
+    "whoWeServe": "Tunaowahudumia",
+    "about": "Kuhusu",
+    "resources": "Rasilimali",
+    "company": "Kampuni",
+    "blog": "Blogi",
+    "careers": "Kazi",
+    "requestPilot": "Anza sasa",
+    "categories": {
+      "operators": "Waendeshaji wa mali",
+      "tenants": "Wapangaji na watarajiwa",
+      "ecosystem": "Vyama na mfumo",
+      "capital": "Mtaji na usimamizi"
+    },
+    "items": {
+      "individualLandlord": "Wamiliki wa Individual Landlord",
+      "individualLandlordDesc": "Wamiliki wa mali wadogo wanaosimamia milango 1-10.",
+      "ml": "Wamiliki wa Portfolio Landlord",
+      "mlDesc": "Waendeshaji wa kati wa Portfolio Landlord wa ghorofa na nyumba.",
+      "sml": "Wamiliki wa Institutional",
+      "smlDesc": "Waendeshaji wa makazi wa kitaasisi, uendeshaji wa mali kubwa.",
+      "cooperatives": "Vyama vya wamiliki wa mali",
+      "cooperativesDesc": "Vikundi vya Co-op na vya wamiliki wa nyumba moja.",
+      "tenants": "Wapangaji na watarajiwa",
+      "tenantsDesc": "Wapangaji waliothibitishwa, wapangaji wa kampuni waliokaguliwa.",
+      "maintenance contractors": "Mafundi wa matengenezo",
+      "maintenance contractorsDesc": "Mafundi walio na leseni na wakaguzi wa nyumba.",
+      "investors": "Wawekezaji na wakopeshaji",
+      "investorsDesc": "Mtaji wa mali ukiwa na taarifa za kila siku.",
+      "regulators": "Wadhibiti na wizara",
+      "regulatorsDesc": "Regulator, NHC, BoT, TRA usimamizi."
+    },
+    "support": "Msaada"
+  },
+  "audienceSwitcher": {
+    "kicker": "Chagua mtazamo wako",
+    "owners": {
+      "title": "Wamiliki wa mali",
+      "blurb": "Endesha mali yako. Briefing ya kila siku, kalenda ya kodi, daftari la matengenezo."
+    },
+    "tenants": {
+      "title": "Wapangaji",
+      "blurb": "Pata mali ya Tanzania yaliyothibitishwa mwanzo hadi mwisho."
+    },
+    "investors": {
+      "title": "Wawekezaji / Wakopeshaji",
+      "blurb": "Mtaji wa mali ukiwa na taarifa za kila siku zenye ushahidi."
+    }
+  },
+  "hero": {
+    "kicker": "Mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili",
+    "swahiliFirstBadge": "Kiingereza-kwanza · Kiswahili",
+    "pill": "Tanzania-kwanza · Inayoongozwa na AI",
+    "headline": "BossNyumba ni mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Mr. Mwikila ni safu yake ya akili.",
+    "sub": "Mr. Mwikila — safu ya akili ndani ya BossNyumba, mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili — anaandaa, anasimamia, anaandaa taarifa, anawasilisha. Mikataba, kodi, wafanyakazi wa matengenezo, hazina, utii, soko, holdings, kampuni tanzu, biashara za ziada (huduma, ulinzi, usafi, kukodi vifaa). Wewe unasaini mara moja.",
+    "ctaPilot": "Anza sasa",
+    "ctaDemo": "Tazama demo ya sekunde 60",
+    "trustline": "BRELA · TRA · NHC · BoT · M-Pesa",
+    "chat": {
+      "assistant": "Mr. Mwikila",
+      "role": "Safu ya akili ndani ya BossNyumba",
+      "live": "Hai",
+      "ask": "Uliza BossNyumba chochote…",
+      "timestamp": "Sasa hivi",
+      "languageLabel": "SW",
+      "languageHint": "Ongea kwa",
+      "language": "Kiswahili",
+      "micReady": "Mic iko tayari",
+      "disclaimer": "Imetengenezwa na AI. Maamuzi yanasainiwa na mwenye leseni.",
+      "voice": "Ingiza kwa sauti",
+      "attach": "Ambatisha picha",
+      "send": "Tuma",
+      "turns": [
+        {
+          "role": "ai",
+          "body": "Habari. Mimi ni Mwl. Mwikila, Mshirika wako wa AI wa Usimamizi wa Mali. Umekuja kwa nini leo?"
+        },
+        {
+          "role": "user",
+          "body": "Ninaendesha vyumba 14 Mikocheni, Dar es Salaam. Ukusanyaji wa kodi una matatizo."
+        },
+        {
+          "role": "ai",
+          "body": "Nimekuelewa. BossNyumba inaweza kuweka vyumba vyako 14 kwenye orodha moja ya kodi, kuoanisha malipo ya M-Pesa kiotomatiki, na kutuma vikumbusho kwa Kiswahili siku tatu kabla ya tarehe ya mwisho. Ungependa kuona jinsi makusanyo yako ya Machi yangeonekana?"
+        }
+      ]
+    },
+    "stats": {
+      "pilotRegions": "Mikoa inayoendeshwa",
+      "bilingual": "Lugha mbili",
+      "baseCurrency": "Sarafu ya msingi",
+      "masterBrain": "Master Brain"
+    },
+    "seeItMove": "Onyesha jinsi inavyofanya kazi",
+    "assurances": [
+      "Usalama wa kiwango cha biashara",
+      "Kiswahili na Kiingereza, asili",
+      "Inafanya kazi nje ya mtandao, kwa sauti, kupitia USSD",
+      "Kila hadhira, daraja la kwanza"
+    ]
+  },
+  "brainBanner": {
+    "kicker": "Madai ya BossNyumba · yamethibitishwa",
+    "deepDive": "Soma zaidi",
+    "claims": [
+      {
+        "id": "rent-compliance",
+        "title": "Taarifa za mmiliki zinaandaliwa kwa muundo unaohitajika.",
+        "body": "BossNyumba huandaa taarifa zako za kila mwezi za mmiliki na za mamlaka kwa muundo unaohitajika, tayari kwa idhini ya gusa-moja. Wewe hukagua na kusaini — Mwl. Mwikila hawasilishi kamwe kwa mamlaka yake mwenyewe.",
+        "href": "/pilot"
+      },
+      {
+        "id": "double-entry-ledger",
+        "title": "Kila malipo ya kodi yanaandikwa kwenye leja isiyobadilika.",
+        "body": "Kila malipo yanaandikwa kwenye leja ya double-entry iliyosawazishwa ambayo huongezwa tu na haifutwi kwa muundo wake. Mabadiliko sifuri — vitabu vyako vinalingana na mnyororo wa ukaguzi unashikilia.",
+        "href": "/trust"
+      },
+      {
+        "id": "auto-dispatch",
+        "title": "Taarifa na vikumbusho vinatumwa kiotomatiki.",
+        "body": "Taarifa za mmiliki hutumwa kwa ratiba na vikumbusho vya kodi iliyochelewa na kuisha kwa mkataba hutumwa kupitia WhatsApp, SMS, na barua pepe vikiwa na njia mbadala — bila kufuatilia kwa mkono.",
+        "href": "/pilot"
+      }
+    ]
+  },
+  "trust": {
+    "kicker": "Iliyoaminika katika mali ya Tanzania",
+    "logos": [
+      "BRELA",
+      "TRA",
+      "Regulator",
+      "NHC",
+      "Wakaguzi wa mali walioidhinishwa",
+      "M-Pesa · Tigo · Airtel"
+    ]
+  },
+  "stats": {
+    "kicker": "Kwa nambari",
+    "heading": "Nambari kutoka uendeshaji wa mapema.",
+    "sub": "Wiki 12 za maendeleo pamoja na waendeshaji wa mali Mikocheni, Masaki, na Mbezi. Takwimu kutoka telemetry hai, zinasasishwa kila wiki.",
+    "items": [
+      {
+        "label": "Mali zenye brain hai",
+        "value": "47",
+        "delta": "+12 robo hii"
+      },
+      {
+        "label": "Briefings zilizotolewa kabla ya 06:00",
+        "value": "1,284",
+        "delta": "99.4% kwa wakati"
+      },
+      {
+        "label": "Entries za audit-chain zilizoandikwa",
+        "value": "184k",
+        "delta": "0 mabadiliko"
+      },
+      {
+        "label": "Mfichuo wa kodi ya USD unaofuatiliwa",
+        "value": "TZS 4.2B",
+        "delta": "Mfano"
+      }
+    ],
+    "footnote": "Nambari zinasasishwa kutoka telemetry hai. Mfichuo unaofuatiliwa unawakilisha wave M3-M4; dashibodi inasasishwa kila wiki."
+  },
+  "finalCta": {
+    "kicker": "Tayari unapokuwa wewe",
+    "heading": "Acha kufuatilia dashibodi. Anza kuendesha mali.",
+    "sub": "Jisajiri na kuanzisha mali yako katika dakika. Wewe unaweka kasi ya autonomy — sisi tunatengeneza brain inayoshughulikia shughuli za usiku na audit chain inayoweka kila kitendo kwenye rekodi.",
+    "ctaPrimary": "Jisajiri",
+    "ctaSecondary": "Ingia",
+    "microcopy": "Anza kuandaa mali yako leo. Una akaunti tayari? Ingia."
+  },
+  "capabilities": {
+    "kicker": "Mifumo sita inayoendesha mali yako — si gumzo",
+    "heading": "Mfumo wa uendeshaji wa mali wenye AI ya asili.",
+    "sub": "Sio gumzo lililobandikwa kwenye karatasi ya kuhesabu. Mifumo sita iliyofungamana, kila moja ipo katika uzalishaji. Iliyojengwa kwa mali ya Tanzania kwanza, baadaye iliyojumuishwa kote.",
+    "cards": [
+      {
+        "name": "Mratibu wa AI wa watoa-huduma watatu",
+        "description": "Claude, OpenAI na DeepSeek wakichaguliwa kwa kazi. Opus kwa hoja za kina za mizozo ya mikataba, Haiku kwa uainishaji wa haraka, GPT-4 kwa uchimbaji wa data kutoka PDF."
+      },
+      {
+        "name": "Grafu hai ya maarifa ya mali",
+        "description": "Kila mali, mkataba, mpangaji, malipo na tiketi kama nodi zilizo na nyuzi za muda. Uliza kwa lugha ya kawaida; pata majibu yaliyotajwa yaliyojengwa kwa data yako halisi."
+      },
+      {
+        "name": "Utabiri wa mtiririko wa fedha",
+        "description": "Utabiri wa kodi kwa kila kitengo, kwa kila mwezi. Ishara ya mapema ya hatari ya kutolipa. Mfumo wa bajeti ya matengenezo wenye nyuzi zinazoeleweka."
+      },
+      {
+        "name": "Usalama wa kiwango cha biashara",
+        "description": "RLS kwenye kila jedwali la mteja, AES-256-GCM ya kuficha sehemu, ukaguzi wa hash-chain. PDPA na GDPR tayari. SOC 2 Type II kwenye ramani."
+      },
+      {
+        "name": "Sauti kwenye kila simu",
+        "description": "STT/TTS ya Kiswahili na Kiingereza, OpenAI Realtime kwa simu. Inafanya kazi kwenye simu za kawaida kupitia simu iliyopangwa pamoja na USSD. Mwl. Mwikila huzungumza kama Mtanzania."
+      },
+      {
+        "name": "Njia za malipo za asili",
+        "description": "M-Pesa, Airtel Money, Tigo Pesa, Stripe, NHC, BRELA na TRA kupitia MCP. Circuit-breaker, kujaribu tena na idempotency kwenye kila webhook."
+      }
+    ]
+  },
+  "how": {
+    "kicker": "02 · Inavyofanya kazi",
+    "heading": "Wiki yako ya kwanza. Hatua tatu.",
+    "steps": {
+      "one": {
+        "label": "Sign-up + KYB",
+        "title": "Jisajili na uthibitishe biashara yako.",
+        "body": "Tunaunganisha na BRELA, TRA, na NHC. KYB kamili ndani ya saa 48. Hakuna fomu za karatasi.",
+        "bullets": [
+          "BRELA · TRA · NHC APIs",
+          "KYB kamili ndani ya saa 48",
+          "Sw au En kuanzia siku ya kwanza"
+        ]
+      },
+      "two": {
+        "label": "Import",
+        "title": "Leta leseni na mali zako.",
+        "body": "Upload leseni za Individual Landlord/Portfolio Landlord/Institutional, michoro ya majengo, daftari za matengenezo. Grafu ya mali yako inajengwa otomatiki.",
+        "bullets": [
+          "Individual Landlord, Portfolio Landlord, Institutional upload na OCR",
+          "Michoro ya majengo kama GeoJSON au PDF",
+          "Daftari za ukaguzi kama CSV au PDF"
+        ]
+      },
+      "three": {
+        "label": "Master Brain",
+        "title": "Master Brain anachukua kazi.",
+        "body": "Anaanza kwa shadow mode kwa siku 14. Unaona kile angefanya. Halafu unaruhusu, hatua kwa hatua.",
+        "bullets": [
+          "Shadow mode kwa siku 14",
+          "Autonomy dial — wewe unaongeza kasi",
+          "Audit chain kwenye kila kitendo"
+        ]
+      }
+    }
+  },
+  "brief": {
+    "kicker": "03 · Briefing ya Asubuhi",
+    "heading": "Dakika yako ya kwanza saa 06:00.",
+    "sub": "Master Brain ameshughulikia shughuli za usiku. Hii ndio aliyofanya, alichoflagsha, na nambari zinasema nini.",
+    "demo": {
+      "greeting": "Habari za asubuhi, Mwl. Salim.",
+      "intro": "Mali ni shwari. Maamuzi matatu yanahitajika kabla ya 09:00.",
+      "stats": {
+        "overnightActions": "Vitendo vya usiku",
+        "decisions": "Maamuzi",
+        "goldOz": "Kodi (TZS)",
+        "cashTzs": "Hazina (TZS)"
+      },
+      "streamingLabel": "Streaming · usiku wa 25 Mei",
+      "lines": [
+        {
+          "time": "22:14",
+          "domain": "Mikocheni ghorofa · block B",
+          "body": "Block B imerekodi mauzo 18 na waingiaji wapya 4. Imehifadhiwa kwenye daftari la matengenezo MR-241.",
+          "tone": "good",
+          "tag": "OK"
+        },
+        {
+          "time": "23:47",
+          "domain": "Masaki vendor",
+          "body": "Vendor \"Kahama Facilities\" amechelewa malipo ya tiketi 12 za kazi. Imepelekwa kwa wewe kwa idhini ya extension.",
+          "tone": "warn",
+          "tag": "!"
+        },
+        {
+          "time": "01:33",
+          "domain": "Mkataba 0241/2023 · Mbezi",
+          "body": "Mkataba unaisha kwa siku 47. Regulator renewal form imeandaliwa kwa review yako.",
+          "tone": "warn",
+          "tag": "!"
+        },
+        {
+          "time": "03:05",
+          "domain": "Mfichuo wa FX · dirisha la BoT",
+          "body": "Dirisha la BoT USD/TZS limesogea 1.4% ndani ya saa 6. Mfichuo wa FX umealamishwa kwa unit 60 — noti ya muda wa malipo imeandaliwa kwa mapitio yako.",
+          "tone": "good",
+          "tag": "TX"
+        },
+        {
+          "time": "04:18",
+          "domain": "NHC compliance · Mbezi",
+          "body": "Quarterly safety-and-environment report imewasilishwa kwa NHC. Acknowledgement #2604-A.",
+          "tone": "good",
+          "tag": "OK"
+        },
+        {
+          "time": "05:42",
+          "domain": "Rent return · TRA",
+          "body": "Rent ya Aprili imeandaliwa: TZS 18.4M. Inahitaji saini yako kabla ya kupelekwa.",
+          "tone": "flag",
+          "tag": "YOU"
+        }
+      ]
+    }
+  },
+  "ask": {
+    "kicker": "04 · Ongea na Mali Yako",
+    "heading": "Uliza. Inajibu.",
+    "sub": "Sio chatbot. Ni mali yenyewe ikiongea katika nafsi ya kwanza, kutoka kwa grafu yake ya maarifa, na nukuu zinazoweza kubofya.",
+    "question": "Cash runway yangu ni nini?",
+    "answerPlan": [
+      "Pata mizania ya TZS kwenye bank accounts zote",
+      "Pata rent receivables na live BoT spot",
+      "Pata burn rate ya wiki 4 zilizopita"
+    ],
+    "answer": "Una TZS 412M mkononi na rent receivables za TZS 1.18B kwa viwango vya leo. Burn ya wiki 4 zilizopita ni TZS 87M/wiki. Hiyo inakupa runway ya wiki 18.3 — au wiki 22 kama tenancy ya Mikocheni ya Februari ikitimia kwa wakati.",
+    "evidence": "Ushahidi: TRA bank-feed · BoT spot · tenancy MR-241",
+    "showcase": {
+      "kicker": "Ongea na mali yako",
+      "title": "Mimi ni mali.",
+      "subtitle": "Nafsi ya kwanza · imetakwa kwa grafu ya maarifa",
+      "youAsked": "Uliuliza",
+      "plan": "Mpango · streaming",
+      "answerLabel": "Jibu"
+    }
+  },
+  "autonomy": {
+    "kicker": "05 · Autonomy Dial",
+    "heading": "Kasi yako, sio yetu.",
+    "sub": "Ngazi nne za uhuru. Kila ngazi inaeleweka. Hakuna chochote kinachofanyika bila idhini yako mpaka ukubali.",
+    "levels": {
+      "advise": "Inashauri tu. Wewe unafanya kazi.",
+      "propose": "Inaandaa drafts. Wewe unatuma.",
+      "executeWithApproval": "Inafanya kazi kwa kibali chako kwa kila hatua.",
+      "autonomous": "Inafanya kazi peke yake ndani ya sera yako. Red-lines bado vinahitaji kibali."
+    },
+    "labels": {
+      "dialLabel": "Ngazi ya uhuru",
+      "steps": [
+        "Shauri",
+        "Andaa",
+        "Tekeleza kwa idhini",
+        "Otomatiki"
+      ],
+      "redLineKicker": "Mstari mwekundu",
+      "redLineBody": "Master Brain haweti kamwe rent TRA peke yake, hatumi NHC compliance peke yake, na hapangi units zaidi ya 200 kwa pamoja bila idhini ya mtumiaji. Si kwa ngazi yoyote.",
+      "redLineTag": "Mstari mwekundu · siyo otomatiki",
+      "autonomousTag": "Otomatiki kwenye ngazi hii",
+      "unlocksAtL": "Inafunguliwa L"
+    },
+    "capabilities": [
+      {
+        "id": "price",
+        "label": "Andika daily price brief",
+        "minLevel": 0
+      },
+      {
+        "id": "shift",
+        "label": "Toa shift handover report",
+        "minLevel": 1
+      },
+      {
+        "id": "vendor",
+        "label": "Lipa vendor PO ndogo (< TZS 5M)",
+        "minLevel": 2
+      },
+      {
+        "id": "fx-flag",
+        "label": "Alamisha dirisha la mfichuo wa FX",
+        "minLevel": 2
+      },
+      {
+        "id": "renewal",
+        "label": "Wasilisha Individual Landlord renewal NHC",
+        "minLevel": 99
+      },
+      {
+        "id": "rent",
+        "label": "Wasilisha rent TRA",
+        "minLevel": 99
+      },
+      {
+        "id": "nhc",
+        "label": "Wasilisha NHC compliance filing",
+        "minLevel": 99
+      },
+      {
+        "id": "sale",
+        "label": "Uza nyumba > 200 vitengo",
+        "minLevel": 99
+      }
+    ]
+  },
+  "chain": {
+    "kicker": "06 · Audit Chain",
+    "heading": "Kila kitendo kimerekodiwa kwa cryptography.",
+    "sub": "Append-only log ikiwa na SHA-256 prev-hash na HMAC kwa kila entry. NHC, NHC, na auditors wanaweza kuthibitisha bila kutuamini sisi.",
+    "fragmentHeader": "Chain fragment · thread th_18a · entries 4 za mwisho",
+    "verifiedLabel": "Imehakikishwa",
+    "depthFooter": "Chain depth: entries 18,429 · last signed 00:04 UTC · NHC-exportable NDJSON bundle",
+    "fragment": [
+      {
+        "seq": 18426,
+        "at": "06:02:11",
+        "actor": "user · owner",
+        "decision": "imependekezwa",
+        "decisionTone": "signal",
+        "action": "property.user_message · hash sha256:7b3a…e91",
+        "prev": "9f…c2",
+        "hash": "3a…e91",
+        "sig": "hmac:4f…22"
+      },
+      {
+        "seq": 18427,
+        "at": "06:02:12",
+        "actor": "master_brain",
+        "decision": "imependekezwa",
+        "decisionTone": "signal",
+        "action": "property.plan · hatua 3",
+        "prev": "3a…e91",
+        "hash": "8c…d04",
+        "sig": "hmac:1a…9b"
+      },
+      {
+        "seq": 18428,
+        "at": "06:02:14",
+        "actor": "master_brain",
+        "decision": "imetekelezwa",
+        "decisionTone": "success",
+        "action": "property.tool.graph_lookup · rent_receivable=TZS1.18B",
+        "prev": "8c…d04",
+        "hash": "b1…7ae",
+        "sig": "hmac:5d…c1"
+      },
+      {
+        "seq": 18429,
+        "at": "06:02:15",
+        "actor": "master_brain",
+        "decision": "imetekelezwa",
+        "decisionTone": "success",
+        "action": "property.turn_done · 3.8s · nukuu 3 · artifact 0",
+        "prev": "b1…7ae",
+        "hash": "2e…440",
+        "sig": "hmac:9e…88"
+      }
+    ],
+    "guarantees": [
+      {
+        "kicker": "Inathibitishika",
+        "title": "SHA-256 chain · HMAC kwa kila entry",
+        "body": "Kila row ina prev-hash pointer pamoja na HMAC signature. Kuchezea entry yoyote kunavunja kila signature baada yake. Export, hakikisha offline."
+      },
+      {
+        "kicker": "Ufichuzi mdogo",
+        "title": "Maudhui ya mtumiaji yamehashika, hayajahifadhiwa",
+        "body": "NHC wanaweza kuthibitisha kuwa uliuliza X kwa wakati T bila kufichua X tena. Ujumbe wenyewe upo kwenye memory ya conversation; chain ina provenance peke yake."
+      },
+      {
+        "kicker": "Imegawanyika",
+        "title": "Tenant chain · Platform chain — havichanganyiki",
+        "body": "Per-tenant audit chains ni huru kabisa. Platform-scope queries hutua kwenye platform chain iliyotengwa. Cross-scope probes hurudi empty, hazifichui existence."
+      }
+    ]
+  },
+  "loopValidator": {
+    "kicker": "07 · Pengo la OODA Loop validator",
+    "heading": "Validator iliyokuwa imekosekana kwenye OODA Loop — imefungwa kwa muundo.",
+    "sub": "BossNyumba inatoa quality-gate validator ambayo karatasi ya IEEE Spectrum + Snyk inasema agentic AI haina. Kila hatua ambayo Mr. Mwikila anapendekeza inapita ukaguzi wa milango mitano kabla ya kuandikwa, kuarifu, au kuandika nje.",
+    "paper": {
+      "kicker": "Ugunduzi · IEEE Spectrum + Snyk · 2026",
+      "title": "Tatizo la OODA Loop kwenye Agentic AI",
+      "finding": "Agents zinazoendesha Observe → Orient → Decide → Act kwa mwendo wa mashine bila validator wazi kati ya Decide na Act hazikuzi thamani — zinakuza makosa. Suluhisho ni layer ya polepole, wazi, ya validating kati ya uamuzi na kitendo.",
+      "quote": "Mizunguko ya haraka inayopelekea maamuzi mabaya pale validator inapokosekana.",
+      "attribution": "Utafiti wa IEEE Spectrum + Snyk · 2026",
+      "linkLabel": "Soma makala ya IEEE Spectrum"
+    },
+    "response": {
+      "kicker": "Jibu la BossNyumba · Layer 4",
+      "title": "Milango mitano ya lazima. AND-combined. Hakuna njia ya kuruka.",
+      "body": "Mr. Mwikila anapitisha kila uamuzi kupitia package ya @bossnyumba/loop-quality-gates kabla haujafika kwenye tool inayogusa dunia. Composite gate inaendesha milango yote mitano sambamba na AND-merge majibu — kushindwa moja kunasimamisha loop.",
+      "gates": [
+        {
+          "id": "groundedness",
+          "name": "Mlango wa Groundedness",
+          "blurb": "Kila madai ya kweli yanaonyesha EvidenceItem halisi yenye URL au reference ya system-of-record."
+        },
+        {
+          "id": "calibration",
+          "name": "Mlango wa Calibration",
+          "blurb": "Confidence iliyodaiwa inalingana na usahihi wa kihistoria. Lebo zenye kujiamini kupita kiasi zinashushwa au kukataliwa."
+        },
+        {
+          "id": "brand",
+          "name": "Mlango wa Brand",
+          "blurb": "Mr. Mwikila anabaki kwenye sauti yake. Design tokens pekee. Hakuna kupotea kwa persona, hakuna hex mbichi."
+        },
+        {
+          "id": "authority",
+          "name": "Mlango wa Authority",
+          "blurb": "Tier ya kitendo lazima iwe ndani ya authority iliyopewa loop. T2-Critical mutations zinaelekezwa kwa binadamu."
+        },
+        {
+          "id": "budget",
+          "name": "Mlango wa Budget",
+          "blurb": "ε-budget iliyobaki (tokens, wall-clock, tool calls) inabaki si-hasi baada ya kitendo kilichopendekezwa."
+        }
+      ]
+    },
+    "diagram": {
+      "kicker": "5-layer loop · validator gate inaonekana kati ya Decide na Act",
+      "legend": "OKLCH iliyobaniwa · hakuna hex",
+      "stages": [
+        "Observe",
+        "Orient",
+        "Decide",
+        "Act"
+      ],
+      "validatorLabel": "Quality Gates",
+      "gapLabel": "Pale IEEE + Snyk walisema validator inakosekana",
+      "closedByDesignLabel": "Imefungwa kwa muundo",
+      "flowLabel": "Loop inarudi Observe — kila mzunguko unathibitishwa upya",
+      "caption": "Observe, Orient, na Decide vinabaki kwenye mwendo wa mashine. Layer ya Quality Gates inapunguza kasi tu vya kutosha kuthibitisha groundedness, calibration, brand, authority, na budget — kisha Act inafuata. Kushindwa kunarudi kwenye learning, sio kwenye dunia."
+    },
+    "links": {
+      "spec": "Soma spec ya 5-layer loop architecture",
+      "snyk": "Utafiti wa Snyk",
+      "ieee": "Makala ya IEEE Spectrum"
+    }
+  },
+  "pricing": {
+    "kicker": "08 · Bei",
+    "heading": "Bei wazi. Hakuna mshangao.",
+    "sub": "Tiers tano. Lipa kila mwezi kwa TZS. Anza Mwanzo bure. Kuza unapokuwa tayari.",
+    "perMonth": "kwa mwezi",
+    "freeForever": "bure milele",
+    "bespoke": "Tuwasiliane",
+    "ctaStart": "Anza Mwanzo",
+    "ctaPilot": "Anza sasa",
+    "ctaTalk": "Ongea na timu",
+    "mostChosenBadge": "Wengi",
+    "footnote": "Bei zote katika TZS. Inaweza kulipwa kwa M-Pesa, Tigo Pesa, Airtel Money, au bank transfer."
+  },
+  "testimonial": {
+    "kicker": "09 · Sauti za Mapema",
+    "heading": "Quotes kutoka waendeshaji wa mapema.",
+    "sub": "Tunafanya kazi na waendeshaji wa mali katika Mikocheni, Masaki, na Mbezi ambao wanaendeshwa na BossNyumba. Hapa kile wanachosema.",
+    "placeholderBadge": "Waendeshaji wa mapema",
+    "cards": [
+      {
+        "name": "Joyce Mhagama",
+        "initials": "JM",
+        "role": "Mmiliki · Mikocheni Individual Landlord · mali 4",
+        "placeholder": "Quote inakuja kutoka waendeshaji wetu wa mapema."
+      },
+      {
+        "name": "Hamisi Ngao",
+        "initials": "HN",
+        "role": "Mwenyekiti · Mbezi housing co-op · members 18",
+        "placeholder": "Quote ya pilot itapatikana baada ya wiki 12 za uendeshaji wa moja kwa moja na Master Brain."
+      },
+      {
+        "name": "Asha Mwakajila",
+        "initials": "AM",
+        "role": "CFO · Masaki property group · mali 9",
+        "placeholder": "Quote ya pilot itapatikana baada ya wiki 12 za uendeshaji wa moja kwa moja na Master Brain."
+      }
+    ]
+  },
+  "home": {
+    "frontierBanner": {
+      "kicker": "Toleo la mpaka",
+      "title": "Mfumo wa uendeshaji wa mali ndio mpaka.",
+      "titleAccent": "BossNyumba ndio mfumo wa uendeshaji.",
+      "sub": "Imejengwa kwa soko ambapo mtiririko wa kazi wenyewe haujadijitishwa bado. Sio CRM. Sio lahajedwali. Ni ubongo unaoendesha mali."
+    },
+    "problemSolution": {
+      "kicker": "Pengo tunalofunga",
+      "title": "Usimamizi wa mali,",
+      "titleAccent": "kutoka sambamba hadi mfumo.",
+      "subOne": "Waendeshaji wengi wa mali — kuanzia mwenye nyumba mmoja hadi mfuko wa kitaifa — wanaendesha mali zao kwa njia ile ile waliyofanya miaka 30 iliyopita. Vifaa vilibadilisha jina; mtiririko wa kazi haukubadilika.",
+      "subTwo": "BossNyumba ni mfumo wa uendeshaji unaoweka hatimaye mali yote — kila mkataba, kila mpangaji, kila shilingi — chini ya ubongo mmoja.",
+      "problem": {
+        "title": "Tatizo la leo",
+        "items": [
+          {
+            "title": "Shughuli zilizotenganishwa",
+            "desc": "Mikataba kwenye Word, kodi kwenye Excel, matengenezo kwenye WhatsApp, ushuru kwenye folda. Kila mwendeshaji, kuanzia mwenye nyumba wa kitengo kimoja hadi timu ya mali ya mfuko, anaunganisha tena mtiririko ule ule kila mwezi."
+          },
+          {
+            "title": "Maeneo yasiyoonekana ya mtiririko wa fedha",
+            "desc": "Unaona tu kilicholipwa baada ya tukio. Hakuna onyo la mapema kwamba Kitengo 5 kinakaribia kushindwa kulipa."
+          },
+          {
+            "title": "Mzigo wa utii",
+            "desc": "NHC, BRELA na TRA wote wanahitaji data ile ile katika maumbo tofauti. Wamiliki wanalipia wahasibu kukusanya kile ambacho kingepaswa kuwepo tayari."
+          },
+          {
+            "title": "Wapangaji wasioonekana",
+            "desc": "Wapangaji wengi ni wazuri. Wachache si. Bila historia, kila uchunguzi unaanza kutoka sifuri. Wapangaji wabaya wanagharimu mfumo."
+          }
+        ]
+      },
+      "solution": {
+        "title": "BossNyumba inafanya nini",
+        "items": [
+          {
+            "title": "Ubongo mmoja wa mali unaoendesha",
+            "desc": "Mkataba, kodi, matengenezo, hazina, utii, milki na daftari la mali — mfumo mmoja, chanzo kimoja cha ukweli. Mwl. Mwikila daima anaona picha kamili."
+          },
+          {
+            "title": "Kila malipo, kila ahadi, vimekaguliwa",
+            "desc": "Leja ya hash-chain. Inaweza kurudishwa tu kwa ingizo la kupinga. Upatanisho wa kiwango cha benki. Wadhibiti wanaweza kuthibitisha mstari wowote bila wewe kuhusika."
+          },
+          {
+            "title": "AI inayoomba idhini ipasavyo",
+            "desc": "Mwl. Mwikila ni mshirika tulivu — anaandaa kurefusha, taarifa ya kuondoa, kuwasilisha BRELA, na kusubiri wewe kusaini. Hatendi kamwe kwa mamlaka yake mwenyewe."
+          },
+          {
+            "title": "Imejengwa kwa Tanzania kwanza",
+            "desc": "M-Pesa, Airtel Money, Kiswahili-kwanza. Kisha Kenya, Uganda, Afrika Mashariki yote. Mfumo ule ule wa uendeshaji, unaotambua sheria za nchi."
+          }
+        ]
+      }
+    },
+    "ecosystem": {
+      "kicker": "Mamlaka · masoko · njia",
+      "title": "Tayari imeunganishwa na M-Pesa, BRELA, TRA na mafundi wako.",
+      "titleAccent": "Mifumo ambayo Tanzania tayari inaamini.",
+      "sub": "BossNyumba inafanya kazi kupitia njia za malipo, mamlaka, na masoko ambayo mwendeshaji tayari anashughulika nayo. Hakuna portal mpya za kujifunza — ukusanyaji wa kodi, taarifa, na mauzo ya utii vinapita kupitia mifumo ambayo Tanzania tayari inaamini.",
+      "categories": [
+        {
+          "title": "Mamlaka",
+          "items": [
+            {
+              "name": "Regulator",
+              "desc": "Property Registry · rent returns, mzunguko wa Individual Landlord/Portfolio Landlord/Institutional"
+            },
+            {
+              "name": "NHC",
+              "desc": "National Housing Corporation · compliance, taarifa za usalama za robo mwaka, audit pack"
+            },
+            {
+              "name": "Bank of Tanzania",
+              "desc": "Dirisha la USD-cliff, malipo ya dirisha la FX, BoT fix"
+            },
+            {
+              "name": "TRA",
+              "desc": "Mamlaka ya Mapato · rent, VAT, PAYE, withholding"
+            },
+            {
+              "name": "BRELA",
+              "desc": "Usajili wa biashara · KYB, wakurugenzi, hisa"
+            },
+            {
+              "name": "GST",
+              "desc": "Tanzania Land Survey Service · ulodgement wa upimaji wa kiwanja + ukaguzi"
+            }
+          ]
+        },
+        {
+          "title": "Masoko & wakaguzi",
+          "items": [
+            {
+              "name": "BoT FX desk",
+              "desc": "Bank of Tanzania · dirisha la marejeleo ya FX kwa kodi ya fedha za kigeni"
+            },
+            {
+              "name": "East-African REIT Council",
+              "desc": "Uthibitishaji wa daraja la jengo na viwango vya thamani"
+            },
+            {
+              "name": "Regulator",
+              "desc": "Rejista ya Individual Landlord/Portfolio Landlord/Institutional · uhamishaji, urejeshaji, rekodi za umma"
+            }
+          ]
+        },
+        {
+          "title": "Njia za malipo",
+          "items": [
+            {
+              "name": "M-Pesa",
+              "desc": "Vodacom · malipo ya wauzaji, mishahara, supplier float"
+            },
+            {
+              "name": "Tigo Pesa",
+              "desc": "Yas Tanzania · vendor wallet, malipo, B2C"
+            },
+            {
+              "name": "Airtel Money",
+              "desc": "Bharti Airtel · cross-border float, mtandao wa agents"
+            }
+          ]
+        }
+      ]
+    },
+    "universalAccess": {
+      "kicker": "Lugha mbili · vifaa vingi · majukumu mengi",
+      "title": "Kila artifact kwa Kiswahili kwanza.",
+      "titleAccent": "Kiingereza kwa kubofya.",
+      "sub": "Kila msimamizi kwenye simu. Kila mmiliki kwenye tablet. Kila mamlaka kwenye desktop. BossNyumba ndiyo mfumo pekee wa mali unaoletwa katika lugha za kazi za Tanzania kuanzia mstari wa kwanza wa kila skrini.",
+      "cards": [
+        {
+          "title": "Kiswahili-kwanza by default",
+          "body": "Kila lebo, kila brief, kila artifact ya mamlaka inakuja kwa Kiswahili. Kiingereza ni mbofyo mmoja. Hakuna kuchelewa kwa tafsiri — bendera ya lugha inageuka na UI yote inafuata, ikiwa ni pamoja na PDF zilizosainiwa."
+        },
+        {
+          "title": "Simu uwandani, kombora ofisini",
+          "body": "Wasimamizi wanaendesha zamu kutoka simu — biometric clock-in, kumbukumbu za huduma, taarifa za matukio. Wamiliki wanapitia kwa tablet — muhtasari wa kila siku, hazina, kalenda ya leseni. Data sawa, surface sahihi."
+        },
+        {
+          "title": "Desktop kwa mamlaka",
+          "body": "Regulator, NHC, TRA, na wateja wa audit-pack wanapata desktop console na export ya bofyo moja kwenda NDJSON, iliyosainiwa kicryptographically na inayothibitishika offline."
+        }
+      ]
+    },
+    "mwikilaModes": {
+      "kicker": "Kutana na Mwl. Mwikila",
+      "title": "Modes saba, brain moja inayotawaliwa.",
+      "titleAccent": "Bofya tabs kuwaona kazini.",
+      "sub": "Mwl. Mwikila ni Meneja wa Uendeshaji wa Mali wa AI wa BossNyumba. Anabadilika na wakati — anakujengea brief saa 06:00, anakusanya kodi kupitia M-Pesa kwa idhini ya gusa-moja ya mpangaji, na anaandaa taarifa zako kwa idhini yako. Chagua mode kuona anavyofanya.",
+      "modes": [
+        {
+          "id": "build",
+          "label": "Jenga",
+          "headline": "Anasimamisha real estate knowledge graph kwa saa 48",
+          "capabilities": [
+            "Anaingiza leseni za Individual Landlord/Portfolio Landlord/Institutional kwa OCR na anazifuatilia dhidi ya rejista ya Regulator",
+            "Anaingiza michoro ya majengo kama GeoJSON au PDF na anaunganisha kila tiketi ya matengenezo na unit",
+            "Anajenga rejista za vendor, tenant, na worker kutoka rekodi za M-Pesa na payroll",
+            "Anatoa kila mwanachama wa timu credential ya jukumu — owner, meneja, msimamizi, mfanyakazi"
+          ]
+        },
+        {
+          "id": "strategy",
+          "label": "Mkakati",
+          "headline": "Anaona mwelekeo wa muda mrefu — mali, hazina, wapangaji, soko",
+          "capabilities": [
+            "Anasimulia mapato ya kodi ya miezi 12 dhidi ya hali tatu za upangaji",
+            "Anakadiria cash runway kutoka kiwango cha burn cha sasa na pipeline ya upangaji",
+            "Anaalamisha urejeshaji wa mikataba siku 90, 60, na 30 mbele na drafts za Regulator zikiwa tayari",
+            "Anapendekeza fleet, contractor, na ununuzi wa vifaa dhidi ya mpango wa robo"
+          ]
+        },
+        {
+          "id": "operations",
+          "label": "Uendeshaji",
+          "headline": "Anaendesha siku kutoka lango la jengo hadi ofisi ya nyuma",
+          "capabilities": [
+            "Anaendesha zamu, daftari za huduma, na ripoti za matukio kutoka simu ya msimamizi",
+            "Anaweka kila tiketi ya matengenezo, ukaguzi, na measurement ya ukaguzi-hali kwenye chain",
+            "Anafuatilia matumizi ya huduma, vifaa, na zana dhidi ya units za mali",
+            "Anaonyesha matukio ya usiku, near-misses, na downtime ya vifaa ifikapo saa 06:00"
+          ]
+        },
+        {
+          "id": "document",
+          "label": "Nyaraka",
+          "headline": "Anaandika kila artifact — rent, NHC compliance, OSHA log",
+          "capabilities": [
+            "Drafts za rent za Regulator kwa muundo rasmi kila mwezi",
+            "NHC compliance na taarifa za usalama za robo mwaka templates zinazojazwa kutoka telemetry",
+            "OSHA shift log, incident report, na corrective-action notes",
+            "Mikataba ya upangaji na ya kuongeza muda inaandaliwa kwa idhini yako ya gusa-moja"
+          ]
+        },
+        {
+          "id": "finance",
+          "label": "Fedha",
+          "headline": "Anaandika kila shilingi, anakulipa, anaandaa kodi",
+          "capabilities": [
+            "Anaandika kila malipo ya kodi kwenye leja iliyosawazishwa ya double-entry na anamlipa mmiliki kwa ratiba",
+            "Anafuatilia mizani ya TZS · USD, kila kiasi kikionyeshwa kwa sarafu yake",
+            "Anaandaa returns za VAT, PAYE, na za mapato ya kodi (MRI / ERITS); kwa idhini yako, anaziwasilisha kupitia mtiririko ulioidhinishwa na macho-manne, wenye mnyororo wa ukaguzi",
+            "Analipa vendor wallets kupitia M-Pesa, Tigo Pesa, na Airtel Money"
+          ]
+        },
+        {
+          "id": "risk",
+          "label": "Hatari",
+          "headline": "Lango tano kati ya kila uamuzi na dunia",
+          "capabilities": [
+            "Groundedness gate — kila madai inataja evidence artifact",
+            "Calibration gate — confidence labels zinalingana na usahihi wa historia",
+            "Brand gate — Mwl. Mwikila anabaki katika voice, hapotezi",
+            "Authority + budget gates — tier na ε-budget zinatekelezwa kabla ya tool call yoyote"
+          ]
+        },
+        {
+          "id": "utii",
+          "label": "Utii",
+          "headline": "Hash-chain audited ili mamlaka kamwe haina haja ya kutuamini",
+          "capabilities": [
+            "Append-only audit chain — SHA-256 prev-hash plus per-entry HMAC",
+            "Kutengwa kwa kila tenant — chain yako kamwe haichanganyiki na mtu mwingine",
+            "Disclosure ndogo — user content ina hashed, sio hifadhiwa, kwenye chain",
+            "Regulator-exportable NDJSON bundle, inathibitishika offline"
+          ]
+        }
+      ]
+    },
+    "interactiveModes": {
+      "kicker": "Jinsi unavyozungumza na BossNyumba",
+      "title": "Milango mitatu kwa ubongo huo huo.",
+      "titleAccent": "Chagua moja inayofaa wakati.",
+      "sub": "BossNyumba iko kila mahali mmiliki wa mali anapomhitaji: kwenye ukurasa wa marketing unapomtathmini, kwenye home screen unapomjifunza, na kwenye gari ambapo huwezi kuangalia skrini.",
+      "modes": [
+        {
+          "id": "marketing",
+          "title": "Marketing chat",
+          "subtitle": "Inauza",
+          "desc": "Chat unayoitumia sasa hivi. Mwl. Mwikila anajibu maswali yako kuhusu bei, mamlaka, na ratiba — na anakuongeza kusajiri ukiwa tayari.",
+          "preview": {
+            "user": "BossNyumba inafanya nini kwa mmiliki wa mali wa Mikocheni?",
+            "ai": "Anaandaa rent yako ya Regulator kwa muundo rasmi, anaonyesha hatari yako ya FX kwenye dirisha la BoT, anaendesha staff roster yako kwa simu ya msimamizi. Ungependa kuona jinsi Jumatano halisi saa 06:00 inavyoonekana?"
+          }
+        },
+        {
+          "id": "home",
+          "title": "Home chat",
+          "subtitle": "Inafundisha",
+          "desc": "Ukiwa ndani ya BossNyumba, home chat inakufundisha mfumo. Uliza kuhusu kalenda ya mikataba, autonomy dial, au jinsi rent inavyowasilishwa — anajibu kwa kutaja data yako.",
+          "preview": {
+            "user": "Naongeza vipi mkataba mpya?",
+            "ai": "Fungua kalenda ya mikataba, bofya +Property, scan cover ya mkataba kwa simu yako. OCR itajaza fields za Regulator. Nitaalamisha field yoyote isiyolingana na rejista."
+          }
+        },
+        {
+          "id": "voice",
+          "title": "Sauti",
+          "subtitle": "Mikono-huru",
+          "desc": "Garini kati ya mali. Kwenye duru ya huduma. Lango la jengo ambapo mikono yote miwili imeshikwa. Bofya mic, ongea, na BossNyumba anajibu kwa Kiswahili au Kiingereza.",
+          "preview": {
+            "user": "Mwikila, ni gani limetokea usiku?",
+            "ai": "Block B imerekodi mauzo 18 na waingiaji wapya 4. Gari moja la huduma limepoteza saa mbili kwa breakdown. Hakuna ajali. Rent ya Aprili iko tayari kusainiwa."
+          }
+        }
+      ]
+    },
+    "platformShowcase": {
+      "kicker": "Surfaces tatu za bidhaa, OS moja",
+      "title": "Brain moja iliyokaguliwa kwenye cockpit ya mmiliki, app ya uwandani, na soko la mpangaji.",
+      "titleAccent": "Kwenye kila skrini mali unayohitaji.",
+      "sub": "Owner Cockpit, Wafanyakazi Mobile, na Tenant Soko ni madirisha matatu kwa fabric moja ya data iliyokaguliwa. Mmiliki anaendesha biashara. Msimamizi anaendesha zamu. Mpangaji anatafuta unit.",
+      "tiles": [
+        {
+          "title": "Owner Cockpit",
+          "subtitle": "Tablet · desktop · skrini 22",
+          "desc": "Muhtasari wa kila siku, kalenda ya mikataba, hazina, daftari la matengenezo, utii pack. Surface ya amri ya kistratejia kwa mmiliki wa mali.",
+          "mockType": "kpi",
+          "kpis": [
+            {
+              "label": "Kodi iliyokusanywa mwezi huu",
+              "value": "TZS 184M"
+            },
+            {
+              "label": "Cash runway (wks)",
+              "value": "18.3"
+            },
+            {
+              "label": "Siku za renewal ya mkataba",
+              "value": "47"
+            }
+          ]
+        },
+        {
+          "title": "Wafanyakazi Mobile",
+          "subtitle": "Simu · skrini 47 · jukumu-lock",
+          "desc": "Daftari za zamu, tiketi za matengenezo, usomaji wa huduma, ripoti za matukio. App ya uwandani ambayo msimamizi anatumia kila zamu.",
+          "mockType": "shift",
+          "rows": [
+            {
+              "label": "Zamu B · unit ya mali 4",
+              "value": "mauzo 18",
+              "tone": "good"
+            },
+            {
+              "label": "Mafuta · diesel",
+              "value": "412 L",
+              "tone": "warn"
+            },
+            {
+              "label": "Incidents",
+              "value": "0",
+              "tone": "good"
+            }
+          ]
+        },
+        {
+          "title": "Tenant Soko",
+          "subtitle": "Web · simu · skrini 12",
+          "desc": "Wamiliki wa KYB-verified, matangazo yaliyokaguliwa, weka zabuni au RFB, pakia KYC yako. Soko ya wapangaji wanaotafuta mali ya Tanzania yaliyothibitishwa.",
+          "mockType": "market",
+          "listings": [
+            {
+              "label": "Mikocheni ghorofa · units 60",
+              "value": "TZS 142M",
+              "tone": "live"
+            },
+            {
+              "label": "Mwanza jengo la ofisi · Block-D",
+              "value": "TZS 88M",
+              "tone": "live"
+            },
+            {
+              "label": "Arusha block · ekari 2.4",
+              "value": "TZS 56M",
+              "tone": "live"
+            }
+          ]
+        }
+      ]
+    },
+    "bento": {
+      "kicker": "BossNyumba kwa muhtasari",
+      "title": "Tiles tano, mwendeshaji mmoja mtulivu.",
+      "titleAccent": "Kazi, ikionekana.",
+      "sub": "Features nzito za BossNyumba zimewekwa kwenye grid moja isiyo na uwiano. Kila tile ni sehemu halisi ya mfumo wa uendeshaji — sio mchoro wa marketing.",
+      "tiles": [
+        {
+          "id": "audit",
+          "title": "Audit chain",
+          "desc": "Kila hatua Mwl. Mwikila anayopendekeza inatua kwenye log ya SHA-256 hash-chained, HMAC-signed, append-only. Regulator, NHC, na mkopeshaji wako wanathibitisha offline, hakuna kuamini kunahitajika.",
+          "badge": "Kicryptographically"
+        },
+        {
+          "id": "leseni",
+          "title": "Radar ya mkataba ya siku 47",
+          "desc": "Individual Landlord, Portfolio Landlord, Institutional kwenye kalenda moja na onyo la siku 90, 60, 30, na 14 za kuisha. Regulator renewal pack inaandikwa kiotomatiki siku radar inayopinduka njano.",
+          "badge": "Hai sasa"
+        },
+        {
+          "id": "disbursement",
+          "title": "Malipo ya mmiliki kwa ratiba",
+          "desc": "Kodi iliyokusanywa inalipwa kwa mmiliki kiotomatiki kwa ratiba ya kila siku, wiki, au mwezi kupitia M-Pesa B2C — kila malipo yanaandikwa kwenye leja ya double-entry na kusainiwa kwenye chain ya audit.",
+          "badge": "Hazina"
+        },
+        {
+          "id": "rent",
+          "title": "Regulator rent",
+          "desc": "Rent ya kila mwezi inaandikwa kwa muundo rasmi wa Regulator siku inayofuata dirisha la malipo kufungwa. Saini moja, audit chain kamili.",
+          "badge": "Auto-draft"
+        },
+        {
+          "id": "wallet",
+          "title": "M-Pesa vendor wallet",
+          "desc": "Lipa wauzaji, contractors, na vibarua kupitia M-Pesa, Tigo Pesa, na Airtel Money. Kila malipo yamesainiwa kwa audit chain, ledger imepatanishwa usiku.",
+          "badge": "Mobile money"
+        }
+      ]
+    },
+    "insights": {
+      "kicker": "Uthibitisho, kwa muundo",
+      "title": "Uthibitisho si namba inayohesabu.",
+      "titleAccent": "Ni jinsi vitabu vinavyojengwa.",
+      "sub": "BossNyumba haikuombi uamini namba ya dashboard. Kila malipo ya kodi yanaandikwa kwenye leja ya double-entry isiyobadilika ambayo huongezwa tu kwa muundo wake — hivyo idadi ya rekodi zilizoharibiwa ni, na inabaki, sifuri.",
+      "statsHeading": "Uthibitisho, kwa muundo",
+      "stats": [
+        {
+          "value": 0,
+          "suffix": "",
+          "label": "Mabadiliko kwenye leja isiyobadilika ya double-entry — kila malipo ya kodi yameandikwa, yamesawazishwa, na huongezwa tu kwa muundo wake."
+        }
+      ],
+      "quotesHeading": "Kinachofanya kazi leo",
+      "quotes": [
+        {
+          "body": "Kodi inakusanywa kupitia M-Pesa kwa idhini ya gusa-moja ya mpangaji, inaandikwa kwenye leja iliyosawazishwa ya double-entry, na inalipwa kwa mmiliki kiotomatiki kwa ratiba yake.",
+          "name": "Kusanya, andika, lipa",
+          "role": "services/payments-ledger"
+        },
+        {
+          "body": "Taarifa za kila mwezi za mmiliki zinatengenezwa na kutumwa kiotomatiki, huku vikumbusho vya kodi iliyochelewa na kuisha kwa mkataba vikitumwa kupitia WhatsApp, SMS, na barua pepe vikiwa na njia mbadala.",
+          "name": "Taarifa + vikumbusho",
+          "role": "Kutuma kiotomatiki kwa ratiba"
+        },
+        {
+          "body": "Mauzo ya utii na ya mamlaka yanaandikwa kwenye mnyororo wa ukaguzi wa SHA-256 ulioongezwa tu ambao mkopeshaji au mdhibiti wako anaweza kuthibitisha nje ya mtandao — bila kuhitaji uaminifu.",
+          "name": "Mauzo tayari kwa ukaguzi",
+          "role": "Utii wenye mnyororo wa hash"
+        }
+      ]
+    },
+    "roadmap": {
+      "kicker": "Roadmap · kinachofuata",
+      "title": "Endesha mali yako kwa otomatiki.",
+      "titleAccent": "Hapa mwaka unaokuja.",
+      "sub": "BossNyumba inaleta katika mawimbi. Tunalipanua uendeshaji mnamo 2026 ukiwa na uwezo mpya minne. Kila pill chini inaonyesha robo; kila moja inakwenda kwenye audit fabric hiyo hiyo ya hash-chained.",
+      "pills": [
+        {
+          "label": "Q1 2026",
+          "title": "Waendeshaji wa mapema — mali kumi hai",
+          "tone": "active"
+        },
+        {
+          "label": "Q2 2026",
+          "title": "Radar ya mikataba — pre-fill ya siku 47",
+          "tone": "next"
+        },
+        {
+          "label": "Q3 2026",
+          "title": "Vendor wallet — M-Pesa · Tigo · Airtel",
+          "tone": "later"
+        },
+        {
+          "label": "Q4 2026",
+          "title": "Tenant soko — public beta",
+          "tone": "later"
+        }
+      ],
+      "ctaPrimary": "Anza sasa",
+      "ctaSecondary": "Ongea na binadamu",
+      "microcopy": "Jisajiri na kuanzisha mali yako leo. Unabaki na data yako."
+    }
+  },
+  "footer": {
+    "tagline": "Mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Mr. Mwikila ni safu yake ya akili.",
+    "product": "Bidhaa",
+    "company": "Kampuni",
+    "resources": "Rasilimali",
+    "legal": "Kisheria",
+    "audience": "Tunaowahudumia",
+    "rights": "Haki zote zimehifadhiwa.",
+    "locale": "Dar es Salaam · UTC+3",
+    "contactEmail": "hello@bossnyumba.co.tz",
+    "contactLocation": "Dar es Salaam, Tanzania",
+    "complianceBadge": "Hifadhi ya Tanzania-region",
+    "systemsOperational": "Mfumo unaendelea",
+    "regulatorStrip": "Imeoanishwa na Regulator · NHC · BoT · TRA · BRELA",
+    "tanzaniaStorage": "Hifadhi ya Tanzania-region · Dar es Salaam",
+    "links": {
+      "capabilities": "Uwezo",
+      "masterBrain": "Master Brain",
+      "autonomy": "Autonomy",
+      "auditChain": "Audit chain",
+      "pricing": "Bei",
+      "pilot": "Pilot",
+      "about": "Kuhusu",
+      "careers": "Ajira",
+      "docs": "Nyaraka",
+      "privacy": "Faragha",
+      "terms": "Masharti",
+      "status": "Status"
+    }
+  },
+  "pilotPage": {
+    "kicker": "Anza sasa",
+    "heading": "Andaa mali yako ya BossNyumba.",
+    "sub": "Jisajiri na taarifa za leseni yako ya mali. Tutatathibitisha biashara yako na NHC na Regulator ndani ya masaa 48. Unyumbufu kamili. Wewe unaweka kasi.",
+    "contact": "Maswali? Tuma email kwa hello@bossnyumba.co.tz au piga +255 22 211 4000.",
+    "fields": {
+      "name": "Jina kamili",
+      "company": "Jina la kampuni",
+      "email": "Anwani ya barua pepe",
+      "phone": "Namba ya simu",
+      "portfolioSize": "Idadi ya sites unazomiliki",
+      "assetFocus": "Mali yako kuu"
+    },
+    "assets": [
+      "Ghorofa za makazi",
+      "Nyumba zilizoambatana",
+      "Nyumba za pekee",
+      "Maduka na ofisi",
+      "Matumizi mchanganyiko",
+      "Ardhi",
+      "Mengineyo"
+    ],
+    "submit": "Jisajiri",
+    "success": "Asante. Tutatathibitisha biashara yako na kuandaa mali yako.",
+    "error": "Hitilafu imetokea. Tafadhali jaribu tena au tuma email kwa hello@bossnyumba.co.tz"
+  },
+  "pricingPage": {
+    "kicker": "Bei",
+    "heading": "Jenga kwa hatua yako.",
+    "sub": "Tiers tano. TZS. Mwanzo ni bure milele. Tunalipa kwa M-Pesa, Tigo Pesa, Airtel Money, au bank transfer.",
+    "compareHeading": "Linganisha vipengele",
+    "compareSub": "Vipengele vyote vinapatikana kwa tiers zote. Tofauti ni quotas na msaada.",
+    "featureColumn": "Kipengele",
+    "trustBadgesHeading": "Imetengenezwa kwa jinsi mali ya Tanzania inavyofanya kazi kweli.",
+    "trustBadges": [
+      {
+        "icon": "Lock",
+        "text": "Usimbaji wa AES-256-GCM"
+      },
+      {
+        "icon": "Shield",
+        "text": "Inalingana na BOT na NHC"
+      },
+      {
+        "icon": "Globe",
+        "text": "Kiswahili na Kiingereza"
+      },
+      {
+        "icon": "Brain",
+        "text": "AI ya msingi, kiwango cha ukaguzi"
+      },
+      {
+        "icon": "BadgeCheck",
+        "text": "ISO 27001 tayari"
+      }
+    ],
+    "faqKicker": "Maswali ya kawaida",
+    "faqHeading": "Maswali yanayoulizwa mara kwa mara",
+    "faqSub": "Kila kitu unachohitaji kujua kuhusu bei ya BossNyumba, malipo, na jukwaa linajumuisha nini katika kila kiwango.",
+    "faqs": [
+      {
+        "q": "BossNyumba ni nini?",
+        "a": "BossNyumba ni mfumo wa uendeshaji wa mali isiyohamishika unaotumia AI asili. Mr. Mwikila ni safu yake ya akili. BossNyumba inaunganisha mikataba, kodi, matengenezo, hazina, utii, soko, holdings, kampuni tanzu, biashara za ziada, ofisi ya familia, urithi, na daftari kamili la mali — vyote vikiongozwa na Mr. Mwikila, safu ya akili ndani ya BossNyumba."
+      },
+      {
+        "q": "Mwanzo ni bure kweli?",
+        "a": "Ndio. Mwanzo ni bure kabisa, hakuna kadi inayohitajika. Mmiliki mmoja, site moja, nyaraka 10 kwa mwezi, msaada wa jumuiya, na Mwl. Mwikila katika hali ya ushauri. Pandisha tu wakati shughuli yako inahitaji reli za ziada."
+      },
+      {
+        "q": "Mkulima inatofautianaje na Mfanyabiashara?",
+        "a": "Mkulima ni kwa mmiliki mmoja wa Individual Landlord anayesimamia site moja au mbili na wasimamizi mmoja au wawili. Mfanyabiashara inafungua sites nyingi, leseni nyingi, reli za hazina, na Wakala wa Enzi kwa vitendo vya hatari kubwa. Kama unaendesha mali zaidi ya mmoja, chagua Mfanyabiashara."
+      },
+      {
+        "q": "Mnakubali njia zipi za malipo?",
+        "a": "M-Pesa, Tigo Pesa, Airtel Money, Visa / Mastercard, na uhamisho wa benki wa TZS. Bili za kila mwaka zinaweza kutolewa kwa ankara. Sarafu nyingi (TZS, USD, KES) inasaidiwa kwenye Kampuni na juu."
+      },
+      {
+        "q": "Naweza kubadilisha kiwango baadaye?",
+        "a": "Ndio. Kupandisha kunaanza kazi mara moja na data yako, leseni, site, na daftari vinakuja nawe. Kushusha kunagawanya bei mwishoni mwa mzunguko wa malipo; hakuna kinachofutwa, lakini vipengele vilivyo na kufunga vinasimama hadi upandishe tena."
+      },
+      {
+        "q": "Data inawekwa vipi kwa kila mteja?",
+        "a": "Kila mteja anatengwa na usalama wa safu kwenye safu ya hifadhidata. GUC ya app.current_tenant_id imefungwa na middleware ya api-gateway kwenye kila ombi. Hakuna njia ya msimbo wa programu inayoweza kupita hii. Mfululizo wa hash wa wateja wengi hauwezi kubadilishwa na ni wa kuongeza tu."
+      },
+      {
+        "q": "Group kiwango kinaongeza nini?",
+        "a": "Group ni kwa shirikisho, ushirika, na eneo la familia za biashara zinazohitaji kuunganisha wateja kadhaa wa BossNyumba chini ya mwamvuli mmoja na ripoti za wateja, idhini za wadhamini, na usimamizi maalumu."
+      },
+      {
+        "q": "BossNyumba inafuata BOT na NHC?",
+        "a": "Ndio. BossNyumba imeundwa kuwasilisha ripoti za NHC, kuelekeza risiti za kodi, na kuzalisha ripoti zinazolingana na BOT tangu mwanzo. Kila kitu kina mfululizo wa hash kwa ukaguzi wa mdhibiti."
+      },
+      {
+        "q": "Data inahifadhiwa wapi?",
+        "a": "Hifadhi ya msingi ya eneo la Tanzania na chelezo cha pili katika eneo lililoidhinishwa na mdhibiti. Imesimbwa wakati wa kupumzika kwa AES-256-GCM, wakati wa usafirishaji kwa TLS 1.3. Sub-processors na maeneo ya kuhifadhi yameandikwa kwenye /legal/subprocessors."
+      }
+    ],
+    "ctaHeading": "Tayari kuendesha eneo lako kwenye BossNyumba?",
+    "ctaSub": "Anza bure na Mwanzo. Jisajiri na kuleta eneo lako online ndani ya dakika.",
+    "ctaPrimary": "Anza bure",
+    "ctaSecondary": "Anza sasa"
+  },
+  "privacyPage": {
+    "kicker": "Faragha",
+    "heading": "Sera ya Faragha ya BossNyumba",
+    "lastUpdated": "Imesasishwa: 26 Mei 2026",
+    "sections": [
+      {
+        "title": "1. Tunakusanya nini",
+        "body": "BossNyumba inakusanya data ya biashara yako ya mali — leseni za Individual Landlord/Portfolio Landlord/Institutional, michoro ya mali, tiketi ya matengenezo logs, shughuli za upangaji, rent returns, na ujumbe wa watumiaji wako. Hatukusanyi data za kibinafsi za wamiliki binafsi wa nyumba moja isipokuwa ikiwa wameipakia wenyewe au mmiliki ametuagiza."
+      },
+      {
+        "title": "2. Kwa nini",
+        "body": "Tunatumia data hii kuendesha Master Brain yako, kutoa briefing za asubuhi, kuandaa reports kwa NHC na TRA, na kuandaa ripoti za hatari ya sarafu. Hatuiuzi kwa watu wengine. Hatuitumii kwa matangazo."
+      },
+      {
+        "title": "3. Wapi inaishi",
+        "body": "Data yako iko kwenye database iliyo Tanzania (Dar es Salaam region kwenye Fly.io fra1 kama backup). Audit chain ipo per-tenant — tenant yako haiwezi kusoma chain ya tenant mwingine, hata kama wewe ni admin."
+      },
+      {
+        "title": "4. Haki zako",
+        "body": "Kwa mujibu wa Tanzania Personal Data Protection Act 2022, una haki ya kuangalia data yako, kurekebisha, kufuta, na kuhamisha kwa muuzaji mwingine. Tuma email kwa privacy@bossnyumba.co.tz."
+      },
+      {
+        "title": "5. NHC na NHC",
+        "body": "Endapo mamlaka ya Tanzania (NHC, NHC, TRA, FIU) inahitaji data yako kwa mujibu wa sheria, tutawapa lakini tutakuarifu ndani ya siku 5 isipokuwa amri inayotaka tunyamaze imewekwa na korti."
+      },
+      {
+        "title": "6. Mawasiliano",
+        "body": "Sera hii inakuwa updated mara kwa mara. Mabadiliko makubwa tutakutumia notification ndani ya cockpit yako siku 30 kabla ya kuanza kutumika. Kwa swali lolote: privacy@bossnyumba.co.tz."
+      }
+    ]
+  },
+  "termsPage": {
+    "kicker": "Masharti",
+    "heading": "Masharti ya Huduma ya BossNyumba",
+    "lastUpdated": "Imesasishwa: 26 Mei 2026",
+    "sections": [
+      {
+        "title": "1. Mkataba",
+        "body": "Kwa kutumia BossNyumba unakubali masharti haya. BossNyumba ni BossNyumba Tanzania Limited, kampuni iliyosajiliwa Tanzania (BRELA registration: pending). Mkataba unaongozwa na sheria za Tanzania. Sehemu yenye mamlaka ni Mahakama Kuu ya Tanzania Dar es Salaam."
+      },
+      {
+        "title": "2. Tiers na malipo",
+        "body": "Tiers tano: Mwanzo (bure), Mkulima (TZS 150,000/mwezi), Mfanyabiashara (TZS 500,000/mwezi), Kampuni (TZS 1,500,000/mwezi), Group (bespoke). Malipo kwa mwezi, mbele. Kushindwa kulipa kwa siku 14 kunazima kazi za autonomous (lakini huzima audit chain — historia yako inabaki yako milele)."
+      },
+      {
+        "title": "3. Data yako ni yako",
+        "body": "Wewe unamiliki data ya mali yako. Tunaweka tu kwa niaba yako. Ukifuta account, tutahamisha data yako (au kufuta) ndani ya siku 30. Audit chain inabaki immutable kwa mujibu wa sheria ya NHC ya kuhifadhi rekodi."
+      },
+      {
+        "title": "4. Master Brain na uwajibikaji",
+        "body": "Master Brain anatekeleza kazi kwa kibali chako. Hatuhakikishi maamuzi yake bila kosa, lakini tunahakikisha kuwa kila kitendo kimerekodiwa kwenye audit chain. Endapo BossNyumba itasababisha hasara ya moja kwa moja kwa kasoro ya programu, dhima yetu imepunguzwa kwa malipo ya miezi 12 ya mwisho."
+      },
+      {
+        "title": "5. Vitendo vilivyokatazwa",
+        "body": "Hauwezi kutumia BossNyumba kuficha shughuli zilizo kinyume na sheria, kuepuka kodi za TRA, au kufanya money laundering. Ukianzisha shughuli yenye shaka, tutaiwajibisha mamlaka husika kwa mujibu wa sheria."
+      },
+      {
+        "title": "6. Kuvunja na kufungua tena",
+        "body": "Wewe au sisi tunaweza kuvunja mkataba kwa notice ya siku 30. Tukivunja, tutakuhamisha data ndani ya siku 60. Tunaweza kufunga account haraka kwa ukiukaji mkubwa wa masharti haya."
+      },
+      {
+        "title": "7. Mawasiliano",
+        "body": "Mabadiliko ya masharti: notice ya siku 30 kupitia cockpit yako. Kwa swali: legal@bossnyumba.co.tz."
+      }
+    ]
+  },
+  "ownersPage": {
+    "kicker": "Kwa wamiliki wa mali",
+    "heading": "Endesha mali yako kama wabora duniani.",
+    "sub": "Ukusanyaji wa kodi, leja ya double-entry, taarifa za mmiliki, kalenda ya mikataba, daftari la matengenezo, soko na mauzo ya utii — brain moja inayotawaliwa unayoidhinisha.",
+    "ctaPilot": "Anza sasa",
+    "ctaPricing": "Ona bei"
+  },
+  "tenantsPage": {
+    "kicker": "Kwa wapangaji na wapangaji wa kampuni",
+    "heading": "Pata mali ya Tanzania yaliyothibitishwa. Mwanzo hadi mwisho.",
+    "sub": "Wamiliki wa KYC, ukaguzi wa mnyororo wa ushahidi, saini za alama ya kidole. Panga kwa uhakika.",
+    "ctaSignup": "Jisajili kushiriki",
+    "ctaTalk": "Ongea na timu ya sourcing",
+    "ctaSignUpBuy": "Jisajili kupanga",
+    "ctaPricingFees": "Bei na ada",
+    "regionsHeading": "Mikoa ya uendeshaji wa mali",
+    "regions": [
+      "Mikocheni (ghorofa)",
+      "Masaki (nyumba zilizoambatana)",
+      "Mbezi (compound za familia)",
+      "Mwanza (majengo ya ofisi)",
+      "Arusha (matumizi mchanganyiko)",
+      "Dodoma (karibu na serikali)"
+    ],
+    "navLabel": "Wapangaji",
+    "marketplaceFeeKicker": "Ada ya soko",
+    "marketplaceFeeBody": "Bila ada ya uanachama. Bure kuvinjari na kutoa bei. Ada inalipwa tu wakati mauzo yanapokamilika.",
+    "valueProps": {
+      "kicker": "01 · Kwa nini wapangaji wanaamini BossNyumba",
+      "heading": "Nguzo nne za usambazaji uliothibitishwa.",
+      "sub": "Kila unit kwenye BossNyumba ina njia inayothibitishika kutoka ukaguzi hadi makabidhiano.",
+      "shortCards": [
+        {
+          "title": "Asili iliyothibitishwa",
+          "body": "Kila listing ya mali inapata mnyororo wa ushahidi tangu ukaguzi hadi makabidhiano."
+        },
+        {
+          "title": "Wamiliki wameaminika",
+          "body": "BossNyumba inakagua kila leseni ya Individual Landlord/PL/Portfolio Landlord, NIDA ya mmiliki, na hali ya TRA kabla wamiliki hawajaweza kuorodhesha."
+        },
+        {
+          "title": "Vyeti vya ukaguzi vya wakaguzi",
+          "body": "Ukaguzi wa ghorofa, nyumba, ofisi na maduka kutoka kwa wakaguzi wa mali walioidhinishwa."
+        },
+        {
+          "title": "Mikataba ya kidijitali",
+          "body": "Sahihi za alama ya kidole zisizoweza kupingwa — mikataba inashikamana mahakamani."
+        }
+      ],
+      "cards": {
+        "provenance": {
+          "title": "Asili iliyothibitishwa",
+          "blurb": "Mnyororo wa ushahidi kutoka tiketi ya matengenezo hadi makabidhiano. Kila uhamisho umesainiwa, umetiwa muda, na kuandikwa kwenye audit chain."
+        },
+        "kyb": {
+          "title": "Wamiliki wa KYB",
+          "blurb": "BossNyumba inakagua kila mmiliki kabla ya kuorodhesha. BRELA, TRA, na Regulator cross-checks. Hakuna mawakala wasiojulikana."
+        },
+        "inspections": {
+          "title": "Vyeti vya ukaguzi",
+          "blurb": "Wakaguzi wa kiwango cha juu Dar es Salaam na Mwanza. Ukaguzi wa jengo kwa ghorofa, daraja la ARV kwa nyumba, ripoti za hali kwa ofisi na maduka."
+        },
+        "biometric": {
+          "title": "Tenancy ya alama ya kidole",
+          "blurb": "Mikataba imesainiwa kwa alama ya kidole pamoja na liveness. Haipingiki. Kila saini imewekwa kwenye audit chain."
+        }
+      }
+    },
+    "useCases": {
+      "kicker": "02 · Hadithi za matumizi",
+      "heading": "Wapangaji tayari kwenye platform.",
+      "sub": "Mahusiano ya pilot yameonyeshwa — biashara halisi bado zinaingia. Itabadilishwa na case studies zilizothibitishwa baadaye.",
+      "cards": {
+        "apartmentPortfolio": {
+          "tag": "Portfolio ya ghorofa",
+          "tenant": "Pamoja REIT",
+          "location": "Dar es Salaam",
+          "blurb": "Inapata units 40-60 kwa robo za ghorofa za Daraja-A kutoka clusters za wamiliki wa Mikocheni na Masaki. Mnyororo wa BossNyumba unairuhusu REIT kuruka due diligence yake ya field."
+        },
+        "townhouseComplex": {
+          "tag": "Mji wa nyumba",
+          "tenant": "Heritage TZ Holdings",
+          "location": "Arusha",
+          "blurb": "Inashiriki kwenye bidding ya nyumba za Mwanza Block-D kila Jumanne. Ripoti ya hali ya BossNyumba pamoja na biometric tenancy huleta lot ndani ya saa 48."
+        },
+        "mixedUseBlock": {
+          "tag": "Block ya matumizi mchanganyiko",
+          "tenant": "East-African Property Fund",
+          "location": "Dar es Salaam",
+          "blurb": "Hisa za ghorofa za Daraja-A kutoka kwa wamiliki binafsi wa Mwanza. Audit chain inatoa njia ya OECD due diligence ambayo wapangaji wa EU wanahitaji."
+        }
+      }
+    },
+    "pricing": {
+      "kicker": "03 · Bei",
+      "heading": "Bure kuvinjari. Commission kwenye biashara zilizokamilika.",
+      "sub": "Wapangaji hawalipi kitu kujisajili, kutafuta, na kuweka bid. BossNyumba inachukua 2.5% commission kwenye bei ya mwisho ya biashara unayoifunga kwenye platform.",
+      "bullets": [
+        "Bure kujisajili na KYB",
+        "Bure kuvinjari na kuweka bid",
+        "2.5% commission kwenye biashara zilizokamilika pekee",
+        "Hakuna ada ya mafanikio kwenye bids zisizokamilika",
+        "Ripoti za ukaguzi zinaingia ndani ya commission"
+      ],
+      "footnote": "Commission ya upande wa mpangaji inahesabiwa kwa thamani ya jumla iliyolipwa, inaonyeshwa kwenye kusaini tenancy, kulipwa kwa TZS au USD kwa mkataba."
+    },
+    "downloadCta": {
+      "heading": "Jisajili kushiriki.",
+      "sub": "tenant mobile app iko katika upimaji wa kibinafsi pamoja na wapangaji kumi na sita wa Tanzania na Afrika Mashariki. Jiunge na waitlist kwa toleo la umma la Septemba 2026.",
+      "primary": "Jiunge na tenant waitlist",
+      "secondary": "Ongea na timu ya sourcing"
+    },
+    "ctaAlreadyTenant": "Una akaunti tayari? Ingia"
+  },
+  "tenantSignupPage": {
+    "metaTitle": "Jisajili kama mpangaji — BossNyumba",
+    "metaDescription": "Jisajili kama mpangaji kwenye BossNyumba. KYC, mnyororo wa ushahidi, na sahihi za alama ya kidole.",
+    "kicker": "Jisajili kama mpangaji",
+    "heading": "Anza kupanga mali iliyothibitishwa.",
+    "sub": "Chagua aina ya akaunti yako. Akaunti binafsi kwa wapangaji wa kawaida. Akaunti ya biashara kwa makampuni, mawakala, brokers, na investors.",
+    "steps": {
+      "kind": "1. Aina",
+      "details": "2. Taarifa",
+      "review": "3. Thibitisha"
+    },
+    "kindStep": {
+      "heading": "Unataka kujisajili kama nani?",
+      "subHeading": "How would you like to sign up?",
+      "individualTitle": "Mimi ni mtu binafsi",
+      "individualTitleEn": "I'm an individual tenant",
+      "individualSubtitle": "Mpangaji wa kawaida.",
+      "individualBullets": [
+        "Jina kamili na simu",
+        "Barua pepe",
+        "Nambari ya NIDA — si lazima"
+      ],
+      "businessTitle": "Mimi nina kampuni / shirika",
+      "businessTitleEn": "I represent a company",
+      "businessSubtitle": "Mtoa-huduma wa serviced-apartment, wakala wa uhamishaji, broker, au investor.",
+      "businessBullets": [
+        "Jina la kampuni + nambari ya BRELA",
+        "Nambari ya TIN",
+        "Aina ya biashara (serviced-apartment / wakala wa uhamishaji / broker / investor)",
+        "Jina, simu, na barua pepe ya mawasiliano"
+      ],
+      "continue": "Endelea"
+    },
+    "fields": {
+      "country": "Nchi",
+      "countryEn": "Country",
+      "fullName": "Jina kamili",
+      "fullNameEn": "Full name",
+      "phone": "Simu",
+      "phoneEn": "Phone (E.164)",
+      "email": "Barua pepe",
+      "emailEn": "Email",
+      "preferredLanguage": "Lugha",
+      "preferredLanguageEn": "Language",
+      "preferredCurrency": "Sarafu",
+      "preferredCurrencyEn": "Currency",
+      "nationalId": "Kitambulisho cha NIDA",
+      "nationalIdEn": "National ID (optional)",
+      "orgName": "Jina la kampuni",
+      "orgNameEn": "Company name",
+      "businessKind": "Aina ya biashara",
+      "businessKindEn": "Business type",
+      "businessRegistrationNumber": "Nambari ya BRELA",
+      "businessRegistrationNumberEn": "Business reg #",
+      "taxId": "Nambari ya TIN",
+      "taxIdEn": "Tax ID",
+      "contactFullName": "Jina la mawasiliano",
+      "contactFullNameEn": "Contact full name",
+      "contactPhone": "Simu ya mawasiliano",
+      "contactPhoneEn": "Contact phone (E.164)",
+      "contactEmail": "Barua pepe ya mawasiliano",
+      "contactEmailEn": "Contact email"
+    },
+    "businessKinds": {
+      "corporate-let": "Kampuni inayokodi kwa wafanyakazi wa matengenezo",
+      "serviced-apartment": "Mtoa-huduma wa serviced-apartment",
+      "embassy-or-ngo": "Ubalozi au NGO",
+      "institutional": "Mpangaji wa kitaasisi / wa kiserikali",
+      "other": "Nyingine"
+    },
+    "actions": {
+      "back": "Rudi",
+      "next": "Endelea",
+      "submit": "Jisajili sasa",
+      "submitting": "Inatuma…"
+    },
+    "errors": {
+      "fullNameRequired": "Jina kamili linahitajika",
+      "phoneInvalid": "Weka simu sahihi (mfano +255712345678)",
+      "emailInvalid": "Weka anwani halali ya barua pepe",
+      "orgNameRequired": "Jina la kampuni linahitajika",
+      "businessKindRequired": "Chagua aina ya biashara",
+      "businessRegRequired": "Nambari ya BRELA inahitajika",
+      "taxIdRequired": "Nambari ya TIN inahitajika",
+      "submitFailed": "Imeshindwa kujisajili. Jaribu tena.",
+      "emailAlreadyRegistered": "Barua pepe hii tayari imesajiliwa.",
+      "phoneAlreadyRegistered": "Simu hii tayari imesajiliwa.",
+      "providerUnavailable": "Huduma ya uthibitishaji haipatikani kwa sasa."
+    },
+    "alreadyHaveAccount": "Una akaunti tayari?",
+    "signInLink": "Ingia"
+  },
+  "ownerSignInPage": {
+    "metaTitle": "Ingia BossNyumba",
+    "metaDescription": "Ingia kwenye cockpit yako ya mmiliki BossNyumba.",
+    "kicker": "Cockpit ya Mmiliki",
+    "heading": "Karibu tena.",
+    "sub": "Ingia ili kuendesha mali yako.",
+    "fields": {
+      "email": "Barua pepe",
+      "emailEn": "Email",
+      "password": "Nenosiri",
+      "passwordEn": "Password"
+    },
+    "actions": {
+      "submit": "Ingia",
+      "submitting": "Inaingia"
+    },
+    "errors": {
+      "emailRequired": "Weka anwani halali ya barua pepe",
+      "passwordRequired": "Nenosiri linahitajika",
+      "signInFailed": "Imeshindwa kuingia. Hakiki taarifa zako."
+    },
+    "fromSignup": "Akaunti imeundwa. Ingia kuanza kazi.",
+    "noAccountYet": "Huna akaunti?",
+    "signUpLink": "Jisajili",
+    "forgotLink": "Umesahau nenosiri lako?"
+  },
+  "ownerForgotPasswordPage": {
+    "metaTitle": "Weka upya nenosiri lako — BossNyumba",
+    "metaDescription": "Weka upya nenosiri la cockpit yako ya mmiliki BossNyumba. Tunakutumia kiungo salama cha kuweka jipya kwa barua pepe.",
+    "kicker": "Kurejesha akaunti",
+    "heading": "Weka upya nenosiri lako.",
+    "sub": "Weka barua pepe ya akaunti yako. Ikilingana, tunatuma kiungo salama cha kuweka nenosiri jipya.",
+    "fields": {
+      "email": "Barua pepe",
+      "emailEn": "Email"
+    },
+    "actions": {
+      "submit": "Tuma kiungo cha kuweka upya",
+      "submitting": "Inatuma",
+      "backToSignIn": "Rudi kuingia"
+    },
+    "errors": {
+      "emailRequired": "Weka anwani halali ya barua pepe",
+      "sendFailed": "Imeshindwa kutuma kiungo cha kuweka upya. Jaribu tena."
+    },
+    "sent": {
+      "heading": "Angalia barua pepe yako.",
+      "body": "Ikiwa akaunti ipo kwa anwani hiyo, kiungo cha kuweka upya nenosiri kinakuja. Kiungo kinaisha muda kwa usalama wako — kifungue mapema.",
+      "resend": "Tumia barua pepe nyingine"
+    }
+  },
+  "ownerSignUpPage": {
+    "metaTitle": "Unda akaunti ya BossNyumba",
+    "metaDescription": "Anzisha cockpit yako ya mmiliki BossNyumba ndani ya dakika mbili.",
+    "kicker": "Akaunti mpya ya BossNyumba",
+    "heading": "Anza na BossNyumba.",
+    "sub": "Anzisha mfumo wako wa uendeshaji wa mali ndani ya dakika mbili.",
+    "fields": {
+      "orgName": "Jina la mali au kampuni",
+      "orgNameSub": "Estate or company",
+      "ownerFullName": "Jina lako kamili",
+      "ownerFullNameSub": "Full name",
+      "email": "Barua pepe",
+      "emailSub": "Email",
+      "password": "Nenosiri",
+      "passwordSub": "Password",
+      "passwordHelp": "Angalau herufi 8.",
+      "country": "Nchi unayofanyia kazi"
+    },
+    "countries": {
+      "TZ": "Tanzania",
+      "KE": "Kenya",
+      "UG": "Uganda",
+      "NG": "Nigeria"
+    },
+    "actions": {
+      "submit": "Tengeneza cockpit yangu",
+      "submitting": "Inaunda"
+    },
+    "errors": {
+      "orgNameRequired": "Jina la mali au kampuni linahitajika",
+      "ownerFullNameRequired": "Weka jina lako kamili",
+      "emailRequired": "Weka anwani halali ya barua pepe",
+      "passwordTooShort": "Nenosiri lazima liwe na herufi 8 au zaidi",
+      "signUpFailed": "Usajili umeshindikana. Jaribu tena au wasiliana na msaada."
+    },
+    "haveAccount": "Una akaunti tayari?",
+    "signInLink": "Ingia",
+    "disclaimer": "Tutakupelekea risiti kwa barua pepe. Uthibitisho wa BRELA na TRA unafanyika baada ya usajili; unaweza kutumia cockpit wakati unaendelea."
+  },
+  "tenantSignInPage": {
+    "metaTitle": "Ingia kama mpangaji — BossNyumba",
+    "metaDescription": "Ingia kwenye akaunti yako ya mpangaji wa BossNyumba.",
+    "kicker": "Ingia kama mpangaji",
+    "heading": "Karibu tena.",
+    "sub": "Ingia kwenye akaunti yako ya mpangaji ili kuendelea kutafuta mali iliyothibitishwa.",
+    "fields": {
+      "email": "Barua pepe",
+      "emailEn": "Email",
+      "password": "Nenosiri",
+      "passwordEn": "Password"
+    },
+    "actions": {
+      "submit": "Ingia",
+      "submitting": "Inaingia…"
+    },
+    "errors": {
+      "emailRequired": "Weka anwani halali ya barua pepe",
+      "passwordRequired": "Nenosiri linahitajika",
+      "signInFailed": "Imeshindwa kuingia. Hakiki taarifa zako."
+    },
+    "fromSignup": "Akaunti yako imeundwa. Ingia ili kuanza kupanga.",
+    "noAccountYet": "Huna akaunti?",
+    "signUpLink": "Jisajili"
+  },
+  "investorsPage": {
+    "kicker": "Kwa wawekezaji na wakopeshaji",
+    "heading": "Mtaji wa mali ukiwa na telemetry.",
+    "sub": "BossNyumba inawapa wakopeshaji na LPs briefs za kila siku zenye ushahidi kwenye kila deployment — ukusanyaji wa kodi, cash runway, FX exposure, hali ya mamlaka.",
+    "ctaSchedule": "Panga simu",
+    "ctaAuditPack": "Ona audit pack",
+    "valueProps": {
+      "kicker": "01 · Kwa nini wagawa mitaji wanachagua BossNyumba",
+      "heading": "Nguzo nne za ushahidi kwa wawekezaji.",
+      "sub": "Imejengwa kwa swali la mkopeshaji: kinachoendelea uwanjani leo ni nini.",
+      "cards": {
+        "dailyBrief": {
+          "title": "Reports za kila siku zenye ushahidi",
+          "blurb": "Kila asubuhi saa 06:00 kila mali wa portfolio unaandaa brief inayofunika ukusanyaji wa kodi, hazina, hali ya leseni, na matukio. Imenukuliwa line-by-line kwenye data ya chanzo."
+        },
+        "usdCliff": {
+          "title": "Remediation ya USD cliff ya 27-Mar-2026",
+          "blurb": "Inafuatilia USD exposure dhidi ya tarehe ya cliff ya kanuni. Inaonyesha hatari ya USD na inapendekeza sarafu mbadala za invoice na muda wa settlement."
+        },
+        "auditPack": {
+          "title": "Export ya audit-pack",
+          "blurb": "One-click export ya cryptographic audit chain, leseni, rent returns, OSHA logs, na bank reconciliations kwa due diligence."
+        },
+        "treasury": {
+          "title": "Hazina simulation",
+          "blurb": "Stress-test ya muda wa tenancy, ongezeko la kodi, na TZS/USD swings. Ona athari kwenye covenant ratios kabla ya kutokea."
+        }
+      }
+    },
+    "caseStudy": {
+      "kicker": "02 · Case study",
+      "heading": "Deployment ya mfano.",
+      "sub": "Hakuna deals zilizofungwa bado. Nambari hapa chini zinaonyesha jinsi audit pack ya BossNyumba ingewaonyesha senior secured lender cluster ya kawaida ya Individual Landlord ya kati Mikocheni.",
+      "disclaimer": "Ya mfano tu. Nambari ni za mfano, hazitoki kwenye deal halisi iliyofungwa.",
+      "metrics": {
+        "deployment": {
+          "label": "Deployment",
+          "value": "USD 4.2M senior secured"
+        },
+        "cluster": {
+          "label": "Cluster",
+          "value": "Mikocheni Individual Landlord · sites 9"
+        },
+        "production": {
+          "label": "Run-rate",
+          "value": "184 oz Au / mwezi"
+        },
+        "runway": {
+          "label": "Cash runway",
+          "value": "Wiki 18.3"
+        },
+        "ltv": {
+          "label": "LTV (proven ounces)",
+          "value": "32%"
+        },
+        "covenant": {
+          "label": "DSCR covenant",
+          "value": "1.85x · mbele"
+        }
+      },
+      "bullets": [
+        "Brief ya kila siku saa 06:00 inapelekwa kwenye lender dashibodi",
+        "Cryptographic audit chain kwenye kila uhamisho wa Individual Landlord",
+        "DSCR ya mfano inaprojectwa upya kila asubuhi",
+        "USD cliff exposure inafuatiliwa kila wiki"
+      ]
+    },
+    "contact": {
+      "kicker": "03 · Panga simu",
+      "heading": "Maswali ya kitaasisi.",
+      "sub": "Kwa wakopeshaji, LPs, family offices, na DFIs wanaopenda exposure iliyoundwa kwa mali ya Tanzania pamoja na cryptographic audit chains.",
+      "fields": {
+        "name": "Jina lako",
+        "organisation": "Shirika",
+        "email": "Email ya kazi",
+        "role": "Nafasi yako",
+        "ticketSize": "Ukubwa wa ticket wa mfano (USD)",
+        "message": "Ungependa kuongea kuhusu nini?"
+      },
+      "submit": "Panga simu",
+      "success": "Asante. Timu yetu itajibu ndani ya siku 2 za kazi.",
+      "error": "Hatukuweza kutuma fomu. Tafadhali tuma email kwa investors@bossnyumba.co.tz."
+    }
+  },
+  "blog": {
+    "kicker": "Blogu",
+    "heading": "Maelezo ya uwanjani kutoka mali ya Tanzania.",
+    "sub": "Maandishi kuhusu mikataba, hazina, masoko ya mali, na ujenzi wa polepole wa mfumo wa uendeshaji wa AI kwa sekta.",
+    "readMore": "Soma makala",
+    "minRead": "dakika za kusoma",
+    "backToBlog": "Rudi kwenye makala zote",
+    "emptyHeading": "Maelezo ya uwanjani yanapakia.",
+    "emptyBody": "Insha za kwanza kutoka kwa timu ya BossNyumba zinafika kwenye ukurasa huu wiki chache zijazo. Wakati huo huo, vipimo na maelezo ya kila wimbi yapo kwenye nyaraka.",
+    "emptyCtaPrimary": "Soma nyaraka",
+    "emptyCtaSecondary": "Omba pilot",
+    "featuredKicker": "Maelezo ya uwanjani",
+    "authorBy": "Na",
+    "related": "Maelezo yanayohusiana",
+    "shareHeading": "Shiriki",
+    "shareTwitter": "Shiriki Twitter",
+    "shareLinkedin": "Shiriki LinkedIn",
+    "shareCopy": "Nakili kiungo",
+    "subscribeHeading": "Muhtasari wa asubuhi.",
+    "subscribeSub": "Maelezo ya kila wiki kutoka kwa timu ya BossNyumba. Habari za uwanjani, masuala ya sera, mabadiliko ya hazina, bila ulaghai.",
+    "subscribePlaceholder": "Barua pepe yako",
+    "subscribeCta": "Jiunge"
+  },
+  "caseStudies": {
+    "kicker": "Case studies",
+    "heading": "Case studies za pilot zinakuja Q3 2026.",
+    "sub": "Waanzilishi kumi katika Mikocheni, Masaki, na Mbezi wanaendesha pilot za wiki 12. Cohort ya kwanza ikikamilika tutaweka case studies kamili — kupanda kwa occupancy, kupungua kwa cash-cycle, matokeo ya audit.",
+    "placeholderBadge": "Bado inaendelea",
+    "back": "Rudi nyumbani"
+  },
+  "careers": {
+    "kicker": "Ajira",
+    "heading": "Jenga mfumo wa uendeshaji ambao mali ya Tanzania yanastahili.",
+    "sub": "Timu ndogo, muktadha wa kina wa mali, Swahili-kwanza. Hybrid Dar es Salaam / remote. Tunaajiri kwa ladha, hukumu, na uangalifu.",
+    "openRoles": "Nafasi zilizo wazi",
+    "applyCta": "Omba kupitia careers@bossnyumba.co.tz",
+    "roles": {
+      "domain": {
+        "title": "Mtaalamu wa mali wa Tanzania",
+        "location": "Dar es Salaam · hybrid",
+        "blurb": "Msimamizi mwandamizi wa mali au mpima ardhi mwenye uzoefu wa kina wa Individual Landlord/Portfolio Landlord/Institutional na Regulator. Unakuwa mtoa-ukweli wa kile bidhaa yetu inapaswa kufanya."
+      },
+      "engineer": {
+        "title": "TypeScript engineer mwandamizi",
+        "location": "Remote · UTC+0 hadi UTC+3",
+        "blurb": "Multi-tenant, Postgres, Hono, Next 15, AI-native. Unasafirisha mwanzo hadi mwisho na unachukulia kila line kana kwamba itakuwa kwenye audit ya mamlaka."
+      },
+      "pilot": {
+        "title": "Meneja wa mafanikio wa pilot",
+        "location": "Mikocheni au Mwanza · uwanjani",
+        "blurb": "Unaishi kwenye pilot sites zetu. Unajua kila operator kwa jina. Unatafsiri uhalisia wa uwanjani kuwa product backlog kila wiki."
+      }
+    },
+    "values": {
+      "heading": "Jinsi tunavyofanya kazi",
+      "items": [
+        "Swahili-kwanza. Kiingereza ni lugha ya pili, sio default.",
+        "Uhalisia wa uwanjani unashinda slide decks. Kila PM anatembelea pilot site kila robo mwaka.",
+        "Cryptographic audit chain haijadiliwi. Kila kitendo kimesainiwa.",
+        "Maongezi rahisi. Hatusemi synergy. Tunasema kilichotokea leo."
+      ]
+    }
+  },
+  "about": {
+    "kicker": "Kuhusu BossNyumba",
+    "heading": "Mfumo wa uendeshaji uliojengwa kwa na na mali ya Tanzania.",
+    "sub": "BossNyumba ilianzishwa na timu ndogo ya Tanzania na diaspora baada ya kuona kizazi kingine cha operators kikiendesha portfolio za mali za kiwango cha kimataifa kwenye spreadsheets.",
+    "originHeading": "Hadithi ya asili",
+    "originBody": "Tulikutana Mikocheni na Dar es Salaam mwaka 2024, tukibadilishana maelezo kuhusu kwa nini kila ERP ya mali ilihisi imeundwa kwa nchi ya mtu mwingine. Kufikia mwanzo wa 2026 tulikuwa na Master Brain inayofanya kazi na pilot kumi. Lengo lilibaki lilelile: mfumo wa uendeshaji unaoheshimu jinsi mali ya Tanzania yanavyofanya kazi kweli — KYC kwa wamiliki wa nyumba moja, hesabu za rent ambazo TRA inazitambua, briefings kwa Kiswahili saa 06:00.",
+    "teamHeading": "Timu",
+    "teamSub": "Tanzania na diaspora. Mali, fintech, AI infrastructure. Hybrid Dar es Salaam.",
+    "valuesHeading": "Maadili",
+    "values": [
+      {
+        "title": "Tanzania-kwanza",
+        "body": "Tunaboresha kwa mali, lugha, mamlaka, na sarafu ambazo operators wetu wanazitumia kweli."
+      },
+      {
+        "title": "Cryptographically honest",
+        "body": "Kila kitendo kinasimama kwenye append-only chain. Mamlaka, wakopeshaji, na operators wanaweza kuthibitisha bila kutuamini."
+      },
+      {
+        "title": "Mtulivu kwa default",
+        "body": "Mali hayahitaji dashibodi nyingine yenye rangi nyekundu. Master Brain anashughulika usiku. Operators wanapata brief wazi, mtulivu saa 06:00."
+      }
+    ],
+    "contactHeading": "Wasiliana",
+    "contactBody": "hello@bossnyumba.co.tz · +255 22 211 4000 · Dar es Salaam · UTC+3"
+  },
+  "statusPage": {
+    "kicker": "Hali ya mfumo",
+    "heading": "Hali ya BossNyumba",
+    "sub": "Hali ya sasa ya huduma zetu na historia ya siku 90 zilizopita.",
+    "subscribeNote": "Hali hii inasasishwa kila baada ya sekunde 30. Iwapo kuna tatizo kubwa, tutawasilisha taarifa kwa wateja wote walioathirika kupitia barua pepe."
+  },
+  "status": {
+    "overall": {
+      "ok": "Mifumo yote inafanya kazi vizuri",
+      "degraded": "Baadhi ya huduma zina utendaji uliopungua",
+      "outage": "Tunashughulikia tatizo",
+      "unknown": "Hali haifahamiki"
+    },
+    "componentLabel": {
+      "api-gateway": "API Gateway",
+      "database": "Database",
+      "auth": "Auth",
+      "storage": "Storage",
+      "workers": "Workers",
+      "realtime": "Realtime"
+    },
+    "statusLabel": {
+      "ok": "Inafanya kazi",
+      "degraded": "Utendaji umepungua",
+      "outage": "Haifanyi kazi",
+      "unknown": "Haifahamiki"
+    },
+    "uptimeLabel": "Uptime",
+    "lastChangeLabel": "Mabadiliko ya mwisho",
+    "windowLabelPrefix": "Historia ya siku ",
+    "windowLabelSuffix": "",
+    "loading": "Inapakia hali...",
+    "error": "Imeshindwa kupakia hali ya mfumo.",
+    "retry": "Jaribu tena"
+  },
+  "audiencePages": {
+    "individualLandlord": {
+      "metaTitle": "Kwa mwenye nyumba mmoja mmoja — BossNyumba",
+      "metaDescription": "Mwl. Mwikila hukusanya kodi kupitia M-Pesa kwa kuidhinishwa na mpangaji kwa mbofyo mmoja, hutuma vikumbusho vya heshima vya kuchelewa kiotomatiki, huandaa wasilisho lako la ushuru wa halmashauri tayari kwa idhini ya mbofyo mmoja, na hukutumia kwa barua pepe taarifa ya mwenye nyumba ya ukurasa mmoja. Bure katika kiwango cha Smallholder (T1) kwa hadi vyumba 5.",
+      "heroKicker": "Kwa mwenye nyumba binafsi",
+      "heroHeadline": "Endesha vyumba viwili",
+      "heroHeadlineAccent": "kama mali ya mfululizo",
+      "heroSub": "Ukimiliki vitengo 1 hadi 5, Mwl. Mwikila anakusanya kodi kupitia M-Pesa kwa idhini ya mpangaji kwa mguso mmoja, anatuma vikumbusho vya kodi iliyochelewa kiotomatiki, anaandaa wasilisho la ushuru wa halmashauri kwa idhini yako ya mguso mmoja, na kukutumia barua pepe ya muhtasari wa ukurasa mmoja kila tarehe 1. Unabaki bure kwenye kiwango cha Smallholder (T1).",
+      "heroPrimaryCta": "Jisajili — bure",
+      "heroSecondaryCta": "Inavyofanya kazi",
+      "trustline": [
+        "Bure hadi vitengo 5",
+        "Kukusanya kodi kupitia M-Pesa",
+        "Hakuna kadi inayohitajika"
+      ],
+      "statsHeading": "Imejengwa kwa mwenye nyumba wa Kitanzania, sio REIT ya Wall Street.",
+      "statsSub": "Wenye nyumba binafsi hupoteza asilimia 18 ya kodi ya mwaka kwa malipo yanayochelewa, simu za kufuatilia kwa mikono, na risiti zinazokosekana. Mwl. Mwikila huziba pengo hilo kwa vikumbusho vya kiotomatiki, leja ya kuingia mara mbili, na muhtasari wa ukurasa mmoja — kwa gharama sifuri kwenye kiwango cha Smallholder.",
+      "stats": [
+        {
+          "value": "18%",
+          "label": "Wastani wa upotevu wa kodi",
+          "sub": "Kwa wenye nyumba wasio na vifaa Dar es Salaam (BOT 2025)."
+        },
+        {
+          "value": "Masaa 4",
+          "label": "Yameokolewa kwa mwezi",
+          "sub": "Kwenye kufuatilia kodi, risiti na uhasibu."
+        },
+        {
+          "value": "TZS 0",
+          "label": "Kwenye kiwango cha Smallholder",
+          "sub": "Hadi vitengo 5, kiti kimoja, shughuli za msingi za mali."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Hatua tatu. Saa moja. Kisha inajiendesha yenyewe.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Ongeza vitengo vyako",
+          "body": "Piga picha ukurasa wa hati; Mwl. Mwikila huchimba data ya mali na mpangaji. Ongeza nambari yako ya M-Pesa kupokea kodi."
+        },
+        {
+          "n": "02",
+          "title": "Mwl. Mwikila anakusanya",
+          "body": "Wapangaji wanaidhinisha ombi la M-Pesa kwa simu zao. Waliochelewa hupata ukumbusho wa Kiswahili wa adabu kiotomatiki. Wewe unapata arifa kila malipo yanapofika."
+        },
+        {
+          "n": "03",
+          "title": "Muhtasari wa mwenye nyumba tarehe 1",
+          "body": "Kila mwezi: kodi iliyopokelewa, ushuru wa halmashauri ulioandaliwa kwa idhini yako, matengenezo yanayodaiwa, salio kwa akaunti yako. PDF na barua pepe."
+        }
+      ],
+      "problemKicker": "Mkazo",
+      "problemHeading": "Kufuatilia kwa mikono, risiti zinazokosekana,",
+      "problemHeadingAccent": "na tarehe za mwisho za halmashauri",
+      "problemSub": "Mwenye nyumba binafsi hulipia mifumo iliyokosekana kwa muda wake. Mwl. Mwikila hubadilisha lahajedwali, kufuatilia kwa WhatsApp, na hofu ya mwezi wa ushuru wa halmashauri.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Kufuatilia kwa WhatsApp",
+          "desc": "Unatumia asubuhi ya Jumamosi kufuatilia kodi kutoka kwa wapangaji watatu wote wanaoahidi \"kesho\"."
+        },
+        {
+          "title": "Risiti zinazokosekana",
+          "desc": "Mpangaji anadai amelipa; huwezi kupata SMS ya M-Pesa. Migogoro inaharibu uaminifu."
+        },
+        {
+          "title": "Hofu ya ushuru wa halmashauri",
+          "desc": "Unakumbuka ushuru unahitajika tarehe 28 unapoona WhatsApp kutoka manispaa."
+        },
+        {
+          "title": "Karatasi za mwisho wa mwaka",
+          "desc": "Kufungua ushuru hugeuka kuwa uchimbaji wa kiakiolojia wa siku kadhaa kwenye simu yako."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Vikumbusho vya Kiswahili kiotomatiki",
+          "desc": "Mwl. Mwikila anatuma vikumbusho vya kodi iliyochelewa kiotomatiki kupitia WhatsApp, SMS na barua pepe kwa toni sahihi — yenye adabu, thabiti, sio ya kuudhi."
+        },
+        {
+          "title": "Risiti za kripto",
+          "desc": "Kila malipo ya M-Pesa yanafika kwenye leja isiyobadilika ya kuingia mara mbili, hivyo risiti ni ile ile pande zote mbili — hakuna migogoro ya malipo tena."
+        },
+        {
+          "title": "Kalenda ya udhibiti",
+          "desc": "Ushuru wa halmashauri, kodi ya mali, kurefusha mikataba — kila tarehe ya mwisho inafika kwenye simu yako siku 14 mapema."
+        },
+        {
+          "title": "Mwisho wa mwaka tayari kwa ushuru",
+          "desc": "Muhtasari wa wamiliki unaunganisha kuwa pack tayari kwa TRA kwa sekunde 90, kwa idhini yako ya mguso mmoja."
+        }
+      ],
+      "ctaHeading": "Anza bure leo.",
+      "ctaSub": "Kiwango cha Smallholder ni bure hadi vitengo 5. Jisajili na nambari yako ya M-Pesa — hakuna kadi inayohitajika.",
+      "ctaPrimary": "Jisajili — bure"
+    },
+    "portfolioLandlord": {
+      "metaTitle": "Kwa mwenye nyumba mwenye kundi la mali — BossNyumba",
+      "metaDescription": "Kua kutoka vyumba vitano hadi 2,500. Mtiririko wa fedha katika mali zote, taarifa za mwenye mali zilizounganishwa, kidhibiti cha kujiendesha, na uchambuzi wa Master Brain. Imejengwa kwa ajili ya msimamizi wa mali wa kitaalamu.",
+      "heroKicker": "Kwa mwenye nyumba wa kundi la mali",
+      "heroHeadline": "Pale vitengo vitano vinapokuwa",
+      "heroHeadlineAccent": "hamsini",
+      "heroSub": "Mwl. Mwikila anakua pamoja nawe. Ongeza majengo, vitalu, na mali nzima bila kuongeza lahajedwali. Mtiririko wa fedha kati ya mali, takwimu za kundi la mali, muhtasari wa mwenye nyumba wa kila mwezi, na kifaa cha kudhibiti uhuru kinachokuwezesha kukabidhi sehemu zinazochosha kwa idhini yako.",
+      "heroPrimaryCta": "Weka miadi ya onyesho la dakika 20",
+      "heroSecondaryCta": "Tazama jukwaa",
+      "trustline": [
+        "Hadi vitengo 2,500 kwenye kiwango cha Corporate",
+        "Sarafu nyingi TZS/KES/USD",
+        "Hoja za Master Brain"
+      ],
+      "statsHeading": "Acha kuwa mhasibu wako mwenyewe.",
+      "statsSub": "Wenye nyumba wa kundi la mali huteketeza jioni zao kwenye shughuli za kodi, upangaji wa matengenezo, na muhtasari ambao ungepaswa kuwa wa kiotomatiki. Mwl. Mwikila anarejesha muda huo na badala yake anakupa muhtasari wa asubuhi.",
+      "stats": [
+        {
+          "value": "Kila siku",
+          "label": "Muhtasari wa asubuhi",
+          "sub": "Muhtasari wa skrini moja wa usiku kucha, unaozalishwa kwa ratiba na injini ya muhtasari wa watendaji."
+        },
+        {
+          "value": "Otomatiki",
+          "label": "Vikumbusho vya kodi iliyochelewa",
+          "sub": "Vinatumwa kupitia WhatsApp, SMS na barua pepe vikiwa na njia mbadala — hakuna kufuatilia kwa mikono."
+        },
+        {
+          "value": "Mguso 1",
+          "label": "Muhtasari wa mwenye nyumba",
+          "sub": "Muhtasari wa kila mwezi kwa kila mali, unaoweza kuhamishwa kwa sarafu yoyote."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Ingiza kundi lako la mali. Weka kiwango cha uhuru. Ondoka.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Ingiza",
+          "body": "Leta historia yako ya Excel + Drive + WhatsApp. Mwl. Mwikila huchimba mali, mikataba, wapangaji, na madeni ya kodi."
+        },
+        {
+          "n": "02",
+          "title": "Weka uhuru",
+          "body": "Chagua kiasi gani Mwl. Mwikila anafanya peke yake kwa kila eneo — Fedha, Matengenezo, Utii, Upangishaji."
+        },
+        {
+          "n": "03",
+          "title": "Pokea muhtasari",
+          "body": "Kila asubuhi saa 12 alfajiri: muhtasari wa skrini moja wa kilichotokea usiku kucha, kinachohitaji jicho lako, na alichoshughulikia yeye."
+        }
+      ],
+      "problemKicker": "Kodi ya ukuaji",
+      "problemHeading": "Vitengo zaidi, lahajedwali",
+      "problemHeadingAccent": "zaidi",
+      "problemSub": "Pale kundi la mali linapokua zaidi ya vitengo kumi, lahajedwali huacha kutosha. Ama unaajiri meneja wa ndani, au unakubali upotevu. Mwl. Mwikila ni chaguo la tatu.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Mtawanyiko wa lahajedwali",
+          "desc": "Karatasi moja kwa kila jengo, hakuna inayolingana, hakuna inayodumu unapobadilisha simu."
+        },
+        {
+          "title": "Mlundikano wa matengenezo",
+          "desc": "Tiketi zinarundikana kwenye WhatsApp; unasahau tangi lililoharibika kwenye kitengo 4B kwa wiki tatu."
+        },
+        {
+          "title": "Maeneo yasiyoonekana ya mtiririko wa fedha",
+          "desc": "Huwezi kujua jengo lipi lina faida hasa hadi mhasibu wa mwisho wa mwaka anapowasili."
+        },
+        {
+          "title": "Utii wa kukimbiza-kimbiza",
+          "desc": "Halmashauri tofauti, tarehe za mwisho tofauti, fomu tofauti. Kuna kitu kinapita kila wakati."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Dashibodi moja ya kundi la mali",
+          "desc": "Kila mali, kila kitengo, kila mpangaji — ukurasa mmoja, wakati halisi."
+        },
+        {
+          "title": "Upangaji wa matengenezo",
+          "desc": "Picha za uvujaji zinafika kwenye tiketi; Mwl. Mwikila anapendekeza muuzaji sahihi na agizo la kazi kwa idhini yako."
+        },
+        {
+          "title": "Takwimu kwa kila jengo",
+          "desc": "Takwimu za ukaaji, mapato, na matumizi kwa kila mali, kwa kila kitalu — zinazoweza kuhamishwa kwa sarafu yoyote."
+        },
+        {
+          "title": "Kalenda ya udhibiti",
+          "desc": "Kila halmashauri, kila tarehe ya mwisho inaonyeshwa mapema; Mwl. Mwikila anaandaa kila wasilisho kwa idhini yako ya mguso mmoja."
+        }
+      ],
+      "ctaHeading": "Endesha zaidi, fanya kidogo.",
+      "ctaSub": "Weka miadi ya onyesho la dakika 20. Tutaingiza sampuli ya kundi lako la mali moja kwa moja na kukuonyesha dashibodi ambayo ungeitumia kesho.",
+      "ctaPrimary": "Weka miadi ya onyesho"
+    },
+    "tenant": {
+      "metaTitle": "Kwa wapangaji na watarajiwa — BossNyumba",
+      "metaDescription": "Vinjari matangazo yaliyothibitishwa kote Tanzania na Kenya. Omba, weka zabuni, na pakia NIDA yako kuthibitisha. Piga gumzo na Mwl. Mwikila kwa Kiswahili au Kiingereza. Hakuna matangazo ya kubuni.",
+      "heroKicker": "Kwa wapangaji na watarajiwa",
+      "heroHeadline": "Tafuta nyumba,",
+      "heroHeadlineAccent": "omba kwa dakika chache",
+      "heroSub": "Tafuta mali iliyohakikiwa Dar es Salaam, Arusha, Mwanza, Mbeya na Nairobi. Omba kutembelea. Omba kwa wasifu wako uliohakikiwa, weka zabuni, na zungumza na meneja wa mali — yote kwa simu yako.",
+      "heroPrimaryCta": "Vinjari matangazo",
+      "heroSecondaryCta": "Jinsi ya kuomba",
+      "trustline": [
+        "Wenye nyumba waliohakikiwa pekee",
+        "Wasifu wa mwombaji uliohakikiwa",
+        "Mazungumzo ndani ya programu"
+      ],
+      "statsHeading": "Matangazo ya BossNyumba ndiyo yaliyohakikiwa.",
+      "statsSub": "Kila mali kwenye BossNyumba ina mwenye nyumba aliyehakikiwa hatimiliki, kitengo kilichokaguliwa, na kiolezo cha mkataba kilichoidhinishwa chini ya Sheria ya Ardhi. Hakuna matangazo ya kubuni.",
+      "stats": [
+        {
+          "value": "100%",
+          "label": "Imehakikiwa hatimiliki",
+          "sub": "Kila mwenye nyumba huhakikiwa dhidi ya msajili kabla ya kutangaza."
+        },
+        {
+          "value": "NIDA",
+          "label": "Wasifu uliohakikiwa",
+          "sub": "Omba mara moja kwa wasifu wa utambulisho uliohakikiwa; bila kujirudia kwa kila mwenye nyumba."
+        },
+        {
+          "value": "0%",
+          "label": "Ada zilizofichwa",
+          "sub": "Gharama za huduma na amana hufichuliwa mapema, kwenye kila tangazo."
+        }
+      ],
+      "stepsKicker": "Jinsi ya kuomba",
+      "stepsHeading": "Hatua tatu. Kutoka kuvinjari hadi kuchaguliwa.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Vinjari + tembelea",
+          "body": "Chuja kwa eneo, vyumba vya kulala, bei. Omba ziara ya mtandaoni au kutembelea ana kwa ana moja kwa moja kutoka kwenye tangazo."
+        },
+        {
+          "n": "02",
+          "title": "Omba + weka zabuni",
+          "body": "Gusa \"Nataka hii\". Mwenye nyumba anaona wasifu wako uliohakikiwa (NIDA, mwajiri, marejeo) kisha anakubali, anatoa pingamizi, au anakualika kuweka zabuni."
+        },
+        {
+          "n": "03",
+          "title": "Kubaliana masharti",
+          "body": "Zungumza na meneja wa mali ndani ya programu kupanga kuhamia, amana, na masharti ya mkataba kabla ya kujitolea."
+        }
+      ],
+      "problemKicker": "Mtego wa upangaji",
+      "problemHeading": "Matangazo ya kubuni, amana zinazopotea,",
+      "problemHeadingAccent": "hakuna risiti",
+      "problemSub": "Kupanga kupitia makundi ya WhatsApp kunamaanisha ulaghai, wenye nyumba wa kubuni, na migogoro isiyoisha kamwe. BossNyumba huvuta soko la upangaji kuwa mfumo uliohakikiwa, wenye risiti.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Matangazo ya kubuni",
+          "desc": "Picha ilikuwa nzuri; nyumba ilibomolewa miezi sita iliyopita."
+        },
+        {
+          "title": "Wenye nyumba wasiohakikiwa",
+          "desc": "Huwezi kujua nani hasa anamiliki kitengo, au kama amana iko salama."
+        },
+        {
+          "title": "Masharti yaliyofichwa",
+          "desc": "Gharama za huduma na kanuni za amana hujitokeza tu baada ya kujitolea."
+        },
+        {
+          "title": "Kufukuzwa kinyume cha haki",
+          "desc": "Hakuna notisi ya maandishi, hakuna kipindi cha notisi, hakuna njia ya kupinga."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Matangazo yaliyohakikiwa pekee",
+          "desc": "Wenye nyumba waliokaguliwa hatimiliki, vitengo vilivyokaguliwa, violezo vya mkataba vilivyoidhinishwa na halmashauri."
+        },
+        {
+          "title": "Wasifu wa mwombaji uliohakikiwa",
+          "desc": "Omba mara moja kwa wasifu uliohakikiwa kwa NIDA na marejeo; mwenye nyumba anaona mwombaji halisi, sio ujumbe wa WhatsApp."
+        },
+        {
+          "title": "Masharti ya wazi mapema",
+          "desc": "Gharama za huduma, amana, na masharti ya mkataba hufichuliwa kwenye kila tangazo — na kuthibitishwa kwenye mazungumzo ndani ya programu kabla ya kujitolea."
+        },
+        {
+          "title": "Haki za mpangaji",
+          "desc": "Mkataba + notisi + njia ya kushughulikia migogoro vimeelezwa kwa Kiswahili na Kiingereza. Vimejengwa juu ya Sheria ya Ardhi, sio dhana tupu."
+        }
+      ],
+      "ctaHeading": "Tafuta nyumba leo.",
+      "ctaSub": "Vinjari matangazo yaliyohakikiwa. Hauhitaji akaunti kuangalia — unahitaji tu kuomba.",
+      "ctaPrimary": "Vinjari matangazo"
+    },
+    "leasingAgency": {
+      "metaTitle": "Kwa mawakala wa upangishaji + makazi ya kampuni — BossNyumba",
+      "metaDescription": "Pata orodha ya mali iliyothibitishwa kote Tanzania na Kenya. Linganisha wateja watarajiwa kwa kilinganishi cha AI. Tengeneza ofa za makazi ya kampuni ndani ya dakika chache. Lipwa kamisheni kiotomatiki pindi mkataba unapotekelezwa.",
+      "heroKicker": "Kwa kampuni za upangishaji + makazi ya kampuni",
+      "heroHeadline": "Panga wapangaji mara kumi",
+      "heroHeadlineAccent": "haraka zaidi",
+      "heroSub": "Pata bidhaa zilizothibitishwa kote Tanzania na Kenya. Linganisha wateja watarajiwa na vitengo kwa kilinganishi cha AI. Tengeneza mapendekezo ya makazi ya kampuni kwa dakika chache. Fuatilia kila upangaji na kila kamisheni kwenye leja moja.",
+      "heroPrimaryCta": "Panga simu ya ushirikiano",
+      "heroSecondaryCta": "Ona dashibodi ya kampuni",
+      "trustline": [
+        "Bidhaa kutoka kwa wenye nyumba wengi",
+        "Kamisheni kwenye leja moja",
+        "Mfumo wa makazi ya kampuni"
+      ],
+      "statsHeading": "Mfumo ambao kampuni za upangishaji zingependa kuujenga.",
+      "statsSub": "Kampuni zilizo kwenye BossNyumba hufanya kazi kwa bidhaa hai zilizothibitishwa, hulinganisha wateja watarajiwa kwa kilinganishi cha AI, na hufuatilia kila upangaji na kila kamisheni kwenye leja moja badala ya kundi la WhatsApp.",
+      "stats": [
+        {
+          "value": "Hai",
+          "label": "Mtiririko wa bidhaa",
+          "sub": "Wenye nyumba huhuisha Mwl. Mwikila; wewe unaona upatikanaji uliothibitishwa wakati halisi."
+        },
+        {
+          "value": "AI",
+          "label": "Kilinganishi cha wateja watarajiwa",
+          "sub": "Hupanga bidhaa zilizothibitishwa dhidi ya kila ombi — vyumba vya kulala, shule, usalama, safari ya kazini, bajeti."
+        },
+        {
+          "value": "1",
+          "label": "Leja ya kamisheni",
+          "sub": "Kila upangaji na kila kamisheni huingizwa kwenye leja moja ya kuingia mara mbili yenye muhtasari uliotiwa saini."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Unganisha wateja wako watarajiwa. Linganisha. Panga. Pata malipo.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Sawazisha wateja watarajiwa",
+          "body": "Leta wateja wa kampuni (benki, balozi, wapangaji wa makampuni). BossNyumba huandaa ombi kutokana na mahitaji yao ya kuhamia."
+        },
+        {
+          "n": "02",
+          "title": "Kilinganishi cha AI",
+          "body": "Mwl. Mwikila hupanga bidhaa zilizothibitishwa dhidi ya ombi — vyumba vya kulala, shule, usalama, safari ya kazini, bajeti — kwa sekunde chache."
+        },
+        {
+          "n": "03",
+          "title": "Fuatilia kamisheni",
+          "body": "Upangaji unapokamilika, kamisheni huingizwa kwenye leja moja yenye muhtasari uliotiwa saini — hakuna tena kufuatilia wenye nyumba kupata uthibitisho."
+        }
+      ],
+      "problemKicker": "Mzigo wa kampuni",
+      "problemHeading": "Bidhaa kuyumba, kufuatilia kamisheni,",
+      "problemHeadingAccent": "na hakuna jukwaa",
+      "problemSub": "Kampuni nyingi huendeshwa kwa makundi ya WhatsApp, lahajedwali zilizohuishwa nusu, na uaminifu. Zile nzuri hufanikisha mmoja kati ya ishirini; zile bora hufanikisha mmoja kati ya kumi. BossNyumba inakupandisha hadi mmoja kati ya watatu.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Bidhaa kuyumba",
+          "desc": "Nusu ya vitengo vilivyo kwenye lahajedwali yako havipatikani kihalisia."
+        },
+        {
+          "title": "Kusubiri kamisheni",
+          "desc": "Ulifunga mkataba mwezi Machi; kamisheni inafika mwezi Julai."
+        },
+        {
+          "title": "Hakuna pendekezo la kampuni",
+          "desc": "Benki zinataka PDF ya kiwango cha juu; wewe unatuma ujumbe wa WhatsApp wenye picha."
+        },
+        {
+          "title": "Ukaguzi wa marejeo kwa mikono",
+          "desc": "Unatumia masaa kupiga simu kwa waajiri kuthibitisha kile ambacho BossNyumba inaweza kuthibitisha kwa sekunde chache."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Mtiririko wa bidhaa hai",
+          "desc": "Wenye nyumba huhuisha Mwl. Mwikila; wewe unaona ukweli wakati halisi."
+        },
+        {
+          "title": "Kamisheni kwenye leja moja",
+          "desc": "Kila upangaji na kila kamisheni huingizwa kwenye leja ya kuingia mara mbili yenye muhtasari uliotiwa saini — hakuna tena kusubiri ankara."
+        },
+        {
+          "title": "Kitengenezi cha mapendekezo ya kampuni",
+          "desc": "PDF + ziara ya kimtandao + rasimu ya mkataba kwa kila mteja mtarajiwa, kwa dakika mbili."
+        },
+        {
+          "title": "Mzunguko wa marejeo uliothibitishwa",
+          "desc": "Uthibitisho wa NIDA, mwajiri, na mwenye nyumba wa awali kwenye wasifu wa mwombaji — simu chache zaidi."
+        }
+      ],
+      "ctaHeading": "Kuwa kampuni mshirika wa BossNyumba.",
+      "ctaSub": "Panga simu ya ushirikiano ya dakika 20. Tutakupitisha kwenye dashibodi ya kampuni na mtiririko wa kamisheni.",
+      "ctaPrimary": "Panga simu ya ushirikiano"
+    },
+    "housingCooperative": {
+      "metaTitle": "Kwa ushirika wa nyumba — BossNyumba",
+      "metaDescription": "Mwonekano wa papo hapo wa ada zilizolipwa, matengenezo ya jengo, kalenda ya AGM, na salio la benki ya ushirika. Mwl. Mwikila hushughulikia ukusanyaji wa ada, migogoro na wauzaji, na hutengeneza kifurushi cha mafaili tayari kwa msajili kwa mguso mmoja. Punguzo la asilimia 30 kwa kila kiwango.",
+      "heroKicker": "Kwa vyama vya ushirika wa nyumba",
+      "heroHeadline": "Endesha ushirika wako",
+      "heroHeadlineAccent": "kwa uwazi",
+      "heroSub": "BossNyumba humpa kila mwanachama wa ushirika mwonekano wa wakati halisi wa ada zilizolipwa, mpango wa matengenezo ya jengo, kalenda ya mkutano mkuu wa mwaka (AGM), na salio la benki ya ushirika. Mwl. Mwikila hushughulikia ukusanyaji wa ada, mgawanyo kwa wanachama, na uhasibu ambao msajili anauhitaji.",
+      "heroPrimaryCta": "Omba kiwango cha ushirika",
+      "heroSecondaryCta": "Inavyofanya kazi",
+      "trustline": [
+        "Punguzo la 30% kwenye viwango vyote",
+        "Muhtasari tayari kwa AGM",
+        "Leja ya ada inayoonekana kwa wanachama"
+      ],
+      "statsHeading": "Vyama vya ushirika vinahitaji uwazi. Mwl. Mwikila anauleta.",
+      "statsSub": "BossNyumba huweka modeli ya utawala wa ushirika ndani ya bidhaa ili ada, maamuzi, na migogoro viwe na chanzo kimoja cha ukweli.",
+      "stats": [
+        {
+          "value": "30%",
+          "label": "Punguzo",
+          "sub": "Kwenye kila kiwango kwa vyama vya ushirika vilivyosajiliwa."
+        },
+        {
+          "value": "Mguso 1",
+          "label": "Muhtasari wa AGM",
+          "sub": "Tayari kwa msajili, tayari kwa wanachama, tayari kwa mhasibu."
+        },
+        {
+          "value": "Hai",
+          "label": "Leja ya ada",
+          "sub": "Kila mwanachama anaona aliyelipa, anayedaiwa, na salio la ushirika — limetatuliwa kwa kila mwanachama."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Kutoka usajili hadi AGM, vyote mahali pamoja.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Sajili ushirika",
+          "body": "Pakia cheti cha ushirika. BossNyumba huunda orodha ya wanachama, ratiba ya ada, na kanuni za utawala."
+        },
+        {
+          "n": "02",
+          "title": "Ada + uwazi",
+          "body": "Wanachama hulipa ada za kila mwezi kupitia M-Pesa. Kila mwanachama anaona aliyelipa, anayedaiwa, na ushirika ulichotumia."
+        },
+        {
+          "n": "03",
+          "title": "AGM + uwasilishaji",
+          "body": "Panga AGM ndani ya programu. Wanachama wanaona muhtasari uliokaguliwa. Mwl. Mwikila huunda pack tayari kwa msajili kwa mguso mmoja ili uwasilishe."
+        }
+      ],
+      "problemKicker": "Mtego wa ushirika",
+      "problemHeading": "Migogoro, kumbukumbu zinazokosekana,",
+      "problemHeadingAccent": "na uaminifu uliopotea",
+      "problemSub": "Vyama vya ushirika hushindwa pale uwazi unaposhindwa. Mwl. Mwikila husimamisha uwazi kwa chaguo-msingi — kila mwanachama anaona namba zile zile.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Utovu wa uwazi wa ada",
+          "desc": "Wanachama wanauliza \"nani amelipa?\" — hakuna anayeweza kutoa leja safi."
+        },
+        {
+          "title": "Migogoro ya wauzaji",
+          "desc": "Ushirika ulilipa TZS 4M kwa muuzaji; kazi imefanyika nusu; hakuna mkataba, hakuna escrow."
+        },
+        {
+          "title": "Kupotea kwa kumbukumbu za AGM",
+          "desc": "Hoja za mwaka jana zinatoweka; mwenyekiti anabadilika; kumbukumbu ya taasisi inakufa."
+        },
+        {
+          "title": "Msuguano na msajili",
+          "desc": "Uwasilishaji wa mwaka unageuka kuwa zoezi la uhasibu la miezi kadhaa."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Leja hai ya ada",
+          "desc": "Kila mwanachama anaona aliyelipa, anayedaiwa, na salio la benki ya ushirika."
+        },
+        {
+          "title": "Mgawanyo kwa wanachama",
+          "desc": "Ada na migawanyo hugawanywa kwa kila mwanachama kupitia leja ya kuingia mara mbili — kila senti inafuatilika."
+        },
+        {
+          "title": "Kumbukumbu tayari kwa AGM",
+          "desc": "Kumbukumbu, mahudhurio, na muhtasari uliokaguliwa — vyote vyenye hash-chain na vinavyoonekana kwa wanachama."
+        },
+        {
+          "title": "Pack tayari kwa msajili",
+          "desc": "Muhtasari wa mwisho wa mwaka na kumbukumbu vimeunganishwa kuwa pack tayari kwa msajili kwa mguso mmoja, ili uwasilishe."
+        }
+      ],
+      "ctaHeading": "Omba kiwango cha ushirika.",
+      "ctaSub": "Vyama vya ushirika wa nyumba vilivyosajiliwa hupata punguzo la 30% kwenye kila kiwango. Tuma barua pepe kwa community@bossnyumba.com kutoka kwa domain yako iliyosajiliwa.",
+      "ctaPrimary": "Omba"
+    },
+    "realEstateInvestor": {
+      "metaTitle": "Kwa wawekezaji wa mali — BossNyumba",
+      "metaDescription": "IRR ya miaka mitano yenye uhakika wa kiwango (conformal) kwa kila mali unayofikiria kununua. Mnyororo wa hatimiliki, mpangilio wa matumizi ya ardhi, mauzo yanayolingana, orodha za kodi, na historia ya tozo — yote yamekaguliwa. Kisha tunaiendesha kwa niaba yako baada ya kununua.",
+      "heroKicker": "Kwa wawekezaji wa mali",
+      "heroHeadline": "Ona mavuno kabla",
+      "heroHeadlineAccent": "hujanunua",
+      "heroSub": "BossNyumba huchanganua hatimiliki, mipango ya matumizi ya ardhi, mauzo yanayolingana, rejista za kodi za sasa, na historia ya ushuru wa halmashauri ili kukupa kila mali unayoitarajia 5-yr IRR yenye uhakika wa conformal. Kisha huiendesha kwa niaba yako baada ya kununua.",
+      "heroPrimaryCta": "Weka miadi ya onyesho la mwekezaji",
+      "heroSecondaryCta": "Ona kibanda cha mpango",
+      "trustline": [
+        "Utabiri wa IRR wa conformal",
+        "Hatimiliki na mipango ya ardhi vilivyokaguliwa",
+        "Mwendeshaji baada ya kufunga mauzo"
+      ],
+      "statsHeading": "Kutoka orodha fupi hadi uendeshaji, jukwaa moja.",
+      "statsSub": "Wawekezaji wengi hujikongoja na lahajedwali, wakala, mwanasheria, na meneja wa mali. Mwl. Mwikila huviunganisha vyote hivyo kuwa kibanda kimoja.",
+      "stats": [
+        {
+          "value": "5-yr IRR",
+          "label": "Utabiri wa conformal",
+          "sub": "Yenye ukanda wa uhakika wa 80% / 90% / 95%, kwa kila mali — uliokalibriwa, sio kisio la nukta moja."
+        },
+        {
+          "value": "Moja",
+          "label": "Pack ya uchunguzi",
+          "sub": "Mnyororo wa hatimiliki, mipango ya ardhi, hali, mauzo yanayolingana, rejista za kodi, historia ya ushuru — PDF moja."
+        },
+        {
+          "value": "Mguso 1",
+          "label": "Kuingia hali ya uendeshaji",
+          "sub": "Hamia kutoka uchunguzi wa kina hadi uendeshaji ndani ya programu."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Orodha fupi. Uchunguzi. Funga mauzo. Endesha.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Orodha fupi",
+          "body": "Weka URL, picha, au nambari ya rejista ya mali. Mwl. Mwikila huandaa muhtasari wa mpango ndani ya sekunde 60."
+        },
+        {
+          "n": "02",
+          "title": "Uchunguzi",
+          "body": "Mnyororo wa hatimiliki, mipango ya ardhi, hali ya jengo, mauzo yanayolingana, rejista za kodi, historia ya ushuru — PDF moja."
+        },
+        {
+          "n": "03",
+          "title": "Endesha",
+          "body": "Wakati wa kufunga mauzo, Mwl. Mwikila huingiza orodha ya wapangaji na kuanza kukusanya kodi kupitia M-Pesa kwa idhini ya mpangaji ya mguso mmoja — ikiingizwa kwenye leja ya kuingia mara mbili."
+        }
+      ],
+      "problemKicker": "Ushuru wa uchunguzi",
+      "problemHeading": "Data mbovu, ushuru uliofichwa,",
+      "problemHeadingAccent": "na kuhama kwa mwendeshaji",
+      "problemSub": "Hasara nyingi za mali zinaweza kutabirika. Data ipo; ila inaishi katika sehemu kumi na tano zisizounganishwa. Mwl. Mwikila huzisoma zote kumi na tano.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Mshtuko wa hatimiliki",
+          "desc": "Unagundua kifungu chenye mgogoro miezi minne baada ya kufunga mauzo."
+        },
+        {
+          "title": "Ushuru uliofichwa",
+          "desc": "Halmashauri ina bili ya madeni ya TZS 28M ambayo haikuonekana kwenye wasilisho la wakala."
+        },
+        {
+          "title": "Rejista za kodi za matumaini",
+          "desc": "Rejista ya kodi ya muuzaji imepitwa na miaka miwili na inadhani upangaji wa 100%."
+        },
+        {
+          "title": "Kuhama kwa mwendeshaji",
+          "desc": "Meneja wa mali uliyemrithi anafanya chini ya soko kwa 15% na huoni kwa mwaka mzima."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Ukaguzi wa mnyororo wa hatimiliki",
+          "desc": "Kila uhamishaji hadi rejista, ukiwekewa alama kwa migogoro na haki za njia."
+        },
+        {
+          "title": "Ukaguzi wa ushuru",
+          "desc": "Kila halmashauri, kila ushuru, kila siku ya madeni — vinaibuliwa kabla ya kufunga mauzo."
+        },
+        {
+          "title": "Rejista za kodi za conformal",
+          "desc": "Kodi halisi iliyokusanywa miezi 12 iliyopita + upangaji + uondokaji, vyote vyenye hash-chain."
+        },
+        {
+          "title": "Ulinganishaji wa mwendeshaji",
+          "desc": "Mwl. Mwikila hulinganisha kundi lako la mali na wenzako bila utambulisho kila mwezi."
+        }
+      ],
+      "ctaHeading": "Uchunguzi kwa siku, sio miezi.",
+      "ctaSub": "Weka miadi ya onyesho la mwekezaji la dakika 30. Lete anwani ya mali unayoitarajia; tutaendesha uchunguzi kamili moja kwa moja.",
+      "ctaPrimary": "Weka miadi ya onyesho la mwekezaji"
+    },
+    "familyOffice": {
+      "metaTitle": "Kwa ofisi za familia — BossNyumba",
+      "metaDescription": "Leja moja iliyo tayari kwa ukaguzi na iliyofungwa kwa minyororo ya hash katika kila taasisi na kila sarafu, ikiwa na taarifa za mwenye nyumba na uchanganuzi wa kundi la mali. Imejengwa kwa ajili ya mwenye nyumba mwenye mtazamo wa muda mrefu.",
+      "heroKicker": "Kwa ofisi za familia",
+      "heroHeadline": "Tendea mali kama",
+      "heroHeadlineAccent": "aina ya rasilimali ilivyo",
+      "heroSub": "Uandishi wa ripoti wa kiwango cha ofisi ya familia kwenye kundi la mali ya nyumba: leja ya kuingia mara mbili isiyobadilika, muhtasari wa mwenye nyumba wa kila mwezi, hamishi za utii tayari kwa ukaguzi, na takwimu za kundi la mali — pamoja na mshauri mmoja Mwl. Mwikila kwenye kila mali na kila sarafu.",
+      "heroPrimaryCta": "Panga onyesho la ofisi ya familia",
+      "heroSecondaryCta": "Ona uandishi wa ripoti",
+      "trustline": [
+        "Leja tayari kwa ukaguzi",
+        "Muhtasari wa mwenye nyumba wa kila mwezi",
+        "Takwimu za kundi la mali"
+      ],
+      "statsHeading": "Imejengwa kwa mwenye mali wa muda mrefu.",
+      "statsSub": "Wateja wa ofisi za familia huendesha BossNyumba kwenye makundi makubwa ya mali yanayoenea kwenye kampuni nyingi za umiliki, dhamana, na mamlaka mbalimbali. Mwl. Mwikila huweka kila mali kwenye leja moja iliyo tayari kwa ukaguzi.",
+      "stats": [
+        {
+          "value": "Isiyobadilika",
+          "label": "Leja ya kuingia mara mbili",
+          "sub": "Kila risiti na malipo huandikwa, husawazishwa, na ni ya kuongeza tu — namba ile ile pande zote mbili."
+        },
+        {
+          "value": "Kila mwezi",
+          "label": "Muhtasari wa mwenye nyumba",
+          "sub": "Hutengenezwa na kuwasilishwa kwa ratiba, unaweza kuhamishwa kwa sarafu yoyote."
+        },
+        {
+          "value": "Hamisha",
+          "label": "Tayari kwa ukaguzi",
+          "sub": "Hamishi za utii yenye hash-chain ambazo mkaguzi wako wa nje anaweza kuthibitisha bila mtandao."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Leta mali. Mwl. Mwikila anatunza vitabu.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Chora ramani ya mali",
+          "body": "Ongeza mali zote kwenye kampuni zako za umiliki na dhamana. Mwl. Mwikila huzipanga chini ya mwonekano mmoja wa mwenye nyumba."
+        },
+        {
+          "n": "02",
+          "title": "Unganisha mtiririko wa kodi",
+          "body": "Kusanya kodi kupitia M-Pesa kwa idhini ya mpangaji ya mguso mmoja; kila malipo huandikwa kwenye leja ya kuingia mara mbili."
+        },
+        {
+          "n": "03",
+          "title": "Uandishi wa ripoti wa ratiba",
+          "body": "Muhtasari wa mwenye nyumba wa kila mwezi na takwimu za kundi la mali — ujazaji, mapato, gharama — pamoja na hamishi tayari kwa ukaguzi pale unapozihitaji."
+        }
+      ],
+      "problemKicker": "Tatizo la mmiliki mkuu",
+      "problemHeading": "Wahasibu watatu, mmiliki mkuu mmoja,",
+      "problemHeadingAccent": "seti tatu za vitabu",
+      "problemSub": "Ofisi za familia hutegemea watu wanaoshikilia vitabu vichwani mwao. Mwl. Mwikila huweka kila mali kwenye leja moja iliyo tayari kwa ukaguzi ili mmiliki mkuu daima aone namba zile zile.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Seti tatu za vitabu",
+          "desc": "Wahasibu watatu, mizunguko mitatu ya usawazishaji. Hakuna unaolingana, na hakuna unaonusurika kabidhiano."
+        },
+        {
+          "title": "Ucheleweshaji wa muhtasari",
+          "desc": "Muhtasari wa mwenye nyumba hufika kwa kuchelewa na bila uthabiti, hivyo mmiliki mkuu hufanya maamuzi kwa picha iliyopitwa na wakati."
+        },
+        {
+          "title": "Migogoro ya risiti",
+          "desc": "Kodi iliyolipwa kupitia pesa ya simu haina kumbukumbu ya pamoja; malipo hupingwa miezi kadhaa baadaye."
+        },
+        {
+          "title": "Vurugu za ukaguzi",
+          "desc": "Ukaguzi wa nje hugeuka kuwa uchimbaji wa kiakiolojia wa wiki kadhaa kwa sababu hakuna chenye hash-chain."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Leja moja ya mwenye nyumba",
+          "desc": "Kila risiti ya kodi na malipo huandikwa kwenye leja moja isiyobadilika ya kuingia mara mbili kwenye kila mali — namba ile ile pande zote mbili."
+        },
+        {
+          "title": "Muhtasari wa ratiba",
+          "desc": "Muhtasari wa mwenye nyumba wa kila mwezi hutengenezwa na kuwasilishwa kiotomatiki, unaweza kuhamishwa kwa sarafu yoyote kwa ajili ya mkutano wa familia."
+        },
+        {
+          "title": "Takwimu za kundi la mali",
+          "desc": "Takwimu za ujazaji, mapato, na gharama kwenye kundi zima la mali — ili mmiliki mkuu daima aone picha ile ile."
+        },
+        {
+          "title": "Hamishi tayari kwa ukaguzi",
+          "desc": "Hamishi za utii yenye hash-chain, za kuongeza tu, ambazo mkaguzi wako wa nje anaweza kuthibitisha bila mtandao."
+        }
+      ],
+      "ctaHeading": "Mali moja. Mshauri mmoja. Leja moja.",
+      "ctaSub": "Panga onyesho la ofisi ya familia la dakika 45. Tutaanzisha leja, muhtasari, na takwimu kwenye sampuli ya kundi lako la mali.",
+      "ctaPrimary": "Panga onyesho"
+    },
+    "bank": {
+      "metaTitle": "Kwa benki + ufadhili wa mali — BossNyumba",
+      "metaDescription": "Mtiririko wa fedha wa mali uliofungwa kwa mnyororo wa hash na alama ya mkopo ya mwenye nyumba iliyokokotolewa kwa ajili ya tathmini ya mikopo. Wapatie wenye nyumba wasiofikiwa na huduma za benki mikopo kwa uhakika. Mlisho wa mkopo wa API kwa idhini upo katika mpango wa siku zijazo.",
+      "heroKicker": "Kwa benki + ufadhili wa mali",
+      "heroHeadline": "Toa mikopo kwa mtiririko wa fedha wa mali",
+      "heroHeadlineAccent": "unaoweza kuuthibitisha",
+      "heroSub": "BossNyumba hugeuza mtiririko wa fedha wa mali uliothibitishwa na wenye hash-chain kuwa alama ya mkopo iliyokokotolewa, ili benki ziweze kutoa mikopo ya nyumba, mikopo ya daraja, na ufadhili wa ununuzi kwa ujasiri — hata kwa wenye nyumba wadogo ambao hawajawahi kuwa na vitabu vinavyokubalika benki.",
+      "heroPrimaryCta": "Weka miadi ya onyesho la mkopo",
+      "heroSecondaryCta": "Ona alama ya mkopo",
+      "trustline": [
+        "Mtiririko wa fedha wenye hash-chain",
+        "Alama ya mkopo iliyokokotolewa",
+        "Mlisho wa API kwa idhini upo kwenye ramani"
+      ],
+      "statsHeading": "Mfikishie benki mwenye nyumba asiyefikiwa na huduma za benki.",
+      "statsSub": "Wenye nyumba wengi wa Kitanzania wana mali zinazoweza kupangishwa lakini hawana vitabu vinavyokubalika benki. Mnyororo wa ukaguzi wa BossNyumba hugeuza risiti kuwa mtiririko wa fedha unaoweza kutolewa mkopo.",
+      "stats": [
+        {
+          "value": "Miezi 12",
+          "label": "Historia ya mtiririko wa fedha",
+          "sub": "Kwa kila mwenye nyumba, yenye hash-chain, inayoweza kuhamishwa kwenye mfumo wako wa mkopo kama wasilisho la utii."
+        },
+        {
+          "value": "Alama",
+          "label": "Kiwango cha mkopo",
+          "sub": "Alama ya mkopo iliyokokotolewa yenye modeli ya alama, ukokotoaji upya uliopangwa, na cheti kinachoweza kuthibitishwa."
+        },
+        {
+          "value": "Ramani",
+          "label": "Mlisho wa API kwa idhini",
+          "sub": "API ya kusoma tu inayoingia kwenye data ya mtiririko wa fedha iliyoidhinishwa na mwenye nyumba ipo kwenye ramani."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Hamisha. Pima. Kopesha. Kagua.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Mwenye nyumba anashiriki",
+          "body": "Mteja wako anahamisha historia yake ya mtiririko wa fedha yenye hash-chain kama wasilisho la utii unaloweza kulithibitisha bila mtandao. (Mlisho wa moja kwa moja wa API kwa idhini upo kwenye ramani.)"
+        },
+        {
+          "n": "02",
+          "title": "Pima",
+          "body": "Ukusanyaji wa kodi wa miezi 12, ukaaji, na utii wa ushuru huunganishwa kuwa alama ya mkopo iliyokokotolewa yenye cheti kinachoweza kuthibitishwa."
+        },
+        {
+          "n": "03",
+          "title": "Kopesha + kagua",
+          "body": "Toa fedha kupitia njia zako zilizopo. Vuta ripoti ya kufadhili upya inayopatikana papo hapo yenye majaribio ya msukumo ya LTV/DSCR wakati wa ukaguzi."
+        }
+      ],
+      "problemKicker": "Pengo la mkopo",
+      "problemHeading": "Wenye nyumba wanaostahili mkopo wenye",
+      "problemHeadingAccent": "vitabu visivyokubalika benki",
+      "problemSub": "Unajua kuna wenye nyumba wazuri katika mtandao wa matawi yako. Ila huwezi kuwapatia mkopo — hakuna muhtasari, hakuna orodha za kodi zilizokaguliwa, hakuna ukaaji uliothibitishwa.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Orodha za kodi za WhatsApp",
+          "desc": "Mwombaji analeta picha ya skrini ya WhatsApp. Unakataa."
+        },
+        {
+          "title": "Dhamana ya hati pekee",
+          "desc": "Unaweza kukopesha dhidi ya hati, lakini si dhidi ya mtiririko wa fedha. LTV yako inabaki ya tahadhari."
+        },
+        {
+          "title": "Upofu baada ya kutoa fedha",
+          "desc": "Mara fedha zinapotolewa, huna mwonekano wa DSCR hadi mkopaji ashindwe kulipa."
+        },
+        {
+          "title": "Ukaguzi wa kundi la mali kwa mikono",
+          "desc": "Ukaguzi wa kila mwaka ni zoezi la simu; kushindwa kulipa kunakukuta umechelewa."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Mtiririko wa fedha uliothibitishwa",
+          "desc": "Historia ya miezi 12 ya kodi + matengenezo + ushuru yenye hash-chain kwa kila mwenye nyumba, inayoweza kuhamishwa kwenye mfumo wako wa mkopo."
+        },
+        {
+          "title": "Alama ya mkopo iliyokokotolewa",
+          "desc": "Modeli ya alama hugeuza mavuno ya kodi kuwa alama ya mkopo yenye cheti kinachoweza kuthibitishwa — panga bei kwa hatari unayoweza kuiona kweli."
+        },
+        {
+          "title": "Jaribio la msukumo papo hapo",
+          "desc": "Vuta ripoti ya kufadhili upya yenye majaribio ya msukumo ya LTV/DSCR wakati wa kutoa mkopo na ukaguzi — papo hapo, si mara moja kwa mwaka."
+        },
+        {
+          "title": "Takwimu za kundi la mali",
+          "desc": "Vipimo vya afya kwa kila eneo katika vitabu vilivyoidhinishwa; takwimu, si simu za kumbukumbu ya mwaka."
+        }
+      ],
+      "ctaHeading": "Kopesha kwa wenye nyumba uliokuwa ukiwatamani siku zote.",
+      "ctaSub": "Weka miadi ya onyesho la mkopo la dakika 30. Tutapitia alama ya mkopo, historia ya mtiririko wa fedha inayoweza kuhamishwa, na modeli ya utoaji mkopo.",
+      "ctaPrimary": "Weka miadi ya onyesho la mkopo"
+    },
+    "regulator": {
+      "metaTitle": "Kwa wadhibiti wa nyumba — BossNyumba",
+      "metaDescription": "Ishara ya soko ya moja kwa moja, isiyobainisha utambulisho, iliyofungwa kwa mnyororo wa hashi: idadi ya mikataba, wastani wa kodi za wilaya, wingi wa migogoro, na utii wa ada za halmashauri. Ridhaa ya mpangaji kwanza; faragha ya kitofauti imehakikishwa; imewekewa mipaka kikatiba.",
+      "heroKicker": "Kwa wadhibiti wa nyumba",
+      "heroHeadline": "Ona soko la upangaji",
+      "heroHeadlineAccent": "jinsi lilivyo hasa",
+      "heroSub": "BossNyumba humpa mdhibiti wa nyumba mtazamo hai, usio na utambulisho wa soko la upangaji: idadi ya mikataba, wastani wa kodi kwa wilaya, kiasi cha migogoro ya amana, malalamiko ya wapangaji, na utii wa ushuru wa halmashauri — vyote kwa hiari ya mwenye nyumba na kwa mipaka ya kikatiba.",
+      "heroPrimaryCta": "Weka tarehe ya onyesho la mdhibiti",
+      "heroSecondaryCta": "Ona dashibodi",
+      "trustline": [
+        "Yenye mipaka ya kikatiba",
+        "Idhini ya mpangaji kwanza",
+        "Hai + inayoweza kukaguliwa"
+      ],
+      "statsHeading": "Sera ya nyumba inayotegemea ushahidi.",
+      "statsSub": "Wadhibiti huandaa sera kwa kutegemea tafiti za mwaka. BossNyumba huibua viashiria vilevile vya soko kila siku — bila kamwe kufichua data ya mtu mmoja.",
+      "stats": [
+        {
+          "value": "Hai",
+          "label": "Kiashiria cha soko",
+          "sub": "Idadi ya mikataba, wastani wa kodi kwa wilaya, kiasi cha migogoro — vinasasishwa kila siku."
+        },
+        {
+          "value": "Bila utambulisho",
+          "label": "Faragha tofautishi",
+          "sub": "Hakuna mwenye nyumba au mpangaji yeyote anayeweza kutambulika kutoka kwenye dashibodi."
+        },
+        {
+          "value": "Imekaguliwa",
+          "label": "Yenye hash-chain",
+          "sub": "Kila uhamishaji hubeba uthibitisho wa asili wa kriptografia."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Kusanya. Ondoa utambulisho. Kagua. Shiriki.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Kusanya",
+          "body": "BossNyumba hukusanya data ya mikataba, kodi, migogoro, na utii kutoka kwa wenye nyumba walioidhinisha."
+        },
+        {
+          "n": "02",
+          "title": "Ondoa utambulisho",
+          "body": "Vizingiti vya faragha tofautishi huzuia utambuzi upya katika ngazi ya wilaya au jengo."
+        },
+        {
+          "n": "03",
+          "title": "Shiriki",
+          "body": "Dashibodi ya mdhibiti + pack ya ushahidi ya kila mwezi + sehemu ya kuuliza maswali ya papo kwa papo, vyote vyenye hash-chain."
+        }
+      ],
+      "problemKicker": "Pengo la sera",
+      "problemHeading": "Tafiti za mwaka, malalamiko ya papo kwa papo,",
+      "problemHeadingAccent": "hakuna kiashiria hai",
+      "problemSub": "Wadhibiti wa nyumba huunda mipaka ya kodi na sheria za ulinzi wa wapangaji kwa kutegemea data iliyopitwa na wakati. Mwl. Mwikila huleta kiashiria cha soko kwenye muhtasari wa asubuhi wa mdhibiti.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Tafiti zilizopitwa na wakati",
+          "desc": "Utafiti wa nyumba wa NBS wa mwaka uliopita ndio unaongoza sera ya halmashauri ya mwaka huu."
+        },
+        {
+          "title": "Malalamiko ya hadithi",
+          "desc": "Chama cha wapangaji kinatuma barua; hujui kama kinawakilisha wengi kiasi gani."
+        },
+        {
+          "title": "Mgawanyiko wa halmashauri",
+          "desc": "Halmashauri 184, miundo 184 tofauti ya usajili wa mikataba. Hakuna mtazamo wa pamoja."
+        },
+        {
+          "title": "Hakuna onyo la mapema",
+          "desc": "Ongezeko la kufukuzwa kwa wapangaji huonekana tu kwenye mzunguko wa habari, sio kwenye dashibodi."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Kiashiria cha soko cha kila siku",
+          "desc": "Wastani wa kodi kwa wilaya, mzunguko wa mikataba, ujazo — vinasasishwa kila usiku."
+        },
+        {
+          "title": "Ramani ya joto ya migogoro",
+          "desc": "Wapangaji na wenye nyumba wanagombana hasa wapi? Pata jibu kila mwezi."
+        },
+        {
+          "title": "Ushirikiano kati ya halmashauri",
+          "desc": "Data thabiti ya mikataba + ushuru katika halmashauri zote zinazoshiriki."
+        },
+        {
+          "title": "Onyo la mapema la kufukuzwa",
+          "desc": "Maombi ya kufukuza yanayoongezeka yanaonekana siku 60-90 kabla ya mzunguko wa habari."
+        }
+      ],
+      "ctaHeading": "Toa sera kutoka kwenye kioo cha nyuma.",
+      "ctaSub": "Weka tarehe ya onyesho la mdhibiti la dakika 30 na kiongozi wetu wa sekta ya umma.",
+      "ctaPrimary": "Weka tarehe ya onyesho la mdhibiti"
+    },
+    "communityHousing": {
+      "metaTitle": "Kwa makazi ya jamii — BossNyumba",
+      "metaDescription": "Makazi ya ushirika, dhamana za ardhi za jamii, ushirikiano wa makazi ya wafanyakazi. Ada za uwazi, bahati nasibu ya ugawaji wa haki, kumbukumbu tayari kwa AGM, vifurushi vya athari kwa wafadhili. Punguzo la jamii la asilimia 30.",
+      "heroKicker": "Kwa makazi ya jamii",
+      "heroHeadline": "Makazi kwa watu",
+      "heroHeadlineAccent": "wanaojenga mji",
+      "heroSub": "BossNyumba huendesha makazi ya ushirika, dhamana za ardhi za jamii, na ushirikiano wa makazi ya wafanyakazi kwa mashirika yasiyo ya kiserikali, miji ya viwanda, na vyuo vikuu. Mwl. Mwikila huendesha leja ya michango na ugawaji wa vitengo kwa wanachama, na huandaa kumbukumbu zilizo tayari kwa mkutano mkuu wa mwaka (AGM).",
+      "heroPrimaryCta": "Omba kiwango cha jamii",
+      "heroSecondaryCta": "Tazama mfumo",
+      "trustline": [
+        "Punguzo la asilimia 30 kwa jamii",
+        "Uwazi wa ugawaji",
+        "Utawala unaowaweka wanachama mbele"
+      ],
+      "statsHeading": "Makazi ya jamii ambayo jamii inayaamini.",
+      "statsSub": "Makazi mengi ya jamii hushindwa kwa sababu vitabu vya hesabu havieleweki na ugawaji unafuata siasa. Mwl. Mwikila husimamia michango ya wazi, ugawaji wa haki, na kumbukumbu zilizo tayari kwa mkutano mkuu wa mwaka (AGM).",
+      "stats": [
+        {
+          "value": "30%",
+          "label": "Punguzo kwa jamii",
+          "sub": "Kwa kila kiwango kwa mipango ya makazi ya jamii iliyosajiliwa."
+        },
+        {
+          "value": "Hadharani",
+          "label": "Leja ya michango",
+          "sub": "Kila mwanachama huona kila malipo."
+        },
+        {
+          "value": "Haki",
+          "label": "Bahati nasibu ya ugawaji",
+          "sub": "Yenye hash-chain, tayari kwa ukaguzi, isiyoshindikana kwa migogoro."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Hatua tatu hadi mfumo wa makazi ya jamii.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Sajili mpango",
+          "body": "Pakia cheti cha mpango. BossNyumba huunda orodha ya wanachama, ratiba ya michango, na sheria za ugawaji."
+        },
+        {
+          "n": "02",
+          "title": "Michango na ugawaji",
+          "body": "Wanachama hulipa michango; vitengo vilivyo wazi hugawanywa kwa uwazi na kuingizwa kupitia leja ya kuingia mara mbili. Kila hatua ina hash-chain."
+        },
+        {
+          "n": "03",
+          "title": "AGM na uwazi",
+          "body": "Mkutano mkuu wa mwaka (AGM) ndani ya programu: muhtasari wa mkutano, mahudhurio, hesabu zilizokaguliwa — zote zinaonekana kwa wanachama na zina hash-chain."
+        }
+      ],
+      "problemKicker": "Pengo la jamii",
+      "problemHeading": "Michango isiyoeleweka, ugawaji wa kisiasa,",
+      "problemHeadingAccent": "uaminifu uliopotea",
+      "problemSub": "Makazi ya jamii hufa wakati uwazi unakufa. Mwl. Mwikila husimamia uwazi kwa chaguo-msingi ili mpango uendelee hata baada ya mabadiliko ya uongozi.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Michango isiyoeleweka",
+          "desc": "Wanachama hawajui ni nani aliyelipa, ni nani anadaiwa, au mpango ulitumia nini."
+        },
+        {
+          "title": "Ugawaji wa kisiasa",
+          "desc": "Vitengo vilivyo wazi vinakwenda kwa rafiki wa mwenyekiti; wanachama hulalamika bila mafanikio."
+        },
+        {
+          "title": "Kusahaulika kwa AGM",
+          "desc": "Maazimio ya mwaka jana hupotea; mwenyekiti wa mwaka huu hana kumbukumbu ya kitaasisi."
+        },
+        {
+          "title": "Kutokuaminiwa na wafadhili",
+          "desc": "Mashirika yasiyo ya kiserikali na makampuni hupoteza imani; ufadhili hukauka."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Leja ya michango ya hadharani",
+          "desc": "Kila mwanachama, kila malipo, kila matumizi ya ushirika — yanaonekana kwa wanachama wote."
+        },
+        {
+          "title": "Ugawaji wenye uwazi",
+          "desc": "Vitengo vilivyo wazi hugawanywa kwa sheria za wazi zinazoweza kukaguliwa na kuingizwa kupitia leja ya kuingia mara mbili — kila senti inafuatilika."
+        },
+        {
+          "title": "Kumbukumbu tayari kwa AGM",
+          "desc": "Muhtasari wa mkutano, mahudhurio, na hesabu zilizokaguliwa — zenye hash-chain na zinazoonekana kwa wanachama."
+        },
+        {
+          "title": "Ripoti za wafadhili",
+          "desc": "Mashirika yasiyo ya kiserikali na makampuni hupata pack ya athari ya kila robo mwaka, iliyotengenezwa kutoka data hai, tayari kwa ukaguzi."
+        }
+      ],
+      "ctaHeading": "Uaminifu, umejengwa ndani.",
+      "ctaSub": "Omba kiwango cha makazi ya jamii. Mipango iliyosajiliwa hupata punguzo la asilimia 30 kwa kila kiwango.",
+      "ctaPrimary": "Omba"
+    },
+    "corporatePortfolio": {
+      "metaTitle": "Kwa makundi ya mali ya makampuni — BossNyumba",
+      "metaDescription": "BossNyumba inaendesha makundi ya mali ya makampuni — makazi ya wafanyakazi, ofisi za matawi, maghala — kama mfumo mmoja wa uendeshaji. Mwl. Mwikila huunganisha mikataba, tozo, matengenezo, na hazina katika kila taasisi.",
+      "heroKicker": "Kwa makundi ya mali ya makampuni",
+      "heroHeadline": "Mshirika wa kwanza duniani wa AI wa Usimamizi wa Mali",
+      "heroHeadlineAccent": "kwa mali ya makampuni",
+      "heroSub": "Mwl. Mwikila ni msaidizi mkuu mtulivu kwa kampuni yoyote inayomiliki nyumba za wafanyakazi, ofisi za matawi, maghala, au maeneo ya biashara ya rejareja kama sehemu ya shughuli zake. Leja moja ya mikataba, upimaji na upatanishi wa huduma, takwimu za kundi la mali, na hamishaji za utii zilizo tayari kwa ukaguzi katika kila eneo.",
+      "heroPrimaryCta": "Panga onyesho la kampuni",
+      "heroSecondaryCta": "Ona ripoti",
+      "trustline": [
+        "Leja ya kuingia mara mbili ya kiwango cha ukaguzi",
+        "Upimaji wa huduma + upatanishi",
+        "Takwimu za kundi la mali"
+      ],
+      "statsHeading": "Acha kuendesha kundi lako la mali kwa lahajedwali tatu.",
+      "statsSub": "Makundi ya mali ya makampuni hupoteza gharama zinazoweza kurejeshwa kutokana na kuteleza kwa mikataba, kupungua kwa ushuru, na huduma zisizotolewa risiti. Mwl. Mwikila huweka kila eneo kwenye leja moja na huonyesha upotevu kwenye takwimu, katika kila eneo na kila sarafu.",
+      "stats": [
+        {
+          "value": "Moja",
+          "label": "Leja ya mikataba",
+          "sub": "Kila mkataba, ushuru, na bili ya huduma huandikwa kwenye leja moja isiyobadilika ya kuingia mara mbili."
+        },
+        {
+          "value": "Yenye mita",
+          "label": "Huduma",
+          "sub": "Maji, umeme, gesi — akaunti, visomo, na bili hufuatiliwa na kupatanishwa kwa kila eneo."
+        },
+        {
+          "value": "Hamisha",
+          "label": "Tayari kwa ukaguzi",
+          "sub": "Hamishaji za utii zenye hash-chain hadi kwenye BI ya kampuni yako, kwa sarafu yoyote."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Leta kundi la mali. Weka sera. Mwl. Mwikila anahifadhi vitabu.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Chora kila eneo",
+          "body": "Ongeza mikataba yako, ushuru, mikataba ya wauzaji, na akaunti za huduma. Mwl. Mwikila huzipanga chini ya mwonekano mmoja wa eneo kwa eneo."
+        },
+        {
+          "n": "02",
+          "title": "Weka sera + uhuru wa kujiamulia",
+          "body": "Chagua kiasi gani Mwl. Mwikila anakuandalia kwa kila eneo — mikataba, ushuru, matengenezo — ndani ya matriki yako ya mamlaka ya kampuni; kila hatua inafika kwa idhini ya mguso mmoja."
+        },
+        {
+          "n": "03",
+          "title": "Pokea muhtasari wa kila siku",
+          "body": "Kila asubuhi saa 06:00: orodha ya tofauti, kalenda ya ushuru, takwimu za kundi la mali, na maamuzi matatu ambayo CFO pekee anaweza kuyafanya."
+        }
+      ],
+      "problemKicker": "Gharama ya kampuni",
+      "problemHeading": "Gharama ya mali huishi kwenye lahajedwali,",
+      "problemHeadingAccent": "sio kwenye ERP yako",
+      "problemSub": "ERP nyingi za makampuni huona mali kama mstari wa gharama, sio kundi la mali. Matokeo ni upotevu usioonekana unaozidi kuongezeka robo baada ya robo.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Kuteleza kwa mikataba",
+          "desc": "Chaguo za kurefusha zinaisha kimya kimya. Ongezeko la kodi linakosa tarehe ya kielelezo. Gharama yako halisi ni kubwa kuliko timu yako ya fedha inavyofikiri."
+        },
+        {
+          "title": "Kupungua kwa ushuru",
+          "desc": "Halmashauri, kodi ya mali, huduma — kila moja inafika kwenye kisanduku tofauti cha barua. Adhabu za ucheleweshaji zinazidi kuongezeka na hakuna anayewajibika."
+        },
+        {
+          "title": "Sanduku jeusi la huduma",
+          "desc": "Huduma za matawi hutozwa kwa mita, hulipwa kwa fedha taslimu, na hupatanishwa na hakuna mtu. Upotevu ni wa kimuundo."
+        },
+        {
+          "title": "Hakuna mwonekano wa kundi la mali",
+          "desc": "Hazina haiwezi kueleza tawi gani lina faida, gani ni mzigo, gani linavunja sawasawa."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Mnara wa ulinzi wa mikataba",
+          "desc": "Kila chaguo la kurefusha, kila ongezeko, kila kifungu cha kuvunja huonyeshwa siku 90 kabla ya tarehe ya kuanzishwa."
+        },
+        {
+          "title": "Dawati moja la ushuru",
+          "desc": "Kila halmashauri, kila mamlaka ya kodi, kila huduma, kila mzunguko huonyeshwa mahali pamoja; Mwl. Mwikila huandaa kila wasilisho kwa idhini yako ya mguso mmoja."
+        },
+        {
+          "title": "Upatanishi wa huduma",
+          "desc": "Visomo vya mita huingizwa, bili huthibitishwa, kasoro huonyeshwa — maji, umeme, na gesi hufuatiliwa na kupatanishwa kwa kila eneo."
+        },
+        {
+          "title": "Takwimu za kundi la mali",
+          "desc": "Takwimu za ukaaji, mapato, na matumizi kwa kila tawi na kila eneo. Zinaweza kuhamishwa hadi kwenye BI ya kampuni yako kwa sarafu yoyote."
+        }
+      ],
+      "ctaHeading": "Endesha kundi la mali unalomiliki tayari.",
+      "ctaSub": "Panga onyesho la kampuni la dakika 30. Tutasimamisha leja, upatanishi wa huduma, na takwimu kwenye sampuli ya maeneo yako na kuonyesha upotevu usioweza kuuona kwa sasa.",
+      "ctaPrimary": "Panga onyesho la kampuni"
+    },
+    "governmentEntity": {
+      "metaTitle": "Kwa taasisi za serikali — BossNyumba",
+      "metaDescription": "BossNyumba huwapa mashirika ya umma, wizara, na taasisi za serikali za mikoa mfumo wa uendeshaji wenye uwazi na unaoweza kukaguliwa kwa ajili ya mali zao. Leja ya uaminifu wa umma, taarifa zilizo tayari kwa mkutano mkuu wa mwaka, na njia ya ukaguzi iliyofungwa kwa msururu wa hashi katika kila kitendo.",
+      "heroKicker": "Kwa taasisi za serikali na mashirika ya umma",
+      "heroHeadline": "Mali ya umma,",
+      "heroHeadlineAccent": "leja ya imani ya umma",
+      "heroSub": "Mwl. Mwikila huyapa mashirika ya umma, wizara, na taasisi za serikali za mikoa mfumo wa uendeshaji wenye uwazi na unaoweza kukaguliwa kwa mali zao. Kila ushuru unaokusanywa, kila mkataba unaorekodiwa, kila mzabuni anayelipwa hufika kwenye leja yenye hash-chain, inayoweza kuhamishwa kwa wadhibiti.",
+      "heroPrimaryCta": "Panga onyesho la serikali",
+      "heroSecondaryCta": "Ona leja ya umma",
+      "trustline": [
+        "Yenye hash-chain, inayoweza kuhamishwa kwa ukaguzi",
+        "Makazi huru ya data",
+        "Tayari kwa mkaguzi kwa msingi"
+      ],
+      "statsHeading": "Mali ya umma inastahili zana za kiwango cha umma.",
+      "statsSub": "Mali za serikali hupoteza thamani kupitia leja zisizo wazi, mikataba iliyokwisha muda, na ushuru usiokusanywa. Mwl. Mwikila husakinisha uwazi ambao umma unautarajia bila gharama ya kisiasa ya ukaguzi wa mikono.",
+      "stats": [
+        {
+          "value": "100%",
+          "label": "Ufikiaji wa ukaguzi",
+          "sub": "Kila tendo lenye hash-chain, la kuongezwa tu, linaloweza kuhamishwa kwa ofisi za Mdhibiti na Mkaguzi Mkuu wa Hesabu nje ya mtandao."
+        },
+        {
+          "value": "Kila siku",
+          "label": "Leja ya umma",
+          "sub": "Takwimu za muhtasari bila utambulisho kuhusu mapato, ukaaji, na malimbikizo zinapatikana kwa wananchi pale wanapohitaji."
+        },
+        {
+          "value": "Sifuri",
+          "label": "Hatari ya makabidhiano ya mikono",
+          "sub": "Mkurugenzi anapohama, kumbukumbu ya kitaasisi huhama na mfumo, sio na mtu."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Idhini. Ramani. Endesha.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Idhini",
+          "body": "Katibu mkuu wako anasaini idhini ya imani ya umma. Mwl. Mwikila huendesha ndani ya mipaka ya idhini hiyo, kamwe si zaidi."
+        },
+        {
+          "n": "02",
+          "title": "Ramani ya kila mali",
+          "body": "Leta kumbukumbu zako za sasa za mali. Linganisha mikataba, ushuru, madeni, na hali za migogoro kuwa grafu moja ya maarifa."
+        },
+        {
+          "n": "03",
+          "title": "Endesha na mnyororo wa ukaguzi",
+          "body": "Kila ukusanyaji, kila ulipaji, kila uamuzi wenye hash-chain. Mdhibiti na Mkaguzi Mkuu wa Hesabu husoma mnyororo, sio kabati lako la mafaili."
+        }
+      ],
+      "problemKicker": "Gharama ya sekta ya umma",
+      "problemHeading": "Leja zisizo wazi,",
+      "problemHeadingAccent": "mapato yaliyopotea",
+      "problemSub": "Mali za serikali hubeba mzigo mkubwa zaidi kwenye mizania ya uchumi wowote na zana dhaifu zaidi. Mwl. Mwikila huziba pengo hilo bila gharama ya kisiasa.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Mikataba ya serikali iliyokwisha muda",
+          "desc": "Mikataba ya sekta ya umma hukwisha muda kwa sababu hakuna anayefuatilia tarehe za kurefusha mahali pamoja na ukusanyaji wa kodi."
+        },
+        {
+          "title": "Kodi ya ardhi isiyokusanywa",
+          "desc": "Mafaili ya kodi ya ardhi yamekaa kwenye makabati. Ukusanyaji hufanyika hovyo. Wananchi hulipa kwa kutofautiana; hakuna anayefuatilia kwa uthabiti."
+        },
+        {
+          "title": "Rundo la matokeo ya ukaguzi",
+          "desc": "Kila mzunguko, Mkaguzi Mkuu wa Hesabu hupata mapungufu yale yale. Marekebisho hayadumu kwa sababu hakuna mfumo wa wakati halisi."
+        },
+        {
+          "title": "Hatari ya kuhama kwa mkurugenzi",
+          "desc": "Mkuu wa mali anapohama, kumbukumbu ya kitaasisi hutoka naye. Mrithi huanza kutoka sifuri."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Mwongozaji otomatiki wa mikataba",
+          "desc": "Chaguo za kurefusha, ongezeko, malipo ya kodi ya ardhi huletwa siku 90 mapema. Mwl. Mwikila huandaa pack ya kurefusha yenyewe."
+        },
+        {
+          "title": "Njia za malipo za wananchi",
+          "desc": "Kodi ya ardhi inakusanywa kupitia M-Pesa, Tigo Pesa, Airtel Money, au benki. Risiti hutolewa kwa sekunde, yenye hash-chain kwenye leja ya umma."
+        },
+        {
+          "title": "Mnyororo wa ukaguzi kwa otomatiki",
+          "desc": "Kila tendo la kuongezwa tu na lenye saini. Mkaguzi Mkuu wa Hesabu husoma mnyororo, sio kabati la mafaili."
+        },
+        {
+          "title": "Mwendelezo kupitia kuhama",
+          "desc": "Kumbukumbu ya kitaasisi huishi ndani ya mfumo. Mrithi hufika siku ya kwanza na muhtasari kamili wa mali, tayari kutenda."
+        }
+      ],
+      "ctaHeading": "Endesha mali ya umma, hadharani.",
+      "ctaSub": "Panga muhtasari wa dakika 30 na kiongozi wetu wa sekta ya umma. Tutapitia mnyororo wa ukaguzi, njia za malipo za wananchi, na dashibodi ya leja ya umma.",
+      "ctaPrimary": "Panga onyesho la serikali"
+    },
+    "reit": {
+      "metaTitle": "Kwa REITs na mifuko ya uwekezaji wa mali — BossNyumba",
+      "metaDescription": "BossNyumba ni mfumo wa uendeshaji ambao REITs na mifuko ya kitaasisi ya uwekezaji wa mali huutumia kusimamia mali zao. P&L kwa kila mali, njia za ukaguzi zilizofungwa kwa minyororo ya hashi, uchambuzi wa kundi la mali, mauzo ya nje ya utii, na ripoti zilizounganishwa.",
+      "heroKicker": "Kwa REIT na fedha za mali",
+      "heroHeadline": "Mshirika wa kwanza duniani wa Usimamizi wa Mali kwa AI",
+      "heroHeadlineAccent": "kwa mali ya kitaasisi",
+      "heroSub": "Mwl. Mwikila ni mfumo wa uendeshaji ambao Real Estate Investment Trusts (REIT) na fedha za mali za kitaasisi huendesha mali zao juu yake. Leja ya kuingia mara mbili isiyobadilika, mnyororo wa ukaguzi wa kiwango cha wanachama wa vitengo, takwimu za kundi la mali, mauzo ya utii tayari kwa ukaguzi, na Mkuu wa Wafanyakazi wa AI anayemueleza meneja wa fedha kila asubuhi.",
+      "heroPrimaryCta": "Weka miadi ya onyesho la meneja wa fedha",
+      "heroSecondaryCta": "Ona chumba cha uendeshaji cha fedha",
+      "trustline": [
+        "Mnyororo wa ukaguzi wa kiwango cha wanachama wa vitengo",
+        "Takwimu za kundi la mali",
+        "Mauzo ya utii"
+      ],
+      "statsHeading": "Endesha fedha juu ya leja moja.",
+      "statsSub": "REIT na fedha za mali huendeshwa kwa mizunguko ya taarifa za robo mwaka inayoficha hatari za ndani ya robo. Mwl. Mwikila huweka kila mali kwenye leja moja isiyobadilika ili picha iwe ya sasa kila wakati, bila kuongeza hata mfanyakazi mmoja wa muda kamili.",
+      "stats": [
+        {
+          "value": "Isiyobadilika",
+          "label": "Leja ya kuingia mara mbili",
+          "sub": "Kila risiti ya kodi, malipo, na matumizi ya mtaji yameingizwa, yamesawazishwa, na ni ya kuongeza tu."
+        },
+        {
+          "value": "Takwimu",
+          "label": "Kwa kanda",
+          "sub": "Takwimu za ukaaji, mapato, na matumizi kwa kila kanda na chombo cha fedha, zinazoweza kuhamishwa kwa mtunza-mali wako."
+        },
+        {
+          "value": "Hamisha",
+          "label": "Tayari kwa ukaguzi",
+          "sub": "Mauzo ya utii yenye hash-chain, ya kuongeza tu, yanayowaridhisha wakaguzi wa nje na wanachama wa vitengo."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Leta fedha. Weka uhuru. Endesha vitabu.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Panga ramani ya fedha",
+          "body": "Ongeza vyombo vyako vya fedha, fedha ndogo, na SPV. Mwl. Mwikila hupanga kila mali chini ya mwonekano mmoja wa fedha."
+        },
+        {
+          "n": "02",
+          "title": "Unganisha kila mali",
+          "body": "Kusanya kodi kupitia M-Pesa kwa idhini ya mpangaji ya mguso mmoja; kila risiti, malipo, na ahadi ya matumizi ya mtaji huingia kwenye leja moja ya kuingia mara mbili."
+        },
+        {
+          "n": "03",
+          "title": "Muhtasari wa kila siku wa meneja wa fedha",
+          "body": "Kila asubuhi: takwimu za kundi la mali, orodha ya kasoro, ripoti ya kufadhili upya inayopatikana papo hapo kwa vipimo vya mkazo wa masharti, na maamuzi matatu ambayo ni meneja wa fedha pekee anayeweza kuyafanya."
+        }
+      ],
+      "problemKicker": "Ushuru wa kitaasisi",
+      "problemHeading": "Taarifa za robo mwaka huficha",
+      "problemHeadingAccent": "hatari za ndani ya robo",
+      "problemSub": "REIT na fedha za mali nyingi huendeshwa kwa mzunguko wa taarifa wa siku 90. Hatari inayojengeka ndani ya mzunguko haionekani hadi inapokuwa tatizo la robo inayofuata.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Vitabu vilivyopitwa na wakati",
+          "desc": "Kufunga kwa robo mwaka kunamaanisha wanachama wa vitengo wanafanya biashara juu ya picha ya miezi mitatu iliyopita. Tofauti za bei za kununua na kuuza zinapanuka."
+        },
+        {
+          "title": "Upofu wa masharti",
+          "desc": "DSCR huhesabiwa mara moja kwa robo. Kufikia wakati unavunja masharti, unavunja kwa miezi."
+        },
+        {
+          "title": "Mfululizo dhaifu wa ukaguzi",
+          "desc": "Kila SPV hutoa taarifa peke yake, kwenye lahajedwali zisizoweza kustahimili makabidhiano au ukaguzi wa nje."
+        },
+        {
+          "title": "Ukungu wa mwenye nyumba",
+          "desc": "Wapangaji hulipa kupitia njia na mizunguko tofauti. Usawazishaji ni zoezi la wiki nyingi."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Leja moja isiyobadilika",
+          "desc": "Kila mali, kila kitengo, kila chombo cha fedha kwenye leja moja ya kuingia mara mbili ya kuongeza tu, inayoweza kuhamishwa kwa mtunza-mali wako."
+        },
+        {
+          "title": "Kipimo cha masharti papo hapo",
+          "desc": "Vuta ripoti ya kufadhili upya yenye vipimo vya mkazo vya DSCR, LTV, na ICR wakati wowote unapoihitaji — wakati wa ukaguzi, sio mara moja kwa robo."
+        },
+        {
+          "title": "Mauzo tayari kwa ukaguzi",
+          "desc": "Kila fedha ndogo na SPV inaweza kuhamishwa kama pack ya utii yenye hash-chain, ya kuongeza tu, ikiwa na mnyororo wa ukaguzi umeambatanishwa."
+        },
+        {
+          "title": "Usawazishaji wa njia za mpangaji",
+          "desc": "Risiti za M-Pesa na benki husawazishwa kuwa leja moja ya mpangaji kupitia mwito wa webhook — zimeingizwa, zimesawazishwa, zinaweza kufuatiliwa."
+        }
+      ],
+      "ctaHeading": "Fedha moja. Muhtasari mmoja. Leja moja.",
+      "ctaSub": "Weka miadi ya onyesho la meneja wa fedha la dakika 45. Tutasimamisha leja, takwimu, na mauzo tayari kwa ukaguzi juu ya sampuli ya kundi lako la mali.",
+      "ctaPrimary": "Weka miadi ya onyesho la meneja wa fedha"
+    },
+    "embassyNgo": {
+      "metaTitle": "Kwa balozi na mashirika yasiyo ya kiserikali — BossNyumba",
+      "metaDescription": "BossNyumba huendesha mali ya balozi, mashirika ya kimataifa yasiyo ya kiserikali, na mashirika ya wafadhili katika miji mikuu mbalimbali. Leja iliyo tayari kwa ukaguzi wa wafadhili, utii unaozingatia mamlaka ya kisheria, na NAV ya sarafu nyingi.",
+      "heroKicker": "Kwa balozi na mashirika yasiyo ya kiserikali (NGO)",
+      "heroHeadline": "Mali moja, kila",
+      "heroHeadlineAccent": "mji mkuu",
+      "heroSub": "Mwl. Mwikila huendesha mali ya balozi, mashirika ya kimataifa yasiyo ya kiserikali (NGO), na mashirika ya wafadhili katika miji mikuu mingi. Leja ya kuingia mara mbili iliyo tayari kwa ukaguzi wa mfadhili, utii unaozingatia mamlaka, hamishaji tayari kwa ukaguzi, na mshauri mmoja katika kila makazi, ofisi, na kituo cha mbali.",
+      "heroPrimaryCta": "Weka miadi ya onyesho la balozi",
+      "heroSecondaryCta": "Ona dashibodi ya balozi",
+      "trustline": [
+        "Leja iliyo tayari kwa ukaguzi wa mfadhili",
+        "Utii kwa kila mamlaka",
+        "Hamishaji tayari kwa ukaguzi"
+      ],
+      "statsHeading": "Imejengwa kwa balozi inayoenea miji mikuu mingi.",
+      "statsSub": "Balozi na mashirika ya kimataifa yasiyo ya kiserikali (NGO) huendesha mali katika mamlaka mingi kwa kutumia lahajedwali zilizorithiwa. Mwl. Mwikila huweka kila kituo kwenye leja moja iliyo tayari kwa ukaguzi bila kulazimisha sheria za nchi moja kwa nyingine.",
+      "stats": [
+        {
+          "value": "Leja moja",
+          "label": "Kila kituo",
+          "sub": "Leja moja ya kuingia mara mbili katika kila makazi, ofisi, na kituo, inayohamishika kwa sarafu yoyote."
+        },
+        {
+          "value": "Kiwango cha mfadhili",
+          "label": "Mnyororo wa ukaguzi",
+          "sub": "Kila malipo yenye hash-chain na tayari kwa mkaguzi wa nje wa mfadhili."
+        },
+        {
+          "value": "Kwa mamlaka",
+          "label": "Utii",
+          "sub": "Sheria ya mkataba ya eneo, mfumo wa kodi wa eneo, mambo ya kipekee ya huduma za eneo — yanashughulikiwa kwa kila kituo."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Ramani ya kila mji mkuu. Weka sera. Mwl. Mwikila anaendesha.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Ramani ya kila mji mkuu",
+          "body": "Ongeza mali ya balozi: ofisi kuu, makazi, vituo, na ofisi za uwandani. Mwl. Mwikila huchimba sheria za mkataba, ushuru, na huduma za eneo kwa kila mji mkuu."
+        },
+        {
+          "n": "02",
+          "title": "Weka sera ya mfadhili",
+          "body": "Sanidi mzunguko wa ukaguzi wa mfadhili na mfumo wa mamlaka ya malipo. Kila kitendo hubaki ndani ya mipaka iliyoidhinishwa na mfadhili."
+        },
+        {
+          "n": "03",
+          "title": "Pokea muhtasari wa mkuu wa balozi",
+          "body": "Kila asubuhi: gharama kwa kila mji mkuu, orodha ya tofauti, mzunguko wa ukaguzi wa mfadhili, na maamuzi matatu ambayo mkuu wa balozi pekee anaweza kuyafanya."
+        }
+      ],
+      "problemKicker": "Mzigo wa balozi",
+      "problemHeading": "Lahajedwali zilizorithiwa,",
+      "problemHeadingAccent": "leja zisizo wazi",
+      "problemSub": "Balozi na NGO huendeshwa kwa kumbukumbu za kitaasisi zinazobadilika kila baada ya miaka 2 hadi 4. Mwl. Mwikila huzihifadhi kumbukumbu hizo nje ili mrithi afike siku ya kwanza akiwa na muhtasari kamili wa mali.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Kumbukumbu za kitaasisi zinazobadilika",
+          "desc": "Kila kipindi cha kazi huiacha mali ikiwa imehifadhiwa vibaya zaidi kuliko walivyoikuta. Mrithi huanza kutoka kwa mafaili yaliyorithiwa."
+        },
+        {
+          "title": "Hofu ya ukaguzi wa mfadhili",
+          "desc": "Ukaguzi wa mwaka wa wafadhili humchukua afisa fedha kwa wiki kadhaa. Matokeo hayafungwi kabla ya mzunguko unaofuata."
+        },
+        {
+          "title": "Mtawanyiko wa mamlaka mingi",
+          "desc": "Kila mji mkuu hucheza kwa sheria za eneo, kwenye mfumo wa eneo. Balozi haiwezi kujua ni kituo gani kiko salama."
+        },
+        {
+          "title": "Migogoro na wapangishaji",
+          "desc": "Kurefusha mikataba hujadiliwa chini ya shinikizo la muda. Wenye nyumba hutumia vibaya ratiba ya kidiplomasia."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Kumbukumbu za kitaasisi kiotomatiki",
+          "desc": "Kila mkataba, ushuru, mgogoro, na uamuzi huhifadhiwa kwenye mfumo. Mrithi hufika akiwa na muhtasari kamili wa mali."
+        },
+        {
+          "title": "Mnyororo wa ukaguzi wa mfadhili",
+          "desc": "Kila malipo yenye hash-chain, ya kuongeza tu, yanayohamishika kwa mkaguzi wa mfadhili nje ya mtandao."
+        },
+        {
+          "title": "Utii kwa kila mamlaka",
+          "desc": "Sheria ya mkataba ya eneo, mfumo wa kodi wa eneo, mambo ya kipekee ya huduma za eneo yanashughulikiwa kwa kila kituo bila kulazimisha sheria za nchi moja kwa nyingine."
+        },
+        {
+          "title": "Mwongozo wa wapangishaji",
+          "desc": "Mwl. Mwikila anajua kalenda yako ya kurefusha mikataba, chaguo zako mbadala, na vigezo vya soko lako. Mazungumzo huanza kutoka kwenye nguvu."
+        }
+      ],
+      "ctaHeading": "Endesha mali ya balozi, ipasavyo.",
+      "ctaSub": "Weka miadi ya onyesho la balozi la dakika 30. Tutapitia mnyororo wa ukaguzi wa mfadhili, leja ya kila mamlaka, na muhtasari wa mkuu wa balozi.",
+      "ctaPrimary": "Weka miadi ya onyesho la balozi"
+    },
+    "institutionalLandlord": {
+      "metaTitle": "Kwa vyuo vikuu na hospitali — BossNyumba",
+      "metaDescription": "BossNyumba ni mfumo wa uendeshaji kwa vyuo vikuu, vyuo vya kati vya vyuo vikuu, hospitali, na mifumo ya hospitali za kufundishia zinazomiliki mali kubwa za kitaasisi. Faida na hasara kwa kila kitivo, ukaguzi wa kiwango cha wafadhili, na uelekezaji wa matengenezo kwa kila kata ndogo.",
+      "heroKicker": "Kwa vyuo vikuu na hospitali",
+      "heroHeadline": "Endesha chuo kizima",
+      "heroHeadlineAccent": "kama mali moja",
+      "heroSub": "Mwl. Mwikila ni mfumo wa uendeshaji kwa vyuo vikuu, vyuo vikuu vishiriki, hospitali, na mifumo ya hospitali za mafunzo zinazomiliki mali kubwa za kitaasisi. Leja ya kuingia mara mbili isiyobadilika, mnyororo wa ukaguzi wa kiwango cha mfadhili, takwimu za kundi la mali kwa kila jengo, upangaji wa matengenezo, na muhtasari wa makamu mkuu wa chuo unaofika saa 12:00 kila asubuhi.",
+      "heroPrimaryCta": "Weka onyesho la makamu mkuu wa chuo",
+      "heroSecondaryCta": "Ona dashibodi ya chuo",
+      "trustline": [
+        "Takwimu kwa kila jengo",
+        "Tayari kwa ukaguzi wa mfadhili na ruzuku",
+        "Upangaji wa matengenezo"
+      ],
+      "statsHeading": "Imejengwa kwa taasisi inayomiliki kitalu chake cha mji.",
+      "statsSub": "Vyuo vikuu na hospitali ni miongoni mwa wamiliki wakubwa wa mali katika mji wowote na wenye vifaa duni zaidi. Mwl. Mwikila humpa makamu mkuu wa chuo na mkurugenzi wa hospitali muhtasari mmoja wa mali bila kulazimisha taratibu mpya kwa wahadhiri.",
+      "stats": [
+        {
+          "value": "Kwa jengo",
+          "label": "Takwimu",
+          "sub": "Takwimu za ukaaji, mapato, na matumizi kwa kila bweni, jengo la mafunzo, na kliniki."
+        },
+        {
+          "value": "Upangaji",
+          "label": "Matengenezo",
+          "sub": "Wafanyakazi wa kitivo hupiga picha matatizo; Mwl. Mwikila hupendekeza fundi sahihi na agizo la kazi kwa idhini."
+        },
+        {
+          "value": "Kiwango cha mfadhili",
+          "label": "Ukaguzi",
+          "sub": "Kila malipo yenye hash-chain na tayari kwa mkaguzi wa mfadhili au ruzuku."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Ramani ya chuo. Panga matengenezo. Mwarifu mkuu.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Weka ramani ya kila jengo",
+          "body": "Ongeza mali yako: vitivo, mabweni, kliniki, vituo. Mwl. Mwikila hupatanisha umiliki, mikataba, na vizuizi vya mfadhili kwa kila jengo."
+        },
+        {
+          "n": "02",
+          "title": "Panga matengenezo",
+          "body": "Wafanyakazi wa kitivo hupiga picha matatizo. Mwl. Mwikila hupendekeza fundi sahihi na agizo la kazi; wewe unaidhinisha, kisha unathibitisha ukamilifu kwa picha."
+        },
+        {
+          "n": "03",
+          "title": "Muhtasari wa kila siku wa mkuu",
+          "body": "Kila asubuhi: takwimu za chuo kizima, orodha ya hitilafu, ratiba ya ukaguzi wa mfadhili, na maamuzi matatu ambayo makamu mkuu wa chuo au mkurugenzi wa hospitali pekee wanaweza kufanya."
+        }
+      ],
+      "problemKicker": "Mzigo wa taasisi",
+      "problemHeading": "Mafungu ya idara yaliyotengana,",
+      "problemHeadingAccent": "upofu wa chuo kizima",
+      "problemSub": "Vyuo vikuu na hospitali huendesha mali zao kwa mafungu ya idara yaliyotengana. Mkurugenzi wa mali hawezi kueleza ni jengo lipi lenye faida, lipi ni mzigo, na lipi linalingana tu mapato na matumizi.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Mtawanyiko wa kiidara",
+          "desc": "Kila kitivo, kila kliniki, kila bweni huweka leja yake. Kutoa mtazamo mmoja wa mali yote hugharimu wiki kadhaa kila muhula."
+        },
+        {
+          "title": "Mlundikano wa matengenezo",
+          "desc": "Tiketi hujirundika kwa msimamizi wa kitivo. Maabara inayovuja hutengenezwa baada ya wiki tatu. Boiler hubadilishwa kwa kujibu tatizo, sio kwa kujikinga mapema."
+        },
+        {
+          "title": "Kupotoka kwa vizuizi vya mfadhili",
+          "desc": "Jengo lilitolewa kwa ajili ya mafunzo ya uuguzi. Miaka kumi na miwili baadaye, idara ya falsafa inalitumia. Mahusiano na mfadhili huharibika."
+        },
+        {
+          "title": "Hofu ya ukaguzi wa ruzuku",
+          "desc": "Ukaguzi wa ruzuku wa mwaka humeza ofisi ya mhasibu mkuu (bursar) kwa wiki kadhaa. Matokeo mara chache hufungwa kabla ya mzunguko ujao."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Dashibodi moja ya chuo",
+          "desc": "Kila kitivo, kila bweni, kila kliniki — skrini moja, kwa wakati halisi, yenye takwimu zinazohamishika hadi kwenye ERP ya taasisi."
+        },
+        {
+          "title": "Upangaji wa matengenezo",
+          "desc": "Wafanyakazi wa kitivo hupiga picha matatizo. Mwl. Mwikila hupendekeza fundi sahihi na agizo la kazi kwa idhini yako, kisha huandika uthibitisho wa ukamilifu."
+        },
+        {
+          "title": "Lebo za vizuizi vya mfadhili",
+          "desc": "Kila jengo lina lebo ya vizuizi vya mfadhili. Mwl. Mwikila humwonya mkurugenzi wa mali kabla ya kupotoka kwa matumizi yoyote."
+        },
+        {
+          "title": "Mnyororo wa ukaguzi wa ruzuku",
+          "desc": "Kila malipo yaliyofadhiliwa na ruzuku yana hash-chain na yanahamishika hadi kwa mkaguzi wa ruzuku bila intaneti."
+        }
+      ],
+      "ctaHeading": "Endesha chuo kizima kama mali moja.",
+      "ctaSub": "Weka onyesho la dakika 45 la makamu mkuu wa chuo. Tutapitia dashibodi ya chuo, upangaji wa matengenezo, na lebo za vizuizi vya mfadhili.",
+      "ctaPrimary": "Weka onyesho la makamu mkuu wa chuo"
+    },
+    "religiousOrganization": {
+      "metaTitle": "Kwa mashirika ya kidini — BossNyumba",
+      "metaDescription": "BossNyumba huendesha mali za misikiti, makanisa, mahekalu, na majimbo ya kidini. Leja ya michango yenye uwazi kwa waumini, taarifa za wadhamini zilizo tayari kwa mkutano mkuu wa mwaka, utawala unaolingana na imani, na njia ya ukaguzi iliyofungwa kwa minyororo ya hash kwa kila tendo.",
+      "heroKicker": "Kwa mashirika ya kidini",
+      "heroHeadline": "Simamia mali ya kusanyiko lako",
+      "heroHeadlineAccent": "kwa uwazi unaostahili imani ya umma",
+      "heroSub": "Mwl. Mwikila anaendesha mali ya misikiti, makanisa, mahekalu na majimbo. Leja ya michango yenye uwazi kwa kusanyiko, muhtasari wa wadhamini tayari kwa AGM, utawala unaoendana na imani, na uthibitisho wa asili wenye hash-chain kwa kila malipo.",
+      "heroPrimaryCta": "Omba kiwango cha msimamizi",
+      "heroSecondaryCta": "Tazama dashibodi ya wadhamini",
+      "trustline": [
+        "Punguzo la asilimia 30 kwa msimamizi",
+        "Leja yenye uwazi kwa kusanyiko",
+        "Muhtasari wa AGM tayari kwa wadhamini"
+      ],
+      "statsHeading": "Jumuiya za imani zinastahili zana za kiwango cha imani.",
+      "statsSub": "Mashirika ya kidini yanamiliki mali kubwa lakini yana bajeti ndogo zaidi ya zana. Mwl. Mwikila anawapa wadhamini uwazi ambao kusanyiko linatarajia bila kulazimisha lugha tata ya uhasibu wa kibiashara.",
+      "stats": [
+        {
+          "value": "30%",
+          "label": "Punguzo la msimamizi",
+          "sub": "Kwa kila kiwango kwa nyumba za ibada zilizosajiliwa na mashirika ya kidini."
+        },
+        {
+          "value": "Hadharani",
+          "label": "Leja ya michango",
+          "sub": "Kila mwanachama wa kusanyiko anaweza kuona kilichotolewa na kilichotumika."
+        },
+        {
+          "value": "Tayari kwa AGM",
+          "label": "Muhtasari wa wadhamini",
+          "sub": "Wasilisho la mkutano mkuu wa mwaka linajiunda upya kutoka data hai kwa mguso mmoja."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Sajili dhamana. Fungua leja. Simamia hadharani.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Sajili dhamana",
+          "body": "Pakia cheti chako cha usajili wa kidini na orodha ya wadhamini. Mwl. Mwikila anaunda leja ya dhamana, ratiba ya michango, na sheria za utawala."
+        },
+        {
+          "n": "02",
+          "title": "Fungua leja ya michango",
+          "body": "Zaka, sadaka na michango hulipwa kupitia M-Pesa au benki. Kila malipo yanafika kwenye leja ya hadharani; kila mwanachama anaona aliyetoa na kilichotumika."
+        },
+        {
+          "n": "03",
+          "title": "Simamia AGM",
+          "body": "Muhtasari wa wadhamini, hesabu zilizokaguliwa, kumbukumbu za vikao, mahudhurio — vyote vyenye hash-chain na vinavyoweza kuhamishwa kwa msajili."
+        }
+      ],
+      "problemKicker": "Pengo la jumuiya ya imani",
+      "problemHeading": "Sadaka za fedha taslimu,",
+      "problemHeadingAccent": "dhamana zisizo wazi",
+      "problemSub": "Jumuiya za imani huendeshwa kwa uaminifu, lakini uaminifu bila uwazi huvunjika wakati wa mabadiliko ya uongozi. Mwl. Mwikila anaweka uwazi ambao kusanyiko linatarajia bila kulazimisha lugha tata ya uhasibu wa kibiashara.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Utata wa sadaka za fedha taslimu",
+          "desc": "Fedha zinazotolewa wakati wa ibada hazina kumbukumbu. Wadhamini na waweka hazina hubeba hatari ya taasisi kibinafsi."
+        },
+        {
+          "title": "Migogoro ya uuzaji wa mali",
+          "desc": "Jimbo linauza ukumbi wa parokia; kusanyiko linagundua baada ya kufanyika. Uaminifu unamomonyoka."
+        },
+        {
+          "title": "Kupotea kwa kumbukumbu za AGM",
+          "desc": "Maazimio ya mwaka jana yanatoweka. Mwenyekiti mpya hana kumbukumbu ya taasisi."
+        },
+        {
+          "title": "Migogoro ya wachuuzi",
+          "desc": "Msikiti ulimlipa mkandarasi kwa matengenezo ambayo hayakukamilika kamwe. Hakuna mkataba, hakuna escrow, hakuna njia ya kudai."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Njia za kidijitali za zaka",
+          "desc": "Njia za zaka kupitia M-Pesa zenye idhini ya mtoaji ya mguso mmoja. Kila zawadi inapata risiti kwenye leja ya kuingia mara mbili, yenye hash-chain, inayoonekana na wanachama."
+        },
+        {
+          "title": "Uuzaji wenye uwazi",
+          "desc": "Uuzaji wowote wa mali huchochea mtiririko wa taarifa kwa kusanyiko pamoja na idhini ya wadhamini. Hakuna mauzo ya kimya."
+        },
+        {
+          "title": "Kumbukumbu tayari kwa AGM",
+          "desc": "Kumbukumbu za vikao, mahudhurio, na hesabu zilizokaguliwa — vyote vyenye hash-chain na vinavyoweza kuhamishwa kwa msajili."
+        },
+        {
+          "title": "Malipo ya wachuuzi yenye hatua",
+          "desc": "Kazi ya mchuuzi imegawanywa kwa hatua; mdhamini anaidhinisha kila hatua kabla Mwl. Mwikila hajaweka malipo kwenye leja — kila senti inafuatilika."
+        }
+      ],
+      "ctaHeading": "Simamia hadharani.",
+      "ctaSub": "Omba kiwango cha msimamizi. Nyumba za ibada zilizosajiliwa na mashirika ya kidini hupata punguzo la asilimia 30 kwa kila kiwango. Tuma barua pepe steward@bossnyumba.co.tz kutoka kwenye kikoa chako kilichosajiliwa.",
+      "ctaPrimary": "Omba"
+    },
+    "cooperativeSacco": {
+      "metaTitle": "Kwa SACCO na vyama vya ushirika — BossNyumba",
+      "metaDescription": "BossNyumba inaendesha mali ya SACCO, vyama vya ushirika, na vikundi vya uwekezaji vya wanachama. Leja ya michango iliyo wazi kwa wanachama, bahati nasibu ya ugawaji, mafaili ya mkutano mkuu yaliyo tayari kwa msajili, na taarifa zilizojumlishwa kwa mguso mmoja.",
+      "heroKicker": "Kwa SACCO na vyama vya ushirika",
+      "heroHeadline": "Mali inayomilikiwa na wanachama,",
+      "heroHeadlineAccent": "leja inayoonekana na wanachama",
+      "heroSub": "Mwl. Mwikila huendesha mali ya SACCO, vyama vya ushirika, na vikundi vya uwekezaji vya wanachama. Leja ya michango inayoonekana na wanachama, mgawanyo wa wazi kwa wanachama, mawasilisho ya mkutano mkuu wa mwaka (AGM) tayari kwa msajili, na muhtasari wa idhini ya mguso mmoja unaowaridhisha wanachama na msajili wa ushirika pamoja.",
+      "heroPrimaryCta": "Omba kiwango cha ushirika",
+      "heroSecondaryCta": "Ona dashibodi ya SACCO",
+      "trustline": [
+        "Punguzo la asilimia 30 kwa ushirika",
+        "Mawasilisho tayari kwa msajili",
+        "Leja inayoonekana na wanachama"
+      ],
+      "statsHeading": "Inayomilikiwa na wanachama. Inayoonekana na wanachama. Inayoaminiwa na wanachama.",
+      "statsSub": "SACCO na vyama vya ushirika hushindwa pale uwazi unaposhindwa. Mwl. Mwikila hulazimisha uwazi kwa chaguo-msingi — kila mwanachama anaona namba zile zile, kila msajili anasoma wasilisho lile lile.",
+      "stats": [
+        {
+          "value": "30%",
+          "label": "Punguzo la ushirika",
+          "sub": "Kwenye kila kiwango kwa SACCO na vyama vya ushirika vilivyosajiliwa."
+        },
+        {
+          "value": "Hadharani",
+          "label": "Leja ya michango",
+          "sub": "Kila mwanachama anaona kila mchango na kila malipo yaliyotolewa."
+        },
+        {
+          "value": "Mguso 1",
+          "label": "Pack ya msajili",
+          "sub": "Muhtasari wa mwaka unaoundwa kwa muundo unaokubaliwa na msajili wa ushirika, ili uwasilishe."
+        }
+      ],
+      "stepsKicker": "Inavyofanya kazi",
+      "stepsHeading": "Sajili. Andikisha wanachama. Endesha hadharani.",
+      "steps": [
+        {
+          "n": "01",
+          "title": "Sajili ushirika",
+          "body": "Pakia cheti cha ushirika na orodha ya wanachama. Mwl. Mwikila huunda ratiba ya michango, kanuni za mgawanyo, na grafu ya utawala."
+        },
+        {
+          "n": "02",
+          "title": "Andikisha wanachama",
+          "body": "Wanachama hulipa hisa na michango kupitia M-Pesa au benki. Kila mchango hupokea risiti, wenye hash-chain, unaoonekana na wanachama."
+        },
+        {
+          "n": "03",
+          "title": "AGM + mawasilisho",
+          "body": "Mkutano mkuu wa mwaka ndani ya programu: kumbukumbu, mahudhurio, muhtasari uliokaguliwa. Pack tayari kwa msajili kwa mguso mmoja, kwa muundo wanaoukubali, ili uwasilishe."
+        }
+      ],
+      "problemKicker": "Pengo la ushirika",
+      "problemHeading": "Michango isiyo wazi,",
+      "problemHeadingAccent": "mgawanyo wa kisiasa",
+      "problemSub": "Vyama vya ushirika hufa pale uwazi unapokufa. Mwl. Mwikila hulazimisha uwazi kwa chaguo-msingi ili ushirika unusurike mabadiliko ya uongozi na kukua zaidi ya mtandao wa upendeleo wa mwenyekiti mmoja.",
+      "problemTitle": "Bila BossNyumba",
+      "problems": [
+        {
+          "title": "Michango isiyo wazi",
+          "desc": "Wanachama hawajui nani alilipa na nani anadaiwa. Mweka hazina hubeba hatari ya taasisi binafsi."
+        },
+        {
+          "title": "Mgawanyo wa kisiasa",
+          "desc": "Vitengo vilivyo wazi au manufaa ya wanachama huenda kwa rafiki wa mwenyekiti. Wanachama hulalamika bila mafanikio."
+        },
+        {
+          "title": "Kupotea kwa AGM",
+          "desc": "Maazimio ya mwaka jana hupotea. Mwenyekiti mpya huanza kutoka ukurasa mtupu."
+        },
+        {
+          "title": "Msuguano wa msajili",
+          "desc": "Wasilisho la mwaka kwa msajili hugeuka kuwa zoezi la uhasibu la miezi kadhaa linaloondoa umakini kutoka huduma kwa wanachama."
+        }
+      ],
+      "solutionTitle": "Na BossNyumba",
+      "solutions": [
+        {
+          "title": "Leja ya michango ya moja kwa moja",
+          "desc": "Kila mwanachama anaona kila mchango, kila malipo yaliyotolewa, na salio la benki la ushirika — moja kwa moja."
+        },
+        {
+          "title": "Mgawanyo wa wazi",
+          "desc": "Vitengo vilivyo wazi au manufaa ya wanachama hugawanywa kwa kanuni za wazi na kuwekwa kupitia leja ya kuingia mara mbili — kila senti inafuatilika."
+        },
+        {
+          "title": "Kumbukumbu tayari kwa AGM",
+          "desc": "Kumbukumbu, mahudhurio, na muhtasari uliokaguliwa — vyote vyenye hash-chain na tayari kwa ukaguzi."
+        },
+        {
+          "title": "Pack tayari kwa msajili",
+          "desc": "Muhtasari wa mwaka unaoundwa kwa muundo unaokubaliwa na msajili wa ushirika, kwa mguso mmoja, ili uwasilishe."
+        }
+      ],
+      "ctaHeading": "Mali inayomilikiwa na wanachama, leja inayoonekana na wanachama.",
+      "ctaSub": "Omba kiwango cha ushirika. SACCO na vyama vya ushirika vilivyosajiliwa hupata punguzo la asilimia 30 kwenye kila kiwango. Tuma barua pepe cooperative@bossnyumba.co.tz kutoka kwenye kikoa chako kilichosajiliwa.",
+      "ctaPrimary": "Omba"
+    }
+  },
+  "supportPage": {
+    "kicker": "Msaada",
+    "heading": "Tuko ujumbe mmoja mbali.",
+    "sub": "Makala za msaada, masaa ya ofisini, na mistari ya moja kwa moja kwa timu ya BossNyumba. Lugha mbili sw / en, siku za kazi 06:00 hadi 20:00 EAT.",
+    "searchPlaceholder": "Tafuta makala za msaada, miongozo, na maswali...",
+    "quickLinksHeading": "Tunawezaje kusaidia leo?",
+    "quickLinks": [
+      {
+        "icon": "BookOpen",
+        "title": "Makala za msaada",
+        "body": "Miongozo ya hatua kwa hatua ya kuunganisha site, kuingiza leseni, na kuweka muhtasari wa kila siku.",
+        "href": "/docs",
+        "cta": "Vinjari makala"
+      },
+      {
+        "icon": "GraduationCap",
+        "title": "Kuanza",
+        "body": "Kuanza wewe mwenyewe kwa Mwanzo na Mkulima, au simu ya kuanzisha kwa Mfanyabiashara na juu.",
+        "href": "/sign-up",
+        "cta": "Anza kuanza"
+      },
+      {
+        "icon": "Calendar",
+        "title": "Masaa ya ofisi",
+        "body": "Masaa ya ofisi ya kila wiki Dar es Salaam na Zoom. Leta faili la leseni yako, muhtasari wa hivi karibuni au mpango wa kuhamia.",
+        "href": "/contact?type=office-hours",
+        "cta": "Panga masaa ya ofisi"
+      }
+    ],
+    "faqHeading": "Maswali yanayoulizwa mara kwa mara",
+    "faqs": [
+      {
+        "q": "Naingizaje mali yangu?",
+        "a": "Jisajili kwa Mwanzo (bure) au Mkulima. Pakia cheti chako cha Individual Landlord / Portfolio Landlord na risiti ya hivi karibuni ya kodi. Mwl. Mwikila anakuongoza kupitia muhtasari wa wiki ya kwanza. Kwa Mfanyabiashara na juu, mhandisi wa BossNyumba anapanga simu ya kuanza ndani ya siku mbili za kazi."
+      },
+      {
+        "q": "Naweza kuingiza lahajedwali zangu zilizopo?",
+        "a": "Ndio. Rent rolls, mishahara, taarifa za hazina na kalenda za leseni zinaingia kupitia mtiririko unaoongozwa wa CSV / XLSX. Ubongo unathibitisha unapoendelea na unaonyesha safu zinazohitaji mapitio kabla ya kuingia kwenye daftari."
+      },
+      {
+        "q": "Jukwaa linaunga mkono lugha gani?",
+        "a": "Kiswahili na Kiingereza. Mtumiaji anaweza kubadilisha kwa kifaa, na Mwl. Mwikila anajibu kwa lugha uliyoandika."
+      },
+      {
+        "q": "Data yangu inahifadhiwa wapi?",
+        "a": "Hifadhi ya msingi ya eneo la Tanzania na chelezo iliyoidhinishwa na mdhibiti. AES-256-GCM wakati wa kupumzika, TLS 1.3 wakati wa kusafirisha. Orodha kamili ya sub-processors kwenye /legal/subprocessors."
+      },
+      {
+        "q": "Nimwasiliane na nani kuhusu swali la bili?",
+        "a": "billing@bossnyumba.co.tz kwa ankara au maswali ya malipo. M-Pesa, Tigo Pesa, Airtel Money, Visa, Mastercard na uhamisho wa benki wa TZS zote zinasaidiwa."
+      },
+      {
+        "q": "Vipi nikihitaji msaada wa haraka?",
+        "a": "WhatsApp +255 757 070 070 wakati wa masaa ya ofisi (06:00 hadi 20:00 EAT, siku za kazi). Kwa matukio ya baada ya masaa na wikendi kwa Kampuni na juu, chaneli yako maalum ya mafanikio inashughulikia 24x7."
+      }
+    ],
+    "contactStripHeading": "Ongea na binadamu.",
+    "contactStrip": [
+      {
+        "icon": "Mail",
+        "label": "Barua pepe",
+        "value": "hello@bossnyumba.co.tz",
+        "href": "mailto:hello@bossnyumba.co.tz"
+      },
+      {
+        "icon": "Phone",
+        "label": "WhatsApp",
+        "value": "+255 757 070 070",
+        "href": "https://wa.me/255757070070"
+      },
+      {
+        "icon": "MapPin",
+        "label": "Ofisi",
+        "value": "Dar es Salaam, Tanzania",
+        "href": "/contact"
+      }
+    ],
+    "ctaHeading": "Unahitaji zaidi ya kujihudumia?",
+    "ctaSub": "Panga muda wa dakika 15 wa masaa ya ofisi. Tunafungua faili pamoja.",
+    "ctaPrimary": "Panga masaa ya ofisi"
+  },
+  "contactPage": {
+    "kicker": "Wasiliana",
+    "heading": "Hebu tuongee.",
+    "sub": "Binadamu halisi husoma kila ujumbe na hujibu ndani ya siku moja ya kazi. Chagua jinsi mazungumzo yanapaswa kuanza.",
+    "inquiryHeading": "Nini kinakuleta leo?",
+    "inquiryTypes": [
+      {
+        "value": "demo",
+        "label": "Omba demo",
+        "icon": "Sparkles"
+      },
+      {
+        "value": "pilot",
+        "label": "Omba pilot",
+        "icon": "Rocket"
+      },
+      {
+        "value": "partnership",
+        "label": "Ushirikiano",
+        "icon": "Users"
+      },
+      {
+        "value": "msaada",
+        "label": "Msaada wa kiufundi",
+        "icon": "Headphones"
+      },
+      {
+        "value": "press",
+        "label": "Habari na vyombo vya habari",
+        "icon": "Newspaper"
+      }
+    ],
+    "formNameLabel": "Jina lako",
+    "formNamePlaceholder": "Amina Hassan",
+    "formEmailLabel": "Barua pepe",
+    "formEmailPlaceholder": "wewe@kampuni.co.tz",
+    "formOrgLabel": "Shirika",
+    "formOrgPlaceholder": "Jina la mali au kampuni",
+    "formMessageLabel": "Ujumbe",
+    "formMessagePlaceholder": "Tueleze kuhusu mali yako, timu yako, na unachohitaji.",
+    "formSubmit": "Tuma ujumbe",
+    "formSubmitting": "Inatuma...",
+    "formSuccess": "Asante. Tutajibu ndani ya siku moja ya kazi.",
+    "channelsHeading": "Njia zingine za kutufikia",
+    "channels": [
+      {
+        "icon": "Mail",
+        "label": "Maswali ya jumla",
+        "value": "hello@bossnyumba.co.tz",
+        "href": "mailto:hello@bossnyumba.co.tz"
+      },
+      {
+        "icon": "Mail",
+        "label": "Mauzo",
+        "value": "sales@bossnyumba.co.tz",
+        "href": "mailto:sales@bossnyumba.co.tz"
+      },
+      {
+        "icon": "Mail",
+        "label": "Habari",
+        "value": "press@bossnyumba.co.tz",
+        "href": "mailto:press@bossnyumba.co.tz"
+      },
+      {
+        "icon": "Phone",
+        "label": "WhatsApp",
+        "value": "+255 757 070 070",
+        "href": "https://wa.me/255757070070"
+      },
+      {
+        "icon": "MapPin",
+        "label": "Ofisi",
+        "value": "Mlimani City, Dar es Salaam",
+        "href": "#"
+      },
+      {
+        "icon": "Clock",
+        "label": "Masaa ya ofisi",
+        "value": "Jumatatu hadi Ijumaa, 06:00 hadi 20:00 EAT",
+        "href": "#"
+      }
+    ],
+    "ctaHeading": "Unataka kuruka fomu?",
+    "ctaSub": "Panga simu ya dakika 15 katika muda ujao unaopatikana.",
+    "ctaPrimary": "Panga simu"
+  },
+  "securityPage": {
+    "kicker": "Usalama na imani",
+    "heading": "BossNyumba imejengwa kwa uchunguzi wa mdhibiti.",
+    "sub": "Mfumo wa usalama wa tabaka 5, mfululizo wa hash kwenye kila kitu, na hifadhi ya eneo la Tanzania. Imejengwa kwa BOT, NHC na NHC, na inalingana na vidhibiti vya ISO 27001.",
+    "pillarsHeading": "Nguzo nne za mfumo wa usalama wa BossNyumba.",
+    "pillars": [
+      {
+        "icon": "Lock",
+        "title": "Usimbaji kila mahali",
+        "body": "AES-256-GCM wakati wa kupumzika. TLS 1.3 wakati wa kusafirisha. Usimbaji wa bahasha kwenye tabaka la programu kwa sehemu za usikivu wa juu (NIDA, alama za biometric, risiti za kodi)."
+      },
+      {
+        "icon": "Users",
+        "title": "Ufikiaji kwa msingi wa kuhitaji-kujua",
+        "body": "Usalama wa safu umelazimishwa kwenye kila meza ya wateja. Vituo vya sera za macho-manne na enzi kwenye kila hatua ya hatari kubwa. Mkaguzi wa Mwikila anaandika kila kufuta."
+      },
+      {
+        "icon": "ScrollText",
+        "title": "Mfululizo wa ukaguzi usiobadilika",
+        "body": "Kila kitu cha udhibiti (leseni, kodi, ripoti, ripoti ya HSE) ni hash-chained na huongezeka tu. Ubadilishaji unagundulika na kukataliwa wakati wa kuandika."
+      },
+      {
+        "icon": "Globe",
+        "title": "Hifadhi ya eneo la Tanzania",
+        "body": "Hifadhi ya msingi nchini Tanzania, chelezo iliyoidhinishwa na mdhibiti. Sub-processors na maeneo ya hifadhi yameandikwa kwenye /legal/subprocessors."
+      }
+    ],
+    "badgesHeading": "Uzingatiaji na ulinganishaji.",
+    "badges": [
+      {
+        "icon": "Shield",
+        "text": "BOT inalingana"
+      },
+      {
+        "icon": "Shield",
+        "text": "NHC inalingana"
+      },
+      {
+        "icon": "Shield",
+        "text": "NHC inalingana"
+      },
+      {
+        "icon": "BadgeCheck",
+        "text": "TZ-PDPA inalingana"
+      },
+      {
+        "icon": "BadgeCheck",
+        "text": "ISO 27001 tayari"
+      },
+      {
+        "icon": "BadgeCheck",
+        "text": "SOC 2 Type II tayari"
+      }
+    ],
+    "auditHeading": "Kila hatua kwenye mlolongo.",
+    "auditBody": "BossNyumba inaandika rekodi iliyosainiwa na hash kwa kila hatua inayogusa daftari, kalenda ya leseni, mtiririko wa kodi au mtiririko wa HSE. Mlolongo unaongezeka tu kwenye tabaka la hifadhidata, unaakishiwa kwenye hifadhi baridi kila saa, na unaonyeshwa kwa mdhibiti kusoma tu kwa ombi.",
+    "auditCta": "Soma kadi ya mtindo wa utawala wa data",
+    "ctaHeading": "Ongea na timu yetu ya usalama.",
+    "ctaSub": "Leta orodha yako ya ukaguzi. Tunajibu kila mstari, kwenye karatasi, kwa vidhibiti vilivyotajwa.",
+    "ctaPrimary": "Eleza timu yetu"
+  },
+  "subprocessorsPage": {
+    "kicker": "Sub-processors",
+    "heading": "Kila muuzaji kwenye mlolongo, kwenye orodha moja.",
+    "lastUpdated": "2026-05-25",
+    "sub": "BossNyumba inaweka orodha kamili, yenye tarehe ya sub-processors wanaogusa data ya wateja. Mabadiliko yanatangazwa siku 30 kabla ya kuanza kazi.",
+    "columns": {
+      "vendor": "Muuzaji",
+      "role": "Jukumu",
+      "region": "Eneo",
+      "contract": "Mkataba"
+    },
+    "rows": [
+      {
+        "vendor": "Supabase",
+        "role": "Postgres / auth / hifadhi",
+        "region": "eu-central-1 (Frankfurt)",
+        "contract": "DPA"
+      },
+      {
+        "vendor": "Vercel",
+        "role": "Edge hosting / CDN",
+        "region": "Edges za kimataifa, asili EU",
+        "contract": "DPA"
+      },
+      {
+        "vendor": "Anthropic",
+        "role": "LLM (familia ya Claude)",
+        "region": "US (hakuna mafunzo kwa data ya mteja)",
+        "contract": "Zero-Retention DPA"
+      },
+      {
+        "vendor": "OpenAI",
+        "role": "LLM mbadala na embeddings",
+        "region": "US (hakuna mafunzo kwa data ya mteja)",
+        "contract": "Zero-Retention DPA"
+      },
+      {
+        "vendor": "Stripe",
+        "role": "Usindikaji wa kadi",
+        "region": "US / EU",
+        "contract": "DPA"
+      },
+      {
+        "vendor": "Vodacom M-Pesa",
+        "role": "Reli za pesa za simu",
+        "region": "Tanzania",
+        "contract": "PSP iliyo na leseni ya BOT"
+      },
+      {
+        "vendor": "Tigo Pesa",
+        "role": "Reli za pesa za simu",
+        "region": "Tanzania",
+        "contract": "PSP iliyo na leseni ya BOT"
+      },
+      {
+        "vendor": "Airtel Money",
+        "role": "Reli za pesa za simu",
+        "region": "Tanzania",
+        "contract": "PSP iliyo na leseni ya BOT"
+      },
+      {
+        "vendor": "Sentry",
+        "role": "Ufuatiliaji wa makosa",
+        "region": "eu-central-1",
+        "contract": "DPA"
+      },
+      {
+        "vendor": "Cloudflare",
+        "role": "Edge proxy / WAF",
+        "region": "Edges za kimataifa",
+        "contract": "DPA"
+      }
+    ],
+    "notice": "Tangazo la sub-processor mpya hutua kwenye /legal/subprocessors angalau siku 30 kabla ya kugusa data yako. Pinga kwa barua pepe kwa dpo@bossnyumba.co.tz."
+  },
+  "cookiesPage": {
+    "kicker": "Vidakuzi",
+    "heading": "Kila kidakuzi tunachowekwa, kwenye meza moja.",
+    "lastUpdated": "2026-05-25",
+    "sub": "Tunatumia seti ndogo zaidi ya vidakuzi vinavyohitajika kuendesha tovuti ya uuzaji na jukwaa. Hakuna vidakuzi vya matangazo, hakuna vifuatiliaji vya watu wengine bila idhini.",
+    "columns": {
+      "cookie": "Kidakuzi",
+      "purpose": "Madhumuni",
+      "category": "Kategoria",
+      "lifetime": "Maisha"
+    },
+    "categories": {
+      "essential": "Muhimu",
+      "preferences": "Mapendekezo",
+      "analytics": "Uchambuzi (kuchagua)"
+    },
+    "rows": [
+      {
+        "cookie": "bossnyumba_locale",
+        "purpose": "Kumbuka chaguo lako la lugha (sw / en).",
+        "category": "preferences",
+        "lifetime": "Mwaka 1"
+      },
+      {
+        "cookie": "bossnyumba_session",
+        "purpose": "Kukuweka umesajiliwa.",
+        "category": "essential",
+        "lifetime": "Kikao"
+      },
+      {
+        "cookie": "bossnyumba_csrf",
+        "purpose": "Zuia ughushi wa ombi la tovuti tofauti kwenye fomu.",
+        "category": "essential",
+        "lifetime": "Kikao"
+      },
+      {
+        "cookie": "bossnyumba_consent",
+        "purpose": "Kumbuka chaguzi zako za idhini ya kidakuzi.",
+        "category": "essential",
+        "lifetime": "Miezi 6"
+      },
+      {
+        "cookie": "bossnyumba_anon_metrics",
+        "purpose": "Vipimo vya kutazama ukurasa visivyojulikana, ikiwa unachagua tu.",
+        "category": "analytics",
+        "lifetime": "Miezi 6"
+      }
+    ],
+    "manageHeading": "Simamia vidakuzi",
+    "manageBody": "Rekebisha idhini yako wakati wowote. Vidakuzi muhimu haviwezi kuzimwa bila kuvunja kuingia na uwasilishaji wa fomu.",
+    "manageCta": "Fungua mapendekezo ya kidakuzi"
+  },
+  "offlinePage": {
+    "kicker": "Nje ya mtandao",
+    "heading": "Uko nje ya mtandao.",
+    "sub": "Tovuti ya BossNyumba inahitaji muunganisho ili kupakia data ya moja kwa moja. Angalia mtandao wako na jaribu tena, au fungua ukurasa uliohifadhiwa kutoka kwa historia yako.",
+    "retry": "Pakia upya",
+    "goHome": "Rudi nyumbani"
+  }
+}

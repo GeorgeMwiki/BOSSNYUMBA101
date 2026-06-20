@@ -1,27 +1,40 @@
 /**
  * Outcomes billing store — port + in-memory implementation.
  *
- * Two storage concerns, kept on one port for atomicity:
+ * Storage concerns, kept on one port for atomicity:
  *
- *   1. `recordEvent(input)` — append-only write to `outcome_events`.
+ *   1. `commitOutcome(event, record)` — the MONEY PATH. Writes the
+ *      append-only `outcome_events` anchor AND the
+ *      `outcome_billing_lines` row in ONE atomic transaction. Either
+ *      both land or neither does. The idempotency claim on
+ *      (tenantId, eventId) is only taken when the billing line is
+ *      durably written too, so a post-anchor failure can never report
+ *      a false idempotent success on retry (finding ANCHOR-BEFORE-
+ *      BILLING). Returns `{ inserted: false }` when the (tenantId,
+ *      eventId) pair already had a committed outcome — a safe
+ *      re-delivery.
+ *
+ *   2. `recordEvent(input)` — append-only write to `outcome_events`.
  *      Returns `{ inserted: false }` when the (tenantId, eventId)
- *      pair already exists so the brain-event-bus consumer can
- *      re-deliver the same event safely (idempotency anchor).
+ *      pair already exists. Retained for the operator/backfill path
+ *      that records an event WITHOUT a billing line (rare). The
+ *      money path uses `commitOutcome`, never this in isolation.
  *
- *   2. `recordBillingLine(record)` — append-only write to
+ *   3. `recordBillingLine(record)` — append-only write to
  *      `outcome_billing_lines`. Idempotent on (tenantId, recordId).
  *      The Drizzle adapter uses `ON CONFLICT DO NOTHING`; the
  *      in-memory implementation mirrors the same semantics.
  *
- *   3. `getMonthlyBilling(tenantId, billingMonth)` — read path for
+ *   4. `getMonthlyBilling(tenantId, billingMonth)` — read path for
  *      `GET /outcomes/billing/:tenantId/:month`. Aggregates per
  *      outcome kind and totals.
  *
- * The Drizzle adapter is intentionally NOT shipped in this PR — the
- * in-memory store backs the unit tests and the dev/staging path. The
- * api-gateway composition root binds a real Postgres adapter built
- * against the `outcome_events` + `outcome_billing_lines` tables
- * (migration `0169_outcomes_metering.sql`) in a follow-up.
+ * The production Drizzle adapter (`createDrizzleBillingStore`) binds
+ * these against the `outcome_events` + `outcome_billing_lines` tables
+ * (migration `0169_outcomes_metering.sql`) and runs `commitOutcome`
+ * inside `db.transaction(...)`. The in-memory store backs the unit
+ * tests and the dev/staging path; both honour the same atomicity
+ * contract.
  */
 
 import type {
@@ -51,6 +64,15 @@ export interface RecordEventResult {
   readonly inserted: boolean;
 }
 
+export interface CommitOutcomeResult {
+  /**
+   * False when the (tenantId, eventId) pair was already committed —
+   * a safe duplicate re-delivery. When false, NO new billing line was
+   * written (the prior commit already wrote one atomically).
+   */
+  readonly inserted: boolean;
+}
+
 export interface MonthlyBillingAggregate {
   readonly tenantId: string;
   readonly billingMonth: string;
@@ -75,6 +97,24 @@ export interface MonthlyBillingAggregate {
 }
 
 export interface BillingStore {
+  /**
+   * MONEY PATH — atomically write the idempotency anchor
+   * (`outcome_events`) AND the scored billing line
+   * (`outcome_billing_lines`) in a SINGLE transaction. Either both
+   * commit or neither does. The idempotency claim on
+   * (tenantId, eventId) is taken only when the billing line is durably
+   * written, so a partial write can never report a false idempotent
+   * success on retry, and a failure after the anchor can never orphan
+   * an anchor without revenue.
+   *
+   * The caller MUST score the (pure) outcome BEFORE calling this so a
+   * scorer throw happens before any DB claim. `record` is the scored
+   * MeteringRecord; `event` is the matching append-only anchor input.
+   */
+  commitOutcome(
+    event: RecordEventInput,
+    record: MeteringRecord,
+  ): Promise<CommitOutcomeResult>;
   recordEvent(input: RecordEventInput): Promise<RecordEventResult>;
   recordBillingLine(record: MeteringRecord): Promise<RecordEventResult>;
   getMonthlyBilling(
@@ -126,6 +166,38 @@ export function createInMemoryBillingStore(): BillingStore {
     `${tenantId}::${recordId}`;
 
   return {
+    async commitOutcome(
+      input: RecordEventInput,
+      record: MeteringRecord,
+    ): Promise<CommitOutcomeResult> {
+      // Atomic by construction: the Node event loop is single-threaded
+      // and this function does no `await` between the read and the two
+      // writes, so the anchor + billing line land together or not at
+      // all. Mirrors the Drizzle adapter's `db.transaction(...)`.
+      const evKey = eventKey(input.tenantId, input.eventId);
+      if (events.has(evKey)) {
+        // Already committed — safe duplicate. The prior commit wrote
+        // the billing line atomically, so we add nothing here.
+        return { inserted: false };
+      }
+      events.set(evKey, {
+        tenantId: input.tenantId,
+        eventId: input.eventId,
+        payload: input.payload,
+        receivedAt: new Date(),
+      });
+      // Idempotent on (tenantId, recordId) too — a re-scored retry with
+      // the same recordId is a no-op rather than a double line.
+      const lnKey = lineKey(record.tenantId, record.recordId);
+      if (!lines.has(lnKey)) {
+        lines.set(lnKey, {
+          ...record,
+          billingMonth: toBillingMonth(record.scoredAt),
+        });
+      }
+      return { inserted: true };
+    },
+
     async recordEvent(input: RecordEventInput): Promise<RecordEventResult> {
       const key = eventKey(input.tenantId, input.eventId);
       if (events.has(key)) {

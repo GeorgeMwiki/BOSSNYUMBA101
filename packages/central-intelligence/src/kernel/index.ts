@@ -320,10 +320,13 @@ export {
   createEnvKillswitchPort,
   resolveKillswitch,
   renderKillswitchRefusalText,
+  renderKillswitchDegradedRefusalText,
+  isDegradedStakesBlocked,
   type KillswitchLevel,
   type KillswitchPort,
   type KillswitchReasonCode,
   type KillswitchState,
+  type ThoughtStakes,
 } from './killswitch.js';
 export {
   resolveUncertaintyPolicy,

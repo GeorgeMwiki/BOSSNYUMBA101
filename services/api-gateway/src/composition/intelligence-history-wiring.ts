@@ -14,6 +14,7 @@
  */
 
 import { sql } from 'drizzle-orm';
+import { withWorkerTenantContext } from '../workers/with-tenant-context.js';
 import {
   createIntelligenceHistoryWorker,
   type IntelligenceHistoryRepository,
@@ -40,8 +41,12 @@ export function createPostgresIntelligenceHistoryRepository(
     async upsertSnapshot(snapshot: IntelligenceSnapshot): Promise<void> {
       // Idempotent upsert on (tenant_id, customer_id, snapshot_date) — the
       // unique index `intelligence_history_customer_date_unique` guarantees a
-      // single row per day per customer.
-      await exec(sql`
+      // single row per day per customer. Bind tenant context so the
+      // FORCE-RLS `intelligence_history` WITH CHECK accepts the insert —
+      // without it the write is RLS-rejected under the non-BYPASS prod role
+      // and no snapshot ever persists.
+      await withWorkerTenantContext(db as DbLike, snapshot.tenantId, (pinned) =>
+        pinned.execute(sql`
         INSERT INTO intelligence_history (
           id, tenant_id, customer_id, snapshot_date,
           payment_risk_score, payment_risk_level,
@@ -76,7 +81,8 @@ export function createPostgresIntelligenceHistoryRepository(
           payments_last_30_days_late = EXCLUDED.payments_last_30_days_late,
           payment_sub_scores = EXCLUDED.payment_sub_scores,
           churn_sub_scores = EXCLUDED.churn_sub_scores
-      `);
+      `),
+      );
     },
   };
 }
@@ -89,7 +95,9 @@ export function createPostgresCustomerCohortProvider(
     async listTenants(): Promise<TenantId[]> {
       try {
         const rows = asRows(
-          await exec(sql`SELECT id FROM tenants WHERE is_active = TRUE`),
+          await exec(
+            sql`SELECT id FROM tenants WHERE status = 'active' AND deleted_at IS NULL`,
+          ),
         );
         return rows.map((r) => String((r as { id: unknown }).id) as TenantId);
       } catch {
@@ -98,9 +106,12 @@ export function createPostgresCustomerCohortProvider(
     },
     async listActiveCustomers(tenantId: TenantId) {
       try {
+        // RLS: bind tenant context so the FORCE-RLS `customers` read
+        // resolves — without it this returns zero rows under the non-BYPASS
+        // prod role and no snapshots are ever computed for this tenant.
         const rows = asRows(
-          await exec(
-            sql`SELECT id FROM customers WHERE tenant_id = ${tenantId}`,
+          await withWorkerTenantContext(db as DbLike, tenantId, (pinned) =>
+            pinned.execute(sql`SELECT id FROM customers WHERE tenant_id = ${tenantId}`),
           ),
         );
         return rows.map((r) => ({
@@ -209,6 +220,7 @@ export function createIntelligenceHistorySupervisor(
   logger: {
     info: (meta: Record<string, unknown>, msg: string) => void;
     warn: (meta: Record<string, unknown>, msg: string) => void;
+    error?: (meta: Record<string, unknown>, msg?: string) => void;
   },
   /**
    * Optional cluster-wide single-flight gate (multi-replica safety). When
@@ -226,6 +238,14 @@ export function createIntelligenceHistorySupervisor(
     repo: createPostgresIntelligenceHistoryRepository(db),
     cohorts: createPostgresCustomerCohortProvider(db),
     signals: createPostgresCustomerSignalsProvider(db),
+    // Route per-customer failures to pino (services MUST NOT use console.*);
+    // fall back to warn when the supplied logger has no error level.
+    logger: {
+      error: (obj, msg) => {
+        if (logger.error) logger.error(obj, msg);
+        else logger.warn(obj, msg ?? '');
+      },
+    },
   });
 
   let handle: NodeJS.Timeout | null = null;

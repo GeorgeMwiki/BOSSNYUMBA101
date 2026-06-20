@@ -22,6 +22,7 @@
  */
 
 import { sql } from 'drizzle-orm';
+import { toPgTextArray } from '../../utils/pg-array.js';
 import type {
   DecisionLinkRelationship,
   RecordedDecision,
@@ -202,7 +203,7 @@ async function resolveAssignees(
         FROM mining_tasks
        WHERE tenant_id = ${tenantId}
          AND status IN ('open', 'in_progress', 'blocked')
-         AND scope_id = ANY(${scopeIds as string[]}::text[])
+         AND scope_id = ANY(${toPgTextArray(scopeIds as string[])}::text[])
          AND assignee_id IS NOT NULL
          AND assignee_role IS NOT NULL
     `),

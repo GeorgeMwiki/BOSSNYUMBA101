@@ -160,11 +160,21 @@ function sqlToText(query: unknown): string {
   );
 }
 
-function buildFakeDb(queries: QueryFake[]): {
+function buildFakeDb(
+  queries: QueryFake[],
+  opts: { activeTenants?: readonly string[] } = {},
+): {
   db: { execute(query: unknown): Promise<{ rows: Record<string, unknown>[] }> };
   executedSql: string[];
 } {
   const executedSql: string[] = [];
+  // The cron now enumerates active tenants (RLS `USING(TRUE)`) and runs each
+  // tenant's scan/dispatch inside `withWorkerTenantContext`. Provide a default
+  // active-tenant set so the per-tenant loop runs; transaction-control
+  // statements (BEGIN / SET LOCAL / COMMIT / ROLLBACK) are no-ops here because
+  // the fake `db` exposes no `$client.reserve` — the helper falls back to the
+  // same handle, so every query still flows through this executor.
+  const activeTenants = opts.activeTenants ?? ['tnt_test'];
   return {
     executedSql,
     db: {
@@ -176,6 +186,12 @@ function buildFakeDb(queries: QueryFake[]): {
             const rows = typeof q.rows === 'function' ? q.rows(text) : q.rows;
             return { rows };
           }
+        }
+        // Active-tenant enumeration — matched after explicit patterns so a
+        // test can still override it. `FROM tenants` is unique to the cron's
+        // `enumerateActiveTenants` query.
+        if (/FROM tenants/.test(text)) {
+          return { rows: activeTenants.map((id) => ({ id })) };
         }
         return { rows: [] };
       },

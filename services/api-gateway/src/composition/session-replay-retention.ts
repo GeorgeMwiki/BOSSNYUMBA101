@@ -358,14 +358,18 @@ export function createDrizzlePurgeDb(
       if (!ids || ids.length === 0) return 0;
       try {
         const { sql } = await import('drizzle-orm');
+        const { toPgTextArray } = await import('../utils/pg-array.js');
         const idList = ids.filter(
           (id) => typeof id === 'string' && id.length > 0,
         );
         if (idList.length === 0) return 0;
-        // `ANY(${idList})` is the standard Drizzle pattern for an IN
-        // clause over a parameter array.
+        // A bare `ANY(${idList})` is NOT a valid Drizzle pattern: drizzle's
+        // tagged-template binds a JS array as N separate positional
+        // parameters, which Postgres rejects with 42809 on every non-empty
+        // batch. Encode the array as a `::text[]` literal (the `id` column
+        // is TEXT, so cast to text[] — never uuid[]).
         const result = (await db.execute(
-          sql`DELETE FROM session_replay_chunks WHERE id = ANY(${idList})`,
+          sql`DELETE FROM session_replay_chunks WHERE id = ANY(${toPgTextArray(idList)}::text[])`,
         )) as unknown;
         // postgres-js returns an object with `count`; the underlying
         // pg `rowCount` is also surfaced via `.rowCount`. Prefer

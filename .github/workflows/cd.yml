@@ -167,13 +167,6 @@ jobs:
             build_args: |
               SERVICE_NAME=webhooks
               PACKAGE_NAME=@bossnyumba/webhooks-service
-          - service: customer-app
-            context: .
-            dockerfile: docker/Dockerfile.web
-            target: nextjs
-            build_args: |
-              APP_NAME=customer-app
-              APP_PATH=apps/customer-app
           - service: owner-portal
             context: .
             dockerfile: docker/Dockerfile.web
@@ -188,13 +181,6 @@ jobs:
             build_args: |
               APP_NAME=admin-platform-portal
               APP_PATH=apps/admin-platform-portal
-          - service: estate-manager-app
-            context: .
-            dockerfile: docker/Dockerfile.web
-            target: nextjs
-            build_args: |
-              APP_NAME=estate-manager-app
-              APP_PATH=apps/estate-manager-app
           - service: marketing
             context: .
             dockerfile: docker/Dockerfile.web
@@ -268,8 +254,7 @@ jobs:
                          mcp-nin mcp-firs mcp-nggis mcp-opay \
                          document-intelligence domain-services identity \
                          notifications payments reports webhooks \
-                         customer-app owner-portal admin-platform-portal \
-                         estate-manager-app; do
+                         owner-portal admin-platform-portal; do
             kustomize edit set image \
               "ghcr.io/${{ env.REGISTRY_OWNER }}/bossnyumba-${service}=ghcr.io/${{ env.REGISTRY_OWNER }}/bossnyumba-${service}:${{ needs.prepare.outputs.tag }}"
           done
@@ -323,8 +308,7 @@ jobs:
                          mcp-nin mcp-firs mcp-nggis mcp-opay \
                          document-intelligence domain-services identity \
                          notifications payments reports webhooks \
-                         customer-app owner-portal admin-platform-portal \
-                         estate-manager-app; do
+                         owner-portal admin-platform-portal; do
             kustomize edit set image \
               "ghcr.io/${{ env.REGISTRY_OWNER }}/bossnyumba-${service}=ghcr.io/${{ env.REGISTRY_OWNER }}/bossnyumba-${service}:${{ needs.prepare.outputs.tag }}"
           done

@@ -9,8 +9,13 @@
  *   - Bilingual summary toggle (sw / en) — defaults to sw
  *   - Filter chips by status + category
  *
- * Reads /api/v1/mwikila/actions/inbox + writes via
- * POST /api/v1/mwikila/actions/:id/{approve,deny,reverse}.
+ * Reads /api/v1/owner/mwikila-inbox (paginated { data, meta }) + writes
+ * via POST /api/v1/owner/mwikila-inbox/:id/{approve,deny,reverse}.
+ *
+ * The gateway backs this surface with `sovereign_approvals`, so the raw
+ * row shape (status enum, field names) differs from this page's view
+ * model. `normaliseRow` maps a gateway row onto InboxRow so the render
+ * path stays stable regardless of the backing store.
  *
  * Built for Vite + the owner-portal's lib/api wrapper.
  */
@@ -63,6 +68,65 @@ interface InboxRow {
   readonly blockedReason: string | null;
 }
 
+/**
+ * Raw row shape the gateway returns from GET /owner/mwikila-inbox. It is
+ * sourced from `sovereign_approvals`, so its status vocabulary and field
+ * names differ from this page's InboxRow view model.
+ */
+interface GatewayInboxRow {
+  readonly id: string;
+  readonly summary: string | null;
+  readonly summarySw: string | null;
+  readonly summaryEn: string | null;
+  readonly category: string | null;
+  readonly delegationTier: 'T0' | 'T1' | 'T2' | 'T3';
+  readonly status: string;
+  readonly toolName: string | null;
+  readonly proposedAt: string | null;
+  readonly expiresAt: string | null;
+  readonly payload: Record<string, unknown> | null;
+}
+
+// Map the gateway's sovereign-approval status onto this page's lifecycle.
+const GATEWAY_STATUS_MAP: Record<string, ActionStatus> = {
+  pending: 'proposed',
+  'one-eye': 'proposed',
+  approved: 'owner_approved',
+  rejected: 'owner_denied',
+  expired: 'expired',
+};
+
+function asString(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
+
+/**
+ * Project a gateway row onto the InboxRow the render path expects. Unknown
+ * categories fall through as-is; missing summaries degrade to empty strings
+ * so the card still renders.
+ */
+function normaliseRow(raw: GatewayInboxRow): InboxRow {
+  const payload = raw.payload ?? {};
+  const status = GATEWAY_STATUS_MAP[raw.status] ?? 'proposed';
+  const reversalToken = asString(payload.reversalToken);
+  const reversalUntil = asString(payload.reversalUntil);
+  return {
+    id: raw.id,
+    actionKind: raw.toolName ?? '',
+    category: (raw.category ?? '') as Category,
+    delegationTier: raw.delegationTier,
+    status,
+    summary: raw.summaryEn ?? raw.summary ?? '',
+    summarySw: raw.summarySw ?? raw.summary ?? '',
+    rationale: asString(payload.rationale) ?? '',
+    reversalToken,
+    reversalUntil,
+    proposedAt: raw.proposedAt ?? '',
+    executedAt: asString(payload.executedAt),
+    blockedReason: asString(payload.blockedReason),
+  };
+}
+
 function formatCountdown(untilIso: string | null, nowMs: number): string {
   if (untilIso === null) return '';
   const remainingMs = Math.max(0, new Date(untilIso).getTime() - nowMs);
@@ -101,17 +165,18 @@ export default function MwikilaInbox({
   );
   const [categoryFilter, setCategoryFilter] = useState<Category | 'all'>('all');
   const [nowMs, setNowMs] = useState<number>(Date.now());
+  const [pendingId, setPendingId] = useState<string | null>(null);
   const sw = languagePreference === 'sw';
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const res = await api.get<ReadonlyArray<InboxRow>>(
-        '/mwikila/actions/inbox',
+      const res = await api.get<ReadonlyArray<GatewayInboxRow>>(
+        '/owner/mwikila-inbox',
       );
       if (res.success && Array.isArray(res.data)) {
-        setRows(res.data);
+        setRows(res.data.map(normaliseRow));
       } else {
         setErrorMsg(res.error?.message ?? 'Failed to load inbox');
       }
@@ -136,31 +201,69 @@ export default function MwikilaInbox({
     });
   }, [rows, statusFilter, categoryFilter]);
 
-  const onApprove = useCallback(
-    async (id: string) => {
-      await api.post(`/mwikila/actions/${id}/approve`);
-      await refresh();
+  // Sovereign-action mutations (approve / deny / reverse) are the highest-
+  // stakes buttons on the surface. A silent failure here would leave the owner
+  // believing an action landed when it did not, so the result MUST be surfaced.
+  const runSovereignAction = useCallback(
+    async (
+      id: string,
+      request: () => Promise<{ success: boolean; error?: { message?: string } }>,
+    ) => {
+      setPendingId(id);
+      setErrorMsg(null);
+      try {
+        const res = await request();
+        if (!res.success) {
+          setErrorMsg(
+            res.error?.message ??
+              (sw
+                ? 'Hatua hii haikufanikiwa. Tafadhali jaribu tena.'
+                : 'That action could not be completed. Please try again.'),
+          );
+          return;
+        }
+        await refresh();
+      } catch (err) {
+        setErrorMsg(
+          err instanceof Error
+            ? err.message
+            : sw
+              ? 'Hitilafu ya mtandao. Tafadhali jaribu tena.'
+              : 'Network error. Please try again.',
+        );
+      } finally {
+        setPendingId(null);
+      }
     },
-    [refresh],
+    [refresh, sw],
+  );
+
+  const onApprove = useCallback(
+    (id: string) =>
+      runSovereignAction(id, () =>
+        api.post(`/owner/mwikila-inbox/${id}/approve`),
+      ),
+    [runSovereignAction],
   );
 
   const onDeny = useCallback(
-    async (id: string) => {
-      await api.post(`/mwikila/actions/${id}/deny`);
-      await refresh();
-    },
-    [refresh],
+    (id: string) =>
+      runSovereignAction(id, () =>
+        api.post(`/owner/mwikila-inbox/${id}/deny`),
+      ),
+    [runSovereignAction],
   );
 
   const onReverse = useCallback(
-    async (row: InboxRow) => {
-      if (row.reversalToken === null) return;
-      await api.post(`/mwikila/actions/${row.id}/reverse`, {
-        reversalToken: row.reversalToken,
-      });
-      await refresh();
+    (row: InboxRow) => {
+      if (row.reversalToken === null) return Promise.resolve();
+      return runSovereignAction(row.id, () =>
+        api.post(`/owner/mwikila-inbox/${row.id}/reverse`, {
+          reversalToken: row.reversalToken,
+        }),
+      );
     },
-    [refresh],
+    [runSovereignAction],
   );
 
   return (
@@ -280,7 +383,8 @@ export default function MwikilaInbox({
                         <button
                           type="button"
                           onClick={() => void onApprove(row.id)}
-                          className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+                          disabled={pendingId === row.id}
+                          className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                           data-testid="mwikila-approve"
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" />
@@ -289,7 +393,8 @@ export default function MwikilaInbox({
                         <button
                           type="button"
                           onClick={() => void onDeny(row.id)}
-                          className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-xs text-zinc-700 hover:bg-zinc-50"
+                          disabled={pendingId === row.id}
+                          className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-xs text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
                           data-testid="mwikila-deny"
                         >
                           <XCircle className="h-3.5 w-3.5" />
@@ -301,7 +406,8 @@ export default function MwikilaInbox({
                       <button
                         type="button"
                         onClick={() => void onReverse(row)}
-                        className="inline-flex items-center gap-1 rounded border border-amber-500 bg-amber-50 px-2.5 py-1 text-xs text-amber-800 hover:bg-amber-100"
+                        disabled={pendingId === row.id}
+                        className="inline-flex items-center gap-1 rounded border border-amber-500 bg-amber-50 px-2.5 py-1 text-xs text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
                         data-testid="mwikila-reverse"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />

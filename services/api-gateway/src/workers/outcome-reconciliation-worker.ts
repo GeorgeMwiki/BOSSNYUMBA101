@@ -189,6 +189,17 @@ export interface ReconciliationWorkerOptions {
   readonly db: DbLike;
   readonly logger: Logger;
   readonly resolvers: ReadonlyMap<string, ObservationResolver>;
+  /**
+   * Re-build the resolver map onto the connection-pinned handle that
+   * `withWorkerTenantContext` reserves per tenant. Supplied by the composition
+   * root. Required so the resolver's RLS-scoped reads (lease / invoice /
+   * maintenance) run on the SAME reserved connection the tenant `SET LOCAL`
+   * bound. Absent in tests (in-memory resolvers — no real pool), where the
+   * passed-through `resolvers` are used directly.
+   */
+  readonly rebindResolvers?: (
+    db: DbLike,
+  ) => ReadonlyMap<string, ObservationResolver>;
   readonly intervalMs?: number;
   readonly batchSize?: number;
   readonly enabled?: boolean;
@@ -719,13 +730,20 @@ export function createReconciliationWorker(
 
     for (const [tenantId, predictions] of byTenant) {
       try {
-        await withWorkerTenantContext(options.db, tenantId, async () => {
+        await withWorkerTenantContext(options.db, tenantId, async (pinned) => {
+          // Re-bind the resolvers onto the pinned (reserved) connection so
+          // their RLS-scoped reads run under the tenant GUC the SET LOCAL set.
+          // Falls back to the passed-through resolvers (in-memory test fakes).
+          const resolvers = options.rebindResolvers?.(pinned) ?? options.resolvers;
           for (const prediction of predictions) {
             try {
               const verdict = await reconcileOne(
                 prediction,
-                options.resolvers,
-                options.db,
+                resolvers,
+                // Pinned (reserved) connection — the reconcile read/write must
+                // run on the connection the per-tenant SET LOCAL bound, not the
+                // pooled `options.db`.
+                pinned,
                 nowIso,
                 options.logger,
               );

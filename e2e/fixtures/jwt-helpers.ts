@@ -9,7 +9,7 @@
  * decode JWTs and forge tampered values; they never call the backend.
  * Specs decide where to inject the tampered token (cookie vs storage)
  * since the BOSSNYUMBA stack persists auth state in BOTH locations
- * depending on the portal (owner = cookies, customer-app = localStorage).
+ * depending on the client (web portal = cookies, mobile = localStorage).
  */
 import type { BrowserContext, Page } from '@playwright/test';
 
@@ -119,8 +119,8 @@ export async function replaceCookieValue(
 
 /**
  * Read any JWT-shaped value out of localStorage. Returns the first key
- * whose value parses as a 3-segment JWT. Used by customer-app where
- * tokens live in localStorage rather than cookies.
+ * whose value parses as a 3-segment JWT. Used by clients where tokens
+ * live in localStorage rather than cookies.
  */
 export async function readJwtFromLocalStorage(
   page: Page,

@@ -258,6 +258,27 @@ export class PostgresInviteCodeRepository {
         throw new Error('INVITE_CODE_EXHAUSTED');
       }
 
+      // Re-join guard. Uniqueness on (tenant_identity_id, organization_id) is
+      // PARTIAL on status='ACTIVE' (migration 0339), so a retained LEFT/BLOCKED
+      // row does NOT block a fresh redeem — the member can re-join. But an
+      // ALREADY-ACTIVE membership would collide with that partial unique index
+      // and surface as an opaque 500. Detect it up-front (under the same
+      // transaction) and throw a distinct error the route maps to a clean 409
+      // instead. Cast to text on both sides so the comparison is enum-safe.
+      const existingActive = await tx.execute(
+        sql`SELECT 1 FROM org_memberships
+            WHERE tenant_identity_id = ${identityId as unknown as string}
+              AND organization_id = ${raw.organization_id as unknown as string}
+              AND status = 'ACTIVE'
+            LIMIT 1`,
+      );
+      const existingActiveRows: any[] = Array.isArray(existingActive)
+        ? existingActive
+        : existingActive?.rows ?? [];
+      if (existingActiveRows.length > 0) {
+        throw new Error('ALREADY_ACTIVE_MEMBER');
+      }
+
       const createInput: CreateMembershipInput = {
         tenantIdentityId: identityId,
         organizationId: raw.organization_id as unknown as OrganizationId,

@@ -3,13 +3,14 @@ import { z } from 'zod'
 export const inspectionKindSchema = z.enum(['move_in', 'move_out', 'routine'])
 export type InspectionKind = z.infer<typeof inspectionKindSchema>
 
+export const inspectionConditionSchema = z.enum(['good', 'fair', 'poor', 'damaged'])
+export type InspectionCondition = z.infer<typeof inspectionConditionSchema>
+
 export const inspectionItemSchema = z.object({
   id: z.string(),
-  type: z.string().trim().min(1).max(60),
-  fromMeters: z.number().min(0),
-  toMeters: z.number().min(0)
-}).refine((item) => item.toMeters > item.fromMeters, {
-  message: 'invalid_range'
+  area: z.string().trim().min(1).max(60),
+  condition: inspectionConditionSchema,
+  notes: z.string().trim().max(280).optional().default('')
 })
 
 export type InspectionItemInput = z.input<typeof inspectionItemSchema>
@@ -18,9 +19,7 @@ export type InspectionItem = z.infer<typeof inspectionItemSchema>
 export const inspectionFormSchema = z.object({
   inspectionId: z.string().trim().min(3).max(40),
   kind: inspectionKindSchema,
-  // eslint-disable-next-line security/detect-unsafe-regex -- reason: bounded anchored pattern, no nested repetition, linear-time
-  depth: z.string().trim().regex(/^\d+(\.\d+)?$/u),
-  assetTag: z.string().trim().max(40).optional().default('')
+  unitRef: z.string().trim().max(40).optional().default('')
 })
 
 export type InspectionForm = z.infer<typeof inspectionFormSchema>
@@ -28,8 +27,7 @@ export type InspectionForm = z.infer<typeof inspectionFormSchema>
 export interface InspectionPayload {
   inspectionId: string
   kind: InspectionKind
-  depthMeters: number
-  assetTag: string
+  unitRef: string
   items: ReadonlyArray<InspectionItem>
   gps: {
     latitude: number

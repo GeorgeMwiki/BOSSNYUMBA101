@@ -77,8 +77,6 @@ export default [
       '**/playwright-report/**',
       '**/test-results/**',
       '**/*.tsbuildinfo',
-      // Flutter app is not JS
-      'apps/bossnyumba_app/**',
       // Generated / vendored
       '**/generated/**',
       '**/*.generated.ts',

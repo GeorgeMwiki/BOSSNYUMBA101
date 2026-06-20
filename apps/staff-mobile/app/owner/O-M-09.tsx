@@ -14,6 +14,7 @@ import { RoleGuard } from '../../src/components/RoleGuard'
 import { useI18n } from '../../src/i18n/useI18n'
 import { groupByBucket, useLeases, useRenewLease } from '../../src/owner/useLeases'
 import type { Lease, LeaseBucket } from '../../src/owner/types'
+import type { Lang } from '../../src/auth/types'
 import { colors } from '../../src/theme/colors'
 import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
@@ -37,7 +38,11 @@ type RenewStatus =
   | { kind: 'error'; leaseId: string; message: string }
 
 function LeaseCalendarView(): JSX.Element {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  // Single-locale renewal-success copy: the i18n bundle exposes a SW and an
+  // EN variant; render exactly one per the active locale (never both).
+  const renewSuccess =
+    lang === 'sw' ? t.licenceCalendar.renewSuccessSw : t.licenceCalendar.renewSuccessEn
   const query = useLeases()
   const renewal = useRenewLease()
   const [refreshing, setRefreshing] = useState<boolean>(false)
@@ -110,11 +115,10 @@ function LeaseCalendarView(): JSX.Element {
       {status.kind === 'success' ? (
         <View
           accessibilityRole="alert"
-          accessibilityLabel={`${t.licenceCalendar.renewSuccessSw}. ${t.licenceCalendar.renewSuccessEn}.`}
+          accessibilityLabel={renewSuccess}
           style={styles.toastSuccess}
         >
-          <Text style={styles.toastTitle}>{t.licenceCalendar.renewSuccessSw}</Text>
-          <Text style={styles.toastSubtitle}>{t.licenceCalendar.renewSuccessEn}</Text>
+          <Text style={styles.toastTitle}>{renewSuccess}</Text>
         </View>
       ) : null}
       <ScrollView
@@ -133,6 +137,7 @@ function LeaseCalendarView(): JSX.Element {
           leases={buckets.t7}
           status={status}
           strings={t.licenceCalendar}
+          lang={lang}
           onRenew={onRenew}
         />
         <BucketSection
@@ -141,6 +146,7 @@ function LeaseCalendarView(): JSX.Element {
           leases={buckets.t30}
           status={status}
           strings={t.licenceCalendar}
+          lang={lang}
           onRenew={onRenew}
         />
         <BucketSection
@@ -149,6 +155,7 @@ function LeaseCalendarView(): JSX.Element {
           leases={buckets.t90}
           status={status}
           strings={t.licenceCalendar}
+          lang={lang}
           onRenew={onRenew}
         />
       </ScrollView>
@@ -172,6 +179,7 @@ interface BucketSectionProps {
   leases: ReadonlyArray<Lease>
   status: RenewStatus
   strings: LeaseCalendarStrings
+  lang: Lang
   onRenew: (lease: Lease) => void
 }
 
@@ -181,6 +189,7 @@ function BucketSection({
   leases,
   status,
   strings,
+  lang,
   onRenew
 }: BucketSectionProps): JSX.Element {
   return (
@@ -195,6 +204,7 @@ function BucketSection({
             bucket={bucket}
             status={status}
             strings={strings}
+            lang={lang}
             onRenew={onRenew}
           />
         ))
@@ -208,6 +218,7 @@ interface LeaseRowProps {
   bucket: LeaseBucket
   status: RenewStatus
   strings: LeaseCalendarStrings
+  lang: Lang
   onRenew: (lease: Lease) => void
 }
 
@@ -216,11 +227,14 @@ function LeaseRow({
   bucket,
   status,
   strings,
+  lang,
   onRenew
 }: LeaseRowProps): JSX.Element {
   const isPending = status.kind === 'pending' && status.leaseId === lease.id
   const isError = status.kind === 'error' && status.leaseId === lease.id
-  const renewLabel = `${strings.renewAction} / ${strings.renewActionEn}`
+  // Single-locale renew label: the SW bundle key is `renewAction`, the EN
+  // override is `renewActionEn`; render exactly one per the active locale.
+  const renewLabel = lang === 'sw' ? strings.renewAction : strings.renewActionEn
   return (
     <View style={[styles.card, BUCKET_STYLES[bucket]]}>
       <View style={styles.cardTop}>
@@ -257,8 +271,7 @@ function LeaseRow({
           </View>
         ) : (
           <View style={styles.renewButtonInner}>
-            <Text style={styles.renewButtonText}>{strings.renewAction}</Text>
-            <Text style={styles.renewButtonSubtext}>{strings.renewActionEn}</Text>
+            <Text style={styles.renewButtonText}>{renewLabel}</Text>
           </View>
         )}
       </Pressable>
@@ -311,11 +324,6 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     fontSize: fontSize.lead,
     fontWeight: '700'
-  },
-  toastSubtitle: {
-    color: colors.textInverse,
-    fontSize: fontSize.body,
-    marginTop: spacing.xs
   },
   card: {
     borderLeftWidth: 6,
@@ -387,11 +395,6 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     fontSize: fontSize.lead,
     fontWeight: '700'
-  },
-  renewButtonSubtext: {
-    color: colors.textInverse,
-    fontSize: fontSize.caption,
-    opacity: 0.85
   },
   rowError: {
     marginTop: spacing.sm,

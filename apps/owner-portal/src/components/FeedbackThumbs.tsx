@@ -1,10 +1,10 @@
 /**
  * FeedbackThumbs (Owner) — per-Jarvis-turn feedback widget.
  *
- * Mirrors `apps/customer-app/src/components/FeedbackThumbs.tsx` exactly
- * so the gateway wire stays consistent across surfaces. The only
- * difference is the import boundary — keeping the component local
- * preserves the strict app-isolation S4 sweep called for.
+ * The gateway feedback wire (the caller-owned POST /api/v1/feedback
+ * handler below) is shared across surfaces; each surface keeps its own
+ * local copy of this widget so the strict app-isolation S4 sweep stays
+ * satisfied. The only per-surface difference is the import boundary.
  *
  * Behaviour:
  *   - 👍/👎 buttons under the assistant turn

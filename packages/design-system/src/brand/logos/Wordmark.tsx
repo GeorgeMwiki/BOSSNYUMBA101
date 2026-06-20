@@ -28,6 +28,18 @@ export interface WordmarkProps extends React.HTMLAttributes<HTMLDivElement> {
   readonly premium?: boolean;
   /** Override the displayed text. Default is the canonical brand name. */
   readonly label?: string;
+  /**
+   * Render the mark inside its dark rounded backdrop tile (app-icon framing).
+   *
+   * The premium (gradient) mark is drawn FOR a dark surface: its light gradient
+   * stops (#FFE2B4 / #FFF1CF) are *highlights* that vanish when the mark sits
+   * bare on a light header — it washes out into an illegible smudge at nav size
+   * (the readability bug). So the gradient mark DEFAULTS to contained, which
+   * gives it high contrast on ANY background (cream header, light footer, dark
+   * mode). The flat `currentColor` mark stays bare (a solid tint reads fine on
+   * light). Pass an explicit boolean to override.
+   */
+  readonly withBackdrop?: boolean;
 }
 
 const SIZE_MAP: Record<WordmarkSize, { mark: number; text: string; gap: string }> = {
@@ -43,10 +55,14 @@ export function Wordmark({
   size = 'md',
   premium = true,
   label = 'BossNyumba',
+  withBackdrop,
   className,
   ...rest
 }: WordmarkProps) {
   const s = SIZE_MAP[size];
+  // The gradient mark is a dark-context asset → contain it by default so it
+  // never washes out on a light header. The flat mark stays bare.
+  const contained = withBackdrop ?? premium;
   return (
     <div
       className={[
@@ -65,6 +81,7 @@ export function Wordmark({
       <Logomark
         size={s.mark}
         variant={premium ? 'premium' : 'flat'}
+        withBackdrop={contained}
         className={premium ? undefined : 'text-signal-500'}
         aria-hidden="true"
       />
@@ -139,10 +156,15 @@ export function WordmarkOnly({
 }
 
 /**
- * Render "BossNyumba" as a single compound word with a subtle amber
- * baseline dot between the two capitalised syllables. Reads "BossNyumba"
- * but optically flags the internal word-break. If the label isn't the
- * canonical BossNyumba, renders plain text.
+ * Render "BossNyumba" as ONE clean compound word. The internal capital (N)
+ * already marks the Boss/Nyumba syllable break optically, so the wordmark
+ * needs no separator. For a subtle premium two-tone, "Nyumba" carries the
+ * brand signal hue while staying bonded to "Boss" (no space, no hyphen, no
+ * dot) — true to the single-word canonical brand.
+ *
+ * (An earlier version placed an amber baseline DOT between the syllables;
+ * it rendered as a visible "Boss·Nyumba" separator that read as two words
+ * and fought the one-word brand. Removed.)
  */
 function splitCompoundLabel(label: string): React.ReactNode {
   const trimmed = label.trim();
@@ -151,11 +173,7 @@ function splitCompoundLabel(label: string): React.ReactNode {
   return (
     <>
       <span>{match[1]}</span>
-      <span
-        aria-hidden="true"
-        className="mx-[0.02em] inline-block h-[0.14em] w-[0.14em] translate-y-[-0.04em] rounded-full bg-signal-500/85 align-baseline"
-      />
-      <span>{match[2]}</span>
+      <span className="text-signal-600">{match[2]}</span>
     </>
   );
 }

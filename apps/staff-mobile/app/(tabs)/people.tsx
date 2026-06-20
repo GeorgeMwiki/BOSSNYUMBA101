@@ -9,10 +9,10 @@ import { fontSize, radius, spacing } from '../../src/theme/spacing'
 const PEOPLE_LINKS: ReadonlyArray<string> = ['O-M-12', 'O-M-13', 'O-M-15', 'O-M-23', 'O-M-24']
 
 export default function PeopleTab(): JSX.Element {
-  const { screen } = useI18n()
+  const { screen, t } = useI18n()
   return (
     <ScreenShell screenId="O-M-12">
-      <Section title="Watu na mali">
+      <Section title={t.hubs.people}>
         <View style={styles.grid}>
           {PEOPLE_LINKS.map((id) => (
             <Link key={id} href={`/owner/${id}`} asChild>

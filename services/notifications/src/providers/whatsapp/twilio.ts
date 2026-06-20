@@ -6,6 +6,7 @@ import twilio, { type Twilio } from 'twilio';
 import type { TenantId } from '../../types/index.js';
 import type { INotificationProvider, SendParams } from '../provider.interface.js';
 import type { NotificationChannel, SendResult } from '../../types/index.js';
+import { lazySingleton } from '../../lazy-singleton.js';
 
 export interface TwilioWhatsAppConfig {
   accountSid: string;
@@ -56,4 +57,4 @@ export class TwilioWhatsAppProvider implements INotificationProvider {
   }
 }
 
-export const twilioWhatsAppProvider = new TwilioWhatsAppProvider();
+export const twilioWhatsAppProvider = lazySingleton(() => new TwilioWhatsAppProvider());

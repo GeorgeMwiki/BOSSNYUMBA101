@@ -72,8 +72,6 @@ echo
 # Dockerfile paths follow the BOSSNYUMBA monorepo convention. Adjust if
 # your repo layout differs.
 IMAGES=(
-  "customer-app:apps/customer-app/Dockerfile:."
-  "estate-manager-app:apps/estate-manager-app/Dockerfile:."
   "owner-portal:apps/owner-portal/Dockerfile:."
   "admin-platform-portal:apps/admin-platform-portal/Dockerfile:."
   "api-gateway:services/api-gateway/Dockerfile:."

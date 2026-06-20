@@ -25,8 +25,10 @@ import { resolveTone, type BossNyumbaLogoTone } from './tone';
  *   - 'current'    defers to `currentColor`
  *
  * The wordmark sets "BossNyumba" as one bonded compound in Fraunces
- * display, with a warm-gold mid-dot at the Boss|Nyumba seam so readers
- * parse two syllables but see one brand. Honours "head of the house".
+ * display. The internal capital (N) already marks the Boss|Nyumba seam
+ * optically, so a subtle two-tone (the signal hue on "Nyumba") carries
+ * the syllable break with no separator — readers parse two syllables but
+ * see one brand. Honours "head of the house".
  *
  * Deterministic: no Math.random, no Date, no env reads.
  */
@@ -57,8 +59,10 @@ export interface BossNyumbaLogoProps extends React.HTMLAttributes<HTMLSpanElemen
 }
 
 /**
- * Wordmark "BossNyumba" — Fraunces display medium with the canonical
- * warm-gold mid-dot at the Boss|Nyumba seam. Renders in the tone's own
+ * Wordmark "BossNyumba" — Fraunces display medium set as ONE bonded
+ * compound. The internal capital (N) already marks the Boss|Nyumba seam
+ * optically, so a subtle two-tone (the signal hue on "Nyumba") carries
+ * the syllable break with no separator node. Renders in the tone's own
  * colour rather than inheriting, so 'knockout' over a dark photo stays
  * correct without relying on a parent `color` cascade.
  */
@@ -75,7 +79,10 @@ function BossNyumbaWordmarkText({
   const fontPx = Math.round(size * 0.62);
   const trimmed = label.trim();
   const match = trimmed.match(/^([A-Z][a-z]+)([A-Z][a-z]+)$/);
-  const dotSize = Math.max(2, Math.round(fontPx * 0.1));
+  // Second syllable carries the signal hue for the gold-forward tones;
+  // mono / knockout tones stay single-colour for contrast safety.
+  const accentColor =
+    tone === 'full' || tone === 'mono-cream' ? '#E5B26B' : palette.wordmarkColor;
 
   return (
     <span
@@ -94,20 +101,7 @@ function BossNyumbaWordmarkText({
       {match ? (
         <>
           <span>{match[1]}</span>
-          <span
-            aria-hidden="true"
-            style={{
-              display: 'inline-block',
-              width: dotSize,
-              height: dotSize,
-              borderRadius: '50%',
-              backgroundColor:
-                tone === 'full' || tone === 'mono-cream' ? '#E5B26B' : palette.wordmarkColor,
-              margin: `0 ${Math.max(1, Math.round(fontPx * 0.04))}px`,
-              transform: `translateY(-${Math.max(1, Math.round(fontPx * 0.12))}px)`,
-            }}
-          />
-          <span>{match[2]}</span>
+          <span style={{ color: accentColor }}>{match[2]}</span>
         </>
       ) : (
         trimmed

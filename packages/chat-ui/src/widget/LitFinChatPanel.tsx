@@ -36,6 +36,7 @@ import { useLitFinAI } from './LitFinAIProvider';
 import { useWidgetLanguage } from './useWidgetLanguage';
 import { LitFinMessageBubble, type LitFinMessage } from './LitFinMessageBubble';
 import { LitFinSegmentHeader } from './LitFinSegmentHeader';
+import { useChatScroll } from '../hooks/useChatScroll.js';
 import { LitFinContextBadge } from './LitFinContextBadge';
 
 interface LitFinChatPanelProps {
@@ -133,6 +134,12 @@ export function LitFinChatPanel({
   const resolvedDisclaimerSw =
     disclaimerSw ?? ctxDisclaimerSw ?? DEFAULT_DISCLAIMER_SW;
 
+  // The public marketing endpoint (`/api/chat`) accepts only a text turn —
+  // it has no image field, so any staged image is silently dropped. Don't
+  // offer an upload affordance that does nothing. Authenticated portals
+  // that actually forward images keep the control.
+  const imageUploadEnabled = portalId !== 'public';
+
   const [messages, setMessages] = useState<ReadonlyArray<LitFinMessage>>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -143,13 +150,14 @@ export function LitFinChatPanel({
   const [sessionStartedAt] = useState(() => new Date().toISOString());
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<unknown>(null);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // Canonical streaming-scroll behaviour (§5.1): follow only while the reader is
+  // at the bottom, instant during stream, never yank a reader who scrolled up.
+  useChatScroll(scrollContainerRef, messages, isStreaming);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -204,7 +212,11 @@ export function LitFinChatPanel({
             language,
             portalId,
             currentRoute,
-            ...(pendingImage ? { image: pendingImage } : {}),
+            // Only attach an image when the portal actually forwards it —
+            // never send a payload the endpoint will drop on the floor.
+            ...(imageUploadEnabled && pendingImage
+              ? { image: pendingImage }
+              : {}),
           }),
         });
 
@@ -235,8 +247,12 @@ export function LitFinChatPanel({
           const reply =
             json?.reply ??
             json?.text ??
+            // A structured error (e.g. 503 ai_unavailable) must surface as a
+            // human sentence — never the raw machine code in parentheses.
             (json?.error
-              ? `(${json.error})`
+              ? language === 'sw'
+                ? 'Samahani, msaidizi hapatikani kwa sasa. Tafadhali jaribu tena baada ya muda mfupi.'
+                : "Sorry, the assistant is unavailable right now. Please try again in a moment."
               : language === 'sw'
                 ? 'Samahani, hakuna jibu kwa sasa.'
                 : 'Sorry, no reply right now.');
@@ -258,28 +274,43 @@ export function LitFinChatPanel({
             ];
           });
         }
-      } catch (err) {
+      } catch {
+        // Network / transport failure — show a clean human sentence. The
+        // raw error message is a developer detail, never surfaced to a
+        // public visitor.
         setMessages((prev) => {
           const last = prev[prev.length - 1];
           if (!last || last.role !== 'assistant') return prev;
-          const errText =
-            err instanceof Error ? err.message : 'unknown error';
           return [
             ...prev.slice(0, -1),
             {
               ...last,
               content:
                 language === 'sw'
-                  ? `Samahani, hakuna mawasiliano. (${errText})`
-                  : `Sorry, no network. (${errText})`,
+                  ? 'Samahani, mawasiliano yamekatika. Tafadhali angalia mtandao wako na ujaribu tena.'
+                  : "Sorry, the connection dropped. Please check your network and try again.",
             },
           ];
         });
       } finally {
+        // Always finalize the streaming bubble — on a clean turn_end, an
+        // abnormal stream-end (zero deltas, dropped mid-stream), or a
+        // throw. A bubble that ended with NO content would otherwise sit
+        // blank with a blinking cursor forever; settle it to an honest
+        // sentence instead.
         setMessages((prev) => {
           const last = prev[prev.length - 1];
           if (!last || last.role !== 'assistant') return prev;
-          return [...prev.slice(0, -1), { ...last, isStreaming: false }];
+          const settledContent =
+            last.content.trim().length > 0
+              ? last.content
+              : language === 'sw'
+                ? 'Samahani, jibu halikukamilika. Tafadhali jaribu tena.'
+                : "Sorry, the reply didn't complete. Please try again.";
+          return [
+            ...prev.slice(0, -1),
+            { ...last, content: settledContent, isStreaming: false },
+          ];
         });
         setIsStreaming(false);
       }
@@ -293,6 +324,7 @@ export function LitFinChatPanel({
       portalId,
       currentRoute,
       pendingImage,
+      imageUploadEnabled,
     ],
   );
 
@@ -377,7 +409,7 @@ export function LitFinChatPanel({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.95 }}
       transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-      className="fixed bottom-4 right-4 z-50 flex h-[min(78vh,720px)] w-[min(92vw,380px)] flex-col overflow-hidden rounded-[28px] border border-border/50 bg-background/92 shadow-[0_28px_80px_rgb(15_23_42_/_0.22)] ring-1 ring-border/20 backdrop-blur-2xl md:bottom-6 md:right-6"
+      className="fixed bottom-4 right-4 z-50 flex h-[min(80vh,760px)] w-[min(94vw,500px)] flex-col overflow-hidden rounded-[28px] border border-border/50 bg-background/92 shadow-[0_28px_80px_rgb(15_23_42_/_0.22)] ring-1 ring-border/20 backdrop-blur-2xl md:bottom-6 md:right-6"
     >
       <div
         className={`relative flex items-center justify-between overflow-hidden border-b border-white/10 px-4 py-3 text-primary-foreground ${CHAT_HEADER_GRADIENT}`}
@@ -452,6 +484,7 @@ export function LitFinChatPanel({
       </div>
 
       <div
+        ref={scrollContainerRef}
         className="flex-1 overflow-y-auto px-3 pb-2"
         aria-live="polite"
         aria-atomic="false"
@@ -479,7 +512,7 @@ export function LitFinChatPanel({
       </div>
 
       <AnimatePresence>
-        {pendingImage && (
+        {imageUploadEnabled && pendingImage && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -548,34 +581,38 @@ export function LitFinChatPanel({
               </svg>
             )}
           </button>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isStreaming}
-            aria-label={language === 'sw' ? 'Pakia picha' : 'Upload image'}
-            title={language === 'sw' ? 'Pakia picha' : 'Upload image'}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground disabled:opacity-40"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={onPickImage}
-            className="hidden"
-          />
+          {imageUploadEnabled && (
+            <>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isStreaming}
+                aria-label={language === 'sw' ? 'Pakia picha' : 'Upload image'}
+                title={language === 'sw' ? 'Pakia picha' : 'Upload image'}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground disabled:opacity-40"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={onPickImage}
+                className="hidden"
+              />
+            </>
+          )}
           <textarea
             ref={inputRef}
             value={input}
@@ -653,22 +690,46 @@ export function LitFinChatPanel({
 }
 
 /**
+ * Token SSE event names that carry running assistant text.
+ *
+ * `delta` is the canonical `StreamTurnEvent` name emitted by the
+ * api-gateway public-marketing route (and every authenticated chat
+ * surface via the orchestrator's `streamTurn`). `message_chunk` is the
+ * older Borjie/CLI public-chat name kept for backward tolerance so this
+ * one parser can drive both producers.
+ */
+const TOKEN_EVENT_NAMES = new Set(['delta', 'message_chunk']);
+
+/**
+ * Terminal SSE event names. On any of these the stream is done — return
+ * cleanly so the bubble stops streaming instead of hanging until the
+ * underlying reader happens to close.
+ */
+const TERMINAL_EVENT_NAMES = new Set(['turn_end', 'done', 'error']);
+
+/**
  * Parse a BossNyumba / Borjie public-chat SSE stream incrementally.
  *
  * Frame shape (one per blank-line separated record):
  *   event: <name>
  *   data: <json>
  *
- * Events we honour:
- *   - message_chunk → emit `data.text` to the bubble
- *   - turn.accepted / suggested_actions / done / error → ignored on the
- *     widget side (the bubble only cares about the running text)
+ * Producer contract (api-gateway `public-marketing.hono.ts` →
+ * `marketingChatStream`) emits `StreamTurnEvent` frames:
+ *   - turn_start            → ignored (establishes the thread)
+ *   - delta { content }     → emit `content` to the bubble
+ *   - handoff               → ignored on the widget side
+ *   - turn_end / error      → terminate the stream cleanly
+ *
+ * Events we honour for running text:
+ *   - delta         → emit `data.content` (canonical StreamTurnEvent)
+ *   - message_chunk → emit `data.text` / `data.delta` (legacy public-chat)
  *
  * The parser also tolerates `data: <json-with-text>` frames that have no
  * `event:` line (Anthropic-style stream) and the OpenAI-style `[DONE]`
  * sentinel for forward compatibility.
  */
-async function readEventStream(
+export async function readEventStream(
   body: ReadableStream<Uint8Array>,
   onChunk: (text: string) => void,
 ): Promise<void> {
@@ -690,16 +751,29 @@ async function readEventStream(
       }
       if (line.startsWith('event:')) {
         currentEvent = line.slice(6).trim();
+        // Terminate cleanly on the producer's done/error events so the
+        // bubble settles even before the transport closes.
+        if (currentEvent && TERMINAL_EVENT_NAMES.has(currentEvent)) return;
         continue;
       }
       if (!line.startsWith('data:')) continue;
       const data = line.slice(5).trim();
       if (data === '[DONE]') return;
       if (!data) continue;
-      if (currentEvent !== null && currentEvent !== 'message_chunk') continue;
+      // A named non-token event (turn_start / handoff / …) carries no
+      // running text — skip its data line.
+      if (currentEvent !== null && !TOKEN_EVENT_NAMES.has(currentEvent)) {
+        continue;
+      }
       try {
-        const parsed = JSON.parse(data) as { text?: string; delta?: string };
-        const text = parsed.text ?? parsed.delta ?? '';
+        const parsed = JSON.parse(data) as {
+          content?: string;
+          text?: string;
+          delta?: string;
+        };
+        // `content` is the canonical StreamTurnEvent field; `text` /
+        // `delta` cover the legacy public-chat + Anthropic shapes.
+        const text = parsed.content ?? parsed.text ?? parsed.delta ?? '';
         if (text) onChunk(text);
       } catch {
         if (currentEvent === null) onChunk(data);

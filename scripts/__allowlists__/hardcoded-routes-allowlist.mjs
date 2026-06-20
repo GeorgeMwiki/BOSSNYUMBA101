@@ -21,20 +21,12 @@
 export const HARDCODED_ROUTES_ALLOWLIST = new Map([
   // ─── Frontend routes registry (the registry itself) ───────────────
   [
-    'apps/customer-app/src/lib/routes.ts',
-    'customer-app routes registry IS the canonical frontend route lookup table for the customer app.',
-  ],
-  [
     'apps/owner-portal/src/lib/routes.ts',
     'owner-portal routes registry IS the canonical frontend route lookup table for the owner portal.',
   ],
-  [
-    'apps/estate-manager-app/src/lib/routes.ts',
-    'estate-manager-app routes registry IS the canonical frontend route lookup table for the estate manager app.',
-  ],
   // ─── Admin platform portal (operator-only, no registry yet) ───────
   // The admin platform portal is an internal operator surface that does
-  // not share the customer-app/owner-portal/estate-manager-app route
+  // not share the owner-portal route
   // registry pattern. The single thread-create redirect below is the
   // only navigation call in this subtree that uses an inline path; it
   // is structurally tied to the /ask/[threadId] route convention.
@@ -63,18 +55,6 @@ export const HARDCODED_ROUTES_ALLOWLIST = new Map([
     'Post-create navigate uses /properties/${propertyId} interpolation — the route IS in the registry, only the id param is dynamic.',
   ],
   [
-    'apps/tenant-portal/src/app/marketplace/page.tsx',
-    'Tenant-portal Link to /marketplace/orgs — tenant-portal does not yet have a routes registry (i18n-bootstrap pending, see hardcoded-strings allowlist).',
-  ],
-  [
-    'apps/tenant-portal/src/components/marketplace/OrgJoinForm.tsx',
-    'Post-join router.push uses /marketplace/orgs/${orgId} interpolation — tenant-portal does not yet have a routes registry.',
-  ],
-  [
-    'apps/estate-manager-app/src/app/settings/page.tsx',
-    'Settings page sign-out redirect to /login is a critical auth path — keeps the literal even when ROUTES is unavailable (P96 UI fix predates routes registry on this app).',
-  ],
-  [
     'apps/owner-portal/src/pages/LeaseDraftPage.tsx',
     'LeaseDraftPage cancel/back navigation to /properties listing — the canonical /properties path is in the registry, the inline string is a side-effect of legacy lease-draft control flow.',
   ],
@@ -88,7 +68,7 @@ export const HARDCODED_ROUTES_ALLOWLIST = new Map([
   // legal + trust pages cross-link via <Link href="/terms"> etc. It
   // does not (and need not) share the in-app ROUTES registry pattern —
   // these are public, SEO-stable URLs that double as the canonical
-  // sitemap. Same posture as the tenant-portal entries above.
+  // sitemap.
   [
     'apps/marketing/src/app/sign-up/page.tsx',
     'Marketing sign-up page links to public /terms + /privacy legal pages — marketing site has no ROUTES registry; these are SEO-stable public URLs.',
@@ -134,5 +114,17 @@ export const HARDCODED_ROUTES_ALLOWLIST = new Map([
   [
     'apps/tenant-mobile/src/dashboard/TenantDashboard.tsx',
     'Expo Router push to /marketplace + /chat + /marketplace/${id} dashboard tiles — tenant-mobile has no ROUTES registry yet.',
+  ],
+  [
+    'apps/marketing/src/app/docs/page.tsx',
+    'Static marketing nav links (/security, /trust) — public Next pages; the marketing site has no ROUTES registry.',
+  ],
+  [
+    'apps/marketing/src/app/security/page.tsx',
+    'Static marketing nav link (/trust) — public Next page; the marketing site has no ROUTES registry.',
+  ],
+  [
+    'apps/owner-portal/src/pages/OperationsPage.tsx',
+    'navigate(\'/workflows\') — pre-existing owner-portal nav; ROUTES-registry migration tracked separately.',
   ],
 ]);

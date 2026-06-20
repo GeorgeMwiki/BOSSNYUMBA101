@@ -19,15 +19,36 @@
  *   GET /collections       — arrears cases list
  *   GET /sla               — placeholder summary (SLA analytics pending)
  *
- *   All POST/PUT/DELETE surfaces return 501 NOT_IMPLEMENTED pointing at
+ *   Most POST/PUT/DELETE surfaces still return 501 NOT_IMPLEMENTED pointing at
  *   the canonical tenant-scoped routers they should go through
- *   (/api/v1/work-orders, /api/v1/inspections, etc.). The BFF was never
- *   the source of truth for mutations.
+ *   (/api/v1/work-orders, /api/v1/inspections, etc.). The BFF was never the
+ *   source of truth for those mutations.
  *
- * Tenant isolation: every query is scoped by `auth.tenantId`.
+ * TWO write surfaces ARE owned here (they have no canonical router and the
+ * mobile clients have no other home for them):
+ *
+ *   STAFF FIELD CAPTURES (#7) — offline-sync write sink for staff-mobile:
+ *     POST /attendance · /task-acks · /incidents · /shift-reports ·
+ *          /inspections (W-M-07) · /unit-checks (W-M-06, also GET)
+ *     Persists to field_captures (migrations 0326 + 0346 for the inspection /
+ *     unit_check capture types), tenant-scoped + FORCE RLS, idempotent on a
+ *     client-supplied id. Fixes the silent data-loss where a missing route
+ *     404'd and the offline queue dropped the payload.
+ *
+ *   APPLICANT IDENTITY (#9) — renter self-service for tenant-mobile:
+ *     POST /applicants/kyc · GET /applicants/kyc/:id/status
+ *     POST|PUT /applicants/profile · POST|PUT /applicants/profile/notifications
+ *     Persists to applicant_kyc + applicant_profile (migration 0327),
+ *     tenant-scoped + FORCE RLS, keyed on the JWT applicant_id (uniform-404
+ *     anti-IDOR; preferredLang persisted + hydrated, never hard-coded).
+ *
+ * Tenant isolation: every read is scoped by `auth.tenantId`; every write goes
+ * through `withTenantContext` (in the repo) so the RLS GUC is bound and a
+ * cross-tenant write SURFACES rather than fake-succeeding.
  */
 
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { and, count, desc, eq, gte, lte, or, sql } from 'drizzle-orm';
 import {
   workOrders,
@@ -37,25 +58,79 @@ import {
   properties,
   units,
   arrearsCases,
+  assignments,
+  employees,
+  withTenantContext,
 } from '@bossnyumba/database';
+import { randomUUID } from 'node:crypto';
 import { authMiddleware } from '../../middleware/hono-auth';
-import { requireRole } from '../../middleware/authorization';
 import { UserRole } from '../../types/user-role';
 import { routeCatch } from '../../utils/safe-error';
+import {
+  createEstateFieldIdentityRepo,
+  type CaptureType,
+} from '../../repositories/estate-field-identity-repo';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
 const app = new Hono();
 app.use('*', authMiddleware);
-app.use(
-  '*',
-  requireRole(
-    UserRole.PROPERTY_MANAGER,
-    UserRole.MAINTENANCE_STAFF,
-    UserRole.TENANT_ADMIN,
-    UserRole.ADMIN,
-    UserRole.SUPER_ADMIN,
-  ),
-);
+
+// Role gates — split because the two surfaces this router serves have
+// different audiences:
+//
+//   * Manager/operator surfaces (home, work-orders, inspections, vendors,
+//     occupancy, collections, field captures) are for staff/operators:
+//     PROPERTY_MANAGER + MAINTENANCE_STAFF + admin roles. A renter must NOT be
+//     able to read another tenant's work-order queue, so RESIDENT is excluded
+//     from these.
+//
+//   * The /applicants/* identity surface is the renter's OWN self-service
+//     (KYC + profile + notification prefs). The tenant-mobile renter
+//     authenticates as RESIDENT (the customer-app default in
+//     auth.middleware mapSupabaseRoleToUserRole). These routes are self-scoped
+//     to the authenticated userId, so RESIDENT is permitted here — and ONLY
+//     here.
+//
+// Single fail-closed gate (deny-by-default). The manager surface is operator-
+// only; the renter self-service identity surface (/applicants/*) is the sole
+// RESIDENT-permitted carve-out. Implemented as ONE `*` middleware rather than a
+// per-path enumeration so a future route added without an explicit gate is
+// still covered (it falls into the operator-only branch — never ungated).
+const MANAGER_ROLES = new Set<string>([
+  UserRole.PROPERTY_MANAGER,
+  UserRole.MAINTENANCE_STAFF,
+  UserRole.TENANT_ADMIN,
+  UserRole.ADMIN,
+  UserRole.SUPER_ADMIN,
+]);
+
+// /applicants/* additionally admits RESIDENT (the tenant-mobile renter's mapped
+// role) — and ONLY that surface. Self-scoping to the JWT userId in each handler
+// guarantees a renter sees only their own record.
+const APPLICANT_EXTRA_ROLES = new Set<string>([UserRole.RESIDENT]);
+
+app.use('*', async (c, next) => {
+  const auth = c.get('auth') as { role?: string } | undefined;
+  const role = auth?.role;
+  if (!role) {
+    return c.json(
+      { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+      401,
+    );
+  }
+  const path = c.req.path; // e.g. /api/v1/manager/applicants/profile
+  const isApplicantSurface = /\/applicants(\/|$)/u.test(path);
+  const allowed =
+    MANAGER_ROLES.has(role) ||
+    (isApplicantSurface && APPLICANT_EXTRA_ROLES.has(role));
+  if (!allowed) {
+    return c.json(
+      { success: false, error: { code: 'FORBIDDEN', message: 'Insufficient permissions' } },
+      403,
+    );
+  }
+  await next();
+});
 
 function dbUnavailable(c) {
   return c.json(
@@ -211,11 +286,30 @@ app.get('/work-orders', async (c) => {
   if (!db) return dbUnavailable(c);
   const tenantId = c.get('tenantId');
   const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') ?? '50') || 50));
+  const statusParam = c.req.query('status');
+  const propertyId = c.req.query('propertyId');
   try {
+    // Apply the caller's status + propertyId filters (previously ignored, so
+    // the manager "to dispatch" queue showed completed/cancelled orders and the
+    // property filter was a no-op). `status=open` is the manager-app alias for
+    // "still needs attention" — every non-terminal state, using the SAME
+    // terminal set as /work-orders/queue. A concrete status filters to exactly
+    // that state.
+    const conditions = [eq(workOrders.tenantId, tenantId)];
+    if (statusParam === 'open') {
+      conditions.push(
+        sql`${workOrders.status} NOT IN ('completed','cancelled','closed')`,
+      );
+    } else if (statusParam) {
+      conditions.push(sql`${workOrders.status} = ${statusParam}`);
+    }
+    if (propertyId) {
+      conditions.push(eq(workOrders.propertyId, propertyId));
+    }
     const rows = await db
       .select()
       .from(workOrders)
-      .where(eq(workOrders.tenantId, tenantId))
+      .where(and(...conditions))
       .orderBy(desc(workOrders.createdAt))
       .limit(limit);
     return c.json({ success: true, data: rows });
@@ -590,6 +684,540 @@ app.get('/vendors/scorecards', async (c) => {
   }
 });
 
+// ============================================================================
+// FIELD-CAPTURE READ-BACK (#H — owner↔workforce HIGH) — closes the worker→owner
+// loop. Workers POST attendance / incidents / shift-reports into field_captures
+// (below). These three GETs are the owner/manager projection that reads them
+// back, tenant-scoped via the repo's withTenantContext (RLS GUC bound). Without
+// these reads the captures were a write-only sink no operator surface ever saw.
+//
+//   GET /incidents       — capture_type='incident'
+//   GET /shift-reports   — capture_type='shift_report'
+//   GET /attendance      — capture_type='attendance'
+//
+// Query params (all optional): propertyId, from (ISO), to (ISO), limit (1..200).
+// ============================================================================
+
+function fieldCaptureListHandler(captureType: CaptureType) {
+  return async (c) => {
+    const repo = fieldRepo(c);
+    if (!repo) return dbUnavailable(c);
+    const tenantId = c.get('tenantId');
+    const limit = Math.min(
+      200,
+      Math.max(1, Number(c.req.query('limit') ?? '50') || 50),
+    );
+    try {
+      const rows = await repo.listFieldCaptures({
+        tenantId,
+        captureType,
+        propertyId: c.req.query('propertyId') ?? null,
+        fromDate: c.req.query('from') ?? null,
+        toDate: c.req.query('to') ?? null,
+        limit,
+      });
+      return c.json({
+        success: true,
+        data: rows,
+        meta: { captureType, count: rows.length },
+      });
+    } catch (err) {
+      return routeCatch(c, err, {
+        code: 'FIELD_CAPTURE_LIST_FAILED',
+        status: 503,
+        fallback: 'Field capture read-back failed',
+      });
+    }
+  };
+}
+
+app.get('/incidents', fieldCaptureListHandler('incident'));
+app.get('/shift-reports', fieldCaptureListHandler('shift_report'));
+app.get('/attendance', fieldCaptureListHandler('attendance'));
+// W-M-06 routine unit checks read their own history back (GET /unit-checks with
+// a `limit` query). Same tenant-scoped field_captures projection as the other
+// read-backs, filtered to capture_type='unit_check'.
+app.get('/unit-checks', fieldCaptureListHandler('unit_check'));
+
+// ============================================================================
+// STAFF FIELD CAPTURES (#7) — the offline-sync write sink.
+//
+// apps/staff-mobile/src/sync/flush.ts POSTs each queued offline capture to
+// POST /api/v1/manager/<attendance|task-acks|incidents|shift-reports>. These
+// routes did not exist, so every flush 404'd and the queue's shouldDrop()
+// discarded the payload as poisoned — silent, permanent field-data loss. We
+// persist into the tenant-scoped `field_captures` table (migration 0326) via a
+// repo that binds the RLS tenant GUC (withTenantContext) so a cross-tenant
+// write SURFACES rather than fake-succeeding. Idempotent on a client-supplied
+// id so an at-least-once flush re-POST absorbs into the same row.
+//
+// Six real-estate capture types are wired here: attendance / task_ack /
+// incident / shift_report (the original four) plus inspection (W-M-07's
+// move-in/move-out/unit inspection flush → POST /inspections) and unit_check
+// (W-M-06's routine unit check → GET+POST /unit-checks). All six share the one
+// field_captures envelope; their capture_type values are pinned by the CHECK in
+// migrations 0326 (first four) + 0346 (inspection, unit_check).
+//
+// NOTE on what is intentionally NOT built: the staff-app endpoint map also
+// registers mining-residue keys (fuel_log→materials-logs, fingerprint_sign,
+// ppe_receipt, inventory_move, voice_query). Those are NOT real-estate
+// entities; only the six listed above are wired here. The residue keys remain
+// 404 (their queue entries are not produced by the real-estate staff app).
+// ============================================================================
+
+// Each capture carries a client-supplied id (the offline-queue entry id) used
+// as the idempotency key, plus optional property/unit scoping, an optional
+// device-reported timestamp, and a type-specific body. The body is kept open
+// (passthrough) per type but the envelope is strictly validated.
+const FieldCaptureBodySchema = z.object({
+  clientId: z.string().min(1).max(200),
+  propertyId: z.string().min(1).max(200).optional().nullable(),
+  unitId: z.string().min(1).max(200).optional().nullable(),
+  // Device-reported event time. Kept as a permissive bounded string (NOT a
+  // strict ISO datetime) so a minor client timestamp-format variance never
+  // 422-drops an otherwise-valid offline capture — the DB column is TIMESTAMPTZ
+  // and Postgres parses the common forms; a truly unparseable value surfaces as
+  // a 22P02 → 400 (mapped), still retained-and-fixable rather than silent loss.
+  capturedAt: z.string().min(1).max(64).optional().nullable(),
+  // Some queue payloads nest the typed fields under `body`; others send them
+  // flat. We accept both: an explicit `body` object wins, otherwise the
+  // remaining fields are folded into the body below.
+  body: z.record(z.unknown()).optional(),
+}).passthrough();
+
+function fieldRepo(c) {
+  const db = (c.get('services') ?? {}).db;
+  return db ? createEstateFieldIdentityRepo(db) : null;
+}
+
+function captureHandler(captureType: CaptureType) {
+  return async (c) => {
+    const repo = fieldRepo(c);
+    if (!repo) return dbUnavailable(c);
+    const tenantId = c.get('tenantId');
+    const userId = c.get('userId');
+
+    let raw: unknown;
+    try {
+      raw = await c.req.json();
+    } catch {
+      return c.json(
+        {
+          success: false,
+          error: { code: 'INVALID_JSON', message: 'Request body must be valid JSON.' },
+        },
+        400,
+      );
+    }
+
+    const parsed = FieldCaptureBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Field capture payload failed validation.',
+            details: parsed.error.flatten(),
+          },
+        },
+        422,
+      );
+    }
+
+    const { clientId, propertyId, unitId, capturedAt, body, ...rest } = parsed.data;
+    // Fold flat fields into the body when no explicit `body` object was sent,
+    // so the typed payload is preserved either way. The envelope keys are
+    // stripped from `rest` by the destructure above.
+    const effectiveBody =
+      body && typeof body === 'object'
+        ? (body as Record<string, unknown>)
+        : (rest as Record<string, unknown>);
+
+    try {
+      const record = await repo.saveFieldCapture({
+        tenantId,
+        staffId: userId,
+        clientId,
+        captureType,
+        propertyId: propertyId ?? null,
+        unitId: unitId ?? null,
+        capturedAt: capturedAt ?? null,
+        body: effectiveBody,
+      });
+      // 200 (not 201) on a deduped replay; 201 on a fresh insert. Either way
+      // the client gets the durable record id so the optimistic "synced" badge
+      // is now backed by real persistence.
+      return c.json(
+        { success: true, data: record },
+        record.deduped ? 200 : 201,
+      );
+    } catch (err) {
+      return routeCatch(c, err, {
+        code: 'FIELD_CAPTURE_WRITE_FAILED',
+        status: 503,
+        fallback: 'Field capture write failed',
+      });
+    }
+  };
+}
+
+app.post('/attendance', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('attendance')));
+app.post('/task-acks', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('task_ack')));
+app.post('/incidents', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('incident')));
+app.post('/shift-reports', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('shift_report')));
+// W-M-07 inspection capture: replaces the former 501 stub for POST /inspections
+// so the offline 'inspection' flush persists into field_captures (idempotent on
+// the client-supplied id) instead of 404-and-drop. W-M-06 unit-check capture:
+// the POST companion to GET /unit-checks above.
+app.post('/inspections', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('inspection')));
+app.post('/unit-checks', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('unit_check')));
+
+// ============================================================================
+// TENANT KYC + APPLICANT IDENTITY (#9) — renter-applicant self-service.
+//
+// apps/tenant-mobile/src/api/applicants.ts drives a renter's own identity:
+//   POST /applicants/kyc                    submit KYC
+//   GET  /applicants/kyc/:id/status         poll one KYC record (own only)
+//   PUT/POST /applicants/profile            update profile (preferredLang persisted)
+//   PUT  /applicants/profile/notifications  update notification prefs
+// Backed by applicant_kyc + applicant_profile (migration 0327), tenant-scoped,
+// keyed on the authenticated applicant_id from the JWT (never the body) so a
+// renter can only ever read/write their own record. A KYC poll for a record
+// that is not theirs returns a uniform 404 (anti-IDOR).
+// ============================================================================
+
+const KycSubmissionSchema = z.object({
+  personal: z.object({
+    fullName: z.string().min(1).max(300),
+    phone: z.string().min(1).max(40),
+    email: z.string().email(),
+  }),
+  nida: z.object({
+    frontImageUri: z.string().min(1),
+    backImageUri: z.string().min(1),
+  }),
+  company: z.object({
+    tin: z.string().min(1).max(60),
+    registrationDocUri: z.string().min(1),
+    registrationDocName: z.string().min(1).max(300),
+  }),
+  aml: z.object({
+    sourceOfFunds: z.string().min(1).max(2000),
+    isPep: z.boolean(),
+    sanctionsConsent: z.boolean(),
+  }),
+});
+
+const ProfileUpdateSchema = z.object({
+  companyName: z.string().min(1).max(300).optional(),
+  preferredLang: z.enum(['sw', 'en']).optional(),
+  phone: z.string().min(1).max(40).optional(),
+});
+
+const NotificationPrefsSchema = z.object({
+  newListings: z.boolean(),
+  bidUpdates: z.boolean(),
+  documentReady: z.boolean(),
+  priceAlerts: z.boolean(),
+});
+
+async function parseJsonBody(c): Promise<{ ok: true; value: unknown } | { ok: false; res: Response }> {
+  try {
+    return { ok: true, value: await c.req.json() };
+  } catch {
+    return {
+      ok: false,
+      res: c.json(
+        {
+          success: false,
+          error: { code: 'INVALID_JSON', message: 'Request body must be valid JSON.' },
+        },
+        400,
+      ),
+    };
+  }
+}
+
+function validationError(c, error): Response {
+  return c.json(
+    {
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Request payload failed validation.',
+        details: error.flatten(),
+      },
+    },
+    422,
+  );
+}
+
+app.post('/applicants/kyc', withSecurityEvents({ action: 'estate-manager-app.kyc-submit', resource: 'applicant-kyc', severity: 'info' }, async (c) => {
+  const repo = fieldRepo(c);
+  if (!repo) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const applicantId = c.get('userId');
+
+  const bodyResult = await parseJsonBody(c);
+  if (!bodyResult.ok) return bodyResult.res;
+  const parsed = KycSubmissionSchema.safeParse(bodyResult.value);
+  if (!parsed.success) return validationError(c, parsed.error);
+
+  try {
+    const record = await repo.submitKyc({
+      tenantId,
+      applicantId,
+      personal: parsed.data.personal,
+      nida: parsed.data.nida,
+      company: parsed.data.company,
+      aml: parsed.data.aml,
+    });
+    return c.json({ success: true, data: record }, 201);
+  } catch (err) {
+    return routeCatch(c, err, {
+      code: 'KYC_SUBMIT_FAILED',
+      status: 503,
+      fallback: 'KYC submission failed',
+    });
+  }
+}));
+
+app.get('/applicants/kyc/:id/status', async (c) => {
+  const repo = fieldRepo(c);
+  if (!repo) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const applicantId = c.get('userId');
+  const id = c.req.param('id');
+
+  try {
+    const record = await repo.getKycStatus(tenantId, applicantId, id);
+    if (!record) {
+      // Uniform 404 — a record that exists but belongs to another applicant is
+      // indistinguishable from one that does not exist (anti-IDOR).
+      return c.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'KYC record not found' } },
+        404,
+      );
+    }
+    return c.json({ success: true, data: record });
+  } catch (err) {
+    return routeCatch(c, err, {
+      code: 'KYC_STATUS_FAILED',
+      status: 503,
+      fallback: 'KYC status query failed',
+    });
+  }
+});
+
+const profileUpsertHandler = async (c) => {
+  const repo = fieldRepo(c);
+  if (!repo) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const applicantId = c.get('userId');
+
+  const bodyResult = await parseJsonBody(c);
+  if (!bodyResult.ok) return bodyResult.res;
+  const parsed = ProfileUpdateSchema.safeParse(bodyResult.value);
+  if (!parsed.success) return validationError(c, parsed.error);
+
+  try {
+    const record = await repo.upsertProfile({
+      tenantId,
+      applicantId,
+      companyName: parsed.data.companyName ?? null,
+      phone: parsed.data.phone ?? null,
+      preferredLang: parsed.data.preferredLang,
+    });
+    return c.json({ success: true, data: record });
+  } catch (err) {
+    return routeCatch(c, err, {
+      code: 'PROFILE_UPDATE_FAILED',
+      status: 503,
+      fallback: 'Profile update failed',
+    });
+  }
+};
+
+// The tenant app calls POST today (applicants.ts) but the canonical verb for an
+// idempotent full-object upsert is PUT — both are wired to the same handler.
+app.post('/applicants/profile', withSecurityEvents({ action: 'estate-manager-app.profile-update', resource: 'applicant-profile', severity: 'info' }, profileUpsertHandler));
+app.put('/applicants/profile', withSecurityEvents({ action: 'estate-manager-app.profile-update', resource: 'applicant-profile', severity: 'info' }, profileUpsertHandler));
+
+const notificationPrefsHandler = async (c) => {
+  const repo = fieldRepo(c);
+  if (!repo) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const applicantId = c.get('userId');
+
+  const bodyResult = await parseJsonBody(c);
+  if (!bodyResult.ok) return bodyResult.res;
+  const parsed = NotificationPrefsSchema.safeParse(bodyResult.value);
+  if (!parsed.success) return validationError(c, parsed.error);
+
+  try {
+    const record = await repo.updateNotificationPrefs({
+      tenantId,
+      applicantId,
+      newListings: parsed.data.newListings,
+      bidUpdates: parsed.data.bidUpdates,
+      documentReady: parsed.data.documentReady,
+      priceAlerts: parsed.data.priceAlerts,
+    });
+    // The tenant app's updateNotificationPrefs expects `data` to be the prefs
+    // object; return the hydrated notification block.
+    return c.json({ success: true, data: record.notifications });
+  } catch (err) {
+    return routeCatch(c, err, {
+      code: 'NOTIFICATION_PREFS_FAILED',
+      status: 503,
+      fallback: 'Notification preferences update failed',
+    });
+  }
+};
+
+app.put('/applicants/profile/notifications', withSecurityEvents({ action: 'estate-manager-app.notif-prefs', resource: 'applicant-profile', severity: 'info' }, notificationPrefsHandler));
+app.post('/applicants/profile/notifications', withSecurityEvents({ action: 'estate-manager-app.notif-prefs', resource: 'applicant-profile', severity: 'info' }, notificationPrefsHandler));
+
+// ============================================================================
+// OWNER→WORKER DISPATCH — POST /work-orders/:id/assign-worker.
+//
+// The canonical worker-assignee on a work order is work_orders.assigned_to_user_id
+// (migration 0340). This route is the ONE write that makes a manager's "assign
+// to worker" real (screen M-M-02 / useAssignTaskToWorker):
+//
+//   1. Stamps work_orders.assigned_to_user_id + status='assigned' + assigned_at
+//      + assigned_by (the dispatching manager) — so every manager/owner view of
+//      the work order now shows the assignee (mapWorkOrderRow reads the column).
+//   2. Creates a BRIDGE `assignments` row (linked_entity_kind='work_order',
+//      linked_entity_id=workOrderId, assignee_employee_id=<assignee's employee>)
+//      so the existing employee-keyed /api/v1/field/staff/tasks/next read also
+//      surfaces it. /tasks/next ALSO reads work_orders directly by
+//      assigned_to_user_id, so the WO reaches the worker even when the assignee
+//      has no employee record yet.
+//
+// Both writes run inside withTenantContext so the RLS GUC is bound (this router
+// uses the process-singleton services.db, NOT the per-request databaseMiddleware
+// tx) — a cross-tenant write SURFACES rather than fake-succeeding.
+// ============================================================================
+
+const AssignWorkerSchema = z.object({
+  // The worker the work order is dispatched to (users.id). Accept the
+  // legacy `workerId` alias the mobile hook historically sent.
+  assignedToUserId: z.string().min(1).max(200).optional(),
+  workerId: z.string().min(1).max(200).optional(),
+  note: z.string().trim().max(2000).optional(),
+}).refine((v) => Boolean(v.assignedToUserId ?? v.workerId), {
+  message: 'assignedToUserId (or workerId) is required',
+});
+
+async function assignWorkerToWorkOrder(
+  db,
+  tenantId: string,
+  actorUserId: string,
+  workOrderId: string,
+  assigneeUserId: string,
+  note: string | undefined,
+): Promise<{ ok: true; id: string; workOrderId: string; assignedToUserId: string; assignmentId: string | null } | { notFound: true }> {
+  return withTenantContext(db, tenantId, async (tx) => {
+    const [wo] = await tx
+      .select({ id: workOrders.id })
+      .from(workOrders)
+      .where(and(eq(workOrders.tenantId, tenantId), eq(workOrders.id, workOrderId)))
+      .limit(1);
+    if (!wo) return { notFound: true as const };
+
+    // Stamp the canonical assignee + lifecycle on the work order.
+    await tx
+      .update(workOrders)
+      .set({
+        assignedToUserId: assigneeUserId,
+        status: 'assigned',
+        assignedAt: new Date(),
+        assignedBy: actorUserId,
+        updatedAt: new Date(),
+        updatedBy: actorUserId,
+      })
+      .where(and(eq(workOrders.tenantId, tenantId), eq(workOrders.id, workOrderId)));
+
+    // Resolve the assignee's employee row (if any) so the bridge assignment is
+    // keyed the way /tasks/next reads it. A worker without an employee record
+    // still gets the work order via the work_orders.assigned_to_user_id read.
+    const [emp] = await tx
+      .select({ id: employees.id })
+      .from(employees)
+      .where(and(eq(employees.tenantId, tenantId), eq(employees.userId, assigneeUserId)))
+      .limit(1);
+
+    let assignmentId: string | null = null;
+    if (emp) {
+      assignmentId = randomUUID();
+      await tx.insert(assignments).values({
+        id: assignmentId,
+        tenantId,
+        assigneeEmployeeId: emp.id,
+        assignedByActorId: actorUserId,
+        title:
+          note && note.trim().length > 0
+            ? note.trim()
+            : `Work order ${workOrderId}`,
+        linkedEntityKind: 'work_order',
+        linkedEntityId: workOrderId,
+        status: 'assigned',
+        createdBy: actorUserId,
+      });
+    }
+
+    return {
+      ok: true as const,
+      // `id` mirrors the work-order id so the mobile adapter (adaptTaskRow)
+      // produces a coherent row; the screen only awaits success/failure.
+      id: workOrderId,
+      workOrderId,
+      assignedToUserId: assigneeUserId,
+      assignmentId,
+    };
+  });
+}
+
+app.post('/work-orders/:id/assign-worker', withSecurityEvents({ action: 'estate-manager-app.assign-worker', resource: 'work-orders', severity: 'info' }, async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const actorUserId = c.get('userId');
+  const workOrderId = c.req.param('id');
+
+  const bodyResult = await parseJsonBody(c);
+  if (!bodyResult.ok) return bodyResult.res;
+  const parsed = AssignWorkerSchema.safeParse(bodyResult.value);
+  if (!parsed.success) return validationError(c, parsed.error);
+  const assigneeUserId = (parsed.data.assignedToUserId ?? parsed.data.workerId) as string;
+
+  try {
+    const result = await assignWorkerToWorkOrder(
+      db,
+      tenantId,
+      actorUserId,
+      workOrderId,
+      assigneeUserId,
+      parsed.data.note,
+    );
+    if ('notFound' in result) {
+      return c.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'Work order not found' } },
+        404,
+      );
+    }
+    return c.json({ success: true, data: result }, 200);
+  } catch (err) {
+    return routeCatch(c, err, {
+      code: 'WORK_ORDER_ASSIGN_WORKER_FAILED',
+      status: 503,
+      fallback: 'Assigning the work order to a worker failed',
+    });
+  }
+}));
+
 // Mutations route through the canonical tenant-scoped routers. The BFF
 // never owned writes; these 501s make that explicit.
 app.post('/work-orders/:id/triage', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Triaging work orders')));
@@ -598,7 +1226,10 @@ app.post('/work-orders/:id/assign', withSecurityEvents({ action: 'estate-manager
 app.post('/work-orders/:id/schedule', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Scheduling work orders')));
 app.post('/work-orders/:id/complete', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Completing work orders')));
 app.post('/work-orders/:id/verify', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Verifying work orders')));
-app.post('/inspections', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Scheduling inspections')));
+// NOTE: POST /inspections is the staff-mobile field-capture sink (registered
+// above with captureHandler('inspection')) — NOT a 501. Scheduling a NEW
+// inspection record still routes through the canonical /api/v1/inspections
+// router; this BFF surface only captures completed field inspections offline.
 app.post('/inspections/:id/items', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Recording inspection items')));
 app.post('/inspections/:id/complete', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Completing inspections')));
 app.put('/units/:id/status', withSecurityEvents({ action: 'estate-manager-app.update', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Updating unit status')));

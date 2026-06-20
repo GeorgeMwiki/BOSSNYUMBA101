@@ -144,6 +144,10 @@ export class EnquiryService {
         unitId: listing.unitId,
         propertyId: listing.propertyId,
         prospectCustomerId: input.prospectCustomerId,
+        // The enquiring prospect IS the counterparty on this negotiation, so
+        // the aggregate (and every downstream Negotiation* event) carries a
+        // concrete recipient for the counterparty-notification subscriber.
+        counterpartyId: input.prospectCustomerId,
         listingId: listing.id,
         domain: 'lease_price',
         openingOffer: input.openingOffer,

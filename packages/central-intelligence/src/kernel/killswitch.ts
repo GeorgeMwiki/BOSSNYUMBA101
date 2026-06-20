@@ -210,3 +210,61 @@ export function renderKillswitchRefusalText(state: KillswitchState): string {
     'contact your account administrator if this is urgent.',
   ].join('');
 }
+
+/**
+ * Mirror of `ThoughtRequest['stakes']` kept local to the killswitch port
+ * so this module stays dependency-free (the kernel imports from here, not
+ * the other way around — no cycle).
+ */
+export type ThoughtStakes = 'low' | 'medium' | 'high' | 'critical';
+
+/**
+ * Stakes levels that a DEGRADED killswitch must NOT serve.
+ *
+ * The DEGRADED contract (see the `Levels` doc-block above) is "the kernel
+ * still runs but lower-stakes calls only". That restriction never existed
+ * in any caller — DEGRADED was a silent no-op, so a typo'd / partial HALT
+ * (`parseLevel` fails CLOSED to 'degraded') would still happily route
+ * high-stakes, irreversible, sovereign side-effects. These are the
+ * stakes a degraded kernel refuses.
+ */
+const DEGRADED_BLOCKED_STAKES: ReadonlySet<ThoughtStakes> = new Set<ThoughtStakes>([
+  'high',
+  'critical',
+]);
+
+/**
+ * The hard gate that makes DEGRADED mean something. Returns `true` when a
+ * DEGRADED killswitch must REFUSE/escalate this turn because its stakes
+ * exceed what a degraded kernel is allowed to serve.
+ *
+ * Fail-closed by construction: only an explicit `level === 'degraded'`
+ * combined with a low/medium stake is permitted to proceed; anything at
+ * 'high' / 'critical' stakes under DEGRADED is blocked. `live` and `halt`
+ * are handled by their own branches in the kernel and are NOT this gate's
+ * job (passing them here returns `false` — HALT already short-circuits
+ * earlier; LIVE has no restriction).
+ */
+export function isDegradedStakesBlocked(
+  level: KillswitchLevel,
+  stakes: ThoughtStakes,
+): boolean {
+  if (level !== 'degraded') return false;
+  return DEGRADED_BLOCKED_STAKES.has(stakes);
+}
+
+/**
+ * Render the user-facing refusal copy for a DEGRADED-mode high-stakes
+ * refusal. Like the HALT copy it never leaks the reason code, but it
+ * signals that the request is allowed at a lower-stakes time/route —
+ * the kernel is reduced, not fully stopped.
+ */
+export function renderKillswitchDegradedRefusalText(state: KillswitchState): string {
+  if (state.level !== 'degraded') return '';
+  return [
+    'High-stakes actions are temporarily restricted while the service runs ',
+    'in a reduced (degraded) mode under operator review. Your request was ',
+    'not processed. Lower-stakes requests still work; please retry this one ',
+    'later or contact your account administrator if it is urgent.',
+  ].join('');
+}

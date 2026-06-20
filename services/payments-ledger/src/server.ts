@@ -42,7 +42,11 @@ import {
 } from './lib/idempotency-store-factory';
 import { buildWebhookIdempotencyKey } from './lib/idempotency-store';
 import { buildMpesaReceiptUrl } from './lib/mpesa-receipt';
-import { PaymentOrchestrationService, CreatePaymentRequest } from './services/payment-orchestration.service';
+import {
+  PaymentOrchestrationService,
+  CreatePaymentRequest,
+  isTerminalBookingError,
+} from './services/payment-orchestration.service';
 import { LedgerService } from './services/ledger.service';
 import { ReconciliationService } from './services/reconciliation.service';
 import { StatementGenerationService, GenerateStatementRequest } from './services/statement-generation.service';
@@ -160,6 +164,50 @@ function getTenantId(req: Request): TenantId {
     );
   }
   return asTenantId(tenantId);
+}
+
+/** Shape a manual-journal idempotency key may arrive in (header or body). */
+const JournalIdempotencyKeySchema = z.string().trim().min(1).max(255);
+
+/**
+ * Resolve the idempotency key for a manual journal/account-entry POST.
+ *
+ * Manual ledger posts are NOT naturally idempotent: a client retry (proxy
+ * timeout, double-click, at-least-once delivery) would otherwise post the
+ * same balanced journal twice and double-move money. The key is threaded
+ * into `ledgerService.postJournalEntry`, which collapses a replay onto the
+ * first journal via the `journal_idempotency` table (migration 0318).
+ *
+ * Canonical source is the `Idempotency-Key` HTTP header (REST convention);
+ * a body `idempotencyKey` is accepted as a fallback for non-header clients.
+ *
+ * Returns `{ ok: true, key: undefined }` when no key is supplied (caller
+ * decides whether that is allowed), `{ ok: true, key }` for a valid key,
+ * and `{ ok: false, error }` for a malformed key so the route can answer a
+ * clean 400 rather than letting a zod throw become a 500.
+ */
+type IdempotencyKeyResult =
+  | { readonly ok: true; readonly key: string | undefined }
+  | { readonly ok: false; readonly error: string };
+
+function resolveJournalIdempotencyKey(
+  req: Request,
+  bodyKey?: unknown,
+): IdempotencyKeyResult {
+  const headerRaw = req.headers['idempotency-key'];
+  const header = Array.isArray(headerRaw) ? headerRaw[0] : headerRaw;
+  const candidate = header ?? bodyKey;
+  if (candidate === undefined || candidate === null || candidate === '') {
+    return { ok: true, key: undefined };
+  }
+  const parsed = JournalIdempotencyKeySchema.safeParse(candidate);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: 'Idempotency-Key must be a non-empty string of at most 255 chars',
+    };
+  }
+  return { ok: true, key: parsed.data };
 }
 
 /**
@@ -395,6 +443,12 @@ const reconciliationService = new ReconciliationService({
   ledgerRepository,
   accountRepository,
   eventPublisher,
+  // #07: bind the idempotent ledger-booking self-heal so a reconciled
+  // missed-success (webhook never landed) actually books the ledger —
+  // not just flips the status. ensurePaymentBooked no-ops unless the
+  // intent is SUCCEEDED with zero existing entries.
+  bookPayment: (externalId, providerName, tenantId) =>
+    paymentOrchestrationService.ensurePaymentBooked(externalId, providerName, tenantId),
   logger: {
     info: (msg, ctx) => logger.info(ctx, msg),
     warn: (msg, ctx) => logger.warn(ctx, msg),
@@ -455,6 +509,11 @@ if (process.env.MPESA_CONSUMER_KEY) {
     callbackBaseUrl: process.env.MPESA_CALLBACK_URL || ''
   });
   paymentOrchestrationService.registerProvider(mpesaProvider, { currencies: ['KES'] });
+  // Register M-Pesa as a DISBURSEMENT (B2C payout) provider too. Without this,
+  // DisbursementService only knew Stripe, so a mobile-money payout could never
+  // reach the M-Pesa rail. DisbursementService.getProvider selects M-Pesa for
+  // mobile-money destinations / KES·TZS currencies and Stripe otherwise.
+  disbursementService.registerProvider(mpesaProvider);
   logger.info('M-PESA payment provider registered');
 }
 
@@ -868,23 +927,33 @@ app.post('/api/v1/accounts/:id/entries', async (req: Request, res: Response, nex
 
     const moneyAmount = Money.fromMinorUnits(amount.amount, amount.currency as CurrencyCode);
 
-    const result = await ledgerService.postJournalEntry({
-      tenantId,
-      effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
-      paymentIntentId: paymentIntentId ? asPaymentIntentId(paymentIntentId) : undefined,
-      lines: [{
-        accountId,
-        type,
-        direction,
-        amount: moneyAmount,
-        description: description || type,
-        leaseId,
-        propertyId,
-        unitId,
-        metadata
-      }],
-      createdBy: createdBy || 'system'
-    });
+    // Idempotency: a retried single-account entry post collapses onto the
+    // first journal instead of double-posting (migration 0318).
+    const idem = resolveJournalIdempotencyKey(req, req.body.idempotencyKey);
+    if (!idem.ok) {
+      return res.status(400).json({ error: 'Validation error', details: idem.error });
+    }
+
+    const result = await ledgerService.postJournalEntry(
+      {
+        tenantId,
+        effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
+        paymentIntentId: paymentIntentId ? asPaymentIntentId(paymentIntentId) : undefined,
+        lines: [{
+          accountId,
+          type,
+          direction,
+          amount: moneyAmount,
+          description: description || type,
+          leaseId,
+          propertyId,
+          unitId,
+          metadata
+        }],
+        createdBy: createdBy || 'system'
+      },
+      idem.key ? { idempotencyKey: idem.key } : {},
+    );
 
     res.status(201).json({
       journalId: result.journalId,
@@ -951,28 +1020,39 @@ app.post('/api/v1/journal', async (req: Request, res: Response, next: NextFuncti
       return res.status(400).json({ error: 'At least one journal line is required' });
     }
 
-    const result = await ledgerService.postJournalEntry({
-      tenantId,
-      effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
-      paymentIntentId: paymentIntentId ? asPaymentIntentId(paymentIntentId) : undefined,
-      lines: lines.map((line: {
-        accountId: string;
-        type: string;
-        direction: 'DEBIT' | 'CREDIT';
-        amount: { amount: number; currency: CurrencyCode };
-        description: string;
-        leaseId?: string;
-        propertyId?: string;
-        unitId?: string;
-        metadata?: Record<string, unknown>;
-      }) => ({
-        ...line,
-        type: line.type as any,
-        accountId: asAccountId(line.accountId),
-        amount: Money.fromMinorUnits(line.amount.amount, line.amount.currency)
-      })) as any,
-      createdBy: createdBy || 'system'
-    });
+    // Idempotency: a retried manual journal post (proxy timeout, double
+    // submit, at-least-once redelivery) collapses onto the first journal
+    // instead of double-posting and double-moving money (migration 0318).
+    const idem = resolveJournalIdempotencyKey(req, req.body.idempotencyKey);
+    if (!idem.ok) {
+      return res.status(400).json({ error: 'Validation error', details: idem.error });
+    }
+
+    const result = await ledgerService.postJournalEntry(
+      {
+        tenantId,
+        effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
+        paymentIntentId: paymentIntentId ? asPaymentIntentId(paymentIntentId) : undefined,
+        lines: lines.map((line: {
+          accountId: string;
+          type: string;
+          direction: 'DEBIT' | 'CREDIT';
+          amount: { amount: number; currency: CurrencyCode };
+          description: string;
+          leaseId?: string;
+          propertyId?: string;
+          unitId?: string;
+          metadata?: Record<string, unknown>;
+        }) => ({
+          ...line,
+          type: line.type as any,
+          accountId: asAccountId(line.accountId),
+          amount: Money.fromMinorUnits(line.amount.amount, line.amount.currency)
+        })) as any,
+        createdBy: createdBy || 'system'
+      },
+      idem.key ? { idempotencyKey: idem.key } : {},
+    );
 
     res.status(201).json({
       journalId: result.journalId,
@@ -1463,45 +1543,109 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
     }
     const stripeTenant = asTenantId(stripeTenantId);
 
-    // Handle the event
-    switch (event.type) {
-      case 'payment_intent.succeeded': {
-        const paymentIntent = event.data as { id: string; receipt_url?: string };
-        await paymentOrchestrationService.handleWebhook(
-          'stripe',
-          paymentIntent.id,
-          'SUCCEEDED',
-          stripeTenant,
-          paymentIntent.receipt_url
-        );
-        break;
+    // Durable, tenant-scoped idempotency (M3/M7) — PARITY with the M-Pesa STK
+    // (server.ts) and C2B paths, which the Stripe handler previously LACKED.
+    // Stripe delivery is at-least-once: a redelivered `payment_intent.succeeded`
+    // (Stripe's own retry, or a replica race) would otherwise re-enter
+    // bookPaymentToLedger and — because findEntriesByPaymentIntent is a
+    // non-atomic check-then-act over a NON-unique index — could double-credit
+    // the ledger. We `claim` on event.id (Stripe's authoritative event identity)
+    // before processing; a duplicate acks 200 without reprocessing.
+    const stripeIdemKey = buildWebhookIdempotencyKey(stripeTenantId, 'stripe', event.id);
+    const stripeClaimToken = await webhookIdempotencyStore.claim(stripeIdemKey);
+    if (!stripeClaimToken) {
+      // Duplicate. Self-heal the mark→book crash window (MUST-FIX 1) for the
+      // success event: a prior delivery may have marked the intent SUCCEEDED
+      // then crashed before booking. ensurePaymentBooked is idempotent (books
+      // only when SUCCEEDED with zero ledger entries).
+      if (event.type === 'payment_intent.succeeded') {
+        const paymentIntent = event.data as { id: string };
+        try {
+          await paymentOrchestrationService.ensurePaymentBooked(
+            paymentIntent.id,
+            'stripe',
+            stripeTenant,
+          );
+        } catch (err) {
+          logger.error(
+            { err, eventId: event.id, idemKey: stripeIdemKey },
+            'Stripe duplicate self-heal (ensurePaymentBooked) failed — manual reconciliation may be required',
+          );
+        }
       }
-      case 'payment_intent.payment_failed': {
-        const paymentIntent = event.data as { id: string; last_payment_error?: { message?: string } };
-        await paymentOrchestrationService.handleWebhook(
-          'stripe',
-          paymentIntent.id,
-          'FAILED',
-          stripeTenant,
-          undefined,
-          paymentIntent.last_payment_error?.message || 'Payment failed'
-        );
-        break;
+      logger.info(
+        { eventId: event.id, idemKey: stripeIdemKey },
+        'Duplicate Stripe webhook — acking without reprocessing',
+      );
+      return res.json({ received: true, duplicate: true });
+    }
+
+    try {
+      // Handle the event
+      switch (event.type) {
+        case 'payment_intent.succeeded': {
+          const paymentIntent = event.data as { id: string; receipt_url?: string };
+          await paymentOrchestrationService.handleWebhook(
+            'stripe',
+            paymentIntent.id,
+            'SUCCEEDED',
+            stripeTenant,
+            paymentIntent.receipt_url
+          );
+          break;
+        }
+        case 'payment_intent.payment_failed': {
+          const paymentIntent = event.data as { id: string; last_payment_error?: { message?: string } };
+          await paymentOrchestrationService.handleWebhook(
+            'stripe',
+            paymentIntent.id,
+            'FAILED',
+            stripeTenant,
+            undefined,
+            paymentIntent.last_payment_error?.message || 'Payment failed'
+          );
+          break;
+        }
+        case 'payment_intent.canceled': {
+          const paymentIntent = event.data as { id: string; cancellation_reason?: string };
+          await paymentOrchestrationService.handleWebhook(
+            'stripe',
+            paymentIntent.id,
+            'CANCELLED',
+            stripeTenant,
+            undefined,
+            paymentIntent.cancellation_reason || 'Payment cancelled'
+          );
+          break;
+        }
+        default:
+          logger.info({ eventType: event.type }, 'Unhandled Stripe event type');
       }
-      case 'payment_intent.canceled': {
-        const paymentIntent = event.data as { id: string; cancellation_reason?: string };
-        await paymentOrchestrationService.handleWebhook(
-          'stripe',
-          paymentIntent.id,
-          'CANCELLED',
-          stripeTenant,
-          undefined,
-          paymentIntent.cancellation_reason || 'Payment cancelled'
+    } catch (err) {
+      // M13: a TERMINAL booking failure (e.g. payment currency has no matching
+      // holding account) is deterministic. Releasing the claim + re-throwing
+      // (non-2xx) would make Stripe retry forever. Instead KEEP the claim and
+      // ack 200 so the retry is deduplicated and stops; the SUCCEEDED intent
+      // persists and this alert flags it for manual reconciliation (money not
+      // dropped).
+      if (isTerminalBookingError(err)) {
+        logger.error(
+          { err, eventId: event.id, idemKey: stripeIdemKey },
+          'Stripe webhook hit a TERMINAL booking error (e.g. currency mismatch); ' +
+            'keeping idempotency claim to STOP retries; payment requires manual reconciliation',
         );
-        break;
+        res.json({ received: true });
+        return;
       }
-      default:
-        logger.info({ eventType: event.type }, 'Unhandled Stripe event type');
+      // TRANSIENT failure — release the claim (compare-and-delete on OUR token)
+      // so Stripe's retry reprocesses instead of being silently deduplicated,
+      // then surface the error to the express handler (non-2xx → Stripe retry).
+      await webhookIdempotencyStore.release(stripeIdemKey, stripeClaimToken);
+      logger.error(
+        { err, eventId: event.id, idemKey: stripeIdemKey },
+        'Stripe webhook processing failed — released idempotency claim for retry',
+      );
+      throw err;
     }
 
     res.json({ received: true });
@@ -1625,7 +1769,21 @@ async function processStkCallbackRoute(
       );
     }
   } catch (err) {
-    // M8: processing failed — release the claim so the provider's retry
+    // M13: a TERMINAL booking failure (e.g. payment currency has no matching
+    // holding account) is deterministic — releasing the claim would poison-pill
+    // Safaricom into infinite retry. KEEP the claim so the retry is deduplicated
+    // and stops; the SUCCEEDED intent persists and this alert flags it for
+    // manual reconciliation (money not dropped).
+    if (isTerminalBookingError(err)) {
+      logger.error(
+        { err, checkoutRequestId: callback.CheckoutRequestID, idemKey },
+        'M-PESA STK hit a TERMINAL booking error (e.g. currency mismatch); ' +
+          'keeping idempotency claim to STOP retries; payment requires manual reconciliation',
+      );
+      res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+      return;
+    }
+    // M8: TRANSIENT failure — release the claim so the provider's retry
     // reprocesses instead of being silently deduplicated. Compare-and-
     // delete on the claim token so we only drop OUR claim (MUST-FIX 2).
     await webhookIdempotencyStore.release(idemKey, claimToken);
@@ -1684,8 +1842,28 @@ app.post('/webhooks/mpesa/b2c/result', async (req: Request, res: Response, next:
       resultDesc: result.ResultDesc
     }, `M-PESA B2C ${isSuccess ? 'succeeded' : 'failed'}`);
 
-    // In a full implementation, update the disbursement status in the database
-    // and publish appropriate events
+    // Look up the disbursement by ConversationID (stored as transferId) and
+    // transition it: SUCCESS → PAID; FAILURE → NEEDS_REVERSAL so the
+    // disbursement-reconciliation job posts the compensating reversal (the
+    // ledger debit was posted BEFORE the transfer). Tenancy is enforced by RLS
+    // at the repository. Errors are logged, never bubbled — we always ack so
+    // Safaricom stops retrying; a missed transition is recovered by the
+    // reconciliation sweep, not by a Daraja retry.
+    if (conversationId) {
+      try {
+        await disbursementService.applyB2cResult({
+          conversationId,
+          success: isSuccess,
+          transactionId,
+          failureReason: isSuccess ? undefined : (result.ResultDesc || 'B2C transfer failed'),
+        });
+      } catch (err) {
+        logger.error(
+          { err, conversationId },
+          'M-PESA B2C result transition failed — reconciliation sweep will recover',
+        );
+      }
+    }
 
     res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
   } catch (error) {
@@ -1701,7 +1879,22 @@ app.post('/webhooks/mpesa/b2c/timeout', async (req: Request, res: Response, next
   try {
     logger.warn({ body: req.body }, 'M-PESA B2C timeout received');
 
-    // In a full implementation, mark the disbursement as needing reconciliation
+    // A queue timeout means the B2C request was never processed and NO result
+    // callback will arrive — but the ledger debit was already posted. Flag the
+    // disbursement NEEDS_REVERSAL so the reconciliation job drives it to a
+    // terminal state; never leave debited-but-undelivered money silent.
+    const conversationId: string | undefined =
+      req.body?.Result?.ConversationID ?? req.body?.ConversationID;
+    if (conversationId) {
+      try {
+        await disbursementService.applyB2cTimeout({ conversationId });
+      } catch (err) {
+        logger.error(
+          { err, conversationId },
+          'M-PESA B2C timeout transition failed — reconciliation sweep will recover',
+        );
+      }
+    }
 
     res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
   } catch (error) {
@@ -1825,23 +2018,43 @@ app.post('/webhooks/mpesa/c2b/confirm', async (req: Request, res: Response) => {
       return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
 
-    // Best-effort attribution. If we can't match the invoice here the
-    // payment lands in an "unallocated" bucket for operators to assign
-    // manually. The orchestrator handles both paths.
-    await paymentOrchestrationService.handleWebhook(
-      'mpesa_c2b',
-      c2b.TransID,
-      'SUCCEEDED',
-      c2bTenant,
+    // Attribution. handleC2bConfirmation books one of two BALANCED journals,
+    // never ack-and-drop:
+    //   - MATCHED: a C2B PaymentIntent exists for this TransID → normal
+    //     rent-payment posting (mark SUCCEEDED + book the receipt).
+    //   - UNALLOCATED: NO intent matches → an explicit unallocated-receipt
+    //     journal (DR holding / CR per-tenant unallocated-suspense liability),
+    //     stamped with TransID/MSISDN/amount so operators can attribute it. This
+    //     replaces the prior silent-drop where unmatched cash was recorded
+    //     NOWHERE.
+    await paymentOrchestrationService.handleC2bConfirmation({
+      transId: c2b.TransID,
+      tenantId: c2bTenant,
+      amountMajor: c2b.TransAmount,
+      msisdn: c2b.MSISDN,
       // TransID is M-Pesa's authoritative C2B receipt number; mint a
       // deterministic receipt resource URL from it (see STK path).
-      buildMpesaReceiptUrl(c2b.TransID),
-      undefined
-    ).catch(async (err) => {
-      // M8: release the claim so Daraja's retry reprocesses instead of
-      // being deduplicated. Compare-and-delete on the claim token so we
-      // only drop OUR claim (MUST-FIX 2). Failures are logged but must
-      // not propagate — we still return 200 so Daraja stops the attempt.
+      receiptUrl: buildMpesaReceiptUrl(c2b.TransID),
+    }).catch(async (err) => {
+      // M13: a TERMINAL booking failure (e.g. the payment's currency has no
+      // matching platform-holding account) is DETERMINISTIC — retrying can
+      // never fix it. If we released the claim here, Daraja would re-deliver →
+      // re-throw → re-release → RETRY FOREVER (a poison pill). So we KEEP the
+      // claim: the next retry is deduplicated and Daraja stops. The cash is NOT
+      // dropped — the SUCCEEDED intent persists with its amount + external id and
+      // this LOUD alert flags it for manual reconciliation.
+      if (isTerminalBookingError(err)) {
+        logger.error(
+          { err, transId: c2b.TransID, idemKey: c2bIdemKey },
+          'C2B orchestration hit a TERMINAL booking error (e.g. currency mismatch); ' +
+            'keeping idempotency claim to STOP retries; payment requires manual reconciliation'
+        );
+        return;
+      }
+      // M8: TRANSIENT failure — release the claim so Daraja's retry reprocesses
+      // instead of being deduplicated. Compare-and-delete on the claim token so we
+      // only drop OUR claim (MUST-FIX 2). Failures are logged but must not
+      // propagate — we still return 200 so Daraja stops the attempt.
       await webhookIdempotencyStore.release(c2bIdemKey, c2bClaimToken);
       logger.error(
         { err, transId: c2b.TransID, idemKey: c2bIdemKey },

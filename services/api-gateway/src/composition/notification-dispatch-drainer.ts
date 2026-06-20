@@ -44,6 +44,7 @@ import {
   type ClusterLockDeps,
   type ClusterLockDbLike,
 } from './cluster-lock';
+import { withWorkerServiceRoleContext } from '../workers/with-tenant-context.js';
 
 const DEFAULT_DRAIN_INTERVAL_MS = 10_000;
 const DEFAULT_REAP_INTERVAL_MS = 60_000;
@@ -101,14 +102,20 @@ export async function reapStaleSendingRows(
   now: Date = new Date(),
 ): Promise<number> {
   const cutoff = new Date(now.getTime() - staleMinutes * 60_000).toISOString();
-  const res = await db.execute(sql`
+  // Cross-tenant reaper: bind service-role so the FORCE-RLS
+  // `notification_dispatch_log` rows are visible/updatable under the
+  // non-BYPASS prod role. Without it this resets ZERO rows and any row
+  // wedged in `sending` (replica crashed mid-send) is stranded forever.
+  const res = await withWorkerServiceRoleContext(db, (pinned) =>
+    pinned.execute(sql`
     UPDATE notification_dispatch_log
        SET delivery_status = 'pending',
            updated_at = ${now.toISOString()}
      WHERE delivery_status = 'sending'
        AND COALESCE(last_attempt_at, updated_at, created_at) < ${cutoff}
     RETURNING id
-  `);
+  `),
+  );
   return rowsOf(res).length;
 }
 
@@ -154,8 +161,23 @@ export function createNotificationDispatchDrainer(
     name: 'notification-dispatch-drainer',
   };
 
+  // Cross-tenant drain (no tenant JWT) over FORCE-RLS
+  // `notification_dispatch_log`: bind the service-role GUC for EVERY
+  // statement the dispatcher runs so the 0179 `service_role_bypass` policy
+  // fires — without it the claim/mark UPDATEs match ZERO rows under the
+  // non-BYPASS prod role and nothing is ever delivered. Provider HTTP sends
+  // happen between statements, OUTSIDE these per-statement wraps, so no
+  // transaction is ever held across a network call.
+  const serviceRoleDb: ClusterLockDbLike = {
+    execute: (query: unknown) =>
+      // Run the dispatcher's query on the connection-pinned handle the
+      // service-role wrapper reserves, NOT the pooled `db` — otherwise the
+      // SET LOCAL service-role GUC and this statement could land on different
+      // pooled connections and the bypass policy would not fire.
+      withWorkerServiceRoleContext(db, (pinned) => pinned.execute(query)),
+  };
   const dispatcher = createNotificationDispatcher({
-    db,
+    db: serviceRoleDb,
     logger: options.logger,
     emailProvider: createEmailProviderFromEnv(),
     smsProvider: resolveSmsProviderFromEnv(),

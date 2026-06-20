@@ -10,10 +10,6 @@ import {
   Check,
   CheckCheck,
   Clock,
-  Plus,
-  Phone,
-  MoreVertical,
-  Smile,
   Download,
   AlertCircle,
 } from 'lucide-react';
@@ -21,6 +17,8 @@ import { Skeleton, Alert, AlertDescription, Button, EmptyState, Spinner } from '
 import { useTranslations } from 'next-intl';
 import { api, formatDateTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useLocaleContext } from '../contexts/LocaleProvider';
+import { chartLocaleTag } from '../lib/chart-locale';
 
 // ─── Types ───────────────────────────────────────────────────────
 type MessageStatus = 'SENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED';
@@ -164,6 +162,7 @@ function AttachmentPreview({
 export function MessagesPage() {
   const t = useTranslations('messagesPageFull');
   const { user } = useAuth();
+  const { locale } = useLocaleContext();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeConversation, setActiveConversation] =
@@ -365,10 +364,12 @@ export function MessagesPage() {
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleTimeString('en-US', {
+    // Derive the formatting tag from the active UI locale instead of a
+    // hard-coded `en-US`. The locale also decides the hour cycle (12h for
+    // English, 24h for Swahili/Tanzania) so we no longer pin `hour12`.
+    return date.toLocaleTimeString(chartLocaleTag(locale), {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true,
     });
   };
 
@@ -527,14 +528,6 @@ export function MessagesPage() {
                       )}
                     </p>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <Phone className="h-5 w-5" />
-                  </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <MoreVertical className="h-5 w-5" />
-                  </button>
                 </div>
               </div>
 

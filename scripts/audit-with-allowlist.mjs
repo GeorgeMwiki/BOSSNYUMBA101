@@ -95,7 +95,7 @@ const ALLOWLIST = [
     severity: ['high'],
     fix: '>=5.7.2',
     reason:
-      'GHSA-jx2c-rxcm-jvmq: Fastify Content-Type header tab-character validation bypass. Six internal services pin fastify ^4.27.0 (sleep-pass-orchestrator, parcel-service, onboarding-orchestrator, outcomes-metering, field-capture-service, voice-agent). All six are internal-only — they sit behind the api-gateway BFF and only accept service-to-service traffic with the agent-platform JWT, never raw public Content-Type headers. Fix lands in fastify 5.7.2; fastify 4 → 5 is a major-version migration (Node 20 baseline + error-handler signature changes) deferred to its own PR.',
+      'GHSA-jx2c-rxcm-jvmq: Fastify Content-Type header tab-character validation bypass. Five internal services pin fastify ^4.27.0 (sleep-pass-orchestrator, parcel-service, onboarding-orchestrator, outcomes-metering, voice-agent). All five are internal-only — they sit behind the api-gateway BFF and only accept service-to-service traffic with the agent-platform JWT, never raw public Content-Type headers. Fix lands in fastify 5.7.2; fastify 4 → 5 is a major-version migration (Node 20 baseline + error-handler signature changes) deferred to its own PR.',
     tracked_in: 'Docs/DEP_HYGIENE.md (fastify 5.x migration)',
     next_review: '2026-Q3',
   },
@@ -113,7 +113,7 @@ const ALLOWLIST = [
     severity: ['high'],
     fix: '>=0.28.1',
     reason:
-      'GHSA-gv7w-rqvm-qjhr: esbuild "Missing binary integrity verification in Deno module enables RCE via NPM_CONFIG_REGISTRY". The RCE vector is DENO-SPECIFIC: esbuild\'s Deno module downloads its native binary from a registry URL without integrity verification, so a malicious NPM_CONFIG_REGISTRY can serve a trojaned binary. BOSSNYUMBA runs on Node + pnpm, NOT Deno — esbuild\'s binary is resolved through pnpm against pnpm-lock.yaml SHA-512 integrity hashes, never via the Deno fetch path, so the vector does not exist here. esbuild is BUILD-TIME-ONLY dev tooling (transitive via tsup / vite / vitest); it is never present in any production runtime bundle. The override pins >=0.25.0 (which patches the earlier GHSA path-traversal advisory) but the Deno-RCE fix only lands in >=0.28.1; bumping to 0.28.x broke the owner/admin-portal Vite build (esbuild 0.28 refuses to downlevel some destructuring to Vite\'s default target), so the >=0.28.1 fix is deferred to a coordinated tsup/vite/vitest esbuild bump PR.',
+      'GHSA-gv7w-rqvm-qjhr: esbuild "Missing binary integrity verification in Deno module enables RCE via NPM_CONFIG_REGISTRY". The RCE vector is DENO-SPECIFIC: esbuild\'s Deno module downloads its native binary from a registry URL without integrity verification, so a malicious NPM_CONFIG_REGISTRY can serve a trojaned binary. BOSSNYUMBA runs on Node + pnpm, NOT Deno — esbuild\'s binary is resolved through pnpm against pnpm-lock.yaml SHA-512 integrity hashes, never via the Deno fetch path, so the vector does not exist here. esbuild is BUILD-TIME-ONLY dev tooling (transitive via tsup / vite / vitest); it is never present in any production runtime bundle. The override pins >=0.25.0 (which patches the earlier GHSA path-traversal advisory) but the Deno-RCE fix only lands in >=0.28.1; bumping to 0.28.x broke the owner-portal / admin-platform-portal Vite build (esbuild 0.28 refuses to downlevel some destructuring to Vite\'s default target), so the >=0.28.1 fix is deferred to a coordinated tsup/vite/vitest esbuild bump PR.',
     tracked_in: 'Docs/DEP_HYGIENE.md (esbuild >=0.28.1 build-tooling bump)',
     next_review: '2026-Q3',
   },

@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import { lazySingleton } from '../lazy-singleton.js';
 
 export interface AfricasTalkingConfig {
   apiKey: string;
@@ -396,4 +397,4 @@ export class AfricasTalkingSms {
   }
 }
 
-export const africasTalkingSms = new AfricasTalkingSms();
+export const africasTalkingSms = lazySingleton(() => new AfricasTalkingSms());

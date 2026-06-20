@@ -114,11 +114,10 @@ const SCAN_DIRS = [
 
 // Path PREFIXES that auto-allowlist (whole-subtree): operator portals
 // that are intentionally English-only. The product surface is
-// `customer-app`, `owner-portal`, `estate-manager-app`, and the
-// `bossnyumba_app` mobile shell — those are the locale-targeted apps.
+// `owner-portal` and the `tenant-mobile`/`staff-mobile` shells — those
+// are the locale-targeted apps.
 const ALLOW_PREFIX = [
   'apps/admin-platform-portal/',
-  'apps/admin-portal/',
   'apps/marketing/',
 ];
 

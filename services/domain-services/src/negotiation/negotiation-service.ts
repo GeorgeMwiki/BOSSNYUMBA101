@@ -73,6 +73,9 @@ export interface NegotiationOpenedEvent {
     readonly negotiationId: NegotiationId;
     readonly policyId: NegotiationPolicyId;
     readonly domain: string;
+    // Recipient for the counterparty-notification subscriber. Resolves from
+    // the negotiation aggregate (counterparty, falling back to prospect).
+    readonly counterpartyId: string | null;
   };
 }
 
@@ -88,6 +91,8 @@ export interface NegotiationCounterEvent {
     readonly negotiationId: NegotiationId;
     readonly actor: NegotiationActor;
     readonly offer: number;
+    // Recipient for the counterparty-notification subscriber.
+    readonly counterpartyId: string | null;
   };
 }
 
@@ -117,6 +122,8 @@ export interface NegotiationAcceptedEvent {
   readonly payload: {
     readonly negotiationId: NegotiationId;
     readonly agreedPrice: number;
+    // Recipient for the counterparty-notification subscriber.
+    readonly counterpartyId: string | null;
   };
 }
 
@@ -131,6 +138,8 @@ export interface NegotiationRejectedEvent {
   readonly payload: {
     readonly negotiationId: NegotiationId;
     readonly reason: string;
+    // Recipient for the counterparty-notification subscriber.
+    readonly counterpartyId: string | null;
   };
 }
 
@@ -331,6 +340,7 @@ export class NegotiationService {
             negotiationId: created.id,
             policyId: policy.id,
             domain: input.domain,
+            counterpartyId: created.counterpartyId ?? created.prospectCustomerId,
           },
         },
         created.id,
@@ -449,6 +459,8 @@ export class NegotiationService {
             negotiationId: negotiation.id,
             actor: input.actor,
             offer: input.offer,
+            counterpartyId:
+              negotiation.counterpartyId ?? negotiation.prospectCustomerId,
           },
         },
         negotiation.id,
@@ -724,6 +736,8 @@ export class NegotiationService {
             negotiationId: negotiation.id,
             actor: 'ai',
             offer: aiResult.offer,
+            counterpartyId:
+              negotiation.counterpartyId ?? negotiation.prospectCustomerId,
           },
         },
         negotiation.id,
@@ -806,6 +820,8 @@ export class NegotiationService {
           payload: {
             negotiationId: negotiation.id,
             agreedPrice: agreed,
+            counterpartyId:
+              negotiation.counterpartyId ?? negotiation.prospectCustomerId,
           },
         },
         negotiation.id,
@@ -884,6 +900,8 @@ export class NegotiationService {
           payload: {
             negotiationId: negotiation.id,
             reason: input.reason ?? 'rejected',
+            counterpartyId:
+              negotiation.counterpartyId ?? negotiation.prospectCustomerId,
           },
         },
         negotiation.id,

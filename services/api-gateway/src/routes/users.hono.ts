@@ -1,12 +1,30 @@
 
 import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
-import { authMiddleware } from '../middleware/hono-auth';
+import { authMiddleware, requireRole } from '../middleware/hono-auth';
+import { UserRole } from '../types/user-role';
 import { databaseMiddleware } from '../middleware/database';
 import { roles, userRoles } from '@bossnyumba/database';
 
 import { withSecurityEvents } from '@bossnyumba/observability';
+
+// Runtime validation at the trust boundary. Without this, PUT /users/:id
+// trusted arbitrary JSON: a non-string name, an object where a phone was
+// expected, or an out-of-enum status all flowed straight into the repo.
+// `status` is constrained to the canonical user_status enum
+// (migration 0001_initial.sql) so callers cannot persist arbitrary values.
+const UpdateUserSchema = z
+  .object({
+    firstName: z.string().min(1).max(200).optional(),
+    lastName: z.string().min(1).max(200).optional(),
+    phone: z.string().max(40).optional(),
+    status: z.enum(['pending_activation', 'active', 'suspended', 'deactivated']).optional(),
+  })
+  .strict();
+
 type RoleInfo = { role: string; permissions: string[] };
 
 // any — Drizzle select builder chain type widens through generics in a
@@ -183,12 +201,12 @@ app.post('/', withSecurityEvents({ action: 'user.create', resource: 'user', seve
   return c.json({ success: true, data: mapUser(row, roleMap.get(row.id)) }, 201);
 }));
 
-app.put('/:id', withSecurityEvents({ action: 'user.update', resource: 'user', severity: 'info' }, async (c) => {
+app.put('/:id', requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TENANT_ADMIN), zValidator('json', UpdateUserSchema), withSecurityEvents({ action: 'user.update', resource: 'user', severity: 'info' }, async (c: any) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const db = c.get('db');
   const id = c.req.param('id');
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const row = await repos.users.update(id, auth.tenantId, {
     firstName: body.firstName,
     lastName: body.lastName,
@@ -201,7 +219,7 @@ app.put('/:id', withSecurityEvents({ action: 'user.update', resource: 'user', se
   return c.json({ success: true, data: mapUser(row, roleMap.get(row.id)) });
 }));
 
-app.delete('/:id', withSecurityEvents({ action: 'user.delete', resource: 'user', severity: 'warn' }, async (c) => {
+app.delete('/:id', requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TENANT_ADMIN), withSecurityEvents({ action: 'user.delete', resource: 'user', severity: 'warn' }, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   await repos.users.delete(c.req.param('id'), auth.tenantId, auth.userId);

@@ -167,6 +167,10 @@ function computeNextRetryAt(now: Date, attempt: number): Date {
 // ---------------------------------------------------------------------------
 
 export function createNotificationDispatcher(deps: DispatcherDeps): Dispatcher {
+  // The dispatcher is tenant-agnostic: the caller decides RLS context. The
+  // cross-tenant DRAINER hands it a db wrapped in withWorkerServiceRoleContext
+  // (so the FORCE-RLS notification_dispatch_log service_role_bypass policy
+  // fires); per-tenant callers hand it a tenant-bound db. Keep `exec` raw.
   const exec = deps.db.execute.bind(deps.db);
   const now = deps.now ?? (() => new Date());
   let bootWarningEmitted = false;

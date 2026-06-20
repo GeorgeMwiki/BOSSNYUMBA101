@@ -29,6 +29,7 @@ import {
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { logger } from '../utils/logger';
+import { resolveTenantCurrency, minorToMajorFor } from './tenant-currency';
 
 const portfolioRouter = new Hono();
 portfolioRouter.use('*', authMiddleware);
@@ -138,6 +139,7 @@ portfolioRouter.get('/performance', async (c) => {
   try {
     const monthStart = startOfMonthUtc();
     const monthEnd = endOfMonthUtc();
+    const toMajor = minorToMajorFor(await resolveTenantCurrency(db, auth.tenantId));
 
     const propertyRows = ((await db
       .select({ id: properties.id, name: properties.name })
@@ -230,24 +232,24 @@ portfolioRouter.get('/performance', async (c) => {
       const occupiedUnits = propertyUnits.filter((u) => u.status === 'occupied').length;
       const occupancy = totalUnits === 0 ? 0 : Math.round((occupiedUnits / totalUnits) * 1000) / 10;
       const propertyActiveLeases = activeLeases.filter((l) => l.propertyId === p.id);
-      const propertyAnnualRent = propertyActiveLeases.reduce(
-        (sum, l) => sum + Number(l.rentAmount) * 12,
-        0,
-      ) / 100; // minor → major
+      // Currency-aware minor → major (0-decimal TZS/UGX divide by 1, not 100).
+      const propertyAnnualRent = toMajor(
+        propertyActiveLeases.reduce((sum, l) => sum + Number(l.rentAmount) * 12, 0),
+      );
       const propertyRevenueMinor = monthPayments
         .filter((pay) => {
           const propId = pay.invoiceId ? invoiceMap.get(pay.invoiceId) : null;
           return propId === p.id;
         })
         .reduce((sum, pay) => sum + Number(pay.amount), 0);
-      const propertyRevenue = propertyRevenueMinor / 100;
+      const propertyRevenue = toMajor(propertyRevenueMinor);
       const propertyExpenseMinor = monthWorkOrders
         .filter((wo) => wo.propertyId === p.id)
         .reduce(
           (sum, wo) => sum + Number(wo.actualCost ?? wo.estimatedCost ?? 0),
           0,
         );
-      const propertyNoi = (propertyRevenueMinor - propertyExpenseMinor) / 100;
+      const propertyNoi = toMajor(propertyRevenueMinor - propertyExpenseMinor);
       // Cap rate = annualised NOI / portfolio value × 100. Portfolio
       // value is approximated as annual rent (×12 active leases). When
       // there are no leases we return null (frontend shows "—").
@@ -298,6 +300,7 @@ portfolioRouter.get('/growth', async (c) => {
     );
   }
   try {
+    const toMajor = minorToMajorFor(await resolveTenantCurrency(db, auth.tenantId));
     const now = new Date();
     const buckets = [];
     for (let i = 11; i >= 0; i -= 1) {
@@ -340,7 +343,8 @@ portfolioRouter.get('/growth', async (c) => {
 
     const revenueMap = new Map<string, number>();
     for (const r of (revenueRows.rows ?? [])) {
-      revenueMap.set(String(r.month_key), Number(r.amount_minor) / 100);
+      // Currency-aware minor → major (0-decimal TZS/UGX divide by 1, not 100).
+      revenueMap.set(String(r.month_key), toMajor(r.amount_minor));
     }
 
     const data = buckets.map((b) => {
@@ -351,9 +355,10 @@ portfolioRouter.get('/growth', async (c) => {
           l.endDate > b.start &&
           (l.status === 'active' || l.status === 'pending_renewal'),
       );
-      const portfolioValueMajor = (
-        activeAtEnd.reduce((sum, l) => sum + Number(l.rentAmount), 0) * 12
-      ) / 100;
+      // Currency-aware minor → major (0-decimal TZS/UGX divide by 1, not 100).
+      const portfolioValueMajor = toMajor(
+        activeAtEnd.reduce((sum, l) => sum + Number(l.rentAmount), 0) * 12,
+      );
       const totalUnits = unitRows.filter((u) => u.createdAt < monthEnd).length;
       const occupiedUnits = activeAtEnd.length;
       const occupancy =

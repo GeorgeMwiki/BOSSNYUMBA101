@@ -7,9 +7,9 @@
  * a per-kind handler. Tenant scope is enforced server-side by the JWT
  * — the client cannot ask for another tenant's stream.
  *
- * Identical bodies live in:
- *   - apps/customer-app/src/lib/cockpit-stream.ts (next slice)
- *   - apps/estate-manager-app/src/lib/cockpit-stream.ts (next slice)
+ * An identical body lives on the other web SPA surface:
+ *   - apps/owner-portal/src/lib/cockpit-stream.ts
+ * The Expo mobile surfaces carry their own native consumers.
  *
  * Auto-reconnect with exponential backoff (max 30s) so transient
  * gateway restarts don't drop the brain's push channel.

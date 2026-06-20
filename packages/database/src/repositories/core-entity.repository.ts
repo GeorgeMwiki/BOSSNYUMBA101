@@ -460,7 +460,7 @@ export class CoreEntityRepository {
     ];
     if (params.entityTypes && params.entityTypes.length > 0) {
       conditions.push(
-        sql`ce.entity_type = ANY(${[...params.entityTypes]}::text[])`,
+        sql`ce.entity_type = ANY(ARRAY[${sql.join([...params.entityTypes].map((t) => sql`${t}`), sql`, `)}]::text[])`,
       );
     }
     if (params.customFieldsContains) {

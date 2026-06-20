@@ -2,18 +2,21 @@ import type { Metadata } from 'next';
 import { HeartHandshake } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { AudiencePage } from '@/components/audience/AudiencePage';
-import { COPY } from '@/lib/audience-copy';
+import { getMessages } from '@/lib/i18n';
+import { getLocale } from '@/lib/locale';
 
-export const metadata: Metadata = {
-  title: 'For community housing — Boss Nyumba',
-  description:
-    'Cooperative housing, community land trusts, worker-housing partnerships. Transparent dues, fair allocation lottery, AGM-ready records, donor impact packs. 30% community discount.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = getMessages(locale).audiencePages.communityHousing;
+  return { title: t.metaTitle, description: t.metaDescription };
+}
 
-export default function ForCommunityHousingPage() {
+export default async function ForCommunityHousingPage() {
+  const locale = await getLocale();
+  const copy = getMessages(locale).audiencePages.communityHousing;
   return (
     <PageShell>
-      <AudiencePage copy={COPY.communityHousing} kickerIcon={HeartHandshake} />
+      <AudiencePage copy={copy} kickerIcon={HeartHandshake} />
     </PageShell>
   );
 }

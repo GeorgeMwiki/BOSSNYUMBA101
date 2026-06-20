@@ -38,6 +38,7 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import type { DatabaseClient } from '@bossnyumba/database';
+import { toPgTextArray } from '../../utils/pg-array.js';
 import type { PersonaToolDescriptor } from './types.js';
 
 const OWNER_AND_ADMIN: ReadonlyArray<
@@ -199,7 +200,7 @@ export const decisionsRecentTool: PersonaToolDescriptor<
            AND (${kind}::text IS NULL OR decided_by_kind = ${kind}::text)
            AND (
              ${scopeIds === null}::boolean
-             OR scope_ids && ${scopeIds as unknown as string[]}::text[]
+             OR scope_ids && ${toPgTextArray(scopeIds ?? [])}::text[]
            )
          ORDER BY decided_at DESC
          LIMIT ${limit}

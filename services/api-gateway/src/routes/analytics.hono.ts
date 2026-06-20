@@ -32,6 +32,7 @@ import { payments, workOrders } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { logger } from '../utils/logger';
+import { resolveTenantCurrency, minorToMajorFor } from './tenant-currency';
 
 const analyticsRouter = new Hono();
 analyticsRouter.use('*', authMiddleware);
@@ -135,14 +136,20 @@ analyticsRouter.get('/summary', async (c) => {
     const currentRevenueMinor = Number(currentMonthRows.rows?.[0]?.minor ?? 0);
     const prevRevenueMinor = Number(prevMonthRows.rows?.[0]?.minor ?? 0);
     const currentExpensesMinor = Number(currentExpenseRows.rows?.[0]?.minor ?? 0);
-    const monthlyRevenue = currentRevenueMinor / 100;
-    const monthlyExpenses = currentExpensesMinor / 100;
-    const netOperatingIncome = (currentRevenueMinor - currentExpensesMinor) / 100;
+    // Currency-aware minor→major: 0-decimal TZS/UGX divide by 1, not 100.
+    const currency = await resolveTenantCurrency(db, auth.tenantId);
+    const toMajor = minorToMajorFor(currency);
+    const monthlyRevenue = toMajor(currentRevenueMinor);
+    const monthlyExpenses = toMajor(currentExpensesMinor);
+    const netOperatingIncome = toMajor(currentRevenueMinor - currentExpensesMinor);
     const revenueGrowth =
       prevRevenueMinor === 0
         ? 0
         : ((currentRevenueMinor - prevRevenueMinor) / prevRevenueMinor) * 100;
-    const totalInvoicedMinor = arrearsBalance * 100 + currentRevenueMinor;
+    // `arrearsBalance` is already in MINOR units (its source columns —
+    // invoice amountDue/amount — are minor per db-mappers identity), so
+    // both operands stay minor here. No *100 scaling.
+    const totalInvoicedMinor = arrearsBalance + currentRevenueMinor;
     const collectionRate =
       totalInvoicedMinor === 0 ? 0 : (currentRevenueMinor / totalInvoicedMinor) * 100;
 
@@ -153,7 +160,10 @@ analyticsRouter.get('/summary', async (c) => {
         monthlyRevenue,
         revenueGrowth,
         netOperatingIncome,
-        arrearsBalance,
+        // Major units for display parity with the FE formatCurrency
+        // contract (which never divides) — currency-aware, so 0-decimal
+        // TZS/UGX are unscaled rather than 100x too small.
+        arrearsBalance: toMajor(arrearsBalance),
         collectionRate,
         totalProperties: scopedProperties.length,
         totalUnits: scopedUnits.length,

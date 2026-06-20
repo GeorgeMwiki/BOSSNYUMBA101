@@ -3,10 +3,9 @@
 /**
  * FeedbackThumbs (Admin) — per-Jarvis-turn feedback widget.
  *
- * Mirrors `apps/customer-app/src/components/FeedbackThumbs.tsx` exactly
- * — the gateway wire and the kernel's `kernel_feedback` table treat
- * every surface identically. Living the same component locally keeps
- * the strict per-app file-isolation S4 sweep recommended.
+ * The gateway wire and the kernel's `kernel_feedback` table treat every
+ * surface identically, so each surface keeps its own local copy of this
+ * widget — keeping the strict per-app file-isolation S4 sweep satisfied.
  *
  * Behaviour:
  *   - 👍/👎 buttons under the assistant turn

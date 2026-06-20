@@ -14,7 +14,7 @@ E2E_REAL_LLM=true \
 ANTHROPIC_API_KEY=sk-ant-... \
 ELEVENLABS_API_KEY=... \
 OPENAI_API_KEY=... \
-BASE_URL=http://localhost:3003 \
+BASE_URL=http://localhost:3000 \
 E2E_GATEWAY_URL=http://localhost:4000 \
 pnpm --filter=e2e test real-llm/
 ```

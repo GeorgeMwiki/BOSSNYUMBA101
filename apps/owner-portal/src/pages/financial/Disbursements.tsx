@@ -34,6 +34,8 @@ import { useTranslations } from 'next-intl';
 import { api, formatDate, formatDateTime } from '../../lib/api';
 import { useTenantCurrencyFormatter } from '../../hooks/useTenantCurrency';
 import { ROUTES } from '../../lib/routes';
+import { useLocaleContext } from '../../contexts/LocaleProvider';
+import { chartLocaleTag } from '../../lib/chart-locale';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface DisbursementBreakdown {
@@ -73,6 +75,7 @@ interface DisbursementStats {
 export function DisbursementsPage() {
   const t = useTranslations('disbursementsPage');
   const navigate = useNavigate();
+  const { locale } = useLocaleContext();
   // Tenant-bound formatter — see `useTenantCurrency` for the resolution
   // chain. Renders `'—'` when the chain is empty rather than crashing.
   const { format: formatCurrency } = useTenantCurrencyFormatter();
@@ -116,10 +119,25 @@ export function DisbursementsPage() {
   const handleDownloadStatement = async (disbursement: Disbursement) => {
     setDownloading(disbursement.id);
     try {
-      const response = await api.get(`/owner/disbursements/${disbursement.id}/statement`);
-      if (!response.success) {
+      const response = await api.get<{ downloadUrl?: string }>(
+        `/owner/disbursements/${disbursement.id}/statement`,
+      );
+      const downloadUrl = response.success ? response.data?.downloadUrl : undefined;
+      if (!downloadUrl) {
         throw new Error(response.error?.message || 'Statement download is unavailable.');
       }
+      // Actually deliver the file: a temporary anchor triggers the browser's
+      // download for both data: URLs (the BFF returns a base64 data URL today)
+      // and absolute http(s) URLs (when statements move to object storage). The
+      // `download` attribute names the saved file; `rel=noopener` is harmless
+      // for downloads and safe for the http(s) case.
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = `statement-${disbursement.reference || disbursement.id}.csv`;
+      anchor.rel = 'noopener';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Statement download is unavailable.');
     } finally {
@@ -159,7 +177,7 @@ export function DisbursementsPage() {
 
   const chartData = Array.from(
     disbursements.reduce((acc, disbursement) => {
-      const month = new Date(disbursement.date).toLocaleDateString('en-KE', {
+      const month = new Date(disbursement.date).toLocaleDateString(chartLocaleTag(locale), {
         month: 'short',
         year: 'numeric',
       });
@@ -571,7 +589,16 @@ export function DisbursementsPage() {
                       {t('downloadStatement')}
                     </button>
                   )}
-                  <button className="flex items-center gap-1.5 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium">
+                  <button
+                    onClick={() =>
+                      navigate(
+                        `/reports?report=financial&disbursement=${encodeURIComponent(
+                          disbursement.reference || disbursement.id,
+                        )}`,
+                      )
+                    }
+                    className="flex items-center gap-1.5 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium"
+                  >
                     <Eye className="h-4 w-4" />
                     {t('viewFullReport')}
                   </button>

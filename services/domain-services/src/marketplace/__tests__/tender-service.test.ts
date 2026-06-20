@@ -157,10 +157,11 @@ describe('TenderService', () => {
   it('awards a tender and rejects peer bids', async () => {
     const tenders = memTenders();
     const bids = memBids();
+    const eventBus = bus();
     const svc = new TenderService({
       tenderRepo: tenders,
       bidRepo: bids,
-      eventBus: bus(),
+      eventBus,
     });
     const tender = await svc.publish(
       tenantId,
@@ -208,6 +209,63 @@ describe('TenderService', () => {
     }
     const peer = await bids.findById(b2.value.id, tenantId);
     expect(peer?.status).toBe('rejected');
+
+    // The TenderAwarded payload MUST carry the winning vendor as the
+    // notification recipient, else the tender-awarded subscriber silently
+    // no-ops and the winner is never told.
+    const awardedEvent = eventBus.publish.mock.calls
+      .map(
+        (c: unknown[]) =>
+          (c[0] as { event: { eventType: string; payload: Record<string, unknown> } }).event
+      )
+      .find((e) => e.eventType === 'TenderAwarded');
+    expect(awardedEvent).toBeDefined();
+    expect(awardedEvent?.payload.winnerUserId).toBe('v1');
+  });
+
+  it('emits BidSubmitted carrying the tender owner as recipient', async () => {
+    const tenders = memTenders();
+    const eventBus = bus();
+    const svc = new TenderService({
+      tenderRepo: tenders,
+      bidRepo: memBids(),
+      eventBus,
+    });
+    const tender = await svc.publish(
+      tenantId,
+      {
+        scope: 's',
+        budgetRangeMin: 100,
+        budgetRangeMax: 500,
+        closesAt,
+      },
+      userId,
+      'c'
+    );
+    if (!tender.ok) throw tender.error;
+
+    const placed = await svc.bid(
+      tenantId,
+      {
+        tenderId: tender.value.id,
+        vendorId: 'v1',
+        price: 200,
+        timelineDays: 7,
+      },
+      'c'
+    );
+    expect(placed.ok).toBe(true);
+
+    // The BidSubmitted payload MUST carry the tender creator so the
+    // bid-submitted subscriber can notify the owner.
+    const bidEvent = eventBus.publish.mock.calls
+      .map(
+        (c: unknown[]) =>
+          (c[0] as { event: { eventType: string; payload: Record<string, unknown> } }).event
+      )
+      .find((e) => e.eventType === 'BidSubmitted');
+    expect(bidEvent).toBeDefined();
+    expect(bidEvent?.payload.tenderOwnerId).toBe(userId);
   });
 
   it('cannot bid on closed tender', async () => {

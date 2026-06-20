@@ -15,6 +15,7 @@ import { SegmentHeader } from './SegmentHeader';
 import { VoiceOverlay } from './VoiceOverlay';
 import { buildAttachment } from './useUnifiedChat';
 import { useMessageWindow } from './useMessageWindow';
+import { useChatScroll } from '../hooks/useChatScroll.js';
 
 interface ChatPanelProps {
   readonly chat: UnifiedChat;
@@ -32,6 +33,7 @@ export function ChatPanel({ chat, strings, onClose, variant = 'floating', render
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const listEndRef = useRef<HTMLDivElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Windowed render of a long chat history — mounts only the most recent
   // bubbles plus a "load older" toggle. A pure render optimisation: the
@@ -43,12 +45,9 @@ export function ChatPanel({ chat, strings, onClose, variant = 'floating', render
   });
   const visibleMessages = messageWindow.visibleMessages;
 
-  useEffect(() => {
-    const node = listEndRef.current;
-    if (node && typeof node.scrollIntoView === 'function') {
-      node.scrollIntoView({ block: 'end' });
-    }
-  }, [chat.messages.length]);
+  // Canonical streaming-scroll behaviour (§5.1): follow only while the reader is
+  // at the bottom, instant during stream, never yank a reader who scrolled up.
+  useChatScroll(scrollContainerRef, chat.messages, chat.isStreaming);
 
   const handleSend = useCallback(
     async (override?: string) => {
@@ -197,6 +196,7 @@ export function ChatPanel({ chat, strings, onClose, variant = 'floating', render
       </header>
 
       <div
+        ref={scrollContainerRef}
         data-testid="chat-live-region"
         aria-live="polite"
         aria-atomic="false"

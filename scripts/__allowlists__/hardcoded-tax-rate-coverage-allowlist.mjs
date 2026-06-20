@@ -48,4 +48,16 @@ export const HARDCODED_TAX_RATE_ALLOWLIST = new Map([
     'services/reports/src/compliance/tz-tra-formatter.ts',
     'TZ-TRA formatter encodes Tanzanian WHT_RATE=0.1 per TRA rules; TRA is Tanzania-only by definition.',
   ],
+
+  // ─── Ported born-dark CORE packages (uplift parity) ───────────────
+  // The 59-package CORE port from the sibling vertical carries
+  // jurisdiction/tax residue. Unconsumed by any running surface; the
+  // tax-rate literals re-instantiate into the compliance-plugin /
+  // jurisdictional-rules registry at live-wiring per the Domain-Residue
+  // Scrub. Allowlisting-pending-reconciliation is the honest born-dark
+  // pattern for these.
+  [
+    'packages/jurisdiction-profile-tz/src/tz-profile.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. vat_standard_rate=0.18 is the TZ profile tax_matrix snapshot (alongside mining-vertical royalty residue), reconciles into the jurisdictional-rules registry at consumption.',
+  ],
 ]);

@@ -10,12 +10,12 @@ import { fontSize, radius, spacing } from '../../src/theme/spacing'
 
 export default function SitesTab(): JSX.Element {
   const { user } = useAuth()
-  const { screen } = useI18n()
+  const { screen, t } = useI18n()
   const screenId = user?.role === 'owner' ? 'O-M-04' : 'W-M-19'
 
   return (
     <ScreenShell screenId={screenId}>
-      <Section title="Mali yote">
+      <Section title={t.hubs.sitesAll}>
         <PlaceholderList
           items={[
             { id: 'site-a', primary: 'Mali A · Geita', secondary: 'Hati TD-12345 · hai' },
@@ -24,7 +24,7 @@ export default function SitesTab(): JSX.Element {
           ]}
         />
       </Section>
-      <Section title="Skrini zinazohusiana">
+      <Section title={t.hubs.sitesRelated}>
         <View style={styles.grid}>
           {['O-M-05', 'O-M-06', 'W-M-02', 'W-M-19'].map((id) => (
             <Link key={id} href={hrefFor(id)} asChild>

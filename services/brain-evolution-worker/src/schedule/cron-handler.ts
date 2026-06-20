@@ -18,6 +18,8 @@
 
 import { randomBytes } from 'crypto';
 
+import { withWorkerTenantContext } from '@bossnyumba/database';
+
 import { iterateTenants, type TenantIterationSummary } from './tenant-iteration.js';
 import { readDailyTraces, type TraceReader } from '../pipeline/stage-01-read-traces.js';
 import { reflectOnDay, type ReflectionEngine } from '../pipeline/stage-02-reflect.js';
@@ -26,6 +28,7 @@ import { writeApprovedDeltas, type MemoryWriter } from '../pipeline/stage-04-wri
 import { emitEvolutionReport, type ReportSink } from '../pipeline/stage-05-emit-report.js';
 import { generateAutobiographyDeltas } from '../pipeline/stage-06-autobiography.js';
 import { reviewDelta, type ConstitutionVerifierPort } from '../safety/review-gate.js';
+import type { DrizzleLikeClient } from '../composition/shared.js';
 import type {
   BrainWorkerLogger,
   TenantRunResult,
@@ -40,6 +43,14 @@ export interface TenantDirectory {
 }
 
 export interface NightlySweepDeps {
+  /**
+   * The raw Drizzle handle the trace-reader + memory-writer adapters close
+   * over. `runForTenant` binds the per-tenant RLS GUC on THIS same handle
+   * (via `withWorkerTenantContext`) so the episodic read and the
+   * `kernel_memory_*` writes share one tenant-scoped transaction — without
+   * it the non-BYPASS prod role reads zero rows and writes are RLS-rejected.
+   */
+  readonly db: DrizzleLikeClient;
   readonly directory: TenantDirectory;
   readonly traceReader: TraceReader;
   readonly reflectionEngine: ReflectionEngine;
@@ -47,6 +58,20 @@ export interface NightlySweepDeps {
   readonly reportSink: ReportSink;
   readonly verifier: ConstitutionVerifierPort;
   readonly extractor?: DeltaExtractor;
+  /**
+   * Re-bind the DB-backed ports (trace-reader / memory-writer / report-sink)
+   * onto the connection-pinned handle that `withWorkerTenantContext` reserves
+   * per tenant. Supplied by the composition root. Required so the episodic
+   * read + memory writes run on the SAME reserved connection the per-tenant
+   * `SET LOCAL` bound — without it the body would hit the pooled `db` and the
+   * GUC could miss. Absent in test fakes (single-connection), where the
+   * passed-through ports already share the one connection.
+   */
+  readonly rebindPorts?: (pinned: DrizzleLikeClient) => {
+    readonly traceReader: TraceReader;
+    readonly memoryWriter: MemoryWriter;
+    readonly reportSink: ReportSink;
+  };
   readonly logger?: BrainWorkerLogger;
   /** Override for tests; defaults to `new Date()`. */
   readonly clock?: { now(): Date };
@@ -95,13 +120,29 @@ async function runForTenant(
   deps: NightlySweepDeps,
   tenantId: string,
 ): Promise<TenantRunResult> {
+  // Bind the per-tenant RLS GUC on the SAME raw handle the trace-reader +
+  // memory-writer adapters close over, so the `kernel_memory_episodic` read
+  // and the `kernel_memory_*` writes for THIS tenant run inside one
+  // tenant-scoped transaction. Without it the non-BYPASS prod role sees zero
+  // episodic rows and every write is RLS-rejected — the whole sweep is a
+  // silent no-op. `withWorkerTenantContext` re-throws on failure, which the
+  // `iterateTenants` per-tenant catch already folds into an `error` result.
+  return withWorkerTenantContext(deps.db, tenantId, async (pinned) => {
+  // Re-bind the DB-backed ports onto the pinned (reserved) connection so the
+  // episodic read and the kernel_memory_* writes for THIS tenant run on the
+  // connection the SET LOCAL bound. Falls back to the passed-through ports
+  // when no rebinder is supplied (test fakes — already single-connection).
+  const bound = deps.rebindPorts?.(pinned as DrizzleLikeClient);
+  const traceReader = bound?.traceReader ?? deps.traceReader;
+  const memoryWriter = bound?.memoryWriter ?? deps.memoryWriter;
+  const reportSink = bound?.reportSink ?? deps.reportSink;
   const now = (deps.clock ?? { now: () => new Date() }).now();
   const windowMs = deps.windowMs ?? DEFAULT_WINDOW_MS;
   const windowEnd = now;
   const windowStart = new Date(now.getTime() - windowMs);
   const runId = `brevo_${windowEnd.getTime()}_${randomBytes(4).toString('hex')}`;
 
-  const traceResult = await readDailyTraces(deps.traceReader, {
+  const traceResult = await readDailyTraces(traceReader, {
     tenantId,
     windowStart,
     windowEnd,
@@ -164,13 +205,13 @@ async function runForTenant(
     ),
   );
 
-  const writeResults = await writeApprovedDeltas(deps.memoryWriter, {
+  const writeResults = await writeApprovedDeltas(memoryWriter, {
     deltas,
     approvals,
     logger: deps.logger,
   });
 
-  const report = await emitEvolutionReport(deps.reportSink, {
+  const report = await emitEvolutionReport(reportSink, {
     tenantId,
     runId,
     reflection,
@@ -195,6 +236,7 @@ async function runForTenant(
     errorMessage: null,
     report,
   };
+  });
 }
 
 async function safeListTenants(

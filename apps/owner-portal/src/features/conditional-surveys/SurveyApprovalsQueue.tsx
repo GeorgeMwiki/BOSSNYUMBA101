@@ -1,19 +1,19 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Button,
-  Badge,
-  Alert,
-  AlertDescription,
-  Skeleton,
-  EmptyState,
-} from '@bossnyumba/design-system';
+import React from 'react';
 import { useTranslations } from 'next-intl';
-import { api } from '../../lib/api';
+import { MissingBackendNotice } from '../../components/MissingBackendNotice';
 
+/**
+ * Intended row shape for the owner-facing conditional-survey approvals
+ * queue. Kept as the documented contract for whoever lands the backend.
+ *
+ * Note this is NOT the shape the mounted `/api/v1/conditional-surveys`
+ * router exposes: that router has no pending-approvals list (its `GET /`
+ * returns an empty array with a meta hint), uses `severity`
+ * (low|medium|high|critical) rather than `severityEstimate`, and its
+ * decision verb is `POST /:id/plans/:planId/approve` — there is no
+ * `/:id/approve` or `/:id/reject`. The owner approvals surface below is a
+ * net-new aggregation the gateway does not yet expose.
+ */
 export interface ConditionalSurvey {
   readonly id: string;
   readonly unitLabel: string;
@@ -24,139 +24,29 @@ export interface ConditionalSurvey {
   readonly submittedBy: string;
 }
 
-type SurveyDecision = 'approve' | 'reject';
-type PendingDecision = { readonly id: string; readonly decision: SurveyDecision };
-
+/**
+ * SurveyApprovalsQueue — DEFERRED BACKEND (born-dark surface).
+ *
+ * This view was wired to `GET /owner/conditional-surveys?status=pending`
+ * plus `POST /owner/conditional-surveys/:id/{approve|reject}`, none of
+ * which are mounted. The mounted `/api/v1/conditional-surveys` router is
+ * a different surface (no pending queue, plan-level approval verbs only),
+ * so it cannot back this owner approvals view without a net-new pending-
+ * approvals list endpoint and survey-level approve/reject actions.
+ *
+ * Per the honest-degrade policy we render `MissingBackendNotice` (no
+ * fabricated rows, no dead fetches) until that surface is built. Tracked
+ * for product decision — see the final-sweep register.
+ */
 export const SurveyApprovalsQueue: React.FC = () => {
   const t = useTranslations('surveyApprovalsQueue');
-  const [items, setItems] = useState<ReadonlyArray<ConditionalSurvey>>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [actError, setActError] = useState<string | null>(null);
-  const [pending, setPending] = useState<PendingDecision | null>(null);
-
-  const load = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const res = await api.get<ReadonlyArray<ConditionalSurvey>>(
-        '/owner/conditional-surveys?status=pending'
-      );
-      if (!signal?.aborted) {
-        if (!res.success) {
-          setLoadError(res.error?.message ?? 'Failed to load survey queue');
-          setLoading(false);
-          return;
-        }
-        setItems(res.data ?? []);
-        setLoading(false);
-      }
-    } catch (err) {
-      if (!signal?.aborted) {
-        setLoadError(err instanceof Error ? err.message : 'Failed to load survey queue');
-        setLoading(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const ctrl = new AbortController();
-    void load(ctrl.signal);
-    return () => ctrl.abort();
-  }, [load]);
-
-  const decide = useCallback(async (id: string, decision: SurveyDecision): Promise<void> => {
-    setActError(null);
-    setPending({ id, decision });
-    try {
-      const res = await api.post(`/owner/conditional-surveys/${id}/${decision}`, {});
-      if (!res.success) {
-        setActError(res.error?.message ?? `Failed to ${decision} survey`);
-        return;
-      }
-      setItems((prev) => prev.filter((x) => x.id !== id));
-    } catch (err) {
-      setActError(err instanceof Error ? err.message : `Failed to ${decision} survey`);
-    } finally {
-      setPending(null);
-    }
-  }, []);
-
   return (
-    <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">{t('title')}</h1>
-      {loadError && (
-        <Alert variant="danger">
-          <AlertDescription>
-            {loadError}
-            <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              {t('retry')}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-      {actError && (
-        <Alert variant="danger">
-          <AlertDescription>{actError}</AlertDescription>
-        </Alert>
-      )}
-
-      {loading ? (
-        <div className="grid gap-3" aria-live="polite">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-36 w-full" />
-          ))}
-        </div>
-      ) : items.length === 0 ? (
-        <EmptyState
-          title={t('emptyTitle')}
-          description={t('emptyDescription')}
-        />
-      ) : (
-        <div className="grid gap-3">
-          {items.map((s) => {
-            const isPending = pending?.id === s.id;
-            return (
-              <Card key={s.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>{s.unitLabel}</CardTitle>
-                    <Badge>{s.severityEstimate}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm">{t('trigger')}: {s.triggeredBy}</p>
-                  <p className="text-sm">{t('estimatedCost')}: {s.estimatedCost.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t('submittedBy')} {s.submittedBy} · {new Date(s.submittedAt).toLocaleString()}
-                  </p>
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      size="sm"
-                      loading={isPending && pending?.decision === 'approve'}
-                      disabled={isPending}
-                      onClick={() => decide(s.id, 'approve')}
-                      aria-label={t('approveAriaLabel', { unit: s.unitLabel })}
-                    >
-                      {t('approve')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      loading={isPending && pending?.decision === 'reject'}
-                      disabled={isPending}
-                      onClick={() => decide(s.id, 'reject')}
-                      aria-label={t('rejectAriaLabel', { unit: s.unitLabel })}
-                    >
-                      {t('reject')}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+    <div className="p-6">
+      <MissingBackendNotice
+        title={t('title')}
+        endpoint="GET /api/v1/owner/conditional-surveys?status=pending"
+        description={t('emptyDescription')}
+      />
     </div>
   );
 };

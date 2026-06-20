@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslations } from 'next-intl';
 import { Sparkles, Plus } from 'lucide-react';
 import { SkillLibraryGrid } from '../../components/SkillLibraryGrid';
 import type { SkillSummary, SkillCategory, SkillTrigger } from '../../components/SkillCard';
 import { MissingBackendNotice } from '../../components/MissingBackendNotice';
+import { openJarvisWithPrefill } from '../../lib/jarvis-prefill';
+import { api } from '../../lib/api';
 
 /**
  * /skills — owner-installable Skills marketplace.
@@ -13,113 +16,43 @@ import { MissingBackendNotice } from '../../components/MissingBackendNotice';
  *
  * "Create new skill" opens an AOP-compiler chat in Jarvis (waits for the
  * E3 prompt-compiler wire to land; until then we just pre-fill the chat).
+ *
+ * Backed by `/api/v1/owner/account/skills/*` (owner-account.hono.ts). The
+ * base URL + `/api/v1` prefix + bearer are resolved by `lib/api` from
+ * `VITE_API_URL`, so the page works in the nginx-served prod build (no Vite
+ * dev proxy). The bare relative endpoint below is for display only —
+ * MissingBackendNotice shows it to the operator; it is never fetched.
  */
 
-const ENDPOINT = '/api/v1/owner/skills';
+// Path relative to the shared api client's `/api/v1` base. The client
+// prepends VITE_API_URL + `/api/v1`, so this resolves in prod and dev alike.
+const SKILLS_PATH = '/owner/account/skills';
+// Public-facing form shown in MissingBackendNotice (the operator-readable URL).
+const PUBLIC_ENDPOINT = `/api/v1${SKILLS_PATH}`;
 
-const SAMPLE_SKILLS: ReadonlyArray<SkillSummary> = [
-  {
-    id: 'sk-arrears-friday',
-    name: 'Arrears Friday digest',
-    slug: 'arrears-friday-digest',
-    description:
-      "Every Friday 08:30 EAT, email the top 10 arrears tenants with their case state and proposed next step. Owner reviews & approves before send.",
-    author: 'Mr. Mwikila',
-    authorIsMd: true,
-    category: 'arrears',
-    triggerKind: 'cron',
-    triggerLabel: 'Friday 08:30 EAT',
-    installed: true,
-    enabled: true,
-    runCount: 14,
-    lastRunAt: '2026-05-15',
-    rating: 4.8,
-  },
-  {
-    id: 'sk-kra-monthly',
-    name: 'KRA monthly filing compiler',
-    slug: 'kra-monthly-filing',
-    description:
-      'On the 1st of each month, compile the prior month MRI receipts, validate against the rent roll, and produce a draft KRA filing.',
-    author: 'Mr. Mwikila',
-    authorIsMd: true,
-    category: 'compliance',
-    triggerKind: 'cron',
-    triggerLabel: 'Monthly · 1st',
-    installed: true,
-    enabled: false,
-    runCount: 3,
-    lastRunAt: '2026-04-01',
-    rating: 4.6,
-  },
-  {
-    id: 'sk-lease-renewal',
-    name: 'Lease renewal early-warning',
-    slug: 'lease-renewal-90d',
-    description:
-      'Triggers 90 days before each lease end-date. Drafts a renewal letter + a market-rate comparison and pings the owner.',
-    author: 'Mr. Mwikila',
-    authorIsMd: true,
-    category: 'lease',
-    triggerKind: 'event',
-    triggerLabel: 'lease.expires_in.<=90d',
-    installed: false,
-    enabled: false,
-    runCount: 0,
-    rating: 4.7,
-  },
-  {
-    id: 'sk-vendor-callout',
-    name: 'Vendor SLA call-out',
-    slug: 'vendor-sla-callout',
-    description:
-      'If a work-order exceeds vendor SLA by 25%, call the vendor with a scripted reminder and log the response.',
-    author: 'Mr. Mwikila',
-    authorIsMd: true,
-    category: 'maintenance',
-    triggerKind: 'event',
-    triggerLabel: 'workorder.sla.breach',
-    installed: false,
-    enabled: false,
-    runCount: 0,
-    rating: 4.4,
-  },
-  {
-    id: 'sk-owner-newsletter',
-    name: 'Owner monthly newsletter',
-    slug: 'owner-monthly-newsletter',
-    description:
-      'On the 5th of each month, compile a newsletter for co-owners with NOI, occupancy, and the top three operational highlights.',
-    author: 'Estate Operators Co.',
-    authorIsMd: false,
-    category: 'comms',
-    triggerKind: 'cron',
-    triggerLabel: 'Monthly · 5th',
-    installed: false,
-    enabled: false,
-    runCount: 0,
-    rating: 4.2,
-  },
-  {
-    id: 'sk-eviction-checklist',
-    name: 'Eviction checklist runner',
-    slug: 'eviction-checklist',
-    description:
-      'When an arrears case crosses 90 days, run the compliant eviction checklist with HIL approval at every irreversible step.',
-    author: 'Mr. Mwikila',
-    authorIsMd: true,
-    category: 'compliance',
-    triggerKind: 'manual',
-    installed: true,
-    enabled: true,
-    runCount: 1,
-    lastRunAt: '2026-04-22',
-    rating: 4.9,
-  },
-];
+// The 503 db-unavailable envelope carries this code; it is the signal that the
+// backend is not wired (honest MissingBackendNotice rather than a fake list).
+const DATABASE_UNAVAILABLE = 'DATABASE_UNAVAILABLE';
+
+// Envelope returned by the shared api client (see src/lib/api.ts). The skills
+// routes answer `{ success, skills }` on read and `{ success, data }` on write.
+interface SkillsListResponse {
+  readonly success?: boolean;
+  readonly skills?: ReadonlyArray<SkillSummary>;
+  readonly error?: { readonly code?: string };
+}
+
+interface SkillMutationResponse {
+  readonly success?: boolean;
+  readonly data?: SkillSummary;
+  readonly error?: { readonly code?: string };
+}
 
 interface SkillsApiState {
-  readonly status: 'loading' | 'ok' | 'missing' | 'fallback';
+  // 'missing'  → backend explicitly not wired (503): honest MissingBackendNotice.
+  // 'error'    → request failed (4xx/5xx/network): honest error state, no fake rows.
+  // 'ok'       → real skills loaded (possibly an empty list → honest empty-state).
+  readonly status: 'loading' | 'ok' | 'missing' | 'error';
   readonly skills: ReadonlyArray<SkillSummary>;
 }
 
@@ -137,6 +70,7 @@ const ALL_TRIGGERS: ReadonlyArray<SkillTrigger | 'all'> = ['all', 'cron', 'event
 
 export default function SkillsPage(): JSX.Element {
   const t = useTranslations('p89.skills');
+  const navigate = useNavigate();
   const [state, setState] = useState<SkillsApiState>({ status: 'loading', skills: [] });
   const [categoryFilter, setCategoryFilter] = useState<SkillCategory | 'all'>('all');
   const [triggerFilter, setTriggerFilter] = useState<SkillTrigger | 'all'>('all');
@@ -145,20 +79,24 @@ export default function SkillsPage(): JSX.Element {
     let cancelled = false;
     async function load(): Promise<void> {
       try {
-        const res = await fetch(ENDPOINT, { credentials: 'include' });
+        const body = (await api.get<unknown>(SKILLS_PATH)) as SkillsListResponse;
         if (cancelled) return;
-        if (res.status === 503) {
+        if (body.error?.code === DATABASE_UNAVAILABLE) {
+          // 503 db-unavailable → honest MissingBackendNotice, not a fake list.
           setState({ status: 'missing', skills: [] });
           return;
         }
-        if (!res.ok) {
-          setState({ status: 'fallback', skills: SAMPLE_SKILLS });
+        if (body.success === false) {
+          // No fabricated fallback — an API failure is surfaced honestly as an
+          // error state with zero rows, never as a sample catalog.
+          setState({ status: 'error', skills: [] });
           return;
         }
-        const body = (await res.json()) as { skills?: ReadonlyArray<SkillSummary> };
+        // Empty list is a legitimate "ok" — rendered as an honest empty-state.
         setState({ status: 'ok', skills: body.skills ?? [] });
       } catch {
-        if (!cancelled) setState({ status: 'fallback', skills: SAMPLE_SKILLS });
+        // Network failure / unconfigured base URL — surfaced honestly as error.
+        if (!cancelled) setState({ status: 'error', skills: [] });
       }
     }
     void load();
@@ -183,53 +121,84 @@ export default function SkillsPage(): JSX.Element {
     });
   }, [marketplace, categoryFilter, triggerFilter]);
 
-  function handleToggle(skillId: string, nextEnabled: boolean): void {
+  // Mutations act ONLY on skills that already exist in live state (loaded from
+  // the API). Each one optimistically updates, calls the real route, and
+  // reverts the optimistic edit on failure — never a silent fake-success.
+  async function persistSkillMutation(
+    skillId: string,
+    apply: (skill: SkillSummary) => SkillSummary,
+    request: () => Promise<SkillMutationResponse>,
+  ): Promise<boolean> {
+    const previous = state.skills.find((s) => s.id === skillId);
+    if (!previous) return false;
     setState((prev) => ({
       ...prev,
-      skills: prev.skills.map((s) =>
-        s.id === skillId ? { ...s, enabled: nextEnabled } : s,
-      ),
+      skills: prev.skills.map((s) => (s.id === skillId ? apply(s) : s)),
     }));
+    try {
+      const res = await request();
+      if (res.success !== true) {
+        throw new Error(`skill mutation failed: ${res.error?.code ?? 'unknown'}`);
+      }
+      return true;
+    } catch {
+      // Revert the optimistic edit so the UI never shows an un-persisted state.
+      setState((prev) => ({
+        ...prev,
+        skills: prev.skills.map((s) => (s.id === skillId ? previous : s)),
+      }));
+      return false;
+    }
+  }
+
+  function handleToggle(skillId: string, nextEnabled: boolean): void {
+    void persistSkillMutation(
+      skillId,
+      (s) => ({ ...s, enabled: nextEnabled }),
+      () =>
+        api.post<unknown>(
+          `${SKILLS_PATH}/${encodeURIComponent(skillId)}/toggle`,
+          { enabled: nextEnabled },
+        ) as Promise<SkillMutationResponse>,
+    );
   }
 
   function handleInstall(skillId: string): void {
-    setState((prev) => ({
-      ...prev,
-      skills: prev.skills.map((s) =>
-        s.id === skillId ? { ...s, installed: true, enabled: true } : s,
-      ),
-    }));
+    void persistSkillMutation(
+      skillId,
+      (s) => ({ ...s, installed: true, enabled: true }),
+      () =>
+        api.post<unknown>(
+          `${SKILLS_PATH}/${encodeURIComponent(skillId)}/install`,
+        ) as Promise<SkillMutationResponse>,
+    );
   }
 
   function handleRun(skillId: string): void {
     const skill = state.skills.find((s) => s.id === skillId);
     if (!skill) return;
-    setState((prev) => ({
-      ...prev,
-      skills: prev.skills.map((s) =>
-        s.id === skillId
-          ? {
-              ...s,
-              runCount: s.runCount + 1,
-              lastRunAt: new Date().toISOString().slice(0, 10),
-            }
-          : s,
-      ),
-    }));
-    openInJarvis(`Run skill ${skill.slug} now.`);
+    void persistSkillMutation(
+      skillId,
+      (s) => ({
+        ...s,
+        runCount: s.runCount + 1,
+        lastRunAt: new Date().toISOString().slice(0, 10),
+      }),
+      () =>
+        api.post<unknown>(
+          `${SKILLS_PATH}/${encodeURIComponent(skillId)}/run`,
+        ) as Promise<SkillMutationResponse>,
+    ).then((ok) => {
+      if (ok) openInJarvis(`Run skill ${skill.slug} now.`);
+    });
   }
 
+  // Hand the prompt to the Jarvis composer route via react-router location
+  // state. Deterministic (no listener-less window event) — the /jarvis page
+  // reads the prefill on mount, seeds its input, and lets the owner edit
+  // before sending (autoSubmit defaults to false).
   function openInJarvis(prompt: string): void {
-    if (typeof window === 'undefined') return;
-    try {
-      window.dispatchEvent(
-        new CustomEvent('owner-portal:jarvis-prefill', {
-          detail: { prompt, autoSubmit: false },
-        }),
-      );
-    } catch {
-      /* ignore */
-    }
+    navigate(...openJarvisWithPrefill(prompt));
   }
 
   function createNewSkill(): void {
@@ -242,8 +211,18 @@ export default function SkillsPage(): JSX.Element {
     return (
       <MissingBackendNotice
         title={t('marketplaceTitle')}
-        endpoint={ENDPOINT}
+        endpoint={PUBLIC_ENDPOINT}
         description="The owner-skills API has not been wired in api-gateway yet."
+      />
+    );
+  }
+
+  if (state.status === 'error') {
+    return (
+      <MissingBackendNotice
+        title={t('marketplaceTitle')}
+        endpoint={PUBLIC_ENDPOINT}
+        description="The owner-skills API could not be reached. No skills are shown until it responds."
       />
     );
   }
@@ -254,30 +233,22 @@ export default function SkillsPage(): JSX.Element {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             <Sparkles className="h-6 w-6 text-violet-600" />
-            Skills marketplace
+            {t('title')}
           </h1>
-          <p className="text-sm text-gray-500">
-            Install workflows Mr. Mwikila can run on a schedule, on an event, or
-            on demand. Toggle them off any time.
-          </p>
-          {state.status === 'fallback' ? (
-            <p className="mt-1 text-xs text-amber-700">
-              Skills API not yet wired. Showing a sample catalog.
-            </p>
-          ) : null}
+          <p className="text-sm text-gray-500">{t('subtitle')}</p>
         </div>
         <button
           type="button"
           onClick={createNewSkill}
           className="inline-flex items-center gap-1 rounded bg-violet-600 px-3 py-1.5 text-sm font-medium text-white"
         >
-          <Plus className="h-4 w-4" /> Create new Skill
+          <Plus className="h-4 w-4" /> {t('createSkill')}
         </button>
       </header>
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-gray-700">
-          Installed ({installed.length})
+          {t('installedHeading', { count: installed.length })}
         </h2>
         <SkillLibraryGrid
           skills={installed}
@@ -289,10 +260,10 @@ export default function SkillsPage(): JSX.Element {
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-gray-700">
-          Marketplace ({filteredMarketplace.length})
+          {t('marketplaceHeading', { count: filteredMarketplace.length })}
         </h2>
         <div className="mb-3 flex flex-wrap items-center gap-3 text-xs">
-          <span className="text-gray-500">Category:</span>
+          <span className="text-gray-500">{t('categoryLabel')}</span>
           {ALL_CATEGORIES.map((c) => (
             <button
               key={c}
@@ -304,22 +275,22 @@ export default function SkillsPage(): JSX.Element {
                   : 'border border-gray-200 bg-white text-gray-700'
               }`}
             >
-              {c}
+              {t(`category.${c}`)}
             </button>
           ))}
-          <span className="ml-4 text-gray-500">Trigger:</span>
-          {ALL_TRIGGERS.map((t) => (
+          <span className="ml-4 text-gray-500">{t('triggerLabel')}</span>
+          {ALL_TRIGGERS.map((trig) => (
             <button
-              key={t}
+              key={trig}
               type="button"
-              onClick={() => setTriggerFilter(t)}
+              onClick={() => setTriggerFilter(trig)}
               className={`rounded-full px-2 py-0.5 ${
-                triggerFilter === t
+                triggerFilter === trig
                   ? 'bg-gray-900 text-white'
                   : 'border border-gray-200 bg-white text-gray-700'
               }`}
             >
-              {t}
+              {t(`trigger.${trig}`)}
             </button>
           ))}
         </div>

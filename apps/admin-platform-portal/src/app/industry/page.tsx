@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { StaffNav } from '@/components/StaffNav';
 import { StaffIdentityStrip } from '@/components/StaffIdentityStrip';
 import { DegradedCard } from '@/components/DegradedCard';
@@ -21,35 +21,72 @@ interface SlotPayload {
   readonly unit?: string;
 }
 
+interface SlotEnvelope {
+  readonly success?: boolean;
+  readonly data?: SlotPayload;
+  readonly error?: { readonly code?: string; readonly message?: string };
+}
+
 type SlotResult =
   | { readonly status: 'ok'; readonly data: SlotPayload }
   | { readonly status: 'loading' }
   | { readonly status: 'degraded'; readonly reason: string };
 
-async function fetchSlot(slot: SlotKey, cookieHeader: string): Promise<SlotResult> {
+/**
+ * Resolve the api-gateway base for server-side (RSC) fetches. The page
+ * is a server component, so it talks to the gateway directly instead of
+ * round-tripping through the portal's own /api proxy. `API_GATEWAY_URL`
+ * is the server-only var; we never expose it to the browser. The
+ * localhost fallback is dev-only and the public-URL guard keeps prod
+ * loud if the deployer forgets to set it.
+ */
+function resolveGatewayBase(): string {
+  const serverUrl = process.env.API_GATEWAY_URL?.trim();
+  if (serverUrl && serverUrl.length > 0) {
+    return serverUrl.replace(/\/$/, '');
+  }
+  return requirePublicBaseUrl(
+    'NEXT_PUBLIC_API_URL',
+    'http://localhost:4000',
+  ).replace(/\/$/, '');
+}
+
+async function fetchSlot(
+  slot: SlotKey,
+  base: string,
+  forwardHeaders: HeadersInit,
+): Promise<SlotResult> {
   try {
-    const base = requirePublicBaseUrl(
-      'NEXT_PUBLIC_PLATFORM_PORTAL_BASE_URL',
-      'http://localhost:3020',
-    );
-    const res = await fetch(`${base}/api/platform/industry/${slot}`, {
-      headers: { cookie: cookieHeader },
+    const res = await fetch(`${base}/api/v1/admin/industry/${slot}`, {
+      headers: forwardHeaders,
       cache: 'no-store',
     });
+    if (res.status === 401 || res.status === 403) {
+      return {
+        status: 'degraded',
+        reason: 'Not authorised for the platform-HQ industry rollup.',
+      };
+    }
     if (res.status === 503) {
       return {
         status: 'degraded',
-        reason: 'Platform aggregator offline (503). No mock values rendered.',
+        reason: 'Industry aggregator offline (503). No mock values rendered.',
       };
     }
     if (!res.ok) {
       return {
         status: 'degraded',
-        reason: `Upstream returned ${res.status}. Retry when the DP-aggregator is healthy.`,
+        reason: `Upstream returned ${res.status}. Retry when the aggregator is healthy.`,
       };
     }
-    const data = (await res.json()) as SlotPayload;
-    return { status: 'ok', data };
+    const body = (await res.json()) as SlotEnvelope;
+    if (!body.success || !body.data) {
+      return {
+        status: 'degraded',
+        reason: body.error?.message ?? 'Metric could not be computed.',
+      };
+    }
+    return { status: 'ok', data: body.data };
   } catch (error) {
     console.error(`Industry slot ${slot} fetch failed:`, error);
     return {
@@ -66,10 +103,23 @@ export default async function IndustryPage() {
     .map((c) => `${c.name}=${c.value}`)
     .join('; ');
 
+  // Forward the platform session cookie + any bearer so the gateway can
+  // enforce the platform-HQ role gate upstream. Nothing host-only is
+  // copied.
+  const incomingHeaders = await headers();
+  const forwardHeaders: Record<string, string> = {
+    Accept: 'application/json',
+  };
+  if (cookieHeader) forwardHeaders.cookie = cookieHeader;
+  const authorization = incomingHeaders.get('authorization');
+  if (authorization) forwardHeaders.Authorization = authorization;
+
+  const base = resolveGatewayBase();
+
   const slotResults = await Promise.all(
     SLOTS.map(async (slot) => ({
       slot,
-      result: await fetchSlot(slot.key, cookieHeader),
+      result: await fetchSlot(slot.key, base, forwardHeaders),
     })),
   );
 

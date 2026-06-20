@@ -255,16 +255,20 @@ export async function processScanOcrRequest(
   const now = deps.now ?? (() => new Date());
   const { tenantId, bundleId } = args;
 
-  return withWorkerTenantContext(deps.db, tenantId, async () => {
+  // `pinned` is the connection the per-tenant SET LOCAL bound — every DB call
+  // below threads it (NOT the pooled `deps.db`) so the FORCE-RLS reads/writes
+  // run under the tenant GUC. Non-DB deps (ocr / pageBytes / logger) are
+  // external IO and stay on their own handles.
+  return withWorkerTenantContext(deps.db, tenantId, async (pinned) => {
     const at = now();
-    const baseLog = await loadProcessingLog(deps.db, bundleId);
+    const baseLog = await loadProcessingLog(pinned, bundleId);
 
     // Honest refusal: no real OCR provider and/or no byte store wired. Fail the
     // bundle to a terminal state instead of leaving it forever in `processing`.
     if (!deps.ocr || !deps.pageBytes) {
       const reason = !deps.ocr ? 'ocr_provider_unavailable' : 'page_bytes_unavailable';
       const log = appendLog(baseLog, { step: 'ocr_failed', at: at.toISOString(), detail: reason });
-      await finalizeBundle(deps.db, {
+      await finalizeBundle(pinned, {
         bundleId,
         status: 'failed',
         processingLog: log,
@@ -275,10 +279,10 @@ export async function processScanOcrRequest(
       return 'failed';
     }
 
-    const pages = await loadPages(deps.db, bundleId);
+    const pages = await loadPages(pinned, bundleId);
     if (pages.length === 0) {
       const log = appendLog(baseLog, { step: 'ocr_failed', at: at.toISOString(), detail: 'no_pages' });
-      await finalizeBundle(deps.db, {
+      await finalizeBundle(pinned, {
         bundleId,
         status: 'failed',
         processingLog: log,
@@ -299,13 +303,13 @@ export async function processScanOcrRequest(
       });
       if (!fetched) continue; // page bytes gone — skip; reflected in count below
       const result = await deps.ocr.run({ bytes: fetched.bytes, mimeType: fetched.mimeType });
-      await writePageOcr(deps.db, page.id, result.text, normalizeConfidence(result.confidence));
+      await writePageOcr(pinned, page.id, result.text, normalizeConfidence(result.confidence));
       ocredCount += 1;
     }
 
     if (ocredCount === 0) {
       const log = appendLog(baseLog, { step: 'ocr_failed', at: at.toISOString(), detail: 'no_page_bytes_retrievable' });
-      await finalizeBundle(deps.db, {
+      await finalizeBundle(pinned, {
         bundleId,
         status: 'failed',
         processingLog: log,
@@ -320,7 +324,7 @@ export async function processScanOcrRequest(
       at: at.toISOString(),
       detail: `${ocredCount}/${pages.length} pages`,
     });
-    await finalizeBundle(deps.db, {
+    await finalizeBundle(pinned, {
       bundleId,
       status: 'ready',
       processingLog: log,

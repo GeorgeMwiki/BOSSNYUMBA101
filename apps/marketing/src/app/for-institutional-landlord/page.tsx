@@ -2,18 +2,21 @@ import type { Metadata } from 'next';
 import { GraduationCap } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { AudiencePage } from '@/components/audience/AudiencePage';
-import { COPY } from '@/lib/audience-copy';
+import { getMessages } from '@/lib/i18n';
+import { getLocale } from '@/lib/locale';
 
-export const metadata: Metadata = {
-  title: 'For universities and hospitals — BossNyumba',
-  description:
-    'BossNyumba is the operating system for universities, university colleges, hospitals, and teaching-hospital systems that hold large institutional property estates. Per-faculty P&L, donor-grade audit, sub-district maintenance routing.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = getMessages(locale).audiencePages.institutionalLandlord;
+  return { title: t.metaTitle, description: t.metaDescription };
+}
 
-export default function ForInstitutionalLandlordPage() {
+export default async function ForInstitutionalLandlordPage() {
+  const locale = await getLocale();
+  const copy = getMessages(locale).audiencePages.institutionalLandlord;
   return (
     <PageShell>
-      <AudiencePage copy={COPY.institutionalLandlord} kickerIcon={GraduationCap} />
+      <AudiencePage copy={copy} kickerIcon={GraduationCap} />
     </PageShell>
   );
 }

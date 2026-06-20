@@ -6,7 +6,12 @@ import { ScreenShell } from '../../src/components/ScreenShell'
 import { Section } from '../../src/components/Section'
 import { RoleGuard } from '../../src/components/RoleGuard'
 import { Button } from '../../src/forms/Button'
-import { LayerList, EMPTY_DRAFT, type DraftLayer } from '../../src/forms/LayerList'
+import {
+  InspectionItemList,
+  EMPTY_ITEM,
+  type DraftItem,
+  type ConditionOption
+} from '../../src/forms/InspectionItemList'
 import { GpsCard } from '../../src/forms/GpsCard'
 import { ConfirmationCard } from '../../src/forms/ConfirmationCard'
 import { InspectionFields } from '../../src/forms/inspectionFields'
@@ -30,9 +35,9 @@ interface SubmittedRef {
   queueId: string
 }
 
-function newLayerId(): string {
+function newItemId(): string {
   // eslint-disable-next-line no-restricted-syntax -- React Native client-local id (no Web Crypto); uniqueness suffices, not security-sensitive
-  return `l_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+  return `i_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 }
 
 export default function Screen(): JSX.Element {
@@ -50,7 +55,7 @@ function InspectionFormView(): JSX.Element {
   const { online } = useOnlineStatus()
   const location = useLocation({ auto: true })
   const [items, setItems] = useState<ReadonlyArray<InspectionItem>>([])
-  const [draft, setDraft] = useState<DraftLayer>(EMPTY_DRAFT)
+  const [draft, setDraft] = useState<DraftItem>(EMPTY_ITEM)
   const [submitted, setSubmitted] = useState<SubmittedRef | null>(null)
   const [submitting, setSubmitting] = useState<boolean>(false)
 
@@ -61,39 +66,41 @@ function InspectionFormView(): JSX.Element {
 
   const defaultInspectionId = useMemo(() => generateInspectionId(), [])
 
+  const conditionOptions = useMemo<ReadonlyArray<ConditionOption>>(
+    () => [
+      { value: 'good', label: t.drillHole.condGood },
+      { value: 'fair', label: t.drillHole.condFair },
+      { value: 'poor', label: t.drillHole.condPoor },
+      { value: 'damaged', label: t.drillHole.condDamaged }
+    ],
+    [t]
+  )
+
   const form = useForm<InspectionForm>({
     resolver: zodResolver(inspectionFormSchema),
     mode: 'onChange',
     defaultValues: {
       inspectionId: defaultInspectionId,
       kind: 'move_in',
-      depth: '',
-      assetTag: ''
+      unitRef: ''
     }
   })
 
-  const addLayer = useCallback((): void => {
-    const fromMeters = Number(draft.fromMeters)
-    const toMeters = Number(draft.toMeters)
-    if (
-      draft.type.trim().length === 0 ||
-      Number.isNaN(fromMeters) ||
-      Number.isNaN(toMeters) ||
-      toMeters <= fromMeters
-    ) {
+  const addItem = useCallback((): void => {
+    if (draft.area.trim().length === 0) {
       return
     }
     const next: InspectionItem = {
-      id: newLayerId(),
-      type: draft.type.trim(),
-      fromMeters,
-      toMeters
+      id: newItemId(),
+      area: draft.area.trim(),
+      condition: draft.condition,
+      notes: draft.notes.trim()
     }
     setItems((current) => [...current, next])
-    setDraft(EMPTY_DRAFT)
+    setDraft(EMPTY_ITEM)
   }, [draft])
 
-  const removeLayer = useCallback((id: string): void => {
+  const removeItem = useCallback((id: string): void => {
     setItems((current) => current.filter((item) => item.id !== id))
   }, [])
 
@@ -103,8 +110,7 @@ function InspectionFormView(): JSX.Element {
       const payload: InspectionPayload = {
         inspectionId: values.inspectionId,
         kind: values.kind,
-        depthMeters: Number(values.depth),
-        assetTag: values.assetTag ?? '',
+        unitRef: values.unitRef ?? '',
         items,
         gps: location.state.coords
           ? {
@@ -124,7 +130,7 @@ function InspectionFormView(): JSX.Element {
           : null,
         submittedAt: Date.now()
       }
-      const entry = await enqueueWrite('drill_hole', payload)
+      const entry = await enqueueWrite('inspection', payload)
       setSubmitted({ queueId: entry.id })
     } catch (error) {
       console.error('Inspection submit failed:', error)
@@ -134,9 +140,9 @@ function InspectionFormView(): JSX.Element {
   })
 
   const resetForm = useCallback((): void => {
-    form.reset({ inspectionId: generateInspectionId(), kind: 'move_in', depth: '', assetTag: '' })
+    form.reset({ inspectionId: generateInspectionId(), kind: 'move_in', unitRef: '' })
     setItems([])
-    setDraft(EMPTY_DRAFT)
+    setDraft(EMPTY_ITEM)
     setSubmitted(null)
   }, [form])
 
@@ -180,18 +186,19 @@ function InspectionFormView(): JSX.Element {
       </Section>
       <InspectionFields control={form.control} setValue={form.setValue} t={t} />
       <Section title={t.drillHole.layers} hint={t.drillHole.layersHint}>
-        <LayerList
-          layers={items}
+        <InspectionItemList
+          items={items}
           draft={draft}
           onChangeDraft={setDraft}
-          onAdd={addLayer}
-          onRemove={removeLayer}
-          addLabel={t.drillHole.addLayer}
+          onAdd={addItem}
+          onRemove={removeItem}
+          addLabel={t.drillHole.addItem}
           removeLabel={t.common.cancel}
-          typeLabel={t.drillHole.layerType}
-          fromLabel={t.drillHole.layerFrom}
-          toLabel={t.drillHole.layerTo}
+          areaLabel={t.drillHole.itemArea}
+          conditionLabel={t.drillHole.itemCondition}
+          notesLabel={t.drillHole.itemNotes}
           emptyLabel={t.common.empty}
+          conditionOptions={conditionOptions}
         />
       </Section>
       <View style={styles.actions}>

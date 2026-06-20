@@ -27,21 +27,21 @@ it on the staging cluster. Use this when:
 
 ```bash
 GIT_SHA=$(git rev-parse --short HEAD)
-docker manifest inspect ghcr.io/georgemwiki/bossnyumba/customer-app:$GIT_SHA > /dev/null \
+docker manifest inspect ghcr.io/georgemwiki/bossnyumba/owner-portal:$GIT_SHA > /dev/null \
   && echo "OK: image present" \
   || { echo "FAIL: image not built — re-run the CI workflow"; exit 1; }
 ```
 
-Repeat the check for each of the 8 workloads (`customer-app`,
-`estate-manager-app`, `owner-portal`, `admin-platform-portal`,
-`api-gateway`, `payments-ledger`, `reports`, `notifications`).
+Repeat the check for each of the workloads (`owner-portal`,
+`admin-platform-portal`, `api-gateway`, `payments-ledger`, `reports`,
+`notifications`).
 
 ## Step 2 — Smoke-test the image locally
 
 ```bash
 docker run --rm -p 3000:3000 \
   -e DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/bossnyumba_dev \
-  ghcr.io/georgemwiki/bossnyumba/customer-app:$GIT_SHA
+  ghcr.io/georgemwiki/bossnyumba/owner-portal:$GIT_SHA
 curl -fsS http://localhost:3000/api/health || { echo "FAIL: /api/health"; exit 1; }
 ```
 

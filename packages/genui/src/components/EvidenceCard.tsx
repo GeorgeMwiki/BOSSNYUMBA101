@@ -12,6 +12,7 @@ import type { AgUiUiPartByKind } from '../types';
 import { Frame, GenUiError } from './Frame';
 import { EvidenceCardPartSchema } from '../schemas';
 import { formatDate } from '../format';
+import { safeUrl } from '../safe-url';
 
 export type EvidenceCardProps = AgUiUiPartByKind<'evidence-card'>;
 
@@ -20,12 +21,6 @@ const CONFIDENCE_CHIP: Record<string, string> = {
   medium: 'bg-yellow-500/15 text-yellow-700 border-yellow-500/30',
   low: 'bg-red-500/15 text-red-700 border-red-500/30',
 };
-
-function safeHref(uri?: string): string | undefined {
-  if (!uri) return undefined;
-  if (/^(https?:\/\/|\/)/.test(uri)) return uri;
-  return undefined;
-}
 
 export function EvidenceCard(props: EvidenceCardProps): JSX.Element {
   const parsed = EvidenceCardPartSchema.safeParse(props);
@@ -37,7 +32,7 @@ export function EvidenceCard(props: EvidenceCardProps): JSX.Element {
       />
     );
   }
-  const href = safeHref(props.sourceUri);
+  const href = safeUrl(props.sourceUri);
   return (
     <Frame kind="evidence-card" {...(props.title ? { title: props.title } : {})}>
       <div className="flex items-start justify-between gap-2">

@@ -384,7 +384,7 @@ export function HomeChat() {
             onSelect={onSelectSlash}
           />
         ) : null}
-        {trigger.kind === 'at' ? (
+        {trigger.kind === 'at' && atEntities.length > 0 ? (
           <AtMenu
             entities={filteredAt}
             locale={lang}

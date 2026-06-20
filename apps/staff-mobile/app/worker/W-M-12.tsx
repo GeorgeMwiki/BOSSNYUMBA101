@@ -126,6 +126,28 @@ interface LocalSegment {
   readonly hoursWorked: string | null
 }
 
+// HTTP statuses where the server understood and rejected the BODY — re-sending
+// would loop forever, so these are NOT queued (they surface as a real error).
+// Mirrors flush.ts POISON_STATUSES so an online failure and a queued flush make
+// the identical drop-vs-retain decision.
+const POISON_STATUSES = new Set<number>([400, 401, 403, 409, 413, 422])
+
+/**
+ * Decide whether a failed attendance write should be enqueued offline.
+ *
+ * Queue when offline OR when the failure is a transient/deploy-gap status
+ * (network status 0, 404 route-missing, 405 wrong-verb, 408/429 throttle, any
+ * 5xx). flush.ts `shouldDrop` RETAINS exactly these, so a worker who hits a
+ * deploy gap while online keeps their clock-in/out instead of dead-ending.
+ * Genuine poison (400/401/403/409/413/422) is the body's fault — do not queue;
+ * let the screen surface the error.
+ */
+function shouldQueueOffline(error: ApiError, online: boolean): boolean {
+  if (!online) return true
+  if (error.status === 0) return true
+  return !POISON_STATUSES.has(error.status)
+}
+
 export default function Screen(): JSX.Element {
   return (
     <RoleGuard screenId={SCREEN_ID}>
@@ -147,7 +169,14 @@ function HoursLog(): JSX.Element {
 
   const checkInMutation = useMutation<AttendanceRow, ApiError, CheckInPayload>({
     mutationFn: async (input) => {
-      const resp = await managerApi.post<AttendanceResponse>('/attendance/check-in', input)
+      // The mounted route is POST /attendance (captureHandler('attendance')).
+      // Fold the action into the BODY as `kind` — identical to the shape the
+      // offline path enqueues, so an online write and a queued flush converge
+      // on the same server contract.
+      const resp = await managerApi.post<AttendanceResponse>('/attendance', {
+        ...input,
+        kind: 'check-in'
+      })
       return resp.data
     },
     onSuccess: (row) => {
@@ -163,7 +192,11 @@ function HoursLog(): JSX.Element {
       setNotice('in-ok')
     },
     onError: async (error, input) => {
-      if (error.status === 0 || !online) {
+      // Queue offline (network, status 0) AND on a deploy gap (404/405/5xx) —
+      // flush.ts shouldDrop RETAINS those statuses, so the clock-in survives a
+      // missing/unmounted route instead of dead-ending. Only genuine poison
+      // (400/401/403/409/413/422) falls through to the surfaced error.
+      if (shouldQueueOffline(error, online)) {
         const queued = await enqueueWrite('attendance', { ...input, kind: 'check-in' })
         const local: LocalSegment = {
           id: queued.id,
@@ -181,7 +214,12 @@ function HoursLog(): JSX.Element {
 
   const checkOutMutation = useMutation<AttendanceRow, ApiError, CheckOutPayload>({
     mutationFn: async (input) => {
-      const resp = await managerApi.post<AttendanceResponse>('/attendance/check-out', input)
+      // Mounted route is POST /attendance; the action is carried as `kind` in
+      // the body (matches the offline enqueue shape).
+      const resp = await managerApi.post<AttendanceResponse>('/attendance', {
+        ...input,
+        kind: 'check-out'
+      })
       return resp.data
     },
     onSuccess: (row) => {
@@ -200,7 +238,9 @@ function HoursLog(): JSX.Element {
       setNotice('out-ok')
     },
     onError: async (error, input) => {
-      if (error.status === 0 || !online) {
+      // Same retain-on-deploy-gap gate as check-in: queue offline or on a
+      // 404/405/5xx so the clock-out is preserved for the next flush.
+      if (shouldQueueOffline(error, online)) {
         await enqueueWrite('attendance', { ...input, kind: 'check-out' })
         setSegments((prev) =>
           prev.map((segment) =>
@@ -260,6 +300,9 @@ function HoursLog(): JSX.Element {
   const submitting = checkInMutation.isPending || checkOutMutation.isPending
   const submitError = checkInMutation.error ?? checkOutMutation.error
   const networkError = submitError?.status === 0 || submitError?.status === 503
+  // A queued capture (network / 404 / 405 / 5xx deploy-gap) was retained for
+  // sync — show only the "Saved offline" notice, never a contradictory error.
+  const queuedOffline = notice === 'queued'
 
   return (
     <View>
@@ -294,7 +337,7 @@ function HoursLog(): JSX.Element {
         {notice === 'in-ok' ? <Text style={styles.successText}>{copy.inOk}</Text> : null}
         {notice === 'out-ok' ? <Text style={styles.successText}>{copy.outOk}</Text> : null}
         {notice === 'queued' ? <Text style={styles.warnText}>{copy.queued}</Text> : null}
-        {submitError && !networkError ? (
+        {submitError && !networkError && !queuedOffline ? (
           <Text style={styles.errorText}>{copy.errorPrefix}{submitError.message}</Text>
         ) : null}
       </Section>

@@ -43,6 +43,14 @@ export interface ApprovalStore {
   put(record: ApprovalRecord): Promise<void>;
   get(actionId: string): Promise<ApprovalRecord | null>;
   list(filter?: { status?: ApprovalStatus }): Promise<ReadonlyArray<ApprovalRecord>>;
+  /**
+   * Atomic one-shot consumption guard. `UPDATE … SET executed=true WHERE
+   * action_id=$1 AND executed=false RETURNING *` — returns the row only if
+   * THIS caller won the CAS, null when it lost (already executed / unknown).
+   * Production stores MUST implement this so concurrent executors cannot both
+   * flip the flag and double-fire a sovereign action (TOCTOU).
+   */
+  casMarkExecuted?(actionId: string): Promise<ApprovalRecord | null>;
 }
 
 export interface PgApprovalStoreScope {
@@ -91,6 +99,27 @@ export function createPgApprovalStore(
         : await db.select().from(sovereignApprovals);
 
       return rows.map(rowToRecord);
+    },
+
+    async casMarkExecuted(actionId) {
+      // Atomic compare-and-set: flip executed false→true and RETURN the row
+      // only if WE won the race. An UPDATE … WHERE action_id=$1 AND
+      // executed=false RETURNING * is atomic in Postgres, so of N concurrent
+      // executors exactly ONE gets a row back; the rest get an empty
+      // returning() → null. This is the one-shot guard that prevents two
+      // executors both firing the same destructive sovereign-tier action.
+      const rows = await db
+        .update(sovereignApprovals)
+        .set({ executed: true, updatedAt: new Date() } as never)
+        .where(
+          and(
+            eq(sovereignApprovals.actionId, actionId),
+            eq(sovereignApprovals.executed, false),
+          ),
+        )
+        .returning();
+      const r = rows[0];
+      return r ? rowToRecord(r) : null;
     },
   };
 }

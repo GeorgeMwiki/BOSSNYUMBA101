@@ -307,20 +307,31 @@ describe('createExecutor — sovereign action ledger', () => {
     expect(out.stepsSucceeded).toBe(1);
   });
 
-  it('ledger write error swallowed; executor still completes the step', async () => {
+  it('ledger write error with NO flag → fail-CLOSED by default (Wave-B safe default)', async () => {
+    // Wave-B owner-approved inversion: when no `sovereignLedgerFailClosed`
+    // flag is passed, a sovereign-tier ledger-write failure must NOT be
+    // swallowed — it flips the step to `failed`. (Previously this path
+    // swallowed the error and reported success; that fail-OPEN default
+    // is now an explicit opt-out only.)
     const goals = createInMemoryGoalsPort();
     const tools = createActionToolRegistry();
     const tool = criticalStakesTool('gepg-control-number-revoked');
     tools.register(tool);
-    const logged: Array<{ obj: Record<string, unknown>; msg?: string }> = [];
+    const logged: Array<{
+      level: 'error' | 'fatal';
+      obj: Record<string, unknown>;
+      msg?: string;
+    }> = [];
 
     const exec = createExecutor({
       goals,
       tools,
       auditSink: createInMemoryActionAuditSink(),
       sovereignLedger: throwingLedger(),
+      // sovereignLedgerFailClosed intentionally omitted → fail-CLOSED.
       logger: {
-        error: (obj, msg) => logged.push({ obj, msg }),
+        error: (obj, msg) => logged.push({ level: 'error', obj, msg }),
+        fatal: (obj, msg) => logged.push({ level: 'fatal', obj, msg }),
       },
     });
     const { id } = await goals.open({
@@ -341,11 +352,16 @@ describe('createExecutor — sovereign action ledger', () => {
       ],
     });
     const out = await exec.executeGoal(id);
-    expect(out.stepsSucceeded).toBe(1);
-    expect(out.stepsFailed).toBe(0);
-    expect(logged).toHaveLength(1);
-    expect(logged[0]?.obj.actionType).toBe('gepg-control-number-revoked');
-    expect(logged[0]?.obj.err).toMatch(/ledger down/);
+    expect(out.stepsSucceeded).toBe(0);
+    expect(out.stepsFailed).toBe(1);
+    expect(out.failureMessages).toEqual([SOVEREIGN_AUDIT_WRITE_FAILED_REASON]);
+    // Logged loudly at `fatal` even with no explicit flag — manual
+    // reconciliation is required.
+    const fatalRows = logged.filter((l) => l.level === 'fatal');
+    expect(fatalRows).toHaveLength(1);
+    expect(fatalRows[0]?.obj.actionType).toBe('gepg-control-number-revoked');
+    expect(fatalRows[0]?.obj.failClosed).toBe(true);
+    expect(fatalRows[0]?.obj.err).toMatch(/ledger down/);
   });
 
   it('multi-step sovereign sequence appends one ledger entry per step', async () => {
@@ -402,9 +418,11 @@ describe('createExecutor — sovereign action ledger', () => {
 describe('createExecutor — sovereign action ledger (fail-closed policy)', () => {
   beforeEachSilenceConsole();
 
-  it('default mode (no flag) → ledger throws, tool result preserved as success [back-compat]', async () => {
-    // Regression: this is the legacy W-Agency contract — verify the
-    // new fail-closed code path doesn't break it.
+  it('explicit fail-OPEN opt-out (sovereignLedgerFailClosed: false) → ledger throws, tool result preserved as success [back-compat]', async () => {
+    // Wave-B: the legacy W-Agency fail-open contract is now reachable
+    // ONLY by EXPLICITLY passing `sovereignLedgerFailClosed: false`
+    // (composition root maps this to SOVEREIGN_LEDGER_FAIL_OPEN=1).
+    // Verify the opt-out still works and logs at `error`, not `fatal`.
     const goals = createInMemoryGoalsPort();
     const tools = createActionToolRegistry();
     const tool = criticalStakesTool('owner-payout-executed');
@@ -419,7 +437,7 @@ describe('createExecutor — sovereign action ledger (fail-closed policy)', () =
       tools,
       auditSink: createInMemoryActionAuditSink(),
       sovereignLedger: throwingLedger(),
-      // sovereignLedgerFailClosed intentionally omitted (default false)
+      sovereignLedgerFailClosed: false, // EXPLICIT legacy opt-out
       logger: {
         error: (obj) => logged.push({ level: 'error', obj }),
         warn: (obj) => logged.push({ level: 'warn', obj }),
@@ -451,6 +469,67 @@ describe('createExecutor — sovereign action ledger (fail-closed policy)', () =
     expect(logged.some((l) => l.level === 'error')).toBe(true);
     expect(logged.some((l) => l.level === 'fatal')).toBe(false);
     expect(logged[0]?.obj.failClosed).toBe(false);
+  });
+
+  it('unset flag → fail-CLOSED: ledger throws after tool success → outcome flipped to failed [Wave-B default]', async () => {
+    // The new safe default. No `sovereignLedgerFailClosed` is passed,
+    // yet a sovereign-tier audit-write failure flips the outcome to
+    // `failed` exactly as the explicit `true` path does. This is the
+    // core Wave-B regression guard against the fail-OPEN default.
+    const goals = createInMemoryGoalsPort();
+    const tools = createActionToolRegistry();
+    const tool = criticalStakesTool('tenant-eviction-proposed');
+    tools.register(tool);
+    const logged: Array<{
+      level: 'error' | 'warn' | 'fatal';
+      obj: Record<string, unknown>;
+      msg?: string;
+    }> = [];
+
+    const exec = createExecutor({
+      goals,
+      tools,
+      auditSink: createInMemoryActionAuditSink(),
+      sovereignLedger: throwingLedger(),
+      // sovereignLedgerFailClosed intentionally OMITTED → fail-CLOSED.
+      logger: {
+        error: (obj, msg) => logged.push({ level: 'error', obj, msg }),
+        warn: (obj, msg) => logged.push({ level: 'warn', obj, msg }),
+        fatal: (obj, msg) => logged.push({ level: 'fatal', obj, msg }),
+      },
+    });
+    const { id } = await goals.open({
+      tenantId: 't-default-failclosed',
+      userId: 'u',
+      threadId: 'th',
+      title: 'unset → fail-closed',
+      description: '',
+      status: 'active',
+      priority: 'critical',
+      steps: [
+        {
+          seq: 0,
+          description: 'propose eviction (irreversible)',
+          toolName: tool.name,
+          toolPayload: { leaseId: 'l_evict' },
+        },
+      ],
+    });
+    const out = await exec.executeGoal(id);
+    // Action must NOT report success when its audit row failed.
+    expect(out.stepsSucceeded).toBe(0);
+    expect(out.stepsFailed).toBe(1);
+    expect(out.failureMessages).toEqual([SOVEREIGN_AUDIT_WRITE_FAILED_REASON]);
+    // Logged at `fatal` (manual reconciliation), not merely `error`.
+    const fatalRows = logged.filter((l) => l.level === 'fatal');
+    expect(fatalRows).toHaveLength(1);
+    expect(fatalRows[0]?.obj.failClosed).toBe(true);
+    expect(fatalRows[0]?.obj.actionType).toBe('tenant-eviction-proposed');
+    expect(fatalRows[0]?.msg).toMatch(/manual reconciliation/i);
+    // Step state reflects the roll-back so the goal does NOT complete.
+    const refreshed = await goals.get(id);
+    expect(refreshed?.steps[0]?.status).toBe('failed');
+    expect(refreshed?.steps[0]?.outcome).toBe(SOVEREIGN_AUDIT_WRITE_FAILED_REASON);
   });
 
   it('fail-closed: ledger throws after tool success → outcome flipped to failed', async () => {

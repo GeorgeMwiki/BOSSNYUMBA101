@@ -2,18 +2,21 @@ import type { Metadata } from 'next';
 import { Globe } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { AudiencePage } from '@/components/audience/AudiencePage';
-import { COPY } from '@/lib/audience-copy';
+import { getMessages } from '@/lib/i18n';
+import { getLocale } from '@/lib/locale';
 
-export const metadata: Metadata = {
-  title: 'For diplomatic missions and NGOs — BossNyumba',
-  description:
-    'BossNyumba runs the property estate of diplomatic missions, international NGOs, and donor agencies across multiple capitals. Donor-audit-ready ledger, jurisdiction-aware compliance, multi-currency NAV.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = getMessages(locale).audiencePages.embassyNgo;
+  return { title: t.metaTitle, description: t.metaDescription };
+}
 
-export default function ForEmbassyNgoPage() {
+export default async function ForEmbassyNgoPage() {
+  const locale = await getLocale();
+  const copy = getMessages(locale).audiencePages.embassyNgo;
   return (
     <PageShell>
-      <AudiencePage copy={COPY.embassyNgo} kickerIcon={Globe} />
+      <AudiencePage copy={copy} kickerIcon={Globe} />
     </PageShell>
   );
 }

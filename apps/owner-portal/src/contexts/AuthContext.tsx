@@ -52,11 +52,56 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Default session timeout in minutes (configurable)
 const DEFAULT_SESSION_TIMEOUT = 30;
 
+/**
+ * Capture a signup → cockpit auth handoff.
+ *
+ * The marketing OwnerSignUpForm lands a freshly-provisioned owner at
+ * `/dashboard#access_token=<supabase-jwt>` after creating the canonical
+ * Supabase session. We read the token from the URL FRAGMENT (so it never
+ * reaches a server / Referer / logs), persist it as the cockpit bearer,
+ * and strip it from the URL. `GET /auth/me` then authenticates it via the
+ * gateway's Supabase-JWT verifier — the canonical "Supabase JWT is
+ * canonical" path — so the owner lands authenticated with no bespoke
+ * cross-origin cookie required.
+ *
+ * Returns the captured token (already written to localStorage), or null
+ * when there is no handoff fragment. Runs synchronously at provider init
+ * so the very first `/auth/me` call carries the bearer.
+ */
+function captureSessionHandoff(): string | null {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash;
+  if (!hash || hash.length < 2) return null;
+  // The fragment may carry other keys; parse it as a param map.
+  const params = new URLSearchParams(hash.replace(/^#/, ''));
+  const token = params.get('access_token');
+  if (!token) return null;
+
+  localStorage.setItem('token', token);
+
+  // Strip the token from the URL so it is not bookmarked / shared / left
+  // in history. Preserve any non-token fragment entries.
+  params.delete('access_token');
+  const remaining = params.toString();
+  const cleanedHash = remaining ? `#${remaining}` : '';
+  const cleanedUrl =
+    window.location.pathname + window.location.search + cleanedHash;
+  window.history.replaceState(null, '', cleanedUrl);
+
+  return token;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  // Capture a signup → cockpit handoff token from the URL fragment BEFORE
+  // reading localStorage, so a freshly-signed-up owner is authenticated on
+  // the first render (the handoff token takes precedence over any stale
+  // localStorage token). `captureSessionHandoff` already persisted it.
+  const [token, setToken] = useState<string | null>(
+    () => captureSessionHandoff() ?? localStorage.getItem('token')
+  );
   const [role, setRole] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);

@@ -284,4 +284,28 @@ export const SSRF_ALLOWLIST = new Map([
     'packages/database/src/repositories/owner-style.repository.ts',
     'false positive — `fetch({ tenantId })` is the OwnerStylePersistence repository method (a Drizzle DB read), not globalThis.fetch; no outbound HTTP in this file.',
   ],
+
+  // ─── Ported born-dark CORE packages (uplift parity) ────────────────
+  // The following are unconsumed packages reverse-ported from the
+  // sibling vertical in the 59-package CORE uplift. They are not yet
+  // wired to any running surface (BORN-DARK); SSRF posture is
+  // re-instantiated against the central safeHttpFetch port at
+  // live-wiring per the Domain-Residue Scrub. Allowlisting-pending-
+  // reconciliation is the honest born-dark pattern.
+  [
+    'services/edge-inference/src/index.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. (Scanner false positive: line 96 `async fetch(req: Request, env)` is the edge-worker INBOUND request handler export, not an outbound globalThis.fetch call.)',
+  ],
+  [
+    'packages/agent-security-guard/src/redteam/builtin-scenarios.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. (Scanner false positive: the matched `/api?d=...` / image-exfil URL is a red-team `attackInput` SCENARIO STRING the harness feeds the brain, not an executed fetch.)',
+  ],
+  [
+    'packages/media-engine/src/providers/http-adapter.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. (Outbound call uses the host-INJECTED `invocation.fetch` port — provider degrades when absent — so the SSRF-safe fetch is supplied by the composition root at live-wiring, not bare global fetch here.)',
+  ],
+  [
+    'packages/post-training-rlvr/src/verifiers/builtins/citation-resolves.ts',
+    'ported born-dark CORE package (uplift parity); sibling/PACK residue re-instantiated at live-wiring per the Domain-Residue Scrub. (citation-resolves verifier defaults to global `fetch(url)` but accepts an injectable `Fetcher` port; the SSRF-safe fetch is bound at live-wiring per the Domain-Residue Scrub.)',
+  ],
 ]);

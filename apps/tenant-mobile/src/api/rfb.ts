@@ -2,9 +2,14 @@
  * Tenant-mobile API client — R11 applicant-initiated request for
  * applications.
  *
- * Mirrors the backend surface in
- * `services/api-gateway/src/routes/marketplace/rfb.hono.ts`. The
- * tenant-mobile only needs the applicant-side endpoints (create,
+ * Mirrors the applicant-side RFB routes in
+ * `services/api-gateway/src/routes/marketplace.hono.ts` (mounted at
+ * `/api/v1/marketplace`, migration 0331 backs the `rfb_requests` table):
+ *   POST  /marketplace/rfb            create
+ *   GET   /marketplace/rfb/mine       list_mine
+ *   PATCH /marketplace/rfb/:id        cancel ({ status: 'cancelled' })
+ *   POST  /marketplace/rfb/:id/cancel cancel (alias)
+ * The tenant-mobile only needs the applicant-side endpoints (create,
  * list_mine, cancel) — the landlord `nearby` + respond endpoints surface
  * in the future operator / owner cockpit.
  *
@@ -39,7 +44,10 @@ export interface RfbSummary {
   readonly grade_min: string | null
   readonly floor_area_min: string
   readonly floor_area_max: string | null
+  /** Budget ceiling. Currency-agnostic value; pair with `currency`. */
   readonly unit_price_tzs: string
+  /** ISO-4217 code the budget ceiling is denominated in (server-resolved). */
+  readonly currency: string | null
   readonly delivery_by: string
   readonly status: RfbStatus
   readonly created_at: string

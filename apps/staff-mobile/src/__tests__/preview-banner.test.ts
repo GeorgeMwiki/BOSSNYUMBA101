@@ -19,7 +19,11 @@ vi.mock('react-native', () => ({
   View: 'View'
 }))
 
-import { BANNER_COPY, type PreviewBannerKind } from '../components/PreviewBanner'
+vi.mock('../i18n/useI18n', () => ({
+  useI18n: () => ({ lang: 'en', t: {}, screen: () => ({ title: '', intent: '' }) })
+}))
+
+import { BANNER_COPY, bannerCopy, type PreviewBannerKind } from '../components/PreviewBanner'
 
 function expectedTestId(kind: PreviewBannerKind): string {
   return `preview-banner-${kind}`
@@ -48,5 +52,32 @@ describe('PreviewBanner — offline', () => {
     expect(BANNER_COPY.offline.sw).toBe('Uko nje ya mtandao. Tutasync ukirudi.')
     expect(BANNER_COPY.offline.en).toBe("You are offline. We'll sync when you reconnect.")
     expect(expectedTestId('offline')).toBe('preview-banner-offline')
+  })
+})
+
+/**
+ * Absolute language-toggle detector: `bannerCopy` MUST resolve to exactly
+ * ONE locale's string — never a stacked "sw — en". This is the live guard
+ * that the banner no longer renders both languages at once.
+ */
+describe('bannerCopy — single locale only', () => {
+  const kinds: ReadonlyArray<PreviewBannerKind> = ['env-missing', 'no-data', 'offline']
+
+  it('returns the English string verbatim when lang=en (no Swahili)', () => {
+    for (const kind of kinds) {
+      const out = bannerCopy(kind, 'en')
+      expect(out).toBe(BANNER_COPY[kind].en)
+      expect(out).not.toContain(BANNER_COPY[kind].sw)
+      expect(out).not.toContain(' — ')
+      expect(out).not.toContain(' / ')
+    }
+  })
+
+  it('returns the Swahili string verbatim when lang=sw (no English)', () => {
+    for (const kind of kinds) {
+      const out = bannerCopy(kind, 'sw')
+      expect(out).toBe(BANNER_COPY[kind].sw)
+      expect(out).not.toContain(BANNER_COPY[kind].en)
+    }
   })
 })

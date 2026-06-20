@@ -47,10 +47,6 @@ export const HARDCODED_ROLES_ALLOWLIST = new Map([
     'packages/authz-policy/src/system-roles.ts',
     'authz-policy system-roles module IS the role registry — role-name literals here are the canonical declarations.',
   ],
-  [
-    'apps/estate-manager-app/src/app/ask/[threadId]/page.tsx',
-    'Chat-turn role discriminator (user|agent) is a message-shape tag, not a user-permission role policy.',
-  ],
 
   // ─── Per-role copilot / advisor routing seams (added 2026-05-25) ──
   [

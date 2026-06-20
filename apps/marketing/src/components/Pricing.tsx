@@ -79,8 +79,10 @@ const COPY: Record<Locale, PricingCopy> = {
   en: {
     kicker: '09 · Pricing',
     headline: 'Five tiers. TZS-primary. No surprises.',
-    subOne: 'From the free Smallholder tier — built for the single landlord — to Group, for multi-country REITs.',
-    subTwo: 'Every tier ships the same Mr. Mwikila brain, audit chain, and bilingual sw/en interface.',
+    subOne:
+      'From the free Smallholder tier — built for the single landlord — to Group, for multi-country REITs.',
+    subTwo:
+      'Every tier ships the same Mr. Mwikila brain, audit chain, and bilingual sw/en interface.',
     perPortfolioPerMonth: 'per portfolio · per month',
     tailoredToYourPortfolio: 'tailored to your portfolio',
     free: 'Free',
@@ -113,7 +115,7 @@ const COPY: Record<Locale, PricingCopy> = {
       rentForecasts: 'Rent-rate forecasts',
       prioritySupport: 'Priority support 4-hr SLA',
       masterBrainLmbm: 'Master Brain + LMBM',
-      treasurySweep: 'Treasury sweep + escrow',
+      treasurySweep: 'Scheduled owner disbursements',
       housingRegulator: 'Housing-regulator e-filing',
       ssoScim: 'SSO / SCIM provisioning',
       dedicatedSuccess: 'Dedicated success manager',
@@ -127,8 +129,10 @@ const COPY: Record<Locale, PricingCopy> = {
   sw: {
     kicker: '09 · Bei',
     headline: 'Madaraja matano. TZS kama msingi. Hakuna mshangao.',
-    subOne: 'Kutoka daraja la bure la Mkulima — kwa mmiliki mmoja wa nyumba — hadi Group, kwa REIT za mataifa mengi.',
-    subTwo: 'Kila daraja linatoa ubongo wa Bw. Mwikila, mnyororo wa ukaguzi, na kiolesura cha lugha mbili sw/en.',
+    subOne:
+      'Kutoka daraja la bure la Mkulima — kwa mmiliki mmoja wa nyumba — hadi Group, kwa REIT za mataifa mengi.',
+    subTwo:
+      'Kila daraja linatoa ubongo wa Mwl. Mwikila, mnyororo wa ukaguzi, na kiolesura cha lugha mbili sw/en.',
     perPortfolioPerMonth: 'kwa portfolio · kwa mwezi',
     tailoredToYourPortfolio: 'iliyobinafsishwa kwa portfolio yako',
     free: 'Bure',
@@ -146,7 +150,7 @@ const COPY: Record<Locale, PricingCopy> = {
     footnote:
       'Madaraja yote yanajumuisha SOC 2 Type II, mnyororo wa ukaguzi usiobadilika, na dhamana saba za mstari mwekundu. Kulipwa kila mwezi kwa TZS. Acha wakati wowote. Hakuna kadi inayohitajika kujisajili.',
     featureBullets: {
-      mwikilaChat: 'Mazungumzo na Bw. Mwikila',
+      mwikilaChat: 'Mazungumzo na Mwl. Mwikila',
       mpesaCollection: 'Ukusanyaji wa kodi kwa M-Pesa',
       doubleEntryLedger: 'Daftari la maingizo mawili',
       cryptoAudit: 'Ukaguzi wa kriptografia',
@@ -161,7 +165,7 @@ const COPY: Record<Locale, PricingCopy> = {
       rentForecasts: 'Utabiri wa viwango vya kodi',
       prioritySupport: 'Msaada wa kipaumbele SLA ya saa 4',
       masterBrainLmbm: 'Ubongo Mkuu + LMBM',
-      treasurySweep: 'Usimamizi wa hazina + escrow',
+      treasurySweep: 'Malipo yaliyoratibiwa kwa wamiliki',
       housingRegulator: 'Uwasilishaji wa mdhibiti wa nyumba',
       ssoScim: 'SSO / SCIM provisioning',
       dedicatedSuccess: 'Meneja wa mafanikio aliyepewa',
@@ -215,7 +219,7 @@ function overageCopy(tier: PricingTier, copy: PricingCopy): string | null {
 
 function tierFeatureBullets(
   position: PricingTier['position'],
-  copy: PricingCopy,
+  copy: PricingCopy
 ): readonly string[] {
   const b = copy.featureBullets;
   const labels = {
@@ -289,14 +293,9 @@ export interface PricingProps {
 export function Pricing({ locale = DEFAULT_LOCALE }: PricingProps = {}) {
   const copy = COPY[locale] ?? COPY[DEFAULT_LOCALE];
   return (
-    <section
-      className="relative mx-auto max-w-7xl px-6 pb-24 pt-4 lg:px-8"
-      id="pricing"
-    >
+    <section className="relative mx-auto max-w-7xl px-6 pb-24 pt-4 lg:px-8" id="pricing">
       <div className="mx-auto max-w-3xl text-center">
-        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">
-          {copy.kicker}
-        </p>
+        <p className="font-mono text-xs uppercase tracking-widest text-signal-500">{copy.kicker}</p>
         <h2 className="mt-4 font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
           {copy.headline}
         </h2>
@@ -387,9 +386,7 @@ export function Pricing({ locale = DEFAULT_LOCALE }: PricingProps = {}) {
         })}
       </div>
 
-      <p className="mt-10 text-center text-xs text-foreground/60">
-        {copy.footnote}
-      </p>
+      <p className="mt-10 text-center text-xs text-foreground/60">{copy.footnote}</p>
     </section>
   );
 }

@@ -19,9 +19,6 @@ export type UserRole = 'superAdmin' | 'admin' | 'owner' | 'manager' | 'customer'
 
 export interface AuthFixtures {
   ownerPage: Page;
-  adminPage: Page;
-  customerPage: Page;
-  managerPage: Page;
   authenticatedContext: BrowserContext;
 }
 
@@ -42,69 +39,6 @@ export async function loginAsOwner(page: Page): Promise<void> {
   
   // Wait for redirect to dashboard
   await page.waitForURL(/\/(dashboard|home|overview)/i, { timeout: 15000 });
-}
-
-/**
- * Login to Admin Portal with super admin credentials.
- */
-export async function loginAsSuperAdmin(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.waitForLoadState('domcontentloaded');
-  
-  await page.getByLabel(/email/i).fill(testUsers.superAdmin.email);
-  await page.getByLabel(/password/i).fill(testUsers.superAdmin.password);
-  await page.getByRole('button', { name: /sign in|login/i }).click();
-  
-  await page.waitForURL(/\/(dashboard|admin|control)/i, { timeout: 15000 });
-}
-
-/**
- * Login to Admin Portal with regular admin credentials.
- */
-export async function loginAsAdmin(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.waitForLoadState('domcontentloaded');
-  
-  await page.getByLabel(/email/i).fill(testUsers.admin.email);
-  await page.getByLabel(/password/i).fill(testUsers.admin.password);
-  await page.getByRole('button', { name: /sign in|login/i }).click();
-  
-  await page.waitForURL(/\/(dashboard|admin)/i, { timeout: 15000 });
-}
-
-/**
- * Login to Estate Manager App with manager credentials.
- */
-export async function loginAsManager(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.waitForLoadState('domcontentloaded');
-  
-  await page.getByLabel(/email/i).fill(testUsers.manager.email);
-  await page.getByLabel(/password/i).fill(testUsers.manager.password);
-  await page.getByRole('button', { name: /sign in|login/i }).click();
-  
-  await page.waitForURL(/\/(dashboard|work-orders|home)/i, { timeout: 15000 });
-}
-
-/**
- * Login to Customer App with phone number (OTP flow).
- */
-export async function loginAsCustomer(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.waitForLoadState('domcontentloaded');
-  
-  await page.getByLabel(/phone/i).fill(testUsers.customer.phone);
-  await page.getByRole('button', { name: /send otp|continue/i }).click();
-  
-  // In test environment, we expect auto-fill or mock OTP
-  const otpInput = page.getByLabel(/otp|code|verification/i);
-  if (await otpInput.isVisible({ timeout: 2000 })) {
-    // Use test OTP code
-    await otpInput.fill('123456');
-    await page.getByRole('button', { name: /verify|submit|login/i }).click();
-  }
-  
-  await page.waitForURL(/\/(home|dashboard|payments)/i, { timeout: 15000 });
 }
 
 /**
@@ -228,49 +162,10 @@ export const test = base.extend<AuthFixtures>({
     await loginAsOwner(page);
     
     await use(page);
-    
+
     await context.close();
   },
-  
-  adminPage: async ({ browser }, use) => {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    
-    // Set base URL for admin portal
-    await page.goto(process.env.ADMIN_PORTAL_URL ?? 'http://localhost:3001');
-    await loginAsSuperAdmin(page);
-    
-    await use(page);
-    
-    await context.close();
-  },
-  
-  customerPage: async ({ browser }, use) => {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    
-    // Set base URL for customer app
-    await page.goto(process.env.CUSTOMER_APP_URL ?? 'http://localhost:3002');
-    await loginAsCustomer(page);
-    
-    await use(page);
-    
-    await context.close();
-  },
-  
-  managerPage: async ({ browser }, use) => {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    
-    // Set base URL for estate manager app
-    await page.goto(process.env.ESTATE_MANAGER_URL ?? 'http://localhost:3003');
-    await loginAsManager(page);
-    
-    await use(page);
-    
-    await context.close();
-  },
-  
+
   authenticatedContext: async ({ browser }, use) => {
     const context = await browser.newContext();
     await use(context);

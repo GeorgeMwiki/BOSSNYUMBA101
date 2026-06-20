@@ -77,7 +77,7 @@ function UnitCounter(): JSX.Element {
     },
     onError: async (error, input) => {
       if (error.status === 0 || !online) {
-        await enqueueWrite('excavator_count', input)
+        await enqueueWrite('unit_check', input)
       }
     }
   })

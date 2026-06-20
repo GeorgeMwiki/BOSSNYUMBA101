@@ -6,6 +6,7 @@ import AfricasTalking from 'africastalking';
 import type { TenantId } from '../../types/index.js';
 import type { INotificationProvider, SendParams } from '../provider.interface.js';
 import type { NotificationChannel, SendResult } from '../../types/index.js';
+import { lazySingleton } from '../../lazy-singleton.js';
 
 export interface AfricasTalkingConfig {
   apiKey: string;
@@ -62,4 +63,4 @@ export class AfricasTalkingSmsProvider implements INotificationProvider {
   }
 }
 
-export const africasTalkingSmsProvider = new AfricasTalkingSmsProvider();
+export const africasTalkingSmsProvider = lazySingleton(() => new AfricasTalkingSmsProvider());

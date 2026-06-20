@@ -159,17 +159,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - app: customer-app
-            path: apps/customer-app
-            target: nextjs
-          - app: estate-manager-app
-            path: apps/estate-manager-app
-            target: nextjs
           - app: owner-portal
             path: apps/owner-portal
             target: vite
-          - app: admin-portal
-            path: apps/admin-portal
+          - app: admin-platform-portal
+            path: apps/admin-platform-portal
             target: vite
     steps:
       - name: Checkout

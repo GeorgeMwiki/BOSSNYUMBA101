@@ -22,7 +22,7 @@
  *     guarantees at-most-one wake cycle in flight cluster-wide.
  *
  *   - Inside the lock we discover active tenants (SELECT id FROM
- *     tenants WHERE is_active = TRUE), build the wake-loop deps from
+ *     tenants WHERE status = 'active' AND deleted_at IS NULL), build the wake-loop deps from
  *     the existing agency-port-bindings, and call `runWakeCycle({
  *     tenantIds })`. Trigger / executor failures are absorbed by the
  *     wake-loop itself; this supervisor only logs the aggregate
@@ -42,16 +42,26 @@
  */
 
 import { sql } from 'drizzle-orm';
-import { agency as agencyKernel } from '@bossnyumba/central-intelligence';
+import {
+  agency as agencyKernel,
+  createApprovalGate,
+} from '@bossnyumba/central-intelligence';
 import {
   createKernelGoalsService,
   createKernelActionAuditService,
+  createPgApprovalStore,
 } from '@bossnyumba/database';
 import {
   createBoundActionToolDeps,
   createBoundWakeReadDeps,
 } from './agency-port-bindings.js';
 import { readSovereignLedgerFailClosedFromEnv } from './service-registry.js';
+// Wave-B fail-closed ACTIVATION — the wake-loop's executor runs
+// sovereign-tier tools on a schedule (arrears escalation can promote to
+// irreversible action), so it MUST carry the same hash-chained ledger as
+// the route-facing sovereign brain. Without it the fail-closed guard is
+// dormant for every autonomously-woken sovereign step.
+import { createSovereignLedgerPort } from './sovereign-ledger-port.js';
 import { logger } from '../utils/logger.js';
 
 type StallDetectorRunArgs = agencyKernel.StallDetectorRunArgs;
@@ -229,7 +239,7 @@ async function defaultListActiveTenantIds(
 ): Promise<ReadonlyArray<string>> {
   try {
     const result = (await db.execute(
-      sql`SELECT id FROM tenants WHERE is_active = TRUE`,
+      sql`SELECT id FROM tenants WHERE status = 'active' AND deleted_at IS NULL`,
     )) as unknown;
     const rows = Array.isArray(result)
       ? (result as ReadonlyArray<{ id?: unknown }>)
@@ -335,11 +345,36 @@ export function createWakeLoopCronSupervisor(
           )) {
             toolRegistry.register(realTool);
           }
+          // Bind the real hash-chained sovereign ledger over the same
+          // Drizzle client this tick already holds (`db`). A scheduled
+          // sovereign-tier action whose audit row cannot be written is
+          // flipped to `failed` (fail-closed unless
+          // SOVEREIGN_LEDGER_FAIL_OPEN=1).
+          const sovereignLedger = createSovereignLedgerPort(db);
+          // Durable four-eye gate for scheduled actions. The wake cron is
+          // cross-tenant, so the store is platform-scoped (tenantId:null);
+          // each proposed action persists by its own actionId in the
+          // shared sovereign_approvals table. Without this the scheduled
+          // executor ran with `approvalGate` unbound and a
+          // requiresApproval:true escalation (e.g. arrears → irreversible
+          // action) silently auto-executed — the class-halfwired-dormant
+          // gap this remediates. When the gate is bound the executor's
+          // fail-closed guard still refuses any step it cannot gate.
+          // The Drizzle store satisfies the structural put/get/list
+          // surface the kernel gate needs; the database package types it
+          // with its own ApprovalRecord, so duck-cast at the boundary.
+          const approvalGate = createApprovalGate({
+            store: createPgApprovalStore(db as never, {
+              tenantId: null,
+            }) as never,
+          });
           const executor = agencyKernel.createExecutor({
             goals,
             tools: toolRegistry,
             auditSink,
+            approvalGate,
             autonomyPolicy: agencyKernel.createDefaultAllowLowStakesPolicy(),
+            sovereignLedger,
             sovereignLedgerFailClosed: readSovereignLedgerFailClosedFromEnv(),
           });
           const boundWakeReadDeps = createBoundWakeReadDeps(db as never);

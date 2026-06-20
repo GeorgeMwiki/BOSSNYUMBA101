@@ -454,6 +454,13 @@ export * from './connector-credentials.schema.js';
 // (tenant_id nullable); RLS FORCE on `app.current_tenant_id` + service-role
 // bypass for cross-tenant cleanup.
 export * from './oauth-state-nonces.schema.js';
+// OAuth2 device-flow agent tokens (migration 0282). The Drizzle schema was
+// absent while the route imported it — invisible until the api-gateway bundle
+// (noExternal) statically resolved the barrel. Backs the /oauth device-code flow.
+export * from './oauth-agent-tokens.schema.js';
+// Per-tenant autonomy caps (autonomy-caps.schema) — consumed by the orchestrator
+// composition root; was defined but never barrel-exported.
+export * from './autonomy-caps.schema.js';
 
 // WORM audit log (migration 0165) — append-only hash-chained audit
 // substrate for every document leaving `@bossnyumba/document-studio`.
@@ -554,6 +561,19 @@ export * from './request-for-applications.schema.js';
 export * from './move-in-out-condition-reports.schema.js';
 export * from './maintenance-tasks.schema.js';
 
+// ─── Mode-C R2 counterparty highs — applicant inbox + rfb responses
+//     (migration 0338) ────────────────────────────────────────────────────
+//   - applicant_notifications : the tenant-mobile (counterparty) L7 inbox the
+//       FE contract reads (GET /api/v1/notifications -> { data: { notifications } }
+//       + POST /:id/read backed by read_at). DOUBLE-scoped: tenant_id (RLS) +
+//       applicant_user_id (per-applicant anti-IDOR at the route). Bilingual
+//       title/body (single-locale render).
+//   - rfb_responses           : landlord response to an applicant rfb_requests
+//       row, carrying the settlement linkage (rent/term/deposit/currency/
+//       landlord) the L8 SettlementOrchestrator runs against. At most one
+//       accepted response per request (partial unique index).
+export * from './marketplace-rfb.schema.js';
+
 // ─── COMPANY-BRAIN wave (migrations 0285-0286) ─────────────────────────────
 //   - intelligence_corpus_chunks  : pgvector-backed brain memory store
 //                                    (global + per-tenant chunks).
@@ -622,6 +642,22 @@ export * from './idempotency-keys.schema.js';
 //                        DurableWakeStore port: services/api-gateway/src/
 //                        composition/durable-wake-store.ts.
 export * from './durable-scheduled-wakes.schema.js';
+
+// ─── Drive-to-zero — staff_shifts (migration 0332) ─────────────────────
+//   - staff_shifts : the REAL per-worker shift schedule source. Backs
+//       GET /api/v1/field/shifts/today (field/shifts.hono.ts), polled by
+//       the staff-mobile worker home card (useTodayShift.ts). One row per
+//       (employee, day, kind). Tenant-scoped + RLS FORCE. The shift's task
+//       list is resolved LIVE from maintenance_tasks (never snapshotted).
+export * from './staff-shifts.schema.js';
+
+// ─── Drive-to-zero — service_status_components (migration 0333) ─────────
+//   - service_status_components : maintained PLATFORM status board source
+//       (api-gateway / database / auth / storage / workers / realtime).
+//       Backs the PUBLIC GET /api/v1/public/status (public-status.hono.ts)
+//       polled by the marketing /status page (StatusBoard.tsx). NOT tenant-
+//       scoped — public-read RLS, service-role writes. No money/PII.
+export * from './service-status-components.schema.js';
 
 // ─── Wave OWNER-OS — server-side tab persistence (migration 0300) ────
 //   - owner_tabs : per-(tenant, user) tab strip ledger. Closes commit
@@ -741,3 +777,20 @@ export * from './courses.schema.js';
 //   development.plan.generate / modify_section / manage_sections /
 //   set_assumption / validate.
 export * from './development-plans.schema.js';
+
+// ─── R2 blocker #8 — TENANT DELETION SCHEDULES (migration 0337) ───────────
+//   - tenant_deletion_schedules : durable backing for the tenant-wide
+//       right-to-erasure surface DELETE /api/v1/tenants/:id (was a silent
+//       no-op). One active row per tenant (partial unique index); the
+//       platform tenant-purge worker walks status='scheduled' AND
+//       scheduled_purge_at <= now() at grace expiry. Tenant-isolation +
+//       service-role-bypass RLS (cross-tenant platform-admin target + purge
+//       worker write under service-role).
+export * from './tenant-deletion-schedules.schema.js';
+// Persistent-memory + skill-library tier (CORE port, uplift ratchet). The 4
+// tenant-scoped tables (session_memory, skills, pending_threads,
+// thread_summaries) backing Mr. Mwikila's temporal-continuity substrate so he
+// never forgets across restarts / context resets / handoffs. Created by
+// migration 0345_persistent_memory.sql (FORCE-RLS tenant_isolation +
+// service-role-bypass).
+export * from './persistent-memory.schema.js';

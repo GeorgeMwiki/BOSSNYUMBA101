@@ -828,8 +828,27 @@ export class LedgerService {
   }
 
   /**
-   * Void an entry by posting a full reversal
-   * This maintains immutability - the original entry remains, a reversal is added
+   * Void an entry by posting a BALANCED reversing journal.
+   *
+   * Immutability invariant: the original journal is never mutated — we
+   * append a brand-new journal whose every leg is the contra of the
+   * original journal's legs.
+   *
+   * Why reverse the whole journal, not a single line: a ledger entry is
+   * ONE leg of a balanced double-entry journal (debits = credits). The
+   * previous implementation posted a lone single-line reversal, which
+   * `validateJournalBalance` always rejected (debits ≠ credits) — i.e.
+   * `voidEntry` was born-dead and threw "Journal entry is not balanced"
+   * for every non-zero entry. We fetch all sibling legs by `journalId`
+   * and flip each direction. Because the original journal balanced, the
+   * flipped journal balances too (the reversed credits equal the reversed
+   * debits), so the post succeeds and the account nets back to zero for
+   * that journal.
+   *
+   * Idempotent: the void key is derived from the source journal id, so a
+   * retried void (e.g. webhook/at-least-once redelivery) reuses the first
+   * void journal instead of double-reversing. A second void of the same
+   * journal is a no-op replay.
    */
   async voidEntry(
     entryId: LedgerEntryId,
@@ -842,41 +861,67 @@ export class LedgerService {
       throw new Error(`Entry ${entryId} not found`);
     }
 
-    const reversalDirection = entry.direction === 'DEBIT' ? 'CREDIT' : 'DEBIT';
+    // The entry is one leg of a balanced journal; reverse every leg so the
+    // void journal is itself balanced and the originating journal's effect
+    // on every touched account is fully unwound.
+    const journalLegs = await this.ledgerRepository.findByJournalId(
+      String(entry.journalId),
+      tenantId,
+    );
+    if (journalLegs.length === 0) {
+      throw new Error(
+        `Cannot void entry ${entryId}: source journal ${String(entry.journalId)} has no legs`,
+      );
+    }
+
+    const reversalLines: JournalEntryLine[] = journalLegs.map((leg) => ({
+      accountId: leg.accountId,
+      // CORRECTION isn't in @bossnyumba/domain-models' narrower
+      // LedgerEntryType union (only the canonical trial-balance
+      // categories are there). The local LedgerEntryType (./types.ts)
+      // extends it with CORRECTION for void/correction semantics —
+      // cast through the narrower union to bridge until the domain
+      // type is widened upstream.
+      type: 'CORRECTION' as unknown as JournalEntryLine['type'],
+      // Flip the direction of each original leg — this is what keeps the
+      // void journal balanced (every original DEBIT becomes a CREDIT of
+      // the same amount and vice versa).
+      direction: leg.direction === 'DEBIT' ? 'CREDIT' : 'DEBIT',
+      amount: leg.amount,
+      description: `Void: ${voidReason}`,
+      leaseId: leg.leaseId,
+      propertyId: leg.propertyId,
+      unitId: leg.unitId,
+      metadata: {
+        voidedEntryId: entryId,
+        voidedJournalId: String(entry.journalId),
+        reversedLegId: leg.id,
+        voidReason,
+      },
+    }));
 
     const voidRequest: CreateJournalEntryRequest = {
       tenantId,
       effectiveDate: new Date(),
-      lines: [
-        {
-          accountId: entry.accountId,
-          // CORRECTION isn't in @bossnyumba/domain-models' narrower
-          // LedgerEntryType union (only the canonical trial-balance
-          // categories are there). The local LedgerEntryType (./types.ts)
-          // extends it with CORRECTION for void/correction semantics —
-          // cast through the narrower union to bridge until the domain
-          // type is widened upstream.
-          type: 'CORRECTION' as unknown as JournalEntryLine['type'],
-          direction: reversalDirection,
-          amount: entry.amount,
-          description: `Void: ${voidReason}`,
-          leaseId: entry.leaseId,
-          propertyId: entry.propertyId,
-          unitId: entry.unitId,
-          metadata: { voidedEntryId: entryId, voidReason },
-        },
-      ],
+      lines: reversalLines,
       createdBy,
     };
 
-    this.logger.info('Voiding ledger entry', {
+    this.logger.info('Voiding ledger journal', {
       entryId,
+      journalId: String(entry.journalId),
       tenantId,
+      legCount: reversalLines.length,
       amount: entry.amount.toString(),
       reason: voidReason,
     });
 
-    return this.postJournalEntry(voidRequest);
+    // Deterministic key → a retried void of the same source journal is a
+    // no-op replay (returns the first void journal) rather than a second
+    // reversal that would over-credit/over-debit the accounts.
+    return this.postJournalEntry(voidRequest, {
+      idempotencyKey: `void:${tenantId}:${String(entry.journalId)}`,
+    });
   }
 
   /**

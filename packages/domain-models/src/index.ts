@@ -132,6 +132,20 @@ export * as PaymentMethod from './payments/payment-method';
 // Financial — each module exports its own mark*/assign*/resolve* helpers
 // with the same names. Namespace them.
 export * as Invoice from './financial/invoice';
+// Flat re-export of the 7 invoice operations the workspace graph imports by name
+// (createInvoice, etc.). These are unique to invoice.ts — they are NOT among the
+// mark*/assign*/resolve* helpers that collide across financial modules — so they
+// coexist with the `Invoice` namespace. Required by the api-gateway noExternal
+// bundle, which statically resolves named imports against the dist barrel.
+export {
+  createInvoice,
+  sendInvoice,
+  recordPayment,
+  markOverdue,
+  voidInvoice,
+  generateInvoiceNumber,
+  isOverdue,
+} from './financial/invoice';
 export * as Transaction from './financial/transaction';
 export * as Receipt from './financial/receipt';
 export * as ArrearsCase from './financial/arrears-case';

@@ -32,13 +32,22 @@ const DEFAULT_VERSION = '0.1.0';
 // behalf of. The allowlist is sourced from:
 //   1. an explicit `config.allowlist` array (composition root path), OR
 //   2. the env var `MCP_TENANT_ALLOWLIST` (JSON `{"nin": ["t1","t2"]}`)
-// Missing or empty allowlist defaults to "deny all" for safety in
-// production; tests using the in-memory mock can pass an empty array.
+//
+// FAIL-CLOSED (every environment): when NO allowlist is configured by
+// either source, the guard denies ALL tenants — in dev, test, CI,
+// staging AND production alike. The previous behaviour bypassed the
+// guard whenever NODE_ENV !== 'production', which silently fails OPEN in
+// staging / preview / any unset-NODE_ENV deployment. The ONLY way to run
+// without an allowlist is the explicit opt-out env
+// `MCP_ALLOWLIST_DISABLED=true` (or `1`), which must never be set in a
+// real deployment. Tests/dev that want open access set that flag or pass
+// an explicit allowlist.
 //
 // Caller MUST include a `tenantId` either:
 //   - in the tool args (every NIN tool already has `tenantId` required), OR
 //   - in the request `_meta.tenantId` field (MCP request _meta channel)
 const ALLOWLIST_ENV_VAR = 'MCP_TENANT_ALLOWLIST';
+const ALLOWLIST_DISABLE_ENV_VAR = 'MCP_ALLOWLIST_DISABLED';
 
 function readEnvAllowlist(key: string): ReadonlyArray<string> | null {
   const raw = process.env[ALLOWLIST_ENV_VAR];
@@ -52,6 +61,25 @@ function readEnvAllowlist(key: string): ReadonlyArray<string> | null {
   }
 }
 
+/** Explicit opt-out: only `true`/`1` disables the allowlist gate. */
+function isAllowlistDisabled(): boolean {
+  const raw = process.env[ALLOWLIST_DISABLE_ENV_VAR];
+  return raw === 'true' || raw === '1';
+}
+
+/**
+ * Resolve the effective allowlist for the gate, fail-closed.
+ * - explicit opt-out set    → `null` (gate bypassed in every env)
+ * - allowlist configured    → that list
+ * - nothing configured      → `[]` (deny all, every env)
+ */
+function resolveAllowlistGate(
+  configured: ReadonlyArray<string> | null,
+): ReadonlyArray<string> | null {
+  if (isAllowlistDisabled()) return null;
+  return configured ?? ([] as ReadonlyArray<string>);
+}
+
 export interface NinServerConfig {
   readonly name?: string;
   readonly version?: string;
@@ -60,10 +88,9 @@ export interface NinServerConfig {
   /**
    * Per-tenant allowlist (CRITICAL #4). When set, only listed tenants
    * may invoke any tool. When unset, falls back to env
-   * `MCP_TENANT_ALLOWLIST['nin']`. When BOTH are unset:
-   *   - non-production (`NODE_ENV !== 'production'`) → bypass (so
-   *     existing dev/test flows keep working)
-   *   - production → deny all (fail closed)
+   * `MCP_TENANT_ALLOWLIST['nin']`. When BOTH are unset the gate is
+   * FAIL-CLOSED in every environment (deny all). Bypass requires the
+   * explicit opt-out env `MCP_ALLOWLIST_DISABLED=true`.
    */
   readonly allowlist?: ReadonlyArray<string>;
 }
@@ -159,9 +186,7 @@ export function createNinServer(config: NinServerConfig = {}): {
         ],
       };
     }
-    const allowlistResolved =
-      allowlist ??
-      (process.env.NODE_ENV === 'production' ? ([] as ReadonlyArray<string>) : null);
+    const allowlistResolved = resolveAllowlistGate(allowlist);
     if (allowlistResolved && !allowlistResolved.includes(tenantId)) {
       return {
         isError: true,

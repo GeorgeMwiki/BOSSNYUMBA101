@@ -242,14 +242,14 @@ async function resolveVendorsSlice(
     // Maintenance bundling — vendors with >=3 pending work orders are
     // candidates for a single dispatch (saves mobilisation fees).
     const result = await db.execute(sql`
-      SELECT v.legal_name             AS contractor,
+      SELECT v.company_name           AS contractor,
              COUNT(wo.id)::int        AS pending_cnt
         FROM work_orders wo
         JOIN vendors v ON v.id = wo.vendor_id
        WHERE wo.tenant_id = ${tenantId}
          AND wo.status IN ('submitted', 'assigned', 'scheduled')
          AND wo.deleted_at IS NULL
-       GROUP BY v.legal_name
+       GROUP BY v.company_name
       HAVING COUNT(wo.id) >= 3
        ORDER BY pending_cnt DESC
        LIMIT 10
@@ -297,26 +297,11 @@ async function resolveOpsSlice(
            AND status = 'overdue'
            AND balance_amount > 0
            AND deleted_at IS NULL
-      ),
-      auto_debit AS (
-        SELECT
-          COUNT(DISTINCT c.id)::int AS no_autodebit_cnt,
-          AVG(l.rent_amount)::numeric AS avg_rent
-          FROM customers c
-          JOIN leases   l ON l.customer_id = c.id AND l.status = 'active'
-         WHERE c.tenant_id = ${tenantId}
-           AND NOT EXISTS (
-             SELECT 1 FROM payment_methods pm
-              WHERE pm.customer_id = c.id
-                AND pm.kind = 'mandate'
-                AND pm.deleted_at IS NULL
-           )
       )
+      -- TODO: auto-debit signal needs a real payment_methods/mandate table
       SELECT b.cnt AS backlog,
-             a.total AS arrears,
-             ad.no_autodebit_cnt AS no_ad_cnt,
-             ad.avg_rent AS avg_rent
-        FROM backlog b, arrears a, auto_debit ad
+             a.total AS arrears
+        FROM backlog b, arrears a
     `);
     const r = rowsOf(result)[0];
     if (!r) {
@@ -338,8 +323,9 @@ async function resolveOpsSlice(
       turnaroundP25Days: null,
       arrearsTotalAmount: num(r.arrears),
       arrearsPeerP25Amount: null,
-      tenantsWithoutAutoDebitCount: int(r.no_ad_cnt),
-      avgRentPerTenantForAutoDebit: num(r.avg_rent),
+      // TODO: auto-debit signal needs a real payment_methods/mandate table
+      tenantsWithoutAutoDebitCount: 0,
+      avgRentPerTenantForAutoDebit: null,
     });
   } catch {
     // payment_methods may not exist in every install — degrade to a

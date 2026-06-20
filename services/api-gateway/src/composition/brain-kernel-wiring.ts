@@ -61,6 +61,7 @@ import {
   orchestrator,
   registerSeedBrainTools,
   type ApprovalGate,
+  type ApprovalStore,
   type BrainToolRegistry,
   type BrainToolSpec,
   type DecisionTraceRecorder,
@@ -180,6 +181,18 @@ export interface BrainKernelWiringDeps {
    * cast happens at the `composeSovereign` boundary.
    */
   readonly approvalPolicyResolver?: unknown;
+  /**
+   * Optional durable ApprovalStore for the kernel's OWN four-eye gate
+   * (the `approvals` gate built inside `composeSovereign`). When wired,
+   * `composeSovereign` builds a Drizzle-backed gate that persists
+   * proposals across restart/replicas; when omitted it falls back to an
+   * in-memory store (compose.ts), which is correct ONLY for dev/tests.
+   * The api-gateway composition root constructs
+   * `createPgApprovalStore(db, ...)` and threads it in on the LIVE path
+   * so production never silently uses the volatile in-memory gate. The
+   * structural shape matches the kernel's `ApprovalStore` port.
+   */
+  readonly approvalStore?: ApprovalStore;
   /**
    * Optional sensor-routing service (DB-backed `sensor_call_log`
    * writer + budget-envelope debiter). When wired, the wiring
@@ -612,6 +625,16 @@ export function createBrainKernelWiring(
       (
         composeArgs as { approvalPolicyResolver?: unknown }
       ).approvalPolicyResolver = deps.approvalPolicyResolver;
+    }
+    if (deps.approvalStore) {
+      // Durable kernel-level four-eye gate. Without this composeSovereign
+      // builds its `approvals` gate over an in-memory store (compose.ts),
+      // so kernel-proposed approvals would not survive restart and would
+      // diverge from the replica-shared approver API. `approvalStore` is
+      // readonly on ComposeSovereignConfig — assign through a mutable
+      // view (same pattern as `synthesizer` / `approvalPolicyResolver`).
+      (composeArgs as { approvalStore?: ApprovalStore }).approvalStore =
+        deps.approvalStore;
     }
     // Phase F.3 — LIVE-BY-DEFAULT. When the main-loop is enabled and we
     // obtained a router + dispatcher, thread the `orchestrator` block in,

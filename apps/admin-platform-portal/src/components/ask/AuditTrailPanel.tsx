@@ -11,9 +11,9 @@
  * state — never fakes entries.
  *
  * Typography / colours are all token-based; this component lives in
- * the estate-manager-app now but could be promoted into the shared
- * design-system once the admin-platform-portal adopts it (the two
- * apps share schema — the only difference is `scope=platform`).
+ * the admin-platform-portal (scope=platform) and could be promoted
+ * into the shared design-system if another surface needs the same
+ * audit-trail panel.
  */
 
 import { useCallback, useEffect, useState } from 'react';

@@ -5,19 +5,20 @@ import { defineConfig, devices } from '@playwright/test';
  *
  * Real-backend mode (default — production-faithful, used by CI):
  *   - Start the stack with `docker compose -f docker-compose.e2e.yml up -d --wait`
- *     (or `pnpm test:e2e:local`) which boots postgres + api-gateway + customer-app.
+ *     (or `pnpm test:e2e:local`) which boots postgres + api-gateway + owner-portal.
  *   - Specs hit the real api-gateway. `page.route()` mocks of internal endpoints
  *     are FORBIDDEN — they hid the FeedbackThumbs 👍/👎 schema mismatch the
  *     wave-K audit caught. Third-party connectors (M-Pesa STK) MAY be mocked at
  *     the network level, but the api-gateway itself never is.
  *
  * Legacy stub-server mode (opt-in only):
- *   - Set `E2E_USE_STUB=1` to boot the lightweight HTML stub on ports 3000-3003.
+ *   - Set `E2E_USE_STUB=1` to boot the lightweight HTML stub on the portal port.
  *     Specs that use `page.route()` still pass, but THIS PATH CAN HIDE BUGS.
  *     Reserved for local iteration on UI selectors, never the default.
  *
  * Environment overrides (CI / staging): OWNER_PORTAL_URL, ADMIN_PORTAL_URL,
- * CUSTOMER_APP_URL, ESTATE_MANAGER_URL, API_GATEWAY_URL, E2E_TEST_* creds.
+ * API_GATEWAY_URL, E2E_TEST_* creds. (Customer + workforce surfaces are the
+ * Expo mobile apps — tenant-mobile / staff-mobile — and have their own suites.)
  * @see https://playwright.dev/docs/test-configuration
  */
 
@@ -44,7 +45,7 @@ export default defineConfig({
   },
 
   use: {
-    baseURL: process.env.BASE_URL ?? 'http://localhost:3003',
+    baseURL: process.env.BASE_URL ?? 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -67,50 +68,34 @@ export default defineConfig({
   /*
    * Project scoping.
    *
-   *   - Each project pins `testMatch` to its own subdirectory under tests/ so
-   *     `--project=customer-app` no longer accidentally runs admin-portal or
-   *     estate-manager specs (the wave-K audit found control-tower.spec.ts
-   *     timing out under the customer-app project because it had no testMatch).
+   *   - Each project pins `testMatch` to a set of subdirectories under tests/
+   *     so `--project=owner-portal` enumerates ONLY owner-portal/** and a run
+   *     can be scoped to a single surface without leaking another's specs.
    *
-   *   - The default `testDir: './tests'` plus per-project `testMatch` means a
-   *     run with no project filter still discovers every spec; a run with
-   *     `--project=customer-app` enumerates ONLY customer-app/**.
+   *   - INVARIANT: the union of every project's `testMatch` MUST cover every
+   *     *.spec.ts under tests/. A spec that matches no project is SILENTLY
+   *     dropped from `pnpm test:e2e` (the default no-filter run) — that is how
+   *     all 23 @security @critical critical-flows specs went uncollected for a
+   *     full wave. `e2e/scripts/assert-spec-coverage.mjs` (run in CI before the
+   *     suite, via `pnpm test:e2e:assert-coverage`) fails loudly if any spec is
+   *     unmatched, so this invariant cannot silently regress.
+   *
+   *   - Surface → project map (keep in sync with testMatch below):
+   *       owner-portal/**                         → owner-portal
+   *       journeys/owner-live-tests/**            → owner-live-journeys
+   *       critical-flows/**                       → critical-flows
+   *       journeys/*.spec.ts, real-llm/**,
+   *         ui-smoke/**, tests/*.spec.ts (root)   → platform-journeys
+   *
+   *   - Customer + workforce surfaces are the Expo mobile apps
+   *     (tenant-mobile / staff-mobile) and are tested in their own suites,
+   *     not via these browser projects.
    */
   projects: [
     /* Setup project for authentication state */
     {
       name: 'setup',
       testMatch: /.*\.setup\.ts/,
-    },
-
-    /* Estate Manager Portal */
-    {
-      name: 'estate-manager',
-      testMatch: 'estate-manager-app/**/*.spec.ts',
-      use: {
-        ...devices['Desktop Chrome'],
-        baseURL: process.env.ESTATE_MANAGER_URL ?? 'http://localhost:3003',
-      },
-    },
-
-    /* Customer Mobile App / PWA */
-    {
-      name: 'customer-app',
-      testMatch: 'customer-app/**/*.spec.ts',
-      use: {
-        ...devices['Desktop Chrome'],
-        baseURL: process.env.CUSTOMER_APP_URL ?? 'http://localhost:3002',
-      },
-    },
-
-    /* Customer App - Mobile viewport */
-    {
-      name: 'customer-app-mobile',
-      testMatch: 'customer-app/**/*.spec.ts',
-      use: {
-        ...devices['iPhone 13'],
-        baseURL: process.env.CUSTOMER_APP_URL ?? 'http://localhost:3002',
-      },
     },
 
     /* Owner Portal */
@@ -120,16 +105,6 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         baseURL: process.env.OWNER_PORTAL_URL ?? 'http://localhost:3000',
-      },
-    },
-
-    /* Admin Portal (Internal) */
-    {
-      name: 'admin-portal',
-      testMatch: 'admin-portal/**/*.spec.ts',
-      use: {
-        ...devices['Desktop Chrome'],
-        baseURL: process.env.ADMIN_PORTAL_URL ?? 'http://localhost:3001',
       },
     },
 
@@ -148,6 +123,46 @@ export default defineConfig({
         baseURL: process.env.OWNER_PORTAL_URL ?? 'http://localhost:3000',
       },
     },
+
+    /*
+     * @security @critical critical-flows suite — cross-tenant isolation,
+     * GDPR/PDPA delete + export, M-Pesa STK callback, and session-refresh
+     * specs. These are the multi-tenant launch blockers; they MUST be
+     * collected. Each spec self-skips when REAL_BACKEND_ENABLED is unset
+     * (set E2E_ENABLE_REAL_BACKEND=1 with the docker-compose.e2e stack up),
+     * so the project stays green on PR runs that don't boot the stack but
+     * runs for real in the docker-backed CI job.
+     */
+    {
+      name: 'critical-flows',
+      testMatch: 'critical-flows/**/*.spec.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: process.env.OWNER_PORTAL_URL ?? 'http://localhost:3000',
+      },
+    },
+
+    /*
+     * Platform journeys — every remaining browser spec: the root tests/*.spec.ts
+     * (auth, brain-chat-owner, owner-dashboard, owner-portal, live-demo),
+     * journeys/*.spec.ts (admin-platform-cert-revoke, owner-damage-deductions,
+     * owner-gamification), real-llm/** (gated on E2E_REAL_LLM + ANTHROPIC_API_KEY)
+     * and ui-smoke/**. Without this project these specs match no testMatch and
+     * are silently dropped. Each self-skips behind its own env guard.
+     */
+    {
+      name: 'platform-journeys',
+      testMatch: [
+        '*.spec.ts',
+        'journeys/*.spec.ts',
+        'real-llm/**/*.spec.ts',
+        'ui-smoke/**/*.spec.ts',
+      ],
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: process.env.OWNER_PORTAL_URL ?? 'http://localhost:3000',
+      },
+    },
   ],
 
   /*
@@ -155,7 +170,7 @@ export default defineConfig({
    *
    * Real-backend mode (default): `webServer` is undefined — the operator runs
    * `docker compose -f docker-compose.e2e.yml up -d --wait` BEFORE
-   * `pnpm test:e2e`. That way the api-gateway, customer-app, and postgres all
+   * `pnpm test:e2e`. That way the api-gateway, owner-portal, and postgres all
    * boot from the production-faithful Dockerfiles, real auth/feedback/payment
    * flows execute, and specs cannot accidentally mock internal endpoints.
    *
@@ -164,18 +179,6 @@ export default defineConfig({
    */
   webServer: USE_STUB
     ? [
-        {
-          command: 'PORT=3002 node stub-server/stub.mjs',
-          url: 'http://localhost:3002/__stub_ready',
-          reuseExistingServer: !process.env.CI,
-          timeout: 15000,
-        },
-        {
-          command: 'PORT=3003 node stub-server/stub.mjs',
-          url: 'http://localhost:3003/__stub_ready',
-          reuseExistingServer: !process.env.CI,
-          timeout: 15000,
-        },
         {
           command: 'PORT=3000 node stub-server/stub.mjs',
           url: 'http://localhost:3000/__stub_ready',

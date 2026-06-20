@@ -1,0 +1,670 @@
+{
+ "review": "Mode-C R2 FULL (30-lens, resume-complete) \u2014 wf_6695c6f0-c1f",
+ "date": "2026-06-15",
+ "totalNew": 73,
+ "bySeverity": {
+  "blocker": 13,
+  "high": 30,
+  "medium": 17,
+  "low": 13
+ },
+ "findings": [
+  {
+   "title": "Worker clock-in/out is dead ONLINE \u2014 W-M-12/W-M-03 post to /attendance/check-in & /attendance/check-out, but the manager router only has /attendance (suffixed routes unmounted \u2192 404, attendance lost, raw error)",
+   "severity": "blocker",
+   "verdict": "real",
+   "issueClass": "FE\u2194BE contract drift / silent core-function failure (online path)",
+   "fileLine": "apps/staff-mobile/app/worker/W-M-12.tsx:150,184 (onError gate :166,:203; networkError :262) + apps/staff-mobile/app/worker/W-M-03.tsx:64 (onError gate :69); router only has app.post('/attendance') at services/api-gateway/src/routes/bff/estate-manager-app.ts:779",
+   "proposedFix": "Point both mutations at the mounted capture route POST '/attendance' (captureHandler('attendance')), folding kind:'check-in'/'check-out' into the body to mirror the existing offline enqueueWrite('attendance', { ...input, kind }) \u2014 OR add explicit POST /attendance/check-in and /attendance/check-out handlers to estate-manager-app.ts. Additionally widen the onError gate so a 404/501/5xx also enqueues to the offline queue (which now retains-and-retries those statuses per the prior-round flush fix) instead of dead-ending, so an online worker hitting a deploy gap still has their clock-in preserved.",
+   "lens": "actor-workforce"
+  },
+  {
+   "title": "Bid-detail + chat screens not updated for tender-scoping: build RED (4 tsc errors) and reply/accept/withdraw hit /tenders/undefined/bids -> 404",
+   "severity": "blocker",
+   "verdict": "real",
+   "issueClass": "FE-BE contract drift / incomplete first-round fix / build-red",
+   "fileLine": "apps/tenant-mobile/app/bids/[id].tsx:106,114,117 + apps/tenant-mobile/app/chat/index.tsx:103",
+   "proposedFix": "Thread bid.listingId into messageMutation.mutate / statusMutation.mutate in bids/[id].tsx (lines 106,114,117) and into sendMutation.mutate in chat/index.tsx (line 103); add a test asserting the POST URL contains the real listing id, not 'undefined'.",
+   "lens": "actor-counterparty"
+  },
+  {
+   "title": "Bid response shape mismatch: toBidView lacks thread/listingTitle/offer/area -> bid detail crashes on bid.thread.map, My Bids shows TZS NaN/throw",
+   "severity": "blocker",
+   "verdict": "real",
+   "issueClass": "FE-BE response-shape drift / runtime crash",
+   "fileLine": "services/api-gateway/src/routes/tenders.hono.ts:138-161 vs apps/tenant-mobile/app/bids/[id].tsx:135",
+   "proposedFix": "Map toBidView (or a /tenders/bids/mine-specific shaper) to the FE Bid shape: join the parent tender for listingTitle/propertyType/floorAreaSqm, rename price->offerRentPerMonthTzs and tender_id->listingId, expose submittedAt as placedAt, and hydrate thread from bid_messages (or default it to []). Interim: guard bid.thread with `?? []` and money renders with a numeric fallback.",
+   "lens": "actor-counterparty"
+  },
+  {
+   "title": "Manager\u2192worker task dispatch is fully broken: assign POSTs to a non-existent /api/v1/manager/work-orders/:id/assign-worker (404), and even the intended path writes work_orders while the worker reads the assignments table",
+   "severity": "blocker",
+   "verdict": "real",
+   "issueClass": "FE\u2194BE contract drift / completion-law one-directional break (cross-actor owner\u2192worker)",
+   "fileLine": "apps/staff-mobile/src/manager/useManagerTasks.ts:169-172 + services/api-gateway/src/routes/bff/estate-manager-app.ts:992-997 (no /assign-worker; /assign is a 501 stub) + worker reads services/api-gateway/src/routes/field/staff.hono.ts:384-399 (assignments table) vs assignments written only by packages/database/src/repositories/hr.repository.ts:417 via hr.hono.ts:285",
+   "proposedFix": "Add POST /work-orders/:id/assign-worker to the estate-manager BFF that, in one tx, resolves workerId\u2192employees.id, INSERTs/updates an assignments row (assigneeEmployeeId, status, dueAt, linkedEntityId=work_order id, title) AND updates the work_orders assignee/status with an audit-chain entry; point useManagerTasks at it; unify the manager queue and worker feed on one projected model so an assigned task provably appears in field/staff/tasks/next.",
+   "lens": "xactor-owner-workforce"
+  },
+  {
+   "title": "Worker home hero is permanently born-dark: every WorkerHomeHero call hits /api/v1/field/workforce/* but the gateway only mounts /api/v1/field/staff/* \u2014 404s are swallowed by empty catch",
+   "severity": "blocker",
+   "verdict": "real",
+   "issueClass": "FE\u2194BE contract drift (path) / born-dark organ swallowed as silent no-op (owner\u2192worker projection)",
+   "fileLine": "apps/staff-mobile/src/components/WorkerHomeHero.tsx:40,49,69,84 vs services/api-gateway/src/index.ts:1460-1462 (mounts only /field/staff, /field/shifts) + services/api-gateway/src/routes/field/staff.hono.ts:237,355,433,558 (paths under /field/staff)",
+   "proposedFix": "Repoint WorkerHomeHero (and any other /workforce/* caller) to /field/staff/* to match the mounted router, OR add a /field/workforce alias mount of fieldStaffRouter. Replace the empty catch blocks with a visible degraded state so a route-missing 404 surfaces instead of an empty hero.",
+   "lens": "xactor-owner-workforce"
+  },
+  {
+   "title": "Worker safety-incident SOS screen lies: shows 'Your manager will see this report immediately' but onPress never calls the network (POST /api/v1/cases stubbed out) \u2014 critical incidents silently vanish",
+   "severity": "blocker",
+   "verdict": "real",
+   "issueClass": "Silent no-op with false-success confirmation (worker\u2192owner) / success over a no-op",
+   "fileLine": "apps/staff-mobile/app/(worker)/incident-report.tsx:79-82 (onPress only setSubmitted; '// POST /api/v1/cases wires in next iteration') + lines 41-42,52-53 (success copy) + lines 100-103 (severity buttons incl. CRITICAL)",
+   "proposedFix": "Wire onPress to POST /api/v1/cases (or enqueueWrite + flush) with { severity, locale, propertyId } before rendering the success state; on failure show an error/retry instead of 'Received'. Until wired, the screen must not claim the report was received.",
+   "lens": "xactor-owner-workforce"
+  },
+  {
+   "title": "Co-owner invite is undeliverable end-to-end: accept page calls two backend routes that do not exist \u2014 invitee can never join, no membership/user ever created",
+   "severity": "blocker",
+   "verdict": "real",
+   "issueClass": "dead-invite / FE\u2194BE contract drift (missing accept endpoint)",
+   "fileLine": "apps/owner-portal/src/pages/InvitePage.tsx:42 (GET /auth/invite/:token) and :76 (POST /auth/accept-invite); backend gap services/api-gateway/src/routes/auth.ts:176-324 (no invite/accept-invite); producer services/api-gateway/src/routes/owner/owner-account-repo.ts:256-391; mounted at services/api-gateway/src/index.ts:1241",
+   "proposedFix": "Add the two missing backend routes on the auth router (auth.ts, mounted at /auth): (1) GET /invite/:token \u2014 resolve the pending, non-revoked, non-expired co_owner_invites row by its UNIQUE token (no tenant predicate; token carries the binding per mig 0335), return {inviteId,email,role,inviterName,organizationName,propertyName?,expiresAt} or INVITE_EXPIRED/uniform-404; (2) POST /accept-invite {token,firstName,lastName,password} \u2014 in one transaction re-validate (pending + not revoked + not past expires_at), create a real users row in the invite's tenant_id with a bcrypt hash + the granted CO_OWNER/VIEWER role (never escalated) + property_access scope, flip co_owner_invites.status='accepted' (status check guards double-accept), and mint a session. Mirror the uniform-404/token-rotation anti-IDOR posture already in owner-account-repo.ts.",
+   "lens": "xactor-pairing-identity"
+  },
+  {
+   "title": "Admin cross-tenant superpowers (suspend_tenant_org, force_password_reset, force_lease_termination, export_regulator_pack, etc.) NEVER execute \u2014 bulk-action + four-eye approve only write journal rows; no dispatcher/executor exists, so every approved admin verb is a silent no-op that reports 'Action applied'",
+   "severity": "blocker",
+   "verdict": "real",
+   "issueClass": "silent-prod-no-op / four-eye dead-end (admin-platform-portal gateway surface)",
+   "fileLine": "services/api-gateway/src/routes/admin/superpowers.hono.ts:184-325 (POST /bulk-action \u2014 only undoJournal+pendingApprovals inserts, no side-effect; MEDIUM returns 'Action applied.'), :328-516 (POST /approve \u2014 only flips status='applied', no mutation fires)",
+   "proposedFix": "Wire an admin-verb dispatcher mirroring owner/superpowers/bulk-action-dispatchers.ts: MEDIUM verbs fire in POST /bulk-action; HIGH verbs fire inside POST /approve in the same tx immediately after the pending row transitions to 'applied'. Map each verb to its concrete mutation (suspend_tenant_org \u2192 tenants.status='suspended'; force_password_reset \u2192 identity reset; force_lease_termination \u2192 leases.status='terminated'; export_regulator_pack \u2192 regulator-export job; reactivate_tenant_org \u2192 status='active'). Until an executor exists, the route MUST NOT return status:'applied'/'Action applied' \u2014 return NOT_IMPLEMENTED/202-queued so the admin is not lied to. Cross-tenant mutations must run under withServiceRoleContext or an explicit target-tenant-bound tx, not the proposer's pinned-tenant tx.",
+   "lens": "xactor-admin-tenant-rls"
+  },
+  {
+   "title": "Provider reconciliation marks a missed-success payment SUCCEEDED but never books the ledger \u2014 cash collected, customer liability never reduced",
+   "severity": "blocker",
+   "verdict": "real",
+   "issueClass": "Money silent-loss / cross-path inconsistency (success over a no-op)",
+   "fileLine": "services/payments-ledger/src/services/reconciliation.service.ts:382-405 (markSucceeded + repository.update, no ledger post); deps at :74-80 / fields :88-92 carry ledgerRepository read-only, no ledgerService",
+   "proposedFix": "Inject a ledger-booking dependency into ReconciliationService \u2014 either paymentOrchestrationService.ensurePaymentBooked(externalId, providerName, tenantId) (already idempotent: books only when SUCCEEDED with zero ledger entries) or a direct ILedgerPoster + accountRepository to run the same bookPaymentToLedger journal. Call it from reconcileOne on the SUCCEEDED transition after markSucceeded/update. Wire it where reconciliationService is constructed (server.ts:437). Add a test asserting a reconciled SUCCEEDED payment produces a balanced journal (gross DR holding / CR customer-liability, + fee split).",
+   "lens": "regress-kernel-money"
+  },
+  {
+   "title": "Orgs-signup\u2192cockpit cookie rehydration seam is born-broken: gateway sets bossnyumba-session cookie but the owner cockpit reads session ONLY from localStorage bearer and never reads/sends the cookie \u2014 every new owner is bounced to /login right after signing up",
+   "severity": "blocker",
+   "verdict": "real",
+   "issueClass": "FE\u2194BE integration-seam regression (half-wired auth handoff / silent no-op success)",
+   "fileLine": "apps/owner-portal/src/contexts/AuthContext.tsx:59,182,241; apps/owner-portal/src/lib/api.ts:44-55 (no credentials:'include'); apps/owner-portal/src/App.tsx:218; SETTER: services/api-gateway/src/routes/orgs.hono.ts:200-218 + apps/marketing/src/components/auth/OwnerSignUpForm.tsx:106-108; gateway /auth/me bearer-only: services/api-gateway/src/routes/auth.ts:462 + middleware/hono-auth.ts:50-52",
+   "proposedFix": "Implement the missing cockpit-side rehydration. Either (A) on AuthProvider mount when localStorage.token is empty, call GET /auth/me with credentials:'include' AND teach /auth/me (or a dedicated /auth/session) to read the bossnyumba-session cookie and return a session, then persist access_token to localStorage; this also requires api.ts to send credentials:'include' and the cookie to be parent-domain scoped (see the host-only finding). Or (B) hand the access_token to the cockpit via a short-lived URL handoff the cockpit reads on /dashboard. Add an end-to-end test asserting a fresh signup lands AUTHENTICATED in the cockpit \u2014 current coverage (orgs-signup.test.ts asserts only Set-Cookie on the gateway; marketing page.test.tsx asserts only that the form mounts) never exercises the cockpit READ, which is why the seam shipped broken.",
+   "lens": "regress-integration-seams"
+  },
+  {
+   "title": "parcel-service standalone pod crash-loops at boot in production: main() provides no tenantResolver but the production guard throws",
+   "severity": "blocker",
+   "verdict": "real",
+   "issueClass": "half-wired fail-fast (guard with no composition root to satisfy it)",
+   "fileLine": "services/parcel-service/src/index.ts:79-85 (prod guard throws) vs :109 main() buildApp() no deps; infra/k8s/parcel-service/overlays/prod/kustomization.yaml + base/deployment.yaml (NODE_ENV=production, CMD node dist/index.js, liveness+readiness both /healthz)",
+   "proposedFix": "Add services/parcel-service/src/composition/build-app.ts (like services/outcomes-metering/src/composition/build-app.ts) that constructs a real tenantResolver from the auth/JWT middleware plus a durable PostGIS parcel store, and have main() call it; OR mount the parcel routes inside the api-gateway composition root rather than shipping a standalone pod. Either way the standalone main() must satisfy its own production guard.",
+   "lens": "class-borndark-prodnoop"
+  },
+  {
+   "title": "Agency executor's four-eye approval gate is DORMANT \u2014 approvalGate is unbound at every production createExecutor site, so requiresApproval:true silently falls through to autonomous tool execution",
+   "severity": "blocker",
+   "verdict": "real",
+   "issueClass": "half-wired dormant safety / silent-prod-no-op",
+   "fileLine": "packages/central-intelligence/src/kernel/agency/executor/executor.ts:577 (gate) + :668 (autonomous fall-through); call sites services/api-gateway/src/composition/sovereign.ts:388 and :467, services/api-gateway/src/composition/wake-loop-cron.ts:350 (all omit approvalGate)",
+   "proposedFix": "Thread a real ApprovalGate (backed by the already-built createPgApprovalStore, orphaned at sovereign.ts:278/:510) into all three createExecutor calls. Critically, ALSO fail CLOSED in the executor: when policyOutcome.requiresApproval is true but deps.approvalGate is undefined, do NOT fall through to invoke \u2014 mark the step failed with reason 'approval-gate-unbound' (mirror the approvalError branch at executor.ts:614-639) so a missing port can never silently authorize an action requiring approval.",
+   "lens": "class-halfwired-dormant"
+  },
+  {
+   "title": "Owner org-signup is born-broken: provisions a Supabase auth user + cookie session, but the owner-portal authenticates ONLY against a platform bcrypt password + HS256 localStorage token \u2014 the new owner can never log in",
+   "severity": "blocker",
+   "verdict": "real",
+   "issueClass": "FE\u2194BE/cross-system auth-model contract drift; success-that-is-a-no-op",
+   "fileLine": "services/api-gateway/src/composition/org-signup-service.ts:301-314 (users insert, no passwordHash) + services/api-gateway/src/routes/auth.ts:257 (/login requires users.passwordHash) + apps/owner-portal/src/lib/api.ts:44,52 (token from localStorage only, no credentials:include) + apps/owner-portal/src/contexts/AuthContext.tsx:59,216 (token only ever set via login(), never from cookie). NOTE: finding's middleware/auth.ts:60-62 citation is the wrong (Express) middleware; the live one is middleware/hono-auth.ts.",
+   "proposedFix": "Pick ONE identity system end-to-end. Simplest: make org-signup also set users.passwordHash = bcrypt.hash(ownerPassword) and have the form/flow obtain the gateway HS256 token (via /auth/login or a token returned in the signup body) into owner-portal localStorage, matching what /auth/login + the SPA api client expect. Alternatively migrate the owner-portal api client + AuthContext to rehydrate the Supabase session from the bossnyumba-session cookie (shared-domain) and present that token. Today the two halves are wired to different auth backends.",
+   "lens": "class-edge-failureaxis"
+  },
+  {
+   "title": "Round-1 Jarvis 401 fix is incompletely applied \u2014 bearer now reads sessionStorage.platform_token, which nothing ever writes; every Send still hits the gateway unauthenticated (401)",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "incompletely-applied-fix / half-wired auth (internal-admin Jarvis console \u2194 api-gateway authMiddleware)",
+   "fileLine": "apps/admin-platform-portal/src/app/jarvis/JarvisConsole.tsx:408-416 (readPlatformBearer) + :72 (bearerToken wiring); writer absent across entire repo (verified via git log -S)",
+   "proposedFix": "Make login actually persist the bearer: have LoginForm read the session JWT from the /api/platform/login 200 response (or the login route surface it) and write it to sessionStorage.platform_token; OR route the Jarvis console through a same-origin BFF proxy that forwards the httpOnly bossnyumba_platform_session cookie (the pattern /api/platform/intelligence/thread/[threadId]/message already uses), which avoids the bearer entirely. Until one lands, Jarvis stays 401. Strengthen bearer-source.test to assert a writer of platform_token exists, not just a reader.",
+   "lens": "actor-admin"
+  },
+  {
+   "title": "Settings \u2192 Profile tab 'Save Changes' silently discards edited name/email/phone and flashes a fake success toast (no profile endpoint exists)",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "silent-no-op / success-over-no-op (incompletely-applied first-round fix)",
+   "fileLine": "apps/owner-portal/src/pages/SettingsPage.tsx:393,397,403,411 (uncontrolled inputs) + :179-199 (handleSave POSTs prefs only) + :422-425 (Profile Save reuses handleSave); no profile route in services/api-gateway/src/routes/owner/owner-account.hono.ts",
+   "proposedFix": "Make the profile inputs controlled state and add a real PUT/POST /owner/account/profile route updating users.first_name/last_name/email/phone (tenant+user scoped, mirroring the password route), called from a profile-specific save. Until then disable/remove the Profile Save (or split handleSave) so it cannot report false success over unsent fields.",
+   "lens": "actor-owner adversarial verification \u2014 opened apps/owner-portal/src/pages/SettingsPage.tsx (full), services/api-gateway/src/routes/owner/owner-account.hono.ts (full), apps/owner-portal/src/app/skills/page.tsx + plan/page.tsx (event dispatch sites), services/api-gateway/src/routes/auth-mfa.ts (enroll/confirm), and grepped exhaustively for route registrations and window event listeners. Cross-checked all seven findings against the first-116 audit (audit-reports/mode-c-review-2026-06-14.json) and the r2-supplement (mode-c-r2-supplement-2026-06-14.json, 20 items). Confirmed: NO /owner/account/profile route; zero src-level addEventListener for 'owner-portal:mfa-enroll' or 'owner-portal:jarvis-prefill' (grep hits were only in dist/ bundles); Change Photo (:384) and Edit co-owner (:641) have no onClick; hardcoded properties array (:175) feeds the real invite POST; co-owners GET maps properties:[] (:278); owner-portal api client has no .put() so POST /settings alias is the sole save path and omits name/email/phone. Router mounted at index.ts:1728; /auth/mfa at :1242."
+  },
+  {
+   "title": "Settings \u2192 Security 'Enable 2FA' is a dead-end: enrollment payload is dispatched to a window event with zero listeners, so the QR/confirm step never appears",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "half-wired dormant flow (incompletely-applied first-round fix)",
+   "fileLine": "apps/owner-portal/src/pages/SettingsPage.tsx:287-309 (handleEnable2fa dispatches CustomEvent 'owner-portal:mfa-enroll'); no addEventListener('owner-portal:mfa-enroll') in apps/owner-portal/src or packages/*/src",
+   "proposedFix": "Render the otpauth QR + a 6-digit confirm input inline in the Security tab, POST /auth/mfa/confirm to finish, and set twoFa.enrolled only on a 2xx. Do not rely on an unlistened window event across an unmounted route. (Drop the 'rotating server-side secret' claim \u2014 the secret isn't persisted until confirm.)",
+   "lens": "actor-owner adversarial verification \u2014 opened apps/owner-portal/src/pages/SettingsPage.tsx (full), services/api-gateway/src/routes/owner/owner-account.hono.ts (full), apps/owner-portal/src/app/skills/page.tsx + plan/page.tsx (event dispatch sites), services/api-gateway/src/routes/auth-mfa.ts (enroll/confirm), and grepped exhaustively for route registrations and window event listeners. Cross-checked all seven findings against the first-116 audit (audit-reports/mode-c-review-2026-06-14.json) and the r2-supplement (mode-c-r2-supplement-2026-06-14.json, 20 items). Confirmed: NO /owner/account/profile route; zero src-level addEventListener for 'owner-portal:mfa-enroll' or 'owner-portal:jarvis-prefill' (grep hits were only in dist/ bundles); Change Photo (:384) and Edit co-owner (:641) have no onClick; hardcoded properties array (:175) feeds the real invite POST; co-owners GET maps properties:[] (:278); owner-portal api client has no .put() so POST /settings alias is the sole save path and omits name/email/phone. Router mounted at index.ts:1728; /auth/mfa at :1242."
+  },
+  {
+   "title": "Settings invite-co-owner modal offers a HARDCODED fictional property list ('Palm Gardens', 'Ocean View Apartments', ...) for Property Access",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "fake/hardcoded data wired into a real persistence path",
+   "fileLine": "apps/owner-portal/src/pages/SettingsPage.tsx:175 (hardcoded properties array), rendered :797-808, sent :211 to POST /owner/account/co-owners/invite (InviteSchema accepts arbitrary strings, owner-account.hono.ts:144)",
+   "proposedFix": "Populate the Property Access checkboxes from useProperties()/GET /owner/properties keyed by property id, and send property ids (not display strings). Validate InviteSchema.properties against the tenant's real property ids server-side.",
+   "lens": "actor-owner adversarial verification \u2014 opened apps/owner-portal/src/pages/SettingsPage.tsx (full), services/api-gateway/src/routes/owner/owner-account.hono.ts (full), apps/owner-portal/src/app/skills/page.tsx + plan/page.tsx (event dispatch sites), services/api-gateway/src/routes/auth-mfa.ts (enroll/confirm), and grepped exhaustively for route registrations and window event listeners. Cross-checked all seven findings against the first-116 audit (audit-reports/mode-c-review-2026-06-14.json) and the r2-supplement (mode-c-r2-supplement-2026-06-14.json, 20 items). Confirmed: NO /owner/account/profile route; zero src-level addEventListener for 'owner-portal:mfa-enroll' or 'owner-portal:jarvis-prefill' (grep hits were only in dist/ bundles); Change Photo (:384) and Edit co-owner (:641) have no onClick; hardcoded properties array (:175) feeds the real invite POST; co-owners GET maps properties:[] (:278); owner-portal api client has no .put() so POST /settings alias is the sole save path and omits name/email/phone. Router mounted at index.ts:1728; /auth/mfa at :1242."
+  },
+  {
+   "title": "Bid status enum mismatch -> Accept-counter and Withdraw buttons never render; status pills show raw keys + undefined tone",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "FE-BE enum drift / dead controls / missing-translation key",
+   "fileLine": "services/api-gateway/src/routes/tenders.hono.ts:441,493 vs apps/tenant-mobile/app/bids/[id].tsx:23-28,161-178",
+   "proposedFix": "Introduce a status adapter mapping gateway submitted/negotiating/awarded/withdrawn to FE intents (e.g. pending/countered/accepted/rejected) in toBidView or a FE adapter, and align the Accept/Withdraw button predicates, toneByStatus map, and the bids.status.* translation keys to whichever vocabulary is canonical.",
+   "lens": "actor-counterparty"
+  },
+  {
+   "title": "Counterparty notifications inbox non-functional: wrong response/row shape, missing POST /:id/read route, tenant-scoped not applicant-scoped",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "FE-BE contract drift / missing route / silent empty-state",
+   "fileLine": "apps/tenant-mobile/src/api/notifications.ts:60-80 vs services/api-gateway/src/routes/notifications.ts:43-65,102-135",
+   "proposedFix": "Add an applicant-scoped notifications surface matching the FE contract: return {data:{notifications:[...], nextCursor}} with applicant_user_id scoping and bilingual title/body, plus POST /:id/read backed by a read_at (per-user inbox state) column. Alternatively repoint and realign the FE to the existing dispatch-log shape and drop the mark-read affordance until a read_at exists.",
+   "lens": "actor-counterparty"
+  },
+  {
+   "title": "Lease-activation Sign Lease screen posts to nonexistent /marketplace/rfb-responses/:id/sign-delivery, sends rfbId as responseId -> deep-link-reachable settlement always 404s",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "FE-missing-route / money-path dead-end",
+   "fileLine": "apps/tenant-mobile/app/rfb/[id]/sign-delivery.tsx:48-62,80,100",
+   "proposedFix": "Expose the settlement orchestrator via POST /marketplace/rfb-responses/:responseId/sign-delivery on the gateway, load the accepted response id from GET /marketplace/rfb/:id instead of using rfbId, and use a deterministic checksum (e.g. derived from the ownership-history chain, not Date.now()). Until the route lands, gate the screen behind an honest coming-soon state rather than letting Sign 404.",
+   "lens": "actor-counterparty"
+  },
+  {
+   "title": "Worker\u2192owner completion law broken: field captures (incidents, attendance, task-acks, shift-reports) persist to field_captures, but NO owner/manager read surface or GET route exists \u2014 the table is write-only",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "Completion-law one-directional break (worker\u2192owner) / write-only data black-hole",
+   "fileLine": "services/api-gateway/src/routes/bff/estate-manager-app.ts:779-782 (POST captures \u2192 saveFieldCapture) + services/api-gateway/src/repositories/estate-field-identity-repo.ts:118,235-275 (saveFieldCapture is the only accessor; SELECT at :262 is in-write idempotency only); zero GET routes / owner-portal readers",
+   "proposedFix": "Add an RLS-scoped repo list method (findFieldCaptures by tenant/property/captureType/date) and GET routes on the estate-manager BFF (GET /incidents, /attendance, /captures) plus an owner-portal panel consuming them, so a worker capture provably surfaces to the owner/manager.",
+   "lens": "xactor-owner-workforce"
+  },
+  {
+   "title": "bid.placed owner seller-surface pulse is defined but never published \u2014 no cockpit publisher and no call site",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "born-dark event / missing publisher",
+   "fileLine": "services/api-gateway/src/services/cockpit-events/types.ts:53,416-423 (kind+interface defined) \u2014 no publishBidPlaced in publishers.ts and no 'bid.placed' emit anywhere in backend",
+   "proposedFix": "Add a publishBidPlaced publisher (mirroring publishApplicationApproved at publishers.ts:271-287) and invoke it from the bid-submit path (route or BidSubmitted subscriber), emitting cockpit kind 'bid.placed' to the owner.",
+   "lens": "xactor-owner-counterparty"
+  },
+  {
+   "title": "SUPPORT (a read-mostly role) can both PROPOSE and APPROVE HIGH-risk destructive cross-tenant admin verbs \u2014 four-eye gate requires only distinct actor IDs, not distinct/elevated roles, so two SUPPORT accounts satisfy it; privilege exceeds tenants:delete which explicitly excludes SUPPORT",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "broken authorization / four-eye role-escalation (admin\u2194tenant boundary)",
+   "fileLine": "services/api-gateway/src/routes/admin/superpowers.hono.ts:164-167 (requireRole incl. SUPPORT on whole router) + :384 (approve guard is actor-id only, no role floor); packages/database/src/migrations/0301_admin_four_eye_pending.sql:124-126 (role_chk allows SUPPORT) + :134-139 (distinct_actors_chk actor-id only). Contrast services/api-gateway/src/middleware/authorization.ts:83 (users:delete) and :89 (tenants:delete excludes SUPPORT)",
+   "proposedFix": "Gate /bulk-action + /approve with requireRole(SUPER_ADMIN, ADMIN) (keep SUPPORT only on read-only /pending). Add a role floor in the approve handler: reject when auth.role is not ADMIN/SUPER_ADMIN. Tighten admin_four_eye_role_chk to exclude SUPPORT for proposed_by_role/approved_by_role on HIGH verbs. Align with authorization.ts so superpower verbs never exceed the tenants:delete / users:delete bar.",
+   "lens": "xactor-admin-tenant-rls"
+  },
+  {
+   "title": "GET /field/shifts/today throws 22P02 (uuid cast) for every real tenant \u2014 worker shift card born-broken against real Postgres",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "schema-type-mismatch / test-harness false-green (fake drizzle handle hides 22P02 uuid cast)",
+   "fileLine": "services/api-gateway/src/routes/field/shifts.hono.ts:191-192 (eq vs uuid columns); schema packages/database/src/schemas/maintenance-tasks.schema.ts:61,63; migration packages/database/src/migrations/0283_maintenance_tasks_toolbox.sql (tenant_id/assigned_to_user_id uuid)",
+   "proposedFix": "Compare against the uuid columns via explicit text cast so non-uuid tenant/user ids don't throw: replace eq(maintenanceTasks.tenantId, tenantId) with sql`${maintenanceTasks.tenantId}::text = ${tenantId}` and eq(maintenanceTasks.assignedToUserId, userId) with sql`${maintenanceTasks.assignedToUserId}::text = ${userId}` (mirrors the 0283 RLS policy's tenant_id::text convention). Longer-term align maintenance_tasks.tenant_id/assigned_to_user_id to TEXT to match every other tenant-scoped table. Also add an integration test that runs against real PG (not the fake handle) so this class can't false-green again.",
+   "lens": "regress-new-routes"
+  },
+  {
+   "title": "M-Pesa B2C payout stranded in PROCESSING when no callback ever arrives \u2014 debited-but-undelivered money is fetched then filtered out, never swept",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "Half-state never driven to terminal / dependency-down (lost callback) traced to money loss",
+   "fileLine": "services/payments-ledger/src/jobs/disbursement-reconciliation.job.ts:142 (.filter(d => d.status === 'NEEDS_REVERSAL')); findPending returns PENDING/PROCESSING/IN_TRANSIT/NEEDS_REVERSAL at drizzle-disbursement.repository.ts:353-358; B2C createTransfer PENDING->PROCESSING at disbursement.service.ts:305-309",
+   "proposedFix": "In reconcileDisbursements, after the NEEDS_REVERSAL pass, also escalate STALE in-flight rows: for PROCESSING/IN_TRANSIT rows older than Safaricom's max callback window, either flip them to NEEDS_REVERSAL so the existing sweep+loud-surface logic handles them, or query the Daraja Transaction Status API. At minimum log a queryable WARN with count+ids for in-flight rows older than the threshold so debited-but-undelivered money is never silent.",
+   "lens": "regress-kernel-money"
+  },
+  {
+   "title": "Signup session cookie is host-only \u2014 composition root never injects cookieDomain, so even a cookie-reading cockpit on owners.bossnyumba.com cannot receive a cookie set on api.bossnyumba.com",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "Cross-subdomain cookie-scope misconfiguration (integration seam)",
+   "fileLine": "services/api-gateway/src/index.ts:1274-1285 (deps omit cookieDomain); services/api-gateway/src/routes/orgs.hono.ts:89,214; services/api-gateway/src/auth/supabase/supabase-session.ts:127; docker/nginx.prod.conf:113,135,177",
+   "proposedFix": "Inject cookieDomain:'.bossnyumba.com' (the registrable parent) into createOrgsRouter at index.ts:1274 from an env-driven config so prod emits a parent-domain cookie shared across api/owners subdomains while dev (localhost) leaves it undefined. Mirror the same domain on the normal /auth/login cookie path so signup and login share one session-cookie scope.",
+   "lens": "regress-integration-seams"
+  },
+  {
+   "title": "Skills marketplace surface re-wired by commit 044be2d1 fetches a bare relative /api/v1/owner/account/skills \u2014 works via the Vite dev proxy but is born-dark in the nginx-served prod build (no /api/v1 proxy on the owners subdomain)",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "Prod-dark relative-fetch (dev-proxy masks it) \u2014 incompletely-applied wire fix",
+   "fileLine": "apps/owner-portal/src/app/skills/page.tsx:18 (ENDPOINT), :23-34 (authedFetch raw fetch, no base), :66/:140/:153/:170 (load/toggle/install/run hit bare ENDPOINT); contrast apps/owner-portal/src/lib/api.ts:1-20; correct sibling apps/owner-portal/src/app/plan/page.tsx:23,61; docker/nginx.prod.conf:174-190 (no /api/v1); apps/owner-portal/vite.config.ts:23 (dev proxy masks)",
+   "proposedFix": "Route the skills page through the same base-resolving client the rest of the portal uses: replace authedFetch(ENDPOINT) with api.get('/owner/account/skills') (and api.post for install/toggle/run) so VITE_API_URL is prepended. If bespoke fetch is needed, prepend the resolved API base (reuse getApiBase from lib/api.ts). Add a build/config assertion that no owner-portal surface fetches a bare relative /api/v1 path \u2014 which would also catch useOwnerTabs.ts and useGhostCompletion.ts which share this defect.",
+   "lens": "regress-integration-seams"
+  },
+  {
+   "title": "field-capture-service standalone deploy silently drops every workforce capture: main() builds app with no StorageAdapter and a volatile in-memory store",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "silent-prod-no-op",
+   "fileLine": "services/field-capture-service/src/index.ts:89 (main->buildApp() no deps); :61 default createInMemoryCaptureStore(); :79-83 storageAdapter omitted -> services/field-capture-service/src/routes/captures.ts:221 persistBytesIfNeeded returns payload unchanged; ships via infra/k8s/field-capture-service/overlays/prod + base/deployment.yaml (NODE_ENV=production, replicas:2)",
+   "proposedFix": "Add services/field-capture-service/src/composition/build-app.ts (mirroring services/outcomes-metering/src/composition/build-app.ts) that wires a durable Drizzle/Postgres CaptureStore AND a real StorageAdapter (Supabase/S3) from env, and have main() call it. Fail-fast (throw -> process.exit(1)) when NODE_ENV=production and either the store or adapter is unconfigured, instead of falling through to createInMemoryCaptureStore()/no-adapter.",
+   "lens": "class-borndark-prodnoop"
+  },
+  {
+   "title": "R2-supplement worker tenant-context binding is not connection-pinned: concurrent per-tenant BEGIN/SET LOCAL/COMMIT over a multiplexed pool can run bodies under the wrong (or no) tenant GUC",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "concurrency/race in the just-landed RLS fix (cross-tenant isolation + silent-no-op)",
+   "fileLine": "packages/database/src/rls/with-tenant-context.ts:115-140 & :148-170 (bare db.execute(BEGIN)/SET LOCAL/COMMIT \u2014 NOT db.transaction); shared pool from packages/database/src/client.ts:51 postgres(connectionString) default max:10 via services/api-gateway/src/composition/db-client.ts getDb(); driven concurrently from services/brain-evolution-worker/src/schedule/cron-handler.ts:116 and services/proactive-triggers-worker/src/bootstrap/build-deps.ts:178 + bootstrap/drizzle-directory.ts:71 under iterateTenants Promise.all (concurrency default 4)",
+   "proposedFix": "Make the worker helpers connection-pinned: (1) accept/derive a Drizzle handle and use db.transaction(async tx => { await tx.execute(SET LOCAL ...); return body(tx); }) so all statements run on one pinned connection (matching the non-worker withTenantContext at line 56); or (2) reserve a dedicated connection with postgres.js sql.reserve() and run BEGIN/SET LOCAL/body/COMMIT on it; or (3) give each concurrent worker its own max:1 client instead of sharing the pool. The doc-comment at lines 99-101 asserting postgres.js keeps every statement on the txn-owned connection is false for bare db.execute(BEGIN) over a multiplexed pool.",
+   "lens": "class-borndark-prodnoop"
+  },
+  {
+   "title": "Executor never enforces policyOutcome.authorized \u2014 a policy DENY (authorized:false) is read into the type but never checked, so denied tools execute anyway",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "half-wired dormant safety / silent no-op",
+   "fileLine": "packages/central-intelligence/src/kernel/agency/executor/executor.ts:455-463 (authorized read into local) \u2014 no `if (!policyOutcome.authorized)` rejection branch anywhere in the file",
+   "proposedFix": "After the policy decide() block (executor.ts ~:501) add a fail-closed branch: `if (!policyOutcome.authorized) { safeUpdateStep(...'failed'...); safeAudit(...decision:'policy-denied'...); when isSovereignTier append a sovereign-ledger failure row; stepsFailed++; bailed=true; continue; }` so a DENY aborts the step before counter-model / approval / invoke.",
+   "lens": "class-halfwired-dormant"
+  },
+  {
+   "title": "Kernel + orchestrator four-eye gates fall back to an in-memory ApprovalStore in production \u2014 Drizzle createPgApprovalStore is built then orphaned, so approvals don't persist across restart/replicas and diverge from the approver API",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "half-wired dormant safety / persistence dep unbound",
+   "fileLine": "packages/central-intelligence/src/kernel/compose.ts:521-522 (in-memory fallback); services/api-gateway/src/composition/brain-kernel-wiring.ts:521-523 (orchestrator in-memory fallback) + :590-599 (composeArgs omits approvalStore); orphaned real store at services/api-gateway/src/composition/sovereign.ts:278 + :510 (zero readers)",
+   "proposedFix": "Thread the already-built createPgApprovalStore through: set approvalStore on composeArgs in brain-kernel-wiring.ts so composeSovereign builds a Drizzle-backed gate, and pass a Drizzle-backed ApprovalGate via orchestratorBindings.approvalGate from service-registry.ts:2741. Remove or route the dead mutable.approvalStore stash. Keep createInMemoryApprovalStore strictly for tests/dev (gate on DATABASE_URL absence) so production always gets the persistent, replica-shared store and its atomic casMarkExecuted path; align the gate's table with the one mwikila-inbox.hono.ts reads.",
+   "lens": "class-halfwired-dormant"
+  },
+  {
+   "title": "Owner analytics dashboard hardcodes /100 on minor-unit revenue/expense/NOI sums \u2014 100x too small for TZS (launch currency)",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "money-0-decimal-currency",
+   "fileLine": "services/api-gateway/src/routes/analytics.hono.ts:138-140",
+   "proposedFix": "Resolve the tenant currency and convert minor\u2192major via decimalsForCurrency()/toDecimal() (or Money.fromMinorUnits(...) + toDecimal) so 0-decimal currencies divide by 1; apply the same currency to lines 138, 139, 140. Separately, the FE should pass the tenant currency into formatCurrency (currently defaults to USD).",
+   "lens": "class-money-residual"
+  },
+  {
+   "title": "collectionRate denominator double-scales arrears (already-minor) by *100, mixing money scales",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "money-scale-mixing",
+   "fileLine": "services/api-gateway/src/routes/analytics.hono.ts:145",
+   "proposedFix": "Keep both operands in minor units: const totalInvoicedMinor = arrearsBalance + currentRevenueMinor; (drop the *100). arrearsBalance is already minor per its source columns \u2014 document that once at the reduction site.",
+   "lens": "class-money-residual"
+  },
+  {
+   "title": "Budget-forecast revenue chart divides minor-unit payment sums by 100 \u2014 TZS Y-values 100x too small",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "money-0-decimal-currency",
+   "fileLine": "services/api-gateway/src/routes/budget-forecast.hono.ts:107",
+   "proposedFix": "Convert minor\u2192major using the series/tenant currency's decimals (decimalsForCurrency) instead of a fixed /100; for 0-decimal currencies emit the raw minor sum. Apply the same fix to fetchMonthlyExpenses if it shares the /100 pattern.",
+   "lens": "class-money-residual"
+  },
+  {
+   "title": "Portfolio performance revenue map divides minor-unit sums by 100 \u2014 TZS understated 100x",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "money-0-decimal-currency",
+   "fileLine": "services/api-gateway/src/routes/portfolio.hono.ts:343",
+   "proposedFix": "Replace both /100 sites (line 343 revenue, line 356 portfolio value) with a currency-aware minor\u2192major conversion (decimalsForCurrency/toDecimal) keyed on the tenant/series currency.",
+   "lens": "class-money-residual"
+  },
+  {
+   "title": "Analytics-detail route's minorToMajor hardcodes /100 (contradicts db-mappers identity), mis-scaling TZS revenue/expense series",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "money-0-decimal-currency",
+   "fileLine": "services/api-gateway/src/routes/analytics-detail.hono.ts:78",
+   "proposedFix": "Delete the local /100 minorToMajor and route all minor\u2192major through one currency-aware helper keyed on decimalsForCurrency(currency). Reconcile with db-mappers.ts:44 so the codebase has exactly one (currency-aware) convention.",
+   "lens": "class-money-residual"
+  },
+  {
+   "title": "org-signup 'active' session cookie is unusable cross-origin: HttpOnly, SameSite=Lax, no Domain, set on the gateway host, then hard-redirect to a different owner-portal origin that can't read it",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "cross-origin cookie scoping / partial-failure half-state",
+   "fileLine": "services/api-gateway/src/routes/orgs.hono.ts:200-217 (Set-Cookie sameSite lax, domain only if injected; maxAge=expires_in) + services/api-gateway/src/index.ts:1274-1285 (cookieDomain omitted at composition) + services/api-gateway/src/auth/supabase/supabase-session.ts:121-122 (HttpOnly + SameSite=Lax) + apps/marketing/src/components/auth/OwnerSignUpForm.tsx:54-62,108 (redirect to other origin)",
+   "proposedFix": "Inject cookieDomain (e.g. '.bossnyumba.com') at the composition root so the cookie spans gateway + cockpit subdomains, AND give the cockpit a first-load handler that exchanges the cookie for its in-memory/localStorage session (or return the token in the JSON body for a one-time SPA handoff). Until a shared-domain + readable handoff exists, do not advertise 'active' as a logged-in landing. Separately, set Max-Age to the documented 7-day session window rather than the Supabase access-token expires_in.",
+   "lens": "class-edge-failureaxis"
+  },
+  {
+   "title": "Marketing OwnerSignUpForm treats signupStatus='pending_sign_in' as full success and redirects to /dashboard \u2014 user is told 'success' but lands with no session at all",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "error-branch / silent partial-failure surfaced as success",
+   "fileLine": "apps/marketing/src/components/auth/OwnerSignUpForm.tsx:105-109 (branches only on json.success, ignores signupStatus) + services/api-gateway/src/composition/org-signup-service.ts:408,420-426 (pending_sign_in, session=null) + services/api-gateway/src/routes/orgs.hono.ts:200 (Set-Cookie only when signupStatus==='active')",
+   "proposedFix": "Branch on signupStatus in the form: when 'pending_sign_in', route to /sign-in?from=signup with an 'account created \u2014 please sign in to continue' notice instead of /dashboard. Only redirect to the cockpit when signupStatus==='active' AND a session is present.",
+   "lens": "class-edge-failureaxis"
+  },
+  {
+   "title": "Tenant bid-loop message thread mis-attributes EVERY message: gateway emits sender:'applicant'|'owner' but tenant-mobile FE reads from:'tenant'|'landlord' \u2014 field is undefined, all messages render as 'Landlord'",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "FE\u2194BE contract drift (field name + enum values)",
+   "fileLine": "services/api-gateway/src/routes/tenders.hono.ts:233-244 (toMessageView returns `sender`, values applicant/owner) vs apps/tenant-mobile/src/types/listing.ts:51-56 (BidMessage.from:'tenant'|'landlord') consumed at apps/tenant-mobile/app/bids/[id].tsx:138-140 and apps/tenant-mobile/src/components/MessageBubble.tsx:17; no transform in apps/tenant-mobile/src/api/marketplace.ts:134-153",
+   "proposedFix": "Map sender\u2192from in toMessageView (applicant\u2192'tenant', owner\u2192'landlord') and emit `from`, OR add a transform in marketplace.ts. Align both ends on one field name + value set and add a contract test asserting a returned message has from\u2208{tenant,landlord}.",
+   "lens": "class-edge-failureaxis"
+  },
+  {
+   "title": "Owner Skills marketplace page renders an all-English body regardless of the sw toggle (single-locale rule violated)",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "i18n-single-locale-violation",
+   "fileLine": "apps/owner-portal/src/app/skills/page.tsx:217-294 (literals at 223, 226-227, 235, 241, 253, 256, 268, 271, 283); routed at apps/owner-portal/src/App.tsx:309",
+   "proposedFix": "Add the missing p89.skills keys to messages/en.json AND messages/sw.json (title, subtitle, installedHeading, marketplaceHeading, categoryLabel, triggerLabel, createSkill, plus a localized label map for each SkillCategory + SkillTrigger enum value) and replace every hard-coded literal in the success render with t(...). The chips must map each enum token to a localized human label, never render the raw token.",
+   "lens": "felt-design-a11y"
+  },
+  {
+   "title": "Mr. Mwikila inbox approve / deny / reverse give the owner ZERO feedback when the sovereign-action mutation fails (silent no-op on the highest-stakes buttons)",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "silent-failure-no-user-feedback",
+   "fileLine": "apps/owner-portal/src/pages/MwikilaInbox.tsx:203-228 (onApprove 203-209, onDeny 211-217, onReverse 219-228)",
+   "proposedFix": "Capture and surface the result in all three handlers: `const res = await api.post(...); if (!res.success) { setErrorMsg(res.error?.message ?? <localized actionFailed>); return; } await refresh();`, wrapped in try/catch for network errors (mirroring refresh). Optionally disable the buttons while in-flight to prevent double-submit. Provide localized sw/en strings per the single-locale rule.",
+   "lens": "felt-design-a11y"
+  },
+  {
+   "title": "E2E runner silently collects only 17 of ~52 specs \u2014 every @security @critical cross-tenant-isolation / gdpr-pdpa / session-refresh / mpesa-callback suite is dropped from CI; config + ci.yml comments falsely assert full coverage",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "CI-gate-references-deleted-thing / regression-masking false-green",
+   "fileLine": "e2e/playwright.config.ts:83-115 (projects array) + .github/workflows/ci.yml:247-256 (pnpm test:e2e, no --project; vestigial ADMIN_PORTAL_URL:253) + package.json:10 (test:e2e script)",
+   "proposedFix": "Add projects whose testMatch covers the unmatched dirs (e.g. a 'critical-flows' project testMatch 'critical-flows/**/*.spec.ts' and a 'platform-journeys' project covering journeys/**/*.spec.ts + real-llm/** + the root *.spec.ts), OR drop per-project testMatch so the default testDir ./tests collects everything. Correct the playwright.config.ts:75-77 and ci.yml:247-248 comments to state which dirs each project scopes. Remove the now-vestigial ADMIN_PORTAL_URL env at ci.yml:253.",
+   "lens": "completeness-critic"
+  },
+  {
+   "title": "Admin four-eye superpower dispatch is born-dark under FORCE-RLS \u2014 enqueueOutbox inserts a cross-tenant event_outbox row with the actor-tenant GUC and no withServiceRoleContext, so every cross-tenant admin action is RLS-rejected while the audit journal records 'applied'",
+   "severity": "high",
+   "verdict": "real",
+   "issueClass": "half-wired dormant safety / RLS-darkness regression introduced by latest commit (f0bb4452)",
+   "fileLine": "services/api-gateway/src/routes/admin/superpowers/bulk-action-dispatchers.ts:98-124 (enqueueOutbox insert) + superpowers.hono.ts:246,261 (MEDIUM journal status='applied' pre-dispatch) + :529,546 (HIGH pending/journal status='applied' pre-dispatch) + RLS: migrations 0014:119-124, 0173:161",
+   "proposedFix": "In enqueueOutbox, wrap the event_outbox insert in withServiceRoleContext(ctx.db, async (tx) => tx.insert(eventOutbox)...) AND add an `event_outbox_service_role_bypass` policy (USING/WITH CHECK current_setting('app.is_service_role',true)='true') in a new migration, mirroring tenant_deletion_schedules in 0337. Defer the undoJournal/pending status='applied' write until AFTER a successful dispatch (or roll it back on failure) so the audit trail never records an effect that did not fire. Until both land, the MEDIUM path must not return status:'applied'/'Action applied.' when failed>0.",
+   "lens": "completeness-critic"
+  },
+  {
+   "title": "Home 'Privacy budget' hero panel is permanently dark \u2014 proxy targets /api/v1/platform/budget which has no gateway route, despite the privacyBudgetComposer service existing",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "half-wired surface / missing BFF route (not a round-1 dedup; round-1 covered only the four /industry hero cards)",
+   "fileLine": "apps/admin-platform-portal/src/app/page.tsx:50 (fetchBudget) + api/platform/budget/route.ts (proxies to /api/v1/platform/budget) \u2192 no /platform/budget mount in services/api-gateway/src/index.ts (only :1647 jarvis, :1650 overview)",
+   "proposedFix": "Mount a /platform/budget route on the gateway (HQ-gated, same as platform-overview) that reads services.privacyBudgetComposer and returns top-level { remainingEpsilon, totalEpsilon, windowLabel } (the exact shape page.tsx:38-42 + 110-121 reads). Then proxy + page light up. If intentionally deferred, register it in the born-dark backlog / KNOWN_ISSUES so it isn't mistaken for a transient outage, and correct the round-1 note that claimed the budget aggregator exists.",
+   "lens": "actor-admin"
+  },
+  {
+   "title": "Settings \u2192 Users 'Edit' co-owner button is a dead button (no onClick)",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "dead button",
+   "fileLine": "apps/owner-portal/src/pages/SettingsPage.tsx:641-643 (Edit/pencil button for non-OWNER rows \u2014 no onClick)",
+   "proposedFix": "Wire 'Edit' to an edit-member flow (role / property-access update) hitting a real route, or remove the Edit control until that route exists.",
+   "lens": "actor-owner adversarial verification \u2014 opened apps/owner-portal/src/pages/SettingsPage.tsx (full), services/api-gateway/src/routes/owner/owner-account.hono.ts (full), apps/owner-portal/src/app/skills/page.tsx + plan/page.tsx (event dispatch sites), services/api-gateway/src/routes/auth-mfa.ts (enroll/confirm), and grepped exhaustively for route registrations and window event listeners. Cross-checked all seven findings against the first-116 audit (audit-reports/mode-c-review-2026-06-14.json) and the r2-supplement (mode-c-r2-supplement-2026-06-14.json, 20 items). Confirmed: NO /owner/account/profile route; zero src-level addEventListener for 'owner-portal:mfa-enroll' or 'owner-portal:jarvis-prefill' (grep hits were only in dist/ bundles); Change Photo (:384) and Edit co-owner (:641) have no onClick; hardcoded properties array (:175) feeds the real invite POST; co-owners GET maps properties:[] (:278); owner-portal api client has no .put() so POST /settings alias is the sole save path and omits name/email/phone. Router mounted at index.ts:1728; /auth/mfa at :1242."
+  },
+  {
+   "title": "Skills marketplace 'Create new Skill' (and post-run open-in-Jarvis) dispatch an unlistened window event \u2014 the button does nothing",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "dead-end button (event into the void)",
+   "fileLine": "apps/owner-portal/src/app/skills/page.tsx:178-195 (openInJarvis/createNewSkill dispatch 'owner-portal:jarvis-prefill'), button wired :232; same unlistened event from apps/owner-portal/src/app/plan/page.tsx:104-108; no addEventListener for it in src",
+   "proposedFix": "Add an addEventListener('owner-portal:jarvis-prefill') in an always-mounted component (e.g. MwikilaWidgetMount) that opens the Jarvis widget with the prefilled prompt, or navigate to /jarvis with the prompt in router state. Until then disable/hide 'Create new Skill' and the Plan propose actions.",
+   "lens": "actor-owner adversarial verification \u2014 opened apps/owner-portal/src/pages/SettingsPage.tsx (full), services/api-gateway/src/routes/owner/owner-account.hono.ts (full), apps/owner-portal/src/app/skills/page.tsx + plan/page.tsx (event dispatch sites), services/api-gateway/src/routes/auth-mfa.ts (enroll/confirm), and grepped exhaustively for route registrations and window event listeners. Cross-checked all seven findings against the first-116 audit (audit-reports/mode-c-review-2026-06-14.json) and the r2-supplement (mode-c-r2-supplement-2026-06-14.json, 20 items). Confirmed: NO /owner/account/profile route; zero src-level addEventListener for 'owner-portal:mfa-enroll' or 'owner-portal:jarvis-prefill' (grep hits were only in dist/ bundles); Change Photo (:384) and Edit co-owner (:641) have no onClick; hardcoded properties array (:175) feeds the real invite POST; co-owners GET maps properties:[] (:278); owner-portal api client has no .put() so POST /settings alias is the sole save path and omits name/email/phone. Router mounted at index.ts:1728; /auth/mfa at :1242."
+  },
+  {
+   "title": "Hard-coded Swahili Section titles on 6 primary workforce tab hubs violate English-default single-locale",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "bilingual single-locale / English-default violation",
+   "fileLine": "apps/staff-mobile/app/(tabs)/field.tsx:25; docs.tsx:15; decisions.tsx:20; cash.tsx:15; people.tsx:15; sites.tsx:18,27",
+   "proposedFix": "Add tab-section title keys to src/i18n/en.json + sw.json under the existing t.tabs namespace and replace each literal with the resolved value via useI18n(), e.g. const { t } = useI18n(); <Section title={t.tabs.fieldToolsTitle}>. Extend single-locale-guard.test.ts to assert no Swahili literals remain in (tabs)/*.tsx.",
+   "lens": "actor-workforce"
+  },
+  {
+   "title": "projectSession hardcodes preferredLang 'en' -> Swahili toggle silently resets on every cold start",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "incomplete first-round fix / single-locale regression",
+   "fileLine": "apps/tenant-mobile/src/auth/session.ts:76",
+   "proposedFix": "In projectSession/ensureBootstrapped, hydrate preferredLang from the Supabase user_metadata claim or a fetched /applicants/profile read (or persisted local storage), defaulting to 'en' only when no saved value exists, instead of the hardcoded 'en' at line 76.",
+   "lens": "actor-counterparty"
+  },
+  {
+   "title": "Decimal bid price passes FE validation but the gateway requires an integer -> bid 400s with a generic 'bid failed' toast",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "money-boundary / validation drift / 0-decimal currency",
+   "fileLine": "apps/tenant-mobile/src/schemas/bid.ts:8,17-19 vs services/api-gateway/src/routes/tenders.hono.ts:45",
+   "proposedFix": "Floor or reject decimals client-side \u2014 either make parseBidPrice floor the value or tighten the regex to digits-only with a field-level error \u2014 or relax-and-floor at the gateway; and surface the real validation message rather than the generic toast.",
+   "lens": "actor-counterparty"
+  },
+  {
+   "title": "Manager open-task dispatch queue is unfiltered: BFF GET /work-orders ignores status and propertyId params, so the 'to dispatch' queue shows completed/cancelled orders and the property filter is a no-op",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "FE\u2194BE contract drift (params silently dropped) / degraded cross-actor surface",
+   "fileLine": "apps/staff-mobile/src/manager/useManagerTasks.ts:114-121 vs services/api-gateway/src/routes/bff/estate-manager-app.ts:278-298 (handler reads only limit; status + propertyId never applied to where-clause)",
+   "proposedFix": "In the BFF /work-orders handler, read status and propertyId and apply them to the where-clause (treat status='open' as IN (submitted,acknowledged,in_progress,blocked) to match the FE alias), or reuse the existing /work-orders/queue filtering / point the FE at /work-orders/queue.",
+   "lens": "xactor-owner-workforce"
+  },
+  {
+   "title": "Applicant can self-award their own never-countered bid \u2014 accept route permits submitted\u2192awarded with zero owner involvement",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "authorization / business-logic gap",
+   "fileLine": "services/api-gateway/src/routes/tenders.hono.ts:557-568 (UPDATE ... SET status='awarded' WHERE ... status IN ('submitted','negotiating'))",
+   "proposedFix": "Restrict the accept transition to bids that have an owner counter present (e.g. status='negotiating' AND a negotiation/turn exists via hasCounter semantics, or the tender shows the owner initiated the offer). Disallow accepting a 'submitted' bid that was never countered by the owner.",
+   "lens": "xactor-owner-counterparty"
+  },
+  {
+   "title": "publishApplicationApproved cockpit publisher has zero live call sites \u2014 owner-portal application.approved feed never fires",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "dead publisher / orphaned wiring",
+   "fileLine": "services/api-gateway/src/services/cockpit-events/publishers.ts:271-287 (only invocation is __tests__/publishers.test.ts:148; exported index.ts:61; 0 production call sites)",
+   "proposedFix": "Call publishApplicationApproved from the application-approval handler (wherever the owner approves an application / awards the tender that represents the application). If approval IS the tender-award path, wire it into the TenderAwarded subscriber alongside the winner notification.",
+   "lens": "xactor-owner-counterparty"
+  },
+  {
+   "title": "Four-eye approve UPDATE lacks a status='pending' WHERE guard (TOCTOU) \u2014 two concurrent approvers both pass the in-handler status check and both UPDATE status='applied'; once an executor is wired this fires the destructive verb twice",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "concurrency / idempotency race (four-eye approval)",
+   "fileLine": "services/api-gateway/src/routes/admin/superpowers.hono.ts:366-370 (SELECT pending, no FOR UPDATE), :458-470 (UPDATE SET status='applied' WHERE id=pending.id \u2014 no AND status='pending', returning() not checked for race)",
+   "proposedFix": "Make the transition an atomic compare-and-set: UPDATE adminSuperpowerPendingApprovals SET status='applied', ... WHERE id = pending.id AND status='pending' RETURNING * \u2014 treat empty returning() as 409 ALREADY_RESOLVED and fire the executor only when exactly one row is returned. Equivalently SELECT ... FOR UPDATE before the status checks. Apply the same status-guarded compare-and-set to /reject.",
+   "lens": "xactor-admin-tenant-rls"
+  },
+  {
+   "title": "device_tokens upsert reassigns tenant_id on a cross-tenant conflict, failing/migrating push registration for any user who belongs to 2+ tenants on the same device (silent push born-dark)",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "RLS-vs-ON-CONFLICT cross-tenant collision / silent-no-op",
+   "fileLine": "packages/database/src/migrations/0330_device_tokens.sql:74-75 (UNIQUE (user_id, token, platform), no tenant_id) + services/api-gateway/src/routes/me.hono.ts:142-145 (ON CONFLICT (user_id, token, platform) DO UPDATE SET ... tenant_id = EXCLUDED.tenant_id)",
+   "proposedFix": "Make the conflict tenant-scoped in a NEW follow-on migration (do not edit shipped 0330): drop device_tokens_user_token_platform_uq, add UNIQUE (tenant_id, user_id, token, platform); update the ON CONFLICT target in me.hono.ts:142 to (tenant_id, user_id, token, platform) and remove the tenant_id = EXCLUDED.tenant_id reassignment (tenant_id is now part of the key and never changes). This makes cross-tenant device rows distinct and stops both the RLS-hidden-arbiter error and the silent A->B migration.",
+   "lens": "regress-migrations-rls"
+  },
+  {
+   "title": "Co-owner invite email enqueue uses bare ON CONFLICT against a PARTIAL unique index \u2014 the invite/resend route 500s, regressing SettingsPage Users back to broken (the exact thing migration 0335 fixed)",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "ON-CONFLICT partial-index arbiter inference / phantom-arbiter",
+   "fileLine": "services/api-gateway/src/routes/owner/owner-account-repo.ts:389 (bare ON CONFLICT (tenant_id, idempotency_key) DO NOTHING) vs packages/database/src/migrations/0091_notification_dispatch_log.sql:86-88 (partial unique index WHERE idempotency_key IS NOT NULL)",
+   "proposedFix": "Restate the index predicate in the conflict clause at owner-account-repo.ts:389: ON CONFLICT (tenant_id, idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING (idempotency_key is already always non-null). Apply the same fix to the 3 sibling sites (lease-expiry-alert-cron.ts:387,440; monthly-close/notification-adapter.ts:105). Add an integration test that runs the insert twice against a real/embedded Postgres so this can never silently regress.",
+   "lens": "regress-migrations-rls"
+  },
+  {
+   "title": "C2B matched-intent booking throws and Daraja retries forever when the pre-created intent currency differs from the platform-holding account currency",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "FE/BE-internal contract drift on currency / unbounded retry on a non-retryable error",
+   "fileLine": "services/payments-ledger/src/services/payment-orchestration.service.ts:704-708 (matched path -> handlePaymentSuccess -> bookPaymentToLedger) + :539-555 (gross booked to holding.id); intent currency unguarded at createPayment :232-253; currency check that throws at services/payments-ledger/src/services/ledger.service.ts:293-298",
+   "proposedFix": "In the matched C2B branch, validate paymentIntent.amount.currency === holding.currency before booking and, on mismatch, divert to bookUnallocatedReceipt (books in holding.currency + flags for operator attribution) instead of re-throwing into an infinite Daraja retry. Alternatively enforce at intent-creation (createPayment) that a C2B intent's currency equals the tenant's holding-account currency. Add a test for the cross-currency matched-C2B case.",
+   "lens": "regress-kernel-money"
+  },
+  {
+   "title": "Marketing signup POST defaults to same-origin /api/v1/orgs/signup which nginx routes to the marketing Next app (no such route \u2192 404) \u2014 funnel works only if NEXT_PUBLIC_API_GATEWAY_URL is explicitly set at build time, and the 'same-origin proxy' the code comment claims does not exist",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "FE\u2194BE contract / deploy-routing seam (env-contingent 404)",
+   "fileLine": "apps/marketing/src/lib/api.ts:13-19 (empty base + false same-origin-proxy comment); apps/marketing/src/components/auth/OwnerSignUpForm.tsx:85; docker/nginx.prod.conf:110-127 (no /api/v1 proxy); apps/marketing/next.config.js (no rewrites); apps/marketing/src/app/api/* (only chat + pilot-apply, no orgs/signup)",
+   "proposedFix": "Either (a) make NEXT_PUBLIC_API_GATEWAY_URL required for the marketing build via requirePublicBaseUrl (the same guard OwnerSignUpForm already uses for NEXT_PUBLIC_OWNER_WEB_ORIGIN at targetUrl()) so a missing gateway URL fails loud rather than 404ing, OR (b) add the promised same-origin proxy \u2014 a location /api/v1 { proxy_pass api_gateway; } block in the bossnyumba.com server in nginx.prod.conf and/or a next.config.js rewrites() entry. Either way, correct the apiBaseUrl() comment to match the path that actually exists.",
+   "lens": "regress-integration-seams"
+  },
+  {
+   "title": "Co-owner invite is two un-transacted writes: createInvite (DB row) then enqueueInviteEmail (queue) \u2014 a failure in the second leaves an orphaned pending invite while the owner is told 'Failed to send invitation' and retries into a duplicate",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "partial-failure half-state / non-atomic multi-write",
+   "fileLine": "services/api-gateway/src/routes/owner/owner-account.hono.ts:307-352 (createInvite + getOwnerSettings + enqueueInviteEmail, no transaction; blanket 500 in catch) + services/api-gateway/src/routes/owner/owner-account-repo.ts:265-274 (plain INSERT, no ON CONFLICT) + packages/database/src/migrations/0335_co_owner_invites.sql:94-99 (only token is unique; no UNIQUE(tenant_id,email))",
+   "proposedFix": "Wrap createInvite + enqueueInviteEmail in one transaction so a failed enqueue rolls back the invite row, OR make createInvite idempotent on (tenant_id, lower(email)) where status='pending' so a retry reuses the existing row, OR on the enqueue-failure path revoke/delete the just-created invite before returning the error.",
+   "lens": "class-edge-failureaxis"
+  },
+  {
+   "title": "Owner Settings 'Save' shows the green-meaning success text 'Settings saved successfully' inside a RED error box when the save fails",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "dishonest-error-state-success-over-failure",
+   "fileLine": "apps/owner-portal/src/pages/SettingsPage.tsx:228,231 (handleSave error + catch branches)",
+   "proposedFix": "Add a settingsSaveFailed key (en+sw) and use it in both branches: flashError(res.error?.message ?? t('settingsSaveFailed')) at 228 and flashError(t('settingsSaveFailed')) at 231. Never reuse a success string as an error fallback.",
+   "lens": "felt-design-a11y"
+  },
+  {
+   "title": "First-round codemap-cleanup fix incompletely applied \u2014 Docs/CODEMAPS/INDEX.md Apps table still lists 4 deleted/stale apps (2 dead links) and omits the two canonical mobile apps",
+   "severity": "medium",
+   "verdict": "real",
+   "issueClass": "stale-doc / incompletely-applied-fix (deleted-app residue in LLM navigation entry-point)",
+   "fileLine": "Docs/CODEMAPS/INDEX.md:99-105 (### Apps table) + Docs/CODEMAPS/admin-portal.md (still on disk, line 11)",
+   "proposedFix": "In INDEX.md ### Apps: delete the customer-app.md, estate-manager-app.md, and admin-portal.md rows; repoint the mobile row to apps/staff-mobile + apps/tenant-mobile (and rename/replace bossnyumba-mobile.md accordingly); delete the now-stale Docs/CODEMAPS/admin-portal.md file (sibling to the two already removed in a54855e2).",
+   "lens": "completeness-critic"
+  },
+  {
+   "title": "/api/platform/overview Next route reads API_GATEWAY_URL at module load and silently falls back to localhost in production, bypassing the prod-guard that lib/proxy.ts enforces everywhere else",
+   "severity": "low",
+   "verdict": "real",
+   "issueClass": "born-at-import / silent-prod-no-op (inconsistent with the established proxy.ts guard pattern)",
+   "fileLine": "apps/admin-platform-portal/src/app/api/platform/overview/route.ts:20-21",
+   "proposedFix": "Replace the module-scope GATEWAY_URL (lines 20-21) with a call to getApiGatewayBase() from '@/lib/proxy' INSIDE the GET handler (not at module scope) so an unset API_GATEWAY_URL throws in production, matching the lazy-throw guard used by budget/login and every other proxy route. Better: refactor the route to use proxyJson() outright for one consistent unreachable-envelope path.",
+   "lens": "actor-admin"
+  },
+  {
+   "title": "Settings \u2192 Profile 'Change Photo' button is still dead (no onClick) after the remediation pass touched this file",
+   "severity": "low",
+   "verdict": "real",
+   "issueClass": "dead button (incompletely-applied first-round fix)",
+   "fileLine": "apps/owner-portal/src/pages/SettingsPage.tsx:384-387 ('Change Photo' button \u2014 no onClick handler)",
+   "proposedFix": "Wire 'Change Photo' to a file input + avatar-upload endpoint, or hide/disable it with an honest 'coming soon' affordance like the 2FA-unavailable branch (:543-551) already does.",
+   "lens": "actor-owner adversarial verification \u2014 opened apps/owner-portal/src/pages/SettingsPage.tsx (full), services/api-gateway/src/routes/owner/owner-account.hono.ts (full), apps/owner-portal/src/app/skills/page.tsx + plan/page.tsx (event dispatch sites), services/api-gateway/src/routes/auth-mfa.ts (enroll/confirm), and grepped exhaustively for route registrations and window event listeners. Cross-checked all seven findings against the first-116 audit (audit-reports/mode-c-review-2026-06-14.json) and the r2-supplement (mode-c-r2-supplement-2026-06-14.json, 20 items). Confirmed: NO /owner/account/profile route; zero src-level addEventListener for 'owner-portal:mfa-enroll' or 'owner-portal:jarvis-prefill' (grep hits were only in dist/ bundles); Change Photo (:384) and Edit co-owner (:641) have no onClick; hardcoded properties array (:175) feeds the real invite POST; co-owners GET maps properties:[] (:278); owner-portal api client has no .put() so POST /settings alias is the sole save path and omits name/email/phone. Router mounted at index.ts:1728; /auth/mfa at :1242."
+  },
+  {
+   "title": "Settings \u2192 Users co-owner list never shows property access (backend returns properties:[] for every member; invite-assigned properties are dropped)",
+   "severity": "low",
+   "verdict": "real",
+   "issueClass": "FE\u2194BE contract drift / data loss (display/audit gap)",
+   "fileLine": "services/api-gateway/src/routes/owner/owner-account.hono.ts:278 (members mapped with properties:[] hardcoded) vs apps/owner-portal/src/pages/SettingsPage.tsx:617-621 (renders member.properties)",
+   "proposedFix": "Resolve each accepted member's granted property names/ids from the membership/scope table the invite writes to, in the co-owners query, and return them in properties so the Users table reflects real access scope (pending invites already carry properties).",
+   "lens": "actor-owner adversarial verification \u2014 opened apps/owner-portal/src/pages/SettingsPage.tsx (full), services/api-gateway/src/routes/owner/owner-account.hono.ts (full), apps/owner-portal/src/app/skills/page.tsx + plan/page.tsx (event dispatch sites), services/api-gateway/src/routes/auth-mfa.ts (enroll/confirm), and grepped exhaustively for route registrations and window event listeners. Cross-checked all seven findings against the first-116 audit (audit-reports/mode-c-review-2026-06-14.json) and the r2-supplement (mode-c-r2-supplement-2026-06-14.json, 20 items). Confirmed: NO /owner/account/profile route; zero src-level addEventListener for 'owner-portal:mfa-enroll' or 'owner-portal:jarvis-prefill' (grep hits were only in dist/ bundles); Change Photo (:384) and Edit co-owner (:641) have no onClick; hardcoded properties array (:175) feeds the real invite POST; co-owners GET maps properties:[] (:278); owner-portal api client has no .put() so POST /settings alias is the sole save path and omits name/email/phone. Router mounted at index.ts:1728; /auth/mfa at :1242."
+  },
+  {
+   "title": "Dashboard tab hero CTAs 'Ask BossNyumba' and 'View schedule' are dead buttons (onPress does nothing)",
+   "severity": "low",
+   "verdict": "real",
+   "issueClass": "dead button",
+   "fileLine": "apps/staff-mobile/app/(tabs)/dashboard.tsx:57,64",
+   "proposedFix": "Wire the primary CTA to navigate to the Ask/chat tab (e.g. router.push('/(tabs)/home')) and the secondary CTA to the schedule/shift screen (e.g. '/worker/W-M-12'); or remove the buttons if no destination exists yet rather than shipping inert CTAs.",
+   "lens": "actor-workforce"
+  },
+  {
+   "title": "RFB list renders raw unit_price_tzs with no currency formatting and ignores the row currency field",
+   "severity": "low",
+   "verdict": "real",
+   "issueClass": "money-render / multi-currency hard-rule",
+   "fileLine": "apps/tenant-mobile/app/rfb/index.tsx:96",
+   "proposedFix": "Render the ceiling via a shared currency formatter keyed on rfb.currency (with a tenant/platform-default fallback) instead of printing rfb.unit_price_tzs directly.",
+   "lens": "actor-counterparty"
+  },
+  {
+   "title": "Chat composer @-mention menu calls nonexistent /api/v1/scope/recent-entities -> permanently empty (graceful)",
+   "severity": "low",
+   "verdict": "real",
+   "issueClass": "FE-missing-route / silent empty-state (graceful degrade)",
+   "fileLine": "apps/tenant-mobile/src/chat/recentEntities.ts:16 + HomeChat.tsx:295",
+   "proposedFix": "Implement an applicant-scoped /api/v1/scope/recent-entities route returning {data:{entities:[...]}}, or remove the '@' fetch trigger until the backend lands so the affordance is not advertised when it can never populate.",
+   "lens": "actor-counterparty"
+  },
+  {
+   "title": "Workforce invitation-activation helper targets a non-existent route (/api/v1/workforce/invites/activate) and carries unported mining-vertical residue (miningRole employee|manager)",
+   "severity": "low",
+   "verdict": "real",
+   "issueClass": "orphaned/born-dark helper + dead route + cross-vertical schema residue",
+   "fileLine": "apps/staff-mobile/src/auth/invitation-activate.ts:21 (ACTIVATION_PATH='/api/v1/workforce/invites/activate'), :58 (miningRole:'employee'|'manager')",
+   "proposedFix": "Either (a) build the real /api/v1/workforce/invites/activate endpoint (phone+code \u2192 verify \u2192 create worker user/membership \u2192 return session) and rename miningRole to a real-estate field (e.g. staffRole), or (b) delete this orphaned helper to remove the dead-route landmine and the mining residue.",
+   "lens": "xactor-pairing-identity"
+  },
+  {
+   "title": "/public/status inherits the public-AI rate limiter (shared 20-req/min/IP bucket) via the /public prefix's use('*') middleware",
+   "severity": "low",
+   "verdict": "real",
+   "issueClass": "double-prefix-mount / middleware cross-contamination across nested route() (real mechanism, no live FE consumer yet)",
+   "fileLine": "services/api-gateway/src/index.ts:1551 (/public) vs :1559 (/public/status); middleware services/api-gateway/src/routes/public-marketing.hono.ts:242-243; limiter services/api-gateway/src/middleware/public-ai-rate-limit.ts:155,258-264",
+   "proposedFix": "Decouple the status surface from the AI limiter before wiring StatusBoard: either mount publicStatusRouter on a prefix NOT nested under /public (e.g. /status), or scope the marketing limiter to its actual AI paths (apply the handler on /chat, /pricing-advice, /demo-estate, /waitlist instead of use('*')), or add an early skip for non-AI public sub-paths. Audit /public/sandbox + /public/leads for the same prefix-merge exposure. Also refresh the now-stale page.tsx comment that claims the gateway route 'is not yet mounted' (it is, at index.ts:1559).",
+   "lens": "regress-new-routes"
+  },
+  {
+   "title": "POST /v1/bids/:id/counter (AI-negotiation counter-offer) is exported but never mounted \u2014 born-dark route",
+   "severity": "low",
+   "verdict": "real",
+   "issueClass": "born-dark export / unmounted documented route (dead code reading as wired)",
+   "fileLine": "services/api-gateway/src/routes/tenders.hono.ts:10 (header advertises route), :682-732 (mountBidCounterRoute, never invoked); services/api-gateway/src/index.ts (no api.route('/bids', ...), single new Hono() at :1190)",
+   "proposedFix": "Either wire it (construct const bidsApp = new Hono().use('*', authMiddleware, databaseMiddleware); mountBidCounterRoute(bidsApp); api.route('/bids', bidsApp); in index.ts \u2014 and fix the negotiationId vs bidId param mismatch at tenders.hono.ts:712), or, if the counter flow is intentionally deferred, remove the mountBidCounterRoute export + the header bullet so the surface is not advertised as live and register it explicitly in the deferred backlog. Cross-check against KI-008 (stub generator) since both gate the same negotiation loop.",
+   "lens": "regress-new-routes"
+  },
+  {
+   "title": "bid_messages append-only / audit-grade invariant is only half-enforced \u2014 a BEFORE UPDATE trigger exists but no BEFORE DELETE, so a tenant can DELETE negotiation messages despite the documented immutability guarantee",
+   "severity": "low",
+   "verdict": "real",
+   "issueClass": "half-wired safety guard / append-only invariant gap",
+   "fileLine": "packages/database/src/migrations/0328_bid_messages.sql:99-103 (only BEFORE UPDATE trigger) vs the DELETE-blocked claim at 0328:19 and 0328:88; tenant_isolation_bid_messages FOR ALL at 0328:128-133",
+   "proposedFix": "Add a BEFORE DELETE trigger in a new follow-on migration reusing the existing function: CREATE TRIGGER bid_messages_no_delete BEFORE DELETE ON bid_messages FOR EACH ROW EXECUTE FUNCTION bid_messages_immutable(). FK ON DELETE CASCADE from parent bids still works (row triggers do not fire on the referential CASCADE action \u2014 the intended cleanup path). Alternatively, if deletion-with-the-bid is the only intended removal, correct the 0328 comments at :19 and :88 to stop claiming DELETE is blocked.",
+   "lens": "regress-migrations-rls"
+  },
+  {
+   "title": "field/shifts 'today' is bucketed on the UTC calendar day, so a worker in the launch jurisdiction (Africa/Dar_es_Salaam, UTC+3) sees the wrong/empty shift during the 21:00-24:00 UTC window",
+   "severity": "low",
+   "verdict": "real",
+   "issueClass": "timezone boundary / date bucket off-by-one",
+   "fileLine": "services/api-gateway/src/routes/field/shifts.hono.ts:84-86 (UTC todayDateString) used at :157 (eq(staffShifts.shiftDate, today)) and :199-204 (maintenance_tasks due-today window)",
+   "proposedFix": "Resolve the calendar day in the tenant/worker IANA timezone rather than UTC: derive 'today' via Intl.DateTimeFormat (or a date lib) using the tenant's zone (owner_settings.timezone / region config, defaulting to Africa/Dar_es_Salaam), and apply the same zone to the maintenance_tasks due-today bounds at :199-204. Never hard-code an offset (multi-currency/multi-TZ hard rule).",
+   "lens": "regress-migrations-rls"
+  },
+  {
+   "title": "RFB create hard-codes a 'TZS' currency fallback in the SQL COALESCE \u2014 a non-TZS tenant that omits currency silently persists a TZS budget ceiling (CLAUDE.md never-hard-code-jurisdiction rule)",
+   "severity": "low",
+   "verdict": "real",
+   "issueClass": "hard-coded jurisdiction in a code path / multi-currency hard-rule violation",
+   "fileLine": "services/api-gateway/src/routes/marketplace.hono.ts:352 (COALESCE(${body.currency ?? null}, 'TZS')); contradicted by the route comment at lines 339-340; DB column already DEFAULT 'TZS' at packages/database/src/migrations/0331_rfb_requests.sql:78",
+   "proposedFix": "Drop the SQL 'TZS' literal: omit the currency column from the INSERT when body.currency is absent so the column DEFAULT (or, better, a tenant-region-resolved value passed by the route) applies. Also correct the misleading comment, OR resolve the tenant region currency in the route rather than relying on a TZS default at all.",
+   "lens": "class-edge-failureaxis"
+  },
+  {
+   "title": "Tenant-mobile notifications timestamps use en-US (MM/DD/YYYY) for English users, against the East-Africa DD/MM convention used everywhere else",
+   "severity": "low",
+   "verdict": "real",
+   "issueClass": "locale-date-format-inconsistency",
+   "fileLine": "apps/tenant-mobile/app/notifications.tsx:188-190,244",
+   "proposedFix": "Map the English branch to 'en-GB' (region-neutral DD/MM English, consistent with owner-portal chart-locale.ts) for both the toLocaleString call (188-190) and the toLocaleTimeString call (244).",
+   "lens": "felt-design-a11y"
+  }
+ ]
+}

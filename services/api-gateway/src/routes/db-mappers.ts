@@ -379,7 +379,9 @@ export function mapWorkOrderRow(row: any) {
     vendorId: row.vendorId ?? undefined,
     ticketNumber: row.workOrderNumber,
     workOrderNumber: row.workOrderNumber,
-    assignedToUserId: undefined,
+    // Canonical worker assignee (migration 0340). Falls back to the snake_case
+    // projection for raw-SQL read paths.
+    assignedToUserId: row.assignedToUserId ?? row.assigned_to_user_id ?? undefined,
     priority: String(row.priority || 'medium').toUpperCase(),
     status: String(row.status || 'submitted').toUpperCase(),
     category: String(row.category || 'other').toUpperCase(),

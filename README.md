@@ -19,22 +19,17 @@ BossNyumba is an AI-native real estate operating system. Mr. Mwikila is its brai
                            │  personas · providers     │
                            └─────────────┬─────────────┘
                                          │
-                    ┌────────────────────┼────────────────────┐
-                    │                    │                    │
-             ┌──────▼──────┐      ┌──────▼──────┐      ┌──────▼──────┐
-             │  Owner      │      │  Admin      │      │  Customer   │
-             │  Portal     │      │  Portal     │      │  App        │
-             │ (Vite 3001) │      │ (Vite 3000) │      │ (Next 3002) │
-             └──────┬──────┘      └──────┬──────┘      └──────┬──────┘
-                    │                    │                    │
-                    │             ┌──────▼──────┐             │
-                    │             │ Estate Mgr  │             │
-                    │             │ (Next 3003) │             │
-                    │             └──────┬──────┘             │
-                    │                    │                    │
-                    └────────────┬───────┴──────┬─────────────┘
-                                 │              │
-                           ┌─────▼──────────────▼─────┐
+          ┌──────────────┬─────────┼─────────┬──────────────┐
+          │              │         │         │              │
+   ┌──────▼──────┐┌──────▼─────┐┌──▼───────┐┌▼───────────┐┌─▼──────────┐
+   │  Owner      ││  Admin     ││ Marketing││  Tenant    ││  Staff     │
+   │  Portal     ││  Platform  ││          ││  Mobile    ││  Mobile    │
+   │ (Vite 3000) ││(Next 3020) ││(Next 3010)│  (Expo)    ││  (Expo)    │
+   └──────┬──────┘└──────┬─────┘└────┬─────┘└─────┬──────┘└─────┬──────┘
+          │              │           │            │             │
+          └──────────────┴───────────┼────────────┴─────────────┘
+                                     │
+                           ┌─────────▼────────────────┐
                            │    API Gateway (4000)    │
                            │  authz · rate-limit      │
                            └────────────┬─────────────┘
@@ -61,12 +56,13 @@ Cross-cutting packages: `@bossnyumba/domain-models` (types), `@bossnyumba/authz-
 
 ## Features
 
-| Portal | Purpose |
-|--------|---------|
-| **Owner Portal** | Portfolio performance, statements, disbursements, maintenance oversight, approvals |
-| **Admin Portal** | Tenant management, operations control, billing, compliance exports, GePG config |
-| **Customer App** | Payments, maintenance requests, lease documents, negotiations, disputes |
-| **Estate Manager App** | Work orders, inspections, collections, SLA management, tenders |
+| Surface | Purpose |
+|---------|---------|
+| **Owner Portal** (Vite web) | Portfolio performance, statements, disbursements, maintenance oversight, approvals |
+| **Admin Platform Portal** (Next web) | Tenant management, operations control, billing, compliance exports, GePG config |
+| **Marketing** (Next web) | Public site — lead capture, qualifier, pricing, blog |
+| **Tenant Mobile** (Expo) | Payments, maintenance requests, lease documents, negotiations, disputes |
+| **Staff Mobile** (Expo) | Work orders, inspections, collections, SLA management, tenders |
 
 ## Tech Stack
 
@@ -197,21 +193,23 @@ See [Docs/DEPLOYMENT.md](Docs/DEPLOYMENT.md) and
 
 | Application | URL |
 |-------------|-----|
-| Admin Portal | http://localhost:3000 |
-| Owner Portal | http://localhost:3001 |
-| Customer App | http://localhost:3002 |
-| Estate Manager App | http://localhost:3003 |
+| Owner Portal | http://localhost:3000 |
+| Marketing | http://localhost:3010 |
+| Admin Platform Portal | http://localhost:3020 |
 | API Gateway | http://localhost:4000 |
+| Tenant Mobile | Expo (no web port — `pnpm --filter @bossnyumba/tenant-mobile start`) |
+| Staff Mobile | Expo (no web port — `pnpm --filter @bossnyumba/staff-mobile start`) |
 
 ## Project Structure
 
 ```
 BOSSNYUMBA101/
 ├── apps/
-│   ├── admin-portal/         # Vite, port 3000
-│   ├── owner-portal/         # Vite, port 3001
-│   ├── customer-app/         # Next.js, port 3002
-│   └── estate-manager-app/   # Next.js, port 3003
+│   ├── owner-portal/           # Vite SPA, port 3000 (landlord/owner web)
+│   ├── marketing/              # Next.js, port 3010 (public site)
+│   ├── admin-platform-portal/  # Next.js, port 3020 (operator command-deck)
+│   ├── tenant-mobile/          # Expo (tenant/counterparty mobile)
+│   └── staff-mobile/           # Expo (workforce mobile)
 ├── services/
 │   ├── api-gateway/          # BFF / gateway (port 4000)
 │   ├── domain-services/      # Core business logic

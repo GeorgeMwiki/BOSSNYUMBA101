@@ -28,7 +28,7 @@ interface DriftEvent {
 }
 
 interface FetchState {
-  readonly status: 'idle' | 'loading' | 'ok' | 'error';
+  readonly status: 'idle' | 'loading' | 'ok' | 'error' | 'unavailable';
   readonly events: ReadonlyArray<DriftEvent>;
   readonly error: string | null;
   readonly fetchedAt: number | null;
@@ -40,6 +40,16 @@ function endpoint(): string {
   const base = process.env.NEXT_PUBLIC_API_URL?.trim();
   const trimmed = base ? base.replace(/\/$/, '') : '';
   return `${trimmed}/api/v1/persona-drift/events`;
+}
+
+/**
+ * The persona-drift READ endpoint is not yet mounted in the api-gateway
+ * (only the cron writer exists). A 404 / 501 therefore means "backend not
+ * wired" — a known deferred state — rather than a runtime failure. Exported
+ * for unit-test coverage of the honest-degrade classification.
+ */
+export function isBackendUnavailableStatus(httpStatus: number): boolean {
+  return httpStatus === 404 || httpStatus === 501;
 }
 
 export function PersonaDriftClient() {
@@ -56,6 +66,16 @@ export function PersonaDriftClient() {
       try {
         setState((s) => ({ ...s, status: 'loading' }));
         const res = await fetch(endpoint(), { credentials: 'include' });
+        // The read endpoint (GET /api/v1/persona-drift/events) is not yet
+        // mounted in the api-gateway — only the cron *writer* exists. A 404
+        // therefore means "backend not wired", not a runtime failure. Render
+        // an honest "unavailable" notice instead of a scary error box (which
+        // would otherwise re-appear every poll interval).
+        if (isBackendUnavailableStatus(res.status)) {
+          if (cancelled) return;
+          setState((s) => ({ ...s, status: 'unavailable', error: null }));
+          return;
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as { data?: ReadonlyArray<DriftEvent> };
         if (cancelled) return;
@@ -92,6 +112,26 @@ export function PersonaDriftClient() {
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([day, count]) => ({ day, count }));
   }, [state.events]);
+
+  if (state.status === 'unavailable') {
+    return (
+      <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+        <p className="font-medium">Persona-drift read endpoint not yet wired.</p>
+        <p className="mt-1">
+          The cron supervisor already <em>writes</em> breaches to{' '}
+          <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-xs">
+            kernel_persona_drift_events
+          </code>
+          , but the read route{' '}
+          <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-xs">
+            GET /api/v1/persona-drift/events
+          </code>{' '}
+          is not mounted in the api-gateway. This dashboard stays
+          unavailable until that endpoint lands — no sample data is shown.
+        </p>
+      </div>
+    );
+  }
 
   if (state.status === 'error') {
     return (

@@ -13,6 +13,7 @@ import { useLocation } from 'react-router-dom';
 import { BossnyumbaAIProvider, FloatingChatWidget } from '@bossnyumba/chat-ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useChatTabBridge } from '../state/useChatTabBridge';
+import { useLocaleContext } from '../contexts/LocaleProvider';
 
 interface MwikilaWidgetMountProps {
   readonly children: React.ReactNode;
@@ -22,14 +23,21 @@ export function MwikilaWidgetMount({ children }: MwikilaWidgetMountProps): JSX.E
   const location = useLocation();
   const auth = useAuth();
   const tenantId = auth.tenant?.id ?? null;
+  // Active EN/SW locale (absolute toggle). Seeds the widget's default
+  // language so Swahili owners get a Swahili greeting/persona by default
+  // (the widget's own in-panel toggle still wins if they flip it there),
+  // and drives the tab-strip title EN/SW fallback below — previously the
+  // strip showed English titles for Swahili owners.
+  const { locale } = useLocaleContext();
   // The bridge is a no-op when the tabs provider isn't mounted, so we
   // can hand `onEvent` straight to the chat provider unconditionally.
-  const tabBridge = useChatTabBridge();
+  const tabBridge = useChatTabBridge({ locale });
 
   return (
     <BossnyumbaAIProvider
       portal="owner"
       defaultPersona="owner-advisor"
+      defaultLanguage={locale}
       currentPath={location.pathname}
       tenantId={tenantId}
       featureEnabled={true}

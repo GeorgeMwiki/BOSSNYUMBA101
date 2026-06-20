@@ -141,6 +141,12 @@ export const workOrders = pgTable(
     unitId: text('unit_id').references(() => units.id, { onDelete: 'set null' }),
     customerId: text('customer_id').references(() => customers.id, { onDelete: 'set null' }),
     vendorId: text('vendor_id').references(() => vendors.id, { onDelete: 'set null' }),
+    // Canonical worker assignee (users.id) for owner→worker dispatch. Added by
+    // migration 0340. Stamped by POST /api/v1/manager/work-orders/:id/assign-worker
+    // and surfaced to the worker via /api/v1/field/staff/tasks/next. Distinct
+    // from `assignedBy` below (the actor who performed the assign action) and
+    // from `vendorId` (an external company). ON DELETE SET NULL de-assigns.
+    assignedToUserId: text('assigned_to_user_id').references(() => users.id, { onDelete: 'set null' }),
 
     // Identity
     workOrderNumber: text('work_order_number').notNull(),
@@ -206,6 +212,7 @@ export const workOrders = pgTable(
     unitIdx: index('work_orders_unit_idx').on(table.unitId),
     customerIdx: index('work_orders_customer_idx').on(table.customerId),
     vendorIdx: index('work_orders_vendor_idx').on(table.vendorId),
+    assignedToUserIdx: index('work_orders_assigned_to_user_idx').on(table.tenantId, table.assignedToUserId),
     statusIdx: index('work_orders_status_idx').on(table.status),
     priorityIdx: index('work_orders_priority_idx').on(table.priority),
     categoryIdx: index('work_orders_category_idx').on(table.category),
@@ -311,6 +318,10 @@ export const workOrdersRelations = relations(workOrders, ({ one }) => ({
   vendor: one(vendors, {
     fields: [workOrders.vendorId],
     references: [vendors.id],
+  }),
+  assignedToUser: one(users, {
+    fields: [workOrders.assignedToUserId],
+    references: [users.id],
   }),
 }));
 

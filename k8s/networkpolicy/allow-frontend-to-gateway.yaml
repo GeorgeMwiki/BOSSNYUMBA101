@@ -17,8 +17,6 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
-        - podSelector: { matchLabels: { app.kubernetes.io/component: customer-app } }
-        - podSelector: { matchLabels: { app.kubernetes.io/component: estate-manager-app } }
         - podSelector: { matchLabels: { app.kubernetes.io/component: owner-portal } }
         - podSelector: { matchLabels: { app.kubernetes.io/component: admin-platform-portal } }
       ports:
