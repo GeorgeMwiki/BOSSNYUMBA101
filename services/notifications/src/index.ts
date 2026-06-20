@@ -246,6 +246,39 @@ export {
 } from './dispatcher.js';
 
 // ============================================================================
+// Push fan-out enqueuer — the READ leg of the device-token loop
+// ============================================================================
+//
+// `device_tokens` (migration 0330) was write-only: the /me/device-tokens
+// surface registers + revokes tokens, but nothing read them back to dispatch a
+// push. `enqueuePushToUser` closes that half-loop — it reads a user's live
+// (`revoked_at IS NULL`) device tokens via an injected loader and enqueues one
+// push per token through the canonical dispatcher, which routes each token to
+// Expo or Firebase by token kind. The service stays driver-agnostic: the
+// api-gateway supplies the token loader (`makeTokenLoaderFromExecutor` adapts
+// its live `db` client), so this module never imports a query builder.
+export {
+  enqueuePushToUser,
+  makeTokenLoaderFromExecutor,
+  type LoadLiveTokens,
+  type EnqueuePushToUserInput,
+  type EnqueuePushToUserResult,
+} from './push-enqueuer.js';
+
+// Push providers + token-kind classifier (Expo vs raw FCM/APNS routing).
+export {
+  ExpoPushProvider,
+  expoPushProvider,
+  readExpoPushConfigFromEnv,
+  type ExpoPushConfig,
+} from './providers/push/expo.js';
+export {
+  classifyPushToken,
+  isExpoPushToken,
+  type PushTokenKind,
+} from './providers/push/token-kind.js';
+
+// ============================================================================
 // Dead-letter drainer — re-delivers dead-lettered notifications with backoff
 // ============================================================================
 export {

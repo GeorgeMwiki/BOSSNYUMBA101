@@ -28,10 +28,12 @@
  * mobile clients have no other home for them):
  *
  *   STAFF FIELD CAPTURES (#7) — offline-sync write sink for staff-mobile:
- *     POST /attendance · /task-acks · /incidents · /shift-reports
- *     Persists to field_captures (migration 0326), tenant-scoped + FORCE RLS,
- *     idempotent on a client-supplied id. Fixes the silent data-loss where a
- *     missing route 404'd and the offline queue dropped the payload.
+ *     POST /attendance · /task-acks · /incidents · /shift-reports ·
+ *          /inspections (W-M-07) · /unit-checks (W-M-06, also GET)
+ *     Persists to field_captures (migrations 0326 + 0346 for the inspection /
+ *     unit_check capture types), tenant-scoped + FORCE RLS, idempotent on a
+ *     client-supplied id. Fixes the silent data-loss where a missing route
+ *     404'd and the offline queue dropped the payload.
  *
  *   APPLICANT IDENTITY (#9) — renter self-service for tenant-mobile:
  *     POST /applicants/kyc · GET /applicants/kyc/:id/status
@@ -732,6 +734,10 @@ function fieldCaptureListHandler(captureType: CaptureType) {
 app.get('/incidents', fieldCaptureListHandler('incident'));
 app.get('/shift-reports', fieldCaptureListHandler('shift_report'));
 app.get('/attendance', fieldCaptureListHandler('attendance'));
+// W-M-06 routine unit checks read their own history back (GET /unit-checks with
+// a `limit` query). Same tenant-scoped field_captures projection as the other
+// read-backs, filtered to capture_type='unit_check'.
+app.get('/unit-checks', fieldCaptureListHandler('unit_check'));
 
 // ============================================================================
 // STAFF FIELD CAPTURES (#7) — the offline-sync write sink.
@@ -745,12 +751,18 @@ app.get('/attendance', fieldCaptureListHandler('attendance'));
 // write SURFACES rather than fake-succeeding. Idempotent on a client-supplied
 // id so an at-least-once flush re-POST absorbs into the same row.
 //
+// Six real-estate capture types are wired here: attendance / task_ack /
+// incident / shift_report (the original four) plus inspection (W-M-07's
+// move-in/move-out/unit inspection flush → POST /inspections) and unit_check
+// (W-M-06's routine unit check → GET+POST /unit-checks). All six share the one
+// field_captures envelope; their capture_type values are pinned by the CHECK in
+// migrations 0326 (first four) + 0346 (inspection, unit_check).
+//
 // NOTE on what is intentionally NOT built: the staff-app endpoint map also
-// registers mining-residue keys (drill_hole→inspections, fuel_log→
-// materials-logs, excavator_count, ppe_receipt, fingerprint_sign). Those are
-// NOT real-estate entities; only attendance / task_ack / incident /
-// shift_report are wired here. The residue keys remain 404 (their queue entries
-// are not produced by the real-estate staff app).
+// registers mining-residue keys (fuel_log→materials-logs, fingerprint_sign,
+// ppe_receipt, inventory_move, voice_query). Those are NOT real-estate
+// entities; only the six listed above are wired here. The residue keys remain
+// 404 (their queue entries are not produced by the real-estate staff app).
 // ============================================================================
 
 // Each capture carries a client-supplied id (the offline-queue entry id) used
@@ -854,6 +866,12 @@ app.post('/attendance', withSecurityEvents({ action: 'estate-manager-app.field-c
 app.post('/task-acks', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('task_ack')));
 app.post('/incidents', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('incident')));
 app.post('/shift-reports', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('shift_report')));
+// W-M-07 inspection capture: replaces the former 501 stub for POST /inspections
+// so the offline 'inspection' flush persists into field_captures (idempotent on
+// the client-supplied id) instead of 404-and-drop. W-M-06 unit-check capture:
+// the POST companion to GET /unit-checks above.
+app.post('/inspections', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('inspection')));
+app.post('/unit-checks', withSecurityEvents({ action: 'estate-manager-app.field-capture', resource: 'field-captures', severity: 'info' }, captureHandler('unit_check')));
 
 // ============================================================================
 // TENANT KYC + APPLICANT IDENTITY (#9) — renter-applicant self-service.
@@ -1208,7 +1226,10 @@ app.post('/work-orders/:id/assign', withSecurityEvents({ action: 'estate-manager
 app.post('/work-orders/:id/schedule', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Scheduling work orders')));
 app.post('/work-orders/:id/complete', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Completing work orders')));
 app.post('/work-orders/:id/verify', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Verifying work orders')));
-app.post('/inspections', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Scheduling inspections')));
+// NOTE: POST /inspections is the staff-mobile field-capture sink (registered
+// above with captureHandler('inspection')) — NOT a 501. Scheduling a NEW
+// inspection record still routes through the canonical /api/v1/inspections
+// router; this BFF surface only captures completed field inspections offline.
 app.post('/inspections/:id/items', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Recording inspection items')));
 app.post('/inspections/:id/complete', withSecurityEvents({ action: 'estate-manager-app.create', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Completing inspections')));
 app.put('/units/:id/status', withSecurityEvents({ action: 'estate-manager-app.update', resource: 'estate-manager-app', severity: 'info' }, (c) => notImplemented(c, 'Updating unit status')));

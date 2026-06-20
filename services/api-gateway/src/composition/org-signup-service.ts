@@ -48,6 +48,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { sql } from 'drizzle-orm';
 import {
   tenants,
   organizations,
@@ -197,6 +198,20 @@ function isDuplicateEmailError(payload: unknown): boolean {
   );
 }
 
+/**
+ * Normalise a Drizzle `.execute()` result into a plain row array. postgres-js
+ * hands back an array-like directly; some drivers wrap it in `{ rows }`. Mirrors
+ * `rowsOf` in `cluster-lock.ts` so the existence probe reads either shape.
+ */
+function rowsOf(result: unknown): ReadonlyArray<Record<string, unknown>> {
+  if (Array.isArray(result)) {
+    return result as ReadonlyArray<Record<string, unknown>>;
+  }
+  const wrapped = (result as { rows?: ReadonlyArray<Record<string, unknown>> })
+    ?.rows;
+  return Array.isArray(wrapped) ? wrapped : [];
+}
+
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
@@ -322,68 +337,113 @@ export function createOrgSignupService(
     });
   }
 
-  async function signup(input: OrgSignupInput): Promise<OrgSignupResult> {
-    const admin = createAdmin({
-      url: deps.config.supabaseUrl,
-      serviceRoleKey: deps.config.supabaseServiceRoleKey,
-    });
-
-    const fullName = input.ownerFullName.trim();
-    const { firstName, lastName } = splitName(fullName);
-
-    // 1. Create the canonical Supabase auth user. `email_confirm: true`
-    //    admin-confirms the address: the SaaS owner just proved control by
-    //    typing the password into the trusted marketing form, so we issue
-    //    an immediately-usable account (mirrors the sign-IN funnel, which
-    //    authenticates via signInWithPassword and requires a confirmed
-    //    user). Duplicate email → 409 (no platform rows, no session).
-    let authUserId: string;
+  /**
+   * Resolve the Supabase auth user id for an email by paginating the admin
+   * `listUsers` API. There is no first-class get-by-email on the admin API,
+   * so we walk pages (capped) and match on a lowercased email — the caller
+   * already trimmed + lowercased `input.ownerEmail`. Returns `null` when no
+   * auth user exists or the lookup is inconclusive (heal then defers to the
+   * uniform duplicate path). Never throws: a lookup failure must not turn a
+   * benign duplicate into a 500.
+   */
+  async function findAuthUserIdByEmail(
+    admin: ReturnType<typeof createAdmin>,
+    email: string,
+  ): Promise<string | null> {
+    const target = email.trim().toLowerCase();
+    const perPage = 200;
+    // Cap the walk so a large project can never make signup unbounded; the
+    // orphaned-account window we heal is recent, so the user is on an early
+    // page in practice. Beyond the cap we fall back to the duplicate path.
+    const maxPages = 20;
     try {
-      const { data, error } = await admin.auth.admin.createUser({
-        email: input.ownerEmail,
-        password: input.ownerPassword,
-        email_confirm: true,
-        user_metadata: {
-          full_name: fullName,
-          country: input.country,
-          signup_source: 'marketing_owner_form',
-        },
-      });
-      if (error) {
-        if (isDuplicateEmailError(error)) {
-          return { kind: 'duplicate_email' };
+      for (let page = 1; page <= maxPages; page += 1) {
+        const { data, error } = await admin.auth.admin.listUsers({
+          page,
+          perPage,
+        });
+        if (error) {
+          deps.logger?.warn?.(
+            { service: 'org-signup', step: 'heal-lookup', page },
+            'org-signup: listUsers failed during heal lookup — deferring to duplicate path',
+          );
+          return null;
         }
-        deps.logger?.error?.(
-          { service: 'org-signup', step: 'create-auth-user' },
-          'org-signup: Supabase admin.createUser failed',
+        const list = data?.users ?? [];
+        const match = list.find(
+          (u) => (u.email ?? '').trim().toLowerCase() === target,
         );
-        throw new Error('auth_user_creation_failed');
+        if (match?.id) {
+          return match.id;
+        }
+        // Last (short) page reached → email is genuinely absent.
+        if (list.length < perPage) {
+          return null;
+        }
       }
-      const id = data?.user?.id;
-      if (!id || typeof id !== 'string') {
-        throw new Error('auth_user_creation_returned_no_id');
-      }
-      authUserId = id;
+      return null;
     } catch (err) {
-      // `createUser` can throw (network) OR resolve with `error`. The
-      // resolved-error duplicate case is handled above; a thrown
-      // duplicate (some SDK versions throw) is caught here.
-      if (isDuplicateEmailError((err as { cause?: unknown })?.cause ?? err)) {
-        return { kind: 'duplicate_email' };
-      }
-      throw err;
+      deps.logger?.warn?.(
+        {
+          service: 'org-signup',
+          step: 'heal-lookup',
+          error: err instanceof Error ? err.message : 'unknown',
+        },
+        'org-signup: heal lookup threw — deferring to duplicate path',
+      );
+      return null;
     }
+  }
 
+  /**
+   * Whether the platform owner `users` row already exists for this auth user
+   * id. Because `provisionPlatformRows` writes the tenant + org + owner rows
+   * inside ONE transaction, the platform side is all-or-nothing: an owner row
+   * present means the account is fully provisioned (genuine duplicate); its
+   * absence with an existing auth user is the orphaned half-state we heal.
+   * Runs under service-role context (no tenant exists in the GUC yet).
+   */
+  async function ownerRowExists(authUserId: string): Promise<boolean> {
+    const db = deps.db;
+    if (!db) {
+      throw new Error('org-signup: DATABASE_URL unset — cannot inspect tenant');
+    }
+    return await withServiceRoleContext(db as never, async (tx) => {
+      const txDb = tx as unknown as OrgSignupDbClient;
+      // Literal `users` / `id` identifiers (the 0001 canonical names — see the
+      // `users` schema); only the auth-user id is a BOUND parameter, never
+      // interpolated. Mirrors the raw-SQL probe style in `cluster-lock.ts`.
+      const result = await txDb.execute(
+        sql`SELECT 1 FROM users WHERE id = ${authUserId} LIMIT 1`,
+      );
+      return rowsOf(result).length > 0;
+    });
+  }
+
+  /**
+   * Shared finalisation for both the fresh-signup and heal paths: provision
+   * the platform rows (idempotently — only called when no owner row exists),
+   * stamp `app_metadata.tenant_id` + OWNER role, then mint the session. A
+   * provisioning failure rolls the orphaned auth user back ONLY on the fresh
+   * path (`rollbackAuthUserOnFailure`); on the heal path we keep the existing
+   * auth user so a later retry can heal again rather than destroying identity.
+   */
+  async function finalizeProvisioning(args: {
+    readonly admin: ReturnType<typeof createAdmin>;
+    readonly authUserId: string;
+    readonly input: OrgSignupInput;
+    readonly fullName: string;
+    readonly firstName: string;
+    readonly lastName: string;
+    readonly rollbackAuthUserOnFailure: boolean;
+  }): Promise<OrgSignupResult> {
+    const { admin, authUserId, input, fullName, firstName, lastName } = args;
     const tenantId = newId('tn');
     const orgId = newId('org');
     // The platform owner-user id IS the Supabase auth user id so the
     // gateway's Supabase-JWT verifier resolves the same principal later.
     const ownerId = authUserId;
 
-    // 2. Provision the platform rows atomically. If this throws AFTER the
-    //    auth user was created, roll the auth user back so a retry with the
-    //    same email is not permanently blocked by a half-provisioned
-    //    account (idempotent re-POST safety).
     try {
       await provisionPlatformRows({
         tenantId,
@@ -397,26 +457,27 @@ export function createOrgSignupService(
         fullName,
       });
     } catch (err) {
-      try {
-        await admin.auth.admin.deleteUser(authUserId);
-      } catch {
-        // Best-effort compensation; surface the original failure below.
-        deps.logger?.error?.(
-          { service: 'org-signup', step: 'compensate-delete-auth-user' },
-          'org-signup: failed to roll back orphaned auth user after provisioning error',
-        );
+      if (args.rollbackAuthUserOnFailure) {
+        try {
+          await admin.auth.admin.deleteUser(authUserId);
+        } catch {
+          // Best-effort compensation; surface the original failure below.
+          deps.logger?.error?.(
+            { service: 'org-signup', step: 'compensate-delete-auth-user' },
+            'org-signup: failed to roll back orphaned auth user after provisioning error',
+          );
+        }
       }
       throw err instanceof Error ? err : new Error('provisioning_failed');
     }
 
-    // 3. Stamp the Supabase user's server-managed `app_metadata` with the
-    //    tenant binding + owner role BEFORE minting the session, so the
-    //    minted access token carries `app_metadata.tenant_id` — which the
-    //    gateway's Supabase-JWT verifier REQUIRES (a token without it is
-    //    rejected, bouncing the new owner back to /login). app_metadata is
-    //    immutable to the client, so this is the trusted tenant source.
-    //    If stamping fails we fall through to pending_sign_in rather than
-    //    minting a token the cockpit cannot use.
+    // Stamp the Supabase user's server-managed `app_metadata` with the tenant
+    // binding + owner role BEFORE minting the session, so the minted access
+    // token carries `app_metadata.tenant_id` — which the gateway's
+    // Supabase-JWT verifier REQUIRES (a token without it is rejected, bouncing
+    // the new owner back to /login). app_metadata is immutable to the client,
+    // so this is the trusted tenant source. If stamping fails we fall through
+    // to pending_sign_in rather than minting a token the cockpit cannot use.
     let metadataStamped = true;
     try {
       const { error: updateError } = await admin.auth.admin.updateUserById(
@@ -447,10 +508,10 @@ export function createOrgSignupService(
       );
     }
 
-    // 4. Mint the session (active model). If minting (or the metadata
-    //    stamp above) failed we still report a created account, but as
-    //    pending_sign_in (no cookie) so the owner can complete via the
-    //    sign-in form once their account is fully usable.
+    // Mint the session (active model). If minting (or the metadata stamp
+    // above) failed we still report a created account, but as
+    // pending_sign_in (no cookie) so the owner can complete via the sign-in
+    // form once their account is fully usable.
     const session = metadataStamped
       ? await mintSession(input.ownerEmail, input.ownerPassword)
       : null;
@@ -472,6 +533,160 @@ export function createOrgSignupService(
       signupStatus: session ? 'active' : 'pending_sign_in',
       session,
     };
+  }
+
+  /**
+   * Heal an orphaned half-state: a prior signup created the Supabase auth user
+   * but crashed before (or during) platform provisioning, leaving an auth user
+   * with no tenant + no `app_metadata.tenant_id`. On a same-email retry we
+   * detect that orphan and idempotently re-provision + re-stamp + mint instead
+   * of returning a dead-end 409. When the account is genuinely complete (owner
+   * row already present) we keep the uniform duplicate response. Any
+   * inconclusive lookup also defers to the duplicate path — heal never widens
+   * the enumeration surface or hijacks a real account.
+   */
+  async function healOrphanOrDuplicate(args: {
+    readonly admin: ReturnType<typeof createAdmin>;
+    readonly input: OrgSignupInput;
+    readonly fullName: string;
+    readonly firstName: string;
+    readonly lastName: string;
+  }): Promise<OrgSignupResult> {
+    const { admin, input } = args;
+    // No DB handle → we cannot inspect platform rows, so we cannot safely
+    // assert an orphan. Fall back to the uniform duplicate response.
+    if (!deps.db) {
+      return { kind: 'duplicate_email' };
+    }
+
+    const authUserId = await findAuthUserIdByEmail(admin, input.ownerEmail);
+    if (!authUserId) {
+      return { kind: 'duplicate_email' };
+    }
+
+    let alreadyProvisioned: boolean;
+    try {
+      alreadyProvisioned = await ownerRowExists(authUserId);
+    } catch (err) {
+      // Inspecting the platform side failed — do NOT re-provision blindly
+      // (that risks a duplicate-key throw against a real account). Defer.
+      deps.logger?.warn?.(
+        {
+          service: 'org-signup',
+          step: 'heal-inspect',
+          error: err instanceof Error ? err.message : 'unknown',
+        },
+        'org-signup: could not inspect platform rows during heal — deferring to duplicate path',
+      );
+      return { kind: 'duplicate_email' };
+    }
+
+    if (alreadyProvisioned) {
+      // Fully provisioned account → genuine duplicate. Uniform response.
+      return { kind: 'duplicate_email' };
+    }
+
+    deps.logger?.info?.(
+      { service: 'org-signup', step: 'heal-reprovision' },
+      'org-signup: healing orphaned auth user (no platform rows) — re-provisioning',
+    );
+
+    // Heal: re-provision against the EXISTING auth user id (idempotent — only
+    // reached when no owner row exists). Keep the auth user on failure so a
+    // later retry can heal again rather than destroying the identity.
+    return await finalizeProvisioning({
+      admin,
+      authUserId,
+      input,
+      fullName: args.fullName,
+      firstName: args.firstName,
+      lastName: args.lastName,
+      rollbackAuthUserOnFailure: false,
+    });
+  }
+
+  async function signup(input: OrgSignupInput): Promise<OrgSignupResult> {
+    const admin = createAdmin({
+      url: deps.config.supabaseUrl,
+      serviceRoleKey: deps.config.supabaseServiceRoleKey,
+    });
+
+    const fullName = input.ownerFullName.trim();
+    const { firstName, lastName } = splitName(fullName);
+
+    // 1. Create the canonical Supabase auth user. `email_confirm: true`
+    //    admin-confirms the address: the SaaS owner just proved control by
+    //    typing the password into the trusted marketing form, so we issue
+    //    an immediately-usable account (mirrors the sign-IN funnel, which
+    //    authenticates via signInWithPassword and requires a confirmed
+    //    user). Duplicate email → route through the heal path: if the auth
+    //    user is an orphaned half-state (created earlier, but provisioning
+    //    crashed so it has no tenant + no app_metadata.tenant_id) we
+    //    idempotently re-provision instead of returning a dead-end 409;
+    //    a fully-provisioned account stays a uniform duplicate.
+    let authUserId: string;
+    try {
+      const { data, error } = await admin.auth.admin.createUser({
+        email: input.ownerEmail,
+        password: input.ownerPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: fullName,
+          country: input.country,
+          signup_source: 'marketing_owner_form',
+        },
+      });
+      if (error) {
+        if (isDuplicateEmailError(error)) {
+          return await healOrphanOrDuplicate({
+            admin,
+            input,
+            fullName,
+            firstName,
+            lastName,
+          });
+        }
+        deps.logger?.error?.(
+          { service: 'org-signup', step: 'create-auth-user' },
+          'org-signup: Supabase admin.createUser failed',
+        );
+        throw new Error('auth_user_creation_failed');
+      }
+      const id = data?.user?.id;
+      if (!id || typeof id !== 'string') {
+        throw new Error('auth_user_creation_returned_no_id');
+      }
+      authUserId = id;
+    } catch (err) {
+      // `createUser` can throw (network) OR resolve with `error`. The
+      // resolved-error duplicate case is handled above; a thrown
+      // duplicate (some SDK versions throw) is healed here too.
+      if (isDuplicateEmailError((err as { cause?: unknown })?.cause ?? err)) {
+        return await healOrphanOrDuplicate({
+          admin,
+          input,
+          fullName,
+          firstName,
+          lastName,
+        });
+      }
+      throw err;
+    }
+
+    // 2-4. Provision the platform rows atomically, stamp the tenant binding
+    //       into app_metadata, then mint the session. On the fresh path a
+    //       provisioning failure rolls the just-created auth user back so a
+    //       retry with the same email is not permanently blocked by a
+    //       half-provisioned account (idempotent re-POST safety).
+    return await finalizeProvisioning({
+      admin,
+      authUserId,
+      input,
+      fullName,
+      firstName,
+      lastName,
+      rollbackAuthUserOnFailure: true,
+    });
   }
 
   return { signup };

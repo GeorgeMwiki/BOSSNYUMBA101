@@ -284,7 +284,7 @@
     "W-M-03": { "title": "Maelezo ya Kabla ya Kazi", "intent": "Thibitisha kwa kidole" },
     "W-M-04": { "title": "Kumalizia Kazi ya Matengenezo", "intent": "Watu, masaa, vifaa, picha" },
     "W-M-06": { "title": "Kitufe cha Kitengo", "intent": "Gusa kwa kila kitengo" },
-    "W-M-07": { "title": "Kumbukumbu ya Ukaguzi", "intent": "GPS na lebo" },
+    "W-M-07": { "title": "Kumbukumbu ya Ukaguzi", "intent": "GPS na ukaguzi wa kitengo" },
     "W-M-10": { "title": "Toa / Rudisha Stoo", "intent": "Bidhaa, kiasi" },
     "W-M-11": { "title": "Kumbukumbu ya Vifaa", "intent": "Idadi, zana, muda" },
     "W-M-12": { "title": "Kumbukumbu ya Masaa", "intent": "Anza / mwisho" },

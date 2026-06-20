@@ -102,7 +102,7 @@ export function GreenAngleAdvisorClient(): JSX.Element {
     }
     setState({ status: 'loading' });
     const envelope = await postAdvisor({
-      endpoint: 'green-angle',
+      endpoint: 'green-angle-advisor/veteran-expert-report',
       body: {
         description: description.trim(),
         jurisdiction,

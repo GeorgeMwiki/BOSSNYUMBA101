@@ -7,11 +7,12 @@
  * Leaflet is loaded only on the client (Next does not ship `window`
  * during SSR). The map fetches:
  *
- *   - `GET /api/v1/advisor/geo/parcels?bbox=...` for the painted parcel
- *     polygons in the current viewport
- *   - `GET /api/v1/advisor/geo/area-insights?lat=..&lng=..` whenever
- *     the operator clicks a parcel, which returns the AreaInsights
- *     bundle (solar, air quality, drive-time samples)
+ *   - `GET /api/v1/advisor/geo/parcels` for the painted parcel
+ *     polygons. NOTE: this route is not yet mounted on the gateway
+ *     (born-dark) — see the orchestrator follow-up.
+ *   - `POST /api/v1/geo-platform/area-insights` with `{ lat, lng }`
+ *     whenever the operator clicks a parcel, which returns the
+ *     AreaInsights bundle (solar, air quality, drive-time samples).
  *
  * If `react-leaflet` is unavailable at runtime (very old browsers,
  * SSR rehydration edge cases) we render a degraded list-only view.
@@ -20,6 +21,7 @@
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useState } from 'react';
 import { z } from 'zod';
+import { getCsrfHeaders } from '@/lib/csrf';
 import { AdvisorEmpty, AdvisorError, AdvisorLoading } from '../_lib/states';
 
 const positionSchema = z.tuple([z.number(), z.number()]);
@@ -179,22 +181,17 @@ export function GeoAdvisorClient(): JSX.Element {
     async (lat: number, lng: number) => {
       setInsights({ status: 'loading' });
       try {
-        // This component is 'use client' so `window` is always defined.
-        // The SSR-time branch only exists to satisfy the URL constructor
-        // type — it is unreachable at runtime. We pick a sentinel that
-        // makes the unreachable path loud if it ever flips (no silent
-        // routing to localhost from a server-rendered prod bundle).
-        const baseOrigin =
-          typeof window === 'undefined'
-            ? 'http://ssr-unreachable.invalid'
-            : window.location.origin;
-        const url = new URL(
-          `${getApiBase()}/advisor/geo/area-insights`,
-          baseOrigin,
-        );
-        url.searchParams.set('lat', lat.toString());
-        url.searchParams.set('lng', lng.toString());
-        const res = await fetch(url.toString(), { credentials: 'include' });
+        // The geo-platform package is mounted at its own top-level path
+        // (`/api/v1/geo-platform`); there is no `/advisor` parent. The
+        // route is a POST that takes `{ lat, lng }` in the body (the
+        // gateway accepts an optional structured drive-time target list
+        // that would exceed a URL's length, hence POST not GET).
+        const res = await fetch(`${getApiBase()}/geo-platform/area-insights`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
+          body: JSON.stringify({ lat, lng }),
+        });
         const json: { data?: unknown; error?: { message?: string } } = await res
           .json()
           .catch(() => ({}));

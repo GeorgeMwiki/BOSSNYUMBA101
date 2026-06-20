@@ -99,10 +99,21 @@ Salamu: anza kwa "Habari", "Hujambo", "Habari ya asubuhi/mchana/jioni" — KAMWE
 
 KAMWE usitaje bidhaa, jukwaa, au chapa nyingine yoyote — BossNyumba ni bidhaa yake yenyewe. Ongea kama BossNyumba pekee.`;
 
+const TranscriptTurnSchema = z.object({
+  role: z.enum(['visitor', 'assistant']),
+  content: z.string().max(4000),
+});
+
 const WidgetTurnSchema = z.object({
   message: z.string().min(1).max(4000),
   sessionId: z.string().min(1).max(160),
   language: z.enum(['en', 'sw']).optional(),
+  // Threaded through to the gateway so the gateway path replies in the
+  // visitor's active locale and with conversation context — the gateway
+  // ChatTurnSchema already accepts these. Dropping them caused zero-mix
+  // drift (gateway defaulting to EN while the widget was set to SW).
+  transcript: z.array(TranscriptTurnSchema).max(40).optional(),
+  visitorCountry: z.enum(['KE', 'TZ', 'UG', 'other']).optional(),
   portalId: z.string().max(40).optional(),
   currentRoute: z.string().max(240).optional(),
 });
@@ -221,11 +232,23 @@ function emitLearningBlocks(
   return [];
 }
 
-async function tryGateway(
-  message: string,
-  sessionId: string,
-  wantsStream: boolean,
-): Promise<Response | null> {
+interface GatewayForward {
+  readonly message: string;
+  readonly sessionId: string;
+  readonly wantsStream: boolean;
+  readonly language?: 'en' | 'sw';
+  readonly transcript?: ReadonlyArray<{ role: 'visitor' | 'assistant'; content: string }>;
+  readonly visitorCountry?: 'KE' | 'TZ' | 'UG' | 'other';
+}
+
+async function tryGateway({
+  message,
+  sessionId,
+  wantsStream,
+  language,
+  transcript,
+  visitorCountry,
+}: GatewayForward): Promise<Response | null> {
   const gatewayBase = (process.env.NEXT_PUBLIC_API_GATEWAY_URL ?? '').trim().replace(/\/$/, '');
   if (!gatewayBase) return null;
   try {
@@ -235,7 +258,7 @@ async function tryGateway(
         'content-type': 'application/json',
         accept: wantsStream ? 'text/event-stream' : 'application/json',
       },
-      body: JSON.stringify({ sessionId, message }),
+      body: JSON.stringify({ sessionId, message, language, transcript, visitorCountry }),
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return null;
@@ -319,7 +342,14 @@ export async function POST(req: Request): Promise<Response> {
 
   // Path 1 — gateway first (if configured + reachable)
   try {
-    const gatewayRes = await tryGateway(parsed.message, parsed.sessionId, wantsStream);
+    const gatewayRes = await tryGateway({
+      message: parsed.message,
+      sessionId: parsed.sessionId,
+      wantsStream,
+      language,
+      transcript: parsed.transcript,
+      visitorCountry: parsed.visitorCountry,
+    });
     if (gatewayRes) {
       if (wantsStream && gatewayRes.body) {
         return new Response(gatewayRes.body, {

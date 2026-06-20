@@ -1112,6 +1112,21 @@ export class PaymentOrchestrationService {
       aggregate.recordRefund(refundAmount);
       await this.repository.update(aggregate.toData());
 
+      // Post the balanced reversing journal BEFORE publishing the event. The
+      // original capture (`bookPaymentToLedger`) booked DEBIT holding / CREDIT
+      // customer-liability for the cash receipt; a refund returns that cash, so
+      // the reversal is the exact mirror — CREDIT holding / DEBIT customer-
+      // liability for `refundAmount`. Without it the ledger permanently
+      // over-credits holding by the refunded amount. Idempotent on
+      // `refund:<intent>:<refundId>` so an at-least-once retry of this refund
+      // collapses to a single reversal.
+      await this.bookRefundReversal(
+        paymentIntent,
+        request.tenantId,
+        refundAmount,
+        result.refundId,
+      );
+
       await this.eventPublisher.publish(
         createEvent<PaymentRefundedEvent>(
           'PAYMENT_REFUNDED',
@@ -1134,6 +1149,103 @@ export class PaymentOrchestrationService {
       amount: refundAmount,
       status: result.status
     };
+  }
+
+  /**
+   * Book the balanced reversing journal for a SUCCEEDED refund (HIGH MONEY).
+   *
+   * The original capture (`bookPaymentToLedger`) booked the cash receipt as
+   * DEBIT holding / CREDIT customer-liability. A refund returns that cash, so
+   * the reversal is the exact mirror — CREDIT holding / DEBIT customer-
+   * liability for `refundAmount`. Omitting it leaves holding permanently
+   * over-credited by every refund.
+   *
+   * Idempotency: the post is keyed `refund:<intentId>:<refundId>` so an
+   * at-least-once retry of the same provider refund re-drives the SAME journal
+   * and books nothing extra.
+   *
+   * The journal header intentionally carries NO `paymentIntentId`: migration
+   * 0324's partial unique index on `(tenant_id, payment_intent_id)` for the
+   * `RENT_PAYMENT/DEBIT` leg would otherwise reject the refund's DEBIT leg as a
+   * "duplicate" of the original capture's DEBIT-into-holding leg for the same
+   * intent. The per-post idempotency key (above) is the dedupe authority here;
+   * the intent linkage is preserved in the line descriptions.
+   *
+   * Currency-aware (M13): the refund is in the intent currency, so the holding
+   * leg resolves through the same currency-matched holding the capture used.
+   *
+   * No-ops (logged loudly) when the ledger/account dependencies are not wired —
+   * mirroring `handlePaymentSuccess`, which treats them as optional.
+   */
+  private async bookRefundReversal(
+    paymentIntent: PaymentIntent,
+    tenantId: TenantId,
+    refundAmount: Money,
+    refundId: string,
+  ): Promise<void> {
+    if (!this.ledgerService || !this.accountRepository) {
+      this.logger.error(
+        'Refund succeeded but ledger/account dependencies are not wired — ' +
+          'NO reversing journal posted; holding is over-credited until ' +
+          'manual reconciliation',
+        {
+          paymentIntentId: paymentIntent.id,
+          tenantId,
+          refundId,
+          refundAmount: refundAmount.toString(),
+        },
+      );
+      return;
+    }
+
+    const holding = await this.resolveHoldingForCurrency(tenantId, paymentIntent);
+    const liability = await this.accountRepository.findByCustomerAndType(
+      tenantId,
+      paymentIntent.customerId,
+      'CUSTOMER_LIABILITY',
+    );
+    if (!liability) {
+      throw new Error(
+        `Customer liability account not found for customer ${paymentIntent.customerId}`,
+      );
+    }
+
+    const journal: CreateJournalEntryRequest = {
+      tenantId,
+      effectiveDate: new Date(),
+      lines: [
+        // Cash out (credit holding) — reverses the capture's DEBIT-into-holding.
+        {
+          accountId: holding.id,
+          type: 'RENT_PAYMENT',
+          direction: 'CREDIT',
+          amount: refundAmount,
+          description: `Refund of payment ${paymentIntent.id} (refund ${refundId})`,
+          leaseId: paymentIntent.leaseId,
+        },
+        // Receivable back up (debit customer liability) — reverses the
+        // capture's CREDIT of the customer liability.
+        {
+          accountId: liability.id,
+          type: 'RENT_PAYMENT',
+          direction: 'DEBIT',
+          amount: refundAmount,
+          description: `Refund reversal for payment ${paymentIntent.id} (refund ${refundId})`,
+          leaseId: paymentIntent.leaseId,
+        },
+      ],
+      createdBy: 'system',
+    };
+
+    await this.ledgerService.postJournalEntry(journal, {
+      idempotencyKey: `refund:${paymentIntent.id}:${refundId}`,
+    });
+    this.logger.info('Refund reversal booked to ledger', {
+      paymentIntentId: paymentIntent.id,
+      tenantId,
+      refundId,
+      refundAmount: refundAmount.toString(),
+    });
   }
 
   /**

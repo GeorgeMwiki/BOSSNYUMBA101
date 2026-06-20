@@ -93,26 +93,26 @@ describe('classifyRole — edge cases and ambiguity', () => {
 })
 
 describe('recommendCertifications', () => {
-  it('recommends excavator + first-aid for excavator operators (en)', () => {
-    const recs = recommendCertifications('I run the excavator on site', 'en')
-    expect(recs).toContain('excavator-license')
+  it('recommends agent-licence + first-aid for leasing agents (en)', () => {
+    const recs = recommendCertifications('I am a leasing agent for the property', 'en')
+    expect(recs).toContain('real-estate-agent-licence')
     expect(recs).toContain('first-aid')
   })
 
-  it('recommends haul-truck + first-aid for truck drivers (sw)', () => {
-    const recs = recommendCertifications('Mimi ni dereva wa truck', 'sw')
-    expect(recs).toContain('haul-truck-license')
+  it('recommends manager-licence + first-aid for property managers (sw)', () => {
+    const recs = recommendCertifications('Mimi ni meneja wa mali', 'sw')
+    expect(recs).toContain('property-manager-licence')
     expect(recs).toContain('first-aid')
   })
 
-  it('recommends underground-cert for shaft work', () => {
-    const recs = recommendCertifications('I work in the underground shaft', 'en')
-    expect(recs).toContain('underground-cert')
+  it('recommends electrician cert for electrical work', () => {
+    const recs = recommendCertifications('I am the building electrician', 'en')
+    expect(recs).toContain('electrician-class-b')
   })
 
-  it('recommends blaster-permit for explosives work (sw)', () => {
-    const recs = recommendCertifications('mimi ni mlipuaji wa baruti', 'sw')
-    expect(recs).toContain('blaster-permit')
+  it('recommends plumber cert for plumbing work (sw)', () => {
+    const recs = recommendCertifications('mimi ni fundi-mabomba', 'sw')
+    expect(recs).toContain('plumber')
   })
 
   it('defaults to first-aid only when no triggers match', () => {
@@ -121,12 +121,12 @@ describe('recommendCertifications', () => {
   })
 
   it('returns a readonly tuple', () => {
-    const recs = recommendCertifications('excavator', 'en')
+    const recs = recommendCertifications('plumber', 'en')
     expect(Object.isFrozen(recs)).toBe(true)
   })
 
   it('does not duplicate first-aid when triggers also imply it', () => {
-    const recs = recommendCertifications('excavator first-aid', 'en')
+    const recs = recommendCertifications('plumber first-aid', 'en')
     const firstAidCount = recs.filter((cert) => cert === 'first-aid').length
     expect(firstAidCount).toBe(1)
   })

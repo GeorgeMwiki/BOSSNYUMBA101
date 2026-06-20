@@ -63,7 +63,13 @@ export type CaptureType =
   | 'attendance'
   | 'task_ack'
   | 'incident'
-  | 'shift_report';
+  | 'shift_report'
+  // W-M-07 unit/move-in/move-out inspection capture (flushes to POST
+  // /manager/inspections) and W-M-06 routine unit check (GET+POST
+  // /manager/unit-checks). Same field_captures envelope; the widened
+  // capture_type CHECK lands in migration 0346.
+  | 'inspection'
+  | 'unit_check';
 
 export interface FieldCaptureInput {
   readonly tenantId: string;

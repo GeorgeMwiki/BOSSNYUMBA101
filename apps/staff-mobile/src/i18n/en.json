@@ -284,7 +284,7 @@
     "W-M-03": { "title": "Pre-shift Briefing", "intent": "Acknowledge with fingerprint" },
     "W-M-04": { "title": "Work Order Completion", "intent": "Staff, hours, materials, photos" },
     "W-M-06": { "title": "Unit-count Button", "intent": "Tap per unit checked" },
-    "W-M-07": { "title": "Inspection Logger", "intent": "GPS + asset tag" },
+    "W-M-07": { "title": "Inspection Logger", "intent": "GPS + unit inspection" },
     "W-M-10": { "title": "Inventory Issue / Return", "intent": "Item + quantity" },
     "W-M-11": { "title": "Materials Log", "intent": "Units, asset, time" },
     "W-M-12": { "title": "Machine Hour Log", "intent": "Start / end odometer" },

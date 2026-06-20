@@ -1,11 +1,14 @@
 /**
  * Browser-side fetch helpers for the advisor surface.
  *
- * Every page POSTs to `/api/v1/advisor/<name>` on the api-gateway
- * (wired by sibling agent `P2`). We send `credentials: 'include'` so
- * the httpOnly platform-session cookie rides along, and we let the
- * gateway envelope shape (`{ success, data, error }`) flow through
- * unchanged.
+ * Each advisor package is mounted at its OWN top-level path on the
+ * api-gateway (there is no `/advisor` parent), e.g.
+ * `/api/v1/acquisition-advisor/recommend` or
+ * `/api/v1/geo-platform/area-insights`. Callers therefore pass the
+ * FULL mounted sub-path as `endpoint` (mount + internal route). We
+ * send `credentials: 'include'` so the httpOnly platform-session
+ * cookie rides along, and we let the gateway envelope shape
+ * (`{ success, data, error }`) flow through unchanged.
  *
  * Zod parses the response in each page so the type system pins the
  * advisor shape at the boundary — no `as` casts inside React.
@@ -37,6 +40,11 @@ function getApiBase(): string {
 }
 
 export interface PostAdvisorOptions<T> {
+  /**
+   * Full mounted sub-path on the gateway, e.g.
+   * `acquisition-advisor/recommend` or `geo-platform/area-insights`.
+   * A leading slash is tolerated. There is NO `/advisor` parent.
+   */
   readonly endpoint: string;
   readonly body: unknown;
   readonly schema: z.ZodType<T>;
@@ -44,8 +52,9 @@ export interface PostAdvisorOptions<T> {
 }
 
 /**
- * POST to `/api/v1/advisor/<name>` and return a typed envelope.
- * Network + parse failures are folded into `success: false`.
+ * POST to `/api/v1/<endpoint>` (the full mounted advisor sub-path) and
+ * return a typed envelope. Network + parse failures are folded into
+ * `success: false`.
  */
 export async function postAdvisor<T>({
   endpoint,
@@ -54,7 +63,7 @@ export async function postAdvisor<T>({
   signal,
 }: PostAdvisorOptions<T>): Promise<AdvisorEnvelope<T>> {
   const base = getApiBase();
-  const url = `${base}/advisor/${endpoint.replace(/^\//, '')}`;
+  const url = `${base}/${endpoint.replace(/^\//, '')}`;
   let res: Response;
   try {
     res = await fetch(url, {

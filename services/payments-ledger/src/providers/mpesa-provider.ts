@@ -95,6 +95,35 @@ export class MpesaCallbackOnlyStatusError extends Error {
   }
 }
 
+/**
+ * Thrown by {@link MpesaPaymentProvider.createPaymentIntent} when an STK Push
+ * intent carries sub-major-unit precision (e.g. KES 100.50). M-PESA STK can
+ * only ever charge a WHOLE number of major units — the Daraja `Amount` field
+ * is whole-shilling. If we silently `Math.round()` here the customer is charged
+ * a different figure than the ledger books `paymentIntent.amount` exactly
+ * (payment-orchestration.service.ts ~593-622), so cash collected != cash
+ * booked. We fail CLOSED at intent creation instead: the caller must quantize
+ * the intent to a whole major unit BEFORE choosing the M-PESA STK rail, so
+ * `intent.amount` is already whole-unit and ledger == cash. A distinct class
+ * (not a bare Error) lets callers/tests assert the quantize-at-creation
+ * contract.
+ */
+export class MpesaSubUnitAmountError extends Error {
+  readonly code = 'MPESA_STK_AMOUNT_NOT_WHOLE_UNIT';
+  constructor(
+    public readonly amountMinorUnits: number,
+    public readonly currency: CurrencyCode,
+  ) {
+    super(
+      `M-PESA STK Push requires a whole-major-unit amount (${currency}); ` +
+        `received ${amountMinorUnits} minor units which is not a whole ${currency}. ` +
+        'Quantize the payment intent to a whole major unit before initiating ' +
+        'STK Push so the charged amount matches the booked ledger amount.',
+    );
+    this.name = 'MpesaSubUnitAmountError';
+  }
+}
+
 export interface MpesaProviderConfig {
   consumerKey: string;
   consumerSecret: string;
@@ -246,6 +275,25 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
       };
     }
 
+    // MONEY (stk-rounding): M-PESA STK can only charge a WHOLE number of major
+    // units, but the ledger books `paymentIntent.amount` to the exact minor
+    // unit (payment-orchestration.service.ts ~593-622). If the intent carries
+    // sub-major-unit precision (e.g. KES 100.50) we cannot reconcile cash
+    // collected against cash booked — `Math.round` would charge a different
+    // figure than is booked. Fail CLOSED here: the caller must quantize the
+    // intent to a whole major unit BEFORE selecting the STK rail so
+    // intent.amount is already whole-unit and ledger == cash. We do NOT round
+    // silently. `amountMajorUnits` derives the major value currency-aware
+    // (minor ÷ 10^decimals), so this also holds for 0-decimal currencies where
+    // every amount is already whole.
+    const majorUnits = params.amount.amountMajorUnits;
+    if (!Number.isInteger(majorUnits)) {
+      throw new MpesaSubUnitAmountError(
+        params.amount.amountMinorUnits,
+        params.amount.currency,
+      );
+    }
+
     const accessToken = await this.getAccessToken();
     const { password, timestamp } = this.generatePassword();
 
@@ -263,7 +311,7 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
       Password: password,
       Timestamp: timestamp,
       TransactionType: 'CustomerPayBillOnline',
-      Amount: Math.round(params.amount.amountMajorUnits), // M-PESA uses whole units
+      Amount: majorUnits, // already whole-unit (guarded above) — charged == booked
       PartyA: phoneNumber,
       PartyB: this.config.shortCode,
       PhoneNumber: phoneNumber,

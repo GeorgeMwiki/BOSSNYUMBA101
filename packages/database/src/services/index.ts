@@ -656,6 +656,9 @@ export {
   type CreateCarbonMarketBookServiceOpts,
 } from './carbon-market-book-service.js';
 
-// Session-replay cold-store chunk service (rrweb payloads) — defined but never
-// barrel-exported; surfaced by the api-gateway noExternal bundle.
-export * from './session-replay-chunks.service.js';
+// Session-replay cold-store chunk service factory (rrweb payloads) — defined but
+// never barrel-exported; surfaced by the api-gateway noExternal bundle. NAMED
+// (not star) export on purpose: the service module re-exports the schema's
+// SessionReplayChunkRow, which the schema barrel already owns, so a star
+// re-export would create a duplicate-export ambiguity (TS2308).
+export { createSessionReplayChunksService } from './session-replay-chunks.service.js';

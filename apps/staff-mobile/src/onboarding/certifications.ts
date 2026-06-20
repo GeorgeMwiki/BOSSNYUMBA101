@@ -1,21 +1,19 @@
 /**
  * Worker certifications recognised by the BossNyumba onboarding wizard.
  *
- * NOTE: the literal id values below are a legacy identifier set still shared
- * with `src/onboarding/state.ts` (zod enum) and the intelligence test fixture;
- * the user-facing labels are fully property-domain (see i18n
- * `onboarding.certifications.*`). A coordinated rename of these legacy ids to
- * property-trade ids (and a matching shift-planner contract) is flagged for
- * follow-up. Keep this list in sync with the onboarding state schema.
+ * The literal id values are property-trade certifications. They are shared with
+ * `src/onboarding/state.ts` (zod enum) and the intelligence test fixture, and
+ * each id resolves to a property-domain label via `certLabel()` against the
+ * i18n `onboarding.certifications.*` bundle. Keep this list in sync with the
+ * onboarding state schema and the cert-label switch.
  */
 export const CERTIFICATIONS = [
-  'haul-truck-license',
-  'excavator-license',
-  'underground-cert',
-  'blaster-permit',
-  'first-aid',
-  'crusher-operator',
+  'property-manager-licence',
+  'real-estate-agent-licence',
+  'hvac-technician',
   'electrician-class-b',
+  'first-aid',
+  'plumber',
   'confined-space'
 ] as const
 

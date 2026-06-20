@@ -635,6 +635,17 @@
         "staging"
       ],
       "notes": "CORE port (uplift ratchet) of the persistent-memory subsystem from the green sibling vertical (Borjie drizzle/0030, carried in final post-0297 shape: canonical app.current_tenant_id GUC + FORCE RLS, plus a service-role-bypass policy for cross-tenant decay/TTL sweeps per the 0337 house idiom). Tables back Mr. Mwikila's temporal-continuity substrate (session_memory, skills, pending_threads, thread_summaries). No FK on tenant_id, no pgvector (these 4 carry no embedding column). Forward-apply is prod-safe (all CREATE IF NOT EXISTS, NOT NULLs on fresh columns only). Dropping discards durable memory; continuity regresses to in-memory-only until re-created."
+    },
+    {
+      "up": "0346_field_captures_inspection_unit_check.sql",
+      "down": "down/0346_down_field_captures_inspection_unit_check.sql",
+      "reverses": "DROP the widened field_captures_capture_type_v2_check + restore the 0326 four-value field_captures_capture_type_check (attendance/task_ack/incident/shift_report)",
+      "dataLoss": false,
+      "envs": [
+        "dev",
+        "staging"
+      ],
+      "notes": "Mode-C Wave-D capture-routes HIGH: widens field_captures.capture_type to admit 'inspection' (W-M-07) and 'unit_check' (W-M-06) so the estate-manager BFF's new captureHandler('inspection')/('unit_check') sinks persist instead of failing 23514. Pure CHECK swap — no rows touched, forward-apply prod-safe. Down re-adds the narrower 0326 CHECK and ABORTS (safe) if any row already holds the two new capture types; reconcile before running."
     }
   ]
 }

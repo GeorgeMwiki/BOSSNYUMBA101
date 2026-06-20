@@ -88,7 +88,7 @@ export function LifecycleAdvisorClient(): JSX.Element {
     }
     setState({ status: 'loading' });
     const envelope = await postAdvisor({
-      endpoint: 'lifecycle',
+      endpoint: 'lifecycle-advisor/orchestrate',
       body: { assetId: assetId.trim(), stage },
       schema: lifecycleResponseSchema,
     });

@@ -2,7 +2,7 @@
 
 /**
  * EstateDepartmentAdvisorClient — render the DepartmentHealthReport
- * returned by `/api/v1/advisor/estate-department`.
+ * returned by `/api/v1/estate-department-advisor/department-health-report`.
  *
  * Input is a snapshot keyed by tenantId. The advisor walks the
  * portfolio, ops, staffing, vendor, risk-insurance, regulatory, and
@@ -90,7 +90,7 @@ export function EstateDepartmentAdvisorClient(): JSX.Element {
     }
     setState({ status: 'loading' });
     const envelope = await postAdvisor({
-      endpoint: 'estate-department',
+      endpoint: 'estate-department-advisor/department-health-report',
       body: payload,
       schema: departmentReportSchema,
     });

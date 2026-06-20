@@ -81,7 +81,7 @@ export function SustainabilityAdvisorClient(): JSX.Element {
     }
     setState({ status: 'loading' });
     const envelope = await postAdvisor({
-      endpoint: 'sustainability',
+      endpoint: 'sustainability-advisor/property-esg-report',
       body: { propertyId: propertyId.trim() },
       schema: sustainabilityResponseSchema,
     });

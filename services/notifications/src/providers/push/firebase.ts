@@ -6,6 +6,7 @@ import * as admin from 'firebase-admin';
 import type { TenantId } from '../../types/index.js';
 import type { INotificationProvider, SendParams } from '../provider.interface.js';
 import type { NotificationChannel, SendResult } from '../../types/index.js';
+import { isExpoPushToken } from './token-kind.js';
 import { lazySingleton } from '../../lazy-singleton.js';
 
 export interface FirebaseConfig {
@@ -52,6 +53,18 @@ export class FirebasePushProvider implements INotificationProvider {
   }
 
   async send(params: SendParams): Promise<SendResult> {
+    // An `ExponentPushToken[...]` is NOT a raw FCM token — FCM rejects it.
+    // Signal a non-retryable INVALID_RECIPIENT so the dispatcher fails over to
+    // the Expo rail instead of POSTing a foreign token to FCM (and retrying it).
+    if (isExpoPushToken(params.to)) {
+      const mismatch: SendResult & { errorCode: string } = {
+        success: false,
+        error: 'token is an Expo push token, not an FCM token',
+        errorCode: 'INVALID_RECIPIENT',
+      };
+      return mismatch;
+    }
+
     const app = tenantApps.get(params.tenantId as string);
     if (!app) {
       return { success: false, error: 'Firebase push not configured for tenant' };
