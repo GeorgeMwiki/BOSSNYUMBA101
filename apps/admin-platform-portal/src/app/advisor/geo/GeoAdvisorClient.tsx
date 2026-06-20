@@ -7,9 +7,8 @@
  * Leaflet is loaded only on the client (Next does not ship `window`
  * during SSR). The map fetches:
  *
- *   - `GET /api/v1/advisor/geo/parcels` for the painted parcel
- *     polygons. NOTE: this route is not yet mounted on the gateway
- *     (born-dark) — see the orchestrator follow-up.
+ *   - `GET /api/v1/geo-platform/parcels` for the painted parcel
+ *     polygons — the tenant's geocoded properties from the register.
  *   - `POST /api/v1/geo-platform/area-insights` with `{ lat, lng }`
  *     whenever the operator clicks a parcel, which returns the
  *     AreaInsights bundle (solar, air quality, drive-time samples).
@@ -142,7 +141,7 @@ export function GeoAdvisorClient(): JSX.Element {
   const fetchParcels = useCallback(async () => {
     setParcels((prev) => ({ ...prev, status: 'loading' }));
     try {
-      const res = await fetch(`${getApiBase()}/advisor/geo/parcels`, {
+      const res = await fetch(`${getApiBase()}/geo-platform/parcels`, {
         credentials: 'include',
       });
       const json: { data?: unknown; error?: { message?: string } } = await res
