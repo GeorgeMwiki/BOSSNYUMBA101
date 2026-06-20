@@ -454,6 +454,13 @@ export * from './connector-credentials.schema.js';
 // (tenant_id nullable); RLS FORCE on `app.current_tenant_id` + service-role
 // bypass for cross-tenant cleanup.
 export * from './oauth-state-nonces.schema.js';
+// OAuth2 device-flow agent tokens (migration 0282). The Drizzle schema was
+// absent while the route imported it — invisible until the api-gateway bundle
+// (noExternal) statically resolved the barrel. Backs the /oauth device-code flow.
+export * from './oauth-agent-tokens.schema.js';
+// Per-tenant autonomy caps (autonomy-caps.schema) — consumed by the orchestrator
+// composition root; was defined but never barrel-exported.
+export * from './autonomy-caps.schema.js';
 
 // WORM audit log (migration 0165) — append-only hash-chained audit
 // substrate for every document leaving `@bossnyumba/document-studio`.

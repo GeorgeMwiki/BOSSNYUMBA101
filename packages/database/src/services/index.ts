@@ -655,3 +655,7 @@ export {
   type CarbonMarketBookService,
   type CreateCarbonMarketBookServiceOpts,
 } from './carbon-market-book-service.js';
+
+// Session-replay cold-store chunk service (rrweb payloads) — defined but never
+// barrel-exported; surfaced by the api-gateway noExternal bundle.
+export * from './session-replay-chunks.service.js';

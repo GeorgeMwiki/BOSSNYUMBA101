@@ -390,6 +390,11 @@ export {
 // service-registry to fall back to degraded mode on boot.
 export * from './cost-ledger.js';
 
+// ./audit-trail re-exports the full surface as a namespace (AuditTrail.*) — the
+// api-gateway audit-trail route calls AuditTrail.exportBundle(). Was missing from
+// the barrel; surfaced by the noExternal api-gateway bundle.
+export * as AuditTrail from './audit-trail/index.js';
+
 // ============================================
 // Wave-11 — AI security hardening + semantic memory + heartbeat
 // ============================================
