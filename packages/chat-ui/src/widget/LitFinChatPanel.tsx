@@ -36,6 +36,7 @@ import { useLitFinAI } from './LitFinAIProvider';
 import { useWidgetLanguage } from './useWidgetLanguage';
 import { LitFinMessageBubble, type LitFinMessage } from './LitFinMessageBubble';
 import { LitFinSegmentHeader } from './LitFinSegmentHeader';
+import { useChatScroll } from '../hooks/useChatScroll.js';
 import { LitFinContextBadge } from './LitFinContextBadge';
 
 interface LitFinChatPanelProps {
@@ -149,19 +150,14 @@ export function LitFinChatPanel({
   const [sessionStartedAt] = useState(() => new Date().toISOString());
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<unknown>(null);
-  const prevStreamingRef = useRef(false);
 
-  useEffect(() => {
-    const wasStreaming = prevStreamingRef.current;
-    prevStreamingRef.current = isStreaming;
-    // Stream INSTANTLY (no per-frame smooth-scroll yank — the §5.1 streaming
-    // bug); settle smoothly only once the reply completes.
-    const behavior: ScrollBehavior = isStreaming || wasStreaming ? 'auto' : 'smooth';
-    messagesEndRef.current?.scrollIntoView({ behavior });
-  }, [messages, isStreaming]);
+  // Canonical streaming-scroll behaviour (§5.1): follow only while the reader is
+  // at the bottom, instant during stream, never yank a reader who scrolled up.
+  useChatScroll(scrollContainerRef, messages, isStreaming);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -488,6 +484,7 @@ export function LitFinChatPanel({
       </div>
 
       <div
+        ref={scrollContainerRef}
         className="flex-1 overflow-y-auto px-3 pb-2"
         aria-live="polite"
         aria-atomic="false"

@@ -13,6 +13,7 @@ import {
   type SliceState,
 } from '@/components/ask/SliceSelector';
 import { useOptionalAdminTabs } from '@/state/AdminTabsProvider';
+import { useChatScroll } from '@bossnyumba/chat-ui';
 
 /**
  * AskChat — the industry-observer conversation surface.
@@ -100,12 +101,10 @@ export function AskChat({
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: 'smooth',
-    });
-  }, [messages]);
+  // Canonical streaming-scroll behaviour (§5.1): follow only while the reader is
+  // at the bottom, instant during stream, never yank a reader who scrolled up.
+  const isStreaming = messages.some((m) => m.streaming === true);
+  useChatScroll(scrollRef, messages, isStreaming);
 
   const canSend = useMemo(
     () => input.trim().length > 0 && !sending,
