@@ -33,7 +33,7 @@
     "klarna-defense"
   ],
   "dependencies": {
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.3.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
